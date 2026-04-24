@@ -1,0 +1,21 @@
+# Nix
+result
+result-*
+.direnv/
+
+# Local flake state (generated, not source of truth)
+flake.lock.local
+
+# Inventory output must never land in the repo — it contains system info
+# (process lists, container env, etc.) that may include secrets.
+inventory-*/
+inventory-*.tar.gz
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
