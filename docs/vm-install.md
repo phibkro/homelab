@@ -4,7 +4,8 @@ Validates the install pipeline against the flake before touching nori-station.
 
 ## 1. Create the VM in UTM
 
-- **Architecture:** x86_64 (Emulate, not Virtualize, on Apple Silicon).
+- **Architecture:** x86_64. On Intel Mac: **Virtualize** (native speed via
+  Apple HVF). On Apple Silicon: Emulate (slow but correct).
 - **System:** QEMU 9, standard. Enable UEFI boot.
 - **CPU cores:** 4. **RAM:** 4 GB. **Disk:** 40 GB (VirtIO).
 - **CD/DVD:** attach the NixOS minimal ISO.
