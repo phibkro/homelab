@@ -1,39 +1,33 @@
 {
-  description = "nori infrastructure (NixOS + home configurations)";
+  description = "nori infrastructure (NixOS) — nori-station and future lab hosts";
 
-  # nixos-unstable chosen initially because nori-station has an RTX 5060 Ti
-  # (Blackwell), whose driver support lands in recent kernels/nvidia packages.
-  # Revisit and pin to a stable channel once the driver situation is verified
-  # on the target machine.
+  # Pinned to nixos-unstable because nori-station has an RTX 5060 Ti
+  # (Blackwell), whose driver lands in recent nixpkgs. Revisit pinning to a
+  # stable channel once Blackwell support is confirmed on stable.
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixos-hardware.url = "github:NixOS/nixos-hardware/master";
 
-    # Added once service modules start referencing them:
-    #   sops-nix       — secrets management (age / ssh-to-age)
-    #   home-manager   — per-user configuration (desktop phase)
-    #   nixos-hardware — hardware-specific tweaks (zen4, nvidia)
+    # Planned additions (introduced when needed):
+    #   sops-nix       — secrets (age / ssh-to-age)
+    #   home-manager   — per-user config (desktop phase)
     #   disko          — declarative partitioning (post first install)
   };
 
-  outputs = { self, nixpkgs, ... }@inputs:
+  outputs = { self, nixpkgs, nixos-hardware, ... }@inputs:
     let
       system = "x86_64-linux";
-      pkgs = import nixpkgs { inherit system; config.allowUnfree = true; };
+      mkHost = hostPath: nixpkgs.lib.nixosSystem {
+        inherit system;
+        specialArgs = { inherit inputs; };
+        modules = [ hostPath ];
+      };
     in {
       nixosConfigurations = {
-        # Populated in a later phase once the inventory informs what services
-        # this host needs to run. Until then the flake intentionally builds
-        # nothing so the repo stays evaluable on any machine.
-        #
-        # nori-station = nixpkgs.lib.nixosSystem {
-        #   inherit system;
-        #   specialArgs = { inherit inputs; };
-        #   modules = [
-        #     ./hosts/nori-station
-        #   ];
-        # };
+        vm-test      = mkHost ./hosts/vm-test;
+        nori-station = mkHost ./hosts/nori-station;
       };
 
-      formatter.${system} = pkgs.nixfmt-rfc-style;
+      formatter.${system} = nixpkgs.legacyPackages.${system}.nixfmt-rfc-style;
     };
 }

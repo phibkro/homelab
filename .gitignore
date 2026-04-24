@@ -17,5 +17,8 @@ inventory-*.tar.gz
 *.swp
 *.swo
 
+# Per-project Claude Code state
+.claude/
+
 # OS
 .DS_Store
