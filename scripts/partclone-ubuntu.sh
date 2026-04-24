@@ -146,10 +146,22 @@ ESP_ELAPSED=$(( $(date +%s) - START ))
 # --- ext4 root -----------------------------------------------------------
 
 step "ext4 root (partclone — used blocks only)"
+# Flush page cache before imaging so partclone reads consistent metadata.
+sync; sync
+# -F: force partclone to image a mounted filesystem. Result is
+# crash-consistent (like a dd of a live disk) — ext4 journal replay
+# handles minor inconsistencies on first mount after restore.
 START="$(date +%s)"
-partclone.ext4 -c -s "$ROOT_PART" 2>>"$ERR" \
+partclone.ext4 -c -F -s "$ROOT_PART" 2>>"$ERR" \
   | zstd -T"$ZSTD_THREADS" -"$ZSTD_LEVEL" -o "$OUT/root.partclone.zst"
 ROOT_ELAPSED=$(( $(date +%s) - START ))
+
+# Sanity: an output under 1 MiB means partclone produced effectively
+# nothing — almost certainly a silent refusal we should surface here
+# rather than at restore time.
+ROOT_OUT_BYTES="$(stat -c %s "$OUT/root.partclone.zst")"
+(( ROOT_OUT_BYTES > 1048576 )) \
+  || die "root.partclone.zst is only ${ROOT_OUT_BYTES} bytes — partclone failed; see $ERR"
 
 # --- verify --------------------------------------------------------------
 
