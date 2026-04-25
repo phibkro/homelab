@@ -27,10 +27,10 @@ canonical architecture.
 |---|---|---|
 | 0 | Inventory + flake skeleton | done |
 | 1 | Backups (rsync + partclone) | done; verified on One Touch |
-| 2 | Reformat IronWolf Pro to btrfs | deferred |
+| 2 | Reformat IronWolf Pro to btrfs | **DONE** (pulled forward; see below) |
 | 3 | VM dry-run install | done; `vm-test` retained for testing |
-| 4 | Bare-metal install on nori-station | **DONE** |
-| 5 | Service migration | not started |
+| 4 | Bare-metal install on nori-station | done |
+| 5 | Service migration | in progress (tailscale module + media data; services pending) |
 | 6 | Desktop environment (Hyprland) | not started |
 
 Reactive (no scheduled trigger): Cloudflare Tunnel + Access, email
@@ -38,68 +38,97 @@ digest reports, second media drive, deploy-rs. See DESIGN.md.
 
 ## Current state of nori-station
 
-NixOS booting on bare metal. Reachable from the Mac at `192.168.1.181`
-(LAN) and on the tailnet as `nori-station-1` (the canonical
-`nori-station` name is held by the offline ghost of the old Ubuntu
-node — see "loose ends"). User `nori` exists with passwordless wheel
-sudo and TTY password set manually post-install. SSH is key-only;
-the Mac's ed25519 key is in `common.nix`.
+NixOS on bare metal. Reachable from the Mac at `192.168.1.181` (LAN)
+and on the tailnet at canonical `nori-station` (renamed from
+`nori-station-1` after deleting the offline Ubuntu ghost). User
+`nori` with passwordless wheel sudo, TTY password set manually
+post-install. SSH key-only.
 
-What's installed: only the baseline from `common.nix` (SSH, Tailscale,
-basic packages, firewall, locale). No service modules yet — Jellyfin,
-Ollama, Samba etc. are Phase 5.
+`modules/common/{base,users,tailscale}.nix` plus `default.nix` is the
+new shape per DESIGN.md L335-348; `hosts/common.nix` is gone. The
+tailscale module is the first service module — declares
+`extraUpFlags = [ "--ssh" "--hostname=${networking.hostName}" ]` so
+any future re-auth lands the canonical hostname.
+
+`disko` applied to both NVMe root (SN750, btrfs label `nixos`, six
+subvolumes) and IronWolf media (4 TB, btrfs label `media`, five
+subvolumes per DESIGN L130-138). Both disko configs target by-id
+paths, not `/dev/nvme*` — see "Disk identity" below.
+
+Media tree current state:
+
+```
+/mnt/media/home-videos  18 GB  partial OneTouch Footage transfer
+/mnt/media/photos       53 GB  IronWolf memories + partial OneTouch memories
+/mnt/media/projects     18 GB  IronWolf projects + _exports/ subdir
+/mnt/media/streaming     0     intentional, re-derivable per DESIGN tier
+```
+
+Files under `/mnt/media/` are owned `nori:users`. The OneTouch
+contributions in `home-videos` and `photos` are mid-migration leftovers
+the user wanted to review later (the OneTouch is the backup, doesn't
+strictly need to live on the IronWolf too); not load-bearing.
+
+## Disk identity (read this before anything that touches `/dev/nvmeN`)
+
+NVMe `/dev` enumeration is unstable across reboots. At install time,
+`/dev/nvme0n1` was the SN750; post-reboot it's `/dev/nvme1n1`. The
+disko configs are by-id-pinned to prevent accidentally targeting the
+wrong drive. Always disambiguate by model:
+
+- WD Black SN750 1TB → NixOS root, btrfs label `nixos`
+  by-id `nvme-WDS100T3X0C-00SJG0_204526810532`
+- Corsair Force MP510 960GB → Windows, **never touch**
+  by-id `nvme-Force_MP510_2031826300012953207B`
+- Seagate IronWolf Pro 4TB → media btrfs, label `media`
+  by-id `ata-ST4000NE001-2MA101_WS24X543`
+- Seagate One Touch 5TB → external backup drive, exfat, normally on
+  the Mac at `/Volumes/One Touch`. UUID `2A05-DC62`.
 
 ## Loose ends to address opportunistically
 
-These are minor and shouldn't block Phase 5 from starting; surface only
-when relevant.
-
-1. **Tailscale name collision.** New install registered as
-   `nori-station-1`. Two paths to canonical:
-   - Delete the offline `nori-station` (Ubuntu ghost) from the admin
-     console at `login.tailscale.com/admin/machines`, then on the new
-     node: `sudo tailscale logout && sudo tailscale up --ssh
-     --hostname=nori-station`.
-   - Or restore `/var/lib/tailscale/` from the rsync backup *before*
-     starting tailscaled (would need a brief stop). This preserves the
-     original device identity.
-2. **`vm-test` ghost** on the tailnet (offline). Delete via admin
-   console or leave alone.
-3. **`common-cpu-amd-pstate` not imported** in `hosts/nori-station/hardware.nix`
-   — explicitly omitted for first-install simplicity. Add back if/when
+1. **`common-cpu-amd-pstate`** not imported in `hosts/nori-station/hardware.nix`.
+   Explicitly omitted for first-install simplicity. Add back if/when
    AMD pstate tuning matters.
-4. **Modules directory still has the old shape.** `modules/.gitkeep`
-   placeholder remains. The DESIGN.md target shape is
-   `modules/{services,desktop,common}/`. Refactor when the first real
-   module gets written (Tailscale identity restore is a likely first).
-5. **`hosts/common.nix` lives at hosts root**, not in `modules/common/`
-   per DESIGN.md L335–348 layout. Cosmetic; move when modules land.
+2. **OneTouch leftovers in `/mnt/media/home-videos` and `/mnt/media/photos`**
+   from a partial Mac→host rsync that was killed mid-flight (openrsync
+   was throughput-limited at ~8 MB/s vs gigabit's ~110 MB/s). User wanted
+   to review later. Either clean wipe + re-restore from IronWolf-only
+   (deterministic), or leave merged.
+3. **scripts/backup.sh** has no restore-time verification. Pre-Phase-5
+   rsync-to-exfat backups should be treated as snapshots-of-intent, not
+   guaranteed sources of truth. Phase 5+ uses restic for this reason.
 
 ## Phase 5 starting points
 
-DESIGN.md L186–289 has the service table and backup patterns. A
-reasonable order:
+DESIGN.md L186-289 has the service table and backup patterns. The arc
+that's already happened (sequence below picks up after):
 
-1. **Tailscale identity restore.** Stop tailscaled, restore
-   `/var/lib/tailscale/` from `nori-backup-20260424T223707Z/tailscale-state/`,
-   start. Closes loose end #1.
-2. **`/srv/share` and `/home` rsync** of human files from the Ubuntu
-   backup — set this up before Samba so the share has data.
-3. **Samba.** Pattern A backup. Modest scope (one share initially).
-4. **Ollama + Open WebUI.** Models from `nori-backup-20260424T223707Z/ollama-share/`.
-   Pattern A for Ollama, Pattern C2 (sqlite .backup) for Open WebUI.
-5. **Jellyfin.** Reads from IronWolf which is still exfat at this
-   point — fine for a first pass; reformat to btrfs in Phase 2 later.
-6. **`backup-restic.nix` module.** Implements Pattern A/B/C as
-   reusable building blocks for service onboarding going forward.
-7. **`hosts/nori-pi/`.** New host, USB SSD root, restic target. Adds
+- ✅ Tailscale module landed; canonical hostname restored.
+- ✅ Phase 2 (IronWolf btrfs reformat) pulled forward; media subvolumes
+  in place; IronWolf irreplaceables restored.
+
+What's next, roughly in order:
+
+1. **Samba.** First true service module (`modules/services/samba.nix`).
+   Pattern A backup. Modest scope — one or two shares to start
+   (`/srv/share`, maybe `/mnt/media/streaming` once Jellyfin's there).
+2. **Ollama + Open WebUI.** Models from
+   `nori-backup-20260424T223707Z/ollama-share/` on the One Touch.
+   Pattern A for Ollama, Pattern C2 (sqlite `.backup`) for Open WebUI.
+3. **Jellyfin.** Reads `/mnt/media/streaming` (currently empty) and
+   `/mnt/media/home-videos` (has the OneTouch Footage import).
+4. **`backup-restic.nix` module.** Implements Pattern A/B/C as reusable
+   building blocks. Worth landing before more services so each new
+   service onboards with backup config in the same PR.
+5. **`hosts/nori-pi/`.** New host, USB SSD root, restic target. Adds
    the second host to the flake.
 
-Any service flow should land its restic backup config (Pi target +
-Hetzner target) at the same time the service comes up. Don't defer
-backups. Adding restic to a service later is the same amount of work
-as adding it during onboarding, but only one of them produces a
-backup-from-day-zero.
+Restic backups need a target. Until `nori-pi` exists, services can
+either run unbacked-up (acceptable for short stretches if data is
+re-derivable) or back up to a temporary local path on root. Don't let
+"no Pi yet" become an excuse to defer restic configs indefinitely;
+land the modules with a placeholder target.
 
 ## Working style with this user
 
