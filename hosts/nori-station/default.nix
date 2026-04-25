@@ -5,6 +5,7 @@
     inputs.disko.nixosModules.disko
     ../../modules/common
     ./disko.nix
+    ./disko-media.nix
     ./hardware.nix
   ];
 
