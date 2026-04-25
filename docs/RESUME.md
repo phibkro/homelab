@@ -1,23 +1,25 @@
 # Resumption guide
 
-You are an agent continuing the nori-station NixOS migration. A previous
-session got us to the Phase 4 starting line. This doc is the orientation
-brief — read it first.
+You are an agent continuing the nori homelab buildout. Phase 4
+(bare-metal NixOS install on nori-station) just finished. This doc is
+the orientation brief — read it first, then `docs/DESIGN.md` for
+canonical architecture.
 
 ## Where state lives
 
 - **Repo:** `/Users/nori/Documents/nix-migration` (local), pushed to
   `git@github.com:phibkro/homelab` (public, `main`).
-- **Project memory** (auto-loaded when you're working in this directory):
-  `~/.claude/projects/-Users-nori-Documents-nix-migration/`. Index file
-  is `MEMORY.md`; specific files cover user profile, project state,
-  working-style preferences, and gotchas.
-- **Git history:** `git log --oneline` is a commit-by-commit narrative
-  of what was decided and why. The first commit is `chore: initialize
-  nix-migration repo scaffolding`.
-- **Inventory:** `inventory-nori-station-20260424T220429Z/` (gitignored)
-  captures the Ubuntu source system in detail. Read selectively if you
-  need to understand a specific Ubuntu service before migrating it.
+- **Canonical design:** `docs/DESIGN.md`. Two-host topology
+  (nori-station + nori-pi), seven-layer architecture, three named
+  backup patterns (A/B/C), disko-from-day-zero. Source of truth for
+  *why* decisions are what they are.
+- **Project memory** (auto-loaded when working in this directory):
+  `~/.claude/projects/-Users-nori-Documents-nix-migration/`. Index is
+  `MEMORY.md`; files cover user, project state, gotchas, working style.
+- **Git history:** `git log --oneline` — commit-by-commit narrative.
+- **Inventory** (gitignored): `inventory-nori-station-20260424T220429Z/`
+  captures Ubuntu source. Use selectively when migrating specific
+  services in Phase 5.
 
 ## Phase status
 
@@ -25,69 +27,89 @@ brief — read it first.
 |---|---|---|
 | 0 | Inventory + flake skeleton | done |
 | 1 | Backups (rsync + partclone) | done; verified on One Touch |
-| 2 | Reformat IronWolf Pro to btrfs | deferred (post-Phase-4) |
-| 3 | VM dry-run install (UTM) | done; `vm-test` on tailnet |
-| 4 | Bare-metal install on nori-station | **READY, not started** |
+| 2 | Reformat IronWolf Pro to btrfs | deferred |
+| 3 | VM dry-run install | done; `vm-test` retained for testing |
+| 4 | Bare-metal install on nori-station | **DONE** |
 | 5 | Service migration | not started |
-| 6 | Desktop environment | not started; user wants non-Gnome |
+| 6 | Desktop environment (Hyprland) | not started |
 
-## When the user says "go" on Phase 4
+Reactive (no scheduled trigger): Cloudflare Tunnel + Access, email
+digest reports, second media drive, deploy-rs. See DESIGN.md.
 
-1. Read `docs/baremetal-install.md` end-to-end before doing anything.
-2. Walk the user through it section by section. Don't dump the whole
-   thing at once. Ask for screenshots/output between sections.
-3. The same loop pattern as Phase 3 applies: error → fix in repo → push
-   → user `git pull && nixos-install` again. Expect 1–2 iterations on
-   the nvidia driver package and possibly nixos-hardware module names.
+## Current state of nori-station
 
-## What we know is going to be ~fine on Phase 4
+NixOS booting on bare metal. Reachable from the Mac at `192.168.1.181`
+(LAN) and on the tailnet as `nori-station-1` (the canonical
+`nori-station` name is held by the offline ghost of the old Ubuntu
+node — see "loose ends"). User `nori` exists with passwordless wheel
+sudo and TTY password set manually post-install. SSH is key-only;
+the Mac's ed25519 key is in `common.nix`.
 
-The flake builds, the btrfs subvol layout boots, systemd-boot installs,
-the user setup with passwordless sudo + SSH key works. All proven on
-Phase 3.
+What's installed: only the baseline from `common.nix` (SSH, Tailscale,
+basic packages, firewall, locale). No service modules yet — Jellyfin,
+Ollama, Samba etc. are Phase 5.
 
-## What we're betting on the first time
+## Loose ends to address opportunistically
 
-- **`hardware.nvidia.package = nvidiaPackages.production`** is current
-  enough for Blackwell (driver 575+). If not: try `beta` or `latest`,
-  or pin an explicit version.
-- **`nixos-hardware.nixosModules.{common-cpu-amd, common-pc-ssd}`**
-  exist on master. If install evaluation errors on either name, drop
-  the offending one — they're tweaks, not requirements.
-- **UEFI NVRAM persists boot entries on this Gigabyte board.** UTM
-  needed `bootctl install` after the first reboot; real hardware
-  shouldn't. If it does, the recovery is in `docs/vm-install.md`.
+These are minor and shouldn't block Phase 5 from starting; surface only
+when relevant.
 
-## What to capture during/after Phase 4
+1. **Tailscale name collision.** New install registered as
+   `nori-station-1`. Two paths to canonical:
+   - Delete the offline `nori-station` (Ubuntu ghost) from the admin
+     console at `login.tailscale.com/admin/machines`, then on the new
+     node: `sudo tailscale logout && sudo tailscale up --ssh
+     --hostname=nori-station`.
+   - Or restore `/var/lib/tailscale/` from the rsync backup *before*
+     starting tailscaled (would need a brief stop). This preserves the
+     original device identity.
+2. **`vm-test` ghost** on the tailnet (offline). Delete via admin
+   console or leave alone.
+3. **`common-cpu-amd-pstate` not imported** in `hosts/nori-station/hardware.nix`
+   — explicitly omitted for first-install simplicity. Add back if/when
+   AMD pstate tuning matters.
+4. **Modules directory still has the old shape.** `modules/.gitkeep`
+   placeholder remains. The DESIGN.md target shape is
+   `modules/{services,desktop,common}/`. Refactor when the first real
+   module gets written (Tailscale identity restore is a likely first).
+5. **`hosts/common.nix` lives at hosts root**, not in `modules/common/`
+   per DESIGN.md L335–348 layout. Cosmetic; move when modules land.
 
-- The `flake.lock` generated in `/tmp/homelab/` during the install. Pull
-  it to the Mac, commit, push so future installs are reproducible.
-- Whether `production` was the right nvidia package attribute. If we
-  had to change it, lock that decision into `hosts/nori-station/hardware.nix`.
+## Phase 5 starting points
 
-## What's deferred — surface only when relevant
+DESIGN.md L186–289 has the service table and backup patterns. A
+reasonable order:
 
-- Cloudflared (no public services yet — resurface when one is needed)
-- Restoring Tailscale identity from the rsync backup (vs. fresh
-  registration)
-- IronWolf Pro reformat to btrfs (Phase 2)
-- Desktop environment selection (Phase 6)
-- sops-nix wiring (introduce when the first secret is needed)
-- Adding `common-cpu-amd-pstate` back to nori-station hardware
+1. **Tailscale identity restore.** Stop tailscaled, restore
+   `/var/lib/tailscale/` from `nori-backup-20260424T223707Z/tailscale-state/`,
+   start. Closes loose end #1.
+2. **`/srv/share` and `/home` rsync** of human files from the Ubuntu
+   backup — set this up before Samba so the share has data.
+3. **Samba.** Pattern A backup. Modest scope (one share initially).
+4. **Ollama + Open WebUI.** Models from `nori-backup-20260424T223707Z/ollama-share/`.
+   Pattern A for Ollama, Pattern C2 (sqlite .backup) for Open WebUI.
+5. **Jellyfin.** Reads from IronWolf which is still exfat at this
+   point — fine for a first pass; reformat to btrfs in Phase 2 later.
+6. **`backup-restic.nix` module.** Implements Pattern A/B/C as
+   reusable building blocks for service onboarding going forward.
+7. **`hosts/nori-pi/`.** New host, USB SSD root, restic target. Adds
+   the second host to the flake.
 
-See `memory/project_nori_migration.md` for full context on each.
+Any service flow should land its restic backup config (Pi target +
+Hetzner target) at the same time the service comes up. Don't defer
+backups. Adding restic to a service later is the same amount of work
+as adding it during onboarding, but only one of them produces a
+backup-from-day-zero.
 
 ## Working style with this user
 
-Read `memory/feedback_style.md`. Short version: answer first, reasoning
-after. Push back on weak decisions. Don't manufacture concerns. Don't
-flatter. Call out when a question hides an XY problem. The user is a
-CS student with FP background — assume technical fluency.
+`memory/feedback_style.md`. Short: answer first, push back on weak
+decisions, don't manufacture concerns, don't flatter. Call out XY
+problems. CS student with FP background; technical fluency assumed.
 
-## What to do immediately after reading this
+## On first turn
 
-If the user's first message is open-ended ("what now?", "where are we?"),
-respond with: a one-paragraph status, the immediate next concrete action
-(start Phase 4 when they're at nori-station with a USB ready), and
-two-to-three open questions to confirm intent. Don't dump the whole
-roadmap.
+If the user's opening is open-ended ("where are we?", "what now?"),
+respond with one paragraph of status, the immediate next concrete
+action they'd take, and at most two open questions. Don't dump the
+roadmap. They're already the architect; you're implementing alongside.
