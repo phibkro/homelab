@@ -29,59 +29,28 @@
   hardware.cpu.amd.updateMicrocode =
     lib.mkDefault config.hardware.enableRedistributableFirmware;
 
-  # --- filesystems -------------------------------------------------------
-  #
-  # Same layout as vm-test: one btrfs filesystem labelled "nixos" with four
-  # subvolumes, plus an ESP labelled "BOOT" on nvme0n1p1. Identifying by
-  # label instead of UUID keeps this stable across reinstalls.
-
-  fileSystems."/" = {
-    device = "/dev/disk/by-label/nixos";
-    fsType = "btrfs";
-    options = [ "subvol=@" "compress=zstd:3" "noatime" ];
-  };
-
-  fileSystems."/home" = {
-    device = "/dev/disk/by-label/nixos";
-    fsType = "btrfs";
-    options = [ "subvol=@home" "compress=zstd:3" "noatime" ];
-  };
-
-  fileSystems."/nix" = {
-    device = "/dev/disk/by-label/nixos";
-    fsType = "btrfs";
-    options = [ "subvol=@nix" "compress=zstd:3" "noatime" ];
-  };
-
-  fileSystems."/.snapshots" = {
-    device = "/dev/disk/by-label/nixos";
-    fsType = "btrfs";
-    options = [ "subvol=@snapshots" "compress=zstd:3" "noatime" ];
-  };
-
-  fileSystems."/boot" = {
-    device = "/dev/disk/by-label/BOOT";
-    fsType = "vfat";
-    options = [ "fmask=0077" "dmask=0077" ];
-  };
+  # Filesystems are emitted by ./disko.nix at install time. Do not declare
+  # fileSystems here; disko's NixOS module produces them from the disko
+  # config, and re-declaring would be a definition conflict.
 
   # No swap yet. If/when added: swapfile on the btrfs root with NoCoW
-  # (chattr +C) — not a ZRAM, not a partition. Size ~16 GB is plenty.
+  # (chattr +C). Pattern goes in disko.nix, not here.
   swapDevices = [ ];
 
   # --- gpu (nvidia open, RTX 5060 Ti / Blackwell) -----------------------
-
+  #
+  # Driver-package fallback ladder per docs/DESIGN.md L91–106:
+  #   production  -> beta  -> latest  -> explicit mkDriver version
+  # Known: 580.119.02 fails to build on kernel 6.19 (vm_area_struct API
+  # change). 580.126.09 fixes it. If `production` resolves to .119 and
+  # 6.19 is in use, fall back to `beta` or pin an older kernel.
   services.xserver.videoDrivers = [ "nvidia" ];
   hardware.graphics.enable = true;
   hardware.nvidia = {
-    open = true;                  # open kernel module (driver 575+ / Blackwell)
+    open = true;                   # open kernel module (driver 575+ / Blackwell)
     modesetting.enable = true;
-    nvidiaSettings = false;        # headless — no nvidia-settings GUI
+    nvidiaSettings = false;         # headless install; flip true with desktop
     powerManagement.enable = false;
-    # The driver package choice depends on what nixpkgs-unstable ships at
-    # the time of install. Verify during first build: the driver must be
-    # 575 or newer for Blackwell. If `production` is older, try `beta` or
-    # `latest`, or pin an explicit version.
     package = config.boot.kernelPackages.nvidiaPackages.production;
   };
 
