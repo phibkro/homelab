@@ -20,5 +20,8 @@ inventory-*.tar.gz
 # Per-project Claude Code state
 .claude/
 
+# Per-machine git hooks (installed by local plugins, not project code)
+.githooks/
+
 # OS
 .DS_Store
