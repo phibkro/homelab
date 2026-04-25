@@ -3,7 +3,7 @@
 {
   imports = [
     inputs.disko.nixosModules.disko
-    ../common.nix
+    ../../modules/common
     ./disko.nix
     ./hardware.nix
   ];
