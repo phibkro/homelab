@@ -1,11 +1,11 @@
-# Phase 4: NixOS install on nori-station
+# Phase 4: NixOS install on nori-station (disko-based)
 
-Bare-metal install. Mirrors Phase 3 (VM dry-run) — same flake, same partition
-layout, same install command pattern. The difference is that this is the
-real machine, with its real GPU and real network.
+Bare-metal install. The flake's `hosts/nori-station/disko.nix` declares
+the partition layout; disko applies it; `nixos-install` writes the
+system. No manual `parted` or `mkfs` — the layout is in version control.
 
-Read this whole document before starting. It assumes Phase 3 succeeded and
-both backups (rsync + partclone) are in place on One Touch.
+Read this whole document before starting. It assumes Phase 3 succeeded
+and both backups (rsync + partclone) are on One Touch and verified.
 
 ## 1. Prepare the USB installer
 
@@ -14,13 +14,12 @@ On your Mac:
 ```bash
 diskutil list
 # Find your USB stick — typically /dev/diskN where N >= 2.
-# Verify by SIZE and the absence of "internal" — confusing it with the
-# Mac's internal disk would brick your laptop.
+# Verify by SIZE; do NOT pick the Mac's internal disk.
 
 diskutil unmountDisk /dev/diskN
 
 # Use the raw device (rdiskN) for ~5x faster writes.
-sudo dd if=~/Downloads/nixos-graphical-25.11.<...>.iso \
+sudo dd if=~/Downloads/nixos-minimal-25.11.<...>.iso \
         of=/dev/rdiskN \
         bs=1m \
         status=progress
@@ -30,146 +29,174 @@ sudo diskutil eject /dev/diskN
 
 Pull the USB out.
 
-## 2. Boot nori-station from USB
+## 2. Stage physically
 
-1. Plug the USB into nori-station.
-2. Connect a keyboard and monitor (you'll need them through the install).
-3. Power on. Spam **F12** at the Gigabyte splash to enter the boot menu.
-   (Other Gigabyte boards: F8 or F11 — try F12 first.)
-4. Select the USB stick (often listed as "UEFI: <USB brand>"). **Pick the
-   UEFI entry**, not the legacy/BIOS entry — without UEFI, systemd-boot
-   won't install correctly.
-5. NixOS boot menu appears → press Enter on the default.
-6. GNOME desktop loads. Open Terminal, `sudo -i`.
+- Plug USB into nori-station.
+- Connect keyboard + monitor.
+- **Disconnect One Touch** (we don't want it on the USB bus during
+  install — reduces accidents).
 
-## 3. Verify network and target disk
+## 3. Boot from USB
 
-In the installer terminal:
+Power on. Spam **F12** at the Gigabyte splash to enter the boot menu.
+Pick the **UEFI** entry for the USB (not the legacy/BIOS entry).
+
+NixOS boot menu appears → press Enter on the default. Land at a TTY
+prompt. (Minimal ISO has no GUI; that's fine.)
 
 ```
-ping -c 2 cache.nixos.org    # should succeed
+sudo -i
+```
+
+You're root in the installer.
+
+## 4. Verify network and identify disks
+
+```
+ping -c 2 cache.nixos.org
 lsblk -o NAME,SIZE,MODEL,TYPE
 ```
 
-Confirm that:
-- `nvme0n1` is `WDS100T3X0C-00SJG0` (931.5 GB) — your install target.
-- `nvme1n1` is `Force MP510` (894 GB) — Windows. **Do not touch.**
-- `sda` is the IronWolf Pro (3.6 TB).
-- `sdb` is the One Touch (4.5 TB) — should appear if connected.
+Confirm:
+- `nvme0n1` is `WDS100T3X0C-00SJG0` (WD Black SN750, 931.5 GB) — install
+  target.
+- `nvme1n1` is `Force MP510` (Corsair, 894 GB) — Windows. **Do not
+  touch.**
+- `sda` is the IronWolf Pro (3.6 TB) — leave it alone for Phase 4; Phase
+  2 reformats it later.
 
-If any of those are missing or mismatched, **stop** and tell me. The
-install scripts identify the disk by model and refuse to write to the
-wrong one, but a missing disk is its own problem.
+If any disk is missing or the model strings don't match, **stop** and
+investigate. The disko config is hardcoded for `/dev/nvme0n1`.
 
-## 4. Run the partition setup script
+## 5. Run disko
 
-```
-curl -L https://raw.githubusercontent.com/phibkro/homelab/main/scripts/baremetal-install-setup.sh | bash
-```
-
-Type `yes` at the confirmation. Expected `findmnt -R /mnt` output: five
-mounts on btrfs (root, home, nix, .snapshots) and vfat (boot). Same as
-Phase 3.
-
-## 5. Clone the flake locally and install
+The installer ships with `nix` and flake support. Apply the partition
+layout from the flake:
 
 ```
-nix-shell -p git --run 'git clone https://github.com/phibkro/homelab.git /tmp/homelab'
+nix-shell -p git
+git clone https://github.com/phibkro/homelab.git /tmp/homelab
 cd /tmp/homelab
-nixos-install --flake .#nori-station --no-root-password
+
+nix --experimental-features 'nix-command flakes' \
+    run github:nix-community/disko/latest -- \
+    --mode disko --flake /tmp/homelab#nori-station
 ```
 
-Expected runtime: 5–15 min (depending on cache.nixos.org speed). At the
-end you'll see "installation finished!" and the `nori` user will be
-created **without a password** — that's fine because:
+What this does:
+- Wipes and re-partitions `/dev/nvme0n1` per `hosts/nori-station/disko.nix`.
+- Creates the ESP (vfat, label `BOOT`) and btrfs filesystem (label
+  `nixos`) with six subvolumes.
+- Mounts everything under `/mnt/` ready for `nixos-install`.
 
-- `wheelNeedsPassword = false` is set, so `sudo` doesn't need one.
-- SSH is key-only and the Mac's key is preauthorised.
-- TTY login won't work until you `sudo passwd nori` later (rarely
-  needed on a headless server).
+Disko prompts before destructive operations. **It will not touch
+`nvme1n1`** — the disko config names `nvme0n1` explicitly.
 
-If install errors, paste the message and we iterate.
-
-## 6. Capture the lock file
-
-The install side-effect was to create `/tmp/homelab/flake.lock`. Grab it
-back to your Mac so it gets committed to the repo for future reproducible
-builds:
+When it finishes, sanity-check the result:
 
 ```
-# from another Mac terminal, after install completes but BEFORE reboot:
-scp nixos@<installer-LAN-ip>:/tmp/homelab/flake.lock \
+findmnt -R /mnt
+```
+
+Expect six btrfs mounts (`/`, `/home`, `/nix`, `/var/lib`, `/srv/share`,
+`/.snapshots`) and one vfat mount (`/boot`), all under `/mnt`.
+
+## 6. Install
+
+```
+nixos-install --flake /tmp/homelab#nori-station --no-root-password
+```
+
+Expected runtime: 5–15 min. You'll see `copying path '/nix/store/...'`
+streams, then activation. At the end: `installation finished!`
+
+The `nori` user is created **without a password**. SSH will work via the
+Mac's key; `sudo` doesn't need a password (`wheelNeedsPassword = false`).
+
+### If install errors
+
+Most likely culprits:
+- **Driver build failure** (`nvidiaPackages.production` resolves to
+  580.119.02 + kernel 6.19): fall back to `beta` or pin
+  `linuxPackages_6_18`. See `docs/DESIGN.md` L101–106.
+- **`nixos-hardware.nixosModules.common-pc-ssd` missing**: drop the
+  import.
+
+For any error: paste the message, edit the flake on the laptop, push,
+`git pull` in the installer, retry.
+
+## 7. Capture the lock file
+
+Disko + nixos-install just generated `/tmp/homelab/flake.lock` as a
+side effect. Pull it back to the canonical repo so future installs are
+reproducible.
+
+From a second Mac terminal (with the installer still running on
+nori-station, on the LAN — find its IP via `ip -br addr` in the
+installer):
+
+```bash
+scp nixos@<installer-ip>:/tmp/homelab/flake.lock \
     /Users/nori/Documents/nix-migration/flake.lock
+
+cd /Users/nori/Documents/nix-migration
+git add flake.lock
+git commit -m "chore: pin flake.lock from first nori-station install"
+git push
 ```
 
-(The installer's `nixos` user has password `nixos` and is reachable over
-LAN.) Then on your Mac, `cd /Users/nori/Documents/nix-migration && git add
-flake.lock && git commit -m "chore: pin flake inputs from first install"
-&& git push`.
+(The installer's `nixos` user has password `nixos`.)
 
-If you forget this step, no big deal — we can grab the lock from
-nori-station after first boot via SSH.
+If you forget this step before reboot, no big deal — we can pull the
+lock from nori-station via SSH after first boot.
 
-## 7. Reboot
-
-In the installer:
+## 8. Reboot
 
 ```
 reboot
 ```
 
-Pull the USB out as the machine restarts. UEFI's first boot entry should
-now be "Linux Boot Manager" (created by `bootctl` during install), and
-the system should boot straight into NixOS.
+Pull the USB out as the machine restarts. UEFI's first boot entry is
+"Linux Boot Manager" (created by `bootctl` during install); the system
+should boot straight into NixOS, landing at a TTY login prompt:
 
-If you see "no bootable device" instead — same UTM-style fix:
-1. Boot the USB again.
-2. In the installer, mount and run `bootctl install` (procedure in
-   `docs/vm-install.md` step 4 from the troubleshooting section).
-3. Reboot.
+```
+nori-station login:
+```
 
-This shouldn't happen on real hardware — UEFI NVRAM persists properly —
-but the recovery path is the same.
+Login as `nori` (no password). You're in.
 
-## 8. Validate from the Mac
+## 9. Validate from the Mac
 
-Find nori-station's LAN IP. From the inventory it was `192.168.1.181` via
-DHCP, but DHCP can hand it a different one. Either:
-
-- Check your router's DHCP leases.
-- Or boot it, plug in the monitor briefly, run `ip -br addr`, note the IP,
-  unplug.
-
-Then:
+Find the LAN IP. Either check your router's DHCP leases or, on
+nori-station console, `ip -br addr`.
 
 ```bash
 ssh nori@192.168.1.<NEW>          # SSH key, no password
-sudo systemctl status sshd        # passwordless sudo
-sudo tailscale up --ssh            # browser auth
-tailscale status                   # confirm joined tailnet
+sudo whoami                        # → root, no password
+sudo tailscale up --ssh            # browser auth, joins tailnet
+tailscale status                   # confirm joined
 ```
 
-When all three work, Phase 4 is done. nori-station is on NixOS, reachable
-over your tailnet, and ready for service migration in Phase 5.
+Phase 4 is done when all four work.
 
 ## What this install does NOT do (deferred)
 
-- **Service migration.** Tailscale, Samba, Ollama, Jellyfin, etc. all
-  come up in Phase 5 as we wire the pillar modules.
-- **Restore Tailscale identity.** A fresh `tailscale up` registers a
-  *new* node on your tailnet. The old "nori-station" entry from Ubuntu
-  will linger as expired. Either delete it from the admin console or, in
-  Phase 5, restore `/var/lib/tailscale/` from the rsync backup before
-  starting tailscaled.
-- **IronWolf Pro reformat.** Phase 2 (btrfs reformat of `/dev/sda`) is
-  separate and runs independently when you have a free evening.
+- **`flake.lock` capture and commit** — see step 7. Easy to miss.
+- **Service migration.** Tailscale is up by virtue of `services.tailscale`
+  in `common.nix`, but Samba, Ollama, Jellyfin, Immich, etc. are Phase 5.
+- **Tailscale identity restore.** Fresh `tailscale up` registers a *new*
+  node. The old `nori-station` from Ubuntu lingers as expired in the
+  admin console. Either delete it now or restore `/var/lib/tailscale/`
+  from the rsync backup before starting tailscaled (Phase 5).
+- **IronWolf Pro reformat.** Phase 2. Separate operation; runs when
+  you have a free evening.
+- **Pi setup.** Phase 5. nori-pi as DNS/backup target is described in
+  `docs/DESIGN.md` but not yet implemented in the flake.
 
 ## What to do if it goes catastrophically wrong
 
-You have full Ubuntu rollback:
-1. Boot a SystemRescue / Clonezilla USB.
-2. Mount One Touch.
-3. Follow `RESTORE.md` inside the most recent `ubuntu-pc-*/` directory.
-
-Worst case: you spend 30–60 min restoring Ubuntu from the partclone
-image, and you're back where you started. You don't lose data.
+You have full Ubuntu rollback available from the partclone backup at
+`/media/OneTouch/ubuntu-pc-20260425T000045Z/`. Procedure in that
+directory's `RESTORE.md`. Worst case: 30–60 min of restore, you're
+back on Ubuntu.
