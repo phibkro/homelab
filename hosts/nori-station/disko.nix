@@ -5,8 +5,8 @@
   #     --mode disko hosts/nori-station/disko.nix
   #
   # Layout (per docs/DESIGN.md L111–124):
-  #   nvme0n1p1  ESP, 1 GiB, vfat, label BOOT
-  #   nvme0n1p2  rest, btrfs, label nixos, six subvolumes:
+  #   p1  ESP, 1 GiB, vfat, label BOOT
+  #   p2  rest, btrfs, label nixos, six subvolumes:
   #     @            -> /
   #     @home        -> /home
   #     @nix         -> /nix
@@ -17,11 +17,19 @@
   # All btrfs subvolumes mount with compress=zstd:3,noatime. Disko emits
   # the corresponding fileSystems entries automatically; hosts/<host>/
   # hardware.nix must NOT also define them.
+  #
+  # Disk identity is pinned by-id (model + serial) — the WD Black SN750.
+  # /dev enumeration is unstable: at install time this drive showed as
+  # /dev/nvme0n1, but after a reboot the order flipped and the same
+  # physical drive is /dev/nvme1n1 today (Windows MP510 took the n0
+  # slot). Targeting /dev directly here would mean a future disko
+  # invocation could wipe the wrong drive. by-id paths follow the
+  # hardware.
 
   disko.devices = {
     disk.main = {
       type = "disk";
-      device = "/dev/nvme0n1";
+      device = "/dev/disk/by-id/nvme-WDS100T3X0C-00SJG0_204526810532";
       content = {
         type = "gpt";
         partitions = {
