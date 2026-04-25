@@ -1,0 +1,603 @@
+# nori — Home Lab Design Document (v2)
+
+**Status:** Canonical. Supersedes DESIGN.md v1.
+**Owner:** Philip
+**Last updated:** April 25, 2026
+**Verification window:** `nixos-unstable` channel (currently 26.05-pre); kernel 6.18 LTS or 6.19; NVIDIA driver 580.x via `nvidiaPackages.production`; Hyprland on Wayland with explicit-sync; btrfs single-device mature; restic + Hetzner Storage Box well-trodden path; `services.beszel.{hub,agent}` confirmed available.
+
+**Channel rationale:** unstable, not stable, because Blackwell support requires NVIDIA driver 575+ and stable 25.11 lags. Pinned via `flake.lock`; treat unstable + lockfile-pinning as the de-facto stable channel for this lab. Re-pin deliberately, not on every `nix flake update`.
+
+---
+
+## Overview
+
+A two-host home lab on a single residential network, built around three principles:
+
+- **Declarative reproducibility.** Full system state expressible in version-controlled config; bare-metal rebuild is a documented procedure, not a novel undertaking.
+- **Default-deny exposure.** Services opt into accessibility; nothing is exposed by default. The filesystem is not a network share except where explicitly designated.
+- **Policy proportional to data value.** Re-derivable data gets minimal protection; service state gets daily snapshots and local backup; irreplaceable data gets snapshots, local backups, and off-site backups.
+
+The lab serves a small household (Philip plus a handful of family members) and is operated entirely from a laptop via Tailscale. Physical console access is limited to installation and recovery.
+
+---
+
+## Goals
+
+- **Reproducibility.** All system configuration in a single Git-tracked flake.
+- **Remote-first operation.** Daily interaction via SSH and `nh` from the laptop, mediated by Tailscale.
+- **Data durability proportional to value.**
+- **Composable, minimal tooling.** Native NixOS modules first, containers as fallback, no orchestration layer.
+- **Multi-OS coexistence without compromise.** Windows preserved on its own NVMe; UEFI multi-boot.
+- **Multi-user services without multi-user OS.** One Linux user (Philip); per-service auth for family.
+
+## Non-goals
+
+- High availability. Single host, single PSU, single ISP.
+- Public internet hosting. Tailscale-first; Cloudflare Tunnel + Cloudflare Access only when Tailscale friction emerges.
+- Multi-machine orchestration beyond two hosts.
+- Multi-tenant OS isolation.
+
+## RTO targets
+
+| Failure | Target | Mitigation |
+|---|---|---|
+| Bad config | <15 min | NixOS rollback (atomic generations) |
+| Single file deletion | <15 min | btrbk snapshot restore |
+| Service corruption | <1 hour | Stop service, restore subvolume snapshot, restart |
+| Pi total failure | <2 hours | Spare USB SSD or reflash from flake |
+| Root drive failure (main host) | <1 day | Reinstall via disko + flake, restic restore from Pi |
+| Media drive failure | <1 day for services, days for media data | Service config restored fast; bulk media restore is bandwidth-bound |
+| Whole-machine loss | Days+ | Hardware procurement is the bottleneck |
+
+---
+
+## Architecture
+
+The lab decomposes into seven layers.
+
+### Layer 1: Hosts and hardware
+
+**`nori-station` (primary host)**
+- AMD Ryzen 5600X, 32GB DDR4, RTX 5060 Ti 16GB (Blackwell)
+- `/dev/nvme0n1` — 1TB WD Black SN750 → NixOS root (btrfs with subvolumes, managed by disko)
+- `/dev/nvme1n1` — 960GB Corsair MP510 → Windows (preserved, untouched, multi-boot via UEFI)
+- `/dev/sda` — 4TB Seagate IronWolf Pro, USB → media storage
+  - **Currently exfat at install time.** Reformatted to btrfs in Phase 2 (deferred to post-install). Disko config exists for it but is not applied during Phase 4.
+- Roles: AI inference (32B-class models comfortably; 70B models tight at 32GB and likely paged to swap), media streaming, photo management, file storage, occasional desktop workstation
+
+**`nori-pi` (appliance + local backup target)**
+- Raspberry Pi 4 8GB
+- USB SSD (~250GB) → NixOS root (not SD card; SD card wear is the #1 Pi failure mode)
+- USB HDD (~4TB) → restic backup target for nori-station, mounted at `/mnt/backup`
+- Roles: network DNS adblock (Blocky), Tailscale subnet router, Tailscale exit node (opt-in), local backup target for fast restore
+
+**`vm-test` (transient, for VM dry-run)**
+- UTM virtual machine on laptop
+- NixOS via the same flake, used to validate config changes before applying to bare metal
+- On the tailnet for the duration of testing; deleted after Phase 4 validation
+- Mentioned for completeness; not part of the long-term topology
+
+**Failure domain independence:** the two persistent hosts share no storage, no power supply, no critical dependency in the boot path. Either host's failure does not block the other.
+
+### Layer 2: Boot and OS
+
+UEFI multi-boot on nori-station. NixOS as primary OS, Windows preserved on its own NVMe, OS selection via firmware boot menu. Each OS owns its drive completely; no shared bootloader.
+
+`systemd-boot` as the bootloader for NixOS (default for UEFI on NixOS, handles btrfs subvolumes natively). UEFI NVRAM persists boot entries on the Gigabyte board; if first boot fails to register the entry (a known UTM quirk that may not appear on real hardware), recovery is `bootctl install` from a chroot.
+
+**Channel:** `nixos-unstable`, pinned via flake.lock. Re-pin on a deliberate cadence (monthly or when a needed feature lands), not on every `nix flake update`.
+
+**NVIDIA driver path:**
+
+```nix
+hardware.nvidia = {
+  modesetting.enable = true;
+  open = true;  # Required for Blackwell; also required by nixpkgs nvidia module for driver 555+
+  package = config.boot.kernelPackages.nvidiaPackages.production;  # Currently 580.x on unstable
+  nvidiaSettings = true;
+};
+```
+
+**Known gotchas:**
+
+- Driver 580.119.02 has a build failure on kernel 6.19 (vm_area_struct API change). Driver 580.126.09 fixes it. If `production` resolves to .119 and 6.19 is in use, the install will fail. Mitigation: pin to `nvidiaPackages.beta` (newer driver) or `boot.kernelPackages = pkgs.linuxPackages_6_18` (older kernel) until upstream catches up. Document the chosen workaround in `hardware.nix`.
+- Fallback ladder if `production` doesn't work first try: `production` → `beta` → `latest` → explicit `mkDriver` with a known-good version. This ladder is documented in the install runbook.
+- `legacy_580` exists as a pinned-to-580 attribute, useful as a stable fallback that won't drift.
+
+### Layer 3: Storage
+
+Btrfs everywhere on Linux. Mount options: `compress=zstd:3` and `noatime`.
+
+#### nori-station root (nvme0n1) — disko-managed
+
+Subvolume layout, applied by disko during Phase 4 install:
+
+| Subvolume | Mount | Snapshotted | Notes |
+|---|---|---|---|
+| `@` | `/` | Yes (before each rebuild via btrbk) | System root |
+| `@home` | `/home` | Hourly + daily | User data |
+| `@nix` | `/nix` | Never | Re-derivable from flake |
+| `@var-lib` | `/var/lib` | Daily | Service state |
+| `@srv-share` | `/srv/share` | Daily | Family-shared documents and ad-hoc dumping ground |
+| `@snapshots` | `/.snapshots` | N/A | Snapshot target subvolume |
+
+`@var-lib` separation lets service-state churn snapshot on its own cadence without polluting `@` snapshots. `@srv-share` is the explicit shared path referenced in the access matrix; documents go here when they're meant to be Samba-accessible from multiple devices.
+
+#### nori-station media (sda, IronWolf Pro) — Phase 2
+
+Reformatted to btrfs **after** Phase 4. Until then, the IronWolf is mounted read-only as exfat at `/mnt/media-legacy/` and Jellyfin/Immich either don't run yet or read from there. Disko config exists but is not applied during Phase 4.
+
+Target subvolume layout (Phase 2):
+
+| Subvolume | Mount | Snapshot | Local backup (Pi) | Off-site backup (Hetzner) |
+|---|---|---|---|---|
+| `@streaming` | `/mnt/media/streaming` | Weekly, keep 2 | No | No |
+| `@photos` | `/mnt/media/photos` | Daily, keep 14 + monthly, keep 12 | Yes | Yes |
+| `@home-videos` | `/mnt/media/home-videos` | Weekly, keep 4 | Yes | Yes |
+| `@projects` | `/mnt/media/projects` | Weekly, keep 4 | Yes | Yes |
+| `@snapshots` | `/.snapshots` | N/A | N/A | N/A |
+
+#### nori-pi storage
+
+`@` on USB SSD (root). USB HDD mounted at `/mnt/backup` holds the restic repository for nori-station's irreplaceable data and service state. Restic encrypts client-side, so the HDD's filesystem choice doesn't matter for security; ext4 is the boring default.
+
+#### Database-on-btrfs CoW interaction
+
+Postgres and other databases write in a copy-on-write-unfriendly pattern. Two interactions to handle, separately:
+
+**Write-performance interaction (per-directory `chattr +C` or `nodatacow`).** Database directories should have CoW disabled to avoid write amplification. For Immich's Postgres in `/var/lib/immich/database`, set the directory `+C` before initialization, or place service state on a subvolume mounted with `nodatacow`. This is a *performance* fix, not a backup-consistency fix.
+
+**Backup-consistency interaction (logical dumps before backup).** Filesystem-level snapshot of a running database produces inconsistent state. Backup correctness requires a logical dump (`pg_dump` for Postgres, `.backup` API for SQLite) before restic touches the data. Pattern in Layer 5.
+
+### Layer 4: Networking and access control
+
+Three network zones with default-deny posture:
+
+- **Localhost.** Services bind here unless explicitly exposed.
+- **Tailnet (trusted network).** Personal devices and family members. Most services exposed here. SSH, SSHFS, Samba, direct service ports are tailnet-only.
+- **Public internet (Phase 4 deferred).** Specific HTTP services exposed via Cloudflare Tunnel at named subdomains under `phibkro.org`, with auth at the edge via Cloudflare Access (free tier, email magic links). Triggered when Tailscale friction emerges, not by schedule.
+
+**Implementation pattern:** services use `openFirewall = false` and the firewall opens specific ports only on `tailscale0`:
+
+```nix
+services.jellyfin.enable = true;
+services.jellyfin.openFirewall = false;
+networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8096 ];
+```
+
+#### DNS architecture
+
+**Primary DNS:** Blocky on `nori-pi`. **Secondary DNS:** Blocky on `nori-station`. Both handed out via router DHCP. Blocky chosen over AdGuard Home for declarative-config friendliness — its YAML config maps cleanly to `services.blocky.settings`, no web-UI state to drift from declared config.
+
+**Why two adblock-aware resolvers, not "Pi primary, router DNS as fallback":** DHCP-distributed secondary resolvers don't fail over fast. Most resolvers (glibc, default systemd-resolved) try the first server, wait ~5s for timeout, then try the second. Pi reboot or crash means seconds of broken DNS for every client. Running a second instance of Blocky on nori-station, both handed out via DHCP, makes Pi outage genuinely transparent. nori-station has the resources (~50MB RAM); the cost is one extra service definition.
+
+Both Blocky instances forward to a public resolver (1.1.1.1 or Quad9) for non-blocked queries. Tailnet hostnames resolved via Tailscale MagicDNS independently of Blocky.
+
+#### Tailscale
+
+`nori-pi` advertises:
+- Subnet route for the home LAN (`--advertise-routes=192.168.1.0/24`)
+- Exit node (`--advertise-exit-node`), opt-in per device
+
+Both require approval in the Tailscale admin console (one-time).
+
+`nori-station` runs Tailscale as a regular node, not a router. MagicDNS gives both hosts stable hostnames on the tailnet.
+
+### Layer 5: Services
+
+Native NixOS modules from day one. Verified module availability on `nixos-unstable` (current 26.05-pre):
+
+| Service | Module | Host | Exposure |
+|---|---|---|---|
+| Jellyfin | `services.jellyfin` | nori-station | Tailnet |
+| Ollama | `services.ollama` (CUDA) | nori-station | Tailnet |
+| Open WebUI | `services.open-webui` | nori-station | Tailnet |
+| Immich | `services.immich` (with VectorChord, Postgres 17) | nori-station | Tailnet |
+| Samba | `services.samba` | nori-station | Tailnet, scoped to `/mnt/media`, `/srv/share` |
+| Blocky (primary) | `services.blocky` | nori-pi | LAN |
+| Blocky (secondary) | `services.blocky` | nori-station | LAN |
+| Tailscale | `services.tailscale` | both | N/A |
+| restic backup jobs | `services.restic.backups.<n>` | nori-station | N/A (outbound to Pi + Hetzner) |
+| btrbk | `services.btrbk.instances.<n>` | nori-station | N/A (local) |
+| ntfy | `services.ntfy-sh` | nori-station | Tailnet |
+| Uptime Kuma | container (no native module yet) | nori-station | Tailnet |
+| beszel hub | `services.beszel.hub` | nori-station | Tailnet |
+| beszel agent | `services.beszel.agent` | both hosts | Tailnet |
+| postgresqlBackup | `services.postgresqlBackup` | nori-station (if non-Immich PG) | N/A |
+
+**Note on Immich's Postgres:** `services.immich.database.enable = true` (the default) provisions a Postgres instance owned by Immich, separate from `services.postgresql`. NixOS 25.11+ uses VectorChord (replacing pgvecto-rs) and Postgres 17 by default. Immich's own database management writes periodic dumps to `/var/lib/immich/backups/`. The backup pattern below picks up those dumps rather than running an external `pg_dump`.
+
+#### Backup-correctness pattern (named)
+
+Three flavors depending on service type. All use `services.restic.backups.<n>` from the NixOS module; the differences are in *what they back up* and *what runs before the backup*.
+
+**Pattern A: Filesystem-only (no database).** Used for Jellyfin's library directory, Samba shares, `/home`, `/srv/share`. Just point restic at the path; filesystem snapshot is sufficient because the data isn't a database.
+
+```nix
+services.restic.backups.home = {
+  paths = [ "/home" "/srv/share" ];
+  repository = "sftp:nori-pi:/mnt/backup/home";
+  passwordFile = config.sops.secrets.restic-password.path;
+  timerConfig.OnCalendar = "daily";
+  pruneOpts = [ "--keep-daily 14" "--keep-weekly 4" "--keep-monthly 12" ];
+};
+```
+
+**Pattern B: Service with built-in dump (Immich).** Immich writes its own Postgres dumps to `/var/lib/immich/backups/` periodically. Backup picks up the dump directory, not the live database files. The directory is included in `/var/lib`; restic of `/var/lib/immich` plus the upload directories is sufficient *if and only if* Immich's internal backup is enabled and the timer beat the restic timer.
+
+```nix
+services.restic.backups.immich = {
+  paths = [
+    "/var/lib/immich/backups"     # SQL dumps (consistent point-in-time)
+    "/var/lib/immich/upload"       # User uploads
+    "/var/lib/immich/library"      # Imported library
+    "/var/lib/immich/profile"      # User profiles
+  ];
+  repository = "sftp:nori-pi:/mnt/backup/immich";
+  passwordFile = config.sops.secrets.restic-password.path;
+  timerConfig.OnCalendar = "*-*-* 04:00:00";  # After Immich's nightly dump
+  pruneOpts = [ "--keep-daily 7" "--keep-weekly 4" "--keep-monthly 6" ];
+};
+```
+
+**Pattern C: External dump before restic (services with their own external Postgres or SQLite).** Used when a service writes directly to a database without an internal dump mechanism. Two sub-flavors:
+
+*C1 — `services.postgresqlBackup` for system-level Postgres:*
+```nix
+services.postgresqlBackup = {
+  enable = true;
+  databases = [ "openwebui" ];  # if applicable
+  startAt = "*-*-* 03:30:00";
+  pgdumpOptions = "--no-owner";
+  location = "/var/backup/postgresql";
+};
+# Then restic backs up /var/backup/postgresql alongside other paths.
+```
+
+*C2 — `backupPrepareCommand` on the restic job for SQLite (used by some services):*
+```nix
+services.restic.backups.openwebui = {
+  paths = [
+    "/var/lib/open-webui"
+    "/var/backup/open-webui"  # where the dump lands
+  ];
+  repository = "sftp:nori-pi:/mnt/backup/openwebui";
+  passwordFile = config.sops.secrets.restic-password.path;
+  backupPrepareCommand = ''
+    mkdir -p /var/backup/open-webui
+    ${pkgs.sqlite}/bin/sqlite3 /var/lib/open-webui/webui.db \
+      ".backup '/var/backup/open-webui/webui.db'"
+  '';
+  timerConfig.OnCalendar = "daily";
+};
+```
+
+The `backupPrepareCommand` runs as an `ExecStartPre` on the generated `restic-backups-<name>.service` unit. SQLite's `.backup` API produces a consistent snapshot even on a live database; raw `cp` does not.
+
+**Pattern selection cheat sheet:**
+
+| Service | Pattern | Rationale |
+|---|---|---|
+| Jellyfin | A | Library DB is SQLite but rebuilds from media; non-critical |
+| Immich | B | Built-in dump mechanism |
+| Open WebUI | C2 | SQLite, no internal dump |
+| Ollama | A | Models are re-downloadable; chat history if any goes via Open WebUI |
+| Cloudflared | A | Just credentials in `/var/lib/cloudflared` |
+| Tailscale | A | State files |
+| `/home`, `/srv/share` | A | No databases |
+
+This pattern is documented in `docs/backup-patterns.md`. New services pick a pattern at onboarding time.
+
+#### Backup destinations
+
+Two restic repositories per service, three retention policies:
+
+| Service / Path | Pi (local fast restore) | Hetzner (off-site disaster) |
+|---|---|---|
+| `/home` | Daily, keep 14d + 4w | Weekly, keep 4w + 12m |
+| `/srv/share` | Daily, keep 14d + 4w | Weekly, keep 4w + 12m |
+| Immich (incl. dumps + uploads) | Daily, keep 7d + 4w | Daily, keep 7d + 4w + 12m |
+| Open WebUI dump | Daily, keep 7d + 4w | Weekly, keep 4w + 12m |
+| Other service state | Daily, keep 7d | Not backed up; re-derivable |
+| Streaming media | Not backed up | Not backed up |
+| `@photos`, `@home-videos`, `@projects` | Daily, keep 14d + 4w | Daily, keep 4w + 12m + yearly indefinite |
+
+### Layer 6: Desktop environment
+
+Hyprland on Wayland, on `nori-station` only, configured via home-manager as a NixOS module.
+
+**NVIDIA Wayland caveats** (worth knowing, not blockers):
+- Multi-monitor with mixed refresh rates — VRR sometimes inconsistent
+- Suspend/resume occasionally requires the nvidia-suspend/resume systemd services to be explicitly enabled (NixOS does this by default for the proprietary modules; verify on Blackwell-open)
+- Some Electron apps still need explicit `--ozone-platform=wayland` flags despite Electron 35+ syncobj support
+
+These are not architectural concerns, just the current state of NVIDIA-on-Wayland in early 2026. Driver 580+ has explicit-sync, which removed most of the historical Wayland pain.
+
+Desktop ecosystem: ghostty (terminal, cross-machine consistency with laptop), waybar, fuzzel, mako, hyprlock, hypridle.
+
+### Layer 7: Operations
+
+#### Repository structure
+
+```
+flake.nix
+flake.lock                       # Pinned unstable revision; source of reproducibility
+hosts/
+  nori-station/
+    configuration.nix
+    disko.nix                    # Applied during Phase 4
+    disko-media.nix              # Applied during Phase 2 (post-install)
+    hardware.nix
+  nori-pi/
+    configuration.nix
+    disko.nix                    # Applied during Phase 4
+    hardware.nix
+modules/
+  services/
+    jellyfin.nix
+    immich.nix
+    blocky.nix                   # Used by both hosts
+    backup-restic.nix            # Pattern A/B/C implementations
+    ...
+  desktop/
+    hyprland.nix
+    ...
+  common/
+    user.nix
+    tailscale.nix
+    ...
+secrets/
+  secrets.yaml
+  .sops.yaml
+docs/
+  baremetal-install.md           # Phase 4 step-by-step
+  backup-patterns.md             # Patterns A/B/C reference
+  runbooks/
+    bad-config.md
+    file-deletion.md
+    service-corruption.md
+    drive-failure-root.md
+    drive-failure-media.md
+    pi-failure.md
+  onboarding/
+    family-user.md
+  capacity-baseline.md           # Filled at first install
+```
+
+#### Disko at install
+
+Disk layouts in `hosts/<host>/disko.nix` from day zero. First install path:
+
+1. Boot NixOS minimal installer USB
+2. SSH into installer (set `sshd` enabled in installer config) or work locally
+3. Clone the flake: `git clone https://github.com/phibkro/homelab /tmp/homelab`
+4. Run disko: `nix --experimental-features 'nix-command flakes' run github:nix-community/disko/latest -- --mode disko /tmp/homelab/hosts/nori-station/disko.nix`
+5. `nixos-install --flake /tmp/homelab#nori-station`
+6. Reboot, set user password on first login, push generated flake.lock back to Git
+
+This is the explicit path. **`nixos-anywhere` is the alternative** for fully-remote installs (SSH'd into the installer from the laptop), but the path above is the one to execute first since you'll be at the machine anyway.
+
+#### Distributed builds, not cross-compilation
+
+Pi builds are slow on aarch64 hardware. The optimization is **distributed build to a remote builder**: build on `nori-station` (x86_64 with aarch64-binfmt + qemu-user), copy the closure to `nori-pi`, activate. `nh` and `nixos-rebuild --build-host` handle this transparently.
+
+This is *not* cross-compilation (which means x86_64 producing aarch64 binaries directly). Cross-compilation in nixpkgs is rougher than people expect for full system closures. binfmt-emulated native build on a fast x86 host is the pragmatic answer.
+
+```nix
+# On nori-station, enable aarch64 emulation
+boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
+```
+
+```bash
+# On laptop, deploy to Pi using nori-station as builder
+nh os switch --target-host nori-pi --build-host nori-station .#nori-pi
+```
+
+#### Deploy loop
+
+Edit on laptop → `nh os switch --target-host <host>` → atomic activation → commit on success, revert via NixOS generations on failure.
+
+`deploy-rs` remains a future option if "deployed broken config, lost remote access" ever happens. Not adopted initially.
+
+#### Secrets
+
+`sops-nix` with `age` keys derived from SSH host keys via `ssh-to-age`. Introduced when the first secret is needed (likely with restic-password for Phase 4-5).
+
+---
+
+## Data and backup model
+
+### Three value tiers
+
+| Tier | Examples | Snapshot | Local backup (Pi) | Off-site (Hetzner) |
+|---|---|---|---|---|
+| Re-derivable | Streaming media, Ollama models, Nix store, package caches | Weekly or none | No | No |
+| Service state | Jellyfin DB, Immich DB+uploads, Open WebUI, Cloudflared creds | Daily | Yes | Selected (Immich uploads yes; Open WebUI yes; Cloudflared no — re-create) |
+| Irreplaceable | Personal photos, home videos, finished projects, work in progress, flake repo | Hourly to daily | Yes | Yes |
+
+System config covered by Git mirrored to GitHub; not a backup target.
+
+### Hetzner Storage Box sizing
+
+Pricing (April 2026): BX11 (1TB) ~3.20 EUR/mo, BX21 (5TB) ~10.80 EUR/mo, BX31 (10TB) ~20.80 EUR/mo. Plans scale up/down without data migration; cancellation any time.
+
+**Initial sizing:** start at BX11 (1TB) if irreplaceable data is currently <500GB. Re-evaluate when home-videos archive grows past 700GB. **This belongs in `docs/capacity-baseline.md` and is reviewed quarterly.**
+
+### Backup verification
+
+- **Weekly:** `restic check` (metadata only).
+- **Monthly:** `restic check --read-data-subset=10%` (rolling sample, full repository covered every ~10 months).
+- **Quarterly:** restore drill — restore one subvolume's recent snapshot to `/var/restore-test/`, diff against live, document time.
+
+Failure of any of these alerts via ntfy.
+
+---
+
+## Access and exposure model
+
+| Path | SSH (user) | SSH (root) | Samba | Cloudflare Tunnel | Snapshot |
+|---|---|---|---|---|---|
+| `/home/philip` | Yes | Yes | No | No | Hourly |
+| `/srv/share` | Yes | Yes | Yes (auth) | No | Daily |
+| `/mnt/media/streaming` | Yes | Yes | Yes (auth, RW) | Via Jellyfin only | Weekly |
+| `/mnt/media/photos` | Yes | Yes | No | Via Immich only | Daily |
+| `/mnt/media/home-videos` | Yes | Yes | No | Via Immich only | Weekly |
+| `/mnt/media/projects` | Yes | Yes | Yes (auth) | No | Weekly |
+| `/var/lib/<service>` | No | Yes | No | Service's own protocol | Daily |
+| `/etc`, `/nix`, `/root` | No | Yes | No | No | Per system rebuild (`@`) |
+
+OS has one user (Philip). Family members get per-service accounts in Jellyfin, Immich, Open WebUI; their devices get Tailscale invites.
+
+---
+
+## Observability and alerting
+
+**beszel** for metrics (hub on nori-station, agents on both hosts, accessed over Tailscale).
+
+**Uptime Kuma** for synthetic HTTP checks (containerized; no native module yet).
+
+**ntfy** for alert delivery (self-hosted on nori-station, Tailscale-only). High-priority topic for urgent (sound, bypass DND); normal priority for warnings.
+
+### Monitored conditions
+
+| Condition | Source | Severity |
+|---|---|---|
+| Filesystem >80% full | beszel | Warn |
+| Filesystem >90% full | beszel | Urgent |
+| SMART status changes | systemd timer | Urgent |
+| Service down (HTTP probe) | Uptime Kuma | Urgent |
+| Tailscale connectivity loss | systemd timer | Urgent |
+| restic backup job failure | restic systemd unit | Urgent |
+| btrbk snapshot job failure | btrbk systemd unit | Warn |
+| Sustained high CPU/memory | beszel | Warn |
+
+### Alert delivery
+
+| Type | Channel | Trigger |
+|---|---|---|
+| Real-time, low priority | ntfy default topic | Warnings |
+| Real-time, high priority | ntfy urgent topic | Service down, drive failing, backup failed |
+| Routine summary | Email digest, weekly | All metrics summarized; deferred to "future task" |
+
+Email digest deferred. When set up: SMTP via Gmail with app password (sufficient for machine-generated reports; Proton Bridge's complexity not warranted for non-private content).
+
+---
+
+## Phasing (canonical)
+
+| Phase | Description | State |
+|---|---|---|
+| 0 | Inventory + flake skeleton | done |
+| 1 | Backups (rsync + partclone) | done; verified on One Touch |
+| 2 | Reformat IronWolf Pro to btrfs | **deferred to post-Phase-4** |
+| 3 | VM dry-run install (UTM) | done; `vm-test` on tailnet |
+| 4 | Bare-metal install on nori-station | **READY, not started** |
+| 5 | Service migration | not started |
+| 6 | Desktop environment | not started; Hyprland is the choice |
+
+**Reactive phases (no scheduled trigger):**
+
+- **Cloudflare Tunnel + Cloudflare Access.** When Tailscale friction emerges (someone refuses to install another app, public link sharing needed).
+- **Email digest reports.** When ntfy alone proves noisy enough that summarization helps.
+- **Second media drive on nori-station.** When IronWolf >80% full or RAID1 redundancy becomes desired.
+- **deploy-rs.** When a "deployed broken config, lost remote access" incident occurs.
+- **disko adoption refactor.** Already adopted at install; this is a no-op.
+
+---
+
+## Open items
+
+Captured for visibility, not currently being worked:
+
+- **UPS for nori-station.** Single PSU is a non-goal for HA, but mid-write power loss on USB-attached IronWolf is a real recovery scenario. Cheap (~1500-3000 NOK for 600VA) insurance. No commitment yet.
+- **Migration of IronWolf Pro from USB to internal SATA.** When SATA capacity becomes available (e.g., adding a SATA HBA via PCIe). USB enclosures have their own failure mode at the controller level.
+- **`common-cpu-amd-pstate`** module on nori-station hardware. Deferred from Phase 3.
+- **Authelia/Authentik self-hosted SSO.** Triggered by Cloudflare Access becoming insufficient.
+- **NVIDIA Wayland edge cases** (multi-monitor VRR, suspend/resume nuances). Not blocking; document fixes in `hardware.nix` as they're encountered.
+- **CUDA/Ollama drift.** Stable 25.11 had a CUDA 13 / 12.8 toolkit mismatch breaking some CUDA apps. Ollama bundles its own CUDA libs typically; verify Ollama works at install and pin nixpkgs version if it doesn't.
+- **Home automation on the Pi.** Not currently planned; no concrete use case.
+
+---
+
+## Permanent constraints (non-negotiable)
+
+- **Never touch `nvme1n1`** (Windows). Disambiguate by model string (`WDS100T3X0C` = NixOS, `Force MP510` = Windows).
+- **Don't schedule destructive system changes during weeks with Aker demo pressure.**
+- **Backup verification is part of the system, not optional.** Quarterly restore drill is the real RTO measurement.
+- **Phase 2 (IronWolf reformat) does not happen during Phase 4 (install).** Two separate, sequential operations. Do not combine.
+
+---
+
+## Design rationales (load-bearing decisions)
+
+**Unstable channel, not stable.** Blackwell support requires NVIDIA driver 575+; stable 25.11 lags. flake.lock pins the unstable revision, providing reproducibility within the rolling channel. Re-pin deliberately, not on every flake update.
+
+**Btrfs everywhere instead of ext4 root.** Consistency of mental model; `@home` snapshots useful; `@var-lib` snapshots provide service-recovery beyond NixOS generations. CoW gotcha for databases addressed via `chattr +C` or `nodatacow`, separately from backup-consistency (logical dumps).
+
+**No ZFS.** Single-drive scale doesn't activate ZFS's main wins. Out-of-tree driver constrains kernel versions, conflicts with bleeding-edge Blackwell driver needs.
+
+**Default-deny exposure with explicit per-interface firewall.** Default-allow with exclusions is a maintenance treadmill that grows with every new file or service.
+
+**Hyprland over GNOME/KDE.** Declarative config matches the rest of the system. Tiling matches keyboard-heavy terminal use.
+
+**Subvolumes split by value tier, not by directory hierarchy.** Subvolumes are the unit of snapshot/backup policy. Same policy → same subvolume; different policy → different subvolume.
+
+**Disko at install, not deferred.** First install is the right time. Deferring guarantees doing the work twice.
+
+**Pi as appliance + opportunistic backup target.** The marginal cost of a USB HDD on the Pi is low; the value (fast local restore) is high. Failure modes remain independent of nori-station.
+
+**Two adblock-aware DNS resolvers (Pi + nori-station), not Pi-only-with-router-fallback.** DHCP-distributed secondaries don't fail over fast; resolver timeouts mean Pi-down = seconds of broken DNS. Running Blocky on both hosts makes Pi outages transparent at trivial resource cost.
+
+**Blocky over AdGuard Home.** Declarative YAML config maps cleanly to NixOS module options; no web-UI state to drift from declared config.
+
+**restic over btrbk send/receive for backup transport.** Filesystem-agnostic (Pi backup drive doesn't need to be btrfs). Same tool for Pi target and Hetzner target — single mental model.
+
+**Cloudflare Access over self-hosted SSO (Authelia/Authentik).** At household scale, free, requires no self-hosted infrastructure.
+
+**Backup-correctness via three documented patterns (A/B/C), not assumption.** Filesystem snapshot of a live database is roulette. Logical dumps before backup is the discipline; the patterns document which kind of dump for which kind of service.
+
+---
+
+## Recovery runbooks
+
+In `docs/runbooks/`. Initial outlines:
+
+- **`bad-config.md`:** NixOS rollback (boot menu or `nixos-rebuild --rollback switch`).
+- **`file-deletion.md`:** identify subvolume, find pre-deletion snapshot in `/.snapshots`, copy out.
+- **`service-corruption.md`:** stop service, restore subvolume snapshot to scratch path, copy back, restart, verify. For databases: restore from latest restic snapshot of the dump directory, then `pg_restore` or SQLite import.
+- **`drive-failure-root.md`:** replace drive → boot installer → clone flake → run disko → `nixos-install` → restic restore service state from Pi (faster) or Hetzner (slower).
+- **`drive-failure-media.md`:** replace drive → mkfs.btrfs + subvolumes → restic restore irreplaceable subvolumes from Pi → re-download streaming media from sources.
+- **`pi-failure.md`:** swap to spare USB SSD with current flake → boot → verify Blocky and Tailscale come up → router DHCP unaffected (nori-station is secondary DNS).
+
+---
+
+## Capacity baseline
+
+Recorded in `docs/capacity-baseline.md` at Phase 4 completion. Values to capture:
+
+- Free space per subvolume on nori-station and nori-pi
+- Used space per subvolume on IronWolf (post-Phase-2)
+- RAM at idle (no Ollama loaded)
+- RAM with one Ollama model loaded (32B Q4 baseline)
+- Average sustained CPU during evening peak (after Phase 5)
+- Hetzner Storage Box usage
+
+Re-checked quarterly. Growth trends inform when a second drive on nori-station is warranted, when Hetzner tier needs upgrading, when Ollama model size needs to come down.
+
+---
+
+## Repository conventions
+
+- `nh` for daily rebuilds. `nixos-rebuild` directly for edge cases.
+- `nixfmt-rfc-style` formatting; `statix` linting; `deadnix` for unused bindings. Pre-commit hooks.
+- `nixd` LSP for editor integration. `direnv` + `nix-direnv` for dev shells.
+- Commit messages: imperative mood. Conventional commits not enforced.
+- `main` is what's deployed. Feature branches for non-trivial changes. Squash-merge.
+
+---
+
+## Closing
+
+This is the canonical design. The flake repo is the source of truth for implementation; this doc is the source of truth for *why*. When implementation drifts from design, the design is updated to match (or implementation is reverted). Reality and documentation in sync, by convention.
+
+Phase 4 ready when you're at nori-station with a USB.
