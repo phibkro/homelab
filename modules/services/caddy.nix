@@ -39,43 +39,11 @@
       local_certs
     '';
 
-    virtualHosts = {
-      "auth.nori.lan" = {
-        extraConfig = ''
-          reverse_proxy localhost:9091
-        '';
-      };
-      "jellyfin.nori.lan" = {
-        extraConfig = ''
-          reverse_proxy localhost:8096
-        '';
-      };
-      "chat.nori.lan" = {
-        extraConfig = ''
-          reverse_proxy localhost:8080
-        '';
-      };
-      "ai.nori.lan" = {
-        extraConfig = ''
-          reverse_proxy localhost:11434
-        '';
-      };
-      "gatus.nori.lan" = {
-        extraConfig = ''
-          reverse_proxy localhost:8082
-        '';
-      };
-      "beszel.nori.lan" = {
-        extraConfig = ''
-          reverse_proxy localhost:8090
-        '';
-      };
-      "alert.nori.lan" = {
-        extraConfig = ''
-          reverse_proxy localhost:8081
-        '';
-      };
-    };
+    # Virtual hosts are NOT defined here. They're auto-generated from
+    # `nori.lanRoutes.<name>` declarations in each service's own
+    # module — see modules/lib/lan-route.nix for the option +
+    # generator. Adding/renaming a route happens at the source
+    # (the service module), not here.
   };
 
   systemd.services.caddy = {

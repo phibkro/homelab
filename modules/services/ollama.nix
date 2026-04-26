@@ -43,4 +43,7 @@
   };
 
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 11434 ];
+
+  # Exposed at https://ai.nori.lan via Caddy.
+  nori.lanRoutes.ai = { port = 11434; };
 }

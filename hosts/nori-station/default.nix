@@ -4,6 +4,7 @@
   imports = [
     inputs.disko.nixosModules.disko
     ../../modules/common
+    ../../modules/lib/lan-route.nix
     ../../modules/services/samba.nix
     ../../modules/services/blocky.nix
     ../../modules/services/ollama.nix

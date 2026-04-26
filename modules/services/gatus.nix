@@ -119,4 +119,7 @@
   };
 
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8082 ];
+
+  # Exposed at https://gatus.nori.lan via Caddy.
+  nori.lanRoutes.gatus = { port = 8082; };
 }

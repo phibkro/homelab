@@ -57,4 +57,8 @@
   };
 
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8096 ];
+
+  # Exposed at https://jellyfin.nori.lan via Caddy. See
+  # modules/lib/lan-route.nix for the abstraction.
+  nori.lanRoutes.jellyfin = { port = 8096; };
 }
