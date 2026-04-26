@@ -18,6 +18,29 @@
     # is needed.
     pkgs.bitwarden-desktop
 
+    # Editor — Zed, Rust-based, GPU-accelerated, AI-aware.
+    pkgs.zed-editor
+
+    # Audio editor — multi-track recording + editing.
+    pkgs.audacity
+
+    # Remote desktop client + server (RustDesk). When the gaming laptop
+    # joins the tailnet, RustDesk gives a quick GUI-share path. Server
+    # side defaults to localhost-only; flip on via in-app settings if
+    # you want to host sessions.
+    pkgs.rustdesk
+
+    # Tailscale tray icon (community GTK GUI). The tailscale CLI is
+    # already enabled via services.tailscale; trayscale is just the
+    # tray-area indicator + node list.
+    pkgs.trayscale
+
+    # Claude Code CLI — Anthropic doesn't ship a Linux desktop client;
+    # the CLI is the canonical way to interact from a terminal. Already
+    # installed elsewhere (Mac), but having it here makes nori-station
+    # usable as a dev environment in its own right.
+    pkgs.claude-code
+
     # Quality-of-life CLI for Wayland.
     pkgs.wl-clipboard # `wl-copy` / `wl-paste` for clipboard scripting
     pkgs.brightnessctl # backlight control (no-op on desktop, harmless)
