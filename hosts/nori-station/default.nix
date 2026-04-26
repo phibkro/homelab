@@ -5,6 +5,7 @@
     inputs.disko.nixosModules.disko
     ../../modules/common
     ../../modules/services/samba.nix
+    ../../modules/services/blocky.nix
     ./disko.nix
     ./disko-media.nix
     ./hardware.nix
