@@ -7,7 +7,8 @@
 let
   # ---------------------------------------------------------------------
   # Bind data — single source of truth for the Hyprland config + the
-  # SUPER+H cheatsheet. Each record:
+  # SUPER+H cheatsheet. Records are built via the small constructor set
+  # below; each carries:
   #   mod     modifier prefix as Hyprland sees it ("$mod", "$mod SHIFT", "")
   #   key     key name; may be a template with {n} when `range` is set
   #   action  Hyprland dispatcher + arg; may also use {n}
@@ -16,6 +17,27 @@ let
   #           Hyprland binds (one per integer); cheatsheet shows it as a
   #           single line with `from..to` substituted into the key.
   # ---------------------------------------------------------------------
+
+  # Constructors. mkBind defaults mod to "$mod" via partial application;
+  # mkBindMod takes an explicit mod (e.g. "$mod SHIFT" or "" for bare).
+  # mkBindApp / mkBindAppMod auto-prefix the action with "exec, ".
+  # withRange wraps a single record with a numeric range — see expandRange.
+  mkBindMod = mod: key: action: desc: {
+    inherit
+      mod
+      key
+      action
+      desc
+      ;
+  };
+  mkBind = mkBindMod "$mod";
+  mkBindAppMod =
+    mod: key: cmd: desc:
+    mkBindMod mod key "exec, ${cmd}" desc;
+  mkBindApp = mkBindAppMod "$mod";
+  withRange =
+    from: to: bind:
+    bind // { range = { inherit from to; }; };
 
   # Pretty-print the mod prefix for the cheatsheet.
   # "$mod SHIFT" → "SUPER + SHIFT"; "$mod" → "SUPER"; "" → "".
@@ -78,148 +100,42 @@ let
 
   keyBinds = [
     # Apps
-    {
-      mod = "$mod";
-      key = "RETURN";
-      action = "exec, ghostty";
-      desc = "ghostty (terminal)";
-    }
-    {
-      mod = "$mod";
-      key = "SPACE";
-      action = "exec, fuzzel";
-      desc = "fuzzel (launcher)";
-    }
-    {
-      mod = "$mod";
-      key = "B";
-      action = "exec, zen";
-      desc = "zen (browser)";
-    }
+    (mkBindApp "RETURN" "ghostty" "ghostty (terminal)")
+    (mkBindApp "SPACE" "fuzzel" "fuzzel (launcher)")
+    (mkBindApp "B" "zen" "zen (browser)")
 
     # Help / session
-    {
-      mod = "$mod";
-      key = "H";
-      action = "exec, hypr-cheatsheet";
-      desc = "this cheatsheet";
-    }
-    {
-      mod = "$mod";
-      key = "L";
-      action = "exec, loginctl lock-session";
-      desc = "lock screen";
-    }
+    (mkBindApp "H" "hypr-cheatsheet" "this cheatsheet")
+    (mkBindApp "L" "loginctl lock-session" "lock screen")
 
     # Window
-    {
-      mod = "$mod";
-      key = "Q";
-      action = "killactive,";
-      desc = "close window";
-    }
-    {
-      mod = "$mod SHIFT";
-      key = "E";
-      action = "exit,";
-      desc = "exit Hyprland";
-    }
-    {
-      mod = "$mod";
-      key = "V";
-      action = "togglefloating,";
-      desc = "toggle floating";
-    }
-    {
-      mod = "$mod";
-      key = "F";
-      action = "fullscreen,";
-      desc = "fullscreen";
-    }
+    (mkBind "Q" "killactive," "close window")
+    (mkBindMod "$mod SHIFT" "E" "exit," "exit Hyprland")
+    (mkBind "V" "togglefloating," "toggle floating")
+    (mkBind "F" "fullscreen," "fullscreen")
 
     # Focus — H/L claimed by cheatsheet/lock; J/K kept for vim down/up;
     # arrows cover all four directions.
-    {
-      mod = "$mod";
-      key = "j";
-      action = "movefocus, d";
-      desc = "focus down (vim)";
-    }
-    {
-      mod = "$mod";
-      key = "k";
-      action = "movefocus, u";
-      desc = "focus up (vim)";
-    }
-    {
-      mod = "$mod";
-      key = "left";
-      action = "movefocus, l";
-      desc = "focus left";
-    }
-    {
-      mod = "$mod";
-      key = "down";
-      action = "movefocus, d";
-      desc = "focus down";
-    }
-    {
-      mod = "$mod";
-      key = "up";
-      action = "movefocus, u";
-      desc = "focus up";
-    }
-    {
-      mod = "$mod";
-      key = "right";
-      action = "movefocus, r";
-      desc = "focus right";
-    }
+    (mkBind "j" "movefocus, d" "focus down (vim)")
+    (mkBind "k" "movefocus, u" "focus up (vim)")
+    (mkBind "left" "movefocus, l" "focus left")
+    (mkBind "down" "movefocus, d" "focus down")
+    (mkBind "up" "movefocus, u" "focus up")
+    (mkBind "right" "movefocus, r" "focus right")
 
     # Workspaces — ranged
-    {
-      mod = "$mod";
-      key = "{n}";
-      action = "workspace, {n}";
-      range = {
-        from = 1;
-        to = 9;
-      };
-      desc = "switch to workspace";
-    }
-    {
-      mod = "$mod SHIFT";
-      key = "{n}";
-      action = "movetoworkspace, {n}";
-      range = {
-        from = 1;
-        to = 9;
-      };
-      desc = "move window to workspace";
-    }
+    (withRange 1 9 (mkBind "{n}" "workspace, {n}" "switch to workspace"))
+    (withRange 1 9 (mkBindMod "$mod SHIFT" "{n}" "movetoworkspace, {n}" "move window to workspace"))
 
     # Bare-key (no modifier) — leading comma is correct Hyprland syntax.
-    {
-      mod = "";
-      key = "PRINT";
-      action = ''exec, grim -g "$(slurp)" - | wl-copy -t image/png'';
-      desc = "screenshot region → clipboard";
-    }
+    (mkBindAppMod "" "PRINT" ''grim -g "$(slurp)" - | wl-copy -t image/png''
+      "screenshot region → clipboard"
+    )
   ];
 
   mouseBinds = [
-    {
-      mod = "$mod";
-      key = "mouse:272";
-      action = "movewindow";
-      desc = "drag-LMB: move window";
-    }
-    {
-      mod = "$mod";
-      key = "mouse:273";
-      action = "resizewindow";
-      desc = "drag-RMB: resize window";
-    }
+    (mkBind "mouse:272" "movewindow" "drag-LMB: move window")
+    (mkBind "mouse:273" "resizewindow" "drag-RMB: resize window")
   ];
 
   # Cheatsheet text → /nix/store file → cat'd into fuzzel by the wrapper.
