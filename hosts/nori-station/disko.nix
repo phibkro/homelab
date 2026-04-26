@@ -40,8 +40,14 @@
               type = "filesystem";
               format = "vfat";
               mountpoint = "/boot";
-              mountOptions = [ "fmask=0077" "dmask=0077" ];
-              extraArgs = [ "-n" "BOOT" ];
+              mountOptions = [
+                "fmask=0077"
+                "dmask=0077"
+              ];
+              extraArgs = [
+                "-n"
+                "BOOT"
+              ];
             };
           };
 
@@ -49,32 +55,54 @@
             size = "100%";
             content = {
               type = "btrfs";
-              extraArgs = [ "-L" "nixos" "-f" ];
+              extraArgs = [
+                "-L"
+                "nixos"
+                "-f"
+              ];
 
               subvolumes = {
                 "@" = {
                   mountpoint = "/";
-                  mountOptions = [ "compress=zstd:3" "noatime" ];
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
                 };
                 "@home" = {
                   mountpoint = "/home";
-                  mountOptions = [ "compress=zstd:3" "noatime" ];
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
                 };
                 "@nix" = {
                   mountpoint = "/nix";
-                  mountOptions = [ "compress=zstd:3" "noatime" ];
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
                 };
                 "@var-lib" = {
                   mountpoint = "/var/lib";
-                  mountOptions = [ "compress=zstd:3" "noatime" ];
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
                 };
                 "@srv-share" = {
                   mountpoint = "/srv/share";
-                  mountOptions = [ "compress=zstd:3" "noatime" ];
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
                 };
                 "@snapshots" = {
                   mountpoint = "/.snapshots";
-                  mountOptions = [ "compress=zstd:3" "noatime" ];
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
                 };
               };
             };

@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   # Jellyfin: media streaming server, tailnet-only.
@@ -49,7 +54,10 @@
   # by the /mnt/media bind).
   systemd.services.jellyfin.serviceConfig = {
     ProtectHome = "yes";
-    TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ];
+    TemporaryFileSystem = [
+      "/mnt:ro"
+      "/srv:ro"
+    ];
     BindReadOnlyPaths = [
       "/mnt/media"
       "/srv/share"

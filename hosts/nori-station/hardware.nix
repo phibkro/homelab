@@ -1,4 +1,10 @@
-{ config, lib, pkgs, inputs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  inputs,
+  ...
+}:
 
 {
   imports = [
@@ -26,8 +32,7 @@
   boot.kernelModules = [ "kvm-amd" ];
 
   # CPU microcode updates.
-  hardware.cpu.amd.updateMicrocode =
-    lib.mkDefault config.hardware.enableRedistributableFirmware;
+  hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
 
   # Filesystems are emitted by ./disko.nix at install time. Do not declare
   # fileSystems here; disko's NixOS module produces them from the disko
@@ -47,9 +52,9 @@
   services.xserver.videoDrivers = [ "nvidia" ];
   hardware.graphics.enable = true;
   hardware.nvidia = {
-    open = true;                   # open kernel module (driver 575+ / Blackwell)
+    open = true; # open kernel module (driver 575+ / Blackwell)
     modesetting.enable = true;
-    nvidiaSettings = false;         # headless install; flip true with desktop
+    nvidiaSettings = false; # headless install; flip true with desktop
     powerManagement.enable = false;
     package = config.boot.kernelPackages.nvidiaPackages.production;
   };

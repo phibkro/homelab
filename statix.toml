@@ -1,0 +1,9 @@
+# statix configuration. See https://github.com/oppiliappan/statix#configuration
+#
+# repeated_keys (W20): "merge sibling keys with shared prefix into nested
+# attrset" — over-eager for our style. We prefer flat `services.X = ...;`
+# `services.Y = ...;` over `services = { X = ...; Y = ...; };` because each
+# line being one full path is easier to read in service modules with many
+# distinct service references.
+
+disabled = [ "repeated_keys" ]

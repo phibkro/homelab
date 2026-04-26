@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   # Blocky: ad-blocking DNS resolver, LAN-facing.
@@ -87,7 +92,10 @@
   # (in /nix/store via the module) and network. No host paths.
   systemd.services.blocky.serviceConfig = {
     ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ];
+    TemporaryFileSystem = [
+      "/mnt:ro"
+      "/srv:ro"
+    ];
     BindReadOnlyPaths = [ ];
   };
 }

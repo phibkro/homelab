@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   # Caddy reverse proxy — gives every service a clean subdomain name
@@ -54,7 +59,10 @@
 
     serviceConfig = {
       ProtectHome = lib.mkForce true;
-      TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ];
+      TemporaryFileSystem = [
+        "/mnt:ro"
+        "/srv:ro"
+      ];
       BindReadOnlyPaths = [ ];
     };
   };
@@ -64,7 +72,10 @@
   # ports open as well so old URLs keep working during transition;
   # close them per-service later if you want to enforce going through
   # Caddy.
-  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 80 443 ];
+  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [
+    80
+    443
+  ];
 
   # Add Caddy's internal root CA to the system trust store so other
   # services on this host (Open WebUI's Python httpx fetching OIDC

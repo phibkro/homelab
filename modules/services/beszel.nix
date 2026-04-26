@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   # beszel — lightweight metrics hub for system monitoring (CPU, RAM,
@@ -35,7 +40,10 @@
 
   systemd.services.beszel-hub.serviceConfig = {
     ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ];
+    TemporaryFileSystem = [
+      "/mnt:ro"
+      "/srv:ro"
+    ];
     BindReadOnlyPaths = [ ];
   };
 

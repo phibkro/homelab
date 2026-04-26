@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   # btrbk — local btrfs subvolume snapshots, the "single file
@@ -67,8 +72,6 @@
 
   # Alert on snapshot job failure via ntfy template in
   # modules/services/ntfy.nix.
-  systemd.services.btrbk-root.unitConfig.OnFailure =
-    [ "notify@btrbk-root.service" ];
-  systemd.services.btrbk-media.unitConfig.OnFailure =
-    [ "notify@btrbk-media.service" ];
+  systemd.services.btrbk-root.unitConfig.OnFailure = [ "notify@btrbk-root.service" ];
+  systemd.services.btrbk-media.unitConfig.OnFailure = [ "notify@btrbk-media.service" ];
 }

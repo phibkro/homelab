@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   # ntfy — alert delivery for backup failures, drive issues, service
@@ -33,7 +38,10 @@
   # Default-deny FS access — ntfy only needs its own state dir.
   systemd.services.ntfy-sh.serviceConfig = {
     ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ];
+    TemporaryFileSystem = [
+      "/mnt:ro"
+      "/srv:ro"
+    ];
     BindReadOnlyPaths = [ ];
   };
 
@@ -49,8 +57,9 @@
   # `NTFY_CHANNEL` so all your Claude/system alerts land in the same
   # mobile-app subscription you already use.
   sops.secrets.ntfy-channel = {
-    mode = "0444";  # readable by the notify@ service running as root,
-                    # but no special user — root reads everything anyway.
+    mode = "0444";
+    # readable by the notify@ service running as root,
+    # but no special user — root reads everything anyway.
   };
 
   # Notification template — used as `OnFailure = "notify@%n.service"`

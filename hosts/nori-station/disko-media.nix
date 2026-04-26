@@ -46,24 +46,40 @@
             size = "100%";
             content = {
               type = "btrfs";
-              extraArgs = [ "-L" "ironwolf-storage" "-f" ];
+              extraArgs = [
+                "-L"
+                "ironwolf-storage"
+                "-f"
+              ];
 
               subvolumes = {
                 "@streaming" = {
                   mountpoint = "/mnt/media/streaming";
-                  mountOptions = [ "compress=zstd:3" "noatime" ];
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
                 };
                 "@photos" = {
                   mountpoint = "/mnt/media/photos";
-                  mountOptions = [ "compress=zstd:3" "noatime" ];
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
                 };
                 "@home-videos" = {
                   mountpoint = "/mnt/media/home-videos";
-                  mountOptions = [ "compress=zstd:3" "noatime" ];
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
                 };
                 "@projects" = {
                   mountpoint = "/mnt/media/projects";
-                  mountOptions = [ "compress=zstd:3" "noatime" ];
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
                 };
                 "@snapshots" = {
                   # Mounted so btrbk can write IronWolf-side snapshots
@@ -71,7 +87,10 @@
                   # btrfs — root snapshots go to /.snapshots, IronWolf
                   # snapshots have to live on the IronWolf btrfs.
                   mountpoint = "/mnt/media/.snapshots";
-                  mountOptions = [ "compress=zstd:3" "noatime" ];
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
                 };
               };
             };

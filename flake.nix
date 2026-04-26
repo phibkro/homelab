@@ -18,18 +18,29 @@
     #   home-manager   — per-user config (desktop phase)
   };
 
-  outputs = { self, nixpkgs, nixos-hardware, disko, sops-nix, ... }@inputs:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      nixos-hardware,
+      disko,
+      sops-nix,
+      ...
+    }@inputs:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
-      mkHost = hostPath: nixpkgs.lib.nixosSystem {
-        inherit system;
-        specialArgs = { inherit inputs; };
-        modules = [ hostPath ];
-      };
-    in {
+      mkHost =
+        hostPath:
+        nixpkgs.lib.nixosSystem {
+          inherit system;
+          specialArgs = { inherit inputs; };
+          modules = [ hostPath ];
+        };
+    in
+    {
       nixosConfigurations = {
-        vm-test      = mkHost ./hosts/vm-test;
+        vm-test = mkHost ./hosts/vm-test;
         nori-station = mkHost ./hosts/nori-station;
       };
 
@@ -41,12 +52,19 @@
       #   - deadnix flags unused bindings
       #   - format-check fails on unformatted .nix files
       checks.${system} = {
+        # cd into the source so statix picks up `statix.toml` (looked up
+        # from the working directory, not the path argument).
         statix = pkgs.runCommandLocal "statix" { } ''
-          ${pkgs.statix}/bin/statix check ${./.} > $out
+          cd ${./.}
+          ${pkgs.statix}/bin/statix check . > $out
         '';
 
+        # --no-lambda-pattern-names: NixOS module convention is to
+        # declare `{ config, lib, pkgs, ... }:` even when not all are
+        # used; tolerate that. Still flags genuine unused
+        # let-bindings and other dead code.
         deadnix = pkgs.runCommandLocal "deadnix" { } ''
-          ${pkgs.deadnix}/bin/deadnix --fail ${./.}
+          ${pkgs.deadnix}/bin/deadnix --fail --no-lambda-pattern-names ${./.}
           touch $out
         '';
 

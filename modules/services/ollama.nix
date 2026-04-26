@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
 
@@ -38,7 +43,10 @@
   # about boolean-vs-string definition collisions.
   systemd.services.ollama.serviceConfig = {
     ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ];
+    TemporaryFileSystem = [
+      "/mnt:ro"
+      "/srv:ro"
+    ];
     BindReadOnlyPaths = [ ];
   };
 

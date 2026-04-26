@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   # Open WebUI: chat front-end, primarily for local Ollama. Optional
@@ -71,7 +76,10 @@
   # Open WebUI's RAG knowledge base), add the path here.
   systemd.services.open-webui.serviceConfig = {
     ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ];
+    TemporaryFileSystem = [
+      "/mnt:ro"
+      "/srv:ro"
+    ];
     BindReadOnlyPaths = [ ];
 
     # DynamicUser needs supplementary group `keys` to read the

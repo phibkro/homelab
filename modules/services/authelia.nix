@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   # Authelia — single sign-on portal. Per DESIGN's "Open items":
@@ -74,7 +79,7 @@
       theme = "dark";
 
       authentication_backend.file = {
-        path = config.sops.secrets.authelia-users-database.path;
+        inherit (config.sops.secrets.authelia-users-database) path;
         password.algorithm = "argon2";
       };
 
@@ -84,11 +89,13 @@
         # Authelia's local HTTP on port 9091. Cookie domain matches
         # the parent name so sessions can carry across other
         # *.nori.lan subdomains for SSO scope (Phase B).
-        cookies = [{
-          domain = "nori.lan";
-          authelia_url = "https://auth.nori.lan";
-          name = "authelia_session";
-        }];
+        cookies = [
+          {
+            domain = "nori.lan";
+            authelia_url = "https://auth.nori.lan";
+            name = "authelia_session";
+          }
+        ];
       };
 
       storage.local.path = "/var/lib/authelia-main/db.sqlite3";
@@ -124,7 +131,12 @@
           redirect_uris = [
             "https://chat.nori.lan/oauth/oidc/callback"
           ];
-          scopes = [ "openid" "profile" "email" "groups" ];
+          scopes = [
+            "openid"
+            "profile"
+            "email"
+            "groups"
+          ];
         }
         {
           client_id = "metrics";
@@ -137,7 +149,12 @@
           redirect_uris = [
             "https://metrics.nori.lan/api/oauth2-redirect"
           ];
-          scopes = [ "openid" "profile" "email" "groups" ];
+          scopes = [
+            "openid"
+            "profile"
+            "email"
+            "groups"
+          ];
         }
       ];
     };
@@ -145,7 +162,10 @@
 
   systemd.services.authelia-main.serviceConfig = {
     ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ];
+    TemporaryFileSystem = [
+      "/mnt:ro"
+      "/srv:ro"
+    ];
     BindReadOnlyPaths = [ ];
   };
 

@@ -1,4 +1,10 @@
-{ config, lib, pkgs, modulesPath, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  modulesPath,
+  ...
+}:
 
 {
   imports = [
@@ -29,31 +35,50 @@
   fileSystems."/" = {
     device = "/dev/disk/by-label/nixos";
     fsType = "btrfs";
-    options = [ "subvol=@" "compress=zstd:3" "noatime" ];
+    options = [
+      "subvol=@"
+      "compress=zstd:3"
+      "noatime"
+    ];
   };
 
   fileSystems."/home" = {
     device = "/dev/disk/by-label/nixos";
     fsType = "btrfs";
-    options = [ "subvol=@home" "compress=zstd:3" "noatime" ];
+    options = [
+      "subvol=@home"
+      "compress=zstd:3"
+      "noatime"
+    ];
   };
 
   fileSystems."/nix" = {
     device = "/dev/disk/by-label/nixos";
     fsType = "btrfs";
-    options = [ "subvol=@nix" "compress=zstd:3" "noatime" ];
+    options = [
+      "subvol=@nix"
+      "compress=zstd:3"
+      "noatime"
+    ];
   };
 
   fileSystems."/.snapshots" = {
     device = "/dev/disk/by-label/nixos";
     fsType = "btrfs";
-    options = [ "subvol=@snapshots" "compress=zstd:3" "noatime" ];
+    options = [
+      "subvol=@snapshots"
+      "compress=zstd:3"
+      "noatime"
+    ];
   };
 
   fileSystems."/boot" = {
     device = "/dev/disk/by-label/BOOT";
     fsType = "vfat";
-    options = [ "fmask=0077" "dmask=0077" ];
+    options = [
+      "fmask=0077"
+      "dmask=0077"
+    ];
   };
 
   swapDevices = [ ];

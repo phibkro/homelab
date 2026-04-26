@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   # Gatus — synthetic uptime monitoring, fully declarative. Replaces
@@ -51,22 +56,26 @@
           url = "tcp://127.0.0.1:53";
           interval = "60s";
           conditions = [ "[CONNECTED] == true" ];
-          alerts = [{
-            type = "ntfy";
-            failure-threshold = 3;
-            send-on-resolved = true;
-          }];
+          alerts = [
+            {
+              type = "ntfy";
+              failure-threshold = 3;
+              send-on-resolved = true;
+            }
+          ];
         }
         {
           name = "samba-smb";
           url = "tcp://127.0.0.1:445";
           interval = "60s";
           conditions = [ "[CONNECTED] == true" ];
-          alerts = [{
-            type = "ntfy";
-            failure-threshold = 3;
-            send-on-resolved = true;
-          }];
+          alerts = [
+            {
+              type = "ntfy";
+              failure-threshold = 3;
+              send-on-resolved = true;
+            }
+          ];
         }
       ];
     };
@@ -74,12 +83,17 @@
 
   systemd.services.gatus.serviceConfig = {
     ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ];
+    TemporaryFileSystem = [
+      "/mnt:ro"
+      "/srv:ro"
+    ];
     BindReadOnlyPaths = [ ];
   };
 
   # Exposed at https://status.nori.lan via Caddy. No monitor for self
   # (Gatus can't usefully probe itself — would always pass while alive
   # and silently disappear when dead).
-  nori.lanRoutes.status = { port = 8082; };
+  nori.lanRoutes.status = {
+    port = 8082;
+  };
 }

@@ -1,4 +1,9 @@
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 {
   # --- users -------------------------------------------------------------
@@ -6,7 +11,10 @@
   users.users.nori = {
     isNormalUser = true;
     description = "Philip";
-    extraGroups = [ "wheel" "networkmanager" ];
+    extraGroups = [
+      "wheel"
+      "networkmanager"
+    ];
     shell = pkgs.bash;
     openssh.authorizedKeys.keys = [
       # Mac laptop
