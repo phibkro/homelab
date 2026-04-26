@@ -34,5 +34,16 @@
     };
   };
 
+  # Default-deny filesystem access beyond Open WebUI's own state dir
+  # (DynamicUser StateDirectory at /var/lib/open-webui handles itself).
+  # User-uploaded files land inside that state dir; no need for /mnt
+  # or /srv access. If a future need arises (e.g. importing media into
+  # Open WebUI's RAG knowledge base), add the path here.
+  systemd.services.open-webui.serviceConfig = {
+    ProtectHome = lib.mkForce true;
+    TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ];
+    BindReadOnlyPaths = [ ];
+  };
+
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8080 ];
 }

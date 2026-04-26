@@ -1,6 +1,7 @@
 { config, lib, pkgs, ... }:
 
 {
+
   # Ollama: local LLM inference server.
   #
   # CUDA acceleration via the host's RTX 5060 Ti (Blackwell). NixOS
@@ -27,6 +28,18 @@
     host = "0.0.0.0";
     port = 11434;
     openFirewall = false;
+  };
+
+  # Default-deny filesystem access beyond what ollama needs (its
+  # StateDirectory at /var/lib/ollama, /dev/nvidia* for CUDA, the nix
+  # store for libs). Empty BindReadOnlyPaths because no user-data
+  # paths are required. Upstream module already sets ProtectHome=true;
+  # mkForce here makes the value explicit + avoids Nix complaining
+  # about boolean-vs-string definition collisions.
+  systemd.services.ollama.serviceConfig = {
+    ProtectHome = lib.mkForce true;
+    TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ];
+    BindReadOnlyPaths = [ ];
   };
 
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 11434 ];

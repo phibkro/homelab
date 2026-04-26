@@ -147,6 +147,31 @@ Existing Pi runs PiOS, can fill DNS (Blocky via apt) and/or
 restic-target imperatively in the interim. Migrate to
 `hosts/nori-pi/` declaratively when the SSD lands.
 
+## Conventions
+
+**Default-deny filesystem access for service modules.** Every new
+service module's `serviceConfig` should include the namespace
+restriction below; explicitly opt back in with `BindReadOnlyPaths`
+for any host paths the service genuinely needs:
+
+```nix
+systemd.services.<name>.serviceConfig = {
+  ProtectHome = lib.mkForce true;
+  TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ];
+  BindReadOnlyPaths = [ /* "/mnt/media", "/srv/share", etc. */ ];
+};
+```
+
+`mkForce` is needed when the upstream module already sets
+`ProtectHome` (ollama does), to avoid the boolean-vs-string
+definition collision. Verify the namespace via:
+`sudo nsenter -t <pid> -m -U -- ls /mnt/` from the host.
+
+This mirrors the network policy (default-deny, services opt in to
+specific tailnet/LAN ports). Goal: a compromised service can't
+browse the host filesystem looking for credentials, even if it can
+exec shell commands.
+
 ## Pending one-shot user actions
 
 - Connect Mac/devices to Open WebUI (`http://nori-station.saola-matrix.ts.net:8080`)
