@@ -23,6 +23,9 @@
     ../../modules/services/authelia.nix
     ../../modules/services/caddy.nix
     ../../modules/services/backup-restic.nix
+    ../../modules/services/arr-shared.nix
+    ../../modules/services/qbittorrent.nix
+    ../../modules/services/prowlarr.nix
     ../../modules/desktop
     ./disko.nix
     ./disko-media.nix
