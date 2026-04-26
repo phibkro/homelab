@@ -126,6 +126,19 @@
           ];
           scopes = [ "openid" "profile" "email" "groups" ];
         }
+        {
+          client_id = "metrics";
+          client_name = "Beszel";
+          client_secret = "$pbkdf2-sha512$310000$0gc7ZQ3BvBSY9j9osv4GDw$V0XEUOAvm6u0Ox5Uro7Yy5m1srM3nqLkI4BrJU6J0t8L53C01feT6bgiNokwuC8WNpp6MKu30MBzhhe.ZCjkdg";
+          public = false;
+          authorization_policy = "one_factor";
+          # Beszel inherits PocketBase's OAuth2 flow — callback path
+          # is /api/oauth2-redirect (standard PocketBase pattern).
+          redirect_uris = [
+            "https://metrics.nori.lan/api/oauth2-redirect"
+          ];
+          scopes = [ "openid" "profile" "email" "groups" ];
+        }
       ];
     };
   };
