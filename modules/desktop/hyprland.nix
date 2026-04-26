@@ -41,6 +41,15 @@
   environment.sessionVariables = {
     NIXOS_OZONE_WL = "1";
     __GLX_VENDOR_LIBRARY_NAME = "nvidia";
+    # Hardware video decode/encode (NVENC/NVDEC) for VA-API consumers
+    # — Jellyfin transcodes, ffmpeg, browser hardware decode. Without
+    # this, mpv/firefox-style apps fall back to software decode.
+    LIBVA_DRIVER_NAME = "nvidia";
+    # Newer Electron flag (Hyprland NVIDIA wiki). NIXOS_OZONE_WL
+    # covers most cases; ELECTRON_OZONE_PLATFORM_HINT=auto is the
+    # upstream-supported approach for Electron 35+ that picks Wayland
+    # when available, falls back to X11 cleanly otherwise.
+    ELECTRON_OZONE_PLATFORM_HINT = "auto";
   };
 
   # Polkit agent autostart — needed for any app that prompts for elevation
