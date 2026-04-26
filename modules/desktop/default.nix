@@ -8,5 +8,6 @@ _: {
     ./waybar.nix
     ./mako.nix
     ./hypr-lock.nix
+    ./gaming.nix
   ];
 }
