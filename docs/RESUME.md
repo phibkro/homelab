@@ -30,7 +30,7 @@ canonical architecture.
 | 2 | Reformat IronWolf Pro to btrfs | **DONE** (pulled forward; see below) |
 | 3 | VM dry-run install | done; `vm-test` retained for testing |
 | 4 | Bare-metal install on nori-station | done |
-| 5 | Service migration | in progress (tailscale module + media data; services pending) |
+| 5 | Service migration | in progress (file/AI/media services live; Cloudflare/observability pending) |
 | 6 | Desktop environment (Hyprland) | not started |
 
 Reactive (no scheduled trigger): Cloudflare Tunnel + Access, email
@@ -85,63 +85,74 @@ wrong drive. Always disambiguate by model:
 - Seagate One Touch 5TB → external backup drive, exfat, normally on
   the Mac at `/Volumes/One Touch`. UUID `2A05-DC62`.
 
+## Active services (snapshot)
+
+| Module | Port | Exposure | State on host |
+|---|---|---|---|
+| `modules/common/tailscale.nix` | mesh | tailnet | active |
+| `modules/services/samba.nix` | 445 | tailnet | shares `/mnt/media` + `/srv/share`, single user `nori` (smbpasswd-set) |
+| `modules/services/blocky.nix` | 53/udp+tcp | LAN | StevenBlack/hosts blocklist; LAN-effective via Tailscale DNS push (`100.81.5.122` set as global nameserver in tailscale admin) |
+| `modules/services/ollama.nix` | 11434 | tailnet | `pkgs.ollama-cuda`, RTX 5060 Ti, 3 models restored (qwen3.5:9b, gemma4:26b, gemma4:e4b) |
+| `modules/services/open-webui.nix` | 8080 | tailnet | DynamicUser, sqlite at `/var/lib/open-webui/data/webui.db`, 1 user + 10 chats restored |
+| `modules/services/jellyfin.nix` | 8096 | tailnet | `jellyfin` user added to `users` group; library setup pending in admin UI |
+| `modules/services/backup-restic.nix` | n/a | n/a | three jobs (user-data, media-irreplaceable, open-webui Pattern C2) on **placeholder local repo** at `/var/backup/restic-local/`; sops-managed password |
+| `modules/common/sops.nix` | n/a | n/a | scaffolding done, `secrets/secrets.yaml` encrypted to Mac + nori-station age keys |
+
 ## Loose ends to address opportunistically
 
-1. **`common-cpu-amd-pstate`** not imported in `hosts/nori-station/hardware.nix`.
-   Explicitly omitted for first-install simplicity. Add back if/when
-   AMD pstate tuning matters.
-2. **OneTouch leftovers in `/mnt/media/home-videos` and `/mnt/media/photos`**
-   from a partial Mac→host rsync that was killed mid-flight (openrsync
-   was throughput-limited at ~8 MB/s vs gigabit's ~110 MB/s). User wanted
-   to review later. Either clean wipe + re-restore from IronWolf-only
-   (deterministic), or leave merged.
-3. **scripts/backup.sh** has no restore-time verification. Pre-Phase-5
-   rsync-to-exfat backups should be treated as snapshots-of-intent, not
-   guaranteed sources of truth. Phase 5+ uses restic for this reason.
+1. **Placeholder restic target.** `/var/backup/restic-local/` on root is
+   plumbing scaffolding, not a real backup. Swap repository URLs in
+   `backup-restic.nix` to SFTP when a real target exists (PiOS interim
+   restic-rest-server / `hosts/nori-pi/` later / Hetzner Storage Box).
+2. **`common-cpu-amd-pstate`** not imported in `hosts/nori-station/hardware.nix`.
+   Add back if AMD pstate tuning matters.
+3. **OneTouch leftovers in `/mnt/media/{home-videos,photos}`** —
+   ~31 GB of OneTouch-only content (Footage + memories) merged in
+   alongside IronWolf-restored content. Treated as live archive
+   (Option A from session discussion); not load-bearing, not
+   problematic.
+4. **scripts/backup.sh** has no restore-time verification. Pre-Phase-5
+   rsync-to-exfat backups are snapshots-of-intent, not guaranteed
+   sources of truth. Phase 5+ leans on restic.
+5. **Open WebUI: OpenRouter as second backend.** Deferred per user
+   choice. Add `OPENAI_API_BASE_URL=https://openrouter.ai/api/v1`
+   plus `OPENAI_API_KEY` from sops to enable cloud LLMs alongside
+   local Ollama.
+6. **Jellyfin library config.** First-connect admin wizard at
+   `http://nori-station.saola-matrix.ts.net:8096` — pick admin
+   credentials, point libraries at `/mnt/media/{streaming,home-videos}`.
 
-## Phase 5 starting points
+## What's next
 
-DESIGN.md L186-289 has the service table and backup patterns. The arc
-that's already happened (sequence below picks up after):
+DESIGN.md L186-289 has the full table. Likely candidates in priority order:
 
-- ✅ Tailscale module + canonical hostname restored.
-- ✅ Phase 2 (IronWolf btrfs reformat) pulled forward; media subvolumes
-  in place; IronWolf irreplaceables restored.
-- ✅ Samba (`modules/services/samba.nix`) — two shares (whole IronWolf
-  + /srv/share), tailnet-only, single user. Pending: `sudo smbpasswd
-  -a nori` on the host to set the SMB password.
-- ✅ Blocky (`modules/services/blocky.nix`) — LAN-facing adblocking
-  DNS on port 53. Pending: change router DHCP DNS server to
-  192.168.1.181 to actually route LAN clients through it.
-- ✅ sops-nix scaffolding (`modules/common/sops.nix` + `.sops.yaml` +
-  `secrets/secrets.yaml`) — bootstrap complete, decryption verified
-  end-to-end on host. Edit secrets via `sops secrets/secrets.yaml`
-  on the Mac (`SOPS_AGE_KEY_FILE` exported in zshrc).
-- ✅ `backup-restic.nix` Pattern A scaffolding — two restic jobs
-  (user-data + media-irreplaceable) with sops-managed password,
-  daily timer. **PLACEHOLDER repository on `/var/backup/restic-local/`**
-  — not a real backup. Swap to SFTP target when nori-pi or Hetzner
-  arrives (module comment documents the swap).
+1. **Real restic target.** Either PiOS-imperative restic-rest-server
+   on the existing Pi (interim) or wait for a NixOS-bootable USB SSD
+   to land `hosts/nori-pi/` declaratively. Then Hetzner Storage Box
+   for off-site.
+2. **Observability.** `services.beszel.{hub,agent}` for metrics,
+   Uptime Kuma container for synthetic checks, ntfy for alerts. All
+   per DESIGN L454-483.
+3. **Immich.** Photo library; Pattern B backup (Immich's own dump).
+   `/mnt/media/photos` becomes a raw archive that gets selectively
+   imported into Immich's library (separate fs path under
+   `/var/lib/immich/`).
+4. **Cloudflare Tunnel + Access.** Reactive — only when Tailscale
+   friction emerges (someone refuses to install another app, public
+   sharing needed).
+5. **Hyprland desktop.** Phase 6, separate scope.
 
-What's next, roughly in order:
+**`nori-pi` deferred** — no NixOS-bootable USB SSD on hand yet.
+Existing Pi runs PiOS, can fill DNS (Blocky via apt) and/or
+restic-target imperatively in the interim. Migrate to
+`hosts/nori-pi/` declaratively when the SSD lands.
 
-1. **Ollama + Open WebUI.** Models on the One Touch under
-   `backup/nori-backup-20260424T223707Z/ollama-share/` (~34 GB).
-   Pattern A for Ollama models (re-derivable, no need to back up),
-   Pattern C2 (sqlite `.backup`) for Open WebUI's webui.db. After
-   landing, restore chat history and re-enable the model lineup.
-2. **Jellyfin.** Reads `/mnt/media/streaming` (currently empty —
-   needs Sonarr/Radarr or manual seed) and `/mnt/media/home-videos`
-   (has the partial OneTouch Footage import). Pattern A.
-3. **Replace placeholder restic target.** First with PiOS-imperative
-   restic-rest-server or SFTP if useful; later with `hosts/nori-pi/`
-   declarative when the NixOS-bootable SSD arrives. Then Hetzner.
+## Pending one-shot user actions
 
-**`nori-pi` is deferred** — no NixOS-bootable USB SSD on hand yet.
-The existing Raspberry Pi runs PiOS and can fill the interim role for
-DNS (Blocky via apt) and/or as a restic target if it has a USB HDD
-attached. When a fresh SSD lands, do the NixOS Pi properly and migrate
-those interim services into `hosts/nori-pi/` declaratively.
+- Connect Mac/devices to Open WebUI (`http://nori-station.saola-matrix.ts.net:8080`)
+  and verify chat history loaded correctly in the UI.
+- Walk through Jellyfin admin wizard at `:8096` and add the two
+  library paths.
 
 ## Working style with this user
 
