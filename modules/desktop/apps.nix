@@ -13,6 +13,11 @@
     # Browser — community flake (zen isn't in nixpkgs).
     inputs.zen-browser.packages.${pkgs.system}.default
 
+    # Password manager — Electron desktop client. `bw` CLI not bundled
+    # by default; add `pkgs.bitwarden-cli` separately if scripted access
+    # is needed.
+    pkgs.bitwarden-desktop
+
     # Quality-of-life CLI for Wayland.
     pkgs.wl-clipboard # `wl-copy` / `wl-paste` for clipboard scripting
     pkgs.brightnessctl # backlight control (no-op on desktop, harmless)
