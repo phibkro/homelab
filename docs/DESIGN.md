@@ -130,13 +130,17 @@ Reformatted to btrfs **after** Phase 4. Until then, the IronWolf is mounted read
 
 Target subvolume layout (Phase 2):
 
-| Subvolume | Mount | Snapshot | Local backup (Pi) | Off-site backup (Hetzner) |
+| Subvolume | Mount | Snapshot | Local backup (OneTouch) | Off-site backup (Hetzner) |
 |---|---|---|---|---|
 | `@streaming` | `/mnt/media/streaming` | Weekly, keep 2 | No | No |
 | `@photos` | `/mnt/media/photos` | Daily, keep 14 + monthly, keep 12 | Yes | Yes |
 | `@home-videos` | `/mnt/media/home-videos` | Weekly, keep 4 | Yes | Yes |
 | `@projects` | `/mnt/media/projects` | Weekly, keep 4 | Yes | Yes |
-| `@snapshots` | `/.snapshots` | N/A | N/A | N/A |
+| `@library` | `/mnt/media/library` | Daily, keep 14 | Yes | Yes |
+| `@archive` | `/mnt/media/archive` | Weekly, keep 4 | Yes | No (legacy machine backups; not off-site-worthy) |
+| `@snapshots` | `/mnt/media/.snapshots` | N/A | N/A | N/A |
+
+`@streaming` holds re-derivable content (auto-grabbed by the *arr stack: movies/shows/music + qBittorrent download staging). `@library` holds curated content the user assembled by hand (books, comics) — distinct content type from `@projects` (work products), same backup tier. `@archive` holds historical/cold data (legacy machine backups migrated off the OneTouch when it became the restic target).
 
 #### nori-pi storage
 
@@ -258,6 +262,9 @@ Native NixOS modules from day one. Verified module availability on `nixos-unstab
 | Bazarr | `services.bazarr` | nori-station | Tailnet (`subtitles.nori.lan`) |
 | Jellyseerr | `services.jellyseerr` | nori-station | Tailnet (`requests.nori.lan`) |
 | qBittorrent | `services.qbittorrent` | nori-station | Tailnet (`downloads.nori.lan`); webuiPort=8083 (default 8080 collides with Open WebUI) |
+| Lidarr | `services.lidarr` | nori-station | Tailnet (`music.nori.lan`); music *arr; library on @streaming |
+| calibre-web | `services.calibre-web` | nori-station | Tailnet (`books.nori.lan`); ebook web UI + OPDS; library on @library; port 8084 (default 8083 collides with qBittorrent) |
+| Komga | `services.komga` | nori-station | Tailnet (`comics.nori.lan`); comics/manga server + OPDS; library on @library; port 8085 (default 8080 collides with Open WebUI) |
 | postgresqlBackup | `services.postgresqlBackup` | nori-station (if non-Immich PG) | N/A |
 
 **Note on Immich's Postgres:** `services.immich.database.enable = true` (the default) provisions a Postgres instance owned by Immich, separate from `services.postgresql`. NixOS 25.11+ uses VectorChord (replacing pgvecto-rs) and Postgres 17 by default. Immich's own database management writes periodic dumps to `/var/lib/immich/backups/`. The backup pattern below picks up those dumps rather than running an external `pg_dump`.

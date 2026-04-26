@@ -104,6 +104,9 @@ All HTTP services exposed via Caddy at `https://<name>.nori.lan`. Direct backend
 | `https://subtitles.nori.lan` | `bazarr.nix` | 6767 | Bazarr — subtitle automation; depends on Sonarr+Radarr |
 | `https://requests.nori.lan` | `jellyseerr.nix` | 5055 | Jellyseerr — family request UI; tie to Jellyfin auth on first-run |
 | `https://downloads.nori.lan` | `qbittorrent.nix` | 8083 | qBittorrent WebUI (port remapped from default 8080 to avoid open-webui collision) |
+| `https://music.nori.lan` | `lidarr.nix` | 8686 | Lidarr — music management; library on @streaming/music; playback via Jellyfin |
+| `https://books.nori.lan` | `calibre-web.nix` | 8084 | calibre-web — ebook UI + OPDS at /opds; library on @library/books; port remapped from 8083 |
+| `https://comics.nori.lan` | `komga.nix` | 8085 | Komga — comics/manga server + OPDS at /api/v1/opds/v2; library on @library/comics; port remapped from 8080 |
 | `smb://nori-station.saola-matrix.ts.net` | `samba.nix` | 445 | `/mnt/media` + `/srv/share`, single user `nori` |
 
 Background workers / non-routed:
@@ -152,15 +155,27 @@ Cross-cutting abstraction:
 8. **OIDC for other services.** Pattern proven for two services
    (chat, metrics-pending). Repeat per service that needs SSO. When
    N reaches 3-4, the auto-gen abstraction earns its keep.
-9. **\*arr stack first-run wizards.** Six services live but un-configured
-   (Sonarr, Radarr, Prowlarr, Bazarr, Jellyseerr, qBittorrent). Each
-   has a one-time web-UI wizard. Order matters: Prowlarr first
-   (configure indexers), then qBittorrent (set save paths +
-   credentials), then Sonarr+Radarr (connect to both, add libraries
-   under `/mnt/media/streaming/{shows,movies}`), then Bazarr (link
-   Sonarr+Radarr), finally Jellyseerr (tie to Jellyfin auth + connect
-   Sonarr+Radarr). Each module's header comment has the per-service
-   wizard steps. ~30 min total for the whole sequence.
+9. **Media stack first-run wizards.** Nine services live but un-configured
+   (Sonarr, Radarr, Lidarr, Prowlarr, Bazarr, Jellyseerr, qBittorrent,
+   calibre-web, Komga). Each has a one-time web-UI wizard. Order matters:
+   Prowlarr first (configure indexers), then qBittorrent (set save paths +
+   credentials), then Sonarr+Radarr+Lidarr (connect to both, add libraries
+   under `/mnt/media/streaming/{shows,movies,music}`), then Bazarr (link
+   Sonarr+Radarr), then Jellyseerr (tie to Jellyfin auth + connect
+   Sonarr+Radarr). calibre-web + Komga are independent of the *arr
+   chain — first-user creation + library path. Each module's header
+   comment has the per-service wizard steps. ~45 min total for the
+   whole sequence.
+10. **calibre-web nixpkgs overlay.** Module enables an inline overlay
+    relaxing `requests` version pin (upstream pins `<2.33.0`, nixpkgs
+    ships 2.33.1). Drop the overlay when nixpkgs catches up. See
+    `modules/services/calibre-web.nix` for the override block.
+11. **calibre-web bootstrap SIGSYS.** First-start `calibredb` call
+    coredumps with signal 31 (bad system call) — almost certainly
+    NixOS systemd hardening blocking a syscall calibre uses internally.
+    The `metadata.db` gets created anyway and the service runs fine; if
+    the noise bothers, add a `SystemCallFilter` allowlist override to
+    the calibre-web service config.
 
 ## Conventions + how to make changes
 
