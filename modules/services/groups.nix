@@ -57,11 +57,21 @@
 
   # Metrics / monitoring / alert delivery. ntfy provides the notify@
   # template referenced by other modules' OnFailure handlers, so it
-  # naturally pairs with this group.
+  # naturally pairs with this group. Glance is included here as the
+  # family-facing dashboard surface.
   observability = [
     ./beszel.nix
     ./gatus.nix
+    ./glance.nix
     ./ntfy.nix
+  ];
+
+  # Personal data — calendar/contacts (Radicale), file sync
+  # (Syncthing). Future home for self-hosted Vaultwarden when that
+  # migration happens.
+  personal = [
+    ./radicale.nix
+    ./syncthing.nix
   ];
 
   # Data durability — local snapshots + encrypted off-host backup.

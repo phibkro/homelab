@@ -21,11 +21,12 @@ in
   ]
   ++ groups.networking # caddy + blocky
   ++ groups.auth # authelia
-  ++ groups.observability # beszel + gatus + ntfy
+  ++ groups.observability # beszel + gatus + glance + ntfy
   ++ groups.backup # btrbk + restic
   ++ groups.ai # ollama + open-webui
   ++ groups.media # jellyfin + samba + calibre-web + komga
   ++ groups.arr # the *arr stack + qBittorrent + shared media group
+  ++ groups.personal # radicale + syncthing
   ++ [
     ../../modules/desktop # Hyprland + greetd + audio + bars + apps + gaming
 
