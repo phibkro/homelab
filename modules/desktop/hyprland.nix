@@ -47,7 +47,14 @@
   # (network manager applet, mount helpers). Hyprland doesn't ship one;
   # hyprpolkitagent is the small Wayland-native option.
   security.polkit.enable = true;
-  environment.systemPackages = [ pkgs.hyprpolkitagent ];
+  environment.systemPackages = [
+    pkgs.hyprpolkitagent
+    # programs.hyprland.withUWSM registers the uwsm-flavored desktop
+    # session entry but doesn't add the binary to systemPackages.
+    # greetd's tuigreet runs as the `greeter` user and needs `uwsm` on
+    # its PATH to launch the session.
+    pkgs.uwsm
+  ];
 
   # Real-time scheduling for Wayland compositors + audio.
   security.rtkit.enable = true;
