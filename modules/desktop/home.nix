@@ -238,6 +238,16 @@ in
           # Mod key — SUPER (Windows / Cmd-equivalent).
           "$mod" = "SUPER";
 
+          # Window rules — opt floating apps out of tiling.
+          # pwvucontrol: small dialog-style mixer; tiles awkwardly in
+          # the dwindle layout. Float + center + size at a comfortable
+          # readable footprint.
+          windowrulev2 = [
+            "float,        class:^(com\\.saivert\\.pwvucontrol)$"
+            "size 700 500, class:^(com\\.saivert\\.pwvucontrol)$"
+            "center,       class:^(com\\.saivert\\.pwvucontrol)$"
+          ];
+
           # Generated from the structured keyBinds / mouseBinds lists at
           # the top of this file. Range records (e.g. workspaces 1..9)
           # expand to one Hyprland bind per integer; the cheatsheet
