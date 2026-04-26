@@ -21,8 +21,11 @@
   # --- locale / time -----------------------------------------------------
 
   time.timeZone = "Europe/Oslo";
+  # Locale stays en_US for English error messages / man pages / web
+  # search continuity. Switch to nb_NO.UTF-8 if you want Norwegian
+  # date/sort formats too.
   i18n.defaultLocale = "en_US.UTF-8";
-  console.keyMap = "us";
+  console.keyMap = "no";
 
   # --- packages (minimal baseline shared by all hosts) ------------------
 
