@@ -26,6 +26,8 @@
     ../../modules/services/arr-shared.nix
     ../../modules/services/qbittorrent.nix
     ../../modules/services/prowlarr.nix
+    ../../modules/services/sonarr.nix
+    ../../modules/services/radarr.nix
     ../../modules/desktop
     ./disko.nix
     ./disko-media.nix
