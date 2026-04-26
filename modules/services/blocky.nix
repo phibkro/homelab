@@ -28,6 +28,19 @@
     settings = {
       ports.dns = 53;
 
+      # bootstrapDns is used only for resolving Blocky's *own* outgoing
+      # URLs — the upstream resolvers below, blocklist sources, etc.
+      # — independent of /etc/resolv.conf. Required here because the
+      # Tailscale DNS push points the host's resolver back at this very
+      # Blocky instance (100.81.5.122 set as global tailnet nameserver),
+      # which would otherwise create a chicken-and-egg loop on startup
+      # — Blocky can't resolve raw.githubusercontent.com to download
+      # the blocklist before it's serving DNS.
+      bootstrapDns = [
+        { upstream = "1.1.1.1"; }
+        { upstream = "9.9.9.9"; }
+      ];
+
       upstreams = {
         strategy = "parallel_best";
         groups.default = [
@@ -63,4 +76,12 @@
   # at the router level; the host firewall is just the second layer.
   networking.firewall.allowedTCPPorts = [ 53 ];
   networking.firewall.allowedUDPPorts = [ 53 ];
+
+  # Default-deny filesystem access — Blocky only needs its config
+  # (in /nix/store via the module) and network. No host paths.
+  systemd.services.blocky.serviceConfig = {
+    ProtectHome = lib.mkForce true;
+    TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ];
+    BindReadOnlyPaths = [ ];
+  };
 }
