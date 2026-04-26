@@ -17,11 +17,14 @@
   # for Postgres/SQLite) land alongside the services that need them
   # — Immich, Open WebUI, etc.
   #
-  # PLACEHOLDER REPOSITORY: /var/backup/restic-local lives on the same
-  # NVMe as the data it's "backing up." This is not a backup — it's
-  # plumbing scaffolding to validate the restic pipeline, secret
-  # decryption, and timer activation before nori-pi exists. When the
-  # real targets land:
+  # Repository: /mnt/backup is the OneTouch ext4 mount (formatted via
+  # hosts/nori-station/disko-onetouch.nix). USB-attached spinning HDD
+  # on nori-station — different physical drive from the IronWolf data
+  # disk and the SN750 root disk, but same chassis / same PSU / same
+  # USB hub. Failure-domain independence is partial: protects against
+  # single-drive failure, not whole-machine loss. nori-pi (local fast
+  # restore, when the SSD lands) and Hetzner Storage Box (off-site,
+  # reactive) remain on the roadmap as additional repos:
   #
   #   - nori-pi (local fast restore): SFTP repository
   #     repository = "sftp:nori-pi:/mnt/backup/<name>";
@@ -29,10 +32,6 @@
   #   - Hetzner Storage Box (off-site): also SFTP
   #     repository = "sftp:u123456@u123456.your-storagebox.de:<name>";
   #     extraOptions = [ "sftp.command='ssh -p 23 ...'" ];
-  #
-  # When that swap happens: drop the local placeholder, add per-job
-  # repositories for both Pi and Hetzner per DESIGN L295-303 retention
-  # split, and keep the same paths.
 
   sops.secrets.restic-password = {
     owner = "root";
@@ -40,8 +39,7 @@
   };
 
   systemd.tmpfiles.rules = [
-    "d /var/backup             0755 root root -"
-    "d /var/backup/restic-local 0700 root root -"
+    "d /var/backup 0755 root root -"
   ];
 
   # Wire each restic backup unit's failure into ntfy via the template
@@ -66,7 +64,7 @@
         "/home"
         "/srv/share"
       ];
-      repository = "/var/backup/restic-local/user-data";
+      repository = "/mnt/backup/user-data";
       passwordFile = config.sops.secrets.restic-password.path;
       initialize = true;
       timerConfig = {
@@ -80,15 +78,17 @@
       ];
     };
 
-    # Irreplaceable media: photos, home-videos, projects. Streaming
-    # excluded by tier policy.
+    # Irreplaceable media: photos, home-videos, projects, archive.
+    # Streaming excluded by tier policy. archive is mostly immutable
+    # so daily restic runs are nearly-free (incremental dedup).
     media-irreplaceable = {
       paths = [
         "/mnt/media/photos"
         "/mnt/media/home-videos"
         "/mnt/media/projects"
+        "/mnt/media/archive"
       ];
-      repository = "/var/backup/restic-local/media-irreplaceable";
+      repository = "/mnt/backup/media-irreplaceable";
       passwordFile = config.sops.secrets.restic-password.path;
       initialize = true;
       timerConfig = {
@@ -112,7 +112,7 @@
         "/var/lib/open-webui"
         "/var/backup/open-webui"
       ];
-      repository = "/var/backup/restic-local/open-webui";
+      repository = "/mnt/backup/open-webui";
       passwordFile = config.sops.secrets.restic-password.path;
       initialize = true;
       backupPrepareCommand = ''

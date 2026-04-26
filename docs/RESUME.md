@@ -112,16 +112,22 @@ Cross-cutting abstraction:
 
 ## Loose ends to address opportunistically
 
-1. **Placeholder restic target.** `/var/backup/restic-local/` on root is
-   scaffolding, not a real backup. Swap repository URLs in
-   `backup-restic.nix` to SFTP when a real target exists (PiOS interim,
-   `hosts/nori-pi/` later, or Hetzner Storage Box).
+1. **Restic target — OneTouch transition in flight.** `/var/backup/restic-local/`
+   is being replaced by the OneTouch HDD reformatted as ext4 and
+   mounted at `/mnt/backup`. Phase A (move unique data off OneTouch)
+   is the destructive precondition; uncommitted drafts ready for
+   Phase B/C: `hosts/nori-station/disko-onetouch.nix` (untracked) and
+   `modules/services/backup-restic.nix` (modified — repository paths
+   swapped + `/mnt/media/archive` added to media-irreplaceable).
+   Hetzner Storage Box (off-site) still on the roadmap as a second
+   repository per DESIGN's local + off-site split.
 2. **`common-cpu-amd-pstate`** not imported in `hosts/nori-station/hardware.nix`.
    Add back if AMD pstate tuning matters.
-3. **OneTouch leftovers in `/mnt/media/{home-videos,photos}`** —
-   ~31 GB of OneTouch-only content merged in alongside IronWolf-restored
-   content. Treated as live archive (Option A from earlier session);
-   not load-bearing.
+3. ~~**OneTouch leftovers in `/mnt/media/{home-videos,photos}`**~~ —
+   resolved as part of the OneTouch → restic-target transition (item 1).
+   Unique OneTouch data (memories, projects, legacy machine backups)
+   has been migrated to the matching IronWolf subvolumes
+   (`@photos`, `@projects`, the new `@archive`).
 4. **`scripts/backup.sh`** has no restore-time verification. Pre-Phase-5
    rsync-to-exfat backups are snapshots-of-intent. Phase 5+ uses restic.
 5. **Open WebUI: OpenRouter as second backend.** Deferred. Add

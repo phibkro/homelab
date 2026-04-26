@@ -26,6 +26,7 @@
     ../../modules/desktop
     ./disko.nix
     ./disko-media.nix
+    ./disko-onetouch.nix
     ./hardware.nix
   ];
 
