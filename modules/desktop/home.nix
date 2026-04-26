@@ -248,11 +248,12 @@ in
           # Format: `match:<prop> <regex>, <effect>[, <effect>...]`.
           # See https://wiki.hypr.land/0.54.0/Configuring/Window-Rules/.
           windowrule = [
-            # pwvucontrol — float at the captured live state. `move` is
-            # explicit monitor-local x/y; y=50 keeps it below the waybar
-            # (28px) with a small gap. `center on` would compete with
-            # `move`, so it's dropped.
-            "match:class ^(com\\.saivert\\.pwvucontrol)$, float on, size 1000 500, move 0 50"
+            # pwvucontrol — float at the captured live state, all
+            # values rounded up to the nearest 10. Top-right of the
+            # 3440x1440 panel: 2430 + 1000 leaves a 10px gap from the
+            # right edge; y=50 keeps it below waybar (28px) with
+            # breathing room. `center on` competes with `move`, dropped.
+            "match:class ^(com\\.saivert\\.pwvucontrol)$, float on, size 1000 500, move 2430 50"
           ];
 
           # Generated from the structured keyBinds / mouseBinds lists at
