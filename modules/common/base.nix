@@ -47,6 +47,7 @@
     fd
     git
     htop
+    just
     ripgrep
     tmux
     tree
