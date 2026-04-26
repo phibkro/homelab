@@ -30,6 +30,9 @@
     ../../modules/services/radarr.nix
     ../../modules/services/bazarr.nix
     ../../modules/services/jellyseerr.nix
+    ../../modules/services/lidarr.nix
+    ../../modules/services/calibre-web.nix
+    ../../modules/services/komga.nix
     ../../modules/desktop
     ./disko.nix
     ./disko-media.nix
