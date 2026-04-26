@@ -252,6 +252,12 @@ Native NixOS modules from day one. Verified module availability on `nixos-unstab
 | Authelia | `services.authelia.instances.<name>` | nori-station | Tailnet (OIDC issuer for SSO) |
 | beszel hub | `services.beszel.hub` | nori-station | Tailnet |
 | beszel agent | `services.beszel.agent` | nori-pi when it lands; nori-station agent deferred (single-host metrics from the hub itself are sufficient at one host) | Tailnet |
+| Sonarr | `services.sonarr` | nori-station | Tailnet (`tv.nori.lan`) |
+| Radarr | `services.radarr` | nori-station | Tailnet (`movies.nori.lan`) |
+| Prowlarr | `services.prowlarr` | nori-station | Tailnet (`indexers.nori.lan`) |
+| Bazarr | `services.bazarr` | nori-station | Tailnet (`subtitles.nori.lan`) |
+| Jellyseerr | `services.jellyseerr` | nori-station | Tailnet (`requests.nori.lan`) |
+| qBittorrent | `services.qbittorrent` | nori-station | Tailnet (`downloads.nori.lan`); webuiPort=8083 (default 8080 collides with Open WebUI) |
 | postgresqlBackup | `services.postgresqlBackup` | nori-station (if non-Immich PG) | N/A |
 
 **Note on Immich's Postgres:** `services.immich.database.enable = true` (the default) provisions a Postgres instance owned by Immich, separate from `services.postgresql`. NixOS 25.11+ uses VectorChord (replacing pgvecto-rs) and Postgres 17 by default. Immich's own database management writes periodic dumps to `/var/lib/immich/backups/`. The backup pattern below picks up those dumps rather than running an external `pg_dump`.

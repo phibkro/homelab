@@ -98,14 +98,21 @@ All HTTP services exposed via Caddy at `https://<name>.nori.lan`. Direct backend
 | `https://metrics.nori.lan` | `beszel.nix` | 8090 | beszel hub; OIDC client registered, Beszel-side config still pending |
 | `https://status.nori.lan` | `gatus.nix` | 8082 | Gatus dashboard (no self-monitor) |
 | `https://alert.nori.lan` | `ntfy.nix` | 8081 | local ntfy (also pushes to ntfy.sh for phone alerts) |
+| `https://tv.nori.lan` | `sonarr.nix` | 8989 | Sonarr — TV management; first-run wizard pending |
+| `https://movies.nori.lan` | `radarr.nix` | 7878 | Radarr — movie management; first-run wizard pending |
+| `https://indexers.nori.lan` | `prowlarr.nix` | 9696 | Prowlarr — indexer aggregator; configure first, link Sonarr/Radarr after |
+| `https://subtitles.nori.lan` | `bazarr.nix` | 6767 | Bazarr — subtitle automation; depends on Sonarr+Radarr |
+| `https://requests.nori.lan` | `jellyseerr.nix` | 5055 | Jellyseerr — family request UI; tie to Jellyfin auth on first-run |
+| `https://downloads.nori.lan` | `qbittorrent.nix` | 8083 | qBittorrent WebUI (port remapped from default 8080 to avoid open-webui collision) |
 | `smb://nori-station.saola-matrix.ts.net` | `samba.nix` | 445 | `/mnt/media` + `/srv/share`, single user `nori` |
 
 Background workers / non-routed:
 - `blocky.nix` — DNS adblock on `:53` LAN-wide via Tailscale DNS push (`100.81.5.122`)
-- `backup-restic.nix` — three restic jobs (user-data, media-irreplaceable, open-webui Pattern C2), daily, sops password, **placeholder local repo at `/var/backup/restic-local/`**
-- `btrbk.nix` — daily root + media btrfs snapshots
+- `backup-restic.nix` — three restic jobs (user-data, media-irreplaceable, open-webui Pattern C2) + weekly + monthly `restic check` timers, daily, sops password, real repo at `/mnt/backup/` (OneTouch ext4)
+- `btrbk.nix` — daily root + media btrfs snapshots; `@archive` included
 - `ntfy.nix` (local) — backs the `notify@` template; OnFailure for restic + btrbk routes through it
 - `caddy.nix` — reverse proxy + internal CA, root cert in `modules/services/caddy-local-ca.crt` (committed) + system trust via `security.pki.certificateFiles`
+- `arr-shared.nix` — `media` group + tmpfiles for shared library + download paths under `/mnt/media/streaming`
 
 Cross-cutting abstraction:
 - `modules/lib/lan-route.nix` — single declaration per service generates Caddy vhost + Blocky DNS + Gatus monitor (+ optional tailnet firewall opening). Schema-validated. See `docs/CONVENTIONS.md`.
@@ -145,6 +152,15 @@ Cross-cutting abstraction:
 8. **OIDC for other services.** Pattern proven for two services
    (chat, metrics-pending). Repeat per service that needs SSO. When
    N reaches 3-4, the auto-gen abstraction earns its keep.
+9. **\*arr stack first-run wizards.** Six services live but un-configured
+   (Sonarr, Radarr, Prowlarr, Bazarr, Jellyseerr, qBittorrent). Each
+   has a one-time web-UI wizard. Order matters: Prowlarr first
+   (configure indexers), then qBittorrent (set save paths +
+   credentials), then Sonarr+Radarr (connect to both, add libraries
+   under `/mnt/media/streaming/{shows,movies}`), then Bazarr (link
+   Sonarr+Radarr), finally Jellyseerr (tie to Jellyfin auth + connect
+   Sonarr+Radarr). Each module's header comment has the per-service
+   wizard steps. ~30 min total for the whole sequence.
 
 ## Conventions + how to make changes
 
