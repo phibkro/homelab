@@ -23,6 +23,9 @@
   # Snapshot weekly + keep 4 to match @projects tier; the data is
   # mostly immutable so this is generous-but-cheap.
   #
+  # @library — curated media (books, comics). Daily snapshot, included
+  # in restic media-irreplaceable; sits in projects tier for value.
+  #
   # Retention is conservative for first run; tighten/loosen per
   # actual disk growth observation. DESIGN's L113-138 retention
   # targets:
@@ -66,6 +69,7 @@
             "home-videos" = { };
             "projects" = { };
             "archive" = { };
+            "library" = { };
           };
         };
       };

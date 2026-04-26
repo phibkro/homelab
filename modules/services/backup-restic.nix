@@ -160,15 +160,17 @@
       ];
     };
 
-    # Irreplaceable media: photos, home-videos, projects, archive.
-    # Streaming excluded by tier policy. archive is mostly immutable
-    # so daily restic runs are nearly-free (incremental dedup).
+    # Irreplaceable media: photos, home-videos, projects, archive, library.
+    # Streaming excluded by tier policy. archive is mostly immutable so
+    # daily restic runs are nearly-free (incremental dedup); library
+    # (curated books + comics, hand-uploaded) is treated the same.
     media-irreplaceable = {
       paths = [
         "/mnt/media/photos"
         "/mnt/media/home-videos"
         "/mnt/media/projects"
         "/mnt/media/archive"
+        "/mnt/media/library"
       ];
       repository = "/mnt/backup/media-irreplaceable";
       passwordFile = config.sops.secrets.restic-password.path;

@@ -6,15 +6,20 @@
   #   nix run github:nix-community/disko/latest -- \
   #     --mode disko hosts/nori-station/disko-media.nix
   #
-  # Layout (per docs/DESIGN.md L130–138, plus @archive added later):
+  # Layout (per docs/DESIGN.md L130–138, plus @archive + @library added):
   #   single GPT partition spanning the disk, btrfs label
-  #   `ironwolf-storage`, with six subvolumes:
-  #     @streaming    -> /mnt/media/streaming
-  #     @photos       -> /mnt/media/photos
-  #     @home-videos  -> /mnt/media/home-videos
-  #     @projects     -> /mnt/media/projects
-  #     @archive      -> /mnt/media/archive
-  #     @snapshots    -> /mnt/media/.snapshots (btrbk target on this FS)
+  #   `ironwolf-storage`, with seven subvolumes:
+  #     @streaming    -> /mnt/media/streaming   (re-derivable: movies, shows,
+  #                                              music; weekly snapshot only)
+  #     @photos       -> /mnt/media/photos      (irreplaceable; daily + restic)
+  #     @home-videos  -> /mnt/media/home-videos (irreplaceable; weekly + restic)
+  #     @projects     -> /mnt/media/projects    (irreplaceable; weekly + restic)
+  #     @library      -> /mnt/media/library     (curated media: books, comics;
+  #                                              daily + restic; tier sits
+  #                                              between @streaming (re-derivable)
+  #                                              and @photos (irreplaceable))
+  #     @archive      -> /mnt/media/archive     (cold; legacy machine backups)
+  #     @snapshots    -> /mnt/media/.snapshots  (btrbk target on this FS)
   #
   # Mountpoints stay under /mnt/media/ — the label describes the
   # underlying drive, the mount path describes how it's served.
@@ -77,6 +82,19 @@
                 };
                 "@projects" = {
                   mountpoint = "/mnt/media/projects";
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
+                };
+                "@library" = {
+                  # Curated media library — books (calibre-web) + comics
+                  # (komga). Distinct from @streaming because these are
+                  # uploaded/imported by hand, not auto-grabbed by an
+                  # *arr; treat as projects-tier (daily snapshot, restic
+                  # backed up). Distinct from @projects because the
+                  # content is media (consumed) not work (produced).
+                  mountpoint = "/mnt/media/library";
                   mountOptions = [
                     "compress=zstd:3"
                     "noatime"
