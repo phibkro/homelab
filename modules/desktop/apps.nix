@@ -48,6 +48,12 @@
     # package via overrideAttrs.cudaPackages or upgrade the driver.
     pkgs.davinci-resolve
 
+    # File management — yazi (TUI, run from ghostty) as primary;
+    # Thunar (GUI) as fallback for drag-drop / file:// xdg-open from
+    # other apps. Thunar's NixOS-side wiring is below via
+    # programs.thunar.enable, which sets up xdg-mime + plugins.
+    pkgs.yazi
+
     # Quality-of-life CLI for Wayland.
     pkgs.wl-clipboard # `wl-copy` / `wl-paste` for clipboard scripting
     pkgs.brightnessctl # backlight control (no-op on desktop, harmless)
@@ -57,6 +63,18 @@
     pkgs.libnotify # `notify-send` for shell scripts
     pkgs.pwvucontrol # PipeWire mixer GUI (sink/source picker, per-app vol)
   ];
+
+  # Thunar — lightweight GUI file manager. Enabling via programs.thunar
+  # (rather than just adding the package) registers it as the default
+  # file:// handler so other apps' "open file manager" buttons land here,
+  # plus loads its plugin set in-process.
+  programs.thunar = {
+    enable = true;
+    plugins = with pkgs.xfce; [
+      thunar-archive-plugin # right-click extract / compress
+      thunar-volman # auto-mount USB / removable media
+    ];
+  };
 
   # Required for proper screen sharing under PipeWire+Wayland.
   services.dbus.enable = true;
