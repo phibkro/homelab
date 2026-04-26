@@ -36,6 +36,9 @@ Background:
 ## Operating
 
 ```bash
+# One-time per fresh clone — enable the pre-commit hook
+git config core.hooksPath .githooks
+
 # Edit on Mac (here), push to GitHub
 git push
 
@@ -50,6 +53,8 @@ nix fmt             # auto-format
 # Edit secrets
 sops secrets/secrets.yaml
 ```
+
+The pre-commit hook (`.githooks/pre-commit`) runs `nix flake check` automatically when any `.nix` or `flake.lock` file is staged — catches eval errors, statix anti-patterns, deadnix unused bindings, and unformatted files. Skips gracefully if `nix` isn't on PATH (most commits originate from the Mac without nix; the host catches issues at rebuild time anyway). Bypass for emergency commits with `git commit --no-verify`.
 
 ## Quality gates
 

@@ -50,8 +50,10 @@ You are working in a NixOS homelab flake. Two-host topology (nori-station built;
 
 ## Quality gates
 
-- `nix flake check` — eval validation + formatting
+- `nix flake check` — eval validation + statix + deadnix + nixfmt format check
 - `nix fmt` — apply nixfmt-rfc-style
-- `statix check .` — Nix anti-pattern lint
-- `deadnix .` — unused binding detection
-- Hooks invoke these on commit (see `.githooks/` if set up locally)
+- Pre-commit hook in `.githooks/pre-commit` runs `nix flake check` automatically
+  when staged changes touch `.nix` files — enable once per clone with:
+  `git config core.hooksPath .githooks`. Skips gracefully if nix isn't on PATH
+  (Mac case); host validates on rebuild regardless. Bypass with
+  `git commit --no-verify` for emergencies only.

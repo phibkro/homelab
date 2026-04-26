@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Pre-commit hook: validate flake before allowing the commit.
+#
+# Runs `nix flake check` which evaluates all hosts and runs the
+# checks defined in flake.nix (statix + deadnix + nixfmt format).
+#
+# Skips gracefully if `nix` isn't on PATH — most commits are made
+# from the Mac which doesn't have nix locally; CI / nori-station /
+# a future contributor with Nix installed catches issues there.
+# To enable full local validation: install nix-darwin (or just the
+# upstream nix installer) on your Mac.
+#
+# Enabling this hook (one-time, per clone):
+#   git config core.hooksPath .githooks
+
+set -e
+
+if ! command -v nix >/dev/null 2>&1; then
+  printf '\033[33m[pre-commit] nix not on PATH — skipping flake check.\033[0m\n' >&2
+  printf '\033[33m            Push will validate via host rebuild; consider installing nix locally.\033[0m\n' >&2
+  exit 0
+fi
+
+# Only run if any tracked .nix files (or flake.lock) are staged.
+if ! git diff --cached --name-only | grep -qE '\.nix$|^flake\.lock$'; then
+  exit 0
+fi
+
+printf '[pre-commit] running nix flake check…\n' >&2
+
+# --no-warn-dirty silences the dirty-tree warning during pre-commit.
+# Format / statix / deadnix run as part of the checks defined in
+# flake.nix; eval validates host configs.
+if ! nix flake check --no-warn-dirty 2>&1; then
+  printf '\033[31m[pre-commit] nix flake check FAILED.\033[0m\n' >&2
+  printf '\033[31m            Fix the errors above (or run `nix fmt` for formatting).\033[0m\n' >&2
+  printf '\033[31m            To bypass for emergency commits: `git commit --no-verify`.\033[0m\n' >&2
+  exit 1
+fi
+
+printf '\033[32m[pre-commit] checks passed.\033[0m\n' >&2
