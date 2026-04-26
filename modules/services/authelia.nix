@@ -121,6 +121,14 @@
       #   2. Add raw to sops as oidc-<name>-client-secret
       #   3. Append the entry below with the hash inline
       #   4. Wire the consuming service (per-service env vars)
+      #
+      # Why the `client_secret = "$pbkdf2-sha512$..."` hashes are
+      # committed inline: PBKDF2 is one-way; the raw secret can't be
+      # recovered from the hash. The raw is sops-encrypted; only the
+      # hash sits in plain Nix. A future contributor reading the
+      # public repo will see the hashes here and that's intentional.
+      # See docs/CONVENTIONS.md "Authelia OIDC pattern" for the full
+      # workflow.
       identity_providers.oidc.clients = [
         {
           client_id = "chat";
