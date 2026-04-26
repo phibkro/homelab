@@ -251,7 +251,7 @@ Native NixOS modules from day one. Verified module availability on `nixos-unstab
 | Caddy | `services.caddy` | nori-station | Tailnet (HTTPS terminator + reverse proxy) |
 | Authelia | `services.authelia.instances.<name>` | nori-station | Tailnet (OIDC issuer for SSO) |
 | beszel hub | `services.beszel.hub` | nori-station | Tailnet |
-| beszel agent | `services.beszel.agent` | both hosts | Tailnet |
+| beszel agent | `services.beszel.agent` | nori-pi when it lands; nori-station agent deferred (single-host metrics from the hub itself are sufficient at one host) | Tailnet |
 | postgresqlBackup | `services.postgresqlBackup` | nori-station (if non-Immich PG) | N/A |
 
 **Note on Immich's Postgres:** `services.immich.database.enable = true` (the default) provisions a Postgres instance owned by Immich, separate from `services.postgresql`. NixOS 25.11+ uses VectorChord (replacing pgvecto-rs) and Postgres 17 by default. Immich's own database management writes periodic dumps to `/var/lib/immich/backups/`. The backup pattern below picks up those dumps rather than running an external `pg_dump`.
@@ -547,7 +547,7 @@ Email digest deferred. When set up: SMTP via Gmail with app password (sufficient
 | 2 | Reformat IronWolf Pro to btrfs | done (pulled forward into Phase 5; see "Repository conventions") |
 | 3 | VM dry-run install (UTM) | done; `vm-test` on tailnet |
 | 4 | Bare-metal install on nori-station | done |
-| 5 | Service migration | in progress (Samba, Blocky, Ollama, Open WebUI, Jellyfin, sops, restic Pattern A+C2 live; observability + Immich + Cloudflare pending) |
+| 5 | Service migration | in progress (file/AI/media/SSO/observability live: Samba, Blocky, Ollama, Open WebUI, Jellyfin, sops, restic Pattern A+C2, Caddy, Authelia, Gatus, beszel hub, ntfy. Pending: Immich, Cloudflare Tunnel, Hetzner off-site restic) |
 | 6 | Desktop environment | done — Hyprland + greetd + waybar + mako + hyprlock + hypridle on nori-station |
 | — | `hosts/nori-pi/` declarative | deferred (no NixOS-bootable USB SSD; PiOS interim possible) |
 
