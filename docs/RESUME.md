@@ -87,40 +87,69 @@ wrong drive. Always disambiguate by model:
 
 ## Active services (snapshot)
 
-| Module | Port | Exposure | State on host |
+All HTTP services exposed via Caddy at `https://<name>.nori.lan`. Direct backend ports are closed on tailnet (default-deny via `nori.lanRoutes`); Caddy on `:80 + :443` is the only entry point. Samba bypasses Caddy on `:445` (not HTTP).
+
+| URL | Module | Backend port | Notes |
 |---|---|---|---|
-| `modules/common/tailscale.nix` | mesh | tailnet | active |
-| `modules/services/samba.nix` | 445 | tailnet | shares `/mnt/media` + `/srv/share`, single user `nori` (smbpasswd-set) |
-| `modules/services/blocky.nix` | 53/udp+tcp | LAN | StevenBlack/hosts blocklist; LAN-effective via Tailscale DNS push (`100.81.5.122` set as global nameserver in tailscale admin) |
-| `modules/services/ollama.nix` | 11434 | tailnet | `pkgs.ollama-cuda`, RTX 5060 Ti, 3 models restored (qwen3.5:9b, gemma4:26b, gemma4:e4b) |
-| `modules/services/open-webui.nix` | 8080 | tailnet | DynamicUser, sqlite at `/var/lib/open-webui/data/webui.db`, 1 user + 10 chats restored |
-| `modules/services/jellyfin.nix` | 8096 | tailnet | `jellyfin` user added to `users` group; library setup pending in admin UI |
-| `modules/services/backup-restic.nix` | n/a | n/a | three jobs (user-data, media-irreplaceable, open-webui Pattern C2) on **placeholder local repo** at `/var/backup/restic-local/`; sops-managed password |
-| `modules/common/sops.nix` | n/a | n/a | scaffolding done, `secrets/secrets.yaml` encrypted to Mac + nori-station age keys |
+| `https://auth.nori.lan` | `authelia.nix` | 9091 | OIDC issuer; serves SSO for `chat` and `metrics` |
+| `https://chat.nori.lan` | `open-webui.nix` | 8080 | Open WebUI; OIDC SSO via Authelia working end-to-end |
+| `https://ai.nori.lan` | `ollama.nix` | 11434 | `pkgs.ollama-cuda`, RTX 5060 Ti |
+| `https://media.nori.lan` | `jellyfin.nix` | 8096 | Jellyfin |
+| `https://metrics.nori.lan` | `beszel.nix` | 8090 | beszel hub; OIDC client registered, Beszel-side config still pending |
+| `https://status.nori.lan` | `gatus.nix` | 8082 | Gatus dashboard (no self-monitor) |
+| `https://alert.nori.lan` | `ntfy.nix` | 8081 | local ntfy (also pushes to ntfy.sh for phone alerts) |
+| `smb://nori-station.saola-matrix.ts.net` | `samba.nix` | 445 | `/mnt/media` + `/srv/share`, single user `nori` |
+
+Background workers / non-routed:
+- `blocky.nix` — DNS adblock on `:53` LAN-wide via Tailscale DNS push (`100.81.5.122`)
+- `backup-restic.nix` — three restic jobs (user-data, media-irreplaceable, open-webui Pattern C2), daily, sops password, **placeholder local repo at `/var/backup/restic-local/`**
+- `btrbk.nix` — daily root + media btrfs snapshots
+- `ntfy.nix` (local) — backs the `notify@` template; OnFailure for restic + btrbk routes through it
+- `caddy.nix` — reverse proxy + internal CA, root cert in `modules/services/caddy-local-ca.crt` (committed) + system trust via `security.pki.certificateFiles`
+
+Cross-cutting abstraction:
+- `modules/lib/lan-route.nix` — single declaration per service generates Caddy vhost + Blocky DNS + Gatus monitor (+ optional tailnet firewall opening). Schema-validated. See `docs/CONVENTIONS.md`.
 
 ## Loose ends to address opportunistically
 
 1. **Placeholder restic target.** `/var/backup/restic-local/` on root is
-   plumbing scaffolding, not a real backup. Swap repository URLs in
-   `backup-restic.nix` to SFTP when a real target exists (PiOS interim
-   restic-rest-server / `hosts/nori-pi/` later / Hetzner Storage Box).
+   scaffolding, not a real backup. Swap repository URLs in
+   `backup-restic.nix` to SFTP when a real target exists (PiOS interim,
+   `hosts/nori-pi/` later, or Hetzner Storage Box).
 2. **`common-cpu-amd-pstate`** not imported in `hosts/nori-station/hardware.nix`.
    Add back if AMD pstate tuning matters.
 3. **OneTouch leftovers in `/mnt/media/{home-videos,photos}`** —
-   ~31 GB of OneTouch-only content (Footage + memories) merged in
-   alongside IronWolf-restored content. Treated as live archive
-   (Option A from session discussion); not load-bearing, not
-   problematic.
-4. **scripts/backup.sh** has no restore-time verification. Pre-Phase-5
-   rsync-to-exfat backups are snapshots-of-intent, not guaranteed
-   sources of truth. Phase 5+ leans on restic.
-5. **Open WebUI: OpenRouter as second backend.** Deferred per user
-   choice. Add `OPENAI_API_BASE_URL=https://openrouter.ai/api/v1`
-   plus `OPENAI_API_KEY` from sops to enable cloud LLMs alongside
-   local Ollama.
+   ~31 GB of OneTouch-only content merged in alongside IronWolf-restored
+   content. Treated as live archive (Option A from earlier session);
+   not load-bearing.
+4. **`scripts/backup.sh`** has no restore-time verification. Pre-Phase-5
+   rsync-to-exfat backups are snapshots-of-intent. Phase 5+ uses restic.
+5. **Open WebUI: OpenRouter as second backend.** Deferred. Add
+   `OPENAI_API_BASE_URL=https://openrouter.ai/api/v1` plus
+   `OPENAI_API_KEY` from sops to enable cloud LLMs alongside Ollama.
 6. **Jellyfin library config.** First-connect admin wizard at
-   `http://nori-station.saola-matrix.ts.net:8096` — pick admin
-   credentials, point libraries at `/mnt/media/{streaming,home-videos}`.
+   `https://media.nori.lan` — pick admin credentials, add
+   `/mnt/media/home-videos` library (Stremio handles streaming
+   entertainment, Jellyfin focuses on home videos).
+7. **Beszel SSO consumer config.** Authelia-side OIDC client
+   `metrics` is registered. Beszel-side: configure via PocketBase
+   admin (`https://metrics.nori.lan/_/`) → Collections → users →
+   ⚙ Options → OAuth2. Auto-gen for OIDC client setup deferred (would
+   need lan-route extension + sops template plumbing).
+8. **OIDC for other services.** Pattern proven for two services
+   (chat, metrics-pending). Repeat per service that needs SSO. When
+   N reaches 3-4, the auto-gen abstraction earns its keep.
+
+## Conventions + how to make changes
+
+See `docs/CONVENTIONS.md` for:
+- Service module template (FS hardening, lan-route declaration, sops integration)
+- Default-deny network + filesystem policy
+- sops env-file format gotcha
+- DynamicUser caveats + SupplementaryGroups=keys pattern
+- Authelia OIDC client manual workflow
+
+See `docs/gotchas.md` for landmines (NVMe enumeration, Caddy CA + Python certifi, openrsync, sops indentation, etc.).
 
 ## What's next
 

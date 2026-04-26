@@ -158,13 +158,51 @@ Three network zones with default-deny posture:
 - **Tailnet (trusted network).** Personal devices and family members. Most services exposed here. SSH, SSHFS, Samba, direct service ports are tailnet-only.
 - **Public internet (Phase 4 deferred).** Specific HTTP services exposed via Cloudflare Tunnel at named subdomains under `phibkro.org`, with auth at the edge via Cloudflare Access (free tier, email magic links). Triggered when Tailscale friction emerges, not by schedule.
 
-**Implementation pattern:** services use `openFirewall = false` and the firewall opens specific ports only on `tailscale0`:
+**Implementation pattern:** services use `openFirewall = false` and access flows through Caddy at `https://<name>.nori.lan` (see "LAN routing abstraction" below). Direct backend ports stay closed on tailnet by default; opt in per-service via `nori.lanRoutes.<name>.exposeOnTailnet = true` only when truly needed.
 
 ```nix
-services.jellyfin.enable = true;
-services.jellyfin.openFirewall = false;
-networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8096 ];
+# Don't do this anymore — direct port exposure:
+# networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8096 ];
+
+# Do this — single declaration generates Caddy vhost + DNS + monitor:
+nori.lanRoutes.media = { port = 8096; monitor = { }; };
 ```
+
+The only globally-open tailnet ports today are `80 + 443` (Caddy) and `445` (Samba — not HTTP, can't go through Caddy).
+
+#### LAN routing abstraction (`nori.lanRoutes`)
+
+`modules/lib/lan-route.nix` defines a single NixOS option that generates *three* things per service: Caddy reverse-proxy vhost, Blocky DNS mapping, and Gatus uptime monitor. Schema-validated at evaluation time. Adding a service is one declaration in its own module — no edits scattered across `caddy.nix` + `blocky.nix` + `gatus.nix`.
+
+```nix
+nori.lanRoutes.<name> = {
+  port = 8080;                      # required, types.port
+  scheme = "http";                  # default
+  exposeOnTailnet = false;          # default; opt in for direct backend access
+  monitor = {                       # null = skip monitoring; { } = defaults
+    path = "/health";               # default "/"
+    interval = "60s";
+    failureThreshold = 3;
+  };
+};
+```
+
+See `docs/CONVENTIONS.md` for the canonical service-module shape and how to extend lan-route (firewall opening + Authelia OIDC client auto-gen are the natural next extensions).
+
+#### TLS + naming
+
+Caddy terminates TLS for every `<name>.nori.lan` using its internal CA (auto-generated). The root cert is committed at `modules/services/caddy-local-ca.crt` and added to system trust via `security.pki.certificateFiles` so curl/Go/openssl trust it transparently. Python services need explicit `SSL_CERT_FILE = "/etc/ssl/certs/ca-bundle.crt"` (certifi doesn't read system trust).
+
+Naming convention: function over brand. `chat.nori.lan` not `open-webui.nori.lan`. `auth.nori.lan` because "auth" *is* the function.
+
+Devices accessing the homelab need to install the Caddy root CA once:
+- Mac: `sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain modules/services/caddy-local-ca.crt`
+- Firefox/Zen: import via Settings → Privacy → Certificates (browsers don't read macOS keychain)
+- iOS: AirDrop the cert, install via Settings → Profile, enable in Cert Trust Settings
+
+#### Single Sign-On (SSO)
+
+`Authelia` provides OIDC. Services that opt in get a one-click login flow (visit service → redirect to `auth.nori.lan` → log in once → returned authenticated). Per-service setup is currently manual (one client entry in `authelia.nix` + per-service env vars to consume); auto-generation deferred to the lan-route abstraction once N services warrant it. See `docs/CONVENTIONS.md` "Authelia OIDC pattern".
 
 #### DNS architecture
 
@@ -210,6 +248,8 @@ Native NixOS modules from day one. Verified module availability on `nixos-unstab
 | btrbk | `services.btrbk.instances.<n>` | nori-station | N/A (local) |
 | ntfy | `services.ntfy-sh` | nori-station | Tailnet |
 | Gatus | `services.gatus` | nori-station | Tailnet |
+| Caddy | `services.caddy` | nori-station | Tailnet (HTTPS terminator + reverse proxy) |
+| Authelia | `services.authelia.instances.<name>` | nori-station | Tailnet (OIDC issuer for SSO) |
 | beszel hub | `services.beszel.hub` | nori-station | Tailnet |
 | beszel agent | `services.beszel.agent` | both hosts | Tailnet |
 | postgresqlBackup | `services.postgresqlBackup` | nori-station (if non-Immich PG) | N/A |

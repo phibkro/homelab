@@ -21,6 +21,7 @@
   outputs = { self, nixpkgs, nixos-hardware, disko, sops-nix, ... }@inputs:
     let
       system = "x86_64-linux";
+      pkgs = nixpkgs.legacyPackages.${system};
       mkHost = hostPath: nixpkgs.lib.nixosSystem {
         inherit system;
         specialArgs = { inherit inputs; };
@@ -32,6 +33,28 @@
         nori-station = mkHost ./hosts/nori-station;
       };
 
-      formatter.${system} = nixpkgs.legacyPackages.${system}.nixfmt-rfc-style;
+      formatter.${system} = pkgs.nixfmt-rfc-style;
+
+      # Quality gates. Run `nix flake check` to validate everything:
+      #   - host configs evaluate (caught by nixosConfigurations check)
+      #   - statix flags Nix anti-patterns
+      #   - deadnix flags unused bindings
+      #   - format-check fails on unformatted .nix files
+      checks.${system} = {
+        statix = pkgs.runCommandLocal "statix" { } ''
+          ${pkgs.statix}/bin/statix check ${./.} > $out
+        '';
+
+        deadnix = pkgs.runCommandLocal "deadnix" { } ''
+          ${pkgs.deadnix}/bin/deadnix --fail ${./.}
+          touch $out
+        '';
+
+        format = pkgs.runCommandLocal "format" { } ''
+          cd ${./.}
+          ${pkgs.nixfmt-rfc-style}/bin/nixfmt --check $(find . -name '*.nix' -not -path '*/result/*')
+          touch $out
+        '';
+      };
     };
 }
