@@ -44,6 +44,17 @@
       mode = "0400";
       owner = "authelia-main";
     };
+    # OIDC: required when identity_providers.oidc is enabled.
+    # hmac-secret: HMAC for OIDC tokens (random hex)
+    # issuer-private-key: RSA-2048 PEM, used to sign JWT id-tokens
+    authelia-oidc-hmac-secret = {
+      mode = "0400";
+      owner = "authelia-main";
+    };
+    authelia-oidc-issuer-private-key = {
+      mode = "0400";
+      owner = "authelia-main";
+    };
   };
 
   services.authelia.instances.main = {
@@ -53,6 +64,8 @@
       jwtSecretFile = config.sops.secrets.authelia-jwt-secret.path;
       sessionSecretFile = config.sops.secrets.authelia-session-secret.path;
       storageEncryptionKeyFile = config.sops.secrets.authelia-storage-encryption-key.path;
+      oidcHmacSecretFile = config.sops.secrets.authelia-oidc-hmac-secret.path;
+      oidcIssuerPrivateKeyFile = config.sops.secrets.authelia-oidc-issuer-private-key.path;
     };
 
     settings = {
@@ -90,6 +103,30 @@
         default_policy = "one_factor";
         rules = [ ];
       };
+
+      # OIDC clients — manually declared per service for now.
+      # Auto-generation deferred (would need sops template + Authelia
+      # expand-env filter + per-service env-file plumbing). Add a new
+      # client by:
+      #   1. Generate raw secret + PBKDF2 hash via:
+      #        authelia crypto hash generate pbkdf2 --variant sha512 \
+      #          --iterations 310000 --password '<raw>'
+      #   2. Add raw to sops as oidc-<name>-client-secret
+      #   3. Append the entry below with the hash inline
+      #   4. Wire the consuming service (per-service env vars)
+      identity_providers.oidc.clients = [
+        {
+          client_id = "chat";
+          client_name = "Open WebUI";
+          client_secret = "$pbkdf2-sha512$310000$ThTc2qRfMD0r/GkaCjySYA$fWbF1FfUDlwK1IgoSe9XBeXrJjocYfC0VJis24qHZ54pweEKIuMrd6QUDuASRPpSBoocwJRM8OKuKDKLRX29Yg";
+          public = false;
+          authorization_policy = "one_factor";
+          redirect_uris = [
+            "https://chat.nori.lan/oauth/oidc/callback"
+          ];
+          scopes = [ "openid" "profile" "email" "groups" ];
+        }
+      ];
     };
   };
 

@@ -31,7 +31,30 @@
       WEBUI_AUTH = "True";
       ENABLE_SIGNUP = "False";
       DEFAULT_MODELS = "";
+      # OIDC env vars that don't contain secrets go here. The secret-
+      # bearing env var (OAUTH_CLIENT_SECRET) is loaded from
+      # /run/secrets/rendered/open-webui-oauth-env via systemd
+      # EnvironmentFile below — sops template renders the value at
+      # activation, file is mode 0440 root:keys, service runs with
+      # SupplementaryGroups=keys so it can read.
+      OPENID_PROVIDER_URL = "https://auth.nori.lan/.well-known/openid-configuration";
+      OAUTH_CLIENT_ID = "chat";
+      OAUTH_PROVIDER_NAME = "Authelia";
+      ENABLE_OAUTH_SIGNUP = "True";
     };
+  };
+
+  sops.secrets.oidc-chat-client-secret = {
+    mode = "0440";
+    group = "keys";
+  };
+
+  sops.templates."open-webui-oauth-env" = {
+    mode = "0440";
+    group = "keys";
+    content = ''
+      OAUTH_CLIENT_SECRET=${config.sops.placeholder.oidc-chat-client-secret}
+    '';
   };
 
   # Default-deny filesystem access beyond Open WebUI's own state dir
@@ -43,6 +66,11 @@
     ProtectHome = lib.mkForce true;
     TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ];
     BindReadOnlyPaths = [ ];
+
+    # DynamicUser needs supplementary group `keys` to read the
+    # sops-rendered env file (mode 0440 root:keys).
+    SupplementaryGroups = [ "keys" ];
+    EnvironmentFile = config.sops.templates."open-webui-oauth-env".path;
   };
 
   # Exposed at https://chat.nori.lan via Caddy. Auto-monitored by Gatus.
