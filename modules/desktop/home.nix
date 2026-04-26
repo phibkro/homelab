@@ -1,4 +1,4 @@
-{ inputs, ... }:
+{ inputs, pkgs, ... }:
 {
   # home-manager as a NixOS module (per DESIGN.md L355-358) — config flows
   # from this Nix attrset into ~/.config/hypr/hyprland.conf etc. at
@@ -21,6 +21,19 @@
     users.nori = {
       home.stateVersion = "25.11"; # match host's system.stateVersion
       programs.home-manager.enable = true;
+
+      # Cursor — bibata-modern-classic at 24px reads well on the 34" 1440p
+      # panel (~6.5mm physical). gtk + x11 + hyprcursor.enable = false
+      # because bibata doesn't ship the hyprcursor format yet; XCURSOR is
+      # the universal fallback Hyprland honors via the `env` directives
+      # below. Swap theme by changing `name` + `package`; size by `size`.
+      home.pointerCursor = {
+        package = pkgs.bibata-cursors;
+        name = "Bibata-Modern-Classic";
+        size = 24;
+        gtk.enable = true;
+        x11.enable = true;
+      };
 
       wayland.windowManager.hyprland = {
         enable = true;
@@ -59,6 +72,13 @@
             pseudotile = true;
             preserve_split = true;
           };
+
+          # Cursor theme propagation — Hyprland exports these to children
+          # at startup. Matches home.pointerCursor above.
+          env = [
+            "XCURSOR_THEME,Bibata-Modern-Classic"
+            "XCURSOR_SIZE,24"
+          ];
 
           # Mod key — SUPER (Windows / Cmd-equivalent).
           "$mod" = "SUPER";
