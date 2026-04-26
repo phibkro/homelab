@@ -54,7 +54,7 @@
   hardware.nvidia = {
     open = true; # open kernel module (driver 575+ / Blackwell)
     modesetting.enable = true;
-    nvidiaSettings = false; # headless install; flip true with desktop
+    nvidiaSettings = true; # nvidia-settings GUI for the desktop session
     powerManagement.enable = false;
     package = config.boot.kernelPackages.nvidiaPackages.production;
   };

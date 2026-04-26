@@ -23,6 +23,7 @@
     ../../modules/services/authelia.nix
     ../../modules/services/caddy.nix
     ../../modules/services/backup-restic.nix
+    ../../modules/desktop
     ./disko.nix
     ./disko-media.nix
     ./hardware.nix

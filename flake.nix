@@ -14,8 +14,16 @@
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
 
-    # Planned additions (introduced when needed):
-    #   home-manager   — per-user config (desktop phase)
+    # Per-user config (desktop phase). Tracks nixos-unstable in lockstep
+    # with nixpkgs; re-pin deliberately on `nix flake update`.
+    home-manager.url = "github:nix-community/home-manager";
+    home-manager.inputs.nixpkgs.follows = "nixpkgs";
+
+    # Zen browser. Not in nixpkgs; consumed via upstream community flake.
+    # `.default` tracks rolling Twilight; pivot to `.beta` or `.specific`
+    # if Twilight churn becomes annoying.
+    zen-browser.url = "github:0xc000022070/zen-browser-flake";
+    zen-browser.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -25,6 +33,8 @@
       nixos-hardware,
       disko,
       sops-nix,
+      home-manager,
+      zen-browser,
       ...
     }@inputs:
     let
