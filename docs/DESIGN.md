@@ -209,7 +209,7 @@ Native NixOS modules from day one. Verified module availability on `nixos-unstab
 | restic backup jobs | `services.restic.backups.<n>` | nori-station | N/A (outbound to Pi + Hetzner) |
 | btrbk | `services.btrbk.instances.<n>` | nori-station | N/A (local) |
 | ntfy | `services.ntfy-sh` | nori-station | Tailnet |
-| Uptime Kuma | container (no native module yet) | nori-station | Tailnet |
+| Gatus | `services.gatus` | nori-station | Tailnet |
 | beszel hub | `services.beszel.hub` | nori-station | Tailnet |
 | beszel agent | `services.beszel.agent` | both hosts | Tailnet |
 | postgresqlBackup | `services.postgresqlBackup` | nori-station (if non-Immich PG) | N/A |
@@ -463,7 +463,7 @@ OS has one user (Philip). Family members get per-service accounts in Jellyfin, I
 
 **beszel** for metrics (hub on nori-station, agents on both hosts, accessed over Tailscale).
 
-**Uptime Kuma** for synthetic HTTP checks (containerized; no native module yet).
+**Gatus** for synthetic HTTP/TCP/DNS checks. Replaced an earlier Uptime Kuma plan after recognising that Uptime Kuma's web-UI-driven config didn't fit a code-as-config repo. Gatus is pure declarative — endpoints, conditions, alert routing all live in the Nix attrset that renders to gatus's YAML.
 
 **ntfy** for alert delivery (self-hosted on nori-station, Tailscale-only). High-priority topic for urgent (sound, bypass DND); normal priority for warnings.
 
@@ -474,7 +474,7 @@ OS has one user (Philip). Family members get per-service accounts in Jellyfin, I
 | Filesystem >80% full | beszel | Warn |
 | Filesystem >90% full | beszel | Urgent |
 | SMART status changes | systemd timer | Urgent |
-| Service down (HTTP probe) | Uptime Kuma | Urgent |
+| Service down (HTTP / TCP probe) | Gatus | Urgent |
 | Tailscale connectivity loss | systemd timer | Urgent |
 | restic backup job failure | restic systemd unit | Urgent |
 | btrbk snapshot job failure | btrbk systemd unit | Warn |
