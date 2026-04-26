@@ -112,25 +112,28 @@ All HTTP services exposed via Caddy at `https://<name>.nori.lan`. Direct backend
 Background workers / non-routed:
 - `blocky.nix` — DNS adblock on `:53` LAN-wide via Tailscale DNS push (`100.81.5.122`)
 - `backup-restic.nix` — three restic jobs (user-data, media-irreplaceable, open-webui Pattern C2) + weekly + monthly `restic check` timers, daily, sops password, real repo at `/mnt/backup/` (OneTouch ext4)
-- `btrbk.nix` — daily root + media btrfs snapshots; `@archive` included
-- `ntfy.nix` (local) — backs the `notify@` template; OnFailure for restic + btrbk routes through it
+- `btrbk.nix` — daily root + media btrfs snapshots; `@archive` + `@library` included
+- `ntfy.nix` (local) — backs the `notify@` template; OnFailure for restic + btrbk + restic-check routes through it
 - `caddy.nix` — reverse proxy + internal CA, root cert in `modules/services/caddy-local-ca.crt` (committed) + system trust via `security.pki.certificateFiles`
-- `arr-shared.nix` — `media` group + tmpfiles for shared library + download paths under `/mnt/media/streaming`
+- `arr-shared.nix` — `media` group + tmpfiles for shared library + download paths under `/mnt/media/streaming` and `/mnt/media/library`
 
-Cross-cutting abstraction:
+Cross-cutting abstractions:
 - `modules/lib/lan-route.nix` — single declaration per service generates Caddy vhost + Blocky DNS + Gatus monitor (+ optional tailnet firewall opening). Schema-validated. See `docs/CONVENTIONS.md`.
+- `modules/services/groups.nix` — composable, non-exclusive aliases (ai, arr, media, observability, backup, networking, auth). Hosts compose via `imports = [...] ++ groups.<name> ++ ...`. Files stay flat under `modules/services/<service>.nix`; a service can belong to multiple groups.
+
+Dev workflow:
+- `Justfile` at repo root — `just` (default = rebuild), `just status`, `just logs <unit>`, `just check`, `just deploy` (git-based, no rsync), `just rollback`, etc. All recipes accept an optional `host` arg defaulting to `nori-station`. See `just --list`.
+- `nh os switch` is the rebuild engine (replaces `nixos-rebuild` directly). Internal sudo escalation; nicer ADDED/REMOVED/CHANGED diff output.
 
 ## Loose ends to address opportunistically
 
-1. **Restic target — OneTouch transition in flight.** `/var/backup/restic-local/`
-   is being replaced by the OneTouch HDD reformatted as ext4 and
-   mounted at `/mnt/backup`. Phase A (move unique data off OneTouch)
-   is the destructive precondition; uncommitted drafts ready for
-   Phase B/C: `hosts/nori-station/disko-onetouch.nix` (untracked) and
-   `modules/services/backup-restic.nix` (modified — repository paths
-   swapped + `/mnt/media/archive` added to media-irreplaceable).
-   Hetzner Storage Box (off-site) still on the roadmap as a second
-   repository per DESIGN's local + off-site split.
+1. ~~**Restic target — OneTouch transition in flight.**~~ DONE.
+   OneTouch is now the local restic repo at `/mnt/backup` (ext4 via
+   `disko-onetouch.nix`); user-data + open-webui repos verified clean
+   with `restic check`. The 322 GB media-irreplaceable initial backup
+   was running at last session-wrap (~75% complete). Hetzner Storage
+   Box (off-site) remains on the roadmap as a second repository per
+   DESIGN's local + off-site split.
 2. **`common-cpu-amd-pstate`** not imported in `hosts/nori-station/hardware.nix`.
    Add back if AMD pstate tuning matters.
 3. ~~**OneTouch leftovers in `/mnt/media/{home-videos,photos}`**~~ —
@@ -155,7 +158,7 @@ Cross-cutting abstraction:
 8. **OIDC for other services.** Pattern proven for two services
    (chat, metrics-pending). Repeat per service that needs SSO. When
    N reaches 3-4, the auto-gen abstraction earns its keep.
-9. **Media stack first-run wizards.** Nine services live but un-configured
+9. **Media stack first-run wizards.** Eleven services live but un-configured
    (Sonarr, Radarr, Lidarr, Prowlarr, Bazarr, Jellyseerr, qBittorrent,
    calibre-web, Komga). Each has a one-time web-UI wizard. Order matters:
    Prowlarr first (configure indexers), then qBittorrent (set save paths +
@@ -176,6 +179,22 @@ Cross-cutting abstraction:
     The `metadata.db` gets created anyway and the service runs fine; if
     the noise bothers, add a `SystemCallFilter` allowlist override to
     the calibre-web service config.
+12. **UWSM session validation.** `programs.hyprland.withUWSM = true` +
+    greetd `uwsm start hyprland-uwsm.desktop` shipped (commits b48f1c2 +
+    fc2ed4e). The currently-running Hyprland was started under the old
+    direct-exec command, so the "Hyprland started without systemd
+    integration" warning still shows. Logging out (SUPER+SHIFT+E) and
+    back in via tuigreet picks up the UWSM-wrapped path. Once that's
+    verified, expect the manual `systemctl --user restart waybar mako
+    hypridle` dance to be unnecessary on session start.
+13. **Vaultwarden self-hosted server.** Deferred. When ready: sops-managed
+    admin token, repo lives at `/var/lib/vaultwarden` (folded into
+    `user-data` restic + Pattern C2 SQLite `.backup` for correctness),
+    lan-route at `vault.nori.lan`, Bitwarden Electron client (already
+    installed) points at the self-hosted URL. Migration from cloud
+    Bitwarden is one-time export → import → verify → sunset.
+14. **Stremio.** Not in nixpkgs. Decision: use `web.stremio.com` in zen.
+    Skip native install unless flatpak/AppImage becomes worth it.
 
 ## Conventions + how to make changes
 

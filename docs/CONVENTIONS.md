@@ -214,7 +214,56 @@ Both `restic-backups-*` and `btrbk-*` units get `OnFailure = [ "notify@%n.servic
 ## What gets imported where
 
 - `modules/common/` is loaded by every host. Things that are universal: nix settings, locale, base packages, firewall enabled, sshd, tailscale, sops scaffolding.
-- `modules/services/<x>.nix` is loaded by individual hosts that need it. Per-host opt-in via `imports = [ ... ]` in `hosts/<host>/default.nix`.
+- `modules/services/<x>.nix` is loaded by individual hosts that need it. Per-host opt-in via group composition (see below) in `hosts/<host>/default.nix`.
 - `modules/lib/<x>.nix` defines abstractions. Imported once by hosts that use them.
+- `modules/desktop/` is loaded by hosts with a graphical session. Self-contained directory with its own `default.nix`.
 
 When in doubt, prefer per-host opt-in over universal inclusion. Adding a service to `common/` makes every future host inherit it.
+
+## Service grouping: composable aliases, not a hierarchy
+
+Service files stay flat under `modules/services/<name>.nix`. Groupings live in `modules/services/groups.nix` as plain Nix lists per concern (`ai`, `arr`, `media`, `observability`, `backup`, `networking`, `auth`).
+
+Hosts compose by group name:
+
+```nix
+# hosts/<host>/default.nix
+let
+  groups = import ../../modules/services/groups.nix;
+in {
+  imports = [ ../../modules/common ../../modules/lib/lan-route.nix ]
+    ++ groups.networking ++ groups.auth ++ groups.observability
+    ++ groups.backup ++ groups.ai ++ groups.media ++ groups.arr
+    ++ [ ../../modules/desktop ./hardware.nix ./disko.nix ];
+}
+```
+
+**Why composable aliases instead of `modules/services/<group>/<name>.nix` directories:**
+
+- A service can belong to multiple groups (e.g. `ntfy` is `observability` *and* a generic alerting backend; a future `notifications` group can include it without moving files). Filesystem nesting forces a "primary category" choice.
+- No relative-path fragility. Service modules sometimes reference adjacent assets (e.g. `caddy.nix` reads `./caddy-local-ca.crt`) — moving files breaks those refs in subtle ways. Aliases avoid this entirely.
+- `ls modules/services/` shows the whole inventory at one level.
+- Groups are first-class Nix data — programmatically inspectable for cross-cutting views.
+
+**Adding a service**: drop the file at `modules/services/<name>.nix`, append the path to the relevant group(s) in `groups.nix`. A service in two groups is fine — the module system de-duplicates if the same path appears twice across the host's imports.
+
+## Dev workflow
+
+`Justfile` at repo root for common workflows. Install: `brew install just` on macOS, `pkgs.just` already in `modules/common/base.nix`.
+
+```
+just                          # default: rebuild via rsync + nh os switch
+just <recipe> [<host>]        # all recipes accept optional host arg
+just status                   # failed units + disk + restic/btrbk timer summary
+just logs <unit>              # last 50 journal lines
+just check                    # nix flake check
+just deploy                   # git push + nh os switch from origin (no rsync)
+just rollback                 # previous generation
+just backup <repo>            # immediately run restic-backups-<repo>
+just snapshots <repo>         # list restic snapshots
+just --list                   # all recipes
+```
+
+Default `host` is `nori-station`; pass `nori-laptop` (etc.) to deploy elsewhere when those hosts land. SSH targets via Tailnet MagicDNS (`<host>.saola-matrix.ts.net`).
+
+`nh os switch` is the rebuild engine — replaces `nixos-rebuild`. Internal sudo (don't prefix with `sudo`); shows ADDED/REMOVED/CHANGED package diff before activating.
