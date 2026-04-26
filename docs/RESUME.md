@@ -121,14 +121,18 @@ What's next, roughly in order:
 4. **`backup-restic.nix` module.** Implements Pattern A/B/C as reusable
    building blocks. Worth landing before more services so each new
    service onboards with backup config in the same PR.
-5. **`hosts/nori-pi/`.** New host, USB SSD root, restic target. Adds
-   the second host to the flake.
 
-Restic backups need a target. Until `nori-pi` exists, services can
-either run unbacked-up (acceptable for short stretches if data is
-re-derivable) or back up to a temporary local path on root. Don't let
-"no Pi yet" become an excuse to defer restic configs indefinitely;
-land the modules with a placeholder target.
+**`nori-pi` is deferred** — no NixOS-bootable USB SSD on hand yet.
+The existing Raspberry Pi runs PiOS and can fill the interim role for
+DNS (Blocky via apt) and/or as a restic target if it has a USB HDD
+attached. When a fresh SSD lands, do the NixOS Pi properly and migrate
+those interim services into `hosts/nori-pi/` declaratively.
+
+Restic backups need a target. Until either the NixOS Pi or PiOS-as-
+interim is set up, services can run unbacked-up (acceptable for short
+stretches if data is re-derivable) or back up to a temporary local
+path on root. Don't let "no Pi yet" become an excuse to defer restic
+configs indefinitely; land the modules with a placeholder target.
 
 ## Working style with this user
 
