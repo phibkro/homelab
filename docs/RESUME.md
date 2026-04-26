@@ -104,35 +104,44 @@ wrong drive. Always disambiguate by model:
 DESIGN.md L186-289 has the service table and backup patterns. The arc
 that's already happened (sequence below picks up after):
 
-- ✅ Tailscale module landed; canonical hostname restored.
+- ✅ Tailscale module + canonical hostname restored.
 - ✅ Phase 2 (IronWolf btrfs reformat) pulled forward; media subvolumes
   in place; IronWolf irreplaceables restored.
+- ✅ Samba (`modules/services/samba.nix`) — two shares (whole IronWolf
+  + /srv/share), tailnet-only, single user. Pending: `sudo smbpasswd
+  -a nori` on the host to set the SMB password.
+- ✅ Blocky (`modules/services/blocky.nix`) — LAN-facing adblocking
+  DNS on port 53. Pending: change router DHCP DNS server to
+  192.168.1.181 to actually route LAN clients through it.
+- ✅ sops-nix scaffolding (`modules/common/sops.nix` + `.sops.yaml` +
+  `secrets/secrets.yaml`) — bootstrap complete, decryption verified
+  end-to-end on host. Edit secrets via `sops secrets/secrets.yaml`
+  on the Mac (`SOPS_AGE_KEY_FILE` exported in zshrc).
+- ✅ `backup-restic.nix` Pattern A scaffolding — two restic jobs
+  (user-data + media-irreplaceable) with sops-managed password,
+  daily timer. **PLACEHOLDER repository on `/var/backup/restic-local/`**
+  — not a real backup. Swap to SFTP target when nori-pi or Hetzner
+  arrives (module comment documents the swap).
 
 What's next, roughly in order:
 
-1. **Samba.** First true service module (`modules/services/samba.nix`).
-   Pattern A backup. Modest scope — one or two shares to start
-   (`/srv/share`, maybe `/mnt/media/streaming` once Jellyfin's there).
-2. **Ollama + Open WebUI.** Models from
-   `nori-backup-20260424T223707Z/ollama-share/` on the One Touch.
-   Pattern A for Ollama, Pattern C2 (sqlite `.backup`) for Open WebUI.
-3. **Jellyfin.** Reads `/mnt/media/streaming` (currently empty) and
-   `/mnt/media/home-videos` (has the OneTouch Footage import).
-4. **`backup-restic.nix` module.** Implements Pattern A/B/C as reusable
-   building blocks. Worth landing before more services so each new
-   service onboards with backup config in the same PR.
+1. **Ollama + Open WebUI.** Models on the One Touch under
+   `backup/nori-backup-20260424T223707Z/ollama-share/` (~34 GB).
+   Pattern A for Ollama models (re-derivable, no need to back up),
+   Pattern C2 (sqlite `.backup`) for Open WebUI's webui.db. After
+   landing, restore chat history and re-enable the model lineup.
+2. **Jellyfin.** Reads `/mnt/media/streaming` (currently empty —
+   needs Sonarr/Radarr or manual seed) and `/mnt/media/home-videos`
+   (has the partial OneTouch Footage import). Pattern A.
+3. **Replace placeholder restic target.** First with PiOS-imperative
+   restic-rest-server or SFTP if useful; later with `hosts/nori-pi/`
+   declarative when the NixOS-bootable SSD arrives. Then Hetzner.
 
 **`nori-pi` is deferred** — no NixOS-bootable USB SSD on hand yet.
 The existing Raspberry Pi runs PiOS and can fill the interim role for
 DNS (Blocky via apt) and/or as a restic target if it has a USB HDD
 attached. When a fresh SSD lands, do the NixOS Pi properly and migrate
 those interim services into `hosts/nori-pi/` declaratively.
-
-Restic backups need a target. Until either the NixOS Pi or PiOS-as-
-interim is set up, services can run unbacked-up (acceptable for short
-stretches if data is re-derivable) or back up to a temporary local
-path on root. Don't let "no Pi yet" become an excuse to defer restic
-configs indefinitely; land the modules with a placeholder target.
 
 ## Working style with this user
 
