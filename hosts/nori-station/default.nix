@@ -28,6 +28,8 @@
     ../../modules/services/prowlarr.nix
     ../../modules/services/sonarr.nix
     ../../modules/services/radarr.nix
+    ../../modules/services/bazarr.nix
+    ../../modules/services/jellyseerr.nix
     ../../modules/desktop
     ./disko.nix
     ./disko-media.nix
