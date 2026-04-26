@@ -1,28 +1,235 @@
-{ inputs, pkgs, ... }:
+{
+  inputs,
+  pkgs,
+  lib,
+  ...
+}:
 let
-  # SUPER+H invokes this — list of binds piped into fuzzel's --dmenu mode
-  # for a search-as-you-type cheatsheet. Update the heredoc when binds
-  # change; nothing parses hyprland.conf to keep this in sync (would be
-  # brittle with multi-arg dispatchers and quote-escaped exec strings).
+  # ---------------------------------------------------------------------
+  # Bind data — single source of truth for the Hyprland config + the
+  # SUPER+H cheatsheet. Each record:
+  #   mod     modifier prefix as Hyprland sees it ("$mod", "$mod SHIFT", "")
+  #   key     key name; may be a template with {n} when `range` is set
+  #   action  Hyprland dispatcher + arg; may also use {n}
+  #   desc    one-line label for the cheatsheet
+  #   range   optional { from; to; step? } — record expands to multiple
+  #           Hyprland binds (one per integer); cheatsheet shows it as a
+  #           single line with `from..to` substituted into the key.
+  # ---------------------------------------------------------------------
+
+  # Pretty-print the mod prefix for the cheatsheet.
+  # "$mod SHIFT" → "SUPER + SHIFT"; "$mod" → "SUPER"; "" → "".
+  prettyMod =
+    m:
+    if m == "" then
+      ""
+    else
+      lib.replaceStrings
+        [
+          "$mod"
+          " "
+        ]
+        [
+          "SUPER"
+          " + "
+        ]
+        m;
+
+  # Expand a record with `range` into one record per integer in the
+  # sequence, substituting {n} in `key` and `action`. Records without
+  # `range` pass through unchanged.
+  expandRange =
+    b:
+    if b ? range then
+      let
+        step = b.range.step or 1;
+        count = ((b.range.to - b.range.from) / step) + 1;
+        ns = lib.genList (i: b.range.from + i * step) count;
+        sub = n: lib.replaceStrings [ "{n}" ] [ (toString n) ];
+      in
+      map (
+        n:
+        b
+        // {
+          key = sub n b.key;
+          action = sub n b.action;
+        }
+      ) ns
+    else
+      [ b ];
+
+  # `mod, key, action` — Hyprland's bind/bindm value format.
+  toHyprlandBind = b: "${b.mod}, ${b.key}, ${b.action}";
+
+  # One cheatsheet line per logical bind (range records render once with
+  # `from..to` in the key slot, not N times).
+  cheatsheetLine =
+    b:
+    let
+      keyText =
+        if b ? range then
+          lib.replaceStrings [ "{n}" ] [ "${toString b.range.from}..${toString b.range.to}" ] b.key
+        else
+          b.key;
+      mod = prettyMod b.mod;
+      combo = if mod == "" then keyText else "${mod} + ${keyText}";
+    in
+    "${combo}  →  ${b.desc}";
+
+  keyBinds = [
+    # Apps
+    {
+      mod = "$mod";
+      key = "RETURN";
+      action = "exec, ghostty";
+      desc = "ghostty (terminal)";
+    }
+    {
+      mod = "$mod";
+      key = "SPACE";
+      action = "exec, fuzzel";
+      desc = "fuzzel (launcher)";
+    }
+    {
+      mod = "$mod";
+      key = "B";
+      action = "exec, zen";
+      desc = "zen (browser)";
+    }
+
+    # Help / session
+    {
+      mod = "$mod";
+      key = "H";
+      action = "exec, hypr-cheatsheet";
+      desc = "this cheatsheet";
+    }
+    {
+      mod = "$mod";
+      key = "L";
+      action = "exec, loginctl lock-session";
+      desc = "lock screen";
+    }
+
+    # Window
+    {
+      mod = "$mod";
+      key = "Q";
+      action = "killactive,";
+      desc = "close window";
+    }
+    {
+      mod = "$mod SHIFT";
+      key = "E";
+      action = "exit,";
+      desc = "exit Hyprland";
+    }
+    {
+      mod = "$mod";
+      key = "V";
+      action = "togglefloating,";
+      desc = "toggle floating";
+    }
+    {
+      mod = "$mod";
+      key = "F";
+      action = "fullscreen,";
+      desc = "fullscreen";
+    }
+
+    # Focus — H/L claimed by cheatsheet/lock; J/K kept for vim down/up;
+    # arrows cover all four directions.
+    {
+      mod = "$mod";
+      key = "j";
+      action = "movefocus, d";
+      desc = "focus down (vim)";
+    }
+    {
+      mod = "$mod";
+      key = "k";
+      action = "movefocus, u";
+      desc = "focus up (vim)";
+    }
+    {
+      mod = "$mod";
+      key = "left";
+      action = "movefocus, l";
+      desc = "focus left";
+    }
+    {
+      mod = "$mod";
+      key = "down";
+      action = "movefocus, d";
+      desc = "focus down";
+    }
+    {
+      mod = "$mod";
+      key = "up";
+      action = "movefocus, u";
+      desc = "focus up";
+    }
+    {
+      mod = "$mod";
+      key = "right";
+      action = "movefocus, r";
+      desc = "focus right";
+    }
+
+    # Workspaces — ranged
+    {
+      mod = "$mod";
+      key = "{n}";
+      action = "workspace, {n}";
+      range = {
+        from = 1;
+        to = 9;
+      };
+      desc = "switch to workspace";
+    }
+    {
+      mod = "$mod SHIFT";
+      key = "{n}";
+      action = "movetoworkspace, {n}";
+      range = {
+        from = 1;
+        to = 9;
+      };
+      desc = "move window to workspace";
+    }
+
+    # Bare-key (no modifier) — leading comma is correct Hyprland syntax.
+    {
+      mod = "";
+      key = "PRINT";
+      action = ''exec, grim -g "$(slurp)" - | wl-copy -t image/png'';
+      desc = "screenshot region → clipboard";
+    }
+  ];
+
+  mouseBinds = [
+    {
+      mod = "$mod";
+      key = "mouse:272";
+      action = "movewindow";
+      desc = "drag-LMB: move window";
+    }
+    {
+      mod = "$mod";
+      key = "mouse:273";
+      action = "resizewindow";
+      desc = "drag-RMB: resize window";
+    }
+  ];
+
+  # Cheatsheet text → /nix/store file → cat'd into fuzzel by the wrapper.
+  # File-based to dodge heredoc indentation quirks; also self-documenting
+  # (`cat /nix/store/...-hypr-cheatsheet.txt` to see the rendered text).
+  cheatsheetText = lib.concatMapStringsSep "\n" cheatsheetLine (keyBinds ++ mouseBinds);
+  cheatsheetFile = pkgs.writeText "hypr-cheatsheet.txt" cheatsheetText;
+
   cheatsheet = pkgs.writeShellScriptBin "hypr-cheatsheet" ''
-    ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt "binds: " --width 60 --lines 18 >/dev/null <<'EOF'
-    SUPER + RETURN       ghostty (terminal)
-    SUPER + SPACE        fuzzel (launcher)
-    SUPER + B            zen (browser)
-    SUPER + H            this cheatsheet
-    SUPER + L            lock screen
-    SUPER + Q            close window
-    SUPER + V            toggle floating
-    SUPER + F            fullscreen
-    SUPER + SHIFT + E    exit Hyprland
-    SUPER + arrows       focus left/down/up/right
-    SUPER + J / K        focus down/up (vim-style)
-    SUPER + 1..9         switch to workspace
-    SUPER + SHIFT + 1..9 move window to workspace
-    SUPER + drag-LMB     move window
-    SUPER + drag-RMB     resize window
-    PRINT                screenshot region → clipboard
-    EOF
+    cat ${cheatsheetFile} | ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt "binds: " --width 64 --lines 24 >/dev/null
   '';
 in
 {
@@ -47,6 +254,12 @@ in
     users.nori = {
       home.stateVersion = "25.11"; # match host's system.stateVersion
       programs.home-manager.enable = true;
+
+      # Cheatsheet on PATH. Referenced by SUPER+H as `hypr-cheatsheet`
+      # (name, not store path) — avoids the cycle where the binding's
+      # store path would depend on the cheatsheet text which depends on
+      # the bindings.
+      home.packages = [ cheatsheet ];
 
       # Cursor — bibata-modern-classic at 24px reads well on the 34" 1440p
       # panel (~6.5mm physical). gtk + x11 + hyprcursor.enable = false
@@ -109,62 +322,12 @@ in
           # Mod key — SUPER (Windows / Cmd-equivalent).
           "$mod" = "SUPER";
 
-          bind = [
-            # Apps
-            "$mod, RETURN, exec, ghostty"
-            "$mod, SPACE,  exec, fuzzel"
-            "$mod, B,      exec, zen"
-
-            # Help / session
-            "$mod, H, exec, ${cheatsheet}/bin/hypr-cheatsheet"
-            "$mod, L, exec, loginctl lock-session"
-
-            # Window
-            "$mod, Q, killactive,"
-            "$mod SHIFT, E, exit,"
-            "$mod, V, togglefloating,"
-            "$mod, F, fullscreen,"
-
-            # Focus — H and L claimed by cheatsheet/lock above; J/K kept
-            # for vim-style down/up; arrows cover all four directions.
-            "$mod, j, movefocus, d"
-            "$mod, k, movefocus, u"
-            "$mod, left,  movefocus, l"
-            "$mod, down,  movefocus, d"
-            "$mod, up,    movefocus, u"
-            "$mod, right, movefocus, r"
-
-            # Workspaces 1-9
-            "$mod, 1, workspace, 1"
-            "$mod, 2, workspace, 2"
-            "$mod, 3, workspace, 3"
-            "$mod, 4, workspace, 4"
-            "$mod, 5, workspace, 5"
-            "$mod, 6, workspace, 6"
-            "$mod, 7, workspace, 7"
-            "$mod, 8, workspace, 8"
-            "$mod, 9, workspace, 9"
-
-            "$mod SHIFT, 1, movetoworkspace, 1"
-            "$mod SHIFT, 2, movetoworkspace, 2"
-            "$mod SHIFT, 3, movetoworkspace, 3"
-            "$mod SHIFT, 4, movetoworkspace, 4"
-            "$mod SHIFT, 5, movetoworkspace, 5"
-            "$mod SHIFT, 6, movetoworkspace, 6"
-            "$mod SHIFT, 7, movetoworkspace, 7"
-            "$mod SHIFT, 8, movetoworkspace, 8"
-            "$mod SHIFT, 9, movetoworkspace, 9"
-
-            # Screenshot region → clipboard (shell-script-y; replace later
-            # with a wrapper if it grows beyond one line).
-            ", PRINT, exec, grim -g \"$(slurp)\" - | wl-copy -t image/png"
-          ];
-
-          bindm = [
-            # Mouse drag move/resize
-            "$mod, mouse:272, movewindow"
-            "$mod, mouse:273, resizewindow"
-          ];
+          # Generated from the structured keyBinds / mouseBinds lists at
+          # the top of this file. Range records (e.g. workspaces 1..9)
+          # expand to one Hyprland bind per integer; the cheatsheet
+          # shows the same range as a single line.
+          bind = map toHyprlandBind (lib.concatMap expandRange keyBinds);
+          bindm = map toHyprlandBind mouseBinds;
 
           # Autostart — polkit agent for elevation prompts.
           # Wallpaper / status bar / notification daemon are deferred to
