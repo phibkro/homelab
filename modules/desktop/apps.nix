@@ -20,6 +20,7 @@
     pkgs.grim # screenshot capture
     pkgs.slurp # region selection (paired with grim)
     pkgs.libnotify # `notify-send` for shell scripts
+    pkgs.pwvucontrol # PipeWire mixer GUI (sink/source picker, per-app vol)
   ];
 
   # Required for proper screen sharing under PipeWire+Wayland.
