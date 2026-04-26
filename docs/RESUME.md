@@ -158,17 +158,26 @@ Dev workflow:
 8. **OIDC for other services.** Pattern proven for two services
    (chat, metrics-pending). Repeat per service that needs SSO. When
    N reaches 3-4, the auto-gen abstraction earns its keep.
-9. **Media stack first-run wizards.** Eleven services live but un-configured
+9. **Media stack first-run wizards.** Twelve services live but un-configured
    (Sonarr, Radarr, Lidarr, Prowlarr, Bazarr, Jellyseerr, qBittorrent,
-   calibre-web, Komga). Each has a one-time web-UI wizard. Order matters:
+   calibre-web, Komga, Immich, Radicale, Syncthing). Each has a one-time
+   web-UI wizard. Order matters:
    Prowlarr first (configure indexers), then qBittorrent (set save paths +
    credentials), then Sonarr+Radarr+Lidarr (connect to both, add libraries
    under `/mnt/media/streaming/{shows,movies,music}`), then Bazarr (link
    Sonarr+Radarr), then Jellyseerr (tie to Jellyfin auth + connect
-   Sonarr+Radarr). calibre-web + Komga are independent of the *arr
-   chain — first-user creation + library path. Each module's header
-   comment has the per-service wizard steps. ~45 min total for the
-   whole sequence.
+   Sonarr+Radarr). calibre-web + Komga + Immich are independent of the
+   *arr chain — first-user creation + library path. Each module's header
+   comment has the per-service wizard steps. ~60 min total.
+
+   **Immich-specific wizard step worth flagging**: Settings →
+   Administration → Backup → enable Scheduled Database Backup
+   (Pattern B per DESIGN.md L283-289). Without it, Immich never
+   writes the `.sql.gz` dumps that restic's media-irreplaceable
+   path `/var/lib/immich/backups` is configured to pick up — so
+   the photos themselves are backed up but the DB (with all your
+   face-tags, albums, smart-search embeddings) isn't recoverable
+   from restic until this is enabled. Cron `0 02 * * *`, keep 7.
 10. **calibre-web nixpkgs overlay.** Module enables an inline overlay
     relaxing `requests` version pin (upstream pins `<2.33.0`, nixpkgs
     ships 2.33.1). Drop the overlay when nixpkgs catches up. See
