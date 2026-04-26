@@ -248,7 +248,10 @@ in
           # Format: `match:<prop> <regex>, <effect>[, <effect>...]`.
           # See https://wiki.hypr.land/0.54.0/Configuring/Window-Rules/.
           windowrule = [
-            "match:class ^(com\\.saivert\\.pwvucontrol)$, float, size 700 500, center"
+            # Boolean effects in 0.54 take an explicit `on` value (the
+            # wiki's `[on]` notation; cf. examples like `no_blur on`).
+            # `size` takes two width/height integers.
+            "match:class ^(com\\.saivert\\.pwvucontrol)$, float on, size 700 500, center on"
           ];
 
           # Generated from the structured keyBinds / mouseBinds lists at
