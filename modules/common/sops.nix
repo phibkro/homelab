@@ -20,5 +20,12 @@
 
   imports = [ inputs.sops-nix.nixosModules.sops ];
 
-  sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+  sops = {
+    age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+
+    # Default file for `sops.secrets.<name>` declarations across the
+    # repo. Per-secret `sopsFile` overrides if a service needs to keep
+    # its secrets in a separate file (rare).
+    defaultSopsFile = ../../secrets/secrets.yaml;
+  };
 }

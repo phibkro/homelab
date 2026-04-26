@@ -23,7 +23,7 @@
 #   - Commit and rebuild.
 
 keys:
-  - &mac age1<MAC_PUBKEY_HERE>
+  - &mac age1nxq07zper943wz4eredgt82e5jghx7d0sfldzqngn2kfdnwyhuhsl3h0r4
   - &nori_station age1d893pv2w42vtharqse3e3yd7rpc8nst7mlw2csssy7e9ql3lcd2q7vw4s0
 
 creation_rules:
