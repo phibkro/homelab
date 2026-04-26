@@ -55,6 +55,88 @@
     "notify@restic-backups-open-webui.service"
   ];
 
+  # ---------------------------------------------------------------------
+  # Backup verification cadence (DESIGN.md L390-398).
+  #
+  # Two timers in addition to the daily backup runs:
+  #   weekly  — `restic check`               (metadata only, fast)
+  #   monthly — `restic check --read-data-subset=10%`
+  #             (samples 10% of pack data; covers 100% over ~10 months)
+  #
+  # Both iterate the same three repos. Either step failing for any
+  # repo trips OnFailure → notify@ → ntfy.sh urgent alert. A backup
+  # that succeeds-but-rots silently is the failure mode this guards
+  # against; running `restic backup` daily without ever reading the
+  # repo back is the easiest way to discover bit-rot during a real
+  # restore.
+  #
+  # The wrapper iterates serially (USB HDD; concurrent reads thrash).
+  # Failures don't short-circuit — every repo gets attempted so a
+  # corrupt repo doesn't hide rot in the others.
+  systemd.services.restic-check-weekly = {
+    description = "Weekly metadata check of all restic repositories";
+    after = [ "mnt-backup.mount" ];
+    requires = [ "mnt-backup.mount" ];
+    unitConfig.OnFailure = [ "notify@restic-check-weekly.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      User = "root";
+    };
+    environment.RESTIC_PASSWORD_FILE = config.sops.secrets.restic-password.path;
+    script = ''
+      fail=0
+      for name in user-data media-irreplaceable open-webui; do
+        echo "[$name] restic check"
+        if ! ${pkgs.restic}/bin/restic -r /mnt/backup/$name check; then
+          echo "[$name] FAILED"
+          fail=1
+        fi
+      done
+      exit $fail
+    '';
+  };
+
+  systemd.timers.restic-check-weekly = {
+    description = "Weekly metadata check of all restic repositories";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "Sun 05:00:00";
+      Persistent = true;
+    };
+  };
+
+  systemd.services.restic-check-monthly = {
+    description = "Monthly read-10% data sample check of all restic repositories";
+    after = [ "mnt-backup.mount" ];
+    requires = [ "mnt-backup.mount" ];
+    unitConfig.OnFailure = [ "notify@restic-check-monthly.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      User = "root";
+    };
+    environment.RESTIC_PASSWORD_FILE = config.sops.secrets.restic-password.path;
+    script = ''
+      fail=0
+      for name in user-data media-irreplaceable open-webui; do
+        echo "[$name] restic check --read-data-subset=10%"
+        if ! ${pkgs.restic}/bin/restic -r /mnt/backup/$name check --read-data-subset=10%; then
+          echo "[$name] FAILED"
+          fail=1
+        fi
+      done
+      exit $fail
+    '';
+  };
+
+  systemd.timers.restic-check-monthly = {
+    description = "Monthly read-10% data sample check of all restic repositories";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "*-*-01 06:00:00"; # 1st of each month
+      Persistent = true;
+    };
+  };
+
   services.restic.backups = {
     # User data: /home/nori personal stuff + /srv/share dumping ground.
     # Both currently empty; declared now so they're backed up the
