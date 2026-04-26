@@ -65,4 +65,14 @@
   # close them per-service later if you want to enforce going through
   # Caddy.
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 80 443 ];
+
+  # Add Caddy's internal root CA to the system trust store so other
+  # services on this host (Open WebUI's Python httpx fetching OIDC
+  # discovery, future Gatus probes through Caddy URLs, anything
+  # using libcurl/openssl/python-requests) trust the certs Caddy
+  # issues for *.nori.lan. The cert here is the public half of
+  # Caddy's auto-generated CA — pull a fresh copy from
+  # /var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt
+  # if Caddy ever regenerates it.
+  security.pki.certificateFiles = [ ./caddy-local-ca.crt ];
 }

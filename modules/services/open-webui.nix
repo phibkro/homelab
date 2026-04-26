@@ -41,6 +41,13 @@
       OAUTH_CLIENT_ID = "chat";
       OAUTH_PROVIDER_NAME = "Authelia";
       ENABLE_OAUTH_SIGNUP = "True";
+      # Python's httpx/requests/urllib3 use certifi's bundled trust
+      # store by default — they don't see /etc/ssl/certs and so don't
+      # trust Caddy's local CA. SSL_CERT_FILE overrides certifi to use
+      # the system bundle (which has the local CA via
+      # security.pki.certificateFiles in modules/services/caddy.nix).
+      SSL_CERT_FILE = "/etc/ssl/certs/ca-bundle.crt";
+      REQUESTS_CA_BUNDLE = "/etc/ssl/certs/ca-bundle.crt";
     };
   };
 
