@@ -6,6 +6,8 @@
     ../../modules/common
     ../../modules/services/samba.nix
     ../../modules/services/blocky.nix
+    ../../modules/services/ollama.nix
+    ../../modules/services/open-webui.nix
     ../../modules/services/backup-restic.nix
     ./disko.nix
     ./disko-media.nix

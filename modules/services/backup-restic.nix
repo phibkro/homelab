@@ -83,5 +83,36 @@
         "--keep-monthly 12"
       ];
     };
+
+    # Open WebUI state — Pattern C2 from DESIGN.md L258-275.
+    # SQLite needs a logical .backup before filesystem snapshot to
+    # produce a consistent dump. The guard handles the case where
+    # the DB doesn't exist yet (first run, before any user has
+    # registered).
+    open-webui = {
+      paths = [
+        "/var/lib/open-webui"
+        "/var/backup/open-webui"
+      ];
+      repository = "/var/backup/restic-local/open-webui";
+      passwordFile = config.sops.secrets.restic-password.path;
+      initialize = true;
+      backupPrepareCommand = ''
+        if [ -f /var/lib/open-webui/webui.db ]; then
+          mkdir -p /var/backup/open-webui
+          ${pkgs.sqlite}/bin/sqlite3 /var/lib/open-webui/webui.db \
+            ".backup '/var/backup/open-webui/webui.db'"
+        fi
+      '';
+      timerConfig = {
+        OnCalendar = "*-*-* 04:00:00";
+        Persistent = true;
+      };
+      pruneOpts = [
+        "--keep-daily 7"
+        "--keep-weekly 4"
+        "--keep-monthly 12"
+      ];
+    };
   };
 }

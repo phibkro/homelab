@@ -1,0 +1,40 @@
+{ config, lib, pkgs, ... }:
+
+{
+  # Jellyfin: media streaming server, tailnet-only.
+  #
+  # Reads media from /mnt/media/streaming and /mnt/media/home-videos
+  # (configured later via Jellyfin's web UI: Dashboard → Libraries
+  # → Add). Add the jellyfin user to the `users` group so it can read
+  # the nori:users-owned media tree.
+  #
+  # Per DESIGN tier table, Jellyfin's database is re-derivable from
+  # the media library (just media metadata + watch progress + user
+  # accounts). Not in scope for off-site backup; Pattern A daily to
+  # Pi-or-Hetzner is enough as a fast restore convenience. Backup
+  # config is in backup-restic.nix (or will be when added) — for now
+  # nothing valuable to lose.
+  #
+  # First-time setup: connect to
+  #   http://nori-station.saola-matrix.ts.net:8096
+  # …walk through the wizard (admin user, library paths, transcoding
+  # preferences). The admin user is independent of the system `nori`
+  # user.
+  #
+  # Hardware transcoding via the RTX 5060 Ti is supported via NVENC
+  # but requires explicit Jellyfin configuration in the web UI
+  # (Dashboard → Playback → Hardware acceleration → Nvidia NVENC,
+  # then reload). NixOS module exposes the GPU automatically since
+  # the nvidia driver is loaded host-wide.
+
+  services.jellyfin = {
+    enable = true;
+    openFirewall = false;
+  };
+
+  # /mnt/media/* is owned nori:users; the jellyfin service user needs
+  # group membership to read it.
+  users.users.jellyfin.extraGroups = [ "users" ];
+
+  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8096 ];
+}
