@@ -6,6 +6,7 @@
     ../../modules/common
     ../../modules/services/samba.nix
     ../../modules/services/blocky.nix
+    ../../modules/services/backup-restic.nix
     ./disko.nix
     ./disko-media.nix
     ./hardware.nix
