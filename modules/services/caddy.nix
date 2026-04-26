@@ -50,12 +50,12 @@
           reverse_proxy localhost:8096
         '';
       };
-      "webui.nori.lan" = {
+      "chat.nori.lan" = {
         extraConfig = ''
           reverse_proxy localhost:8080
         '';
       };
-      "ollama.nori.lan" = {
+      "ai.nori.lan" = {
         extraConfig = ''
           reverse_proxy localhost:11434
         '';
@@ -70,7 +70,7 @@
           reverse_proxy localhost:8090
         '';
       };
-      "ntfy.nori.lan" = {
+      "alert.nori.lan" = {
         extraConfig = ''
           reverse_proxy localhost:8081
         '';

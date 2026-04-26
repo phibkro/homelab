@@ -73,11 +73,11 @@
         mapping = {
           "auth.nori.lan" = "100.81.5.122";
           "jellyfin.nori.lan" = "100.81.5.122";
-          "webui.nori.lan" = "100.81.5.122";
-          "ollama.nori.lan" = "100.81.5.122";
+          "chat.nori.lan" = "100.81.5.122";
+          "ai.nori.lan" = "100.81.5.122";
           "gatus.nori.lan" = "100.81.5.122";
           "beszel.nori.lan" = "100.81.5.122";
-          "ntfy.nori.lan" = "100.81.5.122";
+          "alert.nori.lan" = "100.81.5.122";
         };
       };
 
