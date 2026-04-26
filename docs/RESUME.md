@@ -51,7 +51,7 @@ tailscale module is the first service module — declares
 any future re-auth lands the canonical hostname.
 
 `disko` applied to both NVMe root (SN750, btrfs label `nixos`, six
-subvolumes) and IronWolf media (4 TB, btrfs label `media`, five
+subvolumes) and IronWolf media (4 TB, btrfs label `ironwolf-storage`, five
 subvolumes per DESIGN L130-138). Both disko configs target by-id
 paths, not `/dev/nvme*` — see "Disk identity" below.
 
@@ -80,7 +80,7 @@ wrong drive. Always disambiguate by model:
   by-id `nvme-WDS100T3X0C-00SJG0_204526810532`
 - Corsair Force MP510 960GB → Windows, **never touch**
   by-id `nvme-Force_MP510_2031826300012953207B`
-- Seagate IronWolf Pro 4TB → media btrfs, label `media`
+- Seagate IronWolf Pro 4TB → media btrfs, label `ironwolf-storage`
   by-id `ata-ST4000NE001-2MA101_WS24X543`
 - Seagate One Touch 5TB → external backup drive, exfat, normally on
   the Mac at `/Volumes/One Touch`. UUID `2A05-DC62`.
