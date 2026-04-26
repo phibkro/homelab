@@ -164,6 +164,10 @@
     # Streaming excluded by tier policy. archive is mostly immutable so
     # daily restic runs are nearly-free (incremental dedup); library
     # (curated books + comics, hand-uploaded) is treated the same.
+    # /var/lib/immich/backups is Immich's Pattern B SQL dumps —
+    # Immich's own scheduled backup writes to this path, restic
+    # picks it up here as the second half of the consistent
+    # point-in-time restore plan (per DESIGN.md L283-289).
     media-irreplaceable = {
       paths = [
         "/mnt/media/photos"
@@ -171,6 +175,7 @@
         "/mnt/media/projects"
         "/mnt/media/archive"
         "/mnt/media/library"
+        "/var/lib/immich/backups"
       ];
       repository = "/mnt/backup/media-irreplaceable";
       passwordFile = config.sops.secrets.restic-password.path;

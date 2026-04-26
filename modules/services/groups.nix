@@ -47,12 +47,14 @@
   ];
 
   # Media serving — Jellyfin (video/music), Samba (SMB shares),
-  # calibre-web (ebooks + OPDS), Komga (comics + OPDS).
+  # calibre-web (ebooks + OPDS), Komga (comics + OPDS), Immich (photo
+  # management).
   media = [
     ./jellyfin.nix
     ./samba.nix
     ./calibre-web.nix
     ./komga.nix
+    ./immich.nix
   ];
 
   # Metrics / monitoring / alert delivery. ntfy provides the notify@
