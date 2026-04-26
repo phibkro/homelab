@@ -13,6 +13,7 @@
     ../../modules/services/btrbk.nix
     ../../modules/services/beszel.nix
     ../../modules/services/gatus.nix
+    ../../modules/services/authelia.nix
     ../../modules/services/backup-restic.nix
     ./disko.nix
     ./disko-media.nix
