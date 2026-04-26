@@ -11,6 +11,8 @@
     ../../modules/services/jellyfin.nix
     ../../modules/services/ntfy.nix
     ../../modules/services/btrbk.nix
+    ../../modules/services/beszel.nix
+    ../../modules/services/uptime-kuma.nix
     ../../modules/services/backup-restic.nix
     ./disko.nix
     ./disko-media.nix

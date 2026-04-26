@@ -39,28 +39,41 @@
 
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8081 ];
 
+  # Channel name for ntfy.sh (public service) — security-by-obscurity,
+  # don't put in the public repo. Match the value in your .secrets.env
+  # `NTFY_CHANNEL` so all your Claude/system alerts land in the same
+  # mobile-app subscription you already use.
+  sops.secrets.ntfy-channel = {
+    mode = "0444";  # readable by the notify@ service running as root,
+                    # but no special user — root reads everything anyway.
+  };
+
   # Notification template — used as `OnFailure = "notify@%n.service"`
   # by any unit that should alert on failure (restic backups, btrbk
   # snapshots, etc.). The %i instance parameter expands to the failed
-  # unit's name; the template POSTs an urgent ntfy message.
+  # unit's name. POSTs an urgent message to the user's existing
+  # ntfy.sh channel (sops-managed).
   #
-  # Subscribe from your phone / mac:
-  #   ntfy mobile app → add subscription → server
-  #     http://nori-station.saola-matrix.ts.net:8081
-  #     topic: urgent
+  # Test from any tailnet host (after the secret is in place):
+  #   curl -H "Title: test" -d "hello" \
+  #     "https://ntfy.sh/$(cat /run/secrets/ntfy-channel)"
   #
-  # Test from any tailnet host:
-  #   curl -H "Title: test" -d "hello" http://nori-station.saola-matrix.ts.net:8081/urgent
+  # The local self-hosted ntfy-sh instance above is kept running for
+  # potential future internal-only alerts (services that shouldn't
+  # traverse public internet) but the OnFailure template targets
+  # ntfy.sh directly because that's where the user's mobile app is
+  # already subscribed.
   systemd.services."notify@" = {
     description = "Send ntfy urgent alert for failed unit %i";
     scriptArgs = "%i";
     script = ''
+      CHANNEL=$(cat ${config.sops.secrets.ntfy-channel.path})
       ${pkgs.curl}/bin/curl -fsS \
         -H "Title: nori-station: $1 failed" \
         -H "Priority: urgent" \
         -H "Tags: warning,rotating_light" \
         -d "Unit $1 failed on nori-station. Check journalctl -u $1." \
-        http://127.0.0.1:8081/urgent || true
+        "https://ntfy.sh/$CHANNEL" || true
     '';
     serviceConfig = {
       Type = "oneshot";
