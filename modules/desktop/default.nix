@@ -5,5 +5,8 @@ _: {
     ./audio.nix
     ./apps.nix
     ./home.nix
+    ./waybar.nix
+    ./mako.nix
+    ./hypr-lock.nix
   ];
 }
