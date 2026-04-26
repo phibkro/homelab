@@ -66,7 +66,12 @@
                   mountOptions = [ "compress=zstd:3" "noatime" ];
                 };
                 "@snapshots" = {
-                  # No mountpoint — btrbk operates on the subvolume directly.
+                  # Mounted so btrbk can write IronWolf-side snapshots
+                  # there. Cross-filesystem snapshots aren't a thing in
+                  # btrfs — root snapshots go to /.snapshots, IronWolf
+                  # snapshots have to live on the IronWolf btrfs.
+                  mountpoint = "/mnt/media/.snapshots";
+                  mountOptions = [ "compress=zstd:3" "noatime" ];
                 };
               };
             };

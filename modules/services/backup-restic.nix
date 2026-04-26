@@ -39,6 +39,16 @@
     "d /var/backup/restic-local 0700 root root -"
   ];
 
+  # Wire each restic backup unit's failure into ntfy via the template
+  # in modules/services/ntfy.nix. The names must match the systemd
+  # units the restic module generates: restic-backups-<job>.service.
+  systemd.services.restic-backups-user-data.unitConfig.OnFailure =
+    [ "notify@restic-backups-user-data.service" ];
+  systemd.services.restic-backups-media-irreplaceable.unitConfig.OnFailure =
+    [ "notify@restic-backups-media-irreplaceable.service" ];
+  systemd.services.restic-backups-open-webui.unitConfig.OnFailure =
+    [ "notify@restic-backups-open-webui.service" ];
+
   services.restic.backups = {
     # User data: /home/nori personal stuff + /srv/share dumping ground.
     # Both currently empty; declared now so they're backed up the

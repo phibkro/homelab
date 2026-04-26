@@ -9,6 +9,8 @@
     ../../modules/services/ollama.nix
     ../../modules/services/open-webui.nix
     ../../modules/services/jellyfin.nix
+    ../../modules/services/ntfy.nix
+    ../../modules/services/btrbk.nix
     ../../modules/services/backup-restic.nix
     ./disko.nix
     ./disko-media.nix
