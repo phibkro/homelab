@@ -1,0 +1,34 @@
+# sops policy: which age public keys can decrypt which file paths.
+#
+# Bootstrap (one-time, see secrets/README.md for full walkthrough):
+#   1. On the Mac:
+#        brew install age sops ssh-to-age
+#        mkdir -p ~/.config/sops/age && chmod 700 ~/.config/sops/age
+#        age-keygen -o ~/.config/sops/age/keys.txt && chmod 600 ~/.config/sops/age/keys.txt
+#        # Copy the line that starts with `# public key: age1...`
+#   2. Get nori-station's age public key:
+#        ssh-keyscan -t ed25519 192.168.1.181 | ssh-to-age
+#   3. Replace the two `<...>` placeholders below with the real values.
+#   4. Initialize the secrets file:
+#        sops secrets/secrets.yaml
+#      (editor opens; add `placeholder: ok` so the file is non-empty,
+#      save & quit; sops encrypts on save)
+#   5. Commit `.sops.yaml` and `secrets/secrets.yaml` (encrypted form).
+#
+# Adding a new host later (e.g. nori-pi):
+#   - Get its age pubkey via ssh-to-age, add to `keys:` block, add to
+#     the creation_rules anchor list.
+#   - Run `sops updatekeys secrets/secrets.yaml` to re-encrypt to the
+#     expanded recipient set.
+#   - Commit and rebuild.
+
+keys:
+  - &mac age1<MAC_PUBKEY_HERE>
+  - &nori_station age1<NORI_STATION_PUBKEY_HERE>
+
+creation_rules:
+  - path_regex: secrets/.*\.yaml$
+    key_groups:
+      - age:
+          - *mac
+          - *nori_station

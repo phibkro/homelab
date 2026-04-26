@@ -11,12 +11,14 @@
     disko.url = "github:nix-community/disko/latest";
     disko.inputs.nixpkgs.follows = "nixpkgs";
 
+    sops-nix.url = "github:Mic92/sops-nix";
+    sops-nix.inputs.nixpkgs.follows = "nixpkgs";
+
     # Planned additions (introduced when needed):
-    #   sops-nix       — secrets (age / ssh-to-age)
     #   home-manager   — per-user config (desktop phase)
   };
 
-  outputs = { self, nixpkgs, nixos-hardware, disko, ... }@inputs:
+  outputs = { self, nixpkgs, nixos-hardware, disko, sops-nix, ... }@inputs:
     let
       system = "x86_64-linux";
       mkHost = hostPath: nixpkgs.lib.nixosSystem {
