@@ -41,6 +41,13 @@
     # usable as a dev environment in its own right.
     pkgs.claude-code
 
+    # DaVinci Resolve — professional video editor. ~3 GB closure;
+    # unfree license (free to use, paid Studio version). NVIDIA GPU
+    # used for hardware decode/encode. First launch may complain about
+    # missing CUDA libs on certain combinations; if so, override the
+    # package via overrideAttrs.cudaPackages or upgrade the driver.
+    pkgs.davinci-resolve
+
     # Quality-of-life CLI for Wayland.
     pkgs.wl-clipboard # `wl-copy` / `wl-paste` for clipboard scripting
     pkgs.brightnessctl # backlight control (no-op on desktop, harmless)
