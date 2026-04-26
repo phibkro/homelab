@@ -31,7 +31,7 @@ canonical architecture.
 | 3 | VM dry-run install | done; `vm-test` retained for testing |
 | 4 | Bare-metal install on nori-station | done |
 | 5 | Service migration | in progress (file/AI/media services live; Cloudflare/observability pending) |
-| 6 | Desktop environment (Hyprland) | not started |
+| 6 | Desktop environment (Hyprland) | done — greetd + Hyprland + waybar + mako + hyprlock + hypridle live; bind layer derives Hyprland config + cheatsheet from one record list |
 
 Reactive (no scheduled trigger): Cloudflare Tunnel + Access, email
 digest reports, second media drive, deploy-rs. See DESIGN.md.
@@ -169,7 +169,7 @@ DESIGN.md L186-289 has the full table. Likely candidates in priority order:
 4. **Cloudflare Tunnel + Access.** Reactive — only when Tailscale
    friction emerges (someone refuses to install another app, public
    sharing needed).
-5. **Hyprland desktop.** Phase 6, separate scope.
+5. **Hyprland desktop.** Phase 6, done. Wallpaper deferred until an image is picked; everything else (greetd, waybar, mako, hyprlock, hypridle, audio fix, cheatsheet) is live and committed.
 
 **`nori-pi` deferred** — no NixOS-bootable USB SSD on hand yet.
 Existing Pi runs PiOS, can fill DNS (Blocky via apt) and/or

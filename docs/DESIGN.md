@@ -94,14 +94,14 @@ UEFI multi-boot on nori-station. NixOS as primary OS, Windows preserved on its o
 hardware.nvidia = {
   modesetting.enable = true;
   open = true;  # Required for Blackwell; also required by nixpkgs nvidia module for driver 555+
-  package = config.boot.kernelPackages.nvidiaPackages.production;  # Currently 580.x on unstable
+  package = config.boot.kernelPackages.nvidiaPackages.production;  # 595.58.03 as of Phase 6 (was 580.x at Phase 4 install)
   nvidiaSettings = true;
 };
 ```
 
 **Known gotchas:**
 
-- Driver 580.119.02 has a build failure on kernel 6.19 (vm_area_struct API change). Driver 580.126.09 fixes it. If `production` resolves to .119 and 6.19 is in use, the install will fail. Mitigation: pin to `nvidiaPackages.beta` (newer driver) or `boot.kernelPackages = pkgs.linuxPackages_6_18` (older kernel) until upstream catches up. Document the chosen workaround in `hardware.nix`.
+- Driver 580.119.02 had a build failure on kernel 6.19 (vm_area_struct API change). Resolved upstream — by Phase 6 the production driver is 595.58.03 with kernel 6.18 LTS, no manual pinning needed. The fallback ladder below remains documented for future regressions.
 - Fallback ladder if `production` doesn't work first try: `production` → `beta` → `latest` → explicit `mkDriver` with a known-good version. This ladder is documented in the install runbook.
 - `legacy_580` exists as a pinned-to-580 attribute, useful as a stable fallback that won't drift.
 
@@ -353,16 +353,22 @@ Two restic repositories per service, three retention policies:
 
 ### Layer 6: Desktop environment
 
-Hyprland on Wayland, on `nori-station` only, configured via home-manager as a NixOS module.
+Hyprland on Wayland, on `nori-station` only, configured via home-manager as a NixOS module. Built end-to-end in Phase 6 — single Samsung S34J552 (3440x1440 @ 75Hz) on DP-3, Norwegian keymap mirroring `console.keyMap`, bibata cursor at 24px.
+
+**Stack:**
+- `greetd` + `tuigreet` — TTY → tuigreet → Hyprland. Requires `systemd.defaultUnit = "graphical.target"` to auto-start at boot (greetd's unit is `WantedBy=graphical.target`); without the bump, the boot path stops at `multi-user.target` and getty grabs tty1.
+- `programs.hyprland` + `xdg-desktop-portal-{hyprland,gtk}` — system-side Hyprland; per-user keybinds in `modules/desktop/home.nix`.
+- `pipewire` + `wireplumber` — audio. ALC892 onboard analog pinned as default sink via wireplumber rule (the codec match survives PCI renumbering and USB-device shuffling that would otherwise let the mic's monitor sink steal default).
+- `waybar` (status bar), `mako` (notifications), `hyprlock` + `hypridle` (lockscreen + idle daemon, 10 min lock + 15 min DPMS off).
+- Apps: `ghostty` (cross-machine consistency with laptop), `fuzzel` (launcher + cheatsheet renderer), `zen-browser` (community flake), `pwvucontrol`.
+- Bind layer: keybinds + cheatsheet derived from one record list in `home.nix`. SUPER+H opens a fuzzel `--dmenu` cheatsheet; SUPER+L locks via logind.
 
 **NVIDIA Wayland caveats** (worth knowing, not blockers):
-- Multi-monitor with mixed refresh rates — VRR sometimes inconsistent
-- Suspend/resume occasionally requires the nvidia-suspend/resume systemd services to be explicitly enabled (NixOS does this by default for the proprietary modules; verify on Blackwell-open)
-- Some Electron apps still need explicit `--ozone-platform=wayland` flags despite Electron 35+ syncobj support
+- Multi-monitor with mixed refresh rates — VRR sometimes inconsistent (single-monitor today, untested).
+- Suspend/resume edge cases on Blackwell-open — desktop is always-on so not currently exercised.
+- Some Electron apps still need explicit `--ozone-platform=wayland` flags despite Electron 35+ syncobj support; `NIXOS_OZONE_WL=1` covers most via the NixOS-specific shim.
 
-These are not architectural concerns, just the current state of NVIDIA-on-Wayland in early 2026. Driver 580+ has explicit-sync, which removed most of the historical Wayland pain.
-
-Desktop ecosystem: ghostty (terminal, cross-machine consistency with laptop), waybar, fuzzel, mako, hyprlock, hypridle.
+Driver 595 + explicit-sync removed most of the historical NVIDIA-Wayland pain. The session env-var set in `modules/desktop/hyprland.nix` is intentionally minimal (`NIXOS_OZONE_WL`, `__GLX_VENDOR_LIBRARY_NAME`); expand only when something concretely breaks.
 
 ### Layer 7: Operations
 
@@ -542,7 +548,7 @@ Email digest deferred. When set up: SMTP via Gmail with app password (sufficient
 | 3 | VM dry-run install (UTM) | done; `vm-test` on tailnet |
 | 4 | Bare-metal install on nori-station | done |
 | 5 | Service migration | in progress (Samba, Blocky, Ollama, Open WebUI, Jellyfin, sops, restic Pattern A+C2 live; observability + Immich + Cloudflare pending) |
-| 6 | Desktop environment | not started; Hyprland is the choice |
+| 6 | Desktop environment | done — Hyprland + greetd + waybar + mako + hyprlock + hypridle on nori-station |
 | — | `hosts/nori-pi/` declarative | deferred (no NixOS-bootable USB SSD; PiOS interim possible) |
 
 **Reactive phases (no scheduled trigger):**
