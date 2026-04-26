@@ -35,7 +35,7 @@
   # pythonRelaxDeps. Drop this override when nixpkgs ships calibre-web
   # 0.6.28+ (which broadens the pin) or pins requests 2.32.x downstream.
   nixpkgs.overlays = [
-    (final: prev: {
+    (_final: prev: {
       calibre-web = prev.calibre-web.overridePythonAttrs (old: {
         pythonRelaxDeps = (old.pythonRelaxDeps or [ ]) ++ [ "requests" ];
       });
