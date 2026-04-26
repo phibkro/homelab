@@ -5,13 +5,19 @@
   # of the system (no Qt/KDE pull-in like sddm).
   #
   # Default flow: boot → tty1 → tuigreet (asks for username/password) →
-  # exec Hyprland. --remember + --remember-user-session pre-fill the prior
-  # username + session at next login.
+  # uwsm starts Hyprland with proper systemd-user session integration.
+  # --remember + --remember-user-session pre-fill the prior username +
+  # session at next login.
+  #
+  # `uwsm start hyprland-uwsm.desktop`: UWSM wraps Hyprland with a
+  # systemd-user-session bootstrap that activates graphical-session.target
+  # (and friends) so user units like waybar/mako/hypridle auto-start
+  # cleanly. See programs.hyprland.withUWSM in modules/desktop/hyprland.nix.
   services.greetd = {
     enable = true;
     settings = {
       default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --remember-user-session --asterisks --cmd Hyprland";
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --remember-user-session --asterisks --cmd 'uwsm start hyprland-uwsm.desktop'";
         user = "greeter";
       };
     };

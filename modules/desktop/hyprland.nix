@@ -6,7 +6,18 @@
   # autostart) lives in ./home.nix via home-manager.
   programs.hyprland = {
     enable = true;
-    withUWSM = false; # opt-in systemd-user session wrapper; bare exec is fine
+    # UWSM (Universal Wayland Session Manager) wraps the Hyprland start
+    # so systemd-user services that depend on graphical-session.target
+    # activate cleanly — waybar, mako, hypridle, etc. all start
+    # automatically on session start instead of needing a manual
+    # `systemctl --user restart` dance. Hyprland upstream now strongly
+    # recommends UWSM and warns at session start if it isn't used.
+    #
+    # Setting this true exposes a `hyprland-uwsm.desktop` session entry
+    # that greetd's tuigreet can launch via:
+    #   uwsm start hyprland-uwsm.desktop
+    # See modules/desktop/greetd.nix for the greetd-side wiring.
+    withUWSM = true;
   };
 
   # GTK fallback portal — needed for "open file" dialogs in apps that haven't
