@@ -54,6 +54,15 @@
     wget
   ];
 
+  # nh — Yet Another Nix Helper. Wraps `nixos-rebuild` with a nicer
+  # diff display, internal sudo elevation (don't prefix nh with sudo),
+  # and built-in `--target-host` support for SSH-based remote
+  # deployment. Replaces the rsync-then-nixos-rebuild dance with:
+  #   nh os switch /tmp/nix-migration -H nori-station            # local
+  #   nh os switch github:phibkro/homelab -H nori-station        # git
+  #   nh os switch . -H nori-station --target-host <ip>          # remote
+  programs.nh.enable = true;
+
   # --- firewall ----------------------------------------------------------
 
   networking.firewall.enable = true;
