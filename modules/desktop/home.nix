@@ -281,6 +281,11 @@ in
             # y=50 keeps it below waybar (28px) with breathing room.
             # `center on` competes with `move`, so it's dropped.
             "match:class ^(com\\.saivert\\.pwvucontrol)$, float on, size 1000 500, move 2420 50"
+            # ghostty quick-terminal — bottom center, 100x10 cells
+            # (1010x220 px). Position (1180, 1150) leaves ~70px from
+            # the bottom edge, near-centered horizontally on 3440-wide.
+            # Auto-spawned on session start via exec-once below.
+            "match:class ^(com\\.mitchellh\\.ghostty)$, float on, size 1010 220, move 1180 1150"
           ];
 
           # Generated from the structured keyBinds / mouseBinds lists at
@@ -290,11 +295,14 @@ in
           bind = map toHyprlandBind (lib.concatMap expandRange keyBinds);
           bindm = map toHyprlandBind mouseBinds;
 
-          # Autostart — polkit agent for elevation prompts.
-          # Wallpaper / status bar / notification daemon are deferred to
-          # follow-up commits (waybar, mako, hyprpaper config).
+          # Autostart — polkit agent for elevation prompts + ghostty
+          # quick-terminal (matches the windowrule above for shape +
+          # position). Status bar / notification daemon / hypridle
+          # auto-start via systemd-user-service (UWSM activates
+          # graphical-session.target so they don't need exec-once).
           exec-once = [
             "systemctl --user start hyprpolkitagent"
+            "ghostty"
           ];
         };
       };
