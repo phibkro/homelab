@@ -1,4 +1,30 @@
 { inputs, pkgs, ... }:
+let
+  # SUPER+H invokes this — list of binds piped into fuzzel's --dmenu mode
+  # for a search-as-you-type cheatsheet. Update the heredoc when binds
+  # change; nothing parses hyprland.conf to keep this in sync (would be
+  # brittle with multi-arg dispatchers and quote-escaped exec strings).
+  cheatsheet = pkgs.writeShellScriptBin "hypr-cheatsheet" ''
+    ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt "binds: " --width 60 --lines 18 >/dev/null <<'EOF'
+    SUPER + RETURN       ghostty (terminal)
+    SUPER + SPACE        fuzzel (launcher)
+    SUPER + B            zen (browser)
+    SUPER + H            this cheatsheet
+    SUPER + L            lock screen
+    SUPER + Q            close window
+    SUPER + V            toggle floating
+    SUPER + F            fullscreen
+    SUPER + SHIFT + E    exit Hyprland
+    SUPER + arrows       focus left/down/up/right
+    SUPER + J / K        focus down/up (vim-style)
+    SUPER + 1..9         switch to workspace
+    SUPER + SHIFT + 1..9 move window to workspace
+    SUPER + drag-LMB     move window
+    SUPER + drag-RMB     resize window
+    PRINT                screenshot region → clipboard
+    EOF
+  '';
+in
 {
   # home-manager as a NixOS module (per DESIGN.md L355-358) — config flows
   # from this Nix attrset into ~/.config/hypr/hyprland.conf etc. at
@@ -89,17 +115,20 @@
             "$mod, SPACE,  exec, fuzzel"
             "$mod, B,      exec, zen"
 
+            # Help / session
+            "$mod, H, exec, ${cheatsheet}/bin/hypr-cheatsheet"
+            "$mod, L, exec, loginctl lock-session"
+
             # Window
             "$mod, Q, killactive,"
             "$mod SHIFT, E, exit,"
             "$mod, V, togglefloating,"
             "$mod, F, fullscreen,"
 
-            # Focus (vim-style + arrows)
-            "$mod, h, movefocus, l"
+            # Focus — H and L claimed by cheatsheet/lock above; J/K kept
+            # for vim-style down/up; arrows cover all four directions.
             "$mod, j, movefocus, d"
             "$mod, k, movefocus, u"
-            "$mod, l, movefocus, r"
             "$mod, left,  movefocus, l"
             "$mod, down,  movefocus, d"
             "$mod, up,    movefocus, u"
