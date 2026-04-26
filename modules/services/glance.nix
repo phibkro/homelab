@@ -7,27 +7,24 @@
 
 {
   # Glance — fast, single-binary Go dashboard. Family-facing landing
-  # page at home.nori.lan that surfaces every other *.nori.lan service
-  # in one place plus a daily-check stream (calendar, weather, news,
-  # release feeds for tools we actually use).
+  # page at home.nori.lan.
+  #
+  # Three-column layout (small | full | small) — on desktop they appear
+  # side-by-side; on phone they stack as scrollable sections (the
+  # ":pages: hint" Glance shows on narrow viewports).
+  #
+  #   Status   (col 1, small)  observational state — calendar, weather,
+  #                            host CPU/RAM/disk
+  #   Apps     (col 2, full)   navigation — uptime monitor + grouped
+  #                            bookmarks for all *.nori.lan
+  #   Read     (col 3, small)  consumption — HN/Lobsters/Reddit, RSS,
+  #                            release feeds
   #
   # Default port 8080 collides with Open WebUI; remapped to 8086.
   #
-  # Config is YAML via `services.glance.settings`; iterate by editing
-  # this file + just rebuild. Layout follows the canonical
-  # docs/glance.yml template (small | full | small) adapted with our
-  # actual services + interests.
-  #
-  # Icon prefixes used:
-  #   si:<slug>  Simple Icons — popular brands; covers Sonarr, Radarr,
-  #              qBittorrent, Syncthing, Jellyfin, Immich.
-  #   sh:<slug>  selfh.st icons — curated for self-hosted services;
-  #              covers the rest (Bazarr, Gatus, Komga, Lidarr,
-  #              Jellyseerr, Open WebUI, Prowlarr, Beszel,
-  #              calibre-web, Radicale, Authelia).
-  # If an icon doesn't render, try the other prefix or omit the
-  # `icon =` line entirely (Glance falls back to the title's first
-  # letter in a colored box).
+  # Icon prefixes: si:<slug> (Simple Icons) or sh:<slug> (selfh.st
+  # icons). selfh.st has the homelab-specific brands Simple Icons
+  # doesn't carry.
   #
   # Glance docs: https://github.com/glanceapp/glance
   services.glance = {
@@ -43,7 +40,7 @@
           name = "Home";
           hide-desktop-navigation = true;
           columns = [
-            # ---------------- Left (small) — at-a-glance ----------------
+            # ============== Col 1 — Status ==============
             {
               size = "small";
               widgets = [
@@ -68,36 +65,17 @@
                     }
                   ];
                 }
-                {
-                  type = "rss";
-                  title = "Self-hosted news";
-                  limit = 8;
-                  collapse-after = 3;
-                  cache = "12h";
-                  feeds = [
-                    {
-                      url = "https://selfh.st/rss/";
-                      title = "selfh.st";
-                    }
-                    {
-                      url = "https://discourse.nixos.org/latest.rss";
-                      title = "NixOS Discourse";
-                      limit = 3;
-                    }
-                  ];
-                }
               ];
             }
 
-            # ---------------- Center (full) — the lab ----------------
+            # ============== Col 2 — Apps / Services ==============
             {
               size = "full";
               widgets = [
                 # Uptime monitor — green/red status dots for every
-                # *.nori.lan. Polled every 5 min. allow-insecure on
-                # syncthing because Caddy's internal CA isn't always
-                # accepted by Glance's HTTP client even with system
-                # trust populated.
+                # *.nori.lan service. allow-insecure on syncthing
+                # because Caddy's internal CA isn't always accepted by
+                # Glance's HTTP client.
                 {
                   type = "monitor";
                   cache = "5m";
@@ -191,9 +169,9 @@
                     }
                   ];
                 }
-                # Bookmarks — descriptions + grouping that the monitor
-                # can't carry. Same URLs grouped by purpose. Doesn't
-                # poll (use the monitor above for "is it up?").
+                # Bookmarks — grouped + descriptive view, complements
+                # the monitor (which answers "is it up?" but doesn't
+                # describe each).
                 {
                   type = "bookmarks";
                   groups = [
@@ -321,6 +299,14 @@
                     }
                   ];
                 }
+              ];
+            }
+
+            # ============== Col 3 — Read ==============
+            {
+              size = "small";
+              widgets = [
+                # Daily reading stream first — most-likely-to-glance.
                 {
                   type = "group";
                   widgets = [
@@ -333,17 +319,31 @@
                   subreddit = "selfhosted";
                   show-thumbnails = true;
                 }
-              ];
-            }
-
-            # ---------------- Right (small) — releases + clock ----------------
-            {
-              size = "small";
-              widgets = [
+                {
+                  type = "rss";
+                  title = "Self-hosted news";
+                  limit = 8;
+                  collapse-after = 3;
+                  cache = "12h";
+                  feeds = [
+                    {
+                      url = "https://selfh.st/rss/";
+                      title = "selfh.st";
+                    }
+                    {
+                      url = "https://discourse.nixos.org/latest.rss";
+                      title = "NixOS Discourse";
+                      limit = 3;
+                    }
+                  ];
+                }
                 {
                   type = "releases";
                   title = "Releases";
                   cache = "1d";
+                  # Without auth, GitHub API rate-limits to 60 req/h.
+                  # 8 repos × 1 req daily — well under. Add a sops
+                  # token if more get added.
                   repositories = [
                     "hyprwm/Hyprland"
                     "NixOS/nixpkgs"
@@ -357,7 +357,7 @@
                 }
                 {
                   type = "rss";
-                  title = "Releases & blog";
+                  title = "NixOS announcements";
                   limit = 6;
                   collapse-after = 3;
                   cache = "12h";
