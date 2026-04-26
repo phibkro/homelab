@@ -240,12 +240,15 @@ in
 
           # Window rules — opt floating apps out of tiling.
           # pwvucontrol: small dialog-style mixer; tiles awkwardly in
-          # the dwindle layout. Float + center + size at a comfortable
-          # readable footprint.
-          windowrulev2 = [
-            "float,        class:^(com\\.saivert\\.pwvucontrol)$"
-            "size 700 500, class:^(com\\.saivert\\.pwvucontrol)$"
-            "center,       class:^(com\\.saivert\\.pwvucontrol)$"
+          # the dwindle layout. Float + center + sized to a readable
+          # footprint.
+          #
+          # Uses the unified `windowrule` keyword (current Hyprland 0.54
+          # syntax — supersedes both `windowrule` v1 and `windowrulev2`).
+          # Format: `match:<prop> <regex>, <effect>[, <effect>...]`.
+          # See https://wiki.hypr.land/0.54.0/Configuring/Window-Rules/.
+          windowrule = [
+            "match:class ^(com\\.saivert\\.pwvucontrol)$, float, size 700 500, center"
           ];
 
           # Generated from the structured keyBinds / mouseBinds lists at
