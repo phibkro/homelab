@@ -37,8 +37,6 @@
     BindReadOnlyPaths = [ ];
   };
 
-  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8081 ];
-
   # Exposed at https://alert.nori.lan via Caddy. Monitored against
   # ntfy's /v1/health endpoint (returns 200 when ready).
   nori.lanRoutes.alert = {

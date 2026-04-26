@@ -56,10 +56,9 @@
     ];
   };
 
-  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8096 ];
-
-  # Exposed at https://media.nori.lan via Caddy. Auto-monitored by
-  # Gatus (default HTTP probe to /).
+  # Exposed at https://media.nori.lan via Caddy (default-deny on
+  # tailnet — Caddy is the only entry point). Auto-monitored by Gatus
+  # (default HTTP probe to /).
   nori.lanRoutes.media = {
     port = 8096;
     monitor = { };

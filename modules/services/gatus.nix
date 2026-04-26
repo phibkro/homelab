@@ -78,8 +78,6 @@
     BindReadOnlyPaths = [ ];
   };
 
-  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8082 ];
-
   # Exposed at https://status.nori.lan via Caddy. No monitor for self
   # (Gatus can't usefully probe itself — would always pass while alive
   # and silently disappear when dead).

@@ -57,6 +57,17 @@ in
           default = "http";
           description = "Backend scheme. Most services run plain HTTP; Caddy terminates TLS.";
         };
+        exposeOnTailnet = mkOption {
+          type = types.bool;
+          default = false;
+          description = ''
+            Open the backend port on the tailnet, bypassing Caddy.
+            Default closed — Caddy on 443 is the canonical entry
+            point. Opt in only when something needs direct port
+            access (legacy clients, programmatic tools that don't
+            handle Caddy's internal CA).
+          '';
+        };
         monitor = mkOption {
           default = null;
           description = ''
@@ -101,6 +112,15 @@ in
     services.blocky.settings.customDNS.mapping = mapAttrs'
       (name: _: nameValuePair "${name}.nori.lan" config.nori.lanIp)
       config.nori.lanRoutes;
+
+    # Tailnet firewall: open backend ports for opt-in routes only.
+    # Default-deny aligns with the rest of the network policy
+    # (Caddy on :80 + :443 from caddy.nix is the canonical entry).
+    networking.firewall.interfaces."tailscale0".allowedTCPPorts = lib.flatten (
+      lib.mapAttrsToList
+        (_: cfg: lib.optional cfg.exposeOnTailnet cfg.port)
+        config.nori.lanRoutes
+    );
 
     # Auto-generated Gatus endpoints for routes that opt in via
     # `monitor`. Manual entries in modules/services/gatus.nix
