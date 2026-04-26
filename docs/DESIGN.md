@@ -59,17 +59,18 @@ The lab decomposes into seven layers.
 
 **`nori-station` (primary host)**
 - AMD Ryzen 5600X, 32GB DDR4, RTX 5060 Ti 16GB (Blackwell)
-- `/dev/nvme0n1` — 1TB WD Black SN750 → NixOS root (btrfs with subvolumes, managed by disko)
-- `/dev/nvme1n1` — 960GB Corsair MP510 → Windows (preserved, untouched, multi-boot via UEFI)
-- `/dev/sda` — 4TB Seagate IronWolf Pro, USB → media storage
-  - **Currently exfat at install time.** Reformatted to btrfs in Phase 2 (deferred to post-install). Disko config exists for it but is not applied during Phase 4.
+- WD Black SN750 1TB NVMe → NixOS root (btrfs, six subvolumes, label `nixos`, disko-managed)
+- Corsair Force MP510 960GB NVMe → Windows (preserved, untouched, multi-boot via UEFI)
+- Seagate IronWolf Pro 4TB, USB → media storage (btrfs, five subvolumes, label `ironwolf-storage`, disko-managed; reformatted from exfat in Phase 2)
 - Roles: AI inference (32B-class models comfortably; 70B models tight at 32GB and likely paged to swap), media streaming, photo management, file storage, occasional desktop workstation
+- *Disambiguate disks by model + by-id, not `/dev/nvmeN` — see "Permanent constraints".*
 
-**`nori-pi` (appliance + local backup target)**
+**`nori-pi` (appliance + local backup target) — DEFERRED**
 - Raspberry Pi 4 8GB
 - USB SSD (~250GB) → NixOS root (not SD card; SD card wear is the #1 Pi failure mode)
 - USB HDD (~4TB) → restic backup target for nori-station, mounted at `/mnt/backup`
-- Roles: network DNS adblock (Blocky), Tailscale subnet router, Tailscale exit node (opt-in), local backup target for fast restore
+- Roles (planned): network DNS adblock (Blocky), Tailscale subnet router, Tailscale exit node (opt-in), local backup target for fast restore
+- **Status:** no NixOS-bootable USB SSD on hand yet. Existing Pi runs PiOS and could fill DNS / restic-target roles imperatively in the interim if needed. Migrate to declarative `hosts/nori-pi/` when an SSD lands.
 
 **`vm-test` (transient, for VM dry-run)**
 - UTM virtual machine on laptop
@@ -167,11 +168,19 @@ networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8096 ];
 
 #### DNS architecture
 
-**Primary DNS:** Blocky on `nori-pi`. **Secondary DNS:** Blocky on `nori-station`. Both handed out via router DHCP. Blocky chosen over AdGuard Home for declarative-config friendliness — its YAML config maps cleanly to `services.blocky.settings`, no web-UI state to drift from declared config.
+**Current state:** Blocky on `nori-station` only, served to all tailnet-joined devices via Tailscale's "global nameserver" push (admin DNS settings → 100.81.5.122). LAN-only devices (smart TV, guest phones) are NOT covered — they keep using whatever the router pushes.
 
-**Why two adblock-aware resolvers, not "Pi primary, router DNS as fallback":** DHCP-distributed secondary resolvers don't fail over fast. Most resolvers (glibc, default systemd-resolved) try the first server, wait ~5s for timeout, then try the second. Pi reboot or crash means seconds of broken DNS for every client. Running a second instance of Blocky on nori-station, both handed out via DHCP, makes Pi outage genuinely transparent. nori-station has the resources (~50MB RAM); the cost is one extra service definition.
+Blocky chosen over AdGuard Home for declarative-config friendliness — its YAML config maps cleanly to `services.blocky.settings`, no web-UI state to drift from declared config.
 
-Both Blocky instances forward to a public resolver (1.1.1.1 or Quad9) for non-blocked queries. Tailnet hostnames resolved via Tailscale MagicDNS independently of Blocky.
+**Why Tailscale push instead of router DHCP:** the ISP-shipped Genexis EG400 (firmware `EG400-X-GNXRR-4.3.5.80-R-210105_1023`) locks DHCP DNS settings out of the user-facing admin UI. Router-side DNS replacement would require either (a) Altibox bridge-mode activation by phone request + a second router we control, or (b) double-NAT with a downstream router. Neither is set up; Tailscale push is the zero-hardware-cost workaround.
+
+**Future state:** same as original DESIGN intent — Pi primary + nori-station secondary, both via router DHCP — but only after one of:
+- Bridge-mode activation on the Genexis (then Pi's own DHCP server hands out itself + nori-station as DNS), or
+- A separate router we control between LAN and ISP gateway
+
+**Bootstrap loop hazard:** because nori-station's `/etc/resolv.conf` points at Tailscale's stub (`100.100.100.100`) and Tailscale forwards back to nori-station's Blocky, Blocky can't resolve its own outbound URLs (blocklist sources, DoH endpoints) before it's serving DNS. `services.blocky.settings.bootstrapDns` MUST be set to direct upstream IPs for this reason. Without it, blocklist downloads silently fail on every restart.
+
+Both Blocky instances (current and future Pi) forward to a public resolver (1.1.1.1 or Quad9) for non-blocked queries. Tailnet hostnames resolved via Tailscale MagicDNS independently of Blocky.
 
 #### Tailscale
 
@@ -489,11 +498,12 @@ Email digest deferred. When set up: SMTP via Gmail with app password (sufficient
 |---|---|---|
 | 0 | Inventory + flake skeleton | done |
 | 1 | Backups (rsync + partclone) | done; verified on One Touch |
-| 2 | Reformat IronWolf Pro to btrfs | **deferred to post-Phase-4** |
+| 2 | Reformat IronWolf Pro to btrfs | done (pulled forward into Phase 5; see "Repository conventions") |
 | 3 | VM dry-run install (UTM) | done; `vm-test` on tailnet |
-| 4 | Bare-metal install on nori-station | **READY, not started** |
-| 5 | Service migration | not started |
+| 4 | Bare-metal install on nori-station | done |
+| 5 | Service migration | in progress (Samba, Blocky, Ollama, Open WebUI, Jellyfin, sops, restic Pattern A+C2 live; observability + Immich + Cloudflare pending) |
 | 6 | Desktop environment | not started; Hyprland is the choice |
+| — | `hosts/nori-pi/` declarative | deferred (no NixOS-bootable USB SSD; PiOS interim possible) |
 
 **Reactive phases (no scheduled trigger):**
 
@@ -521,10 +531,11 @@ Captured for visibility, not currently being worked:
 
 ## Permanent constraints (non-negotiable)
 
-- **Never touch `nvme1n1`** (Windows). Disambiguate by model string (`WDS100T3X0C` = NixOS, `Force MP510` = Windows).
+- **Never touch the Windows drive** (Corsair Force MP510, by-id `nvme-Force_MP510_2031826300012953207B`). Disambiguate by **model string and by-id**, never by `/dev/nvmeN`. NVMe enumeration is unstable across reboots — at install time the WD Black SN750 (NixOS) was `nvme0n1` and the MP510 (Windows) was `nvme1n1`; post-reboot they swapped. A re-run of disko targeting the wrong `/dev` path would wipe Windows. (Caught this latently after the swap; fixed by switching all disko configs to `/dev/disk/by-id/...`.)
+- **Disko configs MUST target `/dev/disk/by-id/...` paths**, not `/dev/nvmeN` or `/dev/sdX`. by-id paths follow the hardware; `/dev` paths follow PCIe scan order.
 - **Don't schedule destructive system changes during weeks with Aker demo pressure.**
 - **Backup verification is part of the system, not optional.** Quarterly restore drill is the real RTO measurement.
-- **Phase 2 (IronWolf reformat) does not happen during Phase 4 (install).** Two separate, sequential operations. Do not combine.
+- **Phase 2 (IronWolf reformat) does not happen during Phase 4 (install).** Two separate, sequential operations. Do not combine. (Phase 2 was eventually pulled forward as part of Phase 5 service migration, *after* Phase 4 was complete — same constraint, different timing than original plan.)
 
 ---
 
@@ -538,6 +549,18 @@ Captured for visibility, not currently being worked:
 
 **Default-deny exposure with explicit per-interface firewall.** Default-allow with exclusions is a maintenance treadmill that grows with every new file or service.
 
+**Default-deny filesystem access for service modules.** The same principle as above, applied to systemd's mount namespace. Every service module's `serviceConfig` should include a `TemporaryFileSystem` over `/mnt` and `/srv` (replacing them with empty tmpfs at service-namespace level), `ProtectHome=true` (hiding `/home` and `/root`), and an explicit `BindReadOnlyPaths` that lists only the host paths the service actually needs. Default no access; opt in per path. A compromised service can't browse the host looking for credentials, even if it can exec shell commands. Costs ~5 lines per module; rules out an entire blast-radius class.
+
+```nix
+systemd.services.<name>.serviceConfig = {
+  ProtectHome = lib.mkForce true;
+  TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ];
+  BindReadOnlyPaths = [ /* /mnt/media, /srv/share, etc. only if needed */ ];
+};
+```
+
+Verify via `sudo nsenter -t <pid> -m -U -- ls /mnt/`. Several upstream NixOS modules already harden some surfaces (`ProcSubset=pid`, `ProtectKernelTunables`, etc.) but leave the mount namespace wide open by default; that's the gap this principle plugs.
+
 **Hyprland over GNOME/KDE.** Declarative config matches the rest of the system. Tiling matches keyboard-heavy terminal use.
 
 **Subvolumes split by value tier, not by directory hierarchy.** Subvolumes are the unit of snapshot/backup policy. Same policy → same subvolume; different policy → different subvolume.
@@ -546,7 +569,7 @@ Captured for visibility, not currently being worked:
 
 **Pi as appliance + opportunistic backup target.** The marginal cost of a USB HDD on the Pi is low; the value (fast local restore) is high. Failure modes remain independent of nori-station.
 
-**Two adblock-aware DNS resolvers (Pi + nori-station), not Pi-only-with-router-fallback.** DHCP-distributed secondaries don't fail over fast; resolver timeouts mean Pi-down = seconds of broken DNS. Running Blocky on both hosts makes Pi outages transparent at trivial resource cost.
+**Two adblock-aware DNS resolvers (Pi + nori-station), not Pi-only-with-router-fallback.** DHCP-distributed secondaries don't fail over fast; resolver timeouts mean Pi-down = seconds of broken DNS. Running Blocky on both hosts makes Pi outages transparent at trivial resource cost. *Currently only the nori-station instance is live (Pi deferred); Tailscale's global-nameserver push covers tailnet devices in the meantime — see Layer 4 DNS architecture for the bridge-mode-dependent path back to the original two-resolver plan.*
 
 **Blocky over AdGuard Home.** Declarative YAML config maps cleanly to NixOS module options; no web-UI state to drift from declared config.
 
