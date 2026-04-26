@@ -189,6 +189,26 @@ environment.etc."wireplumber/wireplumber.conf.d/51-prefer-onboard-analog.conf".t
 
 Match by `alsa.mixer_name` (the codec ID), not `node.name` or PCI path — the codec name is hardware-stable while PCI paths shift with USB device ordering.
 
+## Hyprland 0.55 will deprecate hyprlang in favor of Lua
+
+Heads-up for future `nix flake update` runs. As of April 2026, the latest stable Hyprland is **0.54.3** and uses hyprlang — the format home-manager's `wayland.windowManager.hyprland.settings = { ... }` emits. The Hyprland wiki "Latest git" pages already document an upcoming 0.55 that switches the config language to Lua. The 0.55 binary is not yet tagged on GitHub, and home-manager (master as of 2026-04-26) has no Lua-Hyprland code.
+
+Nix insulates us: the Nix attrset is the source of truth. The break point is when nixpkgs ships Hyprland 0.55 *before* home-manager grows a Lua emitter — at that point the generated hyprland.conf is hyprlang and the binary expects Lua.
+
+**Within-hyprlang change**: `windowrulev2` was unified into `windowrule` in 0.54. The new keyword takes the v2-style matcher syntax with multiple effects on one line:
+
+```
+windowrule = match:class ^(com\.saivert\.pwvucontrol)$, float, size 700 500, center
+```
+
+See https://wiki.hypr.land/0.54.0/Configuring/Window-Rules/ for the full effect/prop list.
+
+**Mitigations when 0.55 lands in nixpkgs:**
+- Pin: `programs.hyprland.package = pkgs.hyprland_0_54;` (nixpkgs typically keeps versioned attrs for major transitions, like `legacy_580` for nvidia drivers)
+- Or hold nixpkgs back: don't update the `nixpkgs` flake input past the revision that bumps Hyprland to 0.55, until home-manager catches up
+
+Either way: the Nix-side config doesn't change. Only the rendered output format does.
+
 ## mako "Failed to acquire service name" after home-manager restart
 
 When you change `services.mako.settings` and rebuild, home-manager restarts the user unit. The old mako process can outlive the systemd-tracked PID briefly, holding `org.freedesktop.Notifications` on the user's dbus session. The new instance fails to acquire the name and exits:
