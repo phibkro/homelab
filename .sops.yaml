@@ -24,7 +24,7 @@
 
 keys:
   - &mac age1<MAC_PUBKEY_HERE>
-  - &nori_station age1<NORI_STATION_PUBKEY_HERE>
+  - &nori_station age1d893pv2w42vtharqse3e3yd7rpc8nst7mlw2csssy7e9ql3lcd2q7vw4s0
 
 creation_rules:
   - path_regex: secrets/.*\.yaml$
