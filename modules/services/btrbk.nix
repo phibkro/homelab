@@ -19,6 +19,10 @@
   #   @nix    (re-derivable from the flake)
   #   @streaming (re-derivable per DESIGN tier table)
   #
+  # @archive — historical/cold data (legacy machine backups etc.).
+  # Snapshot weekly + keep 4 to match @projects tier; the data is
+  # mostly immutable so this is generous-but-cheap.
+  #
   # Retention is conservative for first run; tighten/loosen per
   # actual disk growth observation. DESIGN's L113-138 retention
   # targets:
@@ -61,6 +65,7 @@
             "photos" = { };
             "home-videos" = { };
             "projects" = { };
+            "archive" = { };
           };
         };
       };

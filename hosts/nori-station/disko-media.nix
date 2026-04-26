@@ -6,14 +6,15 @@
   #   nix run github:nix-community/disko/latest -- \
   #     --mode disko hosts/nori-station/disko-media.nix
   #
-  # Layout (per docs/DESIGN.md L130–138):
+  # Layout (per docs/DESIGN.md L130–138, plus @archive added later):
   #   single GPT partition spanning the disk, btrfs label
-  #   `ironwolf-storage`, with five subvolumes:
+  #   `ironwolf-storage`, with six subvolumes:
   #     @streaming    -> /mnt/media/streaming
   #     @photos       -> /mnt/media/photos
   #     @home-videos  -> /mnt/media/home-videos
   #     @projects     -> /mnt/media/projects
-  #     @snapshots    -> (unmounted; btrbk uses the subvolume directly)
+  #     @archive      -> /mnt/media/archive
+  #     @snapshots    -> /mnt/media/.snapshots (btrbk target on this FS)
   #
   # Mountpoints stay under /mnt/media/ — the label describes the
   # underlying drive, the mount path describes how it's served.
@@ -76,6 +77,20 @@
                 };
                 "@projects" = {
                   mountpoint = "/mnt/media/projects";
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
+                };
+                "@archive" = {
+                  # Archive — historical / cold data that doesn't belong
+                  # in the active subvolumes. Backed up via restic per
+                  # the same tier as @projects; weekly btrbk snapshots,
+                  # keep 4. Initial population: legacy machine backups
+                  # (asus-laptop, FIT-128GB, ubuntu-pc, nori-backup)
+                  # migrated off the OneTouch when it became the restic
+                  # target (Phase 5+, see docs/RESUME.md).
+                  mountpoint = "/mnt/media/archive";
                   mountOptions = [
                     "compress=zstd:3"
                     "noatime"
