@@ -44,6 +44,10 @@
 
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 11434 ];
 
-  # Exposed at https://ai.nori.lan via Caddy.
-  nori.lanRoutes.ai = { port = 11434; };
+  # Exposed at https://ai.nori.lan via Caddy. Monitored by Gatus
+  # against /api/tags (Ollama returns 200 with the model list).
+  nori.lanRoutes.ai = {
+    port = 11434;
+    monitor.path = "/api/tags";
+  };
 }

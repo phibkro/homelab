@@ -39,8 +39,12 @@
 
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8081 ];
 
-  # Exposed at https://alert.nori.lan via Caddy.
-  nori.lanRoutes.alert = { port = 8081; };
+  # Exposed at https://alert.nori.lan via Caddy. Monitored against
+  # ntfy's /v1/health endpoint (returns 200 when ready).
+  nori.lanRoutes.alert = {
+    port = 8081;
+    monitor.path = "/v1/health";
+  };
 
   # Channel name for ntfy.sh (public service) — security-by-obscurity,
   # don't put in the public repo. Match the value in your .secrets.env

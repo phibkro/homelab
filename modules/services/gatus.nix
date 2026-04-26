@@ -41,40 +41,11 @@
         priority = 4;
       };
 
+      # HTTP endpoints behind Caddy auto-generate from each service's
+      # `nori.lanRoutes.<name>.monitor` declaration — see
+      # modules/lib/lan-route.nix. Only entries that don't fit the
+      # lan-route pattern (TCP probes for non-HTTP services) live here.
       endpoints = [
-        {
-          name = "open-webui";
-          url = "http://127.0.0.1:8080";
-          interval = "60s";
-          conditions = [ "[STATUS] == 200" ];
-          alerts = [{
-            type = "ntfy";
-            failure-threshold = 3;
-            send-on-resolved = true;
-          }];
-        }
-        {
-          name = "jellyfin";
-          url = "http://127.0.0.1:8096";
-          interval = "60s";
-          conditions = [ "[STATUS] == 200" ];
-          alerts = [{
-            type = "ntfy";
-            failure-threshold = 3;
-            send-on-resolved = true;
-          }];
-        }
-        {
-          name = "ollama";
-          url = "http://127.0.0.1:11434/api/tags";
-          interval = "60s";
-          conditions = [ "[STATUS] == 200" ];
-          alerts = [{
-            type = "ntfy";
-            failure-threshold = 3;
-            send-on-resolved = true;
-          }];
-        }
         {
           name = "blocky-dns";
           url = "tcp://127.0.0.1:53";
@@ -97,17 +68,6 @@
             send-on-resolved = true;
           }];
         }
-        {
-          name = "ntfy-local";
-          url = "http://127.0.0.1:8081/v1/health";
-          interval = "300s";
-          conditions = [ "[STATUS] == 200" ];
-          alerts = [{
-            type = "ntfy";
-            failure-threshold = 3;
-            send-on-resolved = true;
-          }];
-        }
       ];
     };
   };
@@ -120,6 +80,8 @@
 
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8082 ];
 
-  # Exposed at https://gatus.nori.lan via Caddy.
-  nori.lanRoutes.gatus = { port = 8082; };
+  # Exposed at https://status.nori.lan via Caddy. No monitor for self
+  # (Gatus can't usefully probe itself — would always pass while alive
+  # and silently disappear when dead).
+  nori.lanRoutes.status = { port = 8082; };
 }

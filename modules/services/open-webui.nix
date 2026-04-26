@@ -47,6 +47,9 @@
 
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8080 ];
 
-  # Exposed at https://chat.nori.lan via Caddy.
-  nori.lanRoutes.chat = { port = 8080; };
+  # Exposed at https://chat.nori.lan via Caddy. Auto-monitored by Gatus.
+  nori.lanRoutes.chat = {
+    port = 8080;
+    monitor = { };
+  };
 }

@@ -101,6 +101,9 @@
 
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 9091 ];
 
-  # Exposed at https://auth.nori.lan via Caddy.
-  nori.lanRoutes.auth = { port = 9091; };
+  # Exposed at https://auth.nori.lan via Caddy. Auto-monitored.
+  nori.lanRoutes.auth = {
+    port = 9091;
+    monitor = { };
+  };
 }

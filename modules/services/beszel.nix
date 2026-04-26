@@ -41,6 +41,9 @@
 
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8090 ];
 
-  # Exposed at https://beszel.nori.lan via Caddy.
-  nori.lanRoutes.beszel = { port = 8090; };
+  # Exposed at https://metrics.nori.lan via Caddy. Auto-monitored.
+  nori.lanRoutes.metrics = {
+    port = 8090;
+    monitor = { };
+  };
 }

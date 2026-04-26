@@ -57,6 +57,36 @@ in
           default = "http";
           description = "Backend scheme. Most services run plain HTTP; Caddy terminates TLS.";
         };
+        monitor = mkOption {
+          default = null;
+          description = ''
+            If set, auto-generate a Gatus endpoint probing the route's
+            backend directly (bypasses Caddy, tests just the service).
+            Set to `{ }` to use defaults; override `path` for non-/
+            health endpoints (e.g. ollama needs /api/tags).
+          '';
+          type = types.nullOr (types.submodule {
+            options = {
+              path = mkOption {
+                type = types.str;
+                default = "/";
+                description = "Path appended to the backend URL for the probe.";
+              };
+              interval = mkOption {
+                type = types.str;
+                default = "60s";
+              };
+              failureThreshold = mkOption {
+                type = types.int;
+                default = 3;
+              };
+              conditions = mkOption {
+                type = types.listOf types.str;
+                default = [ "[STATUS] == 200" ];
+              };
+            };
+          });
+        };
       };
     });
   };
@@ -71,5 +101,24 @@ in
     services.blocky.settings.customDNS.mapping = mapAttrs'
       (name: _: nameValuePair "${name}.nori.lan" config.nori.lanIp)
       config.nori.lanRoutes;
+
+    # Auto-generated Gatus endpoints for routes that opt in via
+    # `monitor`. Manual entries in modules/services/gatus.nix
+    # (blocky-dns, samba-smb) coexist via list concatenation.
+    services.gatus.settings.endpoints = lib.mkAfter (
+      lib.mapAttrsToList
+        (name: cfg: {
+          name = name;
+          url = "${cfg.scheme}://${cfg.host}:${toString cfg.port}${cfg.monitor.path}";
+          interval = cfg.monitor.interval;
+          conditions = cfg.monitor.conditions;
+          alerts = [{
+            type = "ntfy";
+            failure-threshold = cfg.monitor.failureThreshold;
+            send-on-resolved = true;
+          }];
+        })
+        (lib.filterAttrs (_: cfg: cfg.monitor != null) config.nori.lanRoutes)
+    );
   };
 }
