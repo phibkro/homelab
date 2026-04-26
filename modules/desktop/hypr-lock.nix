@@ -33,7 +33,7 @@ _: {
             text = "$TIME";
             color = "rgba(220, 220, 220, 1.0)";
             font_size = 96;
-            font_family = "JetBrainsMono Nerd Font";
+            font_family = "Hack Nerd Font";
             position = "0, 220";
             halign = "center";
             valign = "center";

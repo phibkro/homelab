@@ -190,6 +190,30 @@ in
         x11.enable = true;
       };
 
+      # Dark mode by default. Three layers:
+      #   1. GTK theme (Adwaita-dark) — affects GTK 3/4 apps directly
+      #   2. Qt theme (adwaita-dark) — affects Qt apps via qt5ct/qt6ct
+      #   3. dconf color-scheme (prefer-dark) — modern XDG signal that
+      #      apps like zen, ghostty, Bitwarden Electron, Zed read to
+      #      pick their dark variants
+      gtk = {
+        enable = true;
+        theme = {
+          name = "Adwaita-dark";
+          package = pkgs.gnome-themes-extra;
+        };
+        iconTheme.name = "Adwaita";
+      };
+      qt = {
+        enable = true;
+        platformTheme.name = "adwaita";
+        style.name = "adwaita-dark";
+      };
+      dconf.settings."org/gnome/desktop/interface" = {
+        color-scheme = "prefer-dark";
+        gtk-theme = "Adwaita-dark";
+      };
+
       wayland.windowManager.hyprland = {
         enable = true;
 
@@ -228,11 +252,14 @@ in
             preserve_split = true;
           };
 
-          # Cursor theme propagation — Hyprland exports these to children
-          # at startup. Matches home.pointerCursor above.
+          # Cursor + dark-mode theme propagation — Hyprland exports
+          # these to children at startup. Matches home.pointerCursor +
+          # home-manager gtk/qt theme settings above.
           env = [
             "XCURSOR_THEME,Bibata-Modern-Classic"
             "XCURSOR_SIZE,24"
+            "GTK_THEME,Adwaita-dark"
+            "QT_QPA_PLATFORMTHEME,gtk3"
           ];
 
           # Mod key — SUPER (Windows / Cmd-equivalent).
