@@ -64,6 +64,23 @@
         prefetching = true;
       };
 
+      # Custom DNS for the homelab's internal subdomains. Each service
+      # exposed via Caddy resolves to nori-station's tailnet IP; the
+      # tailnet routes traffic to Caddy which fans out by Host header.
+      # Adding a service: add a vhost in caddy.nix + an entry here.
+      customDNS = {
+        customTTL = "1h";
+        mapping = {
+          "auth.nori.lan" = "100.81.5.122";
+          "jellyfin.nori.lan" = "100.81.5.122";
+          "webui.nori.lan" = "100.81.5.122";
+          "ollama.nori.lan" = "100.81.5.122";
+          "gatus.nori.lan" = "100.81.5.122";
+          "beszel.nori.lan" = "100.81.5.122";
+          "ntfy.nori.lan" = "100.81.5.122";
+        };
+      };
+
       log = {
         level = "info";
         format = "text";

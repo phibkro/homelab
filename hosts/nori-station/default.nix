@@ -14,6 +14,7 @@
     ../../modules/services/beszel.nix
     ../../modules/services/gatus.nix
     ../../modules/services/authelia.nix
+    ../../modules/services/caddy.nix
     ../../modules/services/backup-restic.nix
     ./disko.nix
     ./disko-media.nix

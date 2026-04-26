@@ -66,15 +66,14 @@
       };
 
       session = {
-        # HTTPS terminator is `tailscale serve --https=9092` proxying
-        # to Authelia's local HTTP on 9091. Authelia 4.39+ requires
-        # authelia_url to be HTTPS; tailscale-serve gives us
-        # auto-renewed Let's Encrypt certs for the tailnet hostname.
-        # Set up imperatively (one-time) via:
-        #   sudo tailscale serve --bg --https=9092 http://localhost:9091
+        # Authelia served via Caddy reverse proxy at https://auth.nori.lan
+        # — Caddy terminates TLS via its internal CA, proxies to
+        # Authelia's local HTTP on port 9091. Cookie domain matches
+        # the parent name so sessions can carry across other
+        # *.nori.lan subdomains for SSO scope (Phase B).
         cookies = [{
-          domain = "saola-matrix.ts.net";
-          authelia_url = "https://nori-station.saola-matrix.ts.net:9092";
+          domain = "nori.lan";
+          authelia_url = "https://auth.nori.lan";
           name = "authelia_session";
         }];
       };
