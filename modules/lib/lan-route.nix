@@ -160,17 +160,6 @@ in
                     type = types.str;
                     description = "Display name shown on Authelia consent screen.";
                   };
-                  clientSecretHash = mkOption {
-                    type = types.str;
-                    description = ''
-                      PBKDF2-SHA512 hash of the client secret. Generate via:
-                        authelia crypto hash generate pbkdf2 \
-                          --variant sha512 --iterations 310000 --password '<raw>'
-                      The raw secret is stored separately in sops at
-                      `oidc-<name>-client-secret`. The hash is one-way
-                      and safe to commit.
-                    '';
-                  };
                   redirectPath = mkOption {
                     type = types.str;
                     description = ''
@@ -263,13 +252,33 @@ in
     # list (NixOS module merging on freeform-typed lists conflicts
     # rather than concatenates, so a centralized assembly site is
     # cleaner than mkMerge from multiple modules).
-    sops.secrets = mapAttrs' (
-      name: _:
-      nameValuePair "oidc-${name}-client-secret" {
-        mode = "0440";
-        group = "keys";
-      }
-    ) (filterAttrs (_: cfg: cfg.oidc != null) config.nori.lanRoutes);
+    #
+    # Two sops secrets per OIDC route:
+    #   * oidc-<name>-client-secret       — RAW secret, mode 0440
+    #     group=keys, consumed by the service via the env-file
+    #     template below.
+    #   * oidc-<name>-client-secret-hash  — PBKDF2 HASH, mode 0400
+    #     owner=authelia-main, consumed by Authelia at startup via
+    #     its `template` config-filter (see authelia.nix). This
+    #     keeps hash material out of committed Nix entirely.
+    sops.secrets =
+      let
+        routesWithOidc = filterAttrs (_: cfg: cfg.oidc != null) config.nori.lanRoutes;
+      in
+      (mapAttrs' (
+        name: _:
+        nameValuePair "oidc-${name}-client-secret" {
+          mode = "0440";
+          group = "keys";
+        }
+      ) routesWithOidc)
+      // (mapAttrs' (
+        name: _:
+        nameValuePair "oidc-${name}-client-secret-hash" {
+          mode = "0400";
+          owner = "authelia-main";
+        }
+      ) routesWithOidc);
 
     sops.templates = mapAttrs' (
       name: cfg:

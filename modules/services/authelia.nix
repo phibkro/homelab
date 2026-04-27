@@ -8,14 +8,21 @@
 let
   # OIDC clients are generated from `config.nori.lanRoutes.<n>.oidc`
   # — see modules/lib/lan-route.nix for the schema. This module is
-  # the single owner of the Authelia clients list because
-  # NixOS module merging on freeform-typed lists conflicts rather
-  # than concatenates; centralized assembly avoids `lib.mkMerge`
-  # ceremony at every call site.
+  # the single owner of the Authelia clients list because NixOS
+  # module merging on freeform-typed lists conflicts rather than
+  # concatenates; centralized assembly avoids `lib.mkMerge` ceremony
+  # at every call site.
+  #
+  # `client_secret` uses Authelia's template config-filter (enabled
+  # below via X_AUTHELIA_CONFIG_FILTERS=template) to read the PBKDF2
+  # hash from a sops-decrypted file at startup. The hash never lands
+  # in committed Nix — only in sops. The filter pre-processes the
+  # YAML config as text before YAML parsing, substituting
+  # `{{ secret "/path" }}` with the file contents.
   generatedClients = lib.mapAttrsToList (name: route: {
     client_id = name;
     client_name = route.oidc.clientName;
-    client_secret = route.oidc.clientSecretHash;
+    client_secret = ''{{ secret "/run/secrets/oidc-${name}-client-secret-hash" }}'';
     public = false;
     authorization_policy = route.oidc.authorizationPolicy;
     redirect_uris = [ "https://${name}.nori.lan${route.oidc.redirectPath}" ];
@@ -139,6 +146,15 @@ in
       # workflow.
       identity_providers.oidc.clients = generatedClients;
     };
+  };
+
+  # Enable the template config-filter so per-OIDC-client `client_secret`
+  # values rendered by `generatedClients` (above) can read their hash
+  # from `/run/secrets/oidc-<n>-client-secret-hash` at Authelia startup.
+  # The filter runs before YAML parsing and supports list entries,
+  # which the legacy `_FILE`/`expand-env` paths do not.
+  systemd.services.authelia-main.environment = {
+    X_AUTHELIA_CONFIG_FILTERS = "template";
   };
 
   systemd.services.authelia-main.serviceConfig = {

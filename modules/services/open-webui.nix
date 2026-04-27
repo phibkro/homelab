@@ -84,7 +84,6 @@
     monitor = { };
     oidc = {
       clientName = "Open WebUI";
-      clientSecretHash = "$pbkdf2-sha512$310000$ThTc2qRfMD0r/GkaCjySYA$fWbF1FfUDlwK1IgoSe9XBeXrJjocYfC0VJis24qHZ54pweEKIuMrd6QUDuASRPpSBoocwJRM8OKuKDKLRX29Yg";
       redirectPath = "/oauth/oidc/callback";
     };
   };

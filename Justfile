@@ -117,9 +117,10 @@ default: rebuild
 
 # Generate raw + PBKDF2 hash for a new lan-route OIDC client. Output
 # is sensitive; runs on the host (where authelia is available via
-# nix shell) and prints both values to your terminal. After:
+# nix shell) and prints both values to your terminal. After: both
+# values land in sops, no module edits needed for the secret material.
 #   1. sops secrets/secrets.yaml  →  oidc-<name>-client-secret: <raw>
-#   2. service module  →  nori.lanRoutes.<name>.oidc.clientSecretHash = "<hash>";
+#   2. sops secrets/secrets.yaml  →  oidc-<name>-client-secret-hash: <hash>
 # then `just rebuild`. Usage: just oidc-key <name> [<host>]
 @oidc-key name host=default_host:
     ssh {{user}}@{{host}}.{{tailnet}} 'nix shell nixpkgs#openssl nixpkgs#authelia --command bash -c "\
@@ -127,9 +128,9 @@ default: rebuild
       raw=\$(openssl rand -base64 32 | tr -d \"=+/\"); \
       echo \"=== {{name}} ===\"; \
       echo; \
-      echo \"Raw secret (paste into sops as oidc-{{name}}-client-secret):\"; \
+      echo \"Raw secret (sops:  oidc-{{name}}-client-secret):\"; \
       echo \"  \$raw\"; \
       echo; \
-      echo \"PBKDF2 hash (paste as oidc.clientSecretHash in service module):\"; \
+      echo \"PBKDF2 hash (sops: oidc-{{name}}-client-secret-hash):\"; \
       authelia crypto hash generate pbkdf2 --variant sha512 --iterations 310000 --password \"\$raw\" \
     "'
