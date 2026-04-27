@@ -27,6 +27,22 @@ let
     authorization_policy = route.oidc.authorizationPolicy;
     redirect_uris = [ "https://${name}.nori.lan${route.oidc.redirectPath}" ];
     inherit (route.oidc) scopes;
+
+    # Standard authorization-code flow. `refresh_token` grant is
+    # added iff the client requests `offline_access` — Authelia 4.39
+    # rejects asymmetric configs in both directions:
+    #   offline_access scope without refresh_token grant → no
+    #     refresh_token issued (trips Bitwarden's relock-on-expiry).
+    #   refresh_token grant without offline_access scope → warning
+    #     "should only have refresh_token if also configured with
+    #     offline_access scope" (becomes an error in future versions).
+    # Hardcoded shape otherwise — every client we run is a
+    # confidential web-app on auth-code flow; add a per-client
+    # override field if we ever onboard a public/SPA client.
+    response_types = [ "code" ];
+    grant_types = [
+      "authorization_code"
+    ] ++ lib.optional (lib.elem "offline_access" route.oidc.scopes) "refresh_token";
   }) (lib.filterAttrs (_: cfg: cfg.oidc != null) config.nori.lanRoutes);
 in
 {
@@ -73,6 +89,13 @@ in
     authelia-users-database = {
       mode = "0400";
       owner = "authelia-main";
+      # Authelia loads the file-based auth backend at startup and
+      # caches users in memory; without an explicit restart the
+      # service keeps the old user list after a sops update. sops-nix
+      # restartUnits triggers the unit restart on content change so
+      # `just rebuild` after editing this secret is sufficient — no
+      # manual `systemctl restart authelia-main` step needed.
+      restartUnits = [ "authelia-main.service" ];
     };
     # OIDC: required when identity_providers.oidc is enabled.
     # hmac-secret: HMAC for OIDC tokens (random hex)
