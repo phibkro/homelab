@@ -190,7 +190,7 @@ From `docs/DESIGN.md` L210-289. Choose the right one per service:
 | B: built-in dump | service writes its own SQL dumps (Immich) | restic picks up the dump dir |
 | C: external dump pre-restic | sqlite/postgres without internal dump | `backupPrepareCommand` runs `sqlite3 .backup` first |
 
-Restic backup config is in `modules/services/backup-restic.nix`. Currently a placeholder local repo; the principle holds when real targets land.
+Restic backup config is in `modules/services/backup-restic.nix`. Repository at `/mnt/backup/<job>` (OneTouch ext4); Hetzner Storage Box still on the roadmap as a second per-job repository for off-site coverage.
 
 ## Snapshot policy
 

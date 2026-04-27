@@ -265,6 +265,10 @@ Native NixOS modules from day one. Verified module availability on `nixos-unstab
 | Lidarr | `services.lidarr` | nori-station | Tailnet (`music.nori.lan`); music *arr; library on @streaming |
 | calibre-web | `services.calibre-web` | nori-station | Tailnet (`books.nori.lan`); ebook web UI + OPDS; library on @library; port 8084 (default 8083 collides with qBittorrent) |
 | Komga | `services.komga` | nori-station | Tailnet (`comics.nori.lan`); comics/manga server + OPDS; library on @library; port 8085 (default 8080 collides with Open WebUI) |
+| Glance | `services.glance` | nori-station | Tailnet (`home.nori.lan`); family-facing dashboard with service-status monitor + bookmarks + reading; port 8086 (default 8080 collides with Open WebUI) |
+| Radicale | `services.radicale` | nori-station | Tailnet (`calendar.nori.lan`); CalDAV + CardDAV; htpasswd auth |
+| Syncthing | `services.syncthing` | nori-station + future hosts | Tailnet (`sync.nori.lan` for the WebUI; peer port 22000 open on tailscale0) |
+| Thunar | `programs.thunar` | nori-station | Local desktop only; lightweight GUI file manager + xdg-mime default |
 | postgresqlBackup | `services.postgresqlBackup` | nori-station (if non-Immich PG) | N/A |
 
 **Note on Immich's Postgres:** `services.immich.database.enable = true` (the default) provisions a Postgres instance owned by Immich, separate from `services.postgresql`. NixOS 25.11+ uses VectorChord (replacing pgvecto-rs) and Postgres 17 by default. Immich's own database management writes periodic dumps to `/var/lib/immich/backups/`. The backup pattern below picks up those dumps rather than running an external `pg_dump`.

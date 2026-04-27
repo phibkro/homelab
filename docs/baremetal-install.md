@@ -4,8 +4,13 @@ Bare-metal install. The flake's `hosts/nori-station/disko.nix` declares
 the partition layout; disko applies it; `nixos-install` writes the
 system. No manual `parted` or `mkfs` — the layout is in version control.
 
-Read this whole document before starting. It assumes Phase 3 succeeded
-and both backups (rsync + partclone) are on One Touch and verified.
+Read this whole document before starting. As-of-Phase-5+ note: this
+doc was written for the original April 2026 install. The OneTouch
+referenced in earlier steps is now the live restic backup target —
+don't let the same drive be both "rollback insurance for the install"
+and "in-use restic repo" without thinking through the dependency.
+Use a different external drive for the partclone-rollback backup if
+you're re-running this on an existing nori-station.
 
 ## 1. Prepare the USB installer
 
@@ -116,9 +121,11 @@ Mac's key; `sudo` doesn't need a password (`wheelNeedsPassword = false`).
 ### If install errors
 
 Most likely culprits:
-- **Driver build failure** (`nvidiaPackages.production` resolves to
-  580.119.02 + kernel 6.19): fall back to `beta` or pin
-  `linuxPackages_6_18`. See `docs/DESIGN.md` L101–106.
+- **Driver build failure**: as of April 2026 `nvidiaPackages.production`
+  is 595.x and kernel 6.18 LTS; the historical 580.119/6.19 build break
+  is resolved. If a regression returns, fall back via the ladder
+  documented in `docs/DESIGN.md` L94–106 (`production` → `beta` →
+  `latest` → explicit `mkDriver`).
 - **`nixos-hardware.nixosModules.common-pc-ssd` missing**: drop the
   import.
 
@@ -183,20 +190,34 @@ Phase 4 is done when all four work.
 ## What this install does NOT do (deferred)
 
 - **`flake.lock` capture and commit** — see step 7. Easy to miss.
-- **Service migration.** Tailscale is up by virtue of `services.tailscale`
-  in `common.nix`, but Samba, Ollama, Jellyfin, Immich, etc. are Phase 5.
+- **Service migration.** Tailscale comes up by virtue of
+  `services.tailscale` in `modules/common/`. Phase 5 services
+  (Samba, Ollama, Jellyfin, Immich, the *arr stack, Glance,
+  Radicale, Syncthing, etc.) come up via the group composition
+  in `hosts/nori-station/default.nix` — see
+  `modules/services/groups.nix` for what's in each.
 - **Tailscale identity restore.** Fresh `tailscale up` registers a *new*
   node. The old `nori-station` from Ubuntu lingers as expired in the
   admin console. Either delete it now or restore `/var/lib/tailscale/`
   from the rsync backup before starting tailscaled (Phase 5).
 - **IronWolf Pro reformat.** Phase 2. Separate operation; runs when
   you have a free evening.
-- **Pi setup.** Phase 5. nori-pi as DNS/backup target is described in
-  `docs/DESIGN.md` but not yet implemented in the flake.
+- **OneTouch as restic target.** Phase 5+ — see
+  `hosts/nori-station/disko-onetouch.nix`. Don't run that disko
+  config until the OneTouch's existing data has been migrated off
+  (any Phase-1 backups it held are now on @archive on IronWolf,
+  per the migration documented in `docs/RESUME.md` loose-end #1).
+- **Pi setup.** `hosts/nori-pi/` declarative is deferred until a
+  NixOS-bootable USB SSD lands; PiOS interim covered DNS/backup
+  roles in the meantime.
 
 ## What to do if it goes catastrophically wrong
 
-You have full Ubuntu rollback available from the partclone backup at
-`/media/OneTouch/ubuntu-pc-20260425T000045Z/`. Procedure in that
-directory's `RESTORE.md`. Worst case: 30–60 min of restore, you're
-back on Ubuntu.
+If this is a fresh install replacing existing Ubuntu, you ideally
+have a partclone image from Phase 1 (now archived under
+`scripts/legacy/`). The procedure was documented per backup
+directory's `RESTORE.md`. Worst case: 30–60 min of restore.
+
+For everything else (post-install issues), the runbooks at
+`docs/runbooks/` cover bad-config, file-deletion, service-corruption,
+and drive-failure scenarios.
