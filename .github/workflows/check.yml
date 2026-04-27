@@ -1,0 +1,32 @@
+name: flake check
+
+# Runs `nix flake check` on every push to main and on every pull
+# request. Closes the gap that `.githooks/pre-commit` skips on Macs
+# without nix on PATH (which is most commits, since the working tree
+# lives on a Mac and nix runs on the host). Anything that bypasses
+# pre-commit gets caught here before merge.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Allow manual reruns when investigating CI flakes.
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v27
+        with:
+          # Authenticate to GitHub for flake inputs that come from
+          # github: URLs (avoids unauthenticated rate limits).
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            experimental-features = nix-command flakes
+
+      - name: nix flake check
+        run: nix flake check --print-build-logs
