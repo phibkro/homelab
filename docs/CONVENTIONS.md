@@ -180,7 +180,7 @@ fails `nix flake check`.
    characters — usually safe, but harmless.
 
 3. **Declare the route's OIDC block** in the service's module
-   (`modules/services/<svc>.nix`). The service module is the
+   (`modules/server/<svc>.nix`). The service module is the
    single source of truth for the route; co-locate everything
    about that service:
    ```nix
@@ -269,11 +269,11 @@ From `docs/DESIGN.md` L210-289. Choose the right one per service:
 | B: built-in dump | service writes its own SQL dumps (Immich) | restic picks up the dump dir |
 | C: external dump pre-restic | sqlite/postgres without internal dump | `backupPrepareCommand` runs `sqlite3 .backup` first |
 
-Restic backup config is in `modules/services/backup-restic.nix`. Repository at `/mnt/backup/<job>` (OneTouch ext4); Hetzner Storage Box still on the roadmap as a second per-job repository for off-site coverage.
+Restic per-repo declarations live alongside their service modules via `nori.backups.<n>`; cross-cutting infra (sops password, check timers) is in `modules/server/backup/restic.nix`. Repository at `/mnt/backup/<job>` (OneTouch ext4); Hetzner Storage Box still on the roadmap as a second per-job repository for off-site coverage.
 
 ## Snapshot policy
 
-`modules/services/btrbk.nix` declares two btrfs subvolume snapshot instances (root + media). Daily by default. Snapshot retention follows DESIGN's tier table.
+`modules/server/backup/btrbk.nix` declares two btrfs subvolume snapshot instances (root + media). Daily by default. Snapshot retention follows DESIGN's tier table.
 
 Both `restic-backups-*` and `btrbk-*` units get `OnFailure = [ "notify@%n.service" ]` so silent failures fire an ntfy alert.
 
@@ -362,41 +362,41 @@ If none fit, the rule is judgment — that's what code review is for. Don't writ
 
 **A check earns its keep when it would have caught a real mistake, not a hypothetical one.** Add when violations occur or are imminent — not preemptively.
 
-## What gets imported where
+## Module structure: concerns compose host identity
 
-- `modules/common/` is loaded by every host. Things that are universal: nix settings, locale, base packages, firewall enabled, sshd, tailscale, sops scaffolding.
-- `modules/services/<x>.nix` is loaded by individual hosts that need it. Per-host opt-in via group composition (see below) in `hosts/<host>/default.nix`.
-- `modules/lib/<x>.nix` defines abstractions. Imported once by hosts that use them.
-- `modules/desktop/` is loaded by hosts with a graphical session. Self-contained directory with its own `default.nix`.
+`modules/<concern>/` directories represent host roles. A host's identity is the sum of which concerns it imports plus its hardware:
 
-When in doubt, prefer per-host opt-in over universal inclusion. Adding a service to `common/` makes every future host inherit it.
+- `modules/common/` — universal infra. Every host imports this. Contains: base system, user accounts, Tailscale, sops, plus the `lib/` option modules (`lan-route.nix`, `backup.nix`) that any module on the host can populate.
+- `modules/server/` — *this host serves things*. Caddy, Authelia, *arr stack, backups, media, monitoring, etc. Hosts that import it become servers; hosts that omit it aren't.
+- `modules/desktop/` — *this host has a graphical session*. Hyprland, greetd, audio, applications.
+- `modules/lib/` — option-defining modules (the `nori.lanRoutes` and `nori.backups` schemas + assertions). Imported by `common/` so every host has the options available; populated opt-in via service modules.
 
-## Service grouping: composable aliases, not a hierarchy
-
-Service files stay flat under `modules/services/<name>.nix`. Groupings live in `modules/services/groups.nix` as plain Nix lists per concern (`ai`, `arr`, `media`, `observability`, `backup`, `networking`, `auth`).
-
-Hosts compose by group name:
+A typical host file:
 
 ```nix
-# hosts/<host>/default.nix
-let
-  groups = import ../../modules/services/groups.nix;
-in {
-  imports = [ ../../modules/common ../../modules/lib/lan-route.nix ]
-    ++ groups.networking ++ groups.auth ++ groups.observability
-    ++ groups.backup ++ groups.ai ++ groups.media ++ groups.arr
-    ++ [ ../../modules/desktop ./hardware.nix ./disko.nix ];
-}
+# hosts/nori-station/default.nix
+imports = [
+  inputs.disko.nixosModules.disko
+  ../../modules/common
+  ../../modules/server
+  ../../modules/desktop
+  ./hardware.nix
+  ./disko.nix
+];
 ```
 
-**Why composable aliases instead of `modules/services/<group>/<name>.nix` directories:**
+Reading this answers "what kind of machine is `nori-station`?" at a glance. Future hosts: `nori-pi` will be `common + server` (no desktop), `nori-laptop` will be `common + desktop` (no server services).
 
-- A service can belong to multiple groups (e.g. `ntfy` is `observability` *and* a generic alerting backend; a future `notifications` group can include it without moving files). Filesystem nesting forces a "primary category" choice.
-- No relative-path fragility. Service modules sometimes reference adjacent assets (e.g. `caddy.nix` reads `./caddy-local-ca.crt`) — moving files breaks those refs in subtle ways. Aliases avoid this entirely.
-- `ls modules/services/` shows the whole inventory at one level.
-- Groups are first-class Nix data — programmatically inspectable for cross-cutting views.
+**Within `modules/server/`, folders signal coupling, not categorization.** Tightly-coupled clusters get their own folder + `default.nix`:
 
-**Adding a service**: drop the file at `modules/services/<name>.nix`, append the path to the relevant group(s) in `groups.nix`. A service in two groups is fine — the module system de-duplicates if the same path appears twice across the host's imports.
+- `modules/server/arr/` — Sonarr/Radarr/Lidarr/Bazarr/Jellyseerr/Prowlarr/qBittorrent. They reference each other via API and share `/mnt/media/streaming` via the `media` group + `arr/shared.nix` tmpfiles.
+- `modules/server/backup/` — `restic.nix` + `verify.nix` + `btrbk.nix`. They share `/mnt/backup`, the `restic-password` sops secret, and the `notify@` failure pipeline.
+
+Loose services that just happen to be in the same conceptual area (e.g. Beszel, Gatus, Glance, ntfy — all observability-shaped but mutually independent) stay flat at `server/`'s top level.
+
+**Adding a service**: see CLAUDE.md's "How to add a new service" for the full procedure. Short version: drop the file in `modules/server/` (loose) or in an existing cluster folder (coupled), append it to the relevant `default.nix`, declare `nori.lanRoutes.<n>` + `nori.backups.<n>`, deploy.
+
+When the second server lands (nori-pi), `modules/server/default.nix` will subdivide into sub-concerns the host can opt into selectively. Defer until the second host actually exists; the current "server is one bundle" works because we have one server.
 
 ## Dev workflow
 

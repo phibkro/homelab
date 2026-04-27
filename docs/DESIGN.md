@@ -195,12 +195,12 @@ See `docs/CONVENTIONS.md` for the canonical service-module shape and how to exte
 
 #### TLS + naming
 
-Caddy terminates TLS for every `<name>.nori.lan` using its internal CA (auto-generated). The root cert is committed at `modules/services/caddy-local-ca.crt` and added to system trust via `security.pki.certificateFiles` so curl/Go/openssl trust it transparently. Python services need explicit `SSL_CERT_FILE = "/etc/ssl/certs/ca-bundle.crt"` (certifi doesn't read system trust).
+Caddy terminates TLS for every `<name>.nori.lan` using its internal CA (auto-generated). The root cert is committed at `modules/server/caddy-local-ca.crt` and added to system trust via `security.pki.certificateFiles` so curl/Go/openssl trust it transparently. Python services need explicit `SSL_CERT_FILE = "/etc/ssl/certs/ca-bundle.crt"` (certifi doesn't read system trust).
 
 Naming convention: function over brand. `chat.nori.lan` not `open-webui.nori.lan`. `auth.nori.lan` because "auth" *is* the function.
 
 Devices accessing the homelab need to install the Caddy root CA once:
-- Mac: `sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain modules/services/caddy-local-ca.crt`
+- Mac: `sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain modules/server/caddy-local-ca.crt`
 - Firefox/Zen: import via Settings → Privacy → Certificates (browsers don't read macOS keychain)
 - iOS: AirDrop the cert, install via Settings → Profile, enable in Cert Trust Settings
 
@@ -405,19 +405,37 @@ hosts/
     disko.nix                    # Applied during Phase 4
     hardware.nix
 modules/
-  services/
-    jellyfin.nix
-    immich.nix
-    blocky.nix                   # Used by both hosts
-    backup-restic.nix            # Pattern A/B/C implementations
-    ...
-  desktop/
+  common/                        # universal — every host imports this
+    base.nix
+    users.nix
+    sops.nix
+    tailscale.nix
+    default.nix                  # also imports lib/* so options are available everywhere
+  desktop/                       # graphical session — Hyprland, greetd, …
     hyprland.nix
     ...
-  common/
-    user.nix
-    tailscale.nix
-    ...
+  server/                        # this host serves things — server concern
+    default.nix                  # imports every server module below
+    authelia.nix
+    blocky.nix
+    caddy.nix
+    caddy-local-ca.crt
+    immich.nix
+    jellyfin.nix
+    ...                          # ~17 loose service files
+    arr/                         # tightly-coupled *arr stack
+      default.nix
+      shared.nix
+      sonarr.nix
+      ...
+    backup/                      # tightly-coupled durability stack
+      default.nix
+      restic.nix                 # Pattern A/B/C implementations
+      verify.nix                 # quarterly restore drill
+      btrbk.nix
+  lib/
+    lan-route.nix                # nori.lanRoutes option schema
+    backup.nix                   # nori.backups option schema
 secrets/
   secrets.yaml
   .sops.yaml

@@ -115,5 +115,5 @@ All green = recovery complete.
 
 ## Don't forget
 
-- The Caddy CA cert is committed at `modules/services/caddy-local-ca.crt`. After install, downstream devices that trusted the OLD CA (Mac keychain, Firefox cert store, etc.) **will reject the new CA** until you re-import. Plan for this — it'll feel like "the homelab broke" after a recovery.
+- The Caddy CA cert is committed at `modules/server/caddy-local-ca.crt`. After install, downstream devices that trusted the OLD CA (Mac keychain, Firefox cert store, etc.) **will reject the new CA** until you re-import. Plan for this — it'll feel like "the homelab broke" after a recovery.
 - Tailscale state is in `/var/lib/tailscale`. Restored from restic. If that doesn't work, run `sudo tailscale up` on the new host and approve in the admin console.

@@ -112,17 +112,17 @@ All HTTP services exposed via Caddy at `https://<name>.nori.lan`. Direct backend
 
 Background workers / non-routed:
 - `blocky.nix` — DNS adblock on `:53` LAN-wide via Tailscale DNS push (`100.81.5.122`)
-- `backup-restic.nix` — cross-cutting infra (sops password, /var/backup tmpfile, weekly + monthly `restic check` timers iterating every `nori.backups.*`). Per-repo declarations live in their service modules. 19 active repos as of 2026-04-27.
-- `backup-verify.nix` — quarterly restore drill (next: first Sunday of Q3 2026); verifies backups are *restorable*, not just *recorded*. Manual deep variant via `just restore-drill all`.
+- `backup/restic.nix` — cross-cutting infra (sops password, /var/backup tmpfile, weekly + monthly `restic check` timers iterating every `nori.backups.*`). Per-repo declarations live in their service modules. 19 active repos as of 2026-04-27.
+- `backup/verify.nix` — quarterly restore drill (next: first Sunday of Q3 2026); verifies backups are *restorable*, not just *recorded*. Manual deep variant via `just restore-drill all`.
 - `btrbk.nix` — daily root + media btrfs snapshots; `@archive` + `@library` included
 - `ntfy.nix` (local) — backs the `notify@` template; OnFailure for restic + btrbk + restic-check + restore-drill routes through it
-- `caddy.nix` — reverse proxy + internal CA, root cert in `modules/services/caddy-local-ca.crt` (committed) + system trust via `security.pki.certificateFiles`
-- `arr-shared.nix` — `media` group + tmpfiles for shared library + download paths under `/mnt/media/streaming` and `/mnt/media/library`
+- `caddy.nix` — reverse proxy + internal CA, root cert in `modules/server/caddy-local-ca.crt` (committed) + system trust via `security.pki.certificateFiles`
+- `arr/shared.nix` — `media` group + tmpfiles for shared library + download paths under `/mnt/media/streaming` and `/mnt/media/library`
 
 Cross-cutting abstractions:
 - `modules/lib/lan-route.nix` — single declaration per service generates Caddy vhost + Blocky DNS + Gatus monitor + (optional) tailnet firewall opening + (optional) Authelia OIDC client + sops secrets/templates. Module assertions enforce port uniqueness, DNS-safe names, redirectPath shape. See `docs/CONVENTIONS.md`.
 - `modules/lib/backup.nix` — single declaration per service: either `paths = [...]` for what to back up or `skip = "<reason>"` for explicit opt-out. Type-level enforcement of the choice + module assertion against DynamicUser symlinks. Paired flake check (`every-service-has-backup-intent`) makes forgetting a build error.
-- `modules/services/groups.nix` — composable, non-exclusive aliases (ai, arr, media, observability, backup, networking, auth, personal). Hosts compose via `imports = [...] ++ groups.<name> ++ ...`. Files stay flat under `modules/services/<service>.nix`; a service can belong to multiple groups.
+- `modules/server/`, `modules/desktop/`, `modules/common/` — host-role concerns. A host imports the concerns it embodies; nori-station = `common + server + desktop`. Within `server/`, folders signal coupling (e.g. `arr/`, `backup/` have their own `default.nix`); loose services stay flat at the top level.
 
 Dev workflow:
 - `Justfile` at repo root — `just` (default = rebuild), `just status`, `just logs <unit>`, `just check`, `just deploy` (git-based, no rsync), `just rollback`, etc. All recipes accept an optional `host` arg defaulting to `nori-station`. See `just --list`.
@@ -155,7 +155,7 @@ Dev workflow:
    entertainment, Jellyfin focuses on home videos).
 7. **Beszel SSO consumer config.** PocketBase OAuth setup is paused
    mid-flow. The Authelia client got dropped in `0862f31` when the
-   metrics OIDC block was deferred — `modules/services/beszel.nix`
+   metrics OIDC block was deferred — `modules/server/beszel.nix`
    has the reattach instructions in a comment block. Pick up by:
    `just oidc-key metrics` → paste raw + hash into sops → reattach
    `nori.lanRoutes.metrics.oidc = { … };` → deploy → paste the raw
@@ -187,7 +187,7 @@ Dev workflow:
 10. **calibre-web nixpkgs overlay.** Module enables an inline overlay
     relaxing `requests` version pin (upstream pins `<2.33.0`, nixpkgs
     ships 2.33.1). Drop the overlay when nixpkgs catches up. See
-    `modules/services/calibre-web.nix` for the override block.
+    `modules/server/calibre-web.nix` for the override block.
 11. **calibre-web bootstrap SIGSYS.** First-start `calibredb` call
     coredumps with signal 31 (bad system call) — almost certainly
     NixOS systemd hardening blocking a syscall calibre uses internally.

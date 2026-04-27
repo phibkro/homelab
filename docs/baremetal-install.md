@@ -193,9 +193,9 @@ Phase 4 is done when all four work.
 - **Service migration.** Tailscale comes up by virtue of
   `services.tailscale` in `modules/common/`. Phase 5 services
   (Samba, Ollama, Jellyfin, Immich, the *arr stack, Glance,
-  Radicale, Syncthing, etc.) come up via the group composition
-  in `hosts/nori-station/default.nix` — see
-  `modules/services/groups.nix` for what's in each.
+  Radicale, Syncthing, etc.) come up via `modules/server/` —
+  the host imports the whole "server concern" via
+  `hosts/nori-station/default.nix`.
 - **Tailscale identity restore.** Fresh `tailscale up` registers a *new*
   node. The old `nori-station` from Ubuntu lingers as expired in the
   admin console. Either delete it now or restore `/var/lib/tailscale/`

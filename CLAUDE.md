@@ -11,21 +11,22 @@ You are working in a NixOS homelab flake. Two-host topology (nori-station built;
 ## Hard rules
 
 - **Never touch `nvme0n1`** without verifying the model string first via `/dev/disk/by-id/`. NVMe enumeration is unstable across reboots — `nvme0n1` was the NixOS root at install time, is now Windows. Disko configs target by-id paths for this reason.
-- **Don't commit secrets.** Anything in `secrets/secrets.yaml` is sops-encrypted and safe. `.env` files are gitignored. Public certs (e.g., `modules/services/caddy-local-ca.crt`) are fine to commit.
+- **Don't commit secrets.** Anything in `secrets/secrets.yaml` is sops-encrypted and safe. `.env` files are gitignored. Public certs (e.g., `modules/server/caddy-local-ca.crt`) are fine to commit.
 - **Don't bypass the safety net.** Don't disable `services.restic.backups.*`, `services.btrbk.*`, OnFailure → ntfy alerts, or any other "passive backend" without naming why and how it'll be re-enabled.
 - **Default-deny everywhere.** Network exposure, filesystem access, tailnet ports — services opt in to specific access, never wildcard.
 
 ## How to add a new service
 
-1. Create `modules/services/<service>.nix`
+1. Create `modules/server/<service>.nix` (loose) or land inside an existing tightly-coupled folder like `modules/server/arr/`. Folders signal coupling; flat = independent.
 2. Enable the service module
 3. Apply default-deny FS hardening (`ProtectHome = lib.mkForce true;` + `TemporaryFileSystem` + `BindReadOnlyPaths`; full snippet in `docs/CONVENTIONS.md`)
 4. Declare `nori.lanRoutes.<name> = { port = N; monitor = { }; };` for HTTPS access via Caddy + auto-monitoring
-5. Append the file path to the relevant group in `modules/services/groups.nix` (e.g. `media`, `arr`, `personal`); the host imports groups, not individual files
-6. If the service needs secrets: `sops secrets/secrets.yaml` (env-file format `KEY=VALUE` if consumed via `EnvironmentFile`)
-7. If the service needs SSO: `just oidc-key <name>` → paste raw + hash into sops → declare `nori.lanRoutes.<name>.oidc = { clientName; redirectPath; };` in the same module → wire `EnvironmentFile = config.sops.templates."oidc-<name>-env".path;` + `SupplementaryGroups = [ "keys" ];` on the systemd unit. See `docs/CONVENTIONS.md` "Authelia OIDC pattern".
-8. `just rebuild` (rsync working tree + `nh os switch`)
-9. Commit (Conventional Commits — type + scope + tight summary)
+5. Declare `nori.backups.<name>` — either `paths = [ ... ]` for what to back up, or `skip = "<reason>"` for explicit opt-out. Schema requires one or the other; `every-service-has-backup-intent` flake check fails the build if you forget. DynamicUser services point at `/var/lib/private/<name>` (the symlink target, not the symlink itself).
+6. Append the new file to `modules/server/default.nix` (loose service) or the relevant cluster's `default.nix` (e.g. `modules/server/arr/default.nix`). Coupled clusters import their own siblings via `default.nix`; loose services land in the top-level imports list.
+7. If the service needs secrets: `sops secrets/secrets.yaml` (env-file format `KEY=VALUE` if consumed via `EnvironmentFile`)
+8. If the service needs SSO: `just oidc-key <name>` → paste raw + hash into sops → declare `nori.lanRoutes.<name>.oidc = { clientName; redirectPath; };` in the same module → wire `EnvironmentFile = config.sops.templates."oidc-<name>-env".path;` + `SupplementaryGroups = [ "keys" ];` on the systemd unit. See `docs/CONVENTIONS.md` "Authelia OIDC pattern".
+9. `just rebuild` (rsync working tree + `nh os switch`)
+10. Commit (Conventional Commits — type + scope + tight summary)
 
 ## How to operate
 

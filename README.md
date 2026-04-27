@@ -14,7 +14,7 @@ Single-user NixOS homelab flake. Two-host topology (`nori-station` built; `nori-
 
 ## Active services
 
-All HTTP services live behind Caddy at `https://<name>.nori.lan`. Tailnet-only via Tailscale's DNS push (admin console → DNS → custom nameserver = `100.81.5.122`). Caddy uses an internal CA — install `modules/services/caddy-local-ca.crt` once per device.
+All HTTP services live behind Caddy at `https://<name>.nori.lan`. Tailnet-only via Tailscale's DNS push (admin console → DNS → custom nameserver = `100.81.5.122`). Caddy uses an internal CA — install `modules/server/caddy-local-ca.crt` once per device.
 
 The live inventory is the `nori.lanRoutes` attrset in `config`. Static lists drift; query the source of truth instead:
 

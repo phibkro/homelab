@@ -250,7 +250,7 @@ Override locally:
 systemd.services.beszel-agent.serviceConfig.PrivateDevices = lib.mkForce false;
 ```
 
-Loosens just the device namespace; the rest of the upstream hardening (PrivateUsers, ProtectKernel*, SystemCallFilter, RestrictSUIDSGID) stays. See `modules/services/beszel.nix` for the live config.
+Loosens just the device namespace; the rest of the upstream hardening (PrivateUsers, ProtectKernel*, SystemCallFilter, RestrictSUIDSGID) stays. See `modules/server/beszel.nix` for the live config.
 
 ## NTFS read-only mounts: BitLocker + Fast Startup
 
@@ -264,7 +264,7 @@ See `docs/runbooks/inspect-windows-drive.md` for the full procedure.
 
 ## Authelia OIDC clients require `X_AUTHELIA_CONFIG_FILTERS=template`
 
-OIDC client `client_secret` values use `{{ secret "/run/secrets/oidc-<n>-client-secret-hash" }}` template syntax (see `modules/lib/lan-route.nix` + `modules/services/authelia.nix`). The substitution only happens when Authelia is invoked with the template config-filter enabled:
+OIDC client `client_secret` values use `{{ secret "/run/secrets/oidc-<n>-client-secret-hash" }}` template syntax (see `modules/lib/lan-route.nix` + `modules/server/authelia.nix`). The substitution only happens when Authelia is invoked with the template config-filter enabled:
 
 ```nix
 systemd.services.authelia-main.environment.X_AUTHELIA_CONFIG_FILTERS = "template";
@@ -276,4 +276,4 @@ Without it, Authelia parses the literal `{{ secret "..." }}` string as the clien
 
 `scripts/backup.sh` writes a manifest from in-the-moment `du` of the destination directory. There's no post-write verification, no comparison on subsequent runs. Files can disappear between backup and restore (manual deletion, exfat corruption) and the manifest still claims success. Treat any pre-Phase-5 rsync-to-exfat backup as a snapshot of intent, not a guaranteed source of truth.
 
-For Phase 5+, restic (`backup-restic.nix`) provides `restic check` + content-addressed integrity by design.
+For Phase 5+, restic (`backup/restic.nix`) provides `restic check` + content-addressed integrity by design.
