@@ -45,6 +45,15 @@
       OAUTH_CLIENT_ID = "chat";
       OAUTH_PROVIDER_NAME = "Authelia";
       ENABLE_OAUTH_SIGNUP = "True";
+      # Link OAuth identities to existing accounts by email match
+      # instead of creating a duplicate. Default is false because in
+      # multi-IdP setups a malicious provider could spoof emails to
+      # take over accounts; here Authelia is the only OIDC issuer
+      # and we trust its email claims, so the safety vs. UX
+      # tradeoff falls on the merge side. Without this, an Authelia
+      # email change creates an orphan account (we hit this once
+      # already during the proton-vs-gmail mismatch).
+      OAUTH_MERGE_ACCOUNTS_BY_EMAIL = "True";
       # Python's httpx/requests/urllib3 use certifi's bundled trust
       # store by default — they don't see /etc/ssl/certs and so don't
       # trust Caddy's local CA. SSL_CERT_FILE overrides certifi to use
