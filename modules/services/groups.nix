@@ -76,10 +76,13 @@
     ./vaultwarden.nix
   ];
 
-  # Data durability — local snapshots + encrypted off-host backup.
+  # Data durability — local snapshots + encrypted off-host backup +
+  # quarterly restore drill (the difference between "I have backups"
+  # and "I have verified-restorable backups").
   backup = [
     ./btrbk.nix
     ./backup-restic.nix
+    ./backup-verify.nix
   ];
 
   # Edge networking — HTTPS terminator + DNS adblock.

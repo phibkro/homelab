@@ -109,6 +109,12 @@ default: rebuild
 @restic-check host=default_host:
     ssh {{user}}@{{host}}.{{tailnet}} 'sudo systemctl start restic-check-weekly.service && journalctl -u restic-check-weekly.service -f'
 
+# Trigger the restore drill on <host> (quarterly cadence; verifies backups are
+# *restorable*, not just *recorded*). Excludes media-irreplaceable by default;
+# pass `all` to include it (multi-hour run). Usage: just restore-drill [all] [<host>]
+@restore-drill mode="quarterly" host=default_host:
+    ssh {{user}}@{{host}}.{{tailnet}} 'sudo systemctl start restore-drill{{ if mode == "all" { "-all" } else { "" } }}.service && journalctl -u restore-drill{{ if mode == "all" { "-all" } else { "" } }}.service -f'
+
 # List restic snapshots for a repo on <host>. Usage: just snapshots <repo> [<host>]
 @snapshots repo host=default_host:
     ssh {{user}}@{{host}}.{{tailnet}} 'sudo /run/current-system/sw/bin/restic -r /mnt/backup/{{repo}} --password-file /run/secrets/restic-password snapshots'
