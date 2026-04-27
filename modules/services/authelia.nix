@@ -42,7 +42,8 @@ let
     response_types = [ "code" ];
     grant_types = [
       "authorization_code"
-    ] ++ lib.optional (lib.elem "offline_access" route.oidc.scopes) "refresh_token";
+    ]
+    ++ lib.optional (lib.elem "offline_access" route.oidc.scopes) "refresh_token";
   }) (lib.filterAttrs (_: cfg: cfg.oidc != null) config.nori.lanRoutes);
 in
 {
