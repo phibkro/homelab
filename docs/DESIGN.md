@@ -206,7 +206,7 @@ Devices accessing the homelab need to install the Caddy root CA once:
 
 #### Single Sign-On (SSO)
 
-`Authelia` provides OIDC. Services that opt in get a one-click login flow (visit service → redirect to `auth.nori.lan` → log in once → returned authenticated). Per-service setup is currently manual (one client entry in `authelia.nix` + per-service env vars to consume); auto-generation deferred to the lan-route abstraction once N services warrant it. See `docs/CONVENTIONS.md` "Authelia OIDC pattern".
+`Authelia` provides OIDC. Services that opt in get a one-click login flow (visit service → redirect to `auth.nori.lan` → log in once → returned authenticated). Per-service setup is auto-generated from the `nori.lanRoutes.<n>.oidc` block in each service module: lan-route generates the Authelia client entry, two sops secrets (raw + PBKDF2 hash), and a sops env-file template. Authelia's `template` config-filter reads the hash from sops at startup, so zero hash material lives in committed Nix. See `docs/CONVENTIONS.md` "Authelia OIDC pattern" for the bootstrap flow and `flake.nix`'s `forbidden-patterns` check for the enforcement.
 
 #### DNS architecture
 

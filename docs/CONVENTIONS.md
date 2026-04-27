@@ -147,38 +147,117 @@ NixOS services using `DynamicUser=yes` (open-webui, ollama, ntfy-sh, beszel-hub,
 - `SupplementaryGroups = [ "keys" ]` to grant access to /run/secrets/* (mode 0440 root:keys)
 - StateDirectory mounts `/var/lib/<name>` from `/var/lib/private/<name>` — see `docs/gotchas.md`
 
-## Authelia OIDC pattern (manual until auto-gen lands)
+## Authelia OIDC pattern
 
-Per service that opts in to SSO:
+OIDC clients are auto-generated from `nori.lanRoutes.<n>.oidc`. The
+abstraction owns the Authelia client entry, the sops secret(s), and
+the env-file template; the consuming service module owns its own
+systemd wiring (`EnvironmentFile`, `SupplementaryGroups`) and
+non-secret OIDC env vars (provider URL, client_id, etc.).
 
-1. Generate raw secret + PBKDF2 hash:
-   ```bash
-   ssh nori@192.168.1.181 'nix shell nixpkgs#openssl nixpkgs#authelia --command bash -c "
-     SECRET=\$(openssl rand -base64 32 | tr -d \"=+/\")
-     echo \"raw: \$SECRET\"
-     authelia crypto hash generate pbkdf2 --variant sha512 --iterations 310000 --password \"\$SECRET\"
-   "'
+Hash material lives **only in sops**. Authelia's `template`
+config-filter (`X_AUTHELIA_CONFIG_FILTERS=template`, set in
+`authelia.nix`) reads the PBKDF2 hash from
+`/run/secrets/oidc-<n>-client-secret-hash` at startup and
+substitutes it into the YAML config before parsing — zero hash
+material in committed Nix. Enforced by the `forbidden-patterns`
+flake check (see `flake.nix`); a stray inline `\$pbkdf2-` string
+fails `nix flake check`.
+
+### Bootstrap (per new client)
+
+1. **Generate raw + hash:** `just oidc-key <name>`. Output is
+   sensitive; lands in your terminal, not in any file or shell
+   history. Two values to copy.
+
+2. **Paste both into sops** (`sops secrets/secrets.yaml`):
+   ```yaml
+   oidc-<name>-client-secret: '<raw — opaque base64-ish blob>'
+   oidc-<name>-client-secret-hash: '$pbkdf2-sha512$310000$...'
    ```
-2. Add raw to sops as `oidc-<name>-client-secret`
-3. Append client entry to `modules/services/authelia.nix` `identity_providers.oidc.clients`:
+   Single-quote the hash so YAML doesn't interpret the `$` chars.
+   Single-quote the raw too if it happens to contain YAML-special
+   characters — usually safe, but harmless.
+
+3. **Declare the route's OIDC block** in the service's module
+   (`modules/services/<svc>.nix`). The service module is the
+   single source of truth for the route; co-locate everything
+   about that service:
    ```nix
-   {
-     client_id = "<name>";
-     client_name = "<Display Name>";
-     client_secret = "<paste-the-pbkdf2-hash>";
-     public = false;
-     authorization_policy = "one_factor";
-     redirect_uris = [ "https://<name>.nori.lan/<callback-path>" ];
-     scopes = [ "openid" "profile" "email" "groups" ];
-   }
+   nori.lanRoutes.<name> = {
+     port = N;
+     monitor = { };
+     oidc = {
+       clientName  = "Display Name";
+       redirectPath = "/path/the/service/uses";
+       # Optional overrides (defaults shown):
+       # scopes = [ "openid" "profile" "email" "groups" ];
+       # authorizationPolicy = "one_factor";
+       # secretEnvName = "OAUTH_CLIENT_SECRET";  # → SSO_CLIENT_SECRET for Vaultwarden, etc.
+     };
+   };
    ```
-   Hash inline is OK — it's one-way, safe to commit.
-4. Wire the consuming service:
-   - Set OIDC env vars (provider URL, client ID, scopes) directly in `services.<service>.environment`
-   - Inject client_secret via sops template + EnvironmentFile (see open-webui example)
-   - Python services: also set `SSL_CERT_FILE = "/etc/ssl/certs/ca-bundle.crt"` so they trust Caddy's CA
+   Common `redirectPath` values:
+   ```
+   Open WebUI:  /oauth/oidc/callback
+   PocketBase:  /api/oauth2-redirect
+   Vaultwarden: /identity/connect/oidc-signin
+   ```
 
-The Caddy CA is in system trust via `security.pki.certificateFiles = [ ./caddy-local-ca.crt ];` in `caddy.nix`. curl/Go/openssl pick it up automatically; Python's `certifi` doesn't (hence `SSL_CERT_FILE`).
+4. **Wire the consuming systemd unit** (in the same module):
+   ```nix
+   systemd.services.<svc>.serviceConfig = {
+     EnvironmentFile = config.sops.templates."oidc-<name>-env".path;
+     SupplementaryGroups = [ "keys" ];   # DynamicUser needs this to read /run/secrets/rendered/*
+   };
+   ```
+   Plus non-secret OIDC env vars in `services.<svc>.environment`:
+   ```nix
+   OPENID_PROVIDER_URL = "https://auth.nori.lan/.well-known/openid-configuration";
+   OAUTH_CLIENT_ID     = "<name>";
+   OAUTH_PROVIDER_NAME = "Authelia";
+   ENABLE_OAUTH_SIGNUP = "True";
+   ```
+   Service-by-service the env-var names vary (`OAUTH_*` for Open
+   WebUI; `OPENID_*` for some; `SSO_*` for Vaultwarden). The
+   abstraction handles only the *secret-bearing* var via
+   `secretEnvName`; the rest stay in the service module where
+   per-service quirks live.
+
+5. **Python services** also set `SSL_CERT_FILE = "/etc/ssl/certs/ca-bundle.crt"` so
+   `httpx`/`requests`/`urllib3` (which use `certifi` by default,
+   not the system trust store) trust Caddy's local CA when calling
+   `https://auth.nori.lan`.
+
+6. **Deploy:** `just rebuild`.
+
+### Web-UI-managed consumers (PocketBase / Beszel)
+
+For services that configure OAuth in their own admin UI rather
+than via env vars, only steps 1, 2, and 3 apply — no
+EnvironmentFile wiring on the service side. The raw secret sits
+at `/run/secrets/oidc-<n>-client-secret` for paste-into-admin
+when configuring the consumer. The env-file template still
+generates and is just unused; cost is microscopic.
+
+### What stays manual and why
+
+- **PBKDF2 hash generation** — Authelia's hash uses random salt;
+  re-running on the same raw produces a different hash. Not
+  amenable to declarative regeneration. `just oidc-key` collapses
+  the two CLI invocations into one.
+- **Per-service systemd unit name + env-var convention** — the
+  abstraction can't divine `chat` → `open-webui`, and OIDC
+  env-var naming is too varied across services to abstract
+  (OAUTH_*, OPENID_*, SSO_*, custom). Both stay in the service
+  module where they're discoverable.
+
+### Caddy's local CA
+
+Available in system trust via
+`security.pki.certificateFiles = [ ./caddy-local-ca.crt ];` in
+`caddy.nix`. `curl` / Go / `openssl` pick it up automatically;
+Python's `certifi` doesn't (hence step 5's `SSL_CERT_FILE`).
 
 ## Backup correctness: Patterns A / B / C
 
@@ -206,7 +285,7 @@ Both `restic-backups-*` and `btrbk-*` units get `OnFailure = [ "notify@%n.servic
 
 ## Code style
 
-- `nixfmt-rfc-style` formatting (set as the flake formatter)
+- `nixfmt` formatting (set as the flake formatter; `pkgs.nixfmt-rfc-style` is now an alias for `pkgs.nixfmt`)
 - `statix` for Nix anti-pattern lint
 - `deadnix` for unused bindings
 - Run via `nix flake check` (when CI gate lands) or pre-commit hooks
