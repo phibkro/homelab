@@ -28,11 +28,13 @@ in
   #   nori.lanRoutes.chat = {
   #     port = 8080;
   #     oidc = {
-  #       clientName = "Open WebUI";
-  #       clientSecretHash = "$pbkdf2-sha512$...";
+  #       clientName  = "Open WebUI";
   #       redirectPath = "/oauth/oidc/callback";
   #     };
   #   };
+  #
+  # Hash material lives only in sops; see authelia.nix for how the
+  # template config-filter injects it at runtime.
   #
   # No more Caddy + Blocky + Authelia + sops template edits per
   # service. Adding a new service later: one block in the module
@@ -209,86 +211,124 @@ in
     );
   };
 
-  config = mkIf (config.nori.lanRoutes != { }) {
-    services.caddy.virtualHosts = mapAttrs' (
-      name: cfg:
-      nameValuePair "${name}.nori.lan" {
-        extraConfig = "reverse_proxy ${cfg.scheme}://${cfg.host}:${toString cfg.port}";
-      }
-    ) config.nori.lanRoutes;
+  config = mkIf (config.nori.lanRoutes != { }) (
+    let
+      routes = config.nori.lanRoutes;
+      ports = lib.mapAttrsToList (_: r: r.port) routes;
+      names = lib.attrNames routes;
+      oidcRoutes = filterAttrs (_: r: r.oidc != null) routes;
+    in
+    {
+      # Hard constraints — eval fails if any of these are violated.
+      # Cheaper than the corresponding documentation; the constraint
+      # itself is the documentation.
+      assertions = [
+        {
+          assertion = lib.length ports == lib.length (lib.unique ports);
+          message = ''
+            nori.lanRoutes have duplicate backend ports. Each route's
+            `port` must be unique — Caddy can't reverse-proxy two
+            services to the same backend port. Routes:
+              ${lib.concatMapStringsSep ", " (n: "${n}=${toString routes.${n}.port}") names}
+          '';
+        }
+        {
+          assertion = lib.all (n: builtins.match "[a-z][a-z0-9-]*" n != null) names;
+          message = ''
+            nori.lanRoutes names must be DNS-safe: lowercase, must
+            start with a letter, only [a-z0-9-] thereafter. Got: ${lib.concatStringsSep ", " names}
+          '';
+        }
+        {
+          assertion = lib.all (r: lib.hasPrefix "/" r.oidc.redirectPath) (lib.attrValues oidcRoutes);
+          message = ''
+            Every nori.lanRoutes.<n>.oidc.redirectPath must start
+            with "/" — it's appended to https://<n>.nori.lan to form
+            the OIDC redirect URI.
+          '';
+        }
+      ];
 
-    services.blocky.settings.customDNS.mapping = mapAttrs' (
-      name: _: nameValuePair "${name}.nori.lan" config.nori.lanIp
-    ) config.nori.lanRoutes;
+      services.caddy.virtualHosts = mapAttrs' (
+        name: cfg:
+        nameValuePair "${name}.nori.lan" {
+          extraConfig = "reverse_proxy ${cfg.scheme}://${cfg.host}:${toString cfg.port}";
+        }
+      ) config.nori.lanRoutes;
 
-    # Tailnet firewall: open backend ports for opt-in routes only.
-    # Default-deny aligns with the rest of the network policy
-    # (Caddy on :80 + :443 from caddy.nix is the canonical entry).
-    networking.firewall.interfaces."tailscale0".allowedTCPPorts = lib.flatten (
-      lib.mapAttrsToList (_: cfg: lib.optional cfg.exposeOnTailnet cfg.port) config.nori.lanRoutes
-    );
+      services.blocky.settings.customDNS.mapping = mapAttrs' (
+        name: _: nameValuePair "${name}.nori.lan" config.nori.lanIp
+      ) config.nori.lanRoutes;
 
-    # Auto-generated Gatus endpoints for routes that opt in via
-    # `monitor`. Manual entries in modules/services/gatus.nix
-    # (blocky-dns, samba-smb) coexist via list concatenation.
-    services.gatus.settings.endpoints = lib.mkAfter (
-      lib.mapAttrsToList (name: cfg: {
-        inherit name;
-        url = "${cfg.scheme}://${cfg.host}:${toString cfg.port}${cfg.monitor.path}";
-        inherit (cfg.monitor) interval conditions;
-        alerts = [
-          {
-            type = "ntfy";
-            failure-threshold = cfg.monitor.failureThreshold;
-            send-on-resolved = true;
+      # Tailnet firewall: open backend ports for opt-in routes only.
+      # Default-deny aligns with the rest of the network policy
+      # (Caddy on :80 + :443 from caddy.nix is the canonical entry).
+      networking.firewall.interfaces."tailscale0".allowedTCPPorts = lib.flatten (
+        lib.mapAttrsToList (_: cfg: lib.optional cfg.exposeOnTailnet cfg.port) config.nori.lanRoutes
+      );
+
+      # Auto-generated Gatus endpoints for routes that opt in via
+      # `monitor`. Manual entries in modules/services/gatus.nix
+      # (blocky-dns, samba-smb) coexist via list concatenation.
+      services.gatus.settings.endpoints = lib.mkAfter (
+        lib.mapAttrsToList (name: cfg: {
+          inherit name;
+          url = "${cfg.scheme}://${cfg.host}:${toString cfg.port}${cfg.monitor.path}";
+          inherit (cfg.monitor) interval conditions;
+          alerts = [
+            {
+              type = "ntfy";
+              failure-threshold = cfg.monitor.failureThreshold;
+              send-on-resolved = true;
+            }
+          ];
+        }) (filterAttrs (_: cfg: cfg.monitor != null) config.nori.lanRoutes)
+      );
+
+      # OIDC plumbing for routes with `oidc` set. The Authelia client
+      # entry is assembled by modules/services/authelia.nix reading
+      # config.nori.lanRoutes — keeps single ownership of the clients
+      # list (NixOS module merging on freeform-typed lists conflicts
+      # rather than concatenates, so a centralized assembly site is
+      # cleaner than mkMerge from multiple modules).
+      #
+      # Two sops secrets per OIDC route:
+      #   * oidc-<name>-client-secret       — RAW secret, mode 0440
+      #     group=keys, consumed by the service via the env-file
+      #     template below.
+      #   * oidc-<name>-client-secret-hash  — PBKDF2 HASH, mode 0400
+      #     owner=authelia-main, consumed by Authelia at startup via
+      #     its `template` config-filter (see authelia.nix). This
+      #     keeps hash material out of committed Nix entirely.
+      sops.secrets =
+        let
+          routesWithOidc = filterAttrs (_: cfg: cfg.oidc != null) config.nori.lanRoutes;
+        in
+        (mapAttrs' (
+          name: _:
+          nameValuePair "oidc-${name}-client-secret" {
+            mode = "0440";
+            group = "keys";
           }
-        ];
-      }) (filterAttrs (_: cfg: cfg.monitor != null) config.nori.lanRoutes)
-    );
+        ) routesWithOidc)
+        // (mapAttrs' (
+          name: _:
+          nameValuePair "oidc-${name}-client-secret-hash" {
+            mode = "0400";
+            owner = "authelia-main";
+          }
+        ) routesWithOidc);
 
-    # OIDC plumbing for routes with `oidc` set. The Authelia client
-    # entry is assembled by modules/services/authelia.nix reading
-    # config.nori.lanRoutes — keeps single ownership of the clients
-    # list (NixOS module merging on freeform-typed lists conflicts
-    # rather than concatenates, so a centralized assembly site is
-    # cleaner than mkMerge from multiple modules).
-    #
-    # Two sops secrets per OIDC route:
-    #   * oidc-<name>-client-secret       — RAW secret, mode 0440
-    #     group=keys, consumed by the service via the env-file
-    #     template below.
-    #   * oidc-<name>-client-secret-hash  — PBKDF2 HASH, mode 0400
-    #     owner=authelia-main, consumed by Authelia at startup via
-    #     its `template` config-filter (see authelia.nix). This
-    #     keeps hash material out of committed Nix entirely.
-    sops.secrets =
-      let
-        routesWithOidc = filterAttrs (_: cfg: cfg.oidc != null) config.nori.lanRoutes;
-      in
-      (mapAttrs' (
-        name: _:
-        nameValuePair "oidc-${name}-client-secret" {
+      sops.templates = mapAttrs' (
+        name: cfg:
+        nameValuePair "oidc-${name}-env" {
           mode = "0440";
           group = "keys";
+          content = ''
+            ${cfg.oidc.secretEnvName}=${config.sops.placeholder."oidc-${name}-client-secret"}
+          '';
         }
-      ) routesWithOidc)
-      // (mapAttrs' (
-        name: _:
-        nameValuePair "oidc-${name}-client-secret-hash" {
-          mode = "0400";
-          owner = "authelia-main";
-        }
-      ) routesWithOidc);
-
-    sops.templates = mapAttrs' (
-      name: cfg:
-      nameValuePair "oidc-${name}-env" {
-        mode = "0440";
-        group = "keys";
-        content = ''
-          ${cfg.oidc.secretEnvName}=${config.sops.placeholder."oidc-${name}-client-secret"}
-        '';
-      }
-    ) (filterAttrs (_: cfg: cfg.oidc != null) config.nori.lanRoutes);
-  };
+      ) (filterAttrs (_: cfg: cfg.oidc != null) config.nori.lanRoutes);
+    }
+  );
 }

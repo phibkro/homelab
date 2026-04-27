@@ -106,18 +106,19 @@
   # Exposed at https://metrics.nori.lan via Caddy. Auto-monitored.
   #
   # OIDC deferred — PocketBase OAuth setup is paused mid-flow (per
-  # docs/RESUME.md item #7). When picking it back up, generate a fresh
-  # raw + PBKDF2 hash, add `oidc-metrics-client-secret: <raw>` to
-  # sops, and reattach the lan-route oidc block:
+  # docs/RESUME.md item #7). When picking it back up:
+  #   1. `just oidc-key metrics`  → outputs raw + hash
+  #   2. paste both into sops as oidc-metrics-client-secret and
+  #      oidc-metrics-client-secret-hash
+  #   3. reattach the lan-route oidc block:
   #
-  #   oidc = {
-  #     clientName = "Beszel";
-  #     clientSecretHash = "$pbkdf2-sha512$...";
-  #     redirectPath = "/api/oauth2-redirect";
-  #   };
+  #        oidc = {
+  #          clientName   = "Beszel";
+  #          redirectPath = "/api/oauth2-redirect";
+  #        };
   #
-  # PocketBase consumes OAuth via web-UI config, not env vars, so the
-  # consumer-side wiring is a one-time paste from
+  # PocketBase consumes OAuth via web-UI config, not env vars — the
+  # consumer-side wiring is a one-time paste from the raw secret at
   # /run/secrets/oidc-metrics-client-secret into the PocketBase admin
   # at https://metrics.nori.lan/_/ → Collections → users → ⚙ →
   # OAuth2.
