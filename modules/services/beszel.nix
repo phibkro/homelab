@@ -6,26 +6,41 @@
 }:
 
 {
-  # beszel — lightweight metrics hub for system monitoring (CPU, RAM,
-  # disk, network, GPU). Per DESIGN.md L455 the chosen metrics tool
-  # over heavier options like Prometheus/Grafana for a homelab.
+  # beszel — lightweight metrics hub + agent (CPU, RAM, disk, network,
+  # GPU). Per DESIGN.md L455 the chosen metrics tool over heavier
+  # options like Prometheus/Grafana for a homelab.
   #
-  # Two halves:
-  #   hub    — web UI + storage of historical metrics (this module)
-  #   agent  — collects + reports metrics to the hub (separate module
-  #            once the hub-issued auth key is captured into sops)
+  # Two halves co-located on nori-station:
+  #   hub    — web UI + sqlite history at /var/lib/beszel
+  #   agent  — collects + reports metrics; hub connects to it on
+  #            localhost:45876 using SSH-style key auth
   #
-  # First-time setup after activation:
-  #   1. Connect to http://nori-station.saola-matrix.ts.net:8090
-  #   2. Create admin user (form on first connect)
-  #   3. Dashboard → Add System → "nori-station" → hub generates a
-  #      key + install command. Capture the key into sops as
-  #      `beszel-agent-key` and add the agent module in a follow-up.
-  #   4. Configure alerts in the web UI; route to the ntfy.sh channel
-  #      (web UI → Settings → Notifications → Webhook URL =
-  #      https://ntfy.sh/<your-channel> with appropriate headers)
+  # === Bootstrap order (one-time, web UI first) ===
+  #   1. Connect to https://metrics.nori.lan
+  #   2. Create admin user (form on first connect) OR sign in via
+  #      Authelia OIDC (USER_CREATION=true below permits auto-provision)
+  #   3. Dashboard → Add System → "nori-station" → host=localhost,
+  #      port=45876. Hub generates a key + install command. Copy the
+  #      `KEY=ssh-ed25519 AAAA...` line.
+  #   4. Run `sops secrets/secrets.yaml` and add as a block-string:
+  #        beszel-agent-key-nori-station: |
+  #          KEY=ssh-ed25519 AAAA...
+  #      (env-file format — `=` not `:`, see docs/gotchas.md.)
+  #   5. Deploy. Hub will see the agent come online within ~30s.
+  #   6. Configure alerts in web UI → Settings → Notifications →
+  #      Webhook URL = https://ntfy.sh/<channel> with appropriate headers.
   #
-  # State (sqlite db, history) at /var/lib/beszel.
+  # The sops.secrets declaration below references the key by name; if
+  # the key isn't in secrets.yaml at activation time, sops-nix fails at
+  # activation (not at flake-check time). Do step 4 BEFORE deploying
+  # the change that introduces the agent block.
+
+  sops.secrets.beszel-agent-key-nori-station = {
+    mode = "0400";
+    # No `group` set: systemd reads the EnvironmentFile as PID 1 and
+    # injects KEY into the DynamicUser process — beszel-agent never
+    # reads the file directly, so SupplementaryGroups=keys is unneeded.
+  };
 
   services.beszel = {
     hub = {
@@ -35,6 +50,18 @@
       # No openFirewall option exists on this module; the explicit
       # networking.firewall.interfaces."tailscale0" rule below opens
       # 8090 on the tailnet only. Global firewall stays default-deny.
+    };
+
+    agent = {
+      enable = true;
+      # Default port 45876, listening on all interfaces. Hub connects
+      # over localhost; we don't openFirewall because the agent is for
+      # this hub only and the hub is on the same host. SMART monitoring
+      # deferred — useful but needs CAP_SYS_ADMIN + disk group; revisit
+      # when "drive failing soon" alerts become load-bearing.
+      environmentFile = config.sops.secrets.beszel-agent-key-nori-station.path;
+      # NVIDIA path is auto-injected by the upstream module when
+      # services.xserver.videoDrivers contains "nvidia" (it does).
     };
   };
 
@@ -54,6 +81,26 @@
       "/srv:ro"
     ];
     BindReadOnlyPaths = [ ];
+  };
+
+  # Agent: matching FS hardening. Upstream module already sets a
+  # substantial systemd hardening profile (PrivateUsers, ProtectKernel*,
+  # ProtectSystem=strict, SystemCallFilter); we add the project-wide
+  # default-deny FS namespace on top.
+  #
+  # PrivateDevices=false override: upstream sets it true (when smartmon
+  # is off), which hides /dev/nvidia* and makes nvidia-smi return no GPU
+  # data. Disabling exposes the full /dev. The rest of the hardening
+  # (ProtectKernel*, SystemCallFilter, RestrictSUIDSGID, NoNewPrivileges,
+  # PrivateUsers) still applies — only the device namespace loosens.
+  systemd.services.beszel-agent.serviceConfig = {
+    ProtectHome = lib.mkForce true;
+    TemporaryFileSystem = [
+      "/mnt:ro"
+      "/srv:ro"
+    ];
+    BindReadOnlyPaths = [ ];
+    PrivateDevices = lib.mkForce false;
   };
 
   # Exposed at https://metrics.nori.lan via Caddy. Auto-monitored.
