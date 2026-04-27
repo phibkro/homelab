@@ -83,6 +83,27 @@
     EnvironmentFile = config.sops.templates."oidc-chat-env".path;
   };
 
+  # Pattern C2 backup — sqlite3 .backup before restic. The path
+  # /var/lib/open-webui is a symlink to /var/lib/private/open-webui
+  # (DynamicUser StateDirectory mechanism); restic stores symlinks AS
+  # symlinks and would otherwise back up just the symlink record. So
+  # paths target /var/lib/private/open-webui directly. The
+  # prepareCommand can use either path — bash file ops follow symlinks.
+  nori.backups.open-webui = {
+    paths = [
+      "/var/lib/private/open-webui"
+      "/var/backup/open-webui"
+    ];
+    prepareCommand = ''
+      if [ -f /var/lib/open-webui/data/webui.db ]; then
+        mkdir -p /var/backup/open-webui
+        ${pkgs.sqlite}/bin/sqlite3 /var/lib/open-webui/data/webui.db \
+          ".backup '/var/backup/open-webui/webui.db'"
+      fi
+    '';
+    timer = "*-*-* 04:00:00";
+  };
+
   # Exposed at https://chat.nori.lan via Caddy. Auto-monitored by
   # Gatus. OIDC client + sops secret + env-file template auto-
   # generated from the `oidc = { ... }` block — see

@@ -18,6 +18,7 @@ in
     inputs.disko.nixosModules.disko
     ../../modules/common
     ../../modules/lib/lan-route.nix
+    ../../modules/lib/backup.nix
   ]
   ++ groups.networking # caddy + blocky
   ++ groups.auth # authelia

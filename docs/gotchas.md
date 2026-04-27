@@ -220,6 +220,26 @@ mako: Is a notification daemon already running?
 
 Fresh boot: never sees this. Iterating on mako config without rebooting: `kill <stale-pid>; systemctl --user start mako.service`. `pkill mako` doesn't work cleanly because the process arg-vector is the unwrapped store path, not "mako" verbatim — kill by PID from `pgrep -af mako`.
 
+## DynamicUser StateDirectory: `/var/lib/<n>` is a symlink, not the data
+
+Services declared with `DynamicUser = yes` in their NixOS module (open-webui, jellyseerr, prowlarr, ntfy-sh, beszel-hub, gatus, glance, ollama) have systemd put the actual state at `/var/lib/private/<n>` and create a SYMLINK at `/var/lib/<n>` pointing to it. Looks transparent until restic.
+
+**restic stores symlinks AS symlinks by default** — no `--follow-symlinks` flag exists in restic. Pointing `services.restic.backups.<n>.paths = [ "/var/lib/<n>" ]` at a DynamicUser service produces a snapshot containing just the symlink record (3 files, 0 bytes) instead of the actual data.
+
+We hit this in production: `restic stats latest` on the open-webui repo showed 0B / 3 files for months before anyone noticed, despite daily backups running successfully.
+
+**Fix**: declare paths as `/var/lib/private/<n>` directly for DynamicUser services. The `nori.backups.<n>` abstraction (modules/lib/backup.nix) is the call site; per-module backup declarations encode the right path. Bash file ops (sqlite3, cp, etc.) in `prepareCommand` blocks DO follow symlinks, so prepareCommand source paths can use either path.
+
+```nix
+# Wrong (silent 0-byte snapshot for DynamicUser services):
+nori.backups.open-webui.paths = [ "/var/lib/open-webui" ];
+
+# Right:
+nori.backups.open-webui.paths = [ "/var/lib/private/open-webui" ];
+```
+
+Verify a snapshot is real: `sudo nix shell nixpkgs#restic --command restic -r /mnt/backup/<n> --password-file /run/secrets/restic-password stats latest`. Total size in bytes should match the actual data.
+
 ## Beszel agent under DynamicUser hides `/dev/nvidia*`
 
 The upstream `services.beszel.agent` module sets `PrivateDevices = !cfg.smartmon.enable`. With smartmon off (the default), `PrivateDevices = true` creates a private `/dev` namespace that omits `/dev/nvidia0`, `/dev/nvidiactl`, `/dev/nvidia-uvm`. The agent's bundled `nvidia-smi` invocation finds nothing and logs `WARN nvidia-smi found no valid GPU data, stopping` — and the Beszel dashboard's GPU panel stays empty.
