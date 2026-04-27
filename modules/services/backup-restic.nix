@@ -199,6 +199,12 @@
     # produce a consistent dump. The guard handles the case where
     # the DB doesn't exist yet (first run, before any user has
     # registered).
+    #
+    # The DB lives at /var/lib/open-webui/data/webui.db (Open WebUI
+    # nests state under data/), not at the top level — earlier
+    # versions of this script pointed at /var/lib/open-webui/webui.db
+    # and silently produced no useful dump because that file doesn't
+    # exist.
     open-webui = {
       paths = [
         "/var/lib/open-webui"
@@ -208,9 +214,9 @@
       passwordFile = config.sops.secrets.restic-password.path;
       initialize = true;
       backupPrepareCommand = ''
-        if [ -f /var/lib/open-webui/webui.db ]; then
+        if [ -f /var/lib/open-webui/data/webui.db ]; then
           mkdir -p /var/backup/open-webui
-          ${pkgs.sqlite}/bin/sqlite3 /var/lib/open-webui/webui.db \
+          ${pkgs.sqlite}/bin/sqlite3 /var/lib/open-webui/data/webui.db \
             ".backup '/var/backup/open-webui/webui.db'"
         fi
       '';
