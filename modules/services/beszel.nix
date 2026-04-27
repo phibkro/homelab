@@ -38,6 +38,15 @@
     };
   };
 
+  # OIDC SSO via Authelia: USER_CREATION=true lets Beszel create
+  # accounts on first OIDC login (default is "deny unknown user", which
+  # makes OIDC unusable for new users). DISABLE_PASSWORD_AUTH stays
+  # off — keeps the local-password fallback as recovery if Authelia
+  # itself is down.
+  systemd.services.beszel-hub.environment = {
+    USER_CREATION = "true";
+  };
+
   systemd.services.beszel-hub.serviceConfig = {
     ProtectHome = lib.mkForce true;
     TemporaryFileSystem = [
