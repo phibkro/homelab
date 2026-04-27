@@ -33,6 +33,7 @@ in
     ./disko.nix
     ./disko-media.nix
     ./disko-onetouch.nix
+    ./windows-mount.nix
     ./hardware.nix
   ];
 
