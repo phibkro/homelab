@@ -9,5 +9,6 @@ _: {
     ./mako.nix
     ./hypr-lock.nix
     ./gaming.nix
+    ./virt.nix
   ];
 }
