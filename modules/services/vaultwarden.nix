@@ -50,18 +50,18 @@
       ROCKET_ADDRESS = "127.0.0.1";
       ROCKET_PORT = 8222;
 
-      # SIGNUPS_ALLOWED is open during initial user setup — even with
-      # SSO enabled, Vaultwarden requires the user to set a master
-      # password (used to encrypt the vault client-side; the server
-      # never sees plaintext), and the master-password registration
-      # flow goes through the same /identity/accounts/register endpoint
-      # that's gated by SIGNUPS_ALLOWED. Flip back to `false` after
-      # the first user account exists; tailnet-only exposure plus
-      # SSO_SIGNUPS_MATCH_EMAIL=true means the practical "anyone can
-      # sign up" risk during this window is small (must be on the
-      # tailnet AND must authenticate to Authelia).
+      # SIGNUPS_ALLOWED is closed in steady state — single-user
+      # homelab. Existing accounts can still be unlocked via SSO
+      # (linked by email) or master password; the flag only gates
+      # the /identity/accounts/register endpoint that creates new
+      # accounts. To onboard a new user (family member, etc.):
+      #   1. flip to `true` for one rebuild
+      #   2. user registers a master account at vault.nori.lan
+      #   3. ensure their Authelia user has the same email so
+      #      SSO_SIGNUPS_MATCH_EMAIL links the SSO identity
+      #   4. flip back to `false`
       # SIGNUPS_VERIFY off because no SMTP server is configured.
-      SIGNUPS_ALLOWED = true;
+      SIGNUPS_ALLOWED = false;
       SIGNUPS_VERIFY = false;
 
       # OIDC SSO via Authelia. SSO_ONLY left at default (false) so the
