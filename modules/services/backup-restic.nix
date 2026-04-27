@@ -54,6 +54,9 @@
   systemd.services.restic-backups-open-webui.unitConfig.OnFailure = [
     "notify@restic-backups-open-webui.service"
   ];
+  systemd.services.restic-backups-vaultwarden.unitConfig.OnFailure = [
+    "notify@restic-backups-vaultwarden.service"
+  ];
 
   # ---------------------------------------------------------------------
   # Backup verification cadence (DESIGN.md L390-398).
@@ -85,7 +88,7 @@
     environment.RESTIC_PASSWORD_FILE = config.sops.secrets.restic-password.path;
     script = ''
       fail=0
-      for name in user-data media-irreplaceable open-webui; do
+      for name in user-data media-irreplaceable open-webui vaultwarden; do
         echo "[$name] restic check"
         if ! ${pkgs.restic}/bin/restic -r /mnt/backup/$name check; then
           echo "[$name] FAILED"
@@ -117,7 +120,7 @@
     environment.RESTIC_PASSWORD_FILE = config.sops.secrets.restic-password.path;
     script = ''
       fail=0
-      for name in user-data media-irreplaceable open-webui; do
+      for name in user-data media-irreplaceable open-webui vaultwarden; do
         echo "[$name] restic check --read-data-subset=10%"
         if ! ${pkgs.restic}/bin/restic -r /mnt/backup/$name check --read-data-subset=10%; then
           echo "[$name] FAILED"
@@ -213,6 +216,37 @@
       '';
       timerConfig = {
         OnCalendar = "*-*-* 04:00:00";
+        Persistent = true;
+      };
+      pruneOpts = [
+        "--keep-daily 7"
+        "--keep-weekly 4"
+        "--keep-monthly 12"
+      ];
+    };
+
+    # Vaultwarden state — Pattern C2, same shape as open-webui.
+    # Backed up under its own repo (rather than folded into user-data)
+    # because (a) the prepareCommand is per-repo and (b) password-store
+    # data warrants its own retention/recovery story even when the
+    # disk-level dedup makes the cost negligible.
+    vaultwarden = {
+      paths = [
+        "/var/lib/vaultwarden"
+        "/var/backup/vaultwarden"
+      ];
+      repository = "/mnt/backup/vaultwarden";
+      passwordFile = config.sops.secrets.restic-password.path;
+      initialize = true;
+      backupPrepareCommand = ''
+        if [ -f /var/lib/vaultwarden/db.sqlite3 ]; then
+          mkdir -p /var/backup/vaultwarden
+          ${pkgs.sqlite}/bin/sqlite3 /var/lib/vaultwarden/db.sqlite3 \
+            ".backup '/var/backup/vaultwarden/db.sqlite3'"
+        fi
+      '';
+      timerConfig = {
+        OnCalendar = "*-*-* 04:30:00";
         Persistent = true;
       };
       pruneOpts = [

@@ -69,11 +69,11 @@
   ];
 
   # Personal data — calendar/contacts (Radicale), file sync
-  # (Syncthing). Future home for self-hosted Vaultwarden when that
-  # migration happens.
+  # (Syncthing), password manager (Vaultwarden, native OIDC SSO).
   personal = [
     ./radicale.nix
     ./syncthing.nix
+    ./vaultwarden.nix
   ];
 
   # Data durability — local snapshots + encrypted off-host backup.
