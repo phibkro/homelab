@@ -175,7 +175,49 @@ in
       # (name, not store path) — avoids the cycle where the binding's
       # store path would depend on the cheatsheet text which depends on
       # the bindings.
-      home.packages = [ cheatsheet ];
+      #
+      # CLI quality-of-life — lazy-lineage TUIs + system stats peers.
+      # Per-user (home-manager) rather than systemPackages because
+      # they're shell-driven personal tools, not system services.
+      # Naturally portable to nori-laptop / nori-macbook when those
+      # land (nix-darwin's home-manager integration uses the same
+      # `home.packages` shape).
+      home.packages = [
+        cheatsheet
+        pkgs.nvtopPackages.nvidia # GPU monitor (NVIDIA-only build, smaller closure)
+        pkgs.ncdu # interactive disk usage browser
+        pkgs.bandwhich # per-process / per-connection network throughput
+        pkgs.compsize # btrfs actual-on-disk size + compression ratio
+        pkgs.doggo # modern dig — friendlier output
+        pkgs.lazysql # SQL TUI (Immich pg, Open WebUI sqlite, etc.)
+        pkgs.nix-tree # interactive Nix dependency-graph viewer
+        pkgs.nvd # diff between NixOS generations
+      ];
+
+      # programs.<x>.enable adds shell integration + declarative config
+      # in addition to the binary. Use this form when the integration
+      # is the value (fzf Ctrl-R, zoxide z command); use plain
+      # home.packages when only the binary is needed (above).
+      programs.bash.enable = true; # home-manager owns ~/.bashrc — lets fzf/zoxide auto-source
+
+      programs.lazygit = {
+        enable = true;
+        settings = {
+          gui.theme.lightTheme = false;
+          git.paging.colorArg = "always";
+        };
+      };
+
+      programs.btop = {
+        enable = true;
+        settings = {
+          color_theme = "Default";
+          theme_background = false;
+        };
+      };
+
+      programs.fzf.enable = true; # Ctrl-R history, Ctrl-T file picker, **<Tab> hooks
+      programs.zoxide.enable = true; # `z <fragment>` jumps to most-used dir match
 
       # Cursor — bibata-modern-classic at 24px reads well on the 34" 1440p
       # panel (~6.5mm physical). gtk + x11 + hyprcursor.enable = false
