@@ -115,22 +115,11 @@ default: rebuild
 
 # === auth ===
 
-# Generate raw + PBKDF2 hash for a new lan-route OIDC client. Output
-# is sensitive; runs on the host (where authelia is available via
-# nix shell) and prints both values to your terminal. After: both
-# values land in sops, no module edits needed for the secret material.
-#   1. sops secrets/secrets.yaml  →  oidc-<name>-client-secret: <raw>
-#   2. sops secrets/secrets.yaml  →  oidc-<name>-client-secret-hash: <hash>
-# then `just rebuild`. Usage: just oidc-key <name> [<host>]
+# Generate raw + PBKDF2 hash for a new lan-route OIDC client and
+# print two paste-ready YAML lines for sops. Output is sensitive;
+# runs on the host (openssl + authelia via nix shell) and the
+# values land in your terminal — copy both lines, paste into
+# `sops secrets/secrets.yaml`, then `just rebuild`.
+# Usage: just oidc-key <name> [<host>]
 @oidc-key name host=default_host:
-    ssh {{user}}@{{host}}.{{tailnet}} 'nix shell nixpkgs#openssl nixpkgs#authelia --command bash -c "\
-      set -euo pipefail; \
-      raw=\$(openssl rand -base64 32 | tr -d \"=+/\"); \
-      echo \"=== {{name}} ===\"; \
-      echo; \
-      echo \"Raw secret (sops:  oidc-{{name}}-client-secret):\"; \
-      echo \"  \$raw\"; \
-      echo; \
-      echo \"PBKDF2 hash (sops: oidc-{{name}}-client-secret-hash):\"; \
-      authelia crypto hash generate pbkdf2 --variant sha512 --iterations 310000 --password \"\$raw\" \
-    "'
+    ssh {{user}}@{{host}}.{{tailnet}} 'nix shell nixpkgs#openssl nixpkgs#authelia --command bash -s -- {{name}}' < scripts/oidc-key.sh
