@@ -288,7 +288,79 @@ Both `restic-backups-*` and `btrbk-*` units get `OnFailure = [ "notify@%n.servic
 - `nixfmt` formatting (set as the flake formatter; `pkgs.nixfmt-rfc-style` is now an alias for `pkgs.nixfmt`)
 - `statix` for Nix anti-pattern lint
 - `deadnix` for unused bindings
-- Run via `nix flake check` (when CI gate lands) or pre-commit hooks
+- Run via `nix flake check` or pre-commit hooks (`.githooks/pre-commit` skips gracefully if nix isn't on PATH; CI catches what pre-commit skipped)
+
+## Enforcing conventions through code
+
+Rules written as prose drift the moment they're written. Conventions in this repo are encoded as enforcement layers, in order of preference:
+
+### 1. Type system
+
+Use option `type =` constraints first. Free, immediate, error message points at the option itself.
+
+```nix
+port = mkOption { type = types.port; ... };       # 0..65535 enforced at eval
+scheme = mkOption { type = types.enum [ "http" "https" ]; ... };
+```
+
+If the rule fits a type, write the type. Don't restate it in the description.
+
+### 2. Module assertions
+
+Cross-attribute invariants checked at NixOS eval time. Eval fails atomically with the message you wrote.
+
+```nix
+assertions = [
+  {
+    assertion = lib.length ports == lib.length (lib.unique ports);
+    message = "lanRoutes have duplicate backend ports.";
+  }
+];
+```
+
+See `modules/lib/lan-route.nix` for the live examples (port uniqueness, name regex, redirectPath shape). Use when a rule depends on multiple options together — derived properties, uniqueness across attrs, conditional requirements.
+
+### 3. Custom flake checks
+
+Derivations under `checks.${system}.<n>` in `flake.nix`. Run via `nix flake check`. Arbitrary shell, runs grep/find/scripts over the source tree. Use for repo-wide rules that don't live inside the module system.
+
+```nix
+forbidden-patterns = pkgs.runCommandLocal "forbidden-patterns" {
+  nativeBuildInputs = [ pkgs.gnugrep ];
+} ''
+  cd ${./.}
+  if grep -rn 'pattern' modules/ ; then
+    echo "✗ explanation of what's wrong"
+    exit 1
+  fi
+  touch $out
+'';
+```
+
+See `flake.nix` `forbidden-patterns` for the live examples (no inline pbkdf2 hashes, no caddy/blocky bypass). Use for "no X in path Y" style rules. If the rule needs AST awareness, graduate to a tree-sitter-nix wrapper — not currently present, introduce only when grep stops being enough.
+
+### 4. CI gate
+
+`.github/workflows/check.yml` runs `nix flake check` on every push and pull_request. Backstop for cases where pre-commit was skipped: commits from a Mac without nix on PATH (the most common case here), `git commit --no-verify`, agents that bypass the hook. The check itself is just `nix flake check --print-build-logs`; everything in layers 1–3 runs through it.
+
+### When to add a rule
+
+When you write the words "we should always..." or "don't ever..." in prose, ask:
+
+- Single option's value? → **type**.
+- Consistency across options? → **module assertion**.
+- Forbidden text pattern in source files? → **flake check (grep)**.
+- Forbidden semantic pattern? → **flake check** (introspect via `nix eval`) or AST-aware check.
+
+If none fit, the rule is judgment — that's what code review is for. Don't write it down; it'll rot.
+
+### When NOT to add a rule
+
+- The rule's false positives outweigh real catches.
+- The cost of the constraint exceeds the cost of fixing the violation.
+- Only one person in the project ever cares; let that person enforce it in review.
+
+**A check earns its keep when it would have caught a real mistake, not a hypothetical one.** Add when violations occur or are imminent — not preemptively.
 
 ## What gets imported where
 
