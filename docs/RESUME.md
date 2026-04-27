@@ -32,7 +32,7 @@ canonical architecture.
 | 4 | Bare-metal install on nori-station | done |
 | 5 | Service migration | done — file/AI/media/SSO/observability/personal/arr live; Cloudflare Tunnel reactive |
 | 6 | Desktop environment (Hyprland) | done — greetd + Hyprland + waybar + mako + hyprlock + hypridle; bind layer derives Hyprland config + cheatsheet from one record list |
-| 7 | Tightening + new capabilities | in progress — items 1 (MP510 ro), 3 (Beszel agent + GPU), 6 (OIDC auto-gen + zero-hash-in-Nix), 10 (virt-manager) done; 8 (Vaultwarden) starting; 4 (restore drill) and 5 (Recyclarr) unblocked; 2 (Hetzner) and 7 (nori-pi declarative) deferred (budget + hardware) |
+| 7 | Tightening + new capabilities | mostly done — items 1 (MP510 ro), 3 (Beszel agent + GPU), 4 (restore drill), 6 (OIDC auto-gen + zero-hash-in-Nix), 8 (Vaultwarden + cloud-migration pending), 10 (virt-manager) done; backup abstraction + 14-service coverage gap closed + type-level enforcement + DynamicUser symlink fix landed alongside item 4. Outstanding: 5 (Recyclarr — gated on first-run wizards). 2 (Hetzner) and 7 (nori-pi declarative) deferred (budget + hardware). 9 (LiteLLM) needs nixpkgs availability check before scoping. |
 
 Reactive (no scheduled trigger): Cloudflare Tunnel + Access, email
 digest reports, second media drive, deploy-rs. See DESIGN.md.
@@ -112,15 +112,17 @@ All HTTP services exposed via Caddy at `https://<name>.nori.lan`. Direct backend
 
 Background workers / non-routed:
 - `blocky.nix` — DNS adblock on `:53` LAN-wide via Tailscale DNS push (`100.81.5.122`)
-- `backup-restic.nix` — three restic jobs (user-data, media-irreplaceable, open-webui Pattern C2) + weekly + monthly `restic check` timers, daily, sops password, real repo at `/mnt/backup/` (OneTouch ext4)
+- `backup-restic.nix` — cross-cutting infra (sops password, /var/backup tmpfile, weekly + monthly `restic check` timers iterating every `nori.backups.*`). Per-repo declarations live in their service modules. 19 active repos as of 2026-04-27.
+- `backup-verify.nix` — quarterly restore drill (next: first Sunday of Q3 2026); verifies backups are *restorable*, not just *recorded*. Manual deep variant via `just restore-drill all`.
 - `btrbk.nix` — daily root + media btrfs snapshots; `@archive` + `@library` included
-- `ntfy.nix` (local) — backs the `notify@` template; OnFailure for restic + btrbk + restic-check routes through it
+- `ntfy.nix` (local) — backs the `notify@` template; OnFailure for restic + btrbk + restic-check + restore-drill routes through it
 - `caddy.nix` — reverse proxy + internal CA, root cert in `modules/services/caddy-local-ca.crt` (committed) + system trust via `security.pki.certificateFiles`
 - `arr-shared.nix` — `media` group + tmpfiles for shared library + download paths under `/mnt/media/streaming` and `/mnt/media/library`
 
 Cross-cutting abstractions:
-- `modules/lib/lan-route.nix` — single declaration per service generates Caddy vhost + Blocky DNS + Gatus monitor (+ optional tailnet firewall opening). Schema-validated. See `docs/CONVENTIONS.md`.
-- `modules/services/groups.nix` — composable, non-exclusive aliases (ai, arr, media, observability, backup, networking, auth). Hosts compose via `imports = [...] ++ groups.<name> ++ ...`. Files stay flat under `modules/services/<service>.nix`; a service can belong to multiple groups.
+- `modules/lib/lan-route.nix` — single declaration per service generates Caddy vhost + Blocky DNS + Gatus monitor + (optional) tailnet firewall opening + (optional) Authelia OIDC client + sops secrets/templates. Module assertions enforce port uniqueness, DNS-safe names, redirectPath shape. See `docs/CONVENTIONS.md`.
+- `modules/lib/backup.nix` — single declaration per service: either `paths = [...]` for what to back up or `skip = "<reason>"` for explicit opt-out. Type-level enforcement of the choice + module assertion against DynamicUser symlinks. Paired flake check (`every-service-has-backup-intent`) makes forgetting a build error.
+- `modules/services/groups.nix` — composable, non-exclusive aliases (ai, arr, media, observability, backup, networking, auth, personal). Hosts compose via `imports = [...] ++ groups.<name> ++ ...`. Files stay flat under `modules/services/<service>.nix`; a service can belong to multiple groups.
 
 Dev workflow:
 - `Justfile` at repo root — `just` (default = rebuild), `just status`, `just logs <unit>`, `just check`, `just deploy` (git-based, no rsync), `just rollback`, etc. All recipes accept an optional `host` arg defaulting to `nori-station`. See `just --list`.
@@ -158,14 +160,15 @@ Dev workflow:
    `just oidc-key metrics` → paste raw + hash into sops → reattach
    `nori.lanRoutes.metrics.oidc = { … };` → deploy → paste the raw
    secret into PocketBase admin (`/_/` → Collections → users → ⚙
-   Options → OAuth2).
+   Options → OAuth2). Use `philip.krogh@proton.me` as the user email
+   in PocketBase to match Authelia (item 16 below).
 8. ~~**OIDC for other services.**~~ DONE structurally. Auto-gen
    abstraction landed in `0862f31`; template-filter migration in
    `55b0e29` eliminated hash-from-Nix; `just oidc-key` (`8caec93`)
    collapses raw+hash generation into one step. Per-client
    onboarding now: `oidc.clientName + redirectPath + sops paste`.
    Vaultwarden (item 13) is the first net-new test of the flow.
-9. **Media stack first-run wizards.** Twelve services live but un-configured
+9. **Media stack first-run wizards.** Eleven services live but un-configured
    (Sonarr, Radarr, Lidarr, Prowlarr, Bazarr, Jellyseerr, qBittorrent,
    calibre-web, Komga, Immich, Radicale, Syncthing). Each has a one-time
    web-UI wizard. Order matters:
@@ -177,14 +180,10 @@ Dev workflow:
    *arr chain — first-user creation + library path. Each module's header
    comment has the per-service wizard steps. ~60 min total.
 
-   **Immich-specific wizard step worth flagging**: Settings →
-   Administration → Backup → enable Scheduled Database Backup
-   (Pattern B per DESIGN.md L283-289). Without it, Immich never
-   writes the `.sql.gz` dumps that restic's media-irreplaceable
-   path `/var/lib/immich/backups` is configured to pick up — so
-   the photos themselves are backed up but the DB (with all your
-   face-tags, albums, smart-search embeddings) isn't recoverable
-   from restic until this is enabled. Cron `0 02 * * *`, keep 7.
+   ~~Immich-specific wizard step~~ DONE 2026-04-27. Scheduled
+   Database Backup enabled (cron `0 02 * * *`, keep 7); the dumps
+   now land at `/var/lib/immich/backups` for restic's
+   media-irreplaceable repo to pick up.
 10. **calibre-web nixpkgs overlay.** Module enables an inline overlay
     relaxing `requests` version pin (upstream pins `<2.33.0`, nixpkgs
     ships 2.33.1). Drop the overlay when nixpkgs catches up. See
@@ -203,18 +202,29 @@ Dev workflow:
     back in via tuigreet picks up the UWSM-wrapped path. Once that's
     verified, expect the manual `systemctl --user restart waybar mako
     hypridle` dance to be unnecessary on session start.
-13. **Vaultwarden self-hosted server.** Starting now (Phase 7
-    item 8). Sops-managed admin token, state at `/var/lib/vaultwarden`
-    (Pattern C2 SQLite `.backup` for restic correctness), lan-route
-    at `vault.nori.lan` with `oidc = { clientName = "Vaultwarden";
-    redirectPath = "/identity/connect/oidc-signin";
-    secretEnvName = "SSO_CLIENT_SECRET"; scopes adds offline_access; };`.
-    Bitwarden Electron client (already installed) points at the
-    self-hosted URL. Cloud-Bitwarden migration is one-time
-    export → import → verify → keep cloud account dormant for ~30d
-    grace before deletion.
+13. ~~**Vaultwarden self-hosted server.**~~ DONE — module landed
+    in `c8b74c9`, SSO works against Authelia (`af5d33b`,
+    `cec281d`), Pattern C2 backup wired (`9a9211b` → `f25608c`).
+    Cloud-Bitwarden migration is the remaining manual step:
+    cloud → Tools → Export → encrypted JSON → vault.nori.lan →
+    Tools → Import → keep cloud dormant ~30d grace before
+    deletion.
 14. **Stremio.** Not in nixpkgs. Decision: use `web.stremio.com` in zen.
     Skip native install unless flatpak/AppImage becomes worth it.
+15. **First overnight backup verification.** Phase 7's backup
+    abstraction shipped today; the daily 03:00 timer fires for the
+    first time tonight (2026-04-28 morning). Sanity-check tomorrow:
+    `just status` should show all 19 restic-backups-* timers green;
+    `sudo nix shell nixpkgs#restic --command restic -r /mnt/backup/<n>
+    --password-file /run/secrets/restic-password stats latest`
+    on a few new repos should report non-zero file counts (the
+    DynamicUser symlink trap caused 0-byte snapshots before today's
+    fix).
+16. **Authelia user email is now `philip.krogh@proton.me`** (was
+    gmail). Side effect of the Vaultwarden/master-password mismatch
+    fix. All future SSO clients that match by email use proton.
+    Open WebUI was migrated in `af5d33b` (the chat orphan cleanup);
+    Beszel will need this when item 7 lands.
 
 ## Conventions + how to make changes
 
