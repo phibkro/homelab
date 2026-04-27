@@ -57,10 +57,13 @@
       formatter.${system} = pkgs.nixfmt;
 
       # Quality gates. Run `nix flake check` to validate everything:
-      #   - host configs evaluate (caught by nixosConfigurations check)
+      #   - host configs evaluate (catches type errors, missing
+      #     options, and any module assertion violations)
       #   - statix flags Nix anti-patterns
       #   - deadnix flags unused bindings
       #   - format-check fails on unformatted .nix files
+      #   - forbidden-patterns catches grepable repo-conventions
+      #     (no inline OIDC hashes, no direct caddy/blocky bypass)
       checks.${system} = {
         # cd into the source so statix picks up `statix.toml` (looked up
         # from the working directory, not the path argument).
@@ -83,6 +86,71 @@
           ${pkgs.nixfmt}/bin/nixfmt --check $(find . -name '*.nix' -not -path '*/result/*')
           touch $out
         '';
+
+        # Repo-convention enforcement. Each rule below is a hard
+        # constraint, not a suggestion: the convention is whatever the
+        # check enforces. Adding a deliberate exception means editing
+        # this rule, not just bypassing it. Patterns are `grep -rn`
+        # and intentionally simple — anything that needs AST-aware
+        # checking should graduate to a tree-sitter-nix wrapper.
+        forbidden-patterns =
+          pkgs.runCommandLocal "forbidden-patterns"
+            {
+              nativeBuildInputs = [ pkgs.gnugrep ];
+            }
+            ''
+              cd ${./.}
+              fail=0
+
+              # No inline PBKDF2 client_secret hashes anywhere in modules.
+              # OIDC client hashes live only in sops as
+              # oidc-<n>-client-secret-hash; Authelia reads them via the
+              # template config-filter (see modules/services/authelia.nix).
+              if grep -rn '\$pbkdf2-' modules/ ; then
+                echo
+                echo "✗ Inline pbkdf2 hashes found above. OIDC hashes belong in sops"
+                echo "  (key: oidc-<n>-client-secret-hash). See docs/CONVENTIONS.md"
+                echo "  'Authelia OIDC pattern'."
+                fail=1
+              fi
+
+              # The `clientSecretHash` field was removed from the lanRoutes
+              # oidc submodule when the template-filter migration landed —
+              # any reference is stale.
+              if grep -rn 'clientSecretHash' modules/ ; then
+                echo
+                echo "✗ clientSecretHash field references found. The field was"
+                echo "  removed; hashes live in sops as oidc-<n>-client-secret-hash."
+                fail=1
+              fi
+
+              # Caddy vhost declarations must come from
+              # modules/lib/lan-route.nix only — nori.lanRoutes is the
+              # single source of truth for *.nori.lan exposure.
+              if grep -rln 'services\.caddy\.virtualHosts' modules/ \
+                 | grep -v '^modules/lib/lan-route\.nix$' ; then
+                echo
+                echo "✗ Direct services.caddy.virtualHosts found above. Use"
+                echo "  nori.lanRoutes.<name> = { port = N; }; instead — the"
+                echo "  abstraction generates Caddy + Blocky + Gatus together."
+                fail=1
+              fi
+
+              # Blocky customDNS mappings — same single-source rule.
+              if grep -rln 'services\.blocky\.settings\.customDNS' modules/ \
+                 | grep -v '^modules/lib/lan-route\.nix$' ; then
+                echo
+                echo "✗ Direct services.blocky.settings.customDNS found above."
+                echo "  Use nori.lanRoutes.<name> instead."
+                fail=1
+              fi
+
+              if [ $fail -eq 0 ]; then
+                touch $out
+              else
+                exit 1
+              fi
+            '';
       };
     };
 }
