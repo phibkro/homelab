@@ -16,22 +16,19 @@ Single-user NixOS homelab flake. Two-host topology (`nori-station` built; `nori-
 
 All HTTP services live behind Caddy at `https://<name>.nori.lan`. Tailnet-only via Tailscale's DNS push (admin console → DNS → custom nameserver = `100.81.5.122`). Caddy uses an internal CA — install `modules/services/caddy-local-ca.crt` once per device.
 
-| URL | What |
-|---|---|
-| `https://auth.nori.lan` | Authelia (SSO issuer) |
-| `https://chat.nori.lan` | Open WebUI (Authelia SSO working) |
-| `https://ai.nori.lan` | Ollama (CUDA, RTX 5060 Ti) |
-| `https://media.nori.lan` | Jellyfin |
-| `https://metrics.nori.lan` | beszel |
-| `https://status.nori.lan` | Gatus (synthetic uptime checks) |
-| `https://alert.nori.lan` | local ntfy |
-| `smb://nori-station.saola-matrix.ts.net` | Samba (`/mnt/media`, `/srv/share`) |
+The live inventory is the `nori.lanRoutes` attrset in `config`. Static lists drift; query the source of truth instead:
 
-Background:
-- `blocky` — adblock DNS for the tailnet via Tailscale push
-- `restic` — daily backups (placeholder local repo for now)
-- `btrbk` — daily btrfs subvolume snapshots
-- `ntfy` (push to ntfy.sh) — alert delivery for restic/btrbk failures + Gatus probe drops
+```bash
+ssh nori@nori-station.saola-matrix.ts.net \
+  'nix eval --raw /run/current-system/etc/nixos -A config.nori.lanRoutes --apply builtins.attrNames'
+```
+
+Background services not exposed via Caddy:
+- `blocky` — adblock DNS for the tailnet via Tailscale push (`:53`)
+- `samba` — SMB shares for `/mnt/media`, `/srv/share` (`:445`, not HTTP)
+- `restic` — daily backups to OneTouch (lazy-mounted)
+- `btrbk` — hourly/daily btrfs subvolume snapshots
+- `ntfy` — alert delivery: ntfy.sh push + local `alert.nori.lan` for restic/btrbk/Gatus failures
 
 ## Operating
 
@@ -91,12 +88,4 @@ CLAUDE.md                    # agent prompting
 
 ## Phase status
 
-| Phase | What | State |
-|---|---|---|
-| 0-3 | Inventory, backups, dry-run install | done |
-| 4 | Bare-metal install on nori-station | done |
-| 5 | Service migration | in progress (file/AI/media/SSO/observability live; Cloudflare Tunnel deferred) |
-| 6 | Hyprland desktop | not started |
-| — | `hosts/nori-pi/` | deferred (no USB SSD) |
-
-See `docs/RESUME.md` "Loose ends" for the to-do list.
+Phases 0–6 done; Phase 7 (tightening + new capabilities) in progress. `nori-pi` deferred on hardware. See `docs/RESUME.md` for the live status and `docs/DESIGN.md` for the canonical phasing rationale.

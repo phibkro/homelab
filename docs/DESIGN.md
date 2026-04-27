@@ -2,7 +2,7 @@
 
 **Status:** Canonical. Supersedes DESIGN.md v1.
 **Owner:** Philip
-**Last updated:** April 25, 2026
+**Last updated:** April 27, 2026
 **Verification window:** `nixos-unstable` channel (currently 26.05-pre); kernel 6.18 LTS or 6.19; NVIDIA driver 580.x via `nvidiaPackages.production`; Hyprland on Wayland with explicit-sync; btrfs single-device mature; restic + Hetzner Storage Box well-trodden path; `services.beszel.{hub,agent}` confirmed available.
 
 **Channel rationale:** unstable, not stable, because Blackwell support requires NVIDIA driver 575+ and stable 25.11 lags. Pinned via `flake.lock`; treat unstable + lockfile-pinning as the de-facto stable channel for this lab. Re-pin deliberately, not on every `nix flake update`.
@@ -352,7 +352,7 @@ The `backupPrepareCommand` runs as an `ExecStartPre` on the generated `restic-ba
 | Tailscale | A | State files |
 | `/home`, `/srv/share` | A | No databases |
 
-This pattern is documented in `docs/backup-patterns.md`. New services pick a pattern at onboarding time.
+New services pick a pattern at onboarding time. (The patterns A/B/C live above; an earlier plan to split them into `docs/backup-patterns.md` was abandoned to avoid the indirection.)
 
 #### Backup destinations
 
@@ -422,8 +422,13 @@ secrets/
   secrets.yaml
   .sops.yaml
 docs/
+  DESIGN.md                      # this doc
+  CONVENTIONS.md                 # repo patterns + enforcement layers
+  gotchas.md                     # landmines from lived experience
+  RESUME.md                      # current state, loose ends
   baremetal-install.md           # Phase 4 step-by-step
-  backup-patterns.md             # Patterns A/B/C reference
+  vm-install.md                  # UTM dry-run target
+  capacity-baseline.md           # Schema; values filled at quarterly reviews
   runbooks/
     bad-config.md
     file-deletion.md
@@ -431,9 +436,7 @@ docs/
     drive-failure-root.md
     drive-failure-media.md
     pi-failure.md
-  onboarding/
-    family-user.md
-  capacity-baseline.md           # Filled at first install
+    inspect-windows-drive.md     # MP510 read-only mount + verification
 ```
 
 #### Disko at install

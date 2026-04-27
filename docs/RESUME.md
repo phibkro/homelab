@@ -27,11 +27,12 @@ canonical architecture.
 |---|---|---|
 | 0 | Inventory + flake skeleton | done |
 | 1 | Backups (rsync + partclone) | done; verified on One Touch |
-| 2 | Reformat IronWolf Pro to btrfs | **DONE** (pulled forward; see below) |
+| 2 | Reformat IronWolf Pro to btrfs | done (pulled forward; see below) |
 | 3 | VM dry-run install | done; `vm-test` retained for testing |
 | 4 | Bare-metal install on nori-station | done |
-| 5 | Service migration | in progress (file/AI/media services live; Cloudflare/observability pending) |
-| 6 | Desktop environment (Hyprland) | done — greetd + Hyprland + waybar + mako + hyprlock + hypridle live; bind layer derives Hyprland config + cheatsheet from one record list |
+| 5 | Service migration | done — file/AI/media/SSO/observability/personal/arr live; Cloudflare Tunnel reactive |
+| 6 | Desktop environment (Hyprland) | done — greetd + Hyprland + waybar + mako + hyprlock + hypridle; bind layer derives Hyprland config + cheatsheet from one record list |
+| 7 | Tightening + new capabilities | in progress — items 1 (MP510 ro), 3 (Beszel agent + GPU), 6 (OIDC auto-gen + zero-hash-in-Nix), 10 (virt-manager) done; 8 (Vaultwarden) starting; 4 (restore drill) and 5 (Recyclarr) unblocked; 2 (Hetzner) and 7 (nori-pi declarative) deferred (budget + hardware) |
 
 Reactive (no scheduled trigger): Cloudflare Tunnel + Access, email
 digest reports, second media drive, deploy-rs. See DESIGN.md.
@@ -150,14 +151,20 @@ Dev workflow:
    `https://media.nori.lan` — pick admin credentials, add
    `/mnt/media/home-videos` library (Stremio handles streaming
    entertainment, Jellyfin focuses on home videos).
-7. **Beszel SSO consumer config.** Authelia-side OIDC client
-   `metrics` is registered. Beszel-side: configure via PocketBase
-   admin (`https://metrics.nori.lan/_/`) → Collections → users →
-   ⚙ Options → OAuth2. Auto-gen for OIDC client setup deferred (would
-   need lan-route extension + sops template plumbing).
-8. **OIDC for other services.** Pattern proven for two services
-   (chat, metrics-pending). Repeat per service that needs SSO. When
-   N reaches 3-4, the auto-gen abstraction earns its keep.
+7. **Beszel SSO consumer config.** PocketBase OAuth setup is paused
+   mid-flow. The Authelia client got dropped in `0862f31` when the
+   metrics OIDC block was deferred — `modules/services/beszel.nix`
+   has the reattach instructions in a comment block. Pick up by:
+   `just oidc-key metrics` → paste raw + hash into sops → reattach
+   `nori.lanRoutes.metrics.oidc = { … };` → deploy → paste the raw
+   secret into PocketBase admin (`/_/` → Collections → users → ⚙
+   Options → OAuth2).
+8. ~~**OIDC for other services.**~~ DONE structurally. Auto-gen
+   abstraction landed in `0862f31`; template-filter migration in
+   `55b0e29` eliminated hash-from-Nix; `just oidc-key` (`8caec93`)
+   collapses raw+hash generation into one step. Per-client
+   onboarding now: `oidc.clientName + redirectPath + sops paste`.
+   Vaultwarden (item 13) is the first net-new test of the flow.
 9. **Media stack first-run wizards.** Twelve services live but un-configured
    (Sonarr, Radarr, Lidarr, Prowlarr, Bazarr, Jellyseerr, qBittorrent,
    calibre-web, Komga, Immich, Radicale, Syncthing). Each has a one-time
@@ -196,12 +203,16 @@ Dev workflow:
     back in via tuigreet picks up the UWSM-wrapped path. Once that's
     verified, expect the manual `systemctl --user restart waybar mako
     hypridle` dance to be unnecessary on session start.
-13. **Vaultwarden self-hosted server.** Deferred. When ready: sops-managed
-    admin token, repo lives at `/var/lib/vaultwarden` (folded into
-    `user-data` restic + Pattern C2 SQLite `.backup` for correctness),
-    lan-route at `vault.nori.lan`, Bitwarden Electron client (already
-    installed) points at the self-hosted URL. Migration from cloud
-    Bitwarden is one-time export → import → verify → sunset.
+13. **Vaultwarden self-hosted server.** Starting now (Phase 7
+    item 8). Sops-managed admin token, state at `/var/lib/vaultwarden`
+    (Pattern C2 SQLite `.backup` for restic correctness), lan-route
+    at `vault.nori.lan` with `oidc = { clientName = "Vaultwarden";
+    redirectPath = "/identity/connect/oidc-signin";
+    secretEnvName = "SSO_CLIENT_SECRET"; scopes adds offline_access; };`.
+    Bitwarden Electron client (already installed) points at the
+    self-hosted URL. Cloud-Bitwarden migration is one-time
+    export → import → verify → keep cloud account dormant for ~30d
+    grace before deletion.
 14. **Stremio.** Not in nixpkgs. Decision: use `web.stremio.com` in zen.
     Skip native install unless flatpak/AppImage becomes worth it.
 
@@ -218,23 +229,24 @@ See `docs/gotchas.md` for landmines (NVMe enumeration, Caddy CA + Python certifi
 
 ## What's next
 
-DESIGN.md L186-289 has the full table. Likely candidates in priority order:
+Phase 7 scope is in flight. Done: items 1 (MP510 ro), 3 (Beszel
+agent + GPU), 6 (OIDC auto-gen + zero-hash-in-Nix), 10 (virt-manager).
+In flight: 8 (Vaultwarden). Unblocked: 4 (restore drill), 5
+(Recyclarr — gated on first-run wizards). Deferred: 2 (Hetzner —
+budget), 7 (nori-pi declarative — hardware), 9 (LiteLLM — needs
+nixpkgs availability check).
 
-1. **Real restic target.** Either PiOS-imperative restic-rest-server
-   on the existing Pi (interim) or wait for a NixOS-bootable USB SSD
-   to land `hosts/nori-pi/` declaratively. Then Hetzner Storage Box
-   for off-site.
-2. **Observability.** `services.beszel.{hub,agent}` for metrics,
-   Uptime Kuma container for synthetic checks, ntfy for alerts. All
-   per DESIGN L454-483.
-3. **Immich.** Photo library; Pattern B backup (Immich's own dump).
-   `/mnt/media/photos` becomes a raw archive that gets selectively
-   imported into Immich's library (separate fs path under
-   `/var/lib/immich/`).
-4. **Cloudflare Tunnel + Access.** Reactive — only when Tailscale
-   friction emerges (someone refuses to install another app, public
-   sharing needed).
-5. **Hyprland desktop.** Phase 6, done. Wallpaper deferred until an image is picked; everything else (greetd, waybar, mako, hyprlock, hypridle, audio fix, cheatsheet) is live and committed.
+Reactive items (no scheduled trigger):
+
+- **Cloudflare Tunnel + Access** — only when Tailscale friction
+  emerges (someone refuses to install another app, public sharing
+  needed).
+- **Email digest reports** — when ntfy alone proves noisy enough
+  that summarization helps.
+- **Second media drive on nori-station** — when IronWolf >80%
+  full or RAID1 redundancy becomes desired.
+- **deploy-rs** — when a "deployed broken config, lost remote
+  access" incident occurs.
 
 **`nori-pi` deferred** — no NixOS-bootable USB SSD on hand yet.
 Existing Pi runs PiOS, can fill DNS (Blocky via apt) and/or

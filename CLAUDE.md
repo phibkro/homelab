@@ -19,12 +19,12 @@ You are working in a NixOS homelab flake. Two-host topology (nori-station built;
 
 1. Create `modules/services/<service>.nix`
 2. Enable the service module
-3. Apply default-deny FS hardening (snippet in `docs/CONVENTIONS.md`)
+3. Apply default-deny FS hardening (`ProtectHome = lib.mkForce true;` + `TemporaryFileSystem` + `BindReadOnlyPaths`; full snippet in `docs/CONVENTIONS.md`)
 4. Declare `nori.lanRoutes.<name> = { port = N; monitor = { }; };` for HTTPS access via Caddy + auto-monitoring
-5. Add the import to `hosts/nori-station/default.nix`
-6. If the service needs secrets: add to `secrets/secrets.yaml` via `sops secrets/secrets.yaml` (env-file format if env var bound)
-7. If the service needs SSO: add an OIDC client to `modules/services/authelia.nix` + per-service env vars (see chat / metrics examples)
-8. Sync working tree to host + `nixos-rebuild switch --flake .#nori-station`
+5. Append the file path to the relevant group in `modules/services/groups.nix` (e.g. `media`, `arr`, `personal`); the host imports groups, not individual files
+6. If the service needs secrets: `sops secrets/secrets.yaml` (env-file format `KEY=VALUE` if consumed via `EnvironmentFile`)
+7. If the service needs SSO: `just oidc-key <name>` → paste raw + hash into sops → declare `nori.lanRoutes.<name>.oidc = { clientName; redirectPath; };` in the same module → wire `EnvironmentFile = config.sops.templates."oidc-<name>-env".path;` + `SupplementaryGroups = [ "keys" ];` on the systemd unit. See `docs/CONVENTIONS.md` "Authelia OIDC pattern".
+8. `just rebuild` (rsync working tree + `nh os switch`)
 9. Commit (Conventional Commits — type + scope + tight summary)
 
 ## How to operate
@@ -50,10 +50,12 @@ You are working in a NixOS homelab flake. Two-host topology (nori-station built;
 
 ## Quality gates
 
-- `nix flake check` — eval validation + statix + deadnix + nixfmt format check
-- `nix fmt` — apply nixfmt-rfc-style
+- `nix flake check` — eval (with module assertions) + statix + deadnix + nixfmt format check + `forbidden-patterns` (no inline pbkdf2 hashes, no caddy/blocky bypass)
+- `nix fmt` — apply nixfmt
 - Pre-commit hook in `.githooks/pre-commit` runs `nix flake check` automatically
   when staged changes touch `.nix` files — enable once per clone with:
   `git config core.hooksPath .githooks`. Skips gracefully if nix isn't on PATH
-  (Mac case); host validates on rebuild regardless. Bypass with
-  `git commit --no-verify` for emergencies only.
+  (Mac case); GitHub Actions (`.github/workflows/check.yml`) catches the
+  skipped commits on push. Bypass with `git commit --no-verify` for emergencies
+  only.
+- Conventions for new rules (when to encode as types vs assertions vs flake checks vs leave to review): `docs/CONVENTIONS.md` § "Enforcing conventions through code".
