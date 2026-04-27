@@ -220,6 +220,38 @@ mako: Is a notification daemon already running?
 
 Fresh boot: never sees this. Iterating on mako config without rebooting: `kill <stale-pid>; systemctl --user start mako.service`. `pkill mako` doesn't work cleanly because the process arg-vector is the unwrapped store path, not "mako" verbatim — kill by PID from `pgrep -af mako`.
 
+## Beszel agent under DynamicUser hides `/dev/nvidia*`
+
+The upstream `services.beszel.agent` module sets `PrivateDevices = !cfg.smartmon.enable`. With smartmon off (the default), `PrivateDevices = true` creates a private `/dev` namespace that omits `/dev/nvidia0`, `/dev/nvidiactl`, `/dev/nvidia-uvm`. The agent's bundled `nvidia-smi` invocation finds nothing and logs `WARN nvidia-smi found no valid GPU data, stopping` — and the Beszel dashboard's GPU panel stays empty.
+
+Override locally:
+
+```nix
+systemd.services.beszel-agent.serviceConfig.PrivateDevices = lib.mkForce false;
+```
+
+Loosens just the device namespace; the rest of the upstream hardening (PrivateUsers, ProtectKernel*, SystemCallFilter, RestrictSUIDSGID) stays. See `modules/services/beszel.nix` for the live config.
+
+## NTFS read-only mounts: BitLocker + Fast Startup
+
+Two independent failure modes when adding a `fileSystems."<path>".fsType = "ntfs3"` entry pointing at a Windows partition:
+
+1. **BitLocker.** Win11 enables device encryption by default on supported hardware. `blkid` on a BitLocker-encrypted partition reports `crypto_LUKS` or no `TYPE` rather than `ntfs`. The `ntfs3` driver can't read encrypted partitions; mount fails with `wrong fs type`. Verify before declaring the mount: `blkid /dev/disk/by-id/...-part3` should report `TYPE="ntfs"`. If not, suspend BitLocker from Windows or use `dislocker`.
+
+2. **Fast Startup dirty journal.** Win11's default Shutdown is actually a hibernation-to-disk; the NTFS volume is left with a dirty journal flag. `ntfs3` refuses to mount dirty volumes even read-only as of kernel 6.18. Symptom on first boot: mount fails with "wrong fs type" or "volume is dirty". Fix: boot Windows, choose Restart (not Shutdown) which forces a clean shutdown; OR uncheck "Turn on fast startup" in Power options for a permanent fix.
+
+See `docs/runbooks/inspect-windows-drive.md` for the full procedure.
+
+## Authelia OIDC clients require `X_AUTHELIA_CONFIG_FILTERS=template`
+
+OIDC client `client_secret` values use `{{ secret "/run/secrets/oidc-<n>-client-secret-hash" }}` template syntax (see `modules/lib/lan-route.nix` + `modules/services/authelia.nix`). The substitution only happens when Authelia is invoked with the template config-filter enabled:
+
+```nix
+systemd.services.authelia-main.environment.X_AUTHELIA_CONFIG_FILTERS = "template";
+```
+
+Without it, Authelia parses the literal `{{ secret "..." }}` string as the client_secret and rejects every OIDC handshake with a hash mismatch. The legacy `_FILE` / `expand-env` substitution paths are explicitly **not** supported for list-typed config sections (which OIDC clients are); template filter is the only working path. `expand-env` is being removed in 4.40.
+
 ## Pre-Phase-5 backups (`scripts/backup.sh`) have no integrity verification
 
 `scripts/backup.sh` writes a manifest from in-the-moment `du` of the destination directory. There's no post-write verification, no comparison on subsequent runs. Files can disappear between backup and restore (manual deletion, exfat corruption) and the manifest still claims success. Treat any pre-Phase-5 rsync-to-exfat backup as a snapshot of intent, not a guaranteed source of truth.
