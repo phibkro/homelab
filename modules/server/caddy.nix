@@ -24,7 +24,7 @@
   # After that, every *.nori.lan service works without browser warnings.
   #
   # DNS resolution:
-  #   Blocky's customDNS (modules/services/blocky.nix) maps each
+  #   Blocky's customDNS (modules/server/blocky.nix) maps each
   #   *.nori.lan name to nori-station's tailnet IP (100.81.5.122).
   #   Tailnet clients hit that IP, traffic flows over the tailnet,
   #   reaches Caddy on :443, virtual-host routing fans out to backends.

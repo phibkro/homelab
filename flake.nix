@@ -152,8 +152,8 @@
               fi
             '';
 
-        # Every service module under modules/services/ must declare
-        # a backup intent — either `nori.backups.<name>.paths = [...]`
+        # Every service module under modules/server/ must declare a
+        # backup intent — either `nori.backups.<name>.paths = [...]`
         # for what to back up, or `nori.backups.<name>.skip = "..."`
         # for explicit opt-out. Forgetting to declare anything is the
         # systemic cause of silent coverage gaps; this check turns
@@ -161,22 +161,28 @@
         every-service-has-backup-intent =
           pkgs.runCommandLocal "every-service-has-backup-intent"
             {
-              nativeBuildInputs = [ pkgs.gnugrep ];
+              nativeBuildInputs = [
+                pkgs.gnugrep
+                pkgs.findutils
+              ];
             }
             ''
               cd ${./.}
               fail=0
 
-              # Helpers / aggregators / non-service-shaped files —
-              # the *arr `media`-group bootstrap, the backup
-              # framework, and the btrbk snapshot tool itself. None
-              # of these have user state to back up.
-              exclude='^modules/services/(arr-shared|backup-restic|backup-verify|btrbk|groups)\.nix$'
-
-              for f in modules/services/*.nix; do
-                if echo "$f" | grep -qE "$exclude"; then
-                  continue
-                fi
+              # Excluded paths — folder aggregators (default.nix), the
+              # *arr group's `media`-bootstrap helper (shared.nix),
+              # and the backup-cluster infrastructure (restic, verify,
+              # btrbk are the framework, not user-facing services).
+              for f in $(find modules/server -name '*.nix' | sort); do
+                case "$f" in
+                  */default.nix|\
+                  modules/server/arr/shared.nix|\
+                  modules/server/backup/restic.nix|\
+                  modules/server/backup/verify.nix|\
+                  modules/server/backup/btrbk.nix)
+                    continue;;
+                esac
                 if ! grep -qE 'nori\.backups\.' "$f"; then
                   echo "✗ $f: no nori.backups.<name> declaration."
                   fail=1

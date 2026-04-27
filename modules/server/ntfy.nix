@@ -22,7 +22,7 @@
   # per-topic publish tokens via sops + Authorization headers.
   #
   # State (auth db, attachments) at /var/lib/ntfy-sh; small enough that
-  # daily restic Pattern A is fine. Wire it up in backup-restic.nix once
+  # daily restic Pattern A is fine. Wire it up in backup/restic.nix once
   # this module's been live a few days and the schema is settled.
 
   services.ntfy-sh = {

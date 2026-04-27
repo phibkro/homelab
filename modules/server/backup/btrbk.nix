@@ -80,7 +80,7 @@
   # it in automatically.
 
   # Alert on snapshot job failure via ntfy template in
-  # modules/services/ntfy.nix.
+  # modules/server/ntfy.nix.
   systemd.services.btrbk-root.unitConfig.OnFailure = [ "notify@btrbk-root.service" ];
   systemd.services.btrbk-media.unitConfig.OnFailure = [ "notify@btrbk-media.service" ];
 }

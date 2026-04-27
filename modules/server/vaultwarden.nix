@@ -34,7 +34,7 @@
   #
   # === Backup ===
   # State at /var/lib/vaultwarden (SQLite). Backup is Pattern C2 in
-  # backup-restic.nix's `vaultwarden` repo — `sqlite3 .backup` before
+  # backup/restic.nix's `vaultwarden` repo — `sqlite3 .backup` before
   # restic for a consistent dump. Same shape as open-webui.
 
   services.vaultwarden = {

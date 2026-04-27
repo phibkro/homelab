@@ -17,7 +17,7 @@
   # the media library (just media metadata + watch progress + user
   # accounts). Not in scope for off-site backup; Pattern A daily to
   # Pi-or-Hetzner is enough as a fast restore convenience. Backup
-  # config is in backup-restic.nix (or will be when added) — for now
+  # config is in backup/restic.nix (or will be when added) — for now
   # nothing valuable to lose.
   #
   # First-time setup: connect to

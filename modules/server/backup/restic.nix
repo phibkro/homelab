@@ -127,7 +127,7 @@
 
   # ---------------------------------------------------------------------
   # Non-service-tied backup repos. Service-specific repos live in the
-  # respective service modules (modules/services/<name>.nix).
+  # respective service modules (modules/server/<name>.nix).
 
   # User data: /home/nori personal stuff + /srv/share dumping ground.
   # Both currently empty; declared now so they're backed up the

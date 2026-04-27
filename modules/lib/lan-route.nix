@@ -20,7 +20,7 @@ in
   #   * Tailnet firewall opening (if `exposeOnTailnet`)
   #   * sops secret + env-file template (if `oidc` is non-null) — the
   #     consuming Authelia client list assembly lives in
-  #     modules/services/authelia.nix, which reads back from
+  #     modules/server/authelia.nix, which reads back from
   #     config.nori.lanRoutes here.
   #
   # Service modules just declare their own routing inline:
@@ -147,7 +147,7 @@ in
             description = ''
               If set, this route gets:
                 * an Authelia OIDC client entry (assembled by
-                  modules/services/authelia.nix from this declaration)
+                  modules/server/authelia.nix from this declaration)
                 * a sops secret named `oidc-<name>-client-secret`
                 * a sops env-file template named `oidc-<name>-env`
                   containing `<secretEnvName>=<raw>`, ready to wire as
@@ -268,7 +268,7 @@ in
       );
 
       # Auto-generated Gatus endpoints for routes that opt in via
-      # `monitor`. Manual entries in modules/services/gatus.nix
+      # `monitor`. Manual entries in modules/server/gatus.nix
       # (blocky-dns, samba-smb) coexist via list concatenation.
       services.gatus.settings.endpoints = lib.mkAfter (
         lib.mapAttrsToList (name: cfg: {
@@ -286,7 +286,7 @@ in
       );
 
       # OIDC plumbing for routes with `oidc` set. The Authelia client
-      # entry is assembled by modules/services/authelia.nix reading
+      # entry is assembled by modules/server/authelia.nix reading
       # config.nori.lanRoutes — keeps single ownership of the clients
       # list (NixOS module merging on freeform-typed lists conflicts
       # rather than concatenates, so a centralized assembly site is

@@ -35,7 +35,7 @@
   # dumps to /var/lib/immich/backups on a schedule; restic picks up
   # that path + the photos themselves (already in
   # media-irreplaceable.paths via /mnt/media/photos). The dumps path
-  # is added to backup-restic.nix in this commit.
+  # is added to backup/restic.nix in this commit.
   #
   # First-run setup:
   #   1. Visit https://photos.nori.lan

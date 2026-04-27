@@ -15,7 +15,7 @@ in
   #   * services.restic.backups.<name>        (the backup job)
   #   * systemd OnFailure → notify@ wiring    (ntfy alert on failure)
   #   * inclusion in the weekly + monthly     (verification cadence)
-  #     restic check loops in backup-restic.nix
+  #     restic check loops in modules/server/backup/restic.nix
   #
   # Service modules declare their own backup inline alongside the
   # service definition, the same way they declare lanRoutes:
@@ -60,7 +60,7 @@ in
       The two-state schema forces every service module to make an
       explicit decision rather than silently being uncovered. The
       paired flake check (`every-service-has-backup-intent` in
-      flake.nix) enforces that every modules/services/<svc>.nix
+      flake.nix) enforces that every modules/server/**.nix
       contains a nori.backups.<n> declaration.
     '';
     example = lib.literalExpression ''
@@ -213,7 +213,7 @@ in
       ) activeBackups;
 
       # Auto-generated OnFailure → notify@ wiring per repo. Mirror
-      # of the manual block this replaced in backup-restic.nix;
+      # of the manual block this replaced in modules/server/backup/restic.nix;
       # without it a silent backup failure stays silent.
       systemd.services = mapAttrs' (
         name: _:

@@ -16,7 +16,7 @@
   #
   # State (SQLite + per-user uploads + conversation history) lives at
   # /var/lib/open-webui. Backed up via Pattern C2 in
-  # backup-restic.nix — sqlite3 .backup before restic so the dump is
+  # backup/restic.nix — sqlite3 .backup before restic so the dump is
   # consistent.
   #
   # To restore the previous installation's chats from the Ubuntu One
@@ -58,7 +58,7 @@
       # store by default — they don't see /etc/ssl/certs and so don't
       # trust Caddy's local CA. SSL_CERT_FILE overrides certifi to use
       # the system bundle (which has the local CA via
-      # security.pki.certificateFiles in modules/services/caddy.nix).
+      # security.pki.certificateFiles in modules/server/caddy.nix).
       SSL_CERT_FILE = "/etc/ssl/certs/ca-bundle.crt";
       REQUESTS_CA_BUNDLE = "/etc/ssl/certs/ca-bundle.crt";
     };
@@ -108,7 +108,7 @@
   # Gatus. OIDC client + sops secret + env-file template auto-
   # generated from the `oidc = { ... }` block — see
   # modules/lib/lan-route.nix for the schema and
-  # modules/services/authelia.nix for the clients-list assembly.
+  # modules/server/authelia.nix for the clients-list assembly.
   nori.lanRoutes.chat = {
     port = 8080;
     monitor = { };
