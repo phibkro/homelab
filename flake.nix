@@ -151,6 +151,52 @@
                 exit 1
               fi
             '';
+
+        # Every service module under modules/services/ must declare
+        # a backup intent — either `nori.backups.<name>.paths = [...]`
+        # for what to back up, or `nori.backups.<name>.skip = "..."`
+        # for explicit opt-out. Forgetting to declare anything is the
+        # systemic cause of silent coverage gaps; this check turns
+        # forgetting into a build error.
+        every-service-has-backup-intent =
+          pkgs.runCommandLocal "every-service-has-backup-intent"
+            {
+              nativeBuildInputs = [ pkgs.gnugrep ];
+            }
+            ''
+              cd ${./.}
+              fail=0
+
+              # Helpers / aggregators / non-service-shaped files —
+              # the *arr `media`-group bootstrap, the backup
+              # framework, and the btrbk snapshot tool itself. None
+              # of these have user state to back up.
+              exclude='^modules/services/(arr-shared|backup-restic|backup-verify|btrbk|groups)\.nix$'
+
+              for f in modules/services/*.nix; do
+                if echo "$f" | grep -qE "$exclude"; then
+                  continue
+                fi
+                if ! grep -qE 'nori\.backups\.' "$f"; then
+                  echo "✗ $f: no nori.backups.<name> declaration."
+                  fail=1
+                fi
+              done
+
+              if [ $fail -eq 0 ]; then
+                touch $out
+              else
+                echo
+                echo "Every service module must declare a backup intent."
+                echo "Either:"
+                echo "  nori.backups.<name>.paths = [ \"/var/lib/<svc>\" ];"
+                echo "or:"
+                echo "  nori.backups.<name>.skip = \"<one-line reason>\";"
+                echo
+                echo "See modules/lib/backup.nix for the schema."
+                exit 1
+              fi
+            '';
       };
     };
 }

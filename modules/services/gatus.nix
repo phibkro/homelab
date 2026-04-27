@@ -96,4 +96,8 @@
   nori.lanRoutes.status = {
     port = 8082;
   };
+
+  # Memory-only storage configured (settings.storage.type = "memory")
+  # — no on-disk state to preserve. DynamicUser as well.
+  nori.backups.gatus.skip = "Memory-only storage; no on-disk state.";
 }

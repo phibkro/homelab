@@ -48,9 +48,20 @@ in
   options.nori.backups = mkOption {
     default = { };
     description = ''
-      Restic backup jobs. Attribute name = repo name (becomes
-      `/mnt/backup/<name>`); value declares paths + optional
-      pre-backup command + timer/retention overrides.
+      Restic backup decisions. Attribute name = repo name (becomes
+      `/mnt/backup/<name>`).
+
+      Each entry MUST set exactly one of:
+        * `paths` — list of paths to back up (Pattern A; add
+          `prepareCommand` for Pattern C2)
+        * `skip` — string explaining why this service has no backup
+          (covered elsewhere, stateless, intentionally re-derivable)
+
+      The two-state schema forces every service module to make an
+      explicit decision rather than silently being uncovered. The
+      paired flake check (`every-service-has-backup-intent` in
+      flake.nix) enforces that every modules/services/<svc>.nix
+      contains a nori.backups.<n> declaration.
     '';
     example = lib.literalExpression ''
       {
@@ -60,18 +71,32 @@ in
           prepareCommand = "sqlite3 ... .backup ...";
           timer = "*-*-* 04:30:00";
         };
+        gatus = { skip = "memory-only storage; no on-disk state."; };
       }
     '';
     type = types.attrsOf (
       types.submodule {
         options = {
           paths = mkOption {
-            type = types.listOf types.str;
+            type = types.nullOr (types.listOf types.str);
+            default = null;
             description = ''
               Filesystem paths to back up. For DynamicUser services,
               point at /var/lib/private/<name> directly — the
               /var/lib/<name> symlink would otherwise be stored as
-              just the symlink record.
+              just the symlink record (caught by the assertion
+              below). Set to `null` (default) for explicit opt-out;
+              pair with the `skip` field documenting the reason.
+            '';
+          };
+          skip = mkOption {
+            type = types.nullOr types.str;
+            default = null;
+            description = ''
+              When `paths` is null, this records why backup is
+              intentionally skipped. Required for opt-out — the
+              schema can't otherwise tell "intentionally skipped"
+              from "forgotten".
             '';
           };
           prepareCommand = mkOption {
@@ -80,7 +105,8 @@ in
             description = ''
               Bash command(s) to run before each restic backup.
               Used for Pattern C2 (sqlite3 .backup before restic).
-              Null = Pattern A (filesystem-only).
+              Null = Pattern A (filesystem-only). Ignored when
+              `paths` is null.
             '';
           };
           timer = mkOption {
@@ -89,7 +115,8 @@ in
             description = ''
               `OnCalendar` systemd timer expression. Default 03:00
               UTC daily. Stagger across repos when concurrent USB
-              I/O on the OneTouch becomes a bottleneck.
+              I/O on the OneTouch becomes a bottleneck. Ignored
+              when `paths` is null.
             '';
           };
           pruneOpts = mkOption {
@@ -99,38 +126,101 @@ in
               "--keep-weekly 4"
               "--keep-monthly 12"
             ];
-            description = "Restic forget/prune options.";
+            description = "Restic forget/prune options. Ignored when `paths` is null.";
           };
         };
       }
     );
   };
 
-  config = mkIf (config.nori.backups != { }) {
-    services.restic.backups = mapAttrs' (
-      name: cfg:
-      nameValuePair name {
-        inherit (cfg) paths;
-        repository = "/mnt/backup/${name}";
-        passwordFile = config.sops.secrets.restic-password.path;
-        initialize = true;
-        backupPrepareCommand = cfg.prepareCommand;
-        timerConfig = {
-          OnCalendar = cfg.timer;
-          Persistent = true;
-        };
-        inherit (cfg) pruneOpts;
-      }
-    ) config.nori.backups;
+  config = mkIf (config.nori.backups != { }) (
+    let
+      activeBackups = lib.filterAttrs (_: cfg: cfg.paths != null) config.nori.backups;
 
-    # Auto-generated OnFailure → notify@ wiring per repo. Mirror of
-    # the manual block this replaced in backup-restic.nix; without
-    # it a silent backup failure stays silent.
-    systemd.services = mapAttrs' (
-      name: _:
-      nameValuePair "restic-backups-${name}" {
-        unitConfig.OnFailure = [ "notify@restic-backups-${name}.service" ];
-      }
-    ) config.nori.backups;
-  };
+      # Hardcoded list of services that use systemd DynamicUser=yes
+      # plus StateDirectory, where /var/lib/<n> is a SYMLINK to
+      # /var/lib/private/<n>. restic stores symlinks as symlinks; a
+      # backup pointing at /var/lib/<n> for one of these services
+      # produces an empty (3-file / 0-byte) snapshot. Update this
+      # list when adding a new DynamicUser service module.
+      dynamicUserServices = [
+        "open-webui"
+        "jellyseerr"
+        "prowlarr"
+        "ntfy-sh"
+        "beszel-hub"
+        "gatus"
+        "glance"
+        "blocky"
+        "ollama"
+      ];
+
+      badPaths = lib.flatten (
+        lib.mapAttrsToList (
+          _: cfg:
+          if cfg.paths == null then
+            [ ]
+          else
+            lib.filter (p: lib.any (svc: p == "/var/lib/${svc}") dynamicUserServices) cfg.paths
+        ) config.nori.backups
+      );
+    in
+    {
+      assertions = [
+        {
+          assertion = lib.all (cfg: (cfg.paths != null) != (cfg.skip != null)) (
+            lib.attrValues config.nori.backups
+          );
+          message = ''
+            Each nori.backups.<n> entry must set exactly one of `paths`
+            (with content to back up) or `skip` (with a reason string),
+            never both and never neither. Forgetting to make the
+            decision is exactly the silent-coverage-gap this schema
+            shape exists to prevent.
+          '';
+        }
+        {
+          assertion = badPaths == [ ];
+          message = ''
+            nori.backups paths reference DynamicUser symlinks. restic
+            stores symlinks AS symlinks; pointing at /var/lib/<n> for
+            a DynamicUser service produces a 0-byte snapshot. Use
+            /var/lib/private/<n> for these paths instead.
+
+            Offending paths: ${lib.concatStringsSep ", " badPaths}
+
+            Known DynamicUser services: ${lib.concatStringsSep ", " dynamicUserServices}
+            See docs/gotchas.md "DynamicUser StateDirectory" for the
+            full story.
+          '';
+        }
+      ];
+
+      services.restic.backups = mapAttrs' (
+        name: cfg:
+        nameValuePair name {
+          inherit (cfg) paths;
+          repository = "/mnt/backup/${name}";
+          passwordFile = config.sops.secrets.restic-password.path;
+          initialize = true;
+          backupPrepareCommand = cfg.prepareCommand;
+          timerConfig = {
+            OnCalendar = cfg.timer;
+            Persistent = true;
+          };
+          inherit (cfg) pruneOpts;
+        }
+      ) activeBackups;
+
+      # Auto-generated OnFailure → notify@ wiring per repo. Mirror
+      # of the manual block this replaced in backup-restic.nix;
+      # without it a silent backup failure stays silent.
+      systemd.services = mapAttrs' (
+        name: _:
+        nameValuePair "restic-backups-${name}" {
+          unitConfig.OnFailure = [ "notify@restic-backups-${name}.service" ];
+        }
+      ) activeBackups;
+    }
+  );
 }

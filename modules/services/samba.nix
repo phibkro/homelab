@@ -108,4 +108,10 @@
     "d /mnt/media/home-videos 0775 nori users -"
     "d /mnt/media/projects    0775 nori users -"
   ];
+
+  # Config declarative in Nix; the actual share data is /mnt/media
+  # (covered by media-irreplaceable) and /srv/share (covered by
+  # user-data). Samba's state at /var/lib/samba is just runtime
+  # session caches.
+  nori.backups.samba.skip = "Config declarative; share data covered by media-irreplaceable + user-data.";
 }

@@ -98,4 +98,10 @@
     ];
     BindReadOnlyPaths = [ ];
   };
+
+  # Stateless — Blocky's runtime state is just the in-memory cache
+  # of upstream-resolved A/AAAA records and the downloaded blocklists,
+  # both of which rebuild from declarative Nix config + bootstrapDns
+  # on every restart. DynamicUser too (path /var/lib/private/blocky).
+  nori.backups.blocky.skip = "Stateless — config in Nix; cache + blocklists rebuild on restart.";
 }

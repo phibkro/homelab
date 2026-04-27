@@ -65,7 +65,11 @@
     environment.RESTIC_PASSWORD_FILE = config.sops.secrets.restic-password.path;
     script = ''
       fail=0
-      for name in ${lib.concatStringsSep " " (lib.attrNames config.nori.backups)}; do
+      for name in ${
+        lib.concatStringsSep " " (
+          lib.attrNames (lib.filterAttrs (_: cfg: cfg.paths != null) config.nori.backups)
+        )
+      }; do
         echo "[$name] restic check"
         if ! ${pkgs.restic}/bin/restic -r /mnt/backup/$name check; then
           echo "[$name] FAILED"
@@ -97,7 +101,11 @@
     environment.RESTIC_PASSWORD_FILE = config.sops.secrets.restic-password.path;
     script = ''
       fail=0
-      for name in ${lib.concatStringsSep " " (lib.attrNames config.nori.backups)}; do
+      for name in ${
+        lib.concatStringsSep " " (
+          lib.attrNames (lib.filterAttrs (_: cfg: cfg.paths != null) config.nori.backups)
+        )
+      }; do
         echo "[$name] restic check --read-data-subset=10%"
         if ! ${pkgs.restic}/bin/restic -r /mnt/backup/$name check --read-data-subset=10%; then
           echo "[$name] FAILED"

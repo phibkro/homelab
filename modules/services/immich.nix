@@ -98,4 +98,12 @@
     port = 2283;
     monitor = { };
   };
+
+  # Photos at /mnt/media/photos/_immich-managed live on the
+  # @photos subvolume, already covered by media-irreplaceable.
+  # Pattern B SQL dumps land at /var/lib/immich/backups (Immich's
+  # web-UI Scheduled Database Backup, cron 02:00) — also in
+  # media-irreplaceable. Everything else under /var/lib/immich is
+  # ML models + transcoded thumbnails (re-derivable).
+  nori.backups.immich.skip = "Photos covered by media-irreplaceable (@photos); DB dumps via Pattern B at /var/lib/immich/backups also in media-irreplaceable.";
 }

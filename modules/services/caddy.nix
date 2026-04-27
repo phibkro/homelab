@@ -86,4 +86,10 @@
   # /var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt
   # if Caddy ever regenerates it.
   security.pki.certificateFiles = [ ./caddy-local-ca.crt ];
+
+  # Pattern A — Caddy's internal CA private key + state. Irreplaceable:
+  # if the CA gets regenerated, every device with the current
+  # caddy-local-ca.crt installed needs to re-trust the new public
+  # cert. Static `caddy` user, real /var/lib/caddy directory.
+  nori.backups.caddy.paths = [ "/var/lib/caddy" ];
 }

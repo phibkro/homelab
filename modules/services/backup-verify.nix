@@ -13,7 +13,9 @@ let
   # and the restore mechanism is structurally identical to the other
   # repos. For a deep check including media, run the drill manually:
   # `sudo systemctl start restore-drill-all.service`.
-  drillRepos = lib.filter (n: n != "media-irreplaceable") (lib.attrNames config.nori.backups);
+  # Repos with `paths` set (skip the explicit-opt-out entries).
+  activeRepos = lib.attrNames (lib.filterAttrs (_: cfg: cfg.paths != null) config.nori.backups);
+  drillRepos = lib.filter (n: n != "media-irreplaceable") activeRepos;
 
   drillScript = repos: ''
     set -uo pipefail
@@ -139,6 +141,6 @@ in
       TimeoutStartSec = "12h";
     };
     environment.RESTIC_PASSWORD_FILE = config.sops.secrets.restic-password.path;
-    script = drillScript (lib.attrNames config.nori.backups);
+    script = drillScript activeRepos;
   };
 }

@@ -74,4 +74,10 @@
     port = 8384;
     monitor = { };
   };
+
+  # Syncthing's pairing state + folder config + index DB live at
+  # /home/nori/.config/syncthing — already captured by the
+  # `user-data` repo (which backs up /home). No separate
+  # nori.backups.syncthing repo needed.
+  nori.backups.syncthing.skip = "Config + index at /home/nori/.config/syncthing — already covered by the user-data repo (/home).";
 }

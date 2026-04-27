@@ -56,4 +56,9 @@
     port = 11434;
     monitor.path = "/api/tags";
   };
+
+  # Re-derivable — Ollama's state is ~32GB of LLM weights pulled
+  # via `ollama pull`, all upstream-available. Chat history lives
+  # in Open WebUI's DB (covered by the open-webui repo).
+  nori.backups.ollama.skip = "Re-downloadable LLM weights (~32GB). Chat history is in Open WebUI's repo.";
 }

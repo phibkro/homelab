@@ -389,4 +389,8 @@
     port = 8086;
     monitor = { };
   };
+
+  # Stateless — Glance's dashboard config lives in Nix (this module).
+  # No persistent state worth preserving across rebuilds. DynamicUser.
+  nori.backups.glance.skip = "Stateless — dashboard config rendered from Nix.";
 }
