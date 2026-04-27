@@ -54,7 +54,7 @@
         nori-station = mkHost ./hosts/nori-station;
       };
 
-      formatter.${system} = pkgs.nixfmt-rfc-style;
+      formatter.${system} = pkgs.nixfmt;
 
       # Quality gates. Run `nix flake check` to validate everything:
       #   - host configs evaluate (caught by nixosConfigurations check)
@@ -80,7 +80,7 @@
 
         format = pkgs.runCommandLocal "format" { } ''
           cd ${./.}
-          ${pkgs.nixfmt-rfc-style}/bin/nixfmt --check $(find . -name '*.nix' -not -path '*/result/*')
+          ${pkgs.nixfmt}/bin/nixfmt --check $(find . -name '*.nix' -not -path '*/result/*')
           touch $out
         '';
       };

@@ -244,6 +244,13 @@ in
           name = "Adwaita-dark";
           package = pkgs.gnome-themes-extra;
         };
+        # GTK4 reads its theme from gsettings/dconf (which we set in
+        # `dconf.settings."org/gnome/desktop/interface".gtk-theme`
+        # below), not from ~/.config/gtk-4.0/settings.ini. `null`
+        # adopts the new home-manager default (no settings.ini write)
+        # and silences the legacy-default warning. Visual behavior
+        # unchanged: GTK4 apps still pick up Adwaita-dark via dconf.
+        gtk4.theme = null;
         iconTheme.name = "Adwaita";
       };
       qt = {
