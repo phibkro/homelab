@@ -88,4 +88,9 @@
     port = 8084;
     monitor = { };
   };
+
+  # Pattern A — calibre-web's user/session DB. The book library
+  # itself lives at /mnt/media/library/books (already in
+  # media-irreplaceable). Static `calibre-web` user.
+  nori.backups.calibre-web.paths = [ "/var/lib/calibre-web" ];
 }

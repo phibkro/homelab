@@ -64,4 +64,9 @@
     port = 5232;
     monitor.path = "/.web/";
   };
+
+  # Pattern A — calendars (CalDAV) and contacts (CardDAV) are
+  # irreplaceable user data. Tiny (~8K) so daily restic is free.
+  # Static `radicale` user, real /var/lib/radicale dir.
+  nori.backups.radicale.paths = [ "/var/lib/radicale" ];
 }

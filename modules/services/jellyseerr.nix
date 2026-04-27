@@ -45,4 +45,9 @@
     port = 5055;
     monitor = { };
   };
+
+  # Pattern A — request history + Jellyfin auth links. DynamicUser
+  # → /var/lib/jellyseerr is a symlink to /var/lib/private/jellyseerr;
+  # restic stores symlinks as symlinks, so we point at the target.
+  nori.backups.jellyseerr.paths = [ "/var/lib/private/jellyseerr" ];
 }

@@ -49,4 +49,7 @@
     port = 9696;
     monitor = { };
   };
+
+  # Pattern A — indexer list + per-app links. DynamicUser symlink.
+  nori.backups.prowlarr.paths = [ "/var/lib/private/prowlarr" ];
 }

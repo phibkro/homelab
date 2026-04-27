@@ -61,4 +61,8 @@
     port = 8083;
     monitor = { };
   };
+
+  # Pattern A — torrent state, resume data, *arr-tied categories.
+  # Static `qbittorrent` user; real path with capital Q.
+  nori.backups.qbittorrent.paths = [ "/var/lib/qBittorrent" ];
 }

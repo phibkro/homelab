@@ -71,4 +71,10 @@
     port = 8096;
     monitor = { };
   };
+
+  # Pattern A — library scan, watch progress, user accounts. The
+  # library can be re-derived from media files on disk, but watch
+  # history is irreplaceable convenience data. Largest of the
+  # service-state repos at ~210MB.
+  nori.backups.jellyfin.paths = [ "/var/lib/jellyfin" ];
 }

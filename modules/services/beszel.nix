@@ -126,4 +126,11 @@
     port = 8090;
     monitor = { };
   };
+
+  # Pattern A — beszel hub's PocketBase sqlite (metrics history,
+  # user accounts, OAuth config). Re-derivable in the sense that
+  # metrics restart from "now" on a fresh install, but losing the
+  # OAuth consumer-side config means redoing the PocketBase OAuth
+  # admin step. DynamicUser → /var/lib/private/beszel-hub.
+  nori.backups.beszel.paths = [ "/var/lib/private/beszel-hub" ];
 }

@@ -48,4 +48,7 @@
     port = 6767;
     monitor = { };
   };
+
+  # Pattern A — Bazarr's config + provider history. Static `bazarr` user.
+  nori.backups.bazarr.paths = [ "/var/lib/bazarr" ];
 }

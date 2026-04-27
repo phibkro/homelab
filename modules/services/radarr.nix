@@ -45,4 +45,7 @@
     port = 7878;
     monitor = { };
   };
+
+  # Pattern A — same shape as sonarr.
+  nori.backups.radarr.paths = [ "/var/lib/radarr" ];
 }

@@ -93,4 +93,8 @@
       Type = "oneshot";
     };
   };
+
+  # Pattern A — local ntfy state (auth db, attachments). DynamicUser
+  # → /var/lib/private/ntfy-sh.
+  nori.backups.ntfy.paths = [ "/var/lib/private/ntfy-sh" ];
 }

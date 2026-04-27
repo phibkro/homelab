@@ -195,4 +195,11 @@ in
     port = 9091;
     monitor = { };
   };
+
+  # Pattern A — Authelia state: sqlite session store, OIDC issuer
+  # state, rate-limiting counters. Without it, every OIDC client
+  # has to be re-bootstrapped on a restore (clients-list reseeds
+  # via this module on rebuild, but session continuity + OIDC
+  # consent state needs the on-disk db). Static `authelia-main` user.
+  nori.backups.authelia.paths = [ "/var/lib/authelia-main" ];
 }
