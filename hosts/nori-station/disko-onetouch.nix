@@ -54,6 +54,16 @@
                 "defaults"
                 "noatime"
                 "nofail" # USB drive — don't block boot if disconnected
+                # Lazy-mount: the FS is unmounted at idle, mounted on
+                # first access. Restic touches /mnt/backup at 03:00 /
+                # 03:30 / 04:00 daily and once weekly for the check
+                # timer; the rest of the time the drive can spin down.
+                # idle-timeout: how long after last access before
+                # unmount. 10 min covers the 30-min daily backup batch
+                # plus some slop.
+                "x-systemd.automount"
+                "x-systemd.idle-timeout=10min"
+                "x-systemd.device-timeout=30s" # fail fast if drive yanked
               ];
             };
           };
