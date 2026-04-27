@@ -7,21 +7,51 @@ let
     mkIf
     mapAttrs'
     nameValuePair
+    filterAttrs
     ;
 in
 {
   # nori.lanRoutes — single source of truth for services exposed
-  # under *.nori.lan. Each entry generates BOTH:
+  # under *.nori.lan. Each entry generates ALL of:
   #   * Caddy vhost: reverse proxy from <name>.nori.lan to the
   #     declared backend port
   #   * Blocky customDNS mapping: <name>.nori.lan → tailnet IP
+  #   * Gatus monitor (if `monitor` is non-null)
+  #   * Tailnet firewall opening (if `exposeOnTailnet`)
+  #   * sops secret + env-file template (if `oidc` is non-null) — the
+  #     consuming Authelia client list assembly lives in
+  #     modules/services/authelia.nix, which reads back from
+  #     config.nori.lanRoutes here.
   #
   # Service modules just declare their own routing inline:
   #
-  #   nori.lanRoutes.chat = { port = 8080; };
+  #   nori.lanRoutes.chat = {
+  #     port = 8080;
+  #     oidc = {
+  #       clientName = "Open WebUI";
+  #       clientSecretHash = "$pbkdf2-sha512$...";
+  #       redirectPath = "/oauth/oidc/callback";
+  #     };
+  #   };
   #
-  # No more Caddy + Blocky edits per service. Adding a new service
-  # later: one line in the module that owns the service.
+  # No more Caddy + Blocky + Authelia + sops template edits per
+  # service. Adding a new service later: one block in the module
+  # that owns the service.
+  #
+  # ── OIDC env-file naming convention ─────────────────────────────
+  # When `oidc` is non-null, lan-route generates a sops template
+  # rendered to /run/secrets/rendered/oidc-<name>-env containing
+  # `<secretEnvName>=<raw secret>`. Consuming service modules wire
+  # this as an EnvironmentFile on their systemd unit:
+  #
+  #   systemd.services.<svc>.serviceConfig = {
+  #     EnvironmentFile = config.sops.templates."oidc-<name>-env".path;
+  #     SupplementaryGroups = [ "keys" ];
+  #   };
+  #
+  # Plus the non-secret OIDC env vars (provider URL, client_id, etc.)
+  # in `services.<svc>.environment` directly, since those vary per
+  # service and aren't worth abstracting.
 
   options.nori.lanIp = mkOption {
     type = types.str;
@@ -110,6 +140,81 @@ in
               }
             );
           };
+          oidc = mkOption {
+            default = null;
+            description = ''
+              If set, this route gets:
+                * an Authelia OIDC client entry (assembled by
+                  modules/services/authelia.nix from this declaration)
+                * a sops secret named `oidc-<name>-client-secret`
+                * a sops env-file template named `oidc-<name>-env`
+                  containing `<secretEnvName>=<raw>`, ready to wire as
+                  systemd EnvironmentFile in the consuming module.
+
+              Set to `null` (default) for routes that don't use SSO.
+            '';
+            type = types.nullOr (
+              types.submodule {
+                options = {
+                  clientName = mkOption {
+                    type = types.str;
+                    description = "Display name shown on Authelia consent screen.";
+                  };
+                  clientSecretHash = mkOption {
+                    type = types.str;
+                    description = ''
+                      PBKDF2-SHA512 hash of the client secret. Generate via:
+                        authelia crypto hash generate pbkdf2 \
+                          --variant sha512 --iterations 310000 --password '<raw>'
+                      The raw secret is stored separately in sops at
+                      `oidc-<name>-client-secret`. The hash is one-way
+                      and safe to commit.
+                    '';
+                  };
+                  redirectPath = mkOption {
+                    type = types.str;
+                    description = ''
+                      Path appended to https://<name>.nori.lan to form
+                      the OIDC redirect URI. Service-specific:
+                        Open WebUI:  /oauth/oidc/callback
+                        PocketBase:  /api/oauth2-redirect
+                        Vaultwarden: /identity/connect/oidc-signin
+                    '';
+                  };
+                  scopes = mkOption {
+                    type = types.listOf types.str;
+                    default = [
+                      "openid"
+                      "profile"
+                      "email"
+                      "groups"
+                    ];
+                    description = ''
+                      OIDC scopes the client may request. Add
+                      `offline_access` for services that need refresh
+                      tokens (e.g. Vaultwarden).
+                    '';
+                  };
+                  authorizationPolicy = mkOption {
+                    type = types.str;
+                    default = "one_factor";
+                    description = "Authelia access-control policy: `one_factor`, `two_factor`, or a custom-named policy.";
+                  };
+                  secretEnvName = mkOption {
+                    type = types.str;
+                    default = "OAUTH_CLIENT_SECRET";
+                    description = ''
+                      Env-var name written to the generated env file.
+                      Defaults to OAUTH_CLIENT_SECRET (Open WebUI's
+                      convention). Override per service:
+                        Vaultwarden: SSO_CLIENT_SECRET
+                        Some others: OPENID_CLIENT_SECRET / OIDC_CLIENT_SECRET
+                    '';
+                  };
+                };
+              }
+            );
+          };
         };
       }
     );
@@ -149,7 +254,32 @@ in
             send-on-resolved = true;
           }
         ];
-      }) (lib.filterAttrs (_: cfg: cfg.monitor != null) config.nori.lanRoutes)
+      }) (filterAttrs (_: cfg: cfg.monitor != null) config.nori.lanRoutes)
     );
+
+    # OIDC plumbing for routes with `oidc` set. The Authelia client
+    # entry is assembled by modules/services/authelia.nix reading
+    # config.nori.lanRoutes — keeps single ownership of the clients
+    # list (NixOS module merging on freeform-typed lists conflicts
+    # rather than concatenates, so a centralized assembly site is
+    # cleaner than mkMerge from multiple modules).
+    sops.secrets = mapAttrs' (
+      name: _:
+      nameValuePair "oidc-${name}-client-secret" {
+        mode = "0440";
+        group = "keys";
+      }
+    ) (filterAttrs (_: cfg: cfg.oidc != null) config.nori.lanRoutes);
+
+    sops.templates = mapAttrs' (
+      name: cfg:
+      nameValuePair "oidc-${name}-env" {
+        mode = "0440";
+        group = "keys";
+        content = ''
+          ${cfg.oidc.secretEnvName}=${config.sops.placeholder."oidc-${name}-client-secret"}
+        '';
+      }
+    ) (filterAttrs (_: cfg: cfg.oidc != null) config.nori.lanRoutes);
   };
 }

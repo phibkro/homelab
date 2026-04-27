@@ -36,12 +36,11 @@
       WEBUI_AUTH = "True";
       ENABLE_SIGNUP = "False";
       DEFAULT_MODELS = "";
-      # OIDC env vars that don't contain secrets go here. The secret-
-      # bearing env var (OAUTH_CLIENT_SECRET) is loaded from
-      # /run/secrets/rendered/open-webui-oauth-env via systemd
-      # EnvironmentFile below — sops template renders the value at
-      # activation, file is mode 0440 root:keys, service runs with
-      # SupplementaryGroups=keys so it can read.
+      # OIDC env vars that don't contain secrets. The secret-bearing
+      # OAUTH_CLIENT_SECRET is loaded from the sops-rendered env file
+      # at /run/secrets/rendered/oidc-chat-env via EnvironmentFile
+      # below — auto-declared by the lan-route abstraction (see
+      # `nori.lanRoutes.chat.oidc` at the bottom of this file).
       OPENID_PROVIDER_URL = "https://auth.nori.lan/.well-known/openid-configuration";
       OAUTH_CLIENT_ID = "chat";
       OAUTH_PROVIDER_NAME = "Authelia";
@@ -54,19 +53,6 @@
       SSL_CERT_FILE = "/etc/ssl/certs/ca-bundle.crt";
       REQUESTS_CA_BUNDLE = "/etc/ssl/certs/ca-bundle.crt";
     };
-  };
-
-  sops.secrets.oidc-chat-client-secret = {
-    mode = "0440";
-    group = "keys";
-  };
-
-  sops.templates."open-webui-oauth-env" = {
-    mode = "0440";
-    group = "keys";
-    content = ''
-      OAUTH_CLIENT_SECRET=${config.sops.placeholder.oidc-chat-client-secret}
-    '';
   };
 
   # Default-deny filesystem access beyond Open WebUI's own state dir
@@ -85,12 +71,21 @@
     # DynamicUser needs supplementary group `keys` to read the
     # sops-rendered env file (mode 0440 root:keys).
     SupplementaryGroups = [ "keys" ];
-    EnvironmentFile = config.sops.templates."open-webui-oauth-env".path;
+    EnvironmentFile = config.sops.templates."oidc-chat-env".path;
   };
 
-  # Exposed at https://chat.nori.lan via Caddy. Auto-monitored by Gatus.
+  # Exposed at https://chat.nori.lan via Caddy. Auto-monitored by
+  # Gatus. OIDC client + sops secret + env-file template auto-
+  # generated from the `oidc = { ... }` block — see
+  # modules/lib/lan-route.nix for the schema and
+  # modules/services/authelia.nix for the clients-list assembly.
   nori.lanRoutes.chat = {
     port = 8080;
     monitor = { };
+    oidc = {
+      clientName = "Open WebUI";
+      clientSecretHash = "$pbkdf2-sha512$310000$ThTc2qRfMD0r/GkaCjySYA$fWbF1FfUDlwK1IgoSe9XBeXrJjocYfC0VJis24qHZ54pweEKIuMrd6QUDuASRPpSBoocwJRM8OKuKDKLRX29Yg";
+      redirectPath = "/oauth/oidc/callback";
+    };
   };
 }

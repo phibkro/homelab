@@ -5,22 +5,38 @@
   ...
 }:
 
+let
+  # OIDC clients are generated from `config.nori.lanRoutes.<n>.oidc`
+  # — see modules/lib/lan-route.nix for the schema. This module is
+  # the single owner of the Authelia clients list because
+  # NixOS module merging on freeform-typed lists conflicts rather
+  # than concatenates; centralized assembly avoids `lib.mkMerge`
+  # ceremony at every call site.
+  generatedClients = lib.mapAttrsToList (name: route: {
+    client_id = name;
+    client_name = route.oidc.clientName;
+    client_secret = route.oidc.clientSecretHash;
+    public = false;
+    authorization_policy = route.oidc.authorizationPolicy;
+    redirect_uris = [ "https://${name}.nori.lan${route.oidc.redirectPath}" ];
+    inherit (route.oidc) scopes;
+  }) (lib.filterAttrs (_: cfg: cfg.oidc != null) config.nori.lanRoutes);
+in
 {
   # Authelia — single sign-on portal. Per DESIGN's "Open items":
   # Authelia chosen over self-hosted SSO alternatives (Authentik,
   # Keycloak) for declarative-first design, lightweight footprint
   # (~50MB RAM), file-based config, and good NixOS module support.
   #
-  # PHASE A (this module): Authelia service running, file-based user
-  # database with one admin user, password login works at port 9091
-  # over the tailnet. No OIDC client integration yet — just the
-  # foundation that subsequent services delegate to.
+  # PHASE A (landed): Authelia service running, file-based user
+  # database with one admin user, password login works at port 9091.
   #
-  # PHASE B (next): per-service OIDC client setup. Each service
-  # configures Authelia as its OIDC issuer; users sign in once via
-  # Authelia, services trust the resulting tokens. One-click SSO.
+  # PHASE B (in progress): per-service OIDC client setup, generated
+  # from the lan-route abstraction. Add a client by declaring
+  # `nori.lanRoutes.<name>.oidc = { ... }` in the consuming service
+  # module — see open-webui.nix and beszel.nix for examples.
   #
-  # Connect to: http://nori-station.saola-matrix.ts.net:9091
+  # Connect to: https://auth.nori.lan
   # Initial login: user = nori, password = whatever you hashed during
   # secrets bootstrap.
   #
@@ -30,7 +46,9 @@
   #   authelia-storage-encryption-key  random hex (>=32 bytes)
   #   authelia-users-database          YAML block with users/groups
   #
-  # See module comment for the secret-generation command sequence.
+  # OIDC secrets (Phase B) live at `oidc-<name>-client-secret`,
+  # auto-declared by modules/lib/lan-route.nix when `oidc` is set on
+  # a route.
 
   sops.secrets = {
     authelia-jwt-secret = {
@@ -111,60 +129,15 @@
         rules = [ ];
       };
 
-      # OIDC clients — manually declared per service for now.
-      # Auto-generation deferred (would need sops template + Authelia
-      # expand-env filter + per-service env-file plumbing). Add a new
-      # client by:
-      #   1. Generate raw secret + PBKDF2 hash via:
-      #        authelia crypto hash generate pbkdf2 --variant sha512 \
-      #          --iterations 310000 --password '<raw>'
-      #   2. Add raw to sops as oidc-<name>-client-secret
-      #   3. Append the entry below with the hash inline
-      #   4. Wire the consuming service (per-service env vars)
-      #
-      # Why the `client_secret = "$pbkdf2-sha512$..."` hashes are
-      # committed inline: PBKDF2 is one-way; the raw secret can't be
-      # recovered from the hash. The raw is sops-encrypted; only the
-      # hash sits in plain Nix. A future contributor reading the
-      # public repo will see the hashes here and that's intentional.
-      # See docs/CONVENTIONS.md "Authelia OIDC pattern" for the full
+      # OIDC clients are assembled from `nori.lanRoutes.<n>.oidc`
+      # declarations across the per-service modules. The hash
+      # (`client_secret`) is committed inline at the lan-route call
+      # site; PBKDF2 is one-way so the raw secret can't be recovered
+      # from it. The raw secret lives sops-encrypted at
+      # `/run/secrets/oidc-<name>-client-secret`. See
+      # docs/CONVENTIONS.md "Authelia OIDC pattern" for the bootstrap
       # workflow.
-      identity_providers.oidc.clients = [
-        {
-          client_id = "chat";
-          client_name = "Open WebUI";
-          client_secret = "$pbkdf2-sha512$310000$ThTc2qRfMD0r/GkaCjySYA$fWbF1FfUDlwK1IgoSe9XBeXrJjocYfC0VJis24qHZ54pweEKIuMrd6QUDuASRPpSBoocwJRM8OKuKDKLRX29Yg";
-          public = false;
-          authorization_policy = "one_factor";
-          redirect_uris = [
-            "https://chat.nori.lan/oauth/oidc/callback"
-          ];
-          scopes = [
-            "openid"
-            "profile"
-            "email"
-            "groups"
-          ];
-        }
-        {
-          client_id = "metrics";
-          client_name = "Beszel";
-          client_secret = "$pbkdf2-sha512$310000$0gc7ZQ3BvBSY9j9osv4GDw$V0XEUOAvm6u0Ox5Uro7Yy5m1srM3nqLkI4BrJU6J0t8L53C01feT6bgiNokwuC8WNpp6MKu30MBzhhe.ZCjkdg";
-          public = false;
-          authorization_policy = "one_factor";
-          # Beszel inherits PocketBase's OAuth2 flow — callback path
-          # is /api/oauth2-redirect (standard PocketBase pattern).
-          redirect_uris = [
-            "https://metrics.nori.lan/api/oauth2-redirect"
-          ];
-          scopes = [
-            "openid"
-            "profile"
-            "email"
-            "groups"
-          ];
-        }
-      ];
+      identity_providers.oidc.clients = generatedClients;
     };
   };
 
