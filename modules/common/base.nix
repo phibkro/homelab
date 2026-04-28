@@ -64,6 +64,29 @@
   #   nh os switch . -H nori-station --target-host <ip>          # remote
   programs.nh.enable = true;
 
+  # nix-ld — runtime loader shim for non-NixOS-built Linux binaries.
+  # NixOS lacks /lib64/ld-linux-x86-64.so.2, so prebuilt binaries from
+  # other distros fail with "no such file". nix-ld provides the loader
+  # plus a curated LD_LIBRARY_PATH so the binary can resolve its deps.
+  #
+  # Required for Zed's remote-server (precompiled Rust binary auto-
+  # installed under ~/.zed-server/ when Zed connects via SSH). Also
+  # covers other agentic / dev tools that ship Linux binaries.
+  #
+  # Library set is iterative: start with the common Rust/glibc deps,
+  # extend if a binary errors with "error while loading shared
+  # libraries: <name>". Find the missing lib via `nix-locate <name>`.
+  programs.nix-ld = {
+    enable = true;
+    libraries = with pkgs; [
+      stdenv.cc.cc # libstdc++, libgcc_s
+      zlib
+      openssl
+      curl
+      glibc
+    ];
+  };
+
   # --- swap (zram) -------------------------------------------------------
 
   # Compressed in-memory swap. No disk required; kernel compresses evicted
