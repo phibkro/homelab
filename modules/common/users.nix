@@ -10,7 +10,7 @@
 
   users.users.nori = {
     isNormalUser = true;
-    description = "Philip";
+    description = "nori";
     extraGroups = [
       "wheel"
       "networkmanager"

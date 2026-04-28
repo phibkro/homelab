@@ -33,9 +33,8 @@ You are working in a NixOS homelab flake. Single host live (nori-station); nori-
 - **Primary dev host: nori-station** via Zed remote (Mac connects over SSH). Persistent clone at `~/Downloads/homelab` on the host. `~/Documents/nix-migration` on Mac is the laptop-side clone.
 - Reach nori-station: `ssh nori-station` (alias if configured), `ssh nori@nori-station.saola-matrix.ts.net` (tailnet hostname), `ssh nori@100.81.5.122` (tailnet IP), or `ssh nori@192.168.1.181` (LAN).
 - Push from nori-station via SSH (`git@github.com:phibkro/homelab.git`). Mac uses HTTPS (default).
-- Rebuild from the host: `cd ~/Downloads/homelab && nh os switch . -H nori-station` (in place, no rsync).
-- Rebuild from Mac: `just rebuild` (rsyncs working tree to `/tmp/nix-migration/` then `nh os switch`).
-- Push to `origin/main` is the deploy boundary; nori-station can `git pull` and rebuild from there.
+- **Justfile is local-by-default**: `just rebuild` builds whichever host you're sitting on (`nh os switch . -H $(hostname)`). From Mac — which isn't a NixOS host — recipes don't make sense locally; use the `remote` composition primitive instead: `just remote nori-station rebuild` rsyncs the working tree to `/tmp/nix-migration/` on nori-station + runs `just rebuild` there. Same pattern wraps any recipe: `just remote nori-station status`, `just remote nori-station logs sshd`, etc.
+- Push to `origin/main` is the deploy boundary; any host can `git pull && just rebuild` (or `just deploy` to build from origin without touching the working tree).
 - Long jobs go in the background — never block on them. Use `run_in_background: true`.
 - Background `Bash` and `Agent` invocations always (per the operator's CLAUDE.md global rule).
 
