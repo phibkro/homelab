@@ -5,7 +5,7 @@
   # (Blackwell), whose driver lands in recent nixpkgs. Treat unstable +
   # flake.lock as the de-facto stable channel; re-pin deliberately.
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
 
     disko.url = "github:nix-community/disko/latest";
@@ -14,9 +14,9 @@
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
 
-    # Per-user config (desktop phase). Pinned to release-25.11 to match
-    # nixpkgs-25.11. Bump together when stepping to next stable.
-    home-manager.url = "github:nix-community/home-manager/release-25.11";
+    # Per-user config (desktop phase). Tracks nixos-unstable in lockstep
+    # with nixpkgs; re-pin deliberately on `nix flake update`.
+    home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
     # Zen browser. Not in nixpkgs; consumed via upstream community flake.

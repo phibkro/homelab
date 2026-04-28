@@ -26,13 +26,13 @@
   #
   # Jellyseerr doesn't touch /mnt/media — it's API-orchestration only,
   # so it doesn't join the `media` group.
-  services.jellyseerr = {
+  services.seerr = {
     enable = true;
     openFirewall = false;
     port = 5055;
   };
 
-  systemd.services.jellyseerr.serviceConfig = {
+  systemd.services.seerr.serviceConfig = {
     ProtectHome = lib.mkForce true;
     TemporaryFileSystem = [
       "/mnt:ro"
