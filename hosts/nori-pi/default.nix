@@ -56,6 +56,23 @@
     "net.ipv6.conf.all.forwarding" = 1;
   };
 
+  # Workaround for the modules-shrunk failure when using cache.garnix.io's
+  # cached `linux-rpi` kernel. Garnix's CI builds the kernel with a
+  # slightly different module set than what nixos-hardware/raspberry-pi-4
+  # requests — specifically `dw-hdmi` (DesignWare HDMI) is missing from
+  # the cached build, so the post-build module-shrinking step fails with
+  # `modprobe: FATAL: Module dw-hdmi not found`.
+  #
+  # `allowMissingModules = true` (nixpkgs PR 375975, merged staging-next
+  # 2025-05-16, in nixos-25.11) tells initrd to skip the strict modules
+  # closure check. Trade-off: real missing-module regressions become
+  # silent. Acceptable for an appliance-class Pi.
+  #
+  # Without this: build kernel locally (~60 min via aarch64 binfmt
+  # emulation on nori-station). With this: garnix cache hit, build
+  # finishes in ~15 min total.
+  boot.initrd.allowMissingModules = true;
+
   # ── Blocky: forwarder mode ───────────────────────────────────────
   # Pi serves DNS + ad blocking to LAN clients. *.nori.lan queries
   # get conditional-forwarded to nori-station's Blocky (which has
