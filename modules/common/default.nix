@@ -11,5 +11,6 @@ _: {
     ./sops.nix
     ../lib/lan-route.nix
     ../lib/backup.nix
+    ../lib/gpu.nix
   ];
 }

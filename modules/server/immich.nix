@@ -47,6 +47,24 @@
   #   5. (optional) Import existing /mnt/media/photos/{2022,...}
   #      via the web UI (Settings → External Library) or
   #      `immich-cli upload`
+  # CUDA ML inference (face detection, smart search) — DEFERRED.
+  # Approach: overlay onnxruntime with cudaSupport=true so the Python
+  # package picks up the CUDA execution provider. The compile is ~20 min
+  # but exhausted RAM on first attempt (nvcc is memory-hungry; the system
+  # has no swap). Prerequisites before enabling:
+  #   1. zramSwap (now in modules/common/base.nix) survives a rebuild
+  #   2. Uncomment the overlay below + the LD_LIBRARY_PATH env var
+  #
+  # nixpkgs.overlays = [
+  #   (final: prev: {
+  #     onnxruntime = prev.onnxruntime.override {
+  #       cudaSupport = true;
+  #       inherit (final) cudaPackages;
+  #       ncclSupport = false; # single-GPU inference; skip ~45 min NCCL build
+  #     };
+  #   })
+  # ];
+
   services.immich = {
     enable = true;
     user = "immich";
@@ -58,7 +76,20 @@
     database.enable = true; # dedicated postgres + VectorChord ext
     redis.enable = true;
     machine-learning.enable = true; # face/object detection on RTX 5060 Ti
+
+    # Grant immich-server (NVENC transcoding) and immich-machine-learning
+    # (CUDA inference) access to the GPU. The NixOS module sets
+    # PrivateDevices=true by default when this list is empty; setting it
+    # to the canonical device list unlocks DeviceAllow for both units.
+    accelerationDevices = config.nori.gpu.nvidiaDevices;
   };
+
+  # When the CUDA overlay above is enabled, also uncomment:
+  # services.immich.machine-learning.environment = {
+  #   # CUDA execution provider is dlopen'd at runtime from onnxruntime's
+  #   # capi/ dir; LD_LIBRARY_PATH tells the linker where to find it.
+  #   LD_LIBRARY_PATH = "${pkgs.python3Packages.onnxruntime}/${pkgs.python3.sitePackages}/onnxruntime/capi";
+  # };
 
   # Cross-service photo access: Immich joins `media` so it can read
   # the existing user-organized photo tree if you point External

@@ -64,6 +64,19 @@
   #   nh os switch . -H nori-station --target-host <ip>          # remote
   programs.nh.enable = true;
 
+  # --- swap (zram) -------------------------------------------------------
+
+  # Compressed in-memory swap. No disk required; kernel compresses evicted
+  # pages with zstd before they land in the zram device. At 50% of RAM
+  # (default) this machine gets ~16 GiB of swap backed by ~8 GiB of
+  # physical RAM at ~2x compression.
+  #
+  # Primary motivation: CUDA compilation (nvcc, onnxruntime) is extremely
+  # memory-hungry and caused an OOM + unresponsive system when attempted
+  # with no swap. zram gives the kernel somewhere to shed pressure instead
+  # of killing processes. Low overhead when idle.
+  zramSwap.enable = true;
+
   # --- firewall ----------------------------------------------------------
 
   networking.firewall.enable = true;
