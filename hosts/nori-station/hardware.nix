@@ -59,5 +59,19 @@
     package = config.boot.kernelPackages.nvidiaPackages.production;
   };
 
+  # Canonical GPU device list for services that opt in via
+  # accelerationDevices / DeviceAllow. Default in modules/lib/gpu.nix
+  # is empty; host explicitly enumerates what's present so Pi (no
+  # GPU) doesn't get phantom device references.
+  nori.gpu.nvidiaDevices = [
+    "/dev/nvidia0"
+    "/dev/nvidiactl"
+    "/dev/nvidia-uvm"
+  ];
+
+  # Build aarch64 closures locally for nori-pi via binfmt emulation.
+  # Cheaper than cross-compilation; closer to native build correctness.
+  boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
+
   nixpkgs.hostPlatform = "x86_64-linux";
 }

@@ -38,12 +38,16 @@
       ...
     }@inputs:
     let
+      # `system` here is the host on which `nix flake check` /
+      # formatter / etc run — not the target platform of any host.
+      # Each host's hardware.nix sets nixpkgs.hostPlatform; mkHost
+      # no longer hardcodes system, so nori-pi (aarch64-linux) and
+      # nori-station / vm-test (x86_64-linux) coexist cleanly.
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
       mkHost =
         hostPath:
         nixpkgs.lib.nixosSystem {
-          inherit system;
           specialArgs = { inherit inputs; };
           modules = [ hostPath ];
         };
@@ -52,6 +56,7 @@
       nixosConfigurations = {
         vm-test = mkHost ./hosts/vm-test;
         nori-station = mkHost ./hosts/nori-station;
+        nori-pi = mkHost ./hosts/nori-pi;
       };
 
       formatter.${system} = pkgs.nixfmt;

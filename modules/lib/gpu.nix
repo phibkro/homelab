@@ -17,16 +17,21 @@
   #   /dev/nvidia-uvm     — unified virtual memory (required for CUDA)
   options.nori.gpu.nvidiaDevices = lib.mkOption {
     type = lib.types.listOf lib.types.str;
-    default = [
-      "/dev/nvidia0"
-      "/dev/nvidiactl"
-      "/dev/nvidia-uvm"
-    ];
+    default = [ ];
     description = ''
       NVIDIA device nodes exposed to services that opt in to GPU
       access. Consumed by services.immich.accelerationDevices and any
       future service whose NixOS module uses a DeviceAllow-style
-      option. Override at the host level if the GPU inventory changes.
+      option. Default is empty so hosts without a GPU (nori-pi)
+      pass through cleanly; hosts with a GPU set this in their
+      hardware.nix.
+    '';
+    example = lib.literalExpression ''
+      [
+        "/dev/nvidia0"
+        "/dev/nvidiactl"
+        "/dev/nvidia-uvm"
+      ]
     '';
   };
 }
