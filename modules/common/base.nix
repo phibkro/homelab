@@ -19,6 +19,25 @@
         "root"
         "@wheel"
       ];
+
+      # Binary cache substituters. cache.nixos.org is the default
+      # upstream cache (NixOS module sets it implicitly). garnix.io
+      # is a community-built CI cache that covers many derivations
+      # cache.nixos.org doesn't — notably, aarch64-linux Pi-specific
+      # builds (linux-rpi kernel, etc).
+      #
+      # Confirmed coverage 2026-04-28: garnix had the linux-rpi
+      # kernel cached when cache.nixos.org didn't, which would have
+      # saved 60-90 min of qemu-emulated compile during nori-pi
+      # sd-image build had it been configured beforehand. Adding
+      # so future Pi rebuilds, kernel bumps, etc don't re-pay that
+      # cost.
+      extra-substituters = [
+        "https://cache.garnix.io"
+      ];
+      extra-trusted-public-keys = [
+        "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
+      ];
     };
     gc = {
       automatic = true;
