@@ -28,6 +28,13 @@
     "${modulesPath}/installer/sd-card/sd-image-aarch64.nix"
 
     ../../modules/common
+
+    # Pi-specific service modules — flat imports per CLAUDE.md
+    # "flat imports first." NOT modules/server/default.nix; just the
+    # specific files Pi needs.
+    ../../modules/server/blocky.nix
+    ../../modules/server/gatus.nix
+
     ./hardware.nix
   ];
 
@@ -49,9 +56,114 @@
     "net.ipv6.conf.all.forwarding" = 1;
   };
 
-  # No service modules yet — those land in a follow-up commit once
-  # blocky.nix / gatus.nix / beszel.nix are refactored to be role-
-  # parametric (Pi runs primary Blocky, a second Gatus instance
-  # probing station, beszel-agent only). Skeleton commits first so
-  # eval can be validated before adding behavior.
+  # ── Blocky: forwarder mode ───────────────────────────────────────
+  # Pi serves DNS + ad blocking to LAN clients. *.nori.lan queries
+  # get conditional-forwarded to nori-station's Blocky (which has
+  # the actual map auto-generated from nori.lanRoutes). This means
+  # adding a new service on station doesn't require any Pi-side
+  # change — Pi just delegates the suffix.
+  nori.blocky.role = "forwarder";
+
+  # ── Gatus: mutual-observability probes ───────────────────────────
+  # Pi runs its own Gatus instance probing nori-station's services.
+  # Alerts go directly to ntfy.sh (not via station's local ntfy),
+  # so the alert path survives station-down events. This is the load-
+  # bearing piece — when station's Gatus hangs (the 2026-04-28
+  # incident pattern), Pi's Gatus catches and alerts.
+  #
+  # No Caddy on Pi — exposeViaCaddy=false skips the lanRoutes.status
+  # registration. If you ever need the web UI from elsewhere, reach
+  # the port directly via tailnet (firewall opened below for tailnet
+  # only).
+  nori.gatus.exposeViaCaddy = false;
+
+  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [
+    8082 # Gatus web UI on tailnet only
+  ];
+
+  services.gatus.settings.endpoints = [
+    {
+      # Station's Blocky on tailnet IP — the most important probe.
+      # Catches the userspace-CPU-starvation pattern (kernel still
+      # alive, NIC ACKs ping, but DNS is dead).
+      name = "station-blocky-dns";
+      url = "tcp://${config.nori.lanIp}:53";
+      interval = "60s";
+      conditions = [ "[CONNECTED] == true" ];
+      alerts = [
+        {
+          type = "ntfy";
+          failure-threshold = 3;
+          send-on-resolved = true;
+        }
+      ];
+    }
+    {
+      # Station's SSH — full host-down detection (sshd dead = host
+      # dead from the user's perspective even if some daemons live).
+      name = "station-ssh";
+      url = "tcp://${config.nori.lanIp}:22";
+      interval = "60s";
+      conditions = [ "[CONNECTED] == true" ];
+      alerts = [
+        {
+          type = "ntfy";
+          failure-threshold = 3;
+          send-on-resolved = true;
+        }
+      ];
+    }
+    {
+      # Station's Caddy on HTTPS — confirms the *.nori.lan tier is
+      # serving. Probes the well-known status.nori.lan route.
+      name = "station-caddy";
+      url = "https://status.nori.lan";
+      interval = "120s";
+      conditions = [ "[STATUS] == 200" ];
+      alerts = [
+        {
+          type = "ntfy";
+          failure-threshold = 3;
+          send-on-resolved = true;
+        }
+      ];
+    }
+    {
+      # Self-probe — Pi's own Blocky on localhost. If this fires,
+      # Pi's DNS is broken and station's Gatus should also be alerting
+      # (when station gains a Pi-side probe).
+      name = "self-blocky-dns";
+      url = "tcp://127.0.0.1:53";
+      interval = "60s";
+      conditions = [ "[CONNECTED] == true" ];
+      alerts = [
+        {
+          type = "ntfy";
+          failure-threshold = 3;
+          send-on-resolved = true;
+        }
+      ];
+    }
+  ];
+
+  # ── Beszel agent: ships metrics to station's hub ─────────────────
+  # Hub stays station-only (per "station-only" decision in CLAUDE.md
+  # outstanding). Pi just runs the agent. The agent key needs to be
+  # generated via the hub's web UI on first boot of Pi:
+  #   1. Boot Pi, ensure tailscale connectivity
+  #   2. https://metrics.nori.lan → Add System → "nori-pi" →
+  #      host=<pi-tailnet-ip>, port=45876
+  #   3. Hub generates the KEY=ssh-ed25519 ... line
+  #   4. `sops secrets/secrets.yaml` → add as block-string:
+  #        beszel-agent-key-nori-pi: |
+  #          KEY=ssh-ed25519 AAAA...
+  #   5. Re-encrypt for Pi (after Pi's age key is in .sops.yaml)
+  #   6. Deploy. Hub sees Pi within ~30s.
+  #
+  # Disabled until secret exists — uncomment after step 5 above.
+  # sops.secrets.beszel-agent-key-nori-pi = { mode = "0400"; };
+  # services.beszel.agent = {
+  #   enable = true;
+  #   environmentFile = config.sops.secrets.beszel-agent-key-nori-pi.path;
+  # };
 }
