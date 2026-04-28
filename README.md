@@ -9,8 +9,7 @@ Single-user NixOS homelab flake. Two-host topology (`nori-station` built; `nori-
 | New here, want the architecture | `docs/DESIGN.md` |
 | Adding a service or making changes | `docs/CONVENTIONS.md` |
 | Debugging anything that touches disks, certs, sops, or DynamicUser | `docs/gotchas.md` |
-| Resuming work, looking for what's pending | `docs/RESUME.md` |
-| An LLM agent picking this up cold | `CLAUDE.md` |
+| Resuming work, want current state + outstanding items | `CLAUDE.md` |
 
 ## Active services
 
@@ -82,10 +81,9 @@ docs/
   DESIGN.md                  # architecture (canonical)
   CONVENTIONS.md             # repo patterns
   gotchas.md                 # landmines
-  RESUME.md                  # current state + loose ends
-CLAUDE.md                    # agent prompting
+CLAUDE.md                    # agent prompting + current state + outstanding items
 ```
 
 ## Phase status
 
-Phases 0–6 done; Phase 7 (tightening + new capabilities) in progress. `nori-pi` deferred on hardware. See `docs/RESUME.md` for the live status and `docs/DESIGN.md` for the canonical phasing rationale.
+Phases 0–6 done. Phase 7 (tightening + new capabilities) substantively done — backup abstraction + 14-service coverage, type-level enforcement, DynamicUser symlink trap caught, OIDC auto-gen with zero hash material in committed Nix, immich GPU acceleration with resource caps. `nori-pi` deferred on hardware. Live state + outstanding items in `CLAUDE.md`; canonical phasing rationale in `docs/DESIGN.md`.

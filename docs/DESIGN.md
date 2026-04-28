@@ -443,7 +443,6 @@ docs/
   DESIGN.md                      # this doc
   CONVENTIONS.md                 # repo patterns + enforcement layers
   gotchas.md                     # landmines from lived experience
-  RESUME.md                      # current state, loose ends
   baremetal-install.md           # Phase 4 step-by-step
   vm-install.md                  # UTM dry-run target
   capacity-baseline.md           # Schema; values filled at quarterly reviews

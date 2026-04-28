@@ -105,8 +105,8 @@
 
   # Exposed at https://metrics.nori.lan via Caddy. Auto-monitored.
   #
-  # OIDC deferred — PocketBase OAuth setup is paused mid-flow (per
-  # docs/RESUME.md item #7). When picking it back up:
+  # OIDC deferred — PocketBase OAuth setup is paused mid-flow (see
+  # CLAUDE.md "Outstanding"). When picking it back up:
   #   1. `just oidc-key metrics`  → outputs raw + hash
   #   2. paste both into sops as oidc-metrics-client-secret and
   #      oidc-metrics-client-secret-hash

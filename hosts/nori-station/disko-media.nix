@@ -107,7 +107,8 @@
                   # keep 4. Initial population: legacy machine backups
                   # (asus-laptop, FIT-128GB, ubuntu-pc, nori-backup)
                   # migrated off the OneTouch when it became the restic
-                  # target (Phase 5+, see docs/RESUME.md).
+                  # target (Phase 5+; see git log around the OneTouch
+                  # transition).
                   mountpoint = "/mnt/media/archive";
                   mountOptions = [
                     "compress=zstd:3"
