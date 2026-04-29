@@ -25,6 +25,7 @@
 keys:
   - &mac age1nxq07zper943wz4eredgt82e5jghx7d0sfldzqngn2kfdnwyhuhsl3h0r4
   - &nori_station age1d893pv2w42vtharqse3e3yd7rpc8nst7mlw2csssy7e9ql3lcd2q7vw4s0
+  - &nori_pi age108jlf67tj7tcdmlrg8h0wpdyvg24pud3k7u4nfa4zyz9meqml5sskcdncr
 
 creation_rules:
   - path_regex: secrets/.*\.yaml$
@@ -32,3 +33,4 @@ creation_rules:
       - age:
           - *mac
           - *nori_station
+          - *nori_pi
