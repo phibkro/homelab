@@ -6,34 +6,13 @@
 }:
 
 {
-  # beszel — lightweight metrics hub + agent (CPU, RAM, disk, network,
-  # GPU). Per DESIGN.md L455 the chosen metrics tool over heavier
-  # options like Prometheus/Grafana for a homelab.
-  #
-  # Two halves co-located on nori-station:
-  #   hub    — web UI + sqlite history at /var/lib/beszel
-  #   agent  — collects + reports metrics; hub connects to it on
-  #            localhost:45876 using SSH-style key auth
-  #
-  # === Bootstrap order (one-time, web UI first) ===
-  #   1. Connect to https://metrics.nori.lan
-  #   2. Create admin user (form on first connect) OR sign in via
-  #      Authelia OIDC (USER_CREATION=true below permits auto-provision)
-  #   3. Dashboard → Add System → "nori-station" → host=localhost,
-  #      port=45876. Hub generates a key + install command. Copy the
-  #      `KEY=ssh-ed25519 AAAA...` line.
-  #   4. Run `sops secrets/secrets.yaml` and add as a block-string:
-  #        beszel-agent-key-nori-station: |
-  #          KEY=ssh-ed25519 AAAA...
-  #      (env-file format — `=` not `:`, see docs/gotchas.md.)
-  #   5. Deploy. Hub will see the agent come online within ~30s.
-  #   6. Configure alerts in web UI → Settings → Notifications →
-  #      Webhook URL = https://ntfy.sh/<channel> with appropriate headers.
-  #
-  # The sops.secrets declaration below references the key by name; if
-  # the key isn't in secrets.yaml at activation time, sops-nix fails at
-  # activation (not at flake-check time). Do step 4 BEFORE deploying
-  # the change that introduces the agent block.
+  # beszel — station runs the agent only; the hub lives on nori-pi
+  # (see hosts/nori-pi/default.nix). Pattern matches Gatus-on-Pi:
+  # observability infra runs on the appliance host so it survives
+  # outages of the workhorse host. When station hangs, the hub on
+  # Pi keeps recording metrics up to the last poll — useful for
+  # post-incident forensics ("what was CPU/mem doing right before
+  # the freeze?"). Migrated 2026-04-29.
 
   sops.secrets.beszel-agent-key-nori-station = {
     mode = "0400";
@@ -42,49 +21,23 @@
     # reads the file directly, so SupplementaryGroups=keys is unneeded.
   };
 
-  services.beszel = {
-    hub = {
-      enable = true;
-      host = "0.0.0.0";
-      port = 8090;
-      # No openFirewall option exists on this module; the explicit
-      # networking.firewall.interfaces."tailscale0" rule below opens
-      # 8090 on the tailnet only. Global firewall stays default-deny.
-    };
-
-    agent = {
-      enable = true;
-      # Default port 45876, listening on all interfaces. Hub connects
-      # over localhost; we don't openFirewall because the agent is for
-      # this hub only and the hub is on the same host. SMART monitoring
-      # deferred — useful but needs CAP_SYS_ADMIN + disk group; revisit
-      # when "drive failing soon" alerts become load-bearing.
-      environmentFile = config.sops.secrets.beszel-agent-key-nori-station.path;
-      # NVIDIA path is auto-injected by the upstream module when
-      # services.xserver.videoDrivers contains "nvidia" (it does).
-    };
+  services.beszel.agent = {
+    enable = true;
+    # Default port 45876, listening on all interfaces. Hub on Pi
+    # connects over tailnet — needs the port open on tailscale0
+    # (handled below) since cross-host this isn't localhost anymore.
+    environmentFile = config.sops.secrets.beszel-agent-key-nori-station.path;
+    # NVIDIA path is auto-injected by the upstream module when
+    # services.xserver.videoDrivers contains "nvidia" (it does).
   };
 
-  # OIDC SSO via Authelia: USER_CREATION=true lets Beszel create
-  # accounts on first OIDC login (default is "deny unknown user", which
-  # makes OIDC unusable for new users). DISABLE_PASSWORD_AUTH stays
-  # off — keeps the local-password fallback as recovery if Authelia
-  # itself is down.
-  systemd.services.beszel-hub.environment = {
-    USER_CREATION = "true";
-  };
+  # Open agent port 45876 on tailnet so the Pi-hosted hub can poll.
+  # Localhost-bound was sufficient when hub was co-located; cross-host
+  # now requires explicit tailnet exposure.
+  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 45876 ];
 
-  systemd.services.beszel-hub.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-  };
-
-  # Agent: matching FS hardening. Upstream module already sets a
-  # substantial systemd hardening profile (PrivateUsers, ProtectKernel*,
+  # Agent FS hardening. Upstream module already sets a substantial
+  # systemd hardening profile (PrivateUsers, ProtectKernel*,
   # ProtectSystem=strict, SystemCallFilter); we add the project-wide
   # default-deny FS namespace on top.
   #
@@ -103,34 +56,17 @@
     PrivateDevices = lib.mkForce false;
   };
 
-  # Exposed at https://metrics.nori.lan via Caddy. Auto-monitored.
-  #
-  # OIDC deferred — PocketBase OAuth setup is paused mid-flow (see
-  # CLAUDE.md "Outstanding"). When picking it back up:
-  #   1. `just oidc-key metrics`  → outputs raw + hash
-  #   2. paste both into sops as oidc-metrics-client-secret and
-  #      oidc-metrics-client-secret-hash
-  #   3. reattach the lan-route oidc block:
-  #
-  #        oidc = {
-  #          clientName   = "Beszel";
-  #          redirectPath = "/api/oauth2-redirect";
-  #        };
-  #
-  # PocketBase consumes OAuth via web-UI config, not env vars — the
-  # consumer-side wiring is a one-time paste from the raw secret at
-  # /run/secrets/oidc-metrics-client-secret into the PocketBase admin
-  # at https://metrics.nori.lan/_/ → Collections → users → ⚙ →
-  # OAuth2.
+  # Caddy vhost for https://metrics.nori.lan reverse-proxies cross-host
+  # to Pi's hub at 100.100.71.3:8090. The user-facing URL stays the same;
+  # Authelia OIDC (when re-enabled) keeps working since it operates on
+  # the hostname not the backend.
   nori.lanRoutes.metrics = {
     port = 8090;
+    host = "100.100.71.3"; # nori-pi tailnet IP
     monitor = { };
   };
 
-  # Pattern A — beszel hub's PocketBase sqlite (metrics history,
-  # user accounts, OAuth config). Re-derivable in the sense that
-  # metrics restart from "now" on a fresh install, but losing the
-  # OAuth consumer-side config means redoing the PocketBase OAuth
-  # admin step. DynamicUser → /var/lib/private/beszel-hub.
-  nori.backups.beszel.paths = [ "/var/lib/private/beszel-hub" ];
+  # Beszel hub's PocketBase sqlite is now on Pi — its backup config
+  # lives in hosts/nori-pi/default.nix.
+  nori.backups.beszel.skip = "Hub moved to nori-pi 2026-04-29; backup intent declared on Pi side.";
 }
