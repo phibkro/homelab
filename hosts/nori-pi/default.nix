@@ -172,23 +172,16 @@
   ];
 
   # ── Beszel agent: ships metrics to station's hub ─────────────────
-  # Hub stays station-only (per "station-only" decision in CLAUDE.md
-  # outstanding). Pi just runs the agent. The agent key needs to be
-  # generated via the hub's web UI on first boot of Pi:
-  #   1. Boot Pi, ensure tailscale connectivity
-  #   2. https://metrics.nori.lan → Add System → "nori-pi" →
-  #      host=<pi-tailnet-ip>, port=45876
-  #   3. Hub generates the KEY=ssh-ed25519 ... line
-  #   4. `sops secrets/secrets.yaml` → add as block-string:
-  #        beszel-agent-key-nori-pi: |
-  #          KEY=ssh-ed25519 AAAA...
-  #   5. Re-encrypt for Pi (after Pi's age key is in .sops.yaml)
-  #   6. Deploy. Hub sees Pi within ~30s.
-  #
-  # Disabled until secret exists — uncomment after step 5 above.
-  # sops.secrets.beszel-agent-key-nori-pi = { mode = "0400"; };
-  # services.beszel.agent = {
-  #   enable = true;
-  #   environmentFile = config.sops.secrets.beszel-agent-key-nori-pi.path;
-  # };
+  # Hub on station polls this agent at port 45876 over tailnet using
+  # the SSH-style key in sops. Bootstrap (one-time, done 2026-04-29):
+  #   1. https://metrics.nori.lan → Add System → "nori-pi" →
+  #      host=nori-pi.saola-matrix.ts.net, port=45876
+  #   2. Hub generated KEY=ssh-ed25519 ... line
+  #   3. Pasted into sops as `beszel-agent-key-nori-pi`
+  #   4. Pi's age key already in .sops.yaml (committed earlier today)
+  sops.secrets.beszel-agent-key-nori-pi = { mode = "0400"; };
+  services.beszel.agent = {
+    enable = true;
+    environmentFile = config.sops.secrets.beszel-agent-key-nori-pi.path;
+  };
 }
