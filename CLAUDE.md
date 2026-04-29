@@ -33,13 +33,26 @@ Read these before making changes:
 10. `just rebuild` (from Mac) or `nh os switch . -H nori-station` (from the host).
 11. Commit (Conventional Commits — type + scope + tight summary).
 
+## How to add a new host
+
+1. **Create the host folder**: `mkdir hosts/<name>`. The folder name IS the hostname — `flake.nix`'s `mkHost` injects `config.networking.hostName = <folder name>`, and `readDir` over `./hosts/` is what populates `nixosConfigurations`. No separate "register the host" step needed for the configuration list.
+2. **Add an `identityFor.<name>` entry** in `flake.nix`: `tailnetIp` (Tailscale-assigned, see admin console after first auth), `lanIp` (static lease on the router; null if none), `role` (`workhorse` or `appliance`). The genAttrs lookup fails eval if you skip this — folder without identity is a build error, by design.
+3. **Write the host's config files** under `hosts/<name>/`: at minimum `default.nix` (imports + per-host concerns) and `hardware.nix` (`nixpkgs.hostPlatform`, disk layout import, kernel modules). Don't redeclare `networking.hostName` — it's injected from the folder name.
+4. **Pick concerns** the host plays. Workhorse-class: import `../../modules/common` + `../../modules/server` + optionally `../../modules/desktop`. Appliance-class: import `../../modules/common` + flat imports of the specific server modules the host needs (per `nori-pi`'s precedent — the bundle is too coarse for appliance roles).
+5. **Sops**: derive the host's age public key (`ssh-keyscan -t ed25519 <ip> | ssh-to-age` from a host with sops + age installed). Add as a recipient in `.sops.yaml`, then `sops updatekeys secrets/secrets.yaml` to re-encrypt to the expanded set.
+6. **First boot**: install via the appropriate runbook (`docs/baremetal-install.md` for x86 metal, sd-image build via `nix build .#nixosConfigurations.<name>.config.system.build.sdImage` for aarch64 Pi-class). Manual `tailscale up` for first auth.
+7. **Update `CLAUDE.md` "Current state" → Topology** with the new host's role and any cross-host service split it participates in. Update memory if cross-session facts shifted (per `~/.claude/projects/.../memory/`).
+8. **Verify**: deploy from another host, confirm `hostname` matches folder, `systemctl --failed` empty, `tailscale status` shows up.
+
+`vm-test` is the worked example of a stripped-down host: `hosts/vm-test/{default,hardware}.nix` + `identityFor.vm-test` placeholder. No backups, no Caddy, no observability — just enough for `nix build .#nixosConfigurations.vm-test` to succeed as a dry-run target.
+
 ## How to relocate a service to nori-pi
 
 Pattern established by the beszel hub (commit b4499ee) and ntfy server (commit 9e0b2b6) migrations. Use when a service belongs in the appliance role (observability, alerting, DNS — see "What's the bias" → "Workhorse-by-default").
 
 1. **Split the module** at `modules/server/<service>/{daemon,client}.nix`. The daemon part (the actual server) goes on Pi; the client/proxy part goes on every host that talks to it. Folder = coupling.
 2. **Cross-host lanRoute** lives in the always-imported file (the client/notify side), wrapped in `lib.mkIf config.services.caddy.enable`. This way only the Caddy host (station) registers the route — Pi's Blocky stays in pure forwarder mode and the canonical service host owns the `*.nori.lan` map.
-3. **Backend `host` field** in the lanRoute hardcodes Pi's tailnet IP (`100.100.71.3`). Yes, that couples the module to the current topology — accept the coupling; if the daemon ever moves back, it's one line.
+3. **Backend `host` field** in the lanRoute reads from the topology registry (`config.nori.hosts.<n>.tailnetIp`), never a literal. The host name in the lookup (e.g., `nori-pi`) is the topology coupling — if the daemon moves, change the name in the lookup, not an IP. See `modules/lib/hosts.nix` for the registry; values live in `flake.nix` `identityFor`.
 4. **Per-host config** that varies by hostname (sops secret names, message templates) reads `config.networking.hostName` rather than introducing options.
 5. **Hardware-specific FS gates** read existing registries (e.g., `config.nori.gpu.nvidiaDevices != [ ]` for NVIDIA `/dev/*` exposure) rather than per-service flags.
 6. **State migration** is usually NOT worth it for non-load-bearing data (metrics, ephemeral caches). Daemon comes up empty on Pi and rebuilds from sops + first-use. Document the decision in the commit + the daemon module's header.
@@ -68,6 +81,7 @@ Pattern established by the beszel hub (commit b4499ee) and ntfy server (commit 9
   - **nori-station** (workhorse): Caddy (TLS + internal CA), Authelia (OIDC), Open WebUI, Ollama (CUDA), Jellyfin (NVENC OS-level live, web UI toggle pending), Immich (NVENC live + CUDA-ready ML with resource caps), full *arr stack (Sonarr/Radarr/Lidarr/Prowlarr/Bazarr/Jellyseerr/qBittorrent), Vaultwarden, Calibre-web, Komga, Radicale, Syncthing, Glance, Samba. Plus per-host telemetry: Beszel agent, Gatus, Blocky in self-hosted mode.
   - **nori-pi** (appliance): Beszel hub, ntfy server (`alert.nori.lan` reverse-proxied cross-host by station's Caddy), Gatus, Blocky in forwarder mode, Tailscale subnet router + exit node. Plus per-host telemetry: Beszel agent.
   - **Cross-host services use the split-module pattern** — daemon module on the host that runs it, client/proxy module on every host. See `modules/server/beszel/{hub,agent}.nix` and `modules/server/ntfy/{server,notify}.nix`. The cross-host Caddy lanRoute is gated `lib.mkIf config.services.caddy.enable` so the daemon-host's Blocky stays in pure forwarder mode.
+  - **Cross-host references go through the topology registry** — `config.nori.hosts.<n>.tailnetIp`, never IP literals. Schema in `modules/lib/hosts.nix`; values in `flake.nix` `identityFor`. `readDir` over `./hosts/` drives both `nixosConfigurations` enumeration and the registry, so adding a host is "create the folder + add identity"; either omission fails eval. The `role` field (`workhorse` | `appliance`) drives the placement assertion in `modules/lib/backup.nix` (appliance hosts cannot use `paths`-based backups).
 
 - **nori-station hardware**: NixOS on bare metal (Ryzen 5600X, 32 GiB, RTX 5060 Ti, WD SN750 root + IronWolf media). Single user `nori`, passwordless wheel sudo, SSH key-only. Cooler repasted 2026-04-29 — sustained 12-thread load now ~72°C (was 95°C TJ_max throttling pre-repaste).
 - **nori-pi hardware**: Pi 4 (8 GiB) on Samsung FIT 128GB USB. EEPROM `BOOT_ORDER=0xf41` (USB-then-SD). Anti-write storage posture in `hosts/nori-pi/hardware.nix`: no swap, `journald.Storage=volatile`, `vm.mmap_rnd_bits=18` aarch64 fixup. Means: services on Pi declare `nori.backups.<n>.skip = "..."` for now; restic-as-target is deferred until a real disk lands.
