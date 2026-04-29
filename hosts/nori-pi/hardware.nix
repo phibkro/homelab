@@ -31,4 +31,13 @@
     Storage=volatile
     SystemMaxUse=64M
   '';
+
+  # Override aarch64-incompatible default. systemd-sysctl ships a
+  # default `vm.mmap_rnd_bits = 33` (works on x86_64 with full 48-bit
+  # VA), but aarch64 with the typical 39-bit VA layout maxes out
+  # around 18-24. Without override, systemd-sysctl.service fails on
+  # boot with `Couldn't write '33' to 'vm/mmap_rnd_bits': Invalid
+  # argument`. Setting 18 is the conservative choice that works on
+  # all aarch64 page-size + VA combinations.
+  boot.kernel.sysctl."vm.mmap_rnd_bits" = lib.mkForce 18;
 }
