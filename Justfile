@@ -138,3 +138,27 @@ default: rebuild
 # Drop into another host's shell.
 @ssh host=default_host:
     ssh {{user}}@{{host}}.{{tailnet}}
+
+# === doc quality ===
+
+# Print the prompt for dispatching a fresh agent through the onboarding test.
+# The test (docs/agent-onboarding-test.md) measures whether session wrap-ups
+# left enough context for a fresh agent to perform — closes the otherwise-open
+# loop on the "On every structural change" / "On session end" rubrics.
+# Run after major refactors or when the user pushes back on doc clarity.
+@agent-onboarding-test:
+    @echo "Onboarding test — dispatch a fresh subagent (or fresh Claude session) with:"
+    @echo ""
+    @echo "  You are a fresh agent with zero prior context on this homelab project."
+    @echo "  Read CLAUDE.md first to orient. Then for each numbered question in"
+    @echo "  docs/agent-onboarding-test.md, give a terse answer (~3 bullets)"
+    @echo "  using only files reachable from CLAUDE.md's routing table. Cite the"
+    @echo "  source file. Don't read the 'Expected (shape)' sections until AFTER"
+    @echo "  you've answered — those are grading rubrics, not hints."
+    @echo ""
+    @echo "Then compare answers to 'Expected (shape)' in each question. Failures:"
+    @echo "  - knowledge gap (info missing)"
+    @echo "  - routing gap (info exists but unreachable from CLAUDE.md)"
+    @echo "  - foregrounding gap (reachable but not where the agent looks first)"
+    @echo ""
+    @echo "Fix the gap and re-run."
