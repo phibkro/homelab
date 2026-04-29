@@ -115,3 +115,19 @@ Tracked here only when actionable; routine done-work lives in `git log`.
 ## On first turn
 
 If the user's opening is open-ended ("where are we?", "what now?"), respond with one paragraph of status, the immediate next concrete action, and at most two open questions. Don't dump the roadmap. They're already the architect; you're implementing alongside.
+
+## On session end
+
+When the user signals wrap-up ("ending session", "wrap up", "that's it for now"), do this so the next agent (likely you with zero context) lands cleanly:
+
+1. **Push pending commits** — `git push origin main`. Local-only commits are invisible to a future agent that doesn't yet know about them.
+2. **Refresh `CLAUDE.md`** if the session shifted reality:
+   - Update the intro line if a host's status changed (planned → live, etc.).
+   - Update "Current state" if topology, service placement, or hardware changed.
+   - Prune "Outstanding" items that are done; add new ones the session surfaced.
+   - If a *new pattern* was used twice or more, codify it as a "How to …" section (the b4499ee/9e0b2b6 cross-host service split → "How to relocate a service to nori-pi" is the precedent).
+3. **Update auto-memory** if the session changed cross-conversation facts (host topology, user preferences, durable architectural decisions). Memory is in `~/.claude/projects/-Users-nori-Documents-nix-migration/memory/`. Don't duplicate what's already in CLAUDE.md — memory is for cross-project / user-personal facts.
+4. **Verify clean state** — `git status` shows nothing in flight; both hosts are up (a quick `systemctl is-active <key-services>` on each is cheap insurance).
+5. **End with a tight summary** — what changed, what was learned, what's the immediate next concrete thing — so the user (and the next agent reading the prior turn) gets oriented fast.
+
+A new agent with zero context should be able to read `CLAUDE.md` + `git log --oneline -10` + the latest commits' bodies and know exactly where you left off. If they'd be confused, the wrap-up isn't done.
