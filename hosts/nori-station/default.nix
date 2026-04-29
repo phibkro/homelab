@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   inputs,
   ...
@@ -22,7 +23,7 @@
     ./windows-mount.nix
   ];
 
-  networking.hostName = "nori-station";
+  # networking.hostName injected from the registry key in flake.nix.
   networking.useDHCP = lib.mkDefault true;
 
   # Station-side Gatus probes for non-HTTP services (these don't fit
@@ -64,9 +65,11 @@
     }
     {
       # nori-pi's Blocky on tailnet IP — catches Pi outage even if
-      # Pi's Gatus is down (same incident pattern in reverse).
+      # Pi's Gatus is down (same incident pattern in reverse). Pi's
+      # tailnet IP comes from the nori.hosts registry; topology
+      # changes are a one-line edit in modules/common/topology.nix.
       name = "pi-blocky-dns";
-      url = "tcp://100.100.71.3:53";
+      url = "tcp://${config.nori.hosts.nori-pi.tailnetIp}:53";
       interval = "60s";
       conditions = [ "[CONNECTED] == true" ];
       alerts = [
@@ -81,7 +84,7 @@
       # nori-pi's SSH — full host-down detection (sshd dead = host
       # effectively gone from operator's perspective).
       name = "pi-ssh";
-      url = "tcp://100.100.71.3:22";
+      url = "tcp://${config.nori.hosts.nori-pi.tailnetIp}:22";
       interval = "60s";
       conditions = [ "[CONNECTED] == true" ];
       alerts = [

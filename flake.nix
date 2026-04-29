@@ -38,6 +38,8 @@
       ...
     }@inputs:
     let
+      inherit (nixpkgs) lib;
+
       # `system` here is the host on which `nix flake check` /
       # formatter / etc run — not the target platform of any host.
       # Each host's hardware.nix sets nixpkgs.hostPlatform; mkHost
@@ -45,19 +47,78 @@
       # nori-station / vm-test (x86_64-linux) coexist cleanly.
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
+
+      # ── Hosts ─────────────────────────────────────────────────────
+      # The list of hosts is the filesystem: each subdirectory of
+      # ./hosts/ is a host. readDir + filterAttrs gets us the names
+      # without a parallel registry to drift out of sync.
+      #
+      # Identity metadata (tailnet/lan IPs, role) is indexed by host
+      # name in `identityFor` below. The genAttrs lookup forces every
+      # folder to have an identity entry — a folder without identity
+      # fails eval ("attribute missing"); an identity entry without a
+      # folder is silently dead code (caught by code review, but the
+      # absence of effect is visible at deploy time).
+      #
+      # Schema: modules/lib/hosts.nix.
+      # Consumers (cross-host refs):
+      #   * modules/lib/lan-route.nix       (nori.lanIp default)
+      #   * modules/lib/backup.nix          (host-aware appliance assertion)
+      #   * modules/server/beszel/agent.nix (metrics route backend)
+      #   * modules/server/ntfy/notify.nix  (alert route backend)
+      #   * hosts/nori-station/default.nix  (Pi probe URLs)
+      #
+      # Topology change = edit identityFor, redeploy. Adding a host =
+      # `mkdir hosts/<n> && touch hosts/<n>/{default,hardware}.nix`
+      # plus an identityFor entry — eval errors on either omission.
+      hostNames = lib.attrNames (lib.filterAttrs (_: t: t == "directory") (builtins.readDir ./hosts));
+
+      identityFor = {
+        nori-station = {
+          tailnetIp = "100.81.5.122";
+          lanIp = "192.168.1.181";
+          role = "workhorse";
+        };
+        nori-pi = {
+          tailnetIp = "100.100.71.3";
+          lanIp = "192.168.1.225";
+          role = "appliance";
+        };
+        # vm-test: transient UTM dry-run target, not a real lab host.
+        # Placeholder values keep the registry shape honest; nothing
+        # cross-host references it.
+        vm-test = {
+          tailnetIp = "100.64.0.1";
+          lanIp = null;
+          role = "workhorse";
+        };
+      };
+
+      hostRegistry = lib.genAttrs hostNames (n: identityFor.${n});
+
       mkHost =
-        hostPath:
-        nixpkgs.lib.nixosSystem {
+        name:
+        lib.nixosSystem {
           specialArgs = { inherit inputs; };
-          modules = [ hostPath ];
+          modules = [
+            ./hosts/${name}
+            # Inject from the registry: hostName comes from the same
+            # name that picks the host folder. The folder name is the
+            # source of truth — registry keys derive from readDir,
+            # networking.hostName injects from the same name. No
+            # parallel string to keep in sync.
+            #
+            # Every host sees the full registry so cross-host
+            # references (config.nori.hosts.<other>.tailnetIp) resolve.
+            {
+              config.networking.hostName = name;
+              config.nori.hosts = hostRegistry;
+            }
+          ];
         };
     in
     {
-      nixosConfigurations = {
-        vm-test = mkHost ./hosts/vm-test;
-        nori-station = mkHost ./hosts/nori-station;
-        nori-pi = mkHost ./hosts/nori-pi;
-      };
+      nixosConfigurations = lib.genAttrs hostNames mkHost;
 
       formatter.${system} = pkgs.nixfmt;
 

@@ -63,12 +63,14 @@ in
   # Blocky stays in pure forwarder mode and the canonical service host
   # owns the *.nori.lan map.
   #
-  # The hardcoded Pi tailnet IP couples this declaration to the current
-  # hub topology. If the hub moves, update here.
+  # The hub-host coupling lives in the nori.hosts registry (single
+  # source of truth — see modules/lib/hosts.nix). If the hub ever
+  # relocates, update modules/common/topology.nix instead of editing
+  # this file.
   nori.lanRoutes = lib.mkIf config.services.caddy.enable {
     metrics = {
       port = 8090;
-      host = "100.100.71.3"; # nori-pi tailnet IP (hub host)
+      host = config.nori.hosts.nori-pi.tailnetIp;
       monitor = { };
     };
   };

@@ -164,6 +164,19 @@ in
             lib.filter (p: lib.any (svc: p == "/var/lib/${svc}") dynamicUserServices) cfg.paths
         ) config.nori.backups
       );
+
+      # Host-aware placement check. Reads the role tag from the
+      # nori.hosts registry (modules/lib/hosts.nix). Appliance hosts
+      # have anti-write storage (no swap, volatile journald, flash-
+      # only — see hosts/nori-pi/hardware.nix) so daily restic to local
+      # disk contradicts the storage philosophy. The structural answer
+      # (push backups to a real disk that lives on the appliance) is
+      # planned but deferred — see modules/server/backup/restic.nix
+      # L28 "nori-pi (local fast restore, when the SSD lands)". Until
+      # then, every nori.backups.<n> on an appliance host MUST use
+      # `skip = "..."`.
+      myRole = config.nori.hosts.${config.networking.hostName}.role or null;
+      appliancePaths = lib.filter (cfg: cfg.paths != null) (lib.attrValues config.nori.backups);
     in
     {
       assertions = [
@@ -192,6 +205,27 @@ in
             Known DynamicUser services: ${lib.concatStringsSep ", " dynamicUserServices}
             See docs/gotchas.md "DynamicUser StateDirectory" for the
             full story.
+          '';
+        }
+        {
+          assertion = myRole != "appliance" || appliancePaths == [ ];
+          message = ''
+            Host ${config.networking.hostName} has nori.hosts.<self>.role = "appliance".
+            Appliance hosts have anti-write storage (no swap, volatile
+            journald, flash-only — see hosts/${config.networking.hostName}/hardware.nix)
+            and no local restic target. All nori.backups.<n> declarations
+            on appliance hosts must use `skip = "<reason>"`, not `paths`.
+
+            Offending: ${
+              lib.concatStringsSep ", " (
+                lib.attrNames (lib.filterAttrs (_: cfg: cfg.paths != null) config.nori.backups)
+              )
+            }
+
+            If you need to back up data that legitimately lives on this
+            host, the structural fix is the planned local-fast-restore
+            disk (see modules/server/backup/restic.nix L28). Until that
+            lands, declare `skip = "..."` and document the rationale.
           '';
         }
       ];

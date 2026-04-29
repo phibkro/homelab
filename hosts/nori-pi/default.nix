@@ -52,7 +52,7 @@
     ./hardware.nix
   ];
 
-  networking.hostName = "nori-pi";
+  # networking.hostName injected from the registry key in flake.nix.
   networking.useDHCP = lib.mkDefault true;
 
   # Tailscale routing role — Pi advertises the LAN subnet + offers

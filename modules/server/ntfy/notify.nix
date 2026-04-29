@@ -52,12 +52,13 @@
   # itself) don't pollute their lanRoutes registry — Pi's Blocky stays
   # in pure forwarder mode.
   #
-  # The hardcoded Pi tailnet IP couples this declaration to the current
-  # ntfy host. If ntfy moves, update here.
+  # The ntfy-host coupling lives in the nori.hosts registry (single
+  # source of truth — see modules/lib/hosts.nix). If ntfy ever
+  # relocates, update modules/common/topology.nix instead of this file.
   nori.lanRoutes = lib.mkIf config.services.caddy.enable {
     alert = {
       port = 8081;
-      host = "100.100.71.3"; # nori-pi tailnet IP (ntfy host)
+      host = config.nori.hosts.nori-pi.tailnetIp;
       monitor.path = "/v1/health";
     };
   };

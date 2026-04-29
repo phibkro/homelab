@@ -57,11 +57,15 @@ in
 
   options.nori.lanIp = mkOption {
     type = types.str;
-    default = "100.81.5.122";
+    default = config.nori.hosts.nori-station.tailnetIp;
     description = ''
-      Tailnet IP that *.nori.lan names resolve to. Currently
-      nori-station's tailnet IP. When nori-pi exists and runs its
-      own subset of services, split into per-host route maps.
+      Tailnet IP that *.nori.lan names resolve to. Defaults to the
+      workhorse host's tailnet IP from the nori.hosts registry (see
+      modules/lib/hosts.nix). The registry is the source of truth;
+      this option remains as a thin alias used by Blocky's forwarder
+      mode (modules/server/blocky.nix) and the lanRoutes Blocky DNS
+      generator below — both want a single "where does *.nori.lan
+      live" address.
     '';
   };
 
