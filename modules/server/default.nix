@@ -34,7 +34,7 @@ _: {
 
     # Loose services
     ./authelia.nix
-    ./beszel.nix
+    ./beszel/agent.nix
     ./blocky.nix
     ./caddy.nix
     ./calibre-web.nix

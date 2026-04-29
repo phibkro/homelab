@@ -35,6 +35,13 @@
     ../../modules/server/blocky.nix
     ../../modules/server/gatus.nix
 
+    # Beszel: Pi runs both the hub (collects metrics) and an agent
+    # (reports its own metrics). Station only imports agent.nix. The
+    # hub-host is intentionally the appliance side so it survives
+    # station outages (forensics use case).
+    ../../modules/server/beszel/hub.nix
+    ../../modules/server/beszel/agent.nix
+
     ./hardware.nix
   ];
 
@@ -104,7 +111,6 @@
 
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [
     8082 # Gatus web UI on tailnet only
-    8090 # Beszel hub (reverse-proxied by station's Caddy as metrics.nori.lan)
   ];
 
   services.gatus.settings.endpoints = [
@@ -172,64 +178,4 @@
     }
   ];
 
-  # ── Beszel hub + agent: metrics dashboard + collector ─────────────
-  # Hub moved here from nori-station 2026-04-29 (forensics use case:
-  # when station hangs, hub on Pi keeps recording its metrics up to
-  # the last poll; same pattern as Gatus-on-Pi).
-  #
-  # Hub web UI at port 8090, reverse-proxied by station's Caddy as
-  # https://metrics.nori.lan (see modules/server/beszel.nix host
-  # field). Authelia OIDC client config lives on station's Caddy/
-  # Authelia layer; hub-side OAuth wiring deferred per CLAUDE.md.
-  #
-  # Pi's own agent at port 45876 — hub queries localhost. Station's
-  # agent at 100.81.5.122:45876 (firewall opened tailnet-side in
-  # modules/server/beszel.nix).
-  #
-  # Migration sequence (one-time, was done manually):
-  #   1. systemctl stop beszel-hub on station
-  #   2. tar+ssh /var/lib/private/beszel-hub from station to Pi
-  #   3. nh os switch on Pi (hub starts, finds DB, resumes polling)
-  #   4. nh os switch on station (hub config gone; Caddy proxies to Pi)
-  sops.secrets.beszel-agent-key-nori-pi = { mode = "0400"; };
-
-  services.beszel = {
-    hub = {
-      enable = true;
-      host = "0.0.0.0";
-      port = 8090;
-    };
-    agent = {
-      enable = true;
-      environmentFile = config.sops.secrets.beszel-agent-key-nori-pi.path;
-    };
-  };
-
-  # OIDC SSO via Authelia: USER_CREATION=true permits new-user
-  # auto-provision on first OIDC login. DISABLE_PASSWORD_AUTH stays
-  # off — keeps the local-password fallback as recovery.
-  systemd.services.beszel-hub.environment = {
-    USER_CREATION = "true";
-  };
-
-  # FS hardening parity with the prior station-side beszel.nix.
-  systemd.services.beszel-hub.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-  };
-  systemd.services.beszel-agent.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-    # Pi has no NVIDIA GPU; PrivateDevices override that station
-    # needs (to expose /dev/nvidia*) doesn't apply here. Default
-    # PrivateDevices=true (from upstream when smartmon=off) is fine.
-  };
 }
