@@ -272,20 +272,6 @@ systemd.services.authelia-main.environment.X_AUTHELIA_CONFIG_FILTERS = "template
 
 Without it, Authelia parses the literal `{{ secret "..." }}` string as the client_secret and rejects every OIDC handshake with a hash mismatch. The legacy `_FILE` / `expand-env` substitution paths are explicitly **not** supported for list-typed config sections (which OIDC clients are); template filter is the only working path. `expand-env` is being removed in 4.40.
 
-## `lib.mdDoc` is removed in current nixpkgs
-
-If you're tempted to wrap option `description` strings in `lib.mdDoc` (the convention from NixOS 23.05 era to mark descriptions as markdown), don't — `lib.mdDoc` was removed from nixpkgs (the source itself comments "THIS WAS A MISTAKE."). Descriptions are markdown by default now. The current idiom is plain `description = ''markdown text'';`, which is what every option in this flake already uses.
-
-Check before adding:
-
-```sh
-nix eval --impure --expr "(builtins.getFlake (toString ./.)).inputs.nixpkgs.lib ? mdDoc"
-# false  → lib.mdDoc is gone; use plain description
-# true   → it's still there; either form works (still being phased out)
-```
-
-Symptom of getting this wrong: `error: attribute 'mdDoc' missing` at flake check time.
-
 ## Pre-Phase-5 backups (`scripts/backup.sh`) have no integrity verification
 
 `scripts/backup.sh` writes a manifest from in-the-moment `du` of the destination directory. There's no post-write verification, no comparison on subsequent runs. Files can disappear between backup and restore (manual deletion, exfat corruption) and the manifest still claims success. Treat any pre-Phase-5 rsync-to-exfat backup as a snapshot of intent, not a guaranteed source of truth.

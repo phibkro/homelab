@@ -130,6 +130,20 @@ Tracked here only when actionable; routine done-work lives in `git log`.
 
 If the user's opening is open-ended ("where are we?", "what now?"), respond with one paragraph of status, the immediate next concrete action, and at most two open questions. Don't dump the roadmap. They're already the architect; you're implementing alongside.
 
+## On every structural change
+
+A "structural change" is anything that introduces a new pattern, abstraction, module shape, constraint, or convention — anything a fresh agent's mental model needs that isn't obvious from one file's syntax. Examples from this project: the `nori.lanRoutes` / `nori.backups` / `nori.gpu` abstractions, the topology registry, the cross-host service split pattern, the appliance/workhorse role split.
+
+After landing such a change, ask: *what would a fresh agent need to know that they couldn't derive from the code alone?* If anything, update the right doc tier:
+
+- **Active example in CLAUDE.md or DESIGN.md is now stale** → fix immediately (drift is the highest-cost class — fresh agent acts on wrong information)
+- **New pattern used twice or more** → codify as "How to ..." in CLAUDE.md
+- **New convention agents should follow** → CONVENTIONS.md, ideally backed by a flake check or module assertion (rules in prose drift; rules in code don't)
+- **Hard-won mistake worth surfacing** → `docs/gotchas.md`
+- **Cross-session fact** (preferences, project state, host topology) → update auto-memory
+
+Don't batch this for session end — drift compounds. The cost of an immediate update is small; the cost of a fresh agent acting on stale information is large.
+
 ## On session end
 
 When the user signals wrap-up ("ending session", "wrap up", "that's it for now"), do this so the next agent (likely you with zero context) lands cleanly:
