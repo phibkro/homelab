@@ -65,12 +65,13 @@ The lab decomposes into seven layers.
 - Roles: AI inference (32B-class models comfortably; 70B models tight at 32GB and likely paged to swap), media streaming, photo management, file storage, occasional desktop workstation
 - *Disambiguate disks by model + by-id, not `/dev/nvmeN` — see "Permanent constraints".*
 
-**`nori-pi` (appliance + local backup target) — DEFERRED**
+**`nori-pi` (appliance) — LIVE**
 - Raspberry Pi 4 8GB
-- USB SSD (~250GB) → NixOS root (not SD card; SD card wear is the #1 Pi failure mode)
-- USB HDD (~4TB) → restic backup target for nori-station, mounted at `/mnt/backup`
-- Roles (planned): network DNS adblock (Blocky), Tailscale subnet router, Tailscale exit node (opt-in), local backup target for fast restore
-- **Status:** no NixOS-bootable USB SSD on hand yet. Existing Pi runs PiOS and could fill DNS / restic-target roles imperatively in the interim if needed. Migrate to declarative `hosts/nori-pi/` when an SSD lands.
+- Samsung FIT 128GB USB stick → NixOS root (aarch64, sd-image-aarch64 generation, USB-then-SD boot order via EEPROM `BOOT_ORDER=0xf41`)
+- Anti-write storage posture: `swapDevices = []`, `journald.Storage=volatile`, `vm.mmap_rnd_bits=18` aarch64 fixup. SD card wear is the #1 Pi failure mode; volatile journald + no swap mitigate.
+- Roles (live): observability hub (Beszel), alert plane (ntfy server), network DNS adblock (Blocky in forwarder mode), synthetic monitoring (Gatus), Tailscale subnet router + exit node (opt-in per device).
+- Roles (planned): local restic backup target for nori-station fast restore — deferred until a real disk replaces the FIT (the anti-write posture rules out daily restic to flash).
+- Cross-host services (Beszel hub, ntfy server) are reverse-proxied via station's Caddy at `metrics.nori.lan` / `alert.nori.lan` — see CLAUDE.md "How to relocate a service to nori-pi" for the split-module pattern.
 
 **`vm-test` (transient, for VM dry-run)**
 - UTM virtual machine on laptop
@@ -210,7 +211,7 @@ Devices accessing the homelab need to install the Caddy root CA once:
 
 #### DNS architecture
 
-**Current state:** Blocky on `nori-station` only, served to all tailnet-joined devices via Tailscale's "global nameserver" push (admin DNS settings → 100.81.5.122). LAN-only devices (smart TV, guest phones) are NOT covered — they keep using whatever the router pushes.
+**Current state:** Blocky on both hosts — `nori-pi` in forwarder mode (primary, served to all tailnet devices via Tailscale's global-nameserver push pointing at Pi's tailnet IP) and `nori-station` in self-hosted mode (auto-generates the `*.nori.lan` map from `nori.lanRoutes`; serves as fallback secondary). LAN-only devices (smart TV, guest phones) are NOT covered — they keep using whatever the router pushes.
 
 Blocky chosen over AdGuard Home for declarative-config friendliness — its YAML config maps cleanly to `services.blocky.settings`, no web-UI state to drift from declared config.
 
@@ -245,17 +246,18 @@ Native NixOS modules from day one. Verified module availability on `nixos-unstab
 | Open WebUI | `services.open-webui` | nori-station | Tailnet |
 | Immich | `services.immich` (with VectorChord, Postgres 17) | nori-station | Tailnet |
 | Samba | `services.samba` | nori-station | Tailnet, scoped to `/mnt/media`, `/srv/share` |
-| Blocky (primary) | `services.blocky` | nori-pi | LAN |
-| Blocky (secondary) | `services.blocky` | nori-station | LAN |
+| Blocky (forwarder) | `services.blocky` (`nori.blocky.role = "forwarder"`) | nori-pi | LAN (via tailnet DNS push) |
+| Blocky (self-hosted) | `services.blocky` (`nori.blocky.role = "self-hosted"`) | nori-station | LAN |
 | Tailscale | `services.tailscale` | both | N/A |
 | restic backup jobs | `services.restic.backups.<n>` | nori-station | N/A (outbound to Pi + Hetzner) |
 | btrbk | `services.btrbk.instances.<n>` | nori-station | N/A (local) |
-| ntfy | `services.ntfy-sh` | nori-station | Tailnet |
-| Gatus | `services.gatus` | nori-station | Tailnet |
+| ntfy server | `services.ntfy-sh` | nori-pi (appliance role; survives station outages — `alert.nori.lan` reverse-proxied cross-host) | Tailnet |
+| ntfy `notify@` template | systemd unit | both hosts (each host's units POST to `ntfy.sh` directly, hostname-aware via `config.networking.hostName`) | N/A (outbound) |
+| Gatus | `services.gatus` | both hosts (mutual probes — Pi watches station, station watches Pi, alerts via `ntfy.sh` independently) | Tailnet |
 | Caddy | `services.caddy` | nori-station | Tailnet (HTTPS terminator + reverse proxy) |
 | Authelia | `services.authelia.instances.<name>` | nori-station | Tailnet (OIDC issuer for SSO) |
-| beszel hub | `services.beszel.hub` | nori-station | Tailnet |
-| beszel agent | `services.beszel.agent` | nori-pi when it lands; nori-station agent deferred (single-host metrics from the hub itself are sufficient at one host) | Tailnet |
+| beszel hub | `services.beszel.hub` | nori-pi (forensics use case: when station hangs, hub keeps recording its metrics up to the last poll) | Tailnet (`metrics.nori.lan` reverse-proxied cross-host) |
+| beszel agent | `services.beszel.agent` | both hosts (per-host telemetry; hub on Pi pulls over tailnet) | Tailnet |
 | Sonarr | `services.sonarr` | nori-station | Tailnet (`tv.nori.lan`) |
 | Radarr | `services.radarr` | nori-station | Tailnet (`movies.nori.lan`) |
 | Prowlarr | `services.prowlarr` | nori-station | Tailnet (`indexers.nori.lan`) |
@@ -586,7 +588,7 @@ Email digest deferred. When set up: SMTP via Gmail with app password (sufficient
 | 4 | Bare-metal install on nori-station | done |
 | 5 | Service migration | in progress (file/AI/media/SSO/observability live: Samba, Blocky, Ollama, Open WebUI, Jellyfin, sops, restic Pattern A+C2, Caddy, Authelia, Gatus, beszel hub, ntfy. Pending: Immich, Cloudflare Tunnel, Hetzner off-site restic) |
 | 6 | Desktop environment | done — Hyprland + greetd + waybar + mako + hyprlock + hypridle on nori-station |
-| — | `hosts/nori-pi/` declarative | deferred (no NixOS-bootable USB SSD; PiOS interim possible) |
+| 7 | `hosts/nori-pi/` live + cross-host service split | done — Pi appliance bringup, mutual observability, Beszel hub + ntfy server migrated to Pi via the cross-host split-module pattern (CLAUDE.md "How to relocate a service to nori-pi") |
 
 **Reactive phases (no scheduled trigger):**
 
@@ -652,7 +654,7 @@ Verify via `sudo nsenter -t <pid> -m -U -- ls /mnt/`. Several upstream NixOS mod
 
 **Pi as appliance + opportunistic backup target.** The marginal cost of a USB HDD on the Pi is low; the value (fast local restore) is high. Failure modes remain independent of nori-station.
 
-**Two adblock-aware DNS resolvers (Pi + nori-station), not Pi-only-with-router-fallback.** DHCP-distributed secondaries don't fail over fast; resolver timeouts mean Pi-down = seconds of broken DNS. Running Blocky on both hosts makes Pi outages transparent at trivial resource cost. *Currently only the nori-station instance is live (Pi deferred); Tailscale's global-nameserver push covers tailnet devices in the meantime — see Layer 4 DNS architecture for the bridge-mode-dependent path back to the original two-resolver plan.*
+**Two adblock-aware DNS resolvers (Pi + nori-station), not Pi-only-with-router-fallback.** DHCP-distributed secondaries don't fail over fast; resolver timeouts mean Pi-down = seconds of broken DNS. Running Blocky on both hosts makes Pi outages transparent at trivial resource cost. Both live today — Pi runs forwarder mode (delegates `*.nori.lan` to station), station runs self-hosted mode (auto-generates the `*.nori.lan` map from `nori.lanRoutes`). Tailscale's global-nameserver push points at Pi as primary; if Pi goes down, tailnet devices fall back to the secondary instance via the admin-console-configured nameserver list.
 
 **Blocky over AdGuard Home.** Declarative YAML config maps cleanly to NixOS module options; no web-UI state to drift from declared config.
 

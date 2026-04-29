@@ -150,6 +150,44 @@
                 fail=1
               fi
 
+              # Caddy's internal CA is enabled via globalConfig =
+              # "local_certs", not via acmeCA = "internal" — Caddy will
+              # literally try to dial `internal` as an ACME directory URL
+              # and fail. See docs/gotchas.md "Caddy: acmeCA = internal
+              # is wrong".
+              if grep -rn 'acmeCA = "internal"' modules/ ; then
+                echo
+                echo "✗ acmeCA = \"internal\" found above. Caddy interprets this"
+                echo "  as a literal ACME directory URL. Use:"
+                echo '    services.caddy.globalConfig = "local_certs";'
+                fail=1
+              fi
+
+              # Gatus's ntfy alerting provider takes `url` and `topic` as
+              # SEPARATE fields. Embedding the topic in the URL silently
+              # disables alerting (logs "Ignoring provider=ntfy due to
+              # error=topic not set" once at startup, then nothing).
+              # See docs/gotchas.md "Gatus ntfy provider".
+              if grep -rn 'url = "https://ntfy.sh/' modules/ ; then
+                echo
+                echo "✗ Gatus ntfy URL with embedded topic found above. Split into"
+                echo "  separate fields:"
+                echo '    alerting.ntfy.url   = "https://ntfy.sh";'
+                echo "    alerting.ntfy.topic = \"\''${NTFY_CHANNEL}\";"
+                fail=1
+              fi
+
+              # services.ollama.acceleration was removed from current
+              # nixpkgs; use `package = pkgs.ollama-cuda;` instead.
+              # See docs/gotchas.md "services.ollama.acceleration deprecated".
+              if grep -rn 'services\.ollama\.acceleration' modules/ ; then
+                echo
+                echo "✗ services.ollama.acceleration is removed from nixpkgs."
+                echo "  Use:"
+                echo "    services.ollama.package = pkgs.ollama-cuda;"
+                fail=1
+              fi
+
               if [ $fail -eq 0 ]; then
                 touch $out
               else

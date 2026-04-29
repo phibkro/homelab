@@ -1,6 +1,6 @@
 # nori homelab
 
-Single-user NixOS homelab flake. Two-host topology (`nori-station` built; `nori-pi` deferred — no NixOS-bootable USB SSD yet).
+Single-user NixOS homelab flake. Two live hosts: `nori-station` (workhorse — Caddy, Authelia, all GPU/media/state-heavy services) and `nori-pi` (appliance — observability hub, alert plane, DNS forwarder, tailnet routing).
 
 ## Where to start
 
@@ -67,12 +67,14 @@ Run before any commit that touches `.nix` files.
 ```
 flake.nix                    # entry, inputs, host definitions, checks
 hosts/
-  nori-station/              # bare-metal NixOS host
+  nori-station/              # bare-metal x86_64 workhorse
+  nori-pi/                   # Raspberry Pi 4 aarch64 appliance
   vm-test/                   # UTM dry-run target
 modules/
-  common/                    # cross-host baseline
-  services/                  # one file per service
-  lib/                       # cross-cutting abstractions (lan-route)
+  common/                    # cross-host baseline (every host)
+  server/                    # "this host serves things" concern
+  desktop/                   # "this host has a graphical session"
+  lib/                       # cross-cutting abstractions (lan-route, backup, gpu)
 secrets/
   secrets.yaml               # sops-encrypted, committed
   README.md                  # secrets workflow ops doc
@@ -86,4 +88,4 @@ CLAUDE.md                    # agent prompting + current state + outstanding ite
 
 ## Phase status
 
-Phases 0–6 done. Phase 7 (tightening + new capabilities) substantively done — backup abstraction + 14-service coverage, type-level enforcement, DynamicUser symlink trap caught, OIDC auto-gen with zero hash material in committed Nix, immich GPU acceleration with resource caps. `nori-pi` deferred on hardware. Live state + outstanding items in `CLAUDE.md`; canonical phasing rationale in `docs/DESIGN.md`.
+Phases 0–6 done. Phase 7 (tightening + new capabilities) substantively done — backup abstraction + 14-service coverage, type-level enforcement, DynamicUser symlink trap caught, OIDC auto-gen with zero hash material in committed Nix, Immich GPU acceleration with resource caps, `nori-pi` brought up as the appliance host with cross-host service split (Beszel hub + ntfy server). Live state + outstanding items in `CLAUDE.md`; canonical phasing rationale in `docs/DESIGN.md`.

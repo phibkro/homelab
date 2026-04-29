@@ -11,10 +11,15 @@ hosts/<host>/                 # per-host configs (default.nix, hardware.nix, dis
 modules/
   common/                     # cross-host baseline (base, users, tailscale, sops)
     default.nix               # imports the others
-  services/                   # one file per service module
-    <service>.nix
+  server/                     # "this host serves things" — one file per service
+    <service>.nix             #   loose: independent services
+    <cluster>/                #   folder = tightly-coupled services (arr, backup, beszel, ntfy)
+      default.nix
+  desktop/                    # "this host has a graphical session" (Hyprland, greetd, ...)
   lib/                        # cross-cutting abstractions
-    lan-route.nix             # the LAN exposure abstraction
+    lan-route.nix             # nori.lanRoutes — *.nori.lan exposure
+    backup.nix                # nori.backups — restic decisions
+    gpu.nix                   # nori.gpu.nvidiaDevices — GPU device registry
 secrets/
   secrets.yaml                # sops-encrypted, committed
   README.md                   # ops doc for the secrets workflow
@@ -385,7 +390,7 @@ imports = [
 ];
 ```
 
-Reading this answers "what kind of machine is `nori-station`?" at a glance. Future hosts: `nori-pi` will be `common + server` (no desktop), `nori-laptop` will be `common + desktop` (no server services).
+Reading this answers "what kind of machine is `nori-station`?" at a glance. `nori-pi` lives today as `common +` *flat imports of specific server modules* (Blocky, Gatus, Beszel hub+agent, ntfy server+notify) — the bundle import (`../../modules/server`) is too coarse for the appliance role. Future `nori-laptop` will be `common + desktop` (no server services).
 
 **Within `modules/server/`, folders signal coupling, not categorization.** Tightly-coupled clusters get their own folder + `default.nix`:
 
@@ -396,7 +401,9 @@ Loose services that just happen to be in the same conceptual area (e.g. Beszel, 
 
 **Adding a service**: see CLAUDE.md's "How to add a new service" for the full procedure. Short version: drop the file in `modules/server/` (loose) or in an existing cluster folder (coupled), append it to the relevant `default.nix`, declare `nori.lanRoutes.<n>` + `nori.backups.<n>`, deploy.
 
-When the second server lands (nori-pi), `modules/server/default.nix` will subdivide into sub-concerns the host can opt into selectively. Defer until the second host actually exists; the current "server is one bundle" works because we have one server.
+With the second server (nori-pi) live, `modules/server/default.nix` stays as the workhorse bundle (station imports it whole). The appliance picks individual files via flat imports because its service set is small + opinionated. If a third server lands or Pi's import list grows past ~10 files, subdivide into sub-concerns then — not preemptively.
+
+Cross-host services (services that live on one host but are reverse-proxied or read by another) follow the split-module pattern documented in `CLAUDE.md` "How to relocate a service to nori-pi". Precedents: `modules/server/beszel/{hub,agent}.nix`, `modules/server/ntfy/{server,notify}.nix`.
 
 ## Dev workflow
 
