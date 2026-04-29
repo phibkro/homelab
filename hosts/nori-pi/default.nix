@@ -73,6 +73,14 @@
   # finishes in ~15 min total.
   boot.initrd.allowMissingModules = true;
 
+  # ── Caddy local CA trust ─────────────────────────────────────────
+  # Pi's Gatus probes station's services via https://*.nori.lan,
+  # which terminates TLS using Caddy's internal CA. Trust that CA
+  # at the system level so Go-stdlib HTTPS clients (Gatus, curl,
+  # etc.) verify successfully without per-call --insecure flags.
+  # Same pattern station uses (see modules/server/caddy.nix).
+  security.pki.certificateFiles = [ ../../modules/server/caddy-local-ca.crt ];
+
   # ── Blocky: forwarder mode ───────────────────────────────────────
   # Pi serves DNS + ad blocking to LAN clients. *.nori.lan queries
   # get conditional-forwarded to nori-station's Blocky (which has
