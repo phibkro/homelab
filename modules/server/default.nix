@@ -43,7 +43,7 @@ _: {
     ./immich.nix
     ./jellyfin.nix
     ./komga.nix
-    ./ntfy.nix
+    ./ntfy/notify.nix
     ./ollama.nix
     ./open-webui.nix
     ./radicale.nix

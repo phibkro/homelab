@@ -42,6 +42,13 @@
     ../../modules/server/beszel/hub.nix
     ../../modules/server/beszel/agent.nix
 
+    # ntfy: Pi runs the local server (for future internal-only alerts);
+    # both hosts import notify.nix for the OnFailure → ntfy.sh template.
+    # Same workhorse/appliance split as beszel — alert plane lives on
+    # the appliance so it survives station outages.
+    ../../modules/server/ntfy/server.nix
+    ../../modules/server/ntfy/notify.nix
+
     ./hardware.nix
   ];
 
