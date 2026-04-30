@@ -91,7 +91,7 @@ in
   #   /var/restore-test/<repo>-<timestamp>/    restored data, kept 30d
   #
   # ntfy alert on failure via the OnFailure → notify@ template
-  # (modules/server/ntfy.nix).
+  # (modules/server/ntfy/notify.nix).
 
   systemd.tmpfiles.rules = [
     "d /var/restore-test 0700 root root -"

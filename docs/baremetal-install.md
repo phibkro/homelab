@@ -214,9 +214,13 @@ Phase 4 is done when all four work.
 ## What to do if it goes catastrophically wrong
 
 If this is a fresh install replacing existing Ubuntu, you ideally
-have a partclone image from Phase 1 (now archived under
-`scripts/legacy/`). The procedure was documented per backup
-directory's `RESTORE.md`. Worst case: 30–60 min of restore.
+have a partclone image from the original Phase 1 migration. The
+scripts that produced it lived at `scripts/legacy/` until 2026-04-30;
+recover from git history if needed:
+`git log --all --diff-filter=D -- 'scripts/legacy/*'`. Worst case:
+30–60 min of restore. For NixOS-replacing-NixOS recovery, the
+canonical path is disko + `nixos-install` + restic restore — see
+`docs/runbooks/drive-failure-root.md`.
 
 For everything else (post-install issues), the runbooks at
 `docs/runbooks/` cover bad-config, file-deletion, service-corruption,

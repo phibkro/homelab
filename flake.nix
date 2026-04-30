@@ -307,6 +307,56 @@
                 exit 1
               fi
             '';
+
+        # Path renames rot fastest because nothing else fails when a
+        # reference is wrong; the build catching them is the cheapest
+        # signal. Each entry below records a rename and the date it
+        # landed; only the *forbidden* (stale) form is checked.
+        #   2026-04-27  modules/services/         → modules/server/
+        #   2026-04-29  modules/server/beszel.nix → modules/server/beszel/{hub,agent}.nix
+        #   2026-04-29  modules/server/ntfy.nix   → modules/server/ntfy/{server,notify}.nix
+        no-stale-paths =
+          pkgs.runCommandLocal "no-stale-paths"
+            {
+              nativeBuildInputs = [ pkgs.gnugrep ];
+            }
+            ''
+              cd ${./.}
+              fail=0
+
+              if grep -rn 'modules/services/' \
+                   --include='*.nix' --include='*.md' \
+                   docs/ modules/ hosts/ scripts/ README.md CLAUDE.md ; then
+                echo
+                echo "✗ Stale 'modules/services/' references above."
+                echo "  Renamed to 'modules/server/' on 2026-04-27."
+                fail=1
+              fi
+
+              if grep -rn 'modules/server/beszel\.nix' \
+                   --include='*.nix' --include='*.md' \
+                   docs/ modules/ hosts/ scripts/ README.md CLAUDE.md ; then
+                echo
+                echo "✗ Stale 'modules/server/beszel.nix' references above."
+                echo "  Split into modules/server/beszel/{hub,agent}.nix on 2026-04-29."
+                fail=1
+              fi
+
+              if grep -rn 'modules/server/ntfy\.nix' \
+                   --include='*.nix' --include='*.md' \
+                   docs/ modules/ hosts/ scripts/ README.md CLAUDE.md ; then
+                echo
+                echo "✗ Stale 'modules/server/ntfy.nix' references above."
+                echo "  Split into modules/server/ntfy/{server,notify}.nix on 2026-04-29."
+                fail=1
+              fi
+
+              if [ $fail -eq 0 ]; then
+                touch $out
+              else
+                exit 1
+              fi
+            '';
       };
     };
 }

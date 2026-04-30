@@ -250,7 +250,7 @@ Override locally:
 systemd.services.beszel-agent.serviceConfig.PrivateDevices = lib.mkForce false;
 ```
 
-Loosens just the device namespace; the rest of the upstream hardening (PrivateUsers, ProtectKernel*, SystemCallFilter, RestrictSUIDSGID) stays. See `modules/server/beszel.nix` for the live config.
+Loosens just the device namespace; the rest of the upstream hardening (PrivateUsers, ProtectKernel*, SystemCallFilter, RestrictSUIDSGID) stays. See `modules/server/beszel/agent.nix` for the live config.
 
 ## NTFS read-only mounts: BitLocker + Fast Startup
 
