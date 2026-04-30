@@ -47,23 +47,17 @@
   #   5. (optional) Import existing /mnt/media/photos/{2022,...}
   #      via the web UI (Settings → External Library) or
   #      `immich-cli upload`
-  # CUDA ML inference (face detection, smart search) — DEFERRED.
-  # Approach: overlay onnxruntime with cudaSupport=true so the Python
-  # package picks up the CUDA execution provider. The compile is ~20 min
-  # but exhausted RAM on first attempt (nvcc is memory-hungry; the system
-  # has no swap). Prerequisites before enabling:
-  #   1. zramSwap (now in modules/common/base.nix) survives a rebuild
-  #   2. Uncomment the overlay below + the LD_LIBRARY_PATH env var
-  #
-  # nixpkgs.overlays = [
-  #   (final: prev: {
-  #     onnxruntime = prev.onnxruntime.override {
-  #       cudaSupport = true;
-  #       inherit (final) cudaPackages;
-  #       ncclSupport = false; # single-GPU inference; skip ~45 min NCCL build
-  #     };
-  #   })
-  # ];
+  # CUDA ML inference (face detection, smart search). Overlay swaps
+  # onnxruntime to a cudaSupport=true build so the Python bindings
+  # pick up the CUDA execution provider at runtime. Only `cudaSupport`
+  # is overridden — defaults match cache.nixos-cuda.org's build, so
+  # the prebuilt artifact substitutes instead of triggering a local
+  # nvcc compile (~30 min on this CPU).
+  nixpkgs.overlays = [
+    (_: prev: {
+      onnxruntime = prev.onnxruntime.override { cudaSupport = true; };
+    })
+  ];
 
   services.immich = {
     enable = true;
@@ -84,12 +78,14 @@
     accelerationDevices = config.nori.gpu.nvidiaDevices;
   };
 
-  # When the CUDA overlay above is enabled, also uncomment:
-  # services.immich.machine-learning.environment = {
-  #   # CUDA execution provider is dlopen'd at runtime from onnxruntime's
-  #   # capi/ dir; LD_LIBRARY_PATH tells the linker where to find it.
-  #   LD_LIBRARY_PATH = "${pkgs.python3Packages.onnxruntime}/${pkgs.python3.sitePackages}/onnxruntime/capi";
-  # };
+  # CUDA execution provider .so is dlopen'd at runtime from
+  # onnxruntime's capi/ dir under the python site-packages tree; the
+  # second path covers the C++ shared library (libonnxruntime.so).
+  # Without LD_LIBRARY_PATH the worker logs "Failed to find onnxruntime
+  # CUDAExecutionProvider" and silently falls back to CPU.
+  services.immich.machine-learning.environment.LD_LIBRARY_PATH =
+    "${pkgs.python3Packages.onnxruntime}/lib:"
+    + "${pkgs.python3Packages.onnxruntime}/${pkgs.python3.sitePackages}/onnxruntime/capi";
 
   # Cross-service photo access: Immich joins `media` so it can read
   # the existing user-organized photo tree if you point External

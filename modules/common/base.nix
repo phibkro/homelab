@@ -34,9 +34,16 @@
       # cost.
       extra-substituters = [
         "https://cache.garnix.io"
+        # nixpkgs-cuda-ci builds nixpkgs with cudaSupport=true and
+        # publishes here. Without it, every CUDA-touching derivation
+        # (cudatoolkit, cudnn, onnxruntime+cuda, …) compiles from
+        # source — hours to many hours per rebuild. Migrated from
+        # cuda-maintainers.cachix.org to cache.nixos-cuda.org Nov 2025.
+        "https://cache.nixos-cuda.org"
       ];
       extra-trusted-public-keys = [
         "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
+        "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
       ];
     };
     gc = {
