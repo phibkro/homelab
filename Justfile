@@ -141,6 +141,14 @@ default: rebuild
 
 # === doc quality ===
 
+# Show a doc's section headings — T2 entry point into the T3 contents.
+# Reading the whole doc to find the right section is wasteful when the
+# `## ` headings already index it. Pair with the editor / Read tool to
+# load only the relevant section.
+# Usage: just toc gotchas | just toc architecture | just toc CONVENTIONS
+@toc doc:
+    grep '^## ' docs/{{doc}}.md | sed 's/^## /  /'
+
 # Print the prompt for dispatching a fresh agent through the onboarding test.
 # The test (docs/agent-onboarding-test.md) measures whether session wrap-ups
 # left enough context for a fresh agent to perform — closes the otherwise-open
