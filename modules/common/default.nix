@@ -19,6 +19,7 @@ _: {
     ../effects/hosts.nix
     ../effects/fs.nix
     ../effects/lan-route.nix
+    ../effects/funnel-route.nix
     ../effects/backup.nix
     ../effects/gpu.nix
     ../effects/harden.nix

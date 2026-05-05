@@ -38,6 +38,7 @@ _: {
     ./blocky.nix
     ./caddy.nix
     ./calibre-web.nix
+    ./filmder.nix
     ./gatus.nix
     ./glance.nix
     ./immich.nix

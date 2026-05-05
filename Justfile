@@ -161,6 +161,18 @@ default: rebuild
 @toc doc:
     grep '^## ' docs/{{doc}}.md | sed 's/^## /  /'
 
+# Build + publish a self-deployed app's static artifact (or refresh a
+# running one). Each app's modules/server/<name>.nix declares a
+# `<name>-build.service` oneshot — this recipe just kicks it. Operator
+# triggers explicitly so nixos-rebuild stays fast (no npm-install on
+# every rebuild). Logs stream live, exit code matches the unit's.
+# Usage: just deploy-app filmder
+deploy-app name:
+    sudo systemctl start --wait {{name}}-build.service
+    @echo ""
+    @echo "[deploy-app {{name}}] Last 20 log lines:"
+    @journalctl -u {{name}}-build.service --no-pager -n 20
+
 # Print the prompt for dispatching a fresh agent through the onboarding test.
 # The test (docs/agent-onboarding-test.md) measures whether session wrap-ups
 # left enough context for a fresh agent to perform — closes the otherwise-open
