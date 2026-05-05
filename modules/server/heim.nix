@@ -190,10 +190,19 @@ in
       HOSTNAME = "127.0.0.1";
     };
 
+    # Skip start until first deploy has produced .next/. Same
+    # bootstrap-gap pattern as finnbydel-serve.
+    unitConfig.ConditionPathExists = "/var/lib/heim/src/apps/portfolio/.next";
+
     serviceConfig = {
       Type = "simple";
       User = "heim";
       Group = "heim";
+
+      # StateDirectory ensures /var/lib/heim exists for harden.binds
+      # before mount-namespacing runs.
+      StateDirectory = "heim";
+      StateDirectoryMode = "0750";
       WorkingDirectory = "/var/lib/heim/src/apps/portfolio";
 
       # Read sops secrets at start time. systemd loads

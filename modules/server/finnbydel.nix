@@ -137,17 +137,29 @@ in
       HOSTNAME = "127.0.0.1";
     };
 
+    # Skip start until first deploy has produced .next/. Without this,
+    # cold-boot before any `just deploy-app finnbydel` would
+    # restart-loop indefinitely (no source clone, no build artifact).
+    # build's ExecStartPost runs `systemctl restart finnbydel-serve`,
+    # which re-evaluates the condition — once .next exists, serve
+    # activates cleanly.
+    unitConfig.ConditionPathExists = "/var/lib/finnbydel/src/finnbydel-app/.next";
+
     serviceConfig = {
       Type = "simple";
       User = "finnbydel";
       Group = "finnbydel";
+
+      # StateDirectory ensures /var/lib/finnbydel exists before the
+      # mount-namespace bind-mount setup. Without it, harden.binds
+      # fails with "No such file or directory" on cold boot before
+      # any build has run.
+      StateDirectory = "finnbydel";
+      StateDirectoryMode = "0750";
       WorkingDirectory = "/var/lib/finnbydel/src/finnbydel-app";
+
       ExecStart = "${pkgs.bun}/bin/bun run start";
 
-      # Restart-on-failure handles the bootstrap window where serve
-      # starts before any deploy-app has populated .next/ — the
-      # process exits, systemd retries, eventually the operator runs
-      # deploy-app and the next restart lands clean.
       Restart = "on-failure";
       RestartSec = 5;
     };
