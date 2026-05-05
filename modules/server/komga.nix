@@ -41,6 +41,11 @@
   nori.lanRoutes.comics = {
     port = 8085;
     monitor = { };
+    # Forward-auth via Authelia. /api/* exempt so OPDS readers
+    # (Tachiyomi, Paperback, Komelia) and the e-reader catalog at
+    # /api/v1/opds/v2 keep working — they authenticate with HTTP
+    # Basic against Komga's own user, not via browser cookies.
+    forwardAuth.exemptPaths = [ "/api/*" ];
     dashboard = {
       title = "Komga";
       icon = "sh:komga";

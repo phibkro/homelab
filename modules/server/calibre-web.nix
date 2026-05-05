@@ -83,6 +83,16 @@
   nori.lanRoutes.books = {
     port = 8084;
     monitor = { };
+    # Forward-auth via Authelia. /opds/* + /kobo/* exempt so KOReader,
+    # Moon+ Reader, Marvin, and Kobo Sync clients can hit the OPDS
+    # catalog with HTTP Basic auth (calibre-web's own user) — they
+    # don't follow OAuth redirects. /api/* exempt for completeness.
+    # Browser users go through Authelia.
+    forwardAuth.exemptPaths = [
+      "/opds/*"
+      "/kobo/*"
+      "/api/*"
+    ];
     dashboard = {
       title = "calibre-web";
       icon = "sh:calibre-web";
