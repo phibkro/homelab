@@ -81,7 +81,7 @@ in
       and a non-null lanIp" (see modules/effects/hosts.nix). When
       a future second workhorse with a static LAN lease lands, the
       derivation fails eval — surfaces the ambiguity instead of
-      silently picking nori-station.
+      silently picking workstation.
 
       Previously the workhorse's tailnet IP, which silently required
       every client to be on tailnet to reach any service — a sharp
@@ -90,7 +90,7 @@ in
       LAN IP lets those clients hit services directly. Tailnet
       clients off-LAN still reach the same address via Pi's subnet
       route advertisement (services.tailscale.useRoutingFeatures =
-      "server" in hosts/nori-pi/default.nix); the client side needs
+      "server" in hosts/pi/default.nix); the client side needs
       --accept-routes set in its tailscaled config.
 
       Consumers: Blocky's forwarder mode (modules/server/blocky.nix)

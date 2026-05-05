@@ -16,10 +16,10 @@ _: {
     };
   };
 
-  # Declarative partition layout for nori-station's NVMe root.
+  # Declarative partition layout for workstation's NVMe root.
   # Applied at install time:
   #   nix run github:nix-community/disko/latest -- \
-  #     --mode disko hosts/nori-station/disko.nix
+  #     --mode disko hosts/workstation/disko.nix
   #
   # Layout (per docs/DESIGN.md L111–124):
   #   p1  ESP, 1 GiB, vfat, label BOOT

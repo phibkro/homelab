@@ -10,7 +10,7 @@ in
   # Cross-host references used to be IP literals scattered through
   # service modules and host files: the Pi tailnet IP appeared in
   # beszel/agent.nix's metrics lanRoute, in ntfy/notify.nix's alert
-  # lanRoute, in nori-station/default.nix's Gatus probes for the Pi,
+  # lanRoute, in workstation/default.nix's Gatus probes for the Pi,
   # in modules/effects/lan-route.nix's nori.lanIp default. Six grep hits
   # for "100.100.71.3" and "100.81.5.122". A topology change (Pi swap,
   # tailnet re-auth, replacement device) was a fan-out edit.
@@ -32,12 +32,12 @@ in
   # The taxonomy:
   #   workhorse — runs heavy compute / state / GPU. State preserved on
   #               real disks. Caddy + Authelia + media + databases live
-  #               here. nori-station today.
+  #               here. workstation today.
   #   appliance — observability + alerting + DNS + network plumbing.
   #               Survives workhorse failure; alerts the operator when
   #               the workhorse hangs (the 2026-04-28 incident pattern).
   #               Anti-write storage; declarative reproducibility means
-  #               losing state is recoverable. nori-pi today.
+  #               losing state is recoverable. pi today.
   #
   # If a future host doesn't fit the binary, *that's the signal* — add
   # the role to the enum, document its constraints, and adjust the
@@ -69,7 +69,7 @@ in
               LAN IP if a static DHCP lease exists; null otherwise.
               Used by ops tooling (Justfile rsync targets) when the
               tailnet hostname doesn't resolve from the operator's
-              machine — e.g., `nori-station.saola-matrix.ts.net` from
+              machine — e.g., `workstation.saola-matrix.ts.net` from
               Mac without tailnet DNS.
             '';
           };

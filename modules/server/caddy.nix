@@ -25,7 +25,7 @@
   #
   # DNS resolution:
   #   Blocky's customDNS (modules/server/blocky.nix) maps each
-  #   *.nori.lan name to nori-station's LAN IP (192.168.1.181). LAN
+  #   *.nori.lan name to workstation's LAN IP (192.168.1.181). LAN
   #   clients hit Caddy directly with no tailnet hop. Off-LAN tailnet
   #   clients reach the same address via Pi's subnet route
   #   advertisement (192.168.1.0/24); requires --accept-routes on

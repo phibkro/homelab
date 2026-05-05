@@ -1,6 +1,6 @@
 # Phase 3: NixOS VM dry-run install
 
-Validates the install pipeline against the flake before touching nori-station.
+Validates the install pipeline against the flake before touching workstation.
 
 ## 1. Create the VM in UTM
 
@@ -105,7 +105,7 @@ btrfs subvol mounts survive a reboot, the layout is correct.
 
 If all of the above works, the flake is valid, the btrfs + systemd-boot
 layout is right, and the install procedure is exactly what we'll run on
-nori-station. Phase 3 done.
+workstation. Phase 3 done.
 
 ## What to report
 

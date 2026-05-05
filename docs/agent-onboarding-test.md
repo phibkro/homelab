@@ -35,12 +35,12 @@ All three are wrap-up failures; fix and re-run.
 **Question**: For each of these, name the host(s) it runs on and the one-line reason: Beszel hub, ntfy server, Blocky, Caddy, Authelia, Jellyfin, ntfy `notify@` template.
 
 **Expected (shape)**:
-- Beszel hub → nori-pi (appliance survives workhorse outages — forensics use case)
-- ntfy server → nori-pi (alert plane survives workhorse outages; Caddy on station reverse-proxies)
+- Beszel hub → pi (appliance survives workhorse outages — forensics use case)
+- ntfy server → pi (alert plane survives workhorse outages; Caddy on station reverse-proxies)
 - Blocky → both (station self-hosted, Pi forwarder; mutual DNS resilience)
-- Caddy → nori-station (workhorse; internal CA bound here)
-- Authelia → nori-station (SSO; cross-host token validation cost not worth it)
-- Jellyfin → nori-station (media volume + GPU)
+- Caddy → workstation (workhorse; internal CA bound here)
+- Authelia → workstation (SSO; cross-host token validation cost not worth it)
+- Jellyfin → workstation (media volume + GPU)
 - ntfy `notify@` template → both (each host posts to ntfy.sh with its own hostname)
 
 **Source**: CLAUDE.md "Current state → Topology + service placement".
@@ -89,13 +89,13 @@ All three are wrap-up failures; fix and re-run.
 ```nix
 nori.lanRoutes.widget = {
   port = 9000;
-  host = "100.100.71.3";   # nori-pi tailnet IP
+  host = "100.100.71.3";   # pi tailnet IP
 };
 ```
 
 **Expected (shape)**:
 - Wrong — IP literal
-- Should use `config.nori.hosts.nori-pi.tailnetIp` (the topology registry)
+- Should use `config.nori.hosts.pi.tailnetIp` (the topology registry)
 - Registry schema: `modules/effects/hosts.nix`; values: `flake.nix` `identityFor`
 - Topology coupling lives in the host name in the lookup, not in the IP
 

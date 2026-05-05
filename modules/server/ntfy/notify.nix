@@ -58,7 +58,7 @@
   nori.lanRoutes = lib.mkIf config.services.caddy.enable {
     alert = {
       port = 8081;
-      host = config.nori.hosts.nori-pi.tailnetIp;
+      host = config.nori.hosts.pi.tailnetIp;
       monitor.path = "/v1/health";
     };
   };

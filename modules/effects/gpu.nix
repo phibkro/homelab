@@ -11,7 +11,7 @@
   # concern and not needed by server-side inference or transcoding.
   # nvidia-uvm-tools is a profiling aid, not required at runtime.
   #
-  # Confirmed present on nori-station (RTX 5060 Ti / Blackwell):
+  # Confirmed present on workstation (RTX 5060 Ti / Blackwell):
   #   /dev/nvidia0        — GPU compute
   #   /dev/nvidiactl      — driver control node
   #   /dev/nvidia-uvm     — unified virtual memory (required for CUDA)
@@ -22,7 +22,7 @@
       NVIDIA device nodes exposed to services that opt in to GPU
       access. Consumed by services.immich.accelerationDevices and any
       future service whose NixOS module uses a DeviceAllow-style
-      option. Default is empty so hosts without a GPU (nori-pi)
+      option. Default is empty so hosts without a GPU (pi)
       pass through cleanly; hosts with a GPU set this in their
       hardware.nix.
     '';

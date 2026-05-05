@@ -1,7 +1,7 @@
 {
-  description = "nori infrastructure (NixOS) — nori-station and future lab hosts";
+  description = "nori infrastructure (NixOS) — workstation and future lab hosts";
 
-  # Pinned to nixos-unstable because nori-station has an RTX 5060 Ti
+  # Pinned to nixos-unstable because workstation has an RTX 5060 Ti
   # (Blackwell), whose driver lands in recent nixpkgs. Treat unstable +
   # flake.lock as the de-facto stable channel; re-pin deliberately.
   inputs = {
@@ -43,8 +43,8 @@
       # `system` here is the host on which `nix flake check` /
       # formatter / etc run — not the target platform of any host.
       # Each host's hardware.nix sets nixpkgs.hostPlatform; mkHost
-      # no longer hardcodes system, so nori-pi (aarch64-linux) and
-      # nori-station (x86_64-linux) coexist cleanly.
+      # no longer hardcodes system, so pi (aarch64-linux) and
+      # workstation (x86_64-linux) coexist cleanly.
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
 
@@ -66,7 +66,7 @@
       #   * modules/effects/backup.nix          (host-aware appliance assertion)
       #   * modules/server/beszel/agent.nix (metrics route backend)
       #   * modules/server/ntfy/notify.nix  (alert route backend)
-      #   * hosts/nori-station/default.nix  (Pi probe URLs)
+      #   * hosts/workstation/default.nix  (Pi probe URLs)
       #
       # Topology change = edit identityFor, redeploy. Adding a host =
       # `mkdir hosts/<n> && touch hosts/<n>/{default,hardware}.nix`
@@ -74,12 +74,12 @@
       hostNames = lib.attrNames (lib.filterAttrs (_: t: t == "directory") (builtins.readDir ./hosts));
 
       identityFor = {
-        nori-station = {
+        workstation = {
           tailnetIp = "100.81.5.122";
           lanIp = "192.168.1.181";
           role = "workhorse";
         };
-        nori-pi = {
+        pi = {
           tailnetIp = "100.100.71.3";
           lanIp = "192.168.1.225";
           role = "appliance";
@@ -402,6 +402,8 @@
           #   2026-04-29  modules/server/beszel.nix → modules/server/beszel/{hub,agent}.nix
           #   2026-04-29  modules/server/ntfy.nix   → modules/server/ntfy/{server,notify}.nix
           #   2026-05-05  modules/lib/              → modules/effects/
+          #   2026-05-05  hosts/nori-station        → hosts/workstation
+          #   2026-05-05  hosts/nori-pi             → hosts/pi
           no-stale-paths =
             pkgs.runCommandLocal "no-stale-paths"
               {
@@ -446,6 +448,24 @@
                   echo "  Renamed to 'modules/effects/' on 2026-05-05 — the"
                   echo "  directory holds the nori.<X> Reader+Writer effect"
                   echo "  family (see docs/CONVENTIONS.md 'Effect interface')."
+                  fail=1
+                fi
+
+                # Host renames. The bare pattern \bnori-(station|pi)\b
+                # is safe because both old hostnames were unique tokens
+                # in this repo (no unrelated occurrences pre-rename).
+                if grep -rEn '\bnori-(station|pi)\b' \
+                     --include='*.nix' --include='*.md' --include='*.yaml' \
+                     --include='Justfile' \
+                     docs/ modules/ hosts/ scripts/ secrets/ \
+                     README.md CLAUDE.md Justfile .sops.yaml 2>/dev/null ; then
+                  echo
+                  echo "✗ Stale 'nori-station' or 'nori-pi' references above."
+                  echo "  Renamed on 2026-05-05:"
+                  echo "    nori-station → workstation"
+                  echo "    nori-pi      → pi"
+                  echo "  Cross-host refs read config.nori.hosts.<n>.tailnetIp;"
+                  echo "  registry: flake.nix identityFor."
                   fail=1
                 fi
 

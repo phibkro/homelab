@@ -52,15 +52,15 @@ cd /tmp/homelab
 ```bash
 sudo nix --extra-experimental-features 'nix-command flakes' \
   run github:nix-community/disko/latest -- \
-  --mode disko hosts/nori-station/disko.nix
+  --mode disko hosts/workstation/disko.nix
 ```
 
-This wipes the new root drive (by-id pinned to whatever the new SN750's serial is — **edit `hosts/nori-station/disko.nix` first if the serial changed**) and creates the six-subvolume btrfs layout.
+This wipes the new root drive (by-id pinned to whatever the new SN750's serial is — **edit `hosts/workstation/disko.nix` first if the serial changed**) and creates the six-subvolume btrfs layout.
 
 ### 5. Install
 
 ```bash
-sudo nixos-install --flake /tmp/homelab#nori-station --no-root-password
+sudo nixos-install --flake /tmp/homelab#workstation --no-root-password
 ```
 
 Reboots into the freshly-installed system.
@@ -96,7 +96,7 @@ sudo restic -r /mnt/backup/open-webui \
 ```
 
 If `/mnt/backup` (OneTouch) also failed, fall back to:
-- `nori-pi:/mnt/backup/...` (when the Pi exists)
+- `pi:/mnt/backup/...` (when the Pi exists)
 - `sftp:u123@u123.your-storagebox.de:<name>` (Hetzner off-site, when configured)
 
 ### 8. Re-import IronWolf media

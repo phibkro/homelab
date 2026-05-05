@@ -11,7 +11,7 @@
   #
   # CUDA acceleration via the host's RTX 5060 Ti (Blackwell). NixOS
   # module pulls in CUDA runtime when acceleration = "cuda"; the nvidia
-  # driver itself is already configured in hosts/nori-station/hardware.nix.
+  # driver itself is already configured in hosts/workstation/hardware.nix.
   #
   # Models live at /var/lib/ollama/models (the module's default), owned
   # by the ollama service user. Restore the previous library from the

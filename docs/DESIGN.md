@@ -57,7 +57,7 @@ The lab decomposes into seven layers.
 
 ### Layer 1: Hosts and hardware
 
-**`nori-station` (primary host)**
+**`workstation` (primary host)**
 - AMD Ryzen 5600X, 32GB DDR4, RTX 5060 Ti 16GB (Blackwell)
 - WD Black SN750 1TB NVMe → NixOS root (btrfs, six subvolumes, label `nixos`, disko-managed)
 - Corsair Force MP510 960GB NVMe → Windows (preserved, untouched, multi-boot via UEFI)
@@ -65,13 +65,13 @@ The lab decomposes into seven layers.
 - Roles: AI inference (32B-class models comfortably; 70B models tight at 32GB and likely paged to swap), media streaming, photo management, file storage, occasional desktop workstation
 - *Disambiguate disks by model + by-id, not `/dev/nvmeN` — see "Permanent constraints".*
 
-**`nori-pi` (appliance) — LIVE**
+**`pi` (appliance) — LIVE**
 - Raspberry Pi 4 8GB
 - Samsung FIT 128GB USB stick → NixOS root (aarch64, sd-image-aarch64 generation, USB-then-SD boot order via EEPROM `BOOT_ORDER=0xf41`)
 - Anti-write storage posture: `swapDevices = []`, `journald.Storage=volatile`, `vm.mmap_rnd_bits=18` aarch64 fixup. SD card wear is the #1 Pi failure mode; volatile journald + no swap mitigate.
 - Roles (live): observability hub (Beszel), alert plane (ntfy server), network DNS adblock (Blocky in forwarder mode), synthetic monitoring (Gatus), Tailscale subnet router + exit node (opt-in per device).
-- Roles (planned): local restic backup target for nori-station fast restore — deferred until a real disk replaces the FIT (the anti-write posture rules out daily restic to flash).
-- Cross-host services (Beszel hub, ntfy server) are reverse-proxied via station's Caddy at `metrics.nori.lan` / `alert.nori.lan` — see CLAUDE.md "How to relocate a service to nori-pi" for the split-module pattern.
+- Roles (planned): local restic backup target for workstation fast restore — deferred until a real disk replaces the FIT (the anti-write posture rules out daily restic to flash).
+- Cross-host services (Beszel hub, ntfy server) are reverse-proxied via station's Caddy at `metrics.nori.lan` / `alert.nori.lan` — see CLAUDE.md "How to relocate a service to pi" for the split-module pattern.
 
 **`vm-test` (transient, for VM dry-run)**
 - UTM virtual machine on laptop
@@ -83,7 +83,7 @@ The lab decomposes into seven layers.
 
 ### Layer 2: Boot and OS
 
-UEFI multi-boot on nori-station. NixOS as primary OS, Windows preserved on its own NVMe, OS selection via firmware boot menu. Each OS owns its drive completely; no shared bootloader.
+UEFI multi-boot on workstation. NixOS as primary OS, Windows preserved on its own NVMe, OS selection via firmware boot menu. Each OS owns its drive completely; no shared bootloader.
 
 `systemd-boot` as the bootloader for NixOS (default for UEFI on NixOS, handles btrfs subvolumes natively). UEFI NVRAM persists boot entries on the Gigabyte board; if first boot fails to register the entry (a known UTM quirk that may not appear on real hardware), recovery is `bootctl install` from a chroot.
 
@@ -110,7 +110,7 @@ hardware.nvidia = {
 
 Btrfs everywhere on Linux. Mount options: `compress=zstd:3` and `noatime`.
 
-#### nori-station root (nvme0n1) — disko-managed
+#### workstation root (nvme0n1) — disko-managed
 
 Subvolume layout, applied by disko during Phase 4 install:
 
@@ -125,7 +125,7 @@ Subvolume layout, applied by disko during Phase 4 install:
 
 `@var-lib` separation lets service-state churn snapshot on its own cadence without polluting `@` snapshots. `@srv-share` is the explicit shared path referenced in the access matrix; documents go here when they're meant to be Samba-accessible from multiple devices.
 
-#### nori-station media (sda, IronWolf Pro) — Phase 2
+#### workstation media (sda, IronWolf Pro) — Phase 2
 
 Reformatted to btrfs **after** Phase 4. Until then, the IronWolf is mounted read-only as exfat at `/mnt/media-legacy/` and Jellyfin/Immich either don't run yet or read from there. Disko config exists but is not applied during Phase 4.
 
@@ -143,9 +143,9 @@ Target subvolume layout (Phase 2):
 
 `@streaming` holds re-derivable content (auto-grabbed by the *arr stack: movies/shows/music + qBittorrent download staging). `@library` holds curated content the user assembled by hand (books, comics) — distinct content type from `@projects` (work products), same backup tier. `@archive` holds historical/cold data (legacy machine backups migrated off the OneTouch when it became the restic target).
 
-#### nori-pi storage
+#### pi storage
 
-`@` on USB SSD (root). USB HDD mounted at `/mnt/backup` holds the restic repository for nori-station's irreplaceable data and service state. Restic encrypts client-side, so the HDD's filesystem choice doesn't matter for security; ext4 is the boring default.
+`@` on USB SSD (root). USB HDD mounted at `/mnt/backup` holds the restic repository for workstation's irreplaceable data and service state. Restic encrypts client-side, so the HDD's filesystem choice doesn't matter for security; ext4 is the boring default.
 
 #### Database-on-btrfs CoW interaction
 
@@ -211,29 +211,29 @@ Devices accessing the homelab need to install the Caddy root CA once:
 
 #### DNS architecture
 
-**Current state:** Blocky on both hosts — `nori-pi` in forwarder mode (primary, served to all tailnet devices via Tailscale's global-nameserver push pointing at Pi's tailnet IP) and `nori-station` in self-hosted mode (auto-generates the `*.nori.lan` map from `nori.lanRoutes`; serves as fallback secondary). LAN-only devices (smart TV, guest phones) are NOT covered — they keep using whatever the router pushes.
+**Current state:** Blocky on both hosts — `pi` in forwarder mode (primary, served to all tailnet devices via Tailscale's global-nameserver push pointing at Pi's tailnet IP) and `workstation` in self-hosted mode (auto-generates the `*.nori.lan` map from `nori.lanRoutes`; serves as fallback secondary). LAN-only devices (smart TV, guest phones) are NOT covered — they keep using whatever the router pushes.
 
 Blocky chosen over AdGuard Home for declarative-config friendliness — its YAML config maps cleanly to `services.blocky.settings`, no web-UI state to drift from declared config.
 
 **Why Tailscale push instead of router DHCP:** the ISP-shipped Genexis EG400 (firmware `EG400-X-GNXRR-4.3.5.80-R-210105_1023`) locks DHCP DNS settings out of the user-facing admin UI. Router-side DNS replacement would require either (a) Altibox bridge-mode activation by phone request + a second router we control, or (b) double-NAT with a downstream router. Neither is set up; Tailscale push is the zero-hardware-cost workaround.
 
-**Future state:** same as original DESIGN intent — Pi primary + nori-station secondary, both via router DHCP — but only after one of:
-- Bridge-mode activation on the Genexis (then Pi's own DHCP server hands out itself + nori-station as DNS), or
+**Future state:** same as original DESIGN intent — Pi primary + workstation secondary, both via router DHCP — but only after one of:
+- Bridge-mode activation on the Genexis (then Pi's own DHCP server hands out itself + workstation as DNS), or
 - A separate router we control between LAN and ISP gateway
 
-**Bootstrap loop hazard:** because nori-station's `/etc/resolv.conf` points at Tailscale's stub (`100.100.100.100`) and Tailscale forwards back to nori-station's Blocky, Blocky can't resolve its own outbound URLs (blocklist sources, DoH endpoints) before it's serving DNS. `services.blocky.settings.bootstrapDns` MUST be set to direct upstream IPs for this reason. Without it, blocklist downloads silently fail on every restart.
+**Bootstrap loop hazard:** because workstation's `/etc/resolv.conf` points at Tailscale's stub (`100.100.100.100`) and Tailscale forwards back to workstation's Blocky, Blocky can't resolve its own outbound URLs (blocklist sources, DoH endpoints) before it's serving DNS. `services.blocky.settings.bootstrapDns` MUST be set to direct upstream IPs for this reason. Without it, blocklist downloads silently fail on every restart.
 
 Both Blocky instances (current and future Pi) forward to a public resolver (1.1.1.1 or Quad9) for non-blocked queries. Tailnet hostnames resolved via Tailscale MagicDNS independently of Blocky.
 
 #### Tailscale
 
-`nori-pi` advertises:
+`pi` advertises:
 - Subnet route for the home LAN (`--advertise-routes=192.168.1.0/24`)
 - Exit node (`--advertise-exit-node`), opt-in per device
 
 Both require approval in the Tailscale admin console (one-time).
 
-`nori-station` runs Tailscale as a regular node, not a router. MagicDNS gives both hosts stable hostnames on the tailnet.
+`workstation` runs Tailscale as a regular node, not a router. MagicDNS gives both hosts stable hostnames on the tailnet.
 
 ### Layer 5: Services
 
@@ -241,37 +241,37 @@ Native NixOS modules from day one. Verified module availability on `nixos-unstab
 
 | Service | Module | Host | Exposure |
 |---|---|---|---|
-| Jellyfin | `services.jellyfin` | nori-station | Tailnet |
-| Ollama | `services.ollama` (CUDA) | nori-station | Tailnet |
-| Open WebUI | `services.open-webui` | nori-station | Tailnet |
-| Immich | `services.immich` (with VectorChord, Postgres 17) | nori-station | Tailnet |
-| Samba | `services.samba` | nori-station | Tailnet, scoped to `/mnt/media`, `/srv/share` |
-| Blocky (forwarder) | `services.blocky` (`nori.blocky.role = "forwarder"`) | nori-pi | LAN (via tailnet DNS push) |
-| Blocky (self-hosted) | `services.blocky` (`nori.blocky.role = "self-hosted"`) | nori-station | LAN |
+| Jellyfin | `services.jellyfin` | workstation | Tailnet |
+| Ollama | `services.ollama` (CUDA) | workstation | Tailnet |
+| Open WebUI | `services.open-webui` | workstation | Tailnet |
+| Immich | `services.immich` (with VectorChord, Postgres 17) | workstation | Tailnet |
+| Samba | `services.samba` | workstation | Tailnet, scoped to `/mnt/media`, `/srv/share` |
+| Blocky (forwarder) | `services.blocky` (`nori.blocky.role = "forwarder"`) | pi | LAN (via tailnet DNS push) |
+| Blocky (self-hosted) | `services.blocky` (`nori.blocky.role = "self-hosted"`) | workstation | LAN |
 | Tailscale | `services.tailscale` | both | N/A |
-| restic backup jobs | `services.restic.backups.<n>` | nori-station | N/A (outbound to Pi + Hetzner) |
-| btrbk | `services.btrbk.instances.<n>` | nori-station | N/A (local) |
-| ntfy server | `services.ntfy-sh` | nori-pi (appliance role; survives station outages — `alert.nori.lan` reverse-proxied cross-host) | Tailnet |
+| restic backup jobs | `services.restic.backups.<n>` | workstation | N/A (outbound to Pi + Hetzner) |
+| btrbk | `services.btrbk.instances.<n>` | workstation | N/A (local) |
+| ntfy server | `services.ntfy-sh` | pi (appliance role; survives station outages — `alert.nori.lan` reverse-proxied cross-host) | Tailnet |
 | ntfy `notify@` template | systemd unit | both hosts (each host's units POST to `ntfy.sh` directly, hostname-aware via `config.networking.hostName`) | N/A (outbound) |
 | Gatus | `services.gatus` | both hosts (mutual probes — Pi watches station, station watches Pi, alerts via `ntfy.sh` independently) | Tailnet |
-| Caddy | `services.caddy` | nori-station | Tailnet (HTTPS terminator + reverse proxy) |
-| Authelia | `services.authelia.instances.<name>` | nori-station | Tailnet (OIDC issuer for SSO) |
-| beszel hub | `services.beszel.hub` | nori-pi (forensics use case: when station hangs, hub keeps recording its metrics up to the last poll) | Tailnet (`metrics.nori.lan` reverse-proxied cross-host) |
+| Caddy | `services.caddy` | workstation | Tailnet (HTTPS terminator + reverse proxy) |
+| Authelia | `services.authelia.instances.<name>` | workstation | Tailnet (OIDC issuer for SSO) |
+| beszel hub | `services.beszel.hub` | pi (forensics use case: when station hangs, hub keeps recording its metrics up to the last poll) | Tailnet (`metrics.nori.lan` reverse-proxied cross-host) |
 | beszel agent | `services.beszel.agent` | both hosts (per-host telemetry; hub on Pi pulls over tailnet) | Tailnet |
-| Sonarr | `services.sonarr` | nori-station | Tailnet (`tv.nori.lan`) |
-| Radarr | `services.radarr` | nori-station | Tailnet (`movies.nori.lan`) |
-| Prowlarr | `services.prowlarr` | nori-station | Tailnet (`indexers.nori.lan`) |
-| Bazarr | `services.bazarr` | nori-station | Tailnet (`subtitles.nori.lan`) |
-| Jellyseerr | `services.jellyseerr` | nori-station | Tailnet (`requests.nori.lan`) |
-| qBittorrent | `services.qbittorrent` | nori-station | Tailnet (`downloads.nori.lan`); webuiPort=8083 (default 8080 collides with Open WebUI) |
-| Lidarr | `services.lidarr` | nori-station | Tailnet (`music.nori.lan`); music *arr; library on @streaming |
-| calibre-web | `services.calibre-web` | nori-station | Tailnet (`books.nori.lan`); ebook web UI + OPDS; library on @library; port 8084 (default 8083 collides with qBittorrent) |
-| Komga | `services.komga` | nori-station | Tailnet (`comics.nori.lan`); comics/manga server + OPDS; library on @library; port 8085 (default 8080 collides with Open WebUI) |
-| Glance | `services.glance` | nori-station | Tailnet (`home.nori.lan`); family-facing dashboard with service-status monitor + bookmarks + reading; port 8086 (default 8080 collides with Open WebUI) |
-| Radicale | `services.radicale` | nori-station | Tailnet (`calendar.nori.lan`); CalDAV + CardDAV; htpasswd auth |
-| Syncthing | `services.syncthing` | nori-station + future hosts | Tailnet (`sync.nori.lan` for the WebUI; peer port 22000 open on tailscale0) |
-| Thunar | `programs.thunar` | nori-station | Local desktop only; lightweight GUI file manager + xdg-mime default |
-| postgresqlBackup | `services.postgresqlBackup` | nori-station (if non-Immich PG) | N/A |
+| Sonarr | `services.sonarr` | workstation | Tailnet (`tv.nori.lan`) |
+| Radarr | `services.radarr` | workstation | Tailnet (`movies.nori.lan`) |
+| Prowlarr | `services.prowlarr` | workstation | Tailnet (`indexers.nori.lan`) |
+| Bazarr | `services.bazarr` | workstation | Tailnet (`subtitles.nori.lan`) |
+| Jellyseerr | `services.jellyseerr` | workstation | Tailnet (`requests.nori.lan`) |
+| qBittorrent | `services.qbittorrent` | workstation | Tailnet (`downloads.nori.lan`); webuiPort=8083 (default 8080 collides with Open WebUI) |
+| Lidarr | `services.lidarr` | workstation | Tailnet (`music.nori.lan`); music *arr; library on @streaming |
+| calibre-web | `services.calibre-web` | workstation | Tailnet (`books.nori.lan`); ebook web UI + OPDS; library on @library; port 8084 (default 8083 collides with qBittorrent) |
+| Komga | `services.komga` | workstation | Tailnet (`comics.nori.lan`); comics/manga server + OPDS; library on @library; port 8085 (default 8080 collides with Open WebUI) |
+| Glance | `services.glance` | workstation | Tailnet (`home.nori.lan`); family-facing dashboard with service-status monitor + bookmarks + reading; port 8086 (default 8080 collides with Open WebUI) |
+| Radicale | `services.radicale` | workstation | Tailnet (`calendar.nori.lan`); CalDAV + CardDAV; htpasswd auth |
+| Syncthing | `services.syncthing` | workstation + future hosts | Tailnet (`sync.nori.lan` for the WebUI; peer port 22000 open on tailscale0) |
+| Thunar | `programs.thunar` | workstation | Local desktop only; lightweight GUI file manager + xdg-mime default |
+| postgresqlBackup | `services.postgresqlBackup` | workstation (if non-Immich PG) | N/A |
 
 **Note on Immich's Postgres:** `services.immich.database.enable = true` (the default) provisions a Postgres instance owned by Immich, separate from `services.postgresql`. NixOS 25.11+ uses VectorChord (replacing pgvecto-rs) and Postgres 17 by default. Immich's own database management writes periodic dumps to `/var/lib/immich/backups/`. The backup pattern below picks up those dumps rather than running an external `pg_dump`.
 
@@ -284,7 +284,7 @@ Three flavors depending on service type. All use `services.restic.backups.<n>` f
 ```nix
 services.restic.backups.home = {
   paths = [ "/home" "/srv/share" ];
-  repository = "sftp:nori-pi:/mnt/backup/home";
+  repository = "sftp:pi:/mnt/backup/home";
   passwordFile = config.sops.secrets.restic-password.path;
   timerConfig.OnCalendar = "daily";
   pruneOpts = [ "--keep-daily 14" "--keep-weekly 4" "--keep-monthly 12" ];
@@ -301,7 +301,7 @@ services.restic.backups.immich = {
     "/var/lib/immich/library"      # Imported library
     "/var/lib/immich/profile"      # User profiles
   ];
-  repository = "sftp:nori-pi:/mnt/backup/immich";
+  repository = "sftp:pi:/mnt/backup/immich";
   passwordFile = config.sops.secrets.restic-password.path;
   timerConfig.OnCalendar = "*-*-* 04:00:00";  # After Immich's nightly dump
   pruneOpts = [ "--keep-daily 7" "--keep-weekly 4" "--keep-monthly 6" ];
@@ -329,7 +329,7 @@ services.restic.backups.openwebui = {
     "/var/lib/open-webui"
     "/var/backup/open-webui"  # where the dump lands
   ];
-  repository = "sftp:nori-pi:/mnt/backup/openwebui";
+  repository = "sftp:pi:/mnt/backup/openwebui";
   passwordFile = config.sops.secrets.restic-password.path;
   backupPrepareCommand = ''
     mkdir -p /var/backup/open-webui
@@ -372,7 +372,7 @@ Two restic repositories per service, three retention policies:
 
 ### Layer 6: Desktop environment
 
-Hyprland on Wayland, on `nori-station` only, configured via home-manager as a NixOS module. Built end-to-end in Phase 6 — single Samsung S34J552 (3440x1440 @ 75Hz) on DP-3, Norwegian keymap mirroring `console.keyMap`, bibata cursor at 24px.
+Hyprland on Wayland, on `workstation` only, configured via home-manager as a NixOS module. Built end-to-end in Phase 6 — single Samsung S34J552 (3440x1440 @ 75Hz) on DP-3, Norwegian keymap mirroring `console.keyMap`, bibata cursor at 24px.
 
 **Stack:**
 - `greetd` + `tuigreet` — TTY → tuigreet → Hyprland. Requires `systemd.defaultUnit = "graphical.target"` to auto-start at boot (greetd's unit is `WantedBy=graphical.target`); without the bump, the boot path stops at `multi-user.target` and getty grabs tty1.
@@ -397,12 +397,12 @@ Driver 595 + explicit-sync removed most of the historical NVIDIA-Wayland pain. T
 flake.nix
 flake.lock                       # Pinned unstable revision; source of reproducibility
 hosts/
-  nori-station/
+  workstation/
     configuration.nix
     disko.nix                    # Applied during Phase 4
     disko-media.nix              # Applied during Phase 2 (post-install)
     hardware.nix
-  nori-pi/
+  pi/
     configuration.nix
     disko.nix                    # Applied during Phase 4
     hardware.nix
@@ -465,26 +465,26 @@ Disk layouts in `hosts/<host>/disko.nix` from day zero. First install path:
 1. Boot NixOS minimal installer USB
 2. SSH into installer (set `sshd` enabled in installer config) or work locally
 3. Clone the flake: `git clone https://github.com/phibkro/homelab /tmp/homelab`
-4. Run disko: `nix --experimental-features 'nix-command flakes' run github:nix-community/disko/latest -- --mode disko /tmp/homelab/hosts/nori-station/disko.nix`
-5. `nixos-install --flake /tmp/homelab#nori-station`
+4. Run disko: `nix --experimental-features 'nix-command flakes' run github:nix-community/disko/latest -- --mode disko /tmp/homelab/hosts/workstation/disko.nix`
+5. `nixos-install --flake /tmp/homelab#workstation`
 6. Reboot, set user password on first login, push generated flake.lock back to Git
 
 This is the explicit path. **`nixos-anywhere` is the alternative** for fully-remote installs (SSH'd into the installer from the laptop), but the path above is the one to execute first since you'll be at the machine anyway.
 
 #### Distributed builds, not cross-compilation
 
-Pi builds are slow on aarch64 hardware. The optimization is **distributed build to a remote builder**: build on `nori-station` (x86_64 with aarch64-binfmt + qemu-user), copy the closure to `nori-pi`, activate. `nh` and `nixos-rebuild --build-host` handle this transparently.
+Pi builds are slow on aarch64 hardware. The optimization is **distributed build to a remote builder**: build on `workstation` (x86_64 with aarch64-binfmt + qemu-user), copy the closure to `pi`, activate. `nh` and `nixos-rebuild --build-host` handle this transparently.
 
 This is *not* cross-compilation (which means x86_64 producing aarch64 binaries directly). Cross-compilation in nixpkgs is rougher than people expect for full system closures. binfmt-emulated native build on a fast x86 host is the pragmatic answer.
 
 ```nix
-# On nori-station, enable aarch64 emulation
+# On workstation, enable aarch64 emulation
 boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
 ```
 
 ```bash
-# On laptop, deploy to Pi using nori-station as builder
-nh os switch --target-host nori-pi --build-host nori-station .#nori-pi
+# On laptop, deploy to Pi using workstation as builder
+nh os switch --target-host pi --build-host workstation .#pi
 ```
 
 #### Deploy loop
@@ -546,11 +546,11 @@ OS has one user (Philip). Family members get per-service accounts in Jellyfin, I
 
 ## Observability and alerting
 
-**beszel** for metrics (hub on nori-station, agents on both hosts, accessed over Tailscale).
+**beszel** for metrics (hub on workstation, agents on both hosts, accessed over Tailscale).
 
 **Gatus** for synthetic HTTP/TCP/DNS checks. Replaced an earlier Uptime Kuma plan after recognising that Uptime Kuma's web-UI-driven config didn't fit a code-as-config repo. Gatus is pure declarative — endpoints, conditions, alert routing all live in the Nix attrset that renders to gatus's YAML.
 
-**ntfy** for alert delivery (self-hosted on nori-station, Tailscale-only). High-priority topic for urgent (sound, bypass DND); normal priority for warnings.
+**ntfy** for alert delivery (self-hosted on workstation, Tailscale-only). High-priority topic for urgent (sound, bypass DND); normal priority for warnings.
 
 ### Monitored conditions
 
@@ -585,16 +585,16 @@ Email digest deferred. When set up: SMTP via Gmail with app password (sufficient
 | 1 | Backups (rsync + partclone) | done; verified on One Touch |
 | 2 | Reformat IronWolf Pro to btrfs | done (pulled forward into Phase 5; see "Repository conventions") |
 | 3 | VM dry-run install (UTM) | done; `vm-test` on tailnet |
-| 4 | Bare-metal install on nori-station | done |
+| 4 | Bare-metal install on workstation | done |
 | 5 | Service migration | in progress (file/AI/media/SSO/observability live: Samba, Blocky, Ollama, Open WebUI, Jellyfin, sops, restic Pattern A+C2, Caddy, Authelia, Gatus, beszel hub, ntfy. Pending: Immich, Cloudflare Tunnel, Hetzner off-site restic) |
-| 6 | Desktop environment | done — Hyprland + greetd + waybar + mako + hyprlock + hypridle on nori-station |
-| 7 | `hosts/nori-pi/` live + cross-host service split | done — Pi appliance bringup, mutual observability, Beszel hub + ntfy server migrated to Pi via the cross-host split-module pattern (CLAUDE.md "How to relocate a service to nori-pi") |
+| 6 | Desktop environment | done — Hyprland + greetd + waybar + mako + hyprlock + hypridle on workstation |
+| 7 | `hosts/pi/` live + cross-host service split | done — Pi appliance bringup, mutual observability, Beszel hub + ntfy server migrated to Pi via the cross-host split-module pattern (CLAUDE.md "How to relocate a service to pi") |
 
 **Reactive phases (no scheduled trigger):**
 
 - **Cloudflare Tunnel + Cloudflare Access.** When Tailscale friction emerges (someone refuses to install another app, public link sharing needed).
 - **Email digest reports.** When ntfy alone proves noisy enough that summarization helps.
-- **Second media drive on nori-station.** When IronWolf >80% full or RAID1 redundancy becomes desired.
+- **Second media drive on workstation.** When IronWolf >80% full or RAID1 redundancy becomes desired.
 - **deploy-rs.** When a "deployed broken config, lost remote access" incident occurs.
 - **disko adoption refactor.** Already adopted at install; this is a no-op.
 
@@ -604,9 +604,9 @@ Email digest deferred. When set up: SMTP via Gmail with app password (sufficient
 
 Captured for visibility, not currently being worked:
 
-- **UPS for nori-station.** Single PSU is a non-goal for HA, but mid-write power loss on USB-attached IronWolf is a real recovery scenario. Cheap (~1500-3000 NOK for 600VA) insurance. No commitment yet.
+- **UPS for workstation.** Single PSU is a non-goal for HA, but mid-write power loss on USB-attached IronWolf is a real recovery scenario. Cheap (~1500-3000 NOK for 600VA) insurance. No commitment yet.
 - **Migration of IronWolf Pro from USB to internal SATA.** When SATA capacity becomes available (e.g., adding a SATA HBA via PCIe). USB enclosures have their own failure mode at the controller level.
-- **`common-cpu-amd-pstate`** module on nori-station hardware. Deferred from Phase 3.
+- **`common-cpu-amd-pstate`** module on workstation hardware. Deferred from Phase 3.
 - **Authelia/Authentik self-hosted SSO.** Triggered by Cloudflare Access becoming insufficient.
 - **NVIDIA Wayland edge cases** (multi-monitor VRR, suspend/resume nuances). Not blocking; document fixes in `hardware.nix` as they're encountered.
 - **CUDA/Ollama drift.** Stable 25.11 had a CUDA 13 / 12.8 toolkit mismatch breaking some CUDA apps. Ollama bundles its own CUDA libs typically; verify Ollama works at install and pin nixpkgs version if it doesn't.
@@ -653,9 +653,9 @@ Verify via `sudo systemctl cat <unit>.service | grep -E '(ProtectHome|TemporaryF
 
 **Disko at install, not deferred.** First install is the right time. Deferring guarantees doing the work twice.
 
-**Pi as appliance + opportunistic backup target.** The marginal cost of a USB HDD on the Pi is low; the value (fast local restore) is high. Failure modes remain independent of nori-station.
+**Pi as appliance + opportunistic backup target.** The marginal cost of a USB HDD on the Pi is low; the value (fast local restore) is high. Failure modes remain independent of workstation.
 
-**Two adblock-aware DNS resolvers (Pi + nori-station), not Pi-only-with-router-fallback.** DHCP-distributed secondaries don't fail over fast; resolver timeouts mean Pi-down = seconds of broken DNS. Running Blocky on both hosts makes Pi outages transparent at trivial resource cost. Both live today — Pi runs forwarder mode (delegates `*.nori.lan` to station), station runs self-hosted mode (auto-generates the `*.nori.lan` map from `nori.lanRoutes`). Tailscale's global-nameserver push points at Pi as primary; if Pi goes down, tailnet devices fall back to the secondary instance via the admin-console-configured nameserver list.
+**Two adblock-aware DNS resolvers (Pi + workstation), not Pi-only-with-router-fallback.** DHCP-distributed secondaries don't fail over fast; resolver timeouts mean Pi-down = seconds of broken DNS. Running Blocky on both hosts makes Pi outages transparent at trivial resource cost. Both live today — Pi runs forwarder mode (delegates `*.nori.lan` to station), station runs self-hosted mode (auto-generates the `*.nori.lan` map from `nori.lanRoutes`). Tailscale's global-nameserver push points at Pi as primary; if Pi goes down, tailnet devices fall back to the secondary instance via the admin-console-configured nameserver list.
 
 **Blocky over AdGuard Home.** Declarative YAML config maps cleanly to NixOS module options; no web-UI state to drift from declared config.
 
@@ -676,7 +676,7 @@ In `docs/runbooks/`. Initial outlines:
 - **`service-corruption.md`:** stop service, restore subvolume snapshot to scratch path, copy back, restart, verify. For databases: restore from latest restic snapshot of the dump directory, then `pg_restore` or SQLite import.
 - **`drive-failure-root.md`:** replace drive → boot installer → clone flake → run disko → `nixos-install` → restic restore service state from Pi (faster) or Hetzner (slower).
 - **`drive-failure-media.md`:** replace drive → mkfs.btrfs + subvolumes → restic restore irreplaceable subvolumes from Pi → re-download streaming media from sources.
-- **`pi-failure.md`:** swap to spare USB SSD with current flake → boot → verify Blocky and Tailscale come up → router DHCP unaffected (nori-station is secondary DNS).
+- **`pi-failure.md`:** swap to spare USB SSD with current flake → boot → verify Blocky and Tailscale come up → router DHCP unaffected (workstation is secondary DNS).
 
 ---
 
@@ -684,14 +684,14 @@ In `docs/runbooks/`. Initial outlines:
 
 Recorded in `docs/capacity-baseline.md` at Phase 4 completion. Values to capture:
 
-- Free space per subvolume on nori-station and nori-pi
+- Free space per subvolume on workstation and pi
 - Used space per subvolume on IronWolf (post-Phase-2)
 - RAM at idle (no Ollama loaded)
 - RAM with one Ollama model loaded (32B Q4 baseline)
 - Average sustained CPU during evening peak (after Phase 5)
 - Hetzner Storage Box usage
 
-Re-checked quarterly. Growth trends inform when a second drive on nori-station is warranted, when Hetzner tier needs upgrading, when Ollama model size needs to come down.
+Re-checked quarterly. Growth trends inform when a second drive on workstation is warranted, when Hetzner tier needs upgrading, when Ollama model size needs to come down.
 
 ---
 
@@ -709,4 +709,4 @@ Re-checked quarterly. Growth trends inform when a second drive on nori-station i
 
 This is the canonical design. The flake repo is the source of truth for implementation; this doc is the source of truth for *why*. When implementation drifts from design, the design is updated to match (or implementation is reverted). Reality and documentation in sync, by convention.
 
-Phase 4 ready when you're at nori-station with a USB.
+Phase 4 ready when you're at workstation with a USB.

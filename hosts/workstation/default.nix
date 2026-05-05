@@ -6,7 +6,7 @@
 }:
 
 {
-  # nori-station is a server + a desktop. Each `modules/<concern>`
+  # workstation is a server + a desktop. Each `modules/<concern>`
   # import is one role this machine plays; the host is the sum of
   # its concerns plus its physical hardware.
   imports = [
@@ -33,7 +33,7 @@
   #
   # Mutual observability: station probes Pi's Blocky + SSH via
   # tailnet IP. Pi has matching probes for station — see
-  # hosts/nori-pi/default.nix. Each host's Gatus alerts via ntfy.sh
+  # hosts/pi/default.nix. Each host's Gatus alerts via ntfy.sh
   # directly (no local-ntfy dependency), so when one host wedges
   # the other catches it.
   services.gatus.settings.endpoints = [
@@ -64,12 +64,12 @@
       ];
     }
     {
-      # nori-pi's Blocky on tailnet IP — catches Pi outage even if
+      # pi's Blocky on tailnet IP — catches Pi outage even if
       # Pi's Gatus is down (same incident pattern in reverse). Pi's
       # tailnet IP comes from the nori.hosts registry; topology
       # changes are a one-line edit in modules/common/topology.nix.
       name = "pi-blocky-dns";
-      url = "tcp://${config.nori.hosts.nori-pi.tailnetIp}:53";
+      url = "tcp://${config.nori.hosts.pi.tailnetIp}:53";
       interval = "60s";
       conditions = [ "[CONNECTED] == true" ];
       alerts = [
@@ -81,10 +81,10 @@
       ];
     }
     {
-      # nori-pi's SSH — full host-down detection (sshd dead = host
+      # pi's SSH — full host-down detection (sshd dead = host
       # effectively gone from operator's perspective).
       name = "pi-ssh";
-      url = "tcp://${config.nori.hosts.nori-pi.tailnetIp}:22";
+      url = "tcp://${config.nori.hosts.pi.tailnetIp}:22";
       interval = "60s";
       conditions = [ "[CONNECTED] == true" ];
       alerts = [

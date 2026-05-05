@@ -28,9 +28,9 @@
   #      tailnet trust + Caddy. Optionally set Settings → GUI → user/pass.
   #   2. On other devices (Mac, phone, future laptop): install
   #      Syncthing (brew install syncthing on Mac), open its web UI,
-  #      "Add Remote Device" using nori-station's device ID.
+  #      "Add Remote Device" using workstation's device ID.
   #   3. Share folders by pointing both ends at the same logical
-  #      folder ID. E.g. ~/notes shared between Mac and nori-station
+  #      folder ID. E.g. ~/notes shared between Mac and workstation
   #      lives at /home/nori/notes on this side.
   services.syncthing = {
     enable = true;

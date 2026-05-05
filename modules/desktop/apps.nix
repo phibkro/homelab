@@ -11,7 +11,7 @@
     pkgs.hyprpaper
 
     # Browser — community flake (zen isn't in nixpkgs).
-    inputs.zen-browser.packages.${pkgs.system}.default
+    inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
 
     # Password manager — Electron desktop client. `bw` CLI not bundled
     # by default; add `pkgs.bitwarden-cli` separately if scripted access
@@ -30,14 +30,16 @@
     # you want to host sessions.
     pkgs.rustdesk
 
-    # Tailscale tray icon (community GTK GUI). The tailscale CLI is
-    # already enabled via services.tailscale; trayscale is just the
-    # tray-area indicator + node list.
-    pkgs.trayscale
+    # Tailscale tray icon. The tailscale CLI is already enabled via
+    # services.tailscale; this is just the tray-area indicator + node
+    # list. tailscale-systray is the lighter Go option (no GTK runtime
+    # pull-in) — fits the rest of the keyboard-driven, terminal-leaning
+    # session aesthetic better than Trayscale's full GTK app.
+    pkgs.tailscale-systray
 
     # Claude Code CLI — Anthropic doesn't ship a Linux desktop client;
     # the CLI is the canonical way to interact from a terminal. Already
-    # installed elsewhere (Mac), but having it here makes nori-station
+    # installed elsewhere (Mac), but having it here makes workstation
     # usable as a dev environment in its own right.
     pkgs.claude-code
 
@@ -70,7 +72,7 @@
   # plus loads its plugin set in-process.
   programs.thunar = {
     enable = true;
-    plugins = with pkgs.xfce; [
+    plugins = with pkgs; [
       thunar-archive-plugin # right-click extract / compress
       thunar-volman # auto-mount USB / removable media
     ];

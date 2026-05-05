@@ -21,7 +21,7 @@
   # nothing valuable to lose.
   #
   # First-time setup: connect to
-  #   http://nori-station.saola-matrix.ts.net:8096
+  #   http://workstation.saola-matrix.ts.net:8096
   # …walk through the wizard (admin user, library paths, transcoding
   # preferences). The admin user is independent of the system `nori`
   # user.

@@ -7,7 +7,7 @@
 
 {
   # ntfy-sh server — internal alert hub for the homelab. Lives on the
-  # appliance host (nori-pi) for the same reason beszel-hub does:
+  # appliance host (pi) for the same reason beszel-hub does:
   # alert/observability infra shouldn't share fate with the host being
   # alerted. Migrated from station 2026-04-29.
   #
@@ -47,5 +47,5 @@
   # philosophy + non-load-bearing state (auth db is unused under
   # auth-default-access=read-write; cache.db is ephemeral). Defer until
   # Pi gains the planned local fast-restore disk repo.
-  nori.backups.ntfy.skip = "Hub on appliance host (nori-pi). Pi flash anti-write posture; auth db effectively unused (read-write default), cache rebuilds on restart.";
+  nori.backups.ntfy.skip = "Hub on appliance host (pi). Pi flash anti-write posture; auth db effectively unused (read-write default), cache rebuilds on restart.";
 }

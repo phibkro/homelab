@@ -36,7 +36,7 @@ Walk the sections and update what changed this session. The drift-cost is asymme
 - **Outstanding** — prune items that are done; add new items the session surfaced
 - **Procedures pointer** — if a new procedure used twice or more, codify it (preferably as a skill in `.claude/skills/<n>/` or a "How to" in CLAUDE.md if the trigger isn't clean)
 
-If a *new pattern* landed twice or more during the session, that's the rule-of-three trigger to codify. The cross-host service split → "How to relocate a service to nori-pi" → `relocate-to-pi` skill is the precedent.
+If a *new pattern* landed twice or more during the session, that's the rule-of-three trigger to codify. The cross-host service split → "How to relocate a service to pi" → `relocate-to-pi` skill is the precedent.
 
 ### 3. Update auto-memory (if cross-conversation facts shifted)
 

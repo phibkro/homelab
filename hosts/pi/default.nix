@@ -8,14 +8,14 @@
 }:
 
 {
-  # nori-pi is a Raspberry Pi 4 (8 GiB) appliance — DNS adblock,
-  # observability redundancy (Gatus + ntfy probing nori-station so
+  # pi is a Raspberry Pi 4 (8 GiB) appliance — DNS adblock,
+  # observability redundancy (Gatus + ntfy probing workstation so
   # alerts still fire when station's down), Tailscale subnet
   # router + opt-in exit node, and eventually the local restic
   # backup target for fast restores.
   #
   # Per the "flat imports" decision (CLAUDE.md), this host does NOT
-  # import modules/server/default.nix (the nori-station bundle).
+  # import modules/server/default.nix (the workstation bundle).
   # Pi-specific service modules will be added file-by-file once they're
   # refactored to be role-parametric.
   imports = [
@@ -23,7 +23,7 @@
 
     # The aarch64 sd-image installer module gives us
     # `system.build.sdImage` so we can build a flashable .img on
-    # nori-station via aarch64 binfmt and dd it to the FIT, instead
+    # workstation via aarch64 binfmt and dd it to the FIT, instead
     # of running an interactive installer.
     "${modulesPath}/installer/sd-card/sd-image-aarch64.nix"
 
@@ -61,7 +61,7 @@
   # gotcha: services.tailscale.authKeyFile via sops-nix is the
   # eventual path; for now: `sudo tailscale up --ssh
   # --advertise-routes=192.168.1.0/24 --advertise-exit-node
-  # --hostname=nori-pi`).
+  # --hostname=pi`).
   services.tailscale.useRoutingFeatures = lib.mkForce "server";
 
   # Required for any tailscale node advertising routes.
@@ -83,7 +83,7 @@
   # silent. Acceptable for an appliance-class Pi.
   #
   # Without this: build kernel locally (~60 min via aarch64 binfmt
-  # emulation on nori-station). With this: garnix cache hit, build
+  # emulation on workstation). With this: garnix cache hit, build
   # finishes in ~15 min total.
   boot.initrd.allowMissingModules = true;
 
@@ -97,14 +97,14 @@
 
   # ── Blocky: forwarder mode ───────────────────────────────────────
   # Pi serves DNS + ad blocking to LAN clients. *.nori.lan queries
-  # get conditional-forwarded to nori-station's Blocky (which has
+  # get conditional-forwarded to workstation's Blocky (which has
   # the actual map auto-generated from nori.lanRoutes). This means
   # adding a new service on station doesn't require any Pi-side
   # change — Pi just delegates the suffix.
   nori.blocky.role = "forwarder";
 
   # ── Gatus: mutual-observability probes ───────────────────────────
-  # Pi runs its own Gatus instance probing nori-station's services.
+  # Pi runs its own Gatus instance probing workstation's services.
   # Alerts go directly to ntfy.sh (not via station's local ntfy),
   # so the alert path survives station-down events. This is the load-
   # bearing piece — when station's Gatus hangs (the 2026-04-28

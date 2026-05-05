@@ -4,7 +4,7 @@ Lessons learned the hard way during Phase 5. Read before doing anything that tou
 
 ## NVMe `/dev` enumeration is unstable
 
-Same physical drive can appear at different `/dev/nvmeNn1` paths between boots. On nori-station: at install time the WD Black SN750 was `/dev/nvme0n1` and the Corsair Force MP510 (Windows) was `/dev/nvme1n1`. After the first reboot they swapped — SN750 is now `nvme1n1`, MP510 is now `nvme0n1`.
+Same physical drive can appear at different `/dev/nvmeNn1` paths between boots. On workstation: at install time the WD Black SN750 was `/dev/nvme0n1` and the Corsair Force MP510 (Windows) was `/dev/nvme1n1`. After the first reboot they swapped — SN750 is now `nvme1n1`, MP510 is now `nvme0n1`.
 
 **Implication**: never reference `/dev/nvmeN` directly in disko configs or destructive commands. Use `/dev/disk/by-id/<model>-<serial>` paths. They follow the hardware. The disko configs in this repo are by-id-pinned for this reason — a re-run with the original `/dev/nvme0n1` config today would wipe Windows.
 
@@ -94,7 +94,7 @@ For Mac→host rsync, stick to BSD-supported subset: `-aH --no-owner --no-group 
 
 ## Blocky needs `bootstrapDns` when serving its own host
 
-If nori-station's `/etc/resolv.conf` points at Tailscale's stub (`100.100.100.100`) AND Tailscale's global nameserver is set to nori-station's Blocky (via admin DNS push), there's a self-loop on Blocky restart: Blocky needs DNS to download blocklists, but its own DNS isn't serving yet.
+If workstation's `/etc/resolv.conf` points at Tailscale's stub (`100.100.100.100`) AND Tailscale's global nameserver is set to workstation's Blocky (via admin DNS push), there's a self-loop on Blocky restart: Blocky needs DNS to download blocklists, but its own DNS isn't serving yet.
 
 Fix: configure `services.blocky.settings.bootstrapDns` with direct upstream IPs. Used only for Blocky's own outbound URL resolution, bypasses `/etc/resolv.conf`.
 
@@ -119,8 +119,8 @@ The Blocky module's design notes already flag the broader case: "LAN-only device
 IP address:    192.168.1.<free>     # outside the Genexis DHCP pool
 Subnet mask:   255.255.255.0
 Gateway:       192.168.1.1          # Genexis EG400 default
-DNS 1:         192.168.1.225        # nori-pi (Blocky in forwarder mode)
-DNS 2:         192.168.1.181        # nori-station (Blocky self-hosted; fallback)
+DNS 1:         192.168.1.225        # pi (Blocky in forwarder mode)
+DNS 2:         192.168.1.181        # workstation (Blocky self-hosted; fallback)
 ```
 
 Setting only "static DNS" without the rest of the config isn't an option in Google Home; the UI forces full IP config. Pick a static IP outside Genexis's DHCP range to avoid lease collisions.
@@ -318,12 +318,12 @@ Symptom keyword for grep: `context deadline exceeded (Client.Timeout exceeded wh
 
 ## Tailscale SSH browser-auth wedges cross-host automation
 
-`tailscale ssh nori@nori-pi.saola-matrix.ts.net` (or any SSH to a tailnet IP when Tailscale SSH is enabled on the destination) periodically requires a browser auth check — `Tailscale SSH requires an additional check. To authenticate, visit: https://login.tailscale.com/a/...`. Non-interactive shells (justfile recipes, automation scripts) hang silently waiting for the browser flow.
+`tailscale ssh nori@pi.saola-matrix.ts.net` (or any SSH to a tailnet IP when Tailscale SSH is enabled on the destination) periodically requires a browser auth check — `Tailscale SSH requires an additional check. To authenticate, visit: https://login.tailscale.com/a/...`. Non-interactive shells (justfile recipes, automation scripts) hang silently waiting for the browser flow.
 
 Workarounds, in order of preference:
 
 1. **Add station's pubkey to Pi's `authorized_keys` via `users.users.nori.openssh.authorizedKeys.keys`** in `modules/common/users.nix`. Cross-host automation then uses regular OpenSSH auth (LAN IP path), bypassing tailscale-SSH entirely. Bootstrap chicken-and-egg: needs SSH to deploy, so initially copy the key manually or run from a host that already has working SSH.
 2. **Re-auth interactively** via the URL in the wedge message — keeps Tailscale-SSH working but the next expiry hits again.
-3. **Drive cross-host work from Mac** — Mac's pubkey is already in Pi's authorized_keys, so `just remote nori-pi rebuild` from there works.
+3. **Drive cross-host work from Mac** — Mac's pubkey is already in Pi's authorized_keys, so `just remote pi rebuild` from there works.
 
 Diagnostic: `ps -ef | grep ssh` shows the stuck SSH process; output file from `run_in_background` is empty.

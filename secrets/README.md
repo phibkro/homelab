@@ -120,7 +120,7 @@ accidental copy-paste.
 If the Mac dies and you don't have the age private key backed up
 elsewhere (1Password / hardware token / second machine), you can still
 recover via any *other* enrolled recipient — e.g., decrypt on
-nori-station with its SSH host key, edit, and re-encrypt to a fresh
+workstation with its SSH host key, edit, and re-encrypt to a fresh
 Mac age key. Or: re-create the secret values entirely (most are
 recoverable from the upstream service: regenerate restic password,
 re-issue tokens, etc.).

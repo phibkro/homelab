@@ -11,7 +11,7 @@
     # AMD Ryzen 5600X (Zen 3) tweaks and general SSD profile.
     # common-cpu-amd-pstate intentionally omitted for first install — it
     # tweaks scaling driver options and isn't required for boot. Add
-    # later once nori-station is up and we want the tuning.
+    # later once workstation is up and we want the tuning.
     inputs.nixos-hardware.nixosModules.common-cpu-amd
     inputs.nixos-hardware.nixosModules.common-pc-ssd
   ];
@@ -69,7 +69,7 @@
     "/dev/nvidia-uvm"
   ];
 
-  # Build aarch64 closures locally for nori-pi via binfmt emulation.
+  # Build aarch64 closures locally for pi via binfmt emulation.
   # Cheaper than cross-compilation; closer to native build correctness.
   boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
 

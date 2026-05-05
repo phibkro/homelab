@@ -20,11 +20,11 @@
   # to any one service module.
   #
   # Repository: /mnt/backup is the OneTouch ext4 mount (formatted via
-  # hosts/nori-station/disko-onetouch.nix). USB-attached spinning HDD
-  # on nori-station — different physical drive from the IronWolf data
+  # hosts/workstation/disko-onetouch.nix). USB-attached spinning HDD
+  # on workstation — different physical drive from the IronWolf data
   # disk and the SN750 root disk, but same chassis / same PSU / same
   # USB hub. Failure-domain independence is partial: protects against
-  # single-drive failure, not whole-machine loss. nori-pi (local fast
+  # single-drive failure, not whole-machine loss. pi (local fast
   # restore, when the SSD lands) and Hetzner Storage Box (off-site,
   # reactive) remain on the roadmap as additional repos.
 

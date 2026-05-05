@@ -99,14 +99,14 @@ in
                   units = "metric";
                   hour-format = "24h";
                 }
-                # Built-in host stats (CPU / RAM / disk) for nori-station
+                # Built-in host stats (CPU / RAM / disk) for workstation
                 # itself — no external deps, complements Beszel.
                 {
                   type = "server-stats";
                   servers = [
                     {
                       type = "local";
-                      name = "nori-station";
+                      name = "workstation";
                     }
                   ];
                 }

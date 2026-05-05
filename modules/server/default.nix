@@ -21,8 +21,8 @@
 # coupling, not categorization.
 #
 # Every server host today imports this whole concern as one block
-# (only nori-station serves at the moment). When a second server
-# arrives that runs a subset (e.g. nori-pi → DNS + restic-target,
+# (only workstation serves at the moment). When a second server
+# arrives that runs a subset (e.g. pi → DNS + restic-target,
 # no Immich/*arr/Vaultwarden), this file gets refactored into
 # sub-concerns the host can pick from. Defer until the second host
 # actually exists.

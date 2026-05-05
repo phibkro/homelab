@@ -45,7 +45,7 @@
     description = ''
       Whether to register the Gatus web UI in nori.lanRoutes (which
       creates a Caddy vhost at status.nori.lan). Set false on hosts
-      that don't run Caddy (nori-pi).
+      that don't run Caddy (pi).
     '';
   };
 

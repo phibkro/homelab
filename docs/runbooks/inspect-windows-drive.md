@@ -7,7 +7,7 @@ read-only access path.
 ## Default state
 
 `/mnt/windows-ro` is a read-only mount of the Windows C: partition,
-declared in `hosts/nori-station/windows-mount.nix`. It comes up at
+declared in `hosts/workstation/windows-mount.nix`. It comes up at
 boot via `fileSystems.<name>` and survives reboots. The kernel
 `ntfs3` driver enforces read-only at the syscall layer — no path
 through this mount can mutate the partition.

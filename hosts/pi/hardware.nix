@@ -6,7 +6,7 @@
 }:
 
 {
-  # aarch64. Required: nori-station builds Pi closures via aarch64
+  # aarch64. Required: workstation builds Pi closures via aarch64
   # binfmt emulation (boot.binfmt.emulatedSystems = [ "aarch64-linux" ]
   # in modules/common/base.nix or similar — needs adding when station
   # starts building Pi closures regularly).

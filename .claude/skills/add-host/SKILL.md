@@ -50,14 +50,14 @@ Required minimum:
   nixpkgs.hostPlatform = "x86_64-linux";  # or "aarch64-linux"
 
   # Host-specific stuff — disks via disko, kernel modules, hardware-specific sysctl.
-  # Workhorse-class x86: import disko + ../hardware/nori-station/disko.nix shape
+  # Workhorse-class x86: import disko + ../hardware/workstation/disko.nix shape
   # Pi-class aarch64: import nixos-hardware.nixosModules.raspberry-pi-4 + the sd-image-aarch64 module
 }
 ```
 
 GPU host? Set `nori.gpu.nvidiaDevices = [ "/dev/nvidia0" "/dev/nvidiactl" "/dev/nvidia-uvm" ]` here.
 
-Anti-write storage host (USB flash, SD card)? See `hosts/nori-pi/hardware.nix` — `swapDevices = []`, `journald.Storage=volatile`, `vm.mmap_rnd_bits` aarch64 fixup if applicable.
+Anti-write storage host (USB flash, SD card)? See `hosts/pi/hardware.nix` — `swapDevices = []`, `journald.Storage=volatile`, `vm.mmap_rnd_bits` aarch64 fixup if applicable.
 
 ### 4. Write default.nix
 

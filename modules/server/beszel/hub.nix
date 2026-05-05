@@ -7,7 +7,7 @@
 
 {
   # beszel-hub — central PocketBase + UI that pulls metrics from
-  # agents over tailnet. Lives on the appliance host (nori-pi) so the
+  # agents over tailnet. Lives on the appliance host (pi) so the
   # hub survives station outages: when station hangs, the hub keeps
   # recording its metrics up to the last poll, useful for post-incident
   # forensics ("what was CPU/mem doing right before the freeze?").
@@ -38,7 +38,7 @@
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8090 ];
 
   # Pi's storage posture is anti-write (no swap, volatile journald —
-  # see hosts/nori-pi/hardware.nix); daily restic snapshots to the
+  # see hosts/pi/hardware.nix); daily restic snapshots to the
   # SD/FIT contradict that. The data itself is metrics — non-load-
   # bearing. Gatus alerts come independently via ntfy.sh; rebuilding
   # the hub from zero loses recent metrics history, that's it.

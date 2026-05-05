@@ -6,7 +6,7 @@
 #        mkdir -p ~/.config/sops/age && chmod 700 ~/.config/sops/age
 #        age-keygen -o ~/.config/sops/age/keys.txt && chmod 600 ~/.config/sops/age/keys.txt
 #        # Copy the line that starts with `# public key: age1...`
-#   2. Get nori-station's age public key:
+#   2. Get workstation's age public key:
 #        ssh-keyscan -t ed25519 192.168.1.181 | ssh-to-age
 #   3. Replace the two `<...>` placeholders below with the real values.
 #   4. Initialize the secrets file:
@@ -15,7 +15,7 @@
 #      save & quit; sops encrypts on save)
 #   5. Commit `.sops.yaml` and `secrets/secrets.yaml` (encrypted form).
 #
-# Adding a new host later (e.g. nori-pi):
+# Adding a new host later (e.g. pi):
 #   - Get its age pubkey via ssh-to-age, add to `keys:` block, add to
 #     the creation_rules anchor list.
 #   - Run `sops updatekeys secrets/secrets.yaml` to re-encrypt to the
@@ -24,13 +24,13 @@
 
 keys:
   - &mac age1nxq07zper943wz4eredgt82e5jghx7d0sfldzqngn2kfdnwyhuhsl3h0r4
-  - &nori_station age1d893pv2w42vtharqse3e3yd7rpc8nst7mlw2csssy7e9ql3lcd2q7vw4s0
-  - &nori_pi age108jlf67tj7tcdmlrg8h0wpdyvg24pud3k7u4nfa4zyz9meqml5sskcdncr
+  - &workstation age1d893pv2w42vtharqse3e3yd7rpc8nst7mlw2csssy7e9ql3lcd2q7vw4s0
+  - &pi age108jlf67tj7tcdmlrg8h0wpdyvg24pud3k7u4nfa4zyz9meqml5sskcdncr
 
 creation_rules:
   - path_regex: secrets/.*\.yaml$
     key_groups:
       - age:
           - *mac
-          - *nori_station
-          - *nori_pi
+          - *workstation
+          - *pi

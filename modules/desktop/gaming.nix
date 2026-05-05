@@ -6,9 +6,9 @@
 }:
 
 {
-  # Gaming-related programs + system tweaks for nori-station's desktop
+  # Gaming-related programs + system tweaks for workstation's desktop
   # session. Lives in modules/desktop/ because each is meaningless on a
-  # headless host — nori-pi never wants Steam.
+  # headless host — pi never wants Steam.
   #
   # Components:
   #   programs.steam            Steam runtime, udev rules for

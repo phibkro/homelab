@@ -13,12 +13,12 @@ in
   #
   # Two roles per `nori.blocky.role`:
   #   * self-hosted: full resolver + auto-generated *.nori.lan map
-  #     from nori.lanRoutes (the nori-station case). Customers query
+  #     from nori.lanRoutes (the workstation case). Customers query
   #     this Blocky for everything: ads filtered, *.nori.lan resolved
   #     locally, everything else upstreamed.
   #   * forwarder:   ads filtered + non-nori.lan resolved upstream;
-  #     *.nori.lan queries conditionally forwarded to nori-station's
-  #     Blocky (nori-pi case). Pi doesn't need to know what services
+  #     *.nori.lan queries conditionally forwarded to workstation's
+  #     Blocky (pi case). Pi doesn't need to know what services
   #     exist on station; it just delegates the suffix.
   #
   # Tailscale DNS push order (set in admin console): primary = whichever
@@ -47,7 +47,7 @@ in
         the service modules (i.e. the host the services run on).
       * `forwarder` — conditionally forwards *.nori.lan queries to
         the host that runs the services (nori.lanIp). Use on
-        observability-only hosts (nori-pi) so they don't have to
+        observability-only hosts (pi) so they don't have to
         know what services exist on the server.
     '';
   };

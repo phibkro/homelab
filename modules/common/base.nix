@@ -28,7 +28,7 @@
       #
       # Confirmed coverage 2026-04-28: garnix had the linux-rpi
       # kernel cached when cache.nixos.org didn't, which would have
-      # saved 60-90 min of qemu-emulated compile during nori-pi
+      # saved 60-90 min of qemu-emulated compile during pi
       # sd-image build had it been configured beforehand. Adding
       # so future Pi rebuilds, kernel bumps, etc don't re-pay that
       # cost.
@@ -85,9 +85,9 @@
   # diff display, internal sudo elevation (don't prefix nh with sudo),
   # and built-in `--target-host` support for SSH-based remote
   # deployment. Replaces the rsync-then-nixos-rebuild dance with:
-  #   nh os switch /tmp/nix-migration -H nori-station            # local
-  #   nh os switch github:phibkro/homelab -H nori-station        # git
-  #   nh os switch . -H nori-station --target-host <ip>          # remote
+  #   nh os switch /tmp/nix-migration -H workstation            # local
+  #   nh os switch github:phibkro/homelab -H workstation        # git
+  #   nh os switch . -H workstation --target-host <ip>          # remote
   programs.nh.enable = true;
 
   # nix-ld — runtime loader shim for non-NixOS-built Linux binaries.

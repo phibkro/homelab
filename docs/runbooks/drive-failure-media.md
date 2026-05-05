@@ -29,7 +29,7 @@ Power down. Swap in a new ≥4 TB drive (or stop being USB-attached and migrate 
 ls /dev/disk/by-id/
 ```
 
-Find the new drive (by model + serial). Update `hosts/nori-station/disko-media.nix` if the by-id changed.
+Find the new drive (by model + serial). Update `hosts/workstation/disko-media.nix` if the by-id changed.
 
 ### 3. Run disko on the new drive
 
@@ -37,7 +37,7 @@ Find the new drive (by model + serial). Update `hosts/nori-station/disko-media.n
 cd /tmp/nix-migration   # or wherever the flake is
 sudo nix --extra-experimental-features 'nix-command flakes' \
   run github:nix-community/disko/latest -- \
-  --mode disko hosts/nori-station/disko-media.nix
+  --mode disko hosts/workstation/disko-media.nix
 ```
 
 Wipes + creates the btrfs filesystem with all six subvolumes (@streaming, @photos, @home-videos, @projects, @archive, @snapshots).

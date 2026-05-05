@@ -6,7 +6,7 @@ _: {
   #
   # No PCIe passthrough (VFIO) setup here — separate decision tied to
   # a concrete use case. The MP510 read-only mount in
-  # ../../hosts/nori-station/windows-mount.nix covers the only
+  # ../../hosts/workstation/windows-mount.nix covers the only
   # currently-pulling Windows-data workflow.
 
   virtualisation.libvirtd = {

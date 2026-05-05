@@ -1,6 +1,6 @@
 # nori homelab
 
-Single-user NixOS homelab flake. Two live hosts: `nori-station` (workhorse — Caddy, Authelia, all GPU/media/state-heavy services) and `nori-pi` (appliance — observability hub, alert plane, DNS forwarder, tailnet routing).
+Single-user NixOS homelab flake. Two live hosts: `workstation` (workhorse — Caddy, Authelia, all GPU/media/state-heavy services) and `pi` (appliance — observability hub, alert plane, DNS forwarder, tailnet routing).
 
 ## Where to start
 
@@ -13,12 +13,12 @@ Single-user NixOS homelab flake. Two live hosts: `nori-station` (workhorse — C
 
 ## Active services
 
-All HTTP services live behind Caddy at `https://<name>.nori.lan`. Resolution: Blocky returns nori-station's LAN IP (`192.168.1.181`), so LAN clients hit Caddy directly with no tailnet hop. Off-LAN tailnet clients reach the same address via nori-pi's subnet route advertisement (`192.168.1.0/24`); needs `--accept-routes` on the client. DNS is served by nori-pi's Blocky (Tailscale admin console → DNS → custom nameserver = `100.100.71.3`); LAN-only devices need their DNS pointed at nori-pi's LAN IP (`192.168.1.225`). Caddy uses an internal CA — install `modules/server/caddy-local-ca.crt` once per device.
+All HTTP services live behind Caddy at `https://<name>.nori.lan`. Resolution: Blocky returns workstation's LAN IP (`192.168.1.181`), so LAN clients hit Caddy directly with no tailnet hop. Off-LAN tailnet clients reach the same address via pi's subnet route advertisement (`192.168.1.0/24`); needs `--accept-routes` on the client. DNS is served by pi's Blocky (Tailscale admin console → DNS → custom nameserver = `100.100.71.3`); LAN-only devices need their DNS pointed at pi's LAN IP (`192.168.1.225`). Caddy uses an internal CA — install `modules/server/caddy-local-ca.crt` once per device.
 
 The live inventory is the `nori.lanRoutes` attrset in `config`. Static lists drift; query the source of truth instead:
 
 ```bash
-ssh nori@nori-station.saola-matrix.ts.net \
+ssh nori@workstation.saola-matrix.ts.net \
   'nix eval --raw /run/current-system/etc/nixos -A config.nori.lanRoutes --apply builtins.attrNames'
 ```
 
@@ -38,9 +38,9 @@ git config core.hooksPath .githooks
 # Edit on Mac (here), push to GitHub
 git push
 
-# Sync to nori-station and rebuild
+# Sync to workstation and rebuild
 rsync -aH --delete --exclude=.git . nori@192.168.1.181:/tmp/nix-migration/
-ssh nori@192.168.1.181 'cd /tmp/nix-migration && sudo nixos-rebuild switch --flake .#nori-station'
+ssh nori@192.168.1.181 'cd /tmp/nix-migration && sudo nixos-rebuild switch --flake .#workstation'
 
 # Validate before pushing
 nix flake check     # eval + statix + deadnix + format
@@ -68,8 +68,8 @@ The pre-commit hook runs the lot when `.nix` files are staged.
 ```
 flake.nix                    # entry, inputs, host definitions, checks
 hosts/
-  nori-station/              # bare-metal x86_64 workhorse
-  nori-pi/                   # Raspberry Pi 4 aarch64 appliance
+  workstation/              # bare-metal x86_64 workhorse
+  pi/                   # Raspberry Pi 4 aarch64 appliance
   vm-test/                   # UTM dry-run target
 modules/
   common/                    # cross-host baseline (every host)
@@ -89,4 +89,4 @@ CLAUDE.md                    # agent prompting + current state + outstanding ite
 
 ## Phase status
 
-Phases 0–6 done. Phase 7 (tightening + new capabilities) substantively done — backup + FS-hardening + LAN-route abstractions covering every service module with build-time enforcement, type-level constraints with module assertions, DynamicUser symlink trap caught, OIDC auto-gen with zero hash material in committed Nix, Immich CUDA ML + NVENC with resource caps, `nori-pi` brought up as the appliance host with cross-host service split (Beszel hub + ntfy server). Live state + outstanding items in `CLAUDE.md`; canonical phasing rationale in `docs/DESIGN.md`.
+Phases 0–6 done. Phase 7 (tightening + new capabilities) substantively done — backup + FS-hardening + LAN-route abstractions covering every service module with build-time enforcement, type-level constraints with module assertions, DynamicUser symlink trap caught, OIDC auto-gen with zero hash material in committed Nix, Immich CUDA ML + NVENC with resource caps, `pi` brought up as the appliance host with cross-host service split (Beszel hub + ntfy server). Live state + outstanding items in `CLAUDE.md`; canonical phasing rationale in `docs/DESIGN.md`.

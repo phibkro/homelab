@@ -45,7 +45,7 @@
     settings = {
       global = {
         "workgroup" = "WORKGROUP";
-        "server string" = "nori-station";
+        "server string" = "workstation";
         "security" = "user";
         "map to guest" = "Never";
         "guest account" = "nobody";

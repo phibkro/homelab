@@ -9,7 +9,7 @@ let
   secretName = "beszel-agent-key-${config.networking.hostName}";
 in
 {
-  # beszel-agent — per-host metrics collector. Hub on nori-pi pulls
+  # beszel-agent — per-host metrics collector. Hub on pi pulls
   # over tailnet (cross-host: hub-host opens an outbound TCP connection
   # to each agent's port 45876). Stateless from this host's perspective:
   # SSH key from sops, metrics streamed in-memory.
@@ -65,7 +65,7 @@ in
   nori.lanRoutes = lib.mkIf config.services.caddy.enable {
     metrics = {
       port = 8090;
-      host = config.nori.hosts.nori-pi.tailnetIp;
+      host = config.nori.hosts.pi.tailnetIp;
       monitor = { };
       dashboard = {
         title = "Beszel";

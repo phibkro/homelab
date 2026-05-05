@@ -1,9 +1,9 @@
 ---
-description: Migrate a service from nori-station to nori-pi using the cross-host split-module pattern. Daemon module on Pi, client/proxy module on every host that talks to it; cross-host references via the `nori.hosts` registry; lanRoute gated on Caddy presence so Pi's Blocky stays in pure forwarder mode. Established by beszel-hub and ntfy-server migrations.
+description: Migrate a service from workstation to pi using the cross-host split-module pattern. Daemon module on Pi, client/proxy module on every host that talks to it; cross-host references via the `nori.hosts` registry; lanRoute gated on Caddy presence so Pi's Blocky stays in pure forwarder mode. Established by beszel-hub and ntfy-server migrations.
 when_to_use: User wants a service to survive station outages or fits the appliance role (observability, alerting, DNS, network plumbing) — phrases like "move <service> to Pi", "relocate <service>", "Pi should run <service>", "<service> should survive station going down", "appliance-side <service>".
 ---
 
-# Relocate a service to nori-pi
+# Relocate a service to pi
 
 Pattern established by beszel-hub (commit b4499ee) and ntfy-server (commit 9e0b2b6). Use when fate-sharing requires the service to survive station outages — the exception clause is "fate-sharing breaks the function," not "feels lightweight."
 
@@ -67,7 +67,7 @@ Folder = coupling (per CONVENTIONS.md "Module structure"). The `daemon.nix`/`cli
   nori.lanRoutes = lib.mkIf config.services.caddy.enable {
     <short-name> = {
       port = N;
-      host = config.nori.hosts.nori-pi.tailnetIp;  # registry, not literal
+      host = config.nori.hosts.pi.tailnetIp;  # registry, not literal
       monitor = { };
     };
   };
@@ -80,23 +80,23 @@ Folder = coupling (per CONVENTIONS.md "Module structure"). The `daemon.nix`/`cli
 
 The `lib.mkIf config.services.caddy.enable` is load-bearing. Without it, Pi's Blocky would auto-generate a `*.nori.lan` map for the cross-host service, which fights the forwarder-mode design (Pi delegates `*.nori.lan` queries to station's Blocky).
 
-The `host = config.nori.hosts.nori-pi.tailnetIp` is also load-bearing — never use IP literals. The `forbidden-patterns` flake check doesn't currently catch this, but it would be caught at code review and the topology refactor (commit 444423f) was specifically about eliminating IP literals in cross-host refs.
+The `host = config.nori.hosts.pi.tailnetIp` is also load-bearing — never use IP literals. The `forbidden-patterns` flake check doesn't currently catch this, but it would be caught at code review and the topology refactor (commit 444423f) was specifically about eliminating IP literals in cross-host refs.
 
 ### 4. Update host imports
 
 ```nix
-# hosts/nori-station/default.nix → modules/server/default.nix bundle
+# hosts/workstation/default.nix → modules/server/default.nix bundle
 # imports the client side (notify / agent / proxy) automatically.
 # DO NOT import the daemon side — station shouldn't be running it.
 
-# hosts/nori-pi/default.nix
+# hosts/pi/default.nix
 imports = [
   ../../modules/server/<service>/daemon.nix
   ../../modules/server/<service>/client.nix  # Pi runs both — agent talks to its own hub, etc.
 ];
 ```
 
-Update `modules/server/default.nix` (the workhorse bundle) to import only the client side. Update `hosts/nori-pi/default.nix` (flat imports) to import both daemon + client.
+Update `modules/server/default.nix` (the workhorse bundle) to import only the client side. Update `hosts/pi/default.nix` (flat imports) to import both daemon + client.
 
 ### 5. Per-host config that varies
 
@@ -113,7 +113,7 @@ For load-bearing state (auth DB, configuration), copy via:
 ```bash
 # On station, before destroying station's copy:
 sudo systemctl stop <service>
-sudo rsync -aHX /var/lib/<service>/ nori@nori-pi.saola-matrix.ts.net:/tmp/<service>-migration/
+sudo rsync -aHX /var/lib/<service>/ nori@pi.saola-matrix.ts.net:/tmp/<service>-migration/
 
 # On Pi:
 sudo rsync -aHX /tmp/<service>-migration/ /var/lib/<service>/
@@ -127,7 +127,7 @@ sudo systemctl start <service>
 
 ```bash
 # Pi first — daemon is up before station's `services.<service>` config drops out
-just remote nori-pi rebuild
+just remote pi rebuild
 
 # Then station — its modules now omit the daemon side; Caddy starts proxying cross-host
 just rebuild
@@ -142,7 +142,7 @@ Reverse order leaves a window where neither host has the daemon running, which c
 curl -fsS https://<short-name>.nori.lan/v1/health  # or whatever the health endpoint is
 
 # Daemon-side health on Pi
-ssh nori@nori-pi.saola-matrix.ts.net 'systemctl is-active <unit> && journalctl -u <unit> -n 20 --no-pager'
+ssh nori@pi.saola-matrix.ts.net 'systemctl is-active <unit> && journalctl -u <unit> -n 20 --no-pager'
 
 # Cross-host firewall — Caddy on station should reach Pi:N
 nc -z -w 2 100.100.71.3 N && echo OK
@@ -164,7 +164,7 @@ modules/server/<service>/{daemon,client}.nix.
 * daemon.nix on Pi — runs the actual server
 * client.nix everywhere — Caddy lanRoute gated on services.caddy.enable
   so only station registers it; backend reads
-  config.nori.hosts.nori-pi.tailnetIp from the registry
+  config.nori.hosts.pi.tailnetIp from the registry
 
 ── State ──────────────────────────────────────────────────────────
 <empty start vs migrated; rationale>

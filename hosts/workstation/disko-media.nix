@@ -33,12 +33,12 @@ _: {
     };
   };
 
-  # Declarative partition layout for nori-station's IronWolf Pro media drive.
+  # Declarative partition layout for workstation's IronWolf Pro media drive.
   # Phase 2 — applied AFTER the Phase 4 root install. Wipes the existing
   # exfat partition; preserve any irreplaceable data first.
   #
   #   nix run github:nix-community/disko/latest -- \
-  #     --mode disko hosts/nori-station/disko-media.nix
+  #     --mode disko hosts/workstation/disko-media.nix
   #
   # Layout (per docs/DESIGN.md L130–138, plus @archive + @library added):
   #   single GPT partition spanning the disk, btrfs label
@@ -65,7 +65,7 @@ _: {
   #
   # Disk identity is pinned by-id (model + serial) rather than /dev/sda
   # because /dev enumeration is unstable across kernel/BIOS changes —
-  # the same lesson that bit nori-station's NVMe enumeration between
+  # the same lesson that bit workstation's NVMe enumeration between
   # Ubuntu and NixOS. by-id paths follow the hardware.
 
   disko.devices = {

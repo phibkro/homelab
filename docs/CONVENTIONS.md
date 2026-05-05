@@ -410,7 +410,7 @@ Adding an effect: create `modules/effects/<n>.nix`, define the option schema + a
 A typical host file:
 
 ```nix
-# hosts/nori-station/default.nix
+# hosts/workstation/default.nix
 imports = [
   inputs.disko.nixosModules.disko
   ../../modules/common
@@ -421,7 +421,7 @@ imports = [
 ];
 ```
 
-Reading this answers "what kind of machine is `nori-station`?" at a glance. `nori-pi` lives today as `common +` *flat imports of specific server modules* (Blocky, Gatus, Beszel hub+agent, ntfy server+notify) — the bundle import (`../../modules/server`) is too coarse for the appliance role. Future `nori-laptop` will be `common + desktop` (no server services).
+Reading this answers "what kind of machine is `workstation`?" at a glance. `pi` lives today as `common +` *flat imports of specific server modules* (Blocky, Gatus, Beszel hub+agent, ntfy server+notify) — the bundle import (`../../modules/server`) is too coarse for the appliance role. Future `nori-laptop` will be `common + desktop` (no server services).
 
 **Within `modules/server/`, folders signal coupling, not categorization.** Tightly-coupled clusters get their own folder + `default.nix`:
 
@@ -432,9 +432,9 @@ Loose services that just happen to be in the same conceptual area (e.g. Beszel, 
 
 **Adding a service**: see CLAUDE.md's "How to add a new service" for the full procedure. Short version: drop the file in `modules/server/` (loose) or in an existing cluster folder (coupled), append it to the relevant `default.nix`, declare `nori.lanRoutes.<n>` + `nori.backups.<n>`, deploy.
 
-With the second server (nori-pi) live, `modules/server/default.nix` stays as the workhorse bundle (station imports it whole). The appliance picks individual files via flat imports because its service set is small + opinionated. If a third server lands or Pi's import list grows past ~10 files, subdivide into sub-concerns then — not preemptively.
+With the second server (pi) live, `modules/server/default.nix` stays as the workhorse bundle (station imports it whole). The appliance picks individual files via flat imports because its service set is small + opinionated. If a third server lands or Pi's import list grows past ~10 files, subdivide into sub-concerns then — not preemptively.
 
-Cross-host services (services that live on one host but are reverse-proxied or read by another) follow the split-module pattern documented in `CLAUDE.md` "How to relocate a service to nori-pi". Precedents: `modules/server/beszel/{hub,agent}.nix`, `modules/server/ntfy/{server,notify}.nix`.
+Cross-host services (services that live on one host but are reverse-proxied or read by another) follow the split-module pattern documented in `CLAUDE.md` "How to relocate a service to pi". Precedents: `modules/server/beszel/{hub,agent}.nix`, `modules/server/ntfy/{server,notify}.nix`.
 
 ## Dev workflow
 
@@ -453,6 +453,6 @@ just snapshots <repo>         # list restic snapshots
 just --list                   # all recipes
 ```
 
-Default `host` is `nori-station`; pass `nori-laptop` (etc.) to deploy elsewhere when those hosts land. SSH targets via Tailnet MagicDNS (`<host>.saola-matrix.ts.net`).
+Default `host` is `workstation`; pass `nori-laptop` (etc.) to deploy elsewhere when those hosts land. SSH targets via Tailnet MagicDNS (`<host>.saola-matrix.ts.net`).
 
 `nh os switch` is the rebuild engine — replaces `nixos-rebuild`. Internal sudo (don't prefix with `sudo`); shows ADDED/REMOVED/CHANGED package diff before activating.

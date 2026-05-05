@@ -5,10 +5,10 @@
 # them from. Cross-host execution composes via the `remote` recipe:
 #
 #   just rebuild                       # build the host you're sitting on
-#   just remote nori-station rebuild   # rsync working tree to nori-station
+#   just remote workstation rebuild   # rsync working tree to workstation
 #                                      # + run `just rebuild` there
-#   just remote nori-station status    # ssh + run `just status` there
-#   just remote nori-station logs sshd # forwarded args work
+#   just remote workstation status    # ssh + run `just status` there
+#   just remote workstation logs sshd # forwarded args work
 #
 # Implications:
 #   - On macOS / Mac dev box: most recipes don't make sense locally
@@ -19,7 +19,7 @@
 # Install: `brew install just` on macOS; `pkgs.just` (already in
 # common/base.nix systemPackages) on NixOS hosts.
 
-default_host := "nori-station"
+default_host := "workstation"
 user         := "nori"
 remote_path  := "/tmp/nix-migration"
 tailnet      := "saola-matrix.ts.net"
@@ -89,7 +89,7 @@ default: rebuild
 # uniqueness assertion in modules/effects/lan-route.nix doesn't bite, and
 # avoids the cascade-rebind dance when an upstream module's default
 # happens to collide. Eval-only; safe to run from any cloned tree.
-# Defaults to nori-station because that's where lanRoutes are declared
+# Defaults to workstation because that's where lanRoutes are declared
 # (Pi's lanRoutes are gated on Caddy presence and so always empty).
 @ports host=default_host:
     nix --extra-experimental-features "nix-command flakes" eval --raw \
