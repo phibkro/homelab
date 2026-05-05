@@ -131,6 +131,17 @@ in
       # explicit confirmation in source.
       bunx prisma db push --skip-generate --accept-data-loss
 
+      # Run seed if the project has one wired (prisma.seed in
+      # package.json + a seed script). No-op if not configured —
+      # `prisma db seed` errors with "No seed command provided"
+      # which we swallow. Idempotency is the seed script's
+      # responsibility (check-existing-then-skip pattern).
+      if grep -q '"seed"' package.json 2>/dev/null; then
+        bunx prisma db seed || echo "[finnbydel-build] seed step failed; continuing"
+      else
+        echo "[finnbydel-build] no prisma.seed config in package.json — skipping seed"
+      fi
+
       # Next.js production build → .next/
       bun run build
 
