@@ -31,6 +31,17 @@
     openFirewall = false;
   };
 
+  # Servarr config.xml settings overridden via env vars (double-
+  # underscore-prefixed keys take precedence over existing values
+  # in config.xml at startup; see Servarr post-install-configuration
+  # docs). Forces auth-disabled-for-localhost so Caddy's forward-auth
+  # is the only gate for browser access; SSH-tunnel-direct still
+  # requires the Forms login as a defense-in-depth fallback.
+  systemd.services.sonarr.environment = {
+    SONARR__AUTH__METHOD = "Forms";
+    SONARR__AUTH__REQUIRED = "DisabledForLocalAddresses";
+  };
+
   # Hardlink target paths share `media` group with qBittorrent + Radarr +
   # Bazarr. Without group membership, post-download imports fail with
   # "permission denied".

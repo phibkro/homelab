@@ -38,6 +38,12 @@
     openFirewall = false;
   };
 
+  # See sonarr.nix header comment for the rationale.
+  systemd.services.lidarr.environment = {
+    LIDARR__AUTH__METHOD = "Forms";
+    LIDARR__AUTH__REQUIRED = "DisabledForLocalAddresses";
+  };
+
   users.users.lidarr.extraGroups = [ "media" ];
 
   nori.harden.lidarr.binds = [ config.nori.fs.streaming.path ];

@@ -16,18 +16,22 @@
   # an explicit firewall rule). Outgoing peer connections still work.
   #
   # First-run setup (one-shot, after rebuild):
-  #   1. Visit https://downloads.nori.lan
-  #   2. Login with default creds (printed in journalctl on first start;
-  #      check `journalctl -u qbittorrent -g "WebUI password"`)
-  #   3. Tools → Options:
+  #   1. Visit https://downloads.nori.lan — Caddy forward-auth gates
+  #      browser access via Authelia; qBittorrent's own login is
+  #      bypassed for localhost (the Caddy hop) per the preStart below.
+  #   2. Tools → Options:
   #        Downloads → Default save path:
   #          /mnt/media/streaming/.downloads/complete
   #        Downloads → Keep incomplete torrents in:
   #          /mnt/media/streaming/.downloads/incomplete
-  #        Web UI → Authentication: change default password
   #        Connection → Listening port: 29170 (or whatever the module sets)
-  #   4. Generate an API key under Web UI → Authentication for use by
-  #      Sonarr/Radarr to drive downloads programmatically.
+  #   3. Sonarr/Radarr/Lidarr point their qBittorrent download-client
+  #      config at http://localhost:8083 — username/password fields can
+  #      be left blank since localhost connections skip qBittorrent's
+  #      auth entirely (LocalHostAuth=false in the preStart). The
+  #      qBittorrent WebUI password (printed once in journalctl on
+  #      first start) only gates non-localhost access — defense-in-depth
+  #      for SSH-tunnel-to-backend recovery scenarios.
   services.qbittorrent = {
     enable = true;
     webuiPort = 8083;
@@ -35,6 +39,54 @@
     group = "qbittorrent";
     openFirewall = false;
   };
+
+  # qBittorrent doesn't accept env-var config like Servarr does — its
+  # state lives in qBittorrent.conf (Qt INI format). preStart edits a
+  # handful of WebUI keys idempotently before the daemon reads them.
+  # Python's configparser handles the backslash-in-key pattern
+  # qBittorrent uses (`WebUI\LocalHostAuth`) cleanly; sed-based
+  # alternatives need ugly escaping.
+  #
+  # Settings applied:
+  #   LocalHostAuth=false     localhost connections (Caddy proxy on
+  #                           workstation) skip the qBittorrent login.
+  #                           Forward-auth at Caddy is the user gate.
+  #   HostHeaderValidation=false  accept Host: downloads.nori.lan from
+  #                                Caddy without complaint
+  #   CSRFProtection=false    works fine through Caddy reverse proxy
+  #   BanDuration=0           don't lock the IP after failed logins —
+  #                           prevents the "you're banned" lockout when
+  #                           debugging or rapidly re-auth'ing
+  #   MaxAuthenticationFailCount=99999  same as above, defense in
+  #                                      depth
+  systemd.services.qbittorrent.preStart = lib.mkAfter ''
+    ${pkgs.python3}/bin/python3 ${pkgs.writeText "qbt-configure.py" ''
+      import configparser, glob, sys
+      candidates = glob.glob('/var/lib/qBittorrent/**/qBittorrent.conf', recursive=True)
+      if not candidates:
+          print('qbt-configure: qBittorrent.conf not yet present (first start) — skipping', file=sys.stderr)
+          sys.exit(0)
+      conf = candidates[0]
+      cp = configparser.ConfigParser()
+      cp.optionxform = str  # preserve case + backslash in keys
+      cp.read(conf)
+      if 'Preferences' not in cp:
+          cp.add_section('Preferences')
+      prefs = {
+          r'WebUI\LocalHostAuth': 'false',
+          r'WebUI\HostHeaderValidation': 'false',
+          r'WebUI\CSRFProtection': 'false',
+          r'WebUI\BanDuration': '0',
+          r'WebUI\MaxAuthenticationFailCount': '99999',
+      }
+      for k, v in prefs.items():
+          cp['Preferences'][k] = v
+      with open(conf, 'w') as f:
+          # Qt INI uses `key=value` with no spaces; configparser default is
+          # `key = value`. space_around_delimiters=False matches Qt's format.
+          cp.write(f, space_around_delimiters=False)
+    ''}
+  '';
 
   # Group membership — `media` is the cross-service shared group on the
   # streaming subvolume. Every *arr + the download client are members so

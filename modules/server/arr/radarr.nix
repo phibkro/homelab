@@ -29,6 +29,12 @@
     openFirewall = false;
   };
 
+  # See sonarr.nix header comment for the rationale.
+  systemd.services.radarr.environment = {
+    RADARR__AUTH__METHOD = "Forms";
+    RADARR__AUTH__REQUIRED = "DisabledForLocalAddresses";
+  };
+
   users.users.radarr.extraGroups = [ "media" ];
 
   nori.harden.radarr.binds = [ config.nori.fs.streaming.path ];

@@ -28,6 +28,12 @@
     openFirewall = false;
   };
 
+  # See sonarr.nix header comment for the rationale.
+  systemd.services.prowlarr.environment = {
+    PROWLARR__AUTH__METHOD = "Forms";
+    PROWLARR__AUTH__REQUIRED = "DisabledForLocalAddresses";
+  };
+
   # Note: the prowlarr module runs the service as the `prowlarr` user
   # but doesn't accept user/group options to add to extra groups
   # (see /run/current-system/sw/share/nixos/modules — module hardcodes
