@@ -6,8 +6,15 @@
 }:
 
 # filmder — TMDB-backed movie browser. Operator's old NTNU project
-# (uni group work, 2023). Static Vite + React build, public via
-# Tailscale Funnel.
+# (uni group work, 2023). Static Vite + React build; tailnet-only
+# access at https://filmder.nori.lan via Caddy.
+#
+# Internet-public exposure was prototyped via Tailscale Funnel (filmder
+# Phase A1) and reverted — the portfolio isn't ready to receive public
+# traffic yet, and the LAN-only shape keeps tailnet-IS-the-perimeter
+# uncomplicated. To re-enable public exposure later, see
+# `memory/reference/tailscale_funnel_implementation.md` for the
+# `nori.funnelRoutes` effect to recreate (~30 lines, well-understood).
 #
 # ── Build/deploy shape ─────────────────────────────────────────────
 # Build is an *activation-time systemd oneshot* rather than a Nix
@@ -15,29 +22,27 @@
 # by Vite and embedded into the JS bundle (`import.meta.env.VITE_*`).
 # Nix's hermetic build sandbox can't read /run/secrets/X, so the
 # clean `nix build → /nix/store/<hash>-filmder` path doesn't apply
-# here. Activation-time build with the secret read via systemd
-# `EnvironmentFile`-equivalent (just `cat /run/secrets/...` in the
-# script) is the pragmatic compromise.
-#
-# That said: the TMDB read token in the deployed JS bundle is
-# *publicly visible* — anyone who view-sources the page can scrape
-# it. Sops here gives git hygiene + rotation ergonomics, not
-# deployed-secrecy. Real secrecy would require a server-side proxy
-# that holds the token (significant filmder refactor).
+# here. Activation-time build with the secret read directly in the
+# script is the pragmatic compromise.
 #
 # ── Trigger ──────────────────────────────────────────────────────
 # `filmder-build.service` is a oneshot but NOT in `wantedBy` — every
-# nixos-rebuild would otherwise re-run npm-install + vite-build
-# (~40-60s), which is wasteful on no-op rebuilds. Operator triggers
-# it explicitly via `just deploy-app filmder` (which calls
-# `systemctl start filmder-build.service`). The funnel exposure
-# (`tailscale-funnel-config.service` from nori.funnelRoutes) starts
-# at boot regardless; before first build, it serves 404 until the
-# operator runs the deploy script once.
+# nixos-rebuild would otherwise re-run install + build (~10s with bun,
+# previously ~40-60s with npm), wasteful on no-op rebuilds. Operator
+# triggers via `just deploy-app filmder`. The serve unit
+# (`filmder-serve.service`) auto-starts; before first build it serves
+# 404s until the operator runs the deploy script once.
+#
+# ── Tooling: bun, not npm ────────────────────────────────────────
+# Drop-in replacement for `npm ci && npm run build`. Bonus side-effect:
+# bun handles native-module postinstall internally (no shelling to
+# `sh`), so the `bash`-on-systemd-path workaround that npm needed
+# (@swc/core spawns `sh` for platform detection) goes away.
 
 let
   inherit (config.sops) secrets;
   filmderRepo = "https://github.com/phibkro/filmder.git";
+  servePort = 9092;
 in
 {
   sops.secrets.tmdb-token = {
@@ -59,14 +64,9 @@ in
     after = [ "network-online.target" ];
     wants = [ "network-online.target" ];
 
-    # Tooling on PATH for the script. nodejs ships bundled npm.
-    # `bash` is required by some npm postinstall scripts (notably
-    # @swc/core, which spawns `sh` to run platform-detection logic).
-    # Without it, `npm ci` fails with `spawn sh ENOENT`.
     path = with pkgs; [
-      bash
       git
-      nodejs_22
+      bun
     ];
 
     serviceConfig = {
@@ -96,9 +96,10 @@ in
       cd src
 
       # 2. Skip rebuild if dist already matches the current commit.
-      #    Avoids re-running npm-install + vite-build on idempotent
-      #    rebuilds (operator can force a fresh build by running
-      #    `just deploy-app filmder` after a `git push`).
+      #    Force a fresh build via:
+      #      sudo rm /var/lib/filmder/.last-built-commit && just deploy-app filmder
+      #    Or just push a new commit to filmder's repo (HEAD bump
+      #    invalidates the sentinel).
       CURRENT_COMMIT=$(git rev-parse HEAD)
       SENTINEL="$STATE_DIRECTORY/.last-built-commit"
       if [ -f "$SENTINEL" ] && [ "$(cat "$SENTINEL")" = "$CURRENT_COMMIT" ] && [ -d "$STATE_DIRECTORY/dist" ]; then
@@ -115,17 +116,11 @@ in
       #    convention-free in sops.
       export VITE_API_READ_ACCESS_TOKEN="Bearer $(cat ${secrets.tmdb-token.path})"
 
-      # 4. Path-mount under /filmder/ on the funnel host. Vite reads
-      #    PUBLIC_BASE in vite.config.ts → all asset URLs become
-      #    /filmder/assets/...; without it the bundle 404s under a
-      #    sub-path mount.
-      export PUBLIC_BASE=/filmder/
+      # 4. Build with bun (~10s end-to-end on this hardware).
+      bun install
+      bun run build
 
-      # 5. Build.
-      npm ci
-      npm run build
-
-      # 6. Atomic publish: write to staging, swap, clean up.
+      # 5. Atomic publish: write to staging, swap, clean up.
       rm -rf "$STATE_DIRECTORY/dist.new"
       cp -r dist "$STATE_DIRECTORY/dist.new"
       if [ -d "$STATE_DIRECTORY/dist" ]; then
@@ -134,25 +129,58 @@ in
       mv "$STATE_DIRECTORY/dist.new" "$STATE_DIRECTORY/dist"
       rm -rf "$STATE_DIRECTORY/dist.old"
 
-      # 7. Record the built commit.
+      # 6. Record the built commit.
       echo "$CURRENT_COMMIT" > "$SENTINEL"
     '';
   };
 
-  # Funnel exposure — Tailscale serves /var/lib/filmder/dist/ at
-  # https://workstation.saola-matrix.ts.net/filmder/. Public to the
-  # internet; no auth gate (portfolio site, intentional).
-  nori.funnelRoutes.filmder = {
-    path = "/filmder/";
-    target = "/var/lib/filmder/dist";
+  # Static-file server fronting /var/lib/filmder/dist on a local port.
+  # Caddy reverse-proxies `https://filmder.nori.lan` → here.
+  # darkhttpd: tiny single-process C webserver, perfect for this
+  # role (no config files, sane MIME types, ~40KB binary).
+  systemd.services.filmder-serve = {
+    description = "Serve filmder static files for Caddy reverse-proxy";
+    after = [ "filmder-build.service" ];
+    wantedBy = [ "multi-user.target" ];
+
+    serviceConfig = {
+      Type = "simple";
+      User = "filmder";
+      Group = "filmder";
+      ExecStart = lib.concatStringsSep " " [
+        "${pkgs.darkhttpd}/bin/darkhttpd"
+        "/var/lib/filmder/dist"
+        "--addr 127.0.0.1"
+        "--port ${toString servePort}"
+        "--no-listing"
+      ];
+      Restart = "on-failure";
+      RestartSec = 5;
+    };
   };
 
-  # FS hardening — tighten both build + (any future serve) units.
-  # Build unit is the only one with persistent FS access; the funnel
-  # composer's tailscale-funnel-config is oneshot-only, no hardening
-  # needed since it just exec's tailscale CLI.
+  # Tailnet exposure — `filmder.nori.lan` via Caddy reverse-proxy.
+  # `audience = "public"` here means tailnet-public (anyone on the
+  # tailnet can reach it without an auth prompt). Distinct from
+  # internet-public, which would re-add `nori.funnelRoutes.filmder`
+  # — see this file's header comment for the future-toggle pointer.
+  nori.lanRoutes.filmder = {
+    port = servePort;
+    audience = "public";
+    monitor = { };
+    dashboard = {
+      title = "Filmder";
+      icon = "si:themoviedatabase";
+      group = "Personal";
+      description = "TMDB-backed movie browser (uni project, 2023)";
+    };
+  };
+
   nori.harden.filmder-build = {
     binds = [ "/var/lib/filmder" ];
+  };
+  nori.harden.filmder-serve = {
+    readOnlyBinds = [ "/var/lib/filmder" ];
   };
 
   # Backup intent — stateless. The published dist/ is reproducible
