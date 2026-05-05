@@ -81,6 +81,15 @@
     wget
   ];
 
+  # Default editor — sops uses $EDITOR to launch the secrets editor
+  # session, git uses it for commit messages, crontab + visudo follow
+  # the same convention. Setting both EDITOR and VISUAL covers tools
+  # that distinguish (notably `sudo -e` follows VISUAL first).
+  environment.variables = {
+    EDITOR = "vim";
+    VISUAL = "vim";
+  };
+
   # nh — Yet Another Nix Helper. Wraps `nixos-rebuild` with a nicer
   # diff display, internal sudo elevation (don't prefix nh with sudo),
   # and built-in `--target-host` support for SSH-based remote
