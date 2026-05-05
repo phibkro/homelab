@@ -64,6 +64,13 @@
     pkgs.slurp # region selection (paired with grim)
     pkgs.libnotify # `notify-send` for shell scripts
     pkgs.pwvucontrol # PipeWire mixer GUI (sink/source picker, per-app vol)
+
+    # Secrets editing — sops decrypts/edits secrets/secrets.yaml
+    # interactively; age generates the per-machine keypairs (host SSH
+    # keys are used directly by sops-nix at activation, but ad-hoc age
+    # is occasionally needed for new recipient enrollment).
+    pkgs.sops
+    pkgs.age
   ];
 
   # Thunar — lightweight GUI file manager. Enabling via programs.thunar
