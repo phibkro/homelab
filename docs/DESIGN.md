@@ -177,7 +177,7 @@ The only globally-open tailnet ports today are `80 + 443` (Caddy) and `445` (Sam
 
 #### LAN routing abstraction (`nori.lanRoutes`)
 
-`modules/lib/lan-route.nix` defines a single NixOS option that generates *three* things per service: Caddy reverse-proxy vhost, Blocky DNS mapping, and Gatus uptime monitor. Schema-validated at evaluation time. Adding a service is one declaration in its own module — no edits scattered across `caddy.nix` + `blocky.nix` + `gatus.nix`.
+`modules/effects/lan-route.nix` defines a single NixOS option that generates *three* things per service: Caddy reverse-proxy vhost, Blocky DNS mapping, and Gatus uptime monitor. Schema-validated at evaluation time. Adding a service is one declaration in its own module — no edits scattered across `caddy.nix` + `blocky.nix` + `gatus.nix`.
 
 ```nix
 nori.lanRoutes.<name> = {
@@ -636,7 +636,7 @@ Captured for visibility, not currently being worked:
 
 **Default-deny filesystem access for service modules.** The same principle as above, applied to systemd's mount namespace. Every service runs with `TemporaryFileSystem` over `/mnt` and `/srv` (replacing them with empty tmpfs at service-namespace level), `ProtectHome=true` (hiding `/home` and `/root`), and an explicit allowlist of host paths bound back in. Default no access; opt in per path. A compromised service can't browse the host looking for credentials, even if it can exec shell commands.
 
-The principle is enforced in code via `nori.harden.<unit>` (`modules/lib/harden.nix`) plus the `every-service-has-fs-hardening` flake check that fails the build if any service module forgets to declare it:
+The principle is enforced in code via `nori.harden.<unit>` (`modules/effects/harden.nix`) plus the `every-service-has-fs-hardening` flake check that fails the build if any service module forgets to declare it:
 
 ```nix
 nori.harden.<service> = {

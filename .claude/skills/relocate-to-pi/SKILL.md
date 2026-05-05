@@ -12,7 +12,7 @@ Pattern established by beszel-hub (commit b4499ee) and ntfy-server (commit 9e0b2
 1. **Does the service genuinely belong on Pi?** Workhorse-by-default per CLAUDE.md bias. The exception is observability + alerting + DNS + network plumbing — services whose entire reason to exist is to observe / alert / route, which lose their function when the host they monitor goes down. Pi has 8 GiB and anti-write storage; every additional service competes with the observer role.
 2. **Split shape**: `modules/server/<service>/{daemon,client}.nix` where the daemon is the actual server (lives on Pi) and the client is the proxy / notification template / agent (lives on every host).
 3. **State migration**: usually NOT worth it for non-load-bearing data (metrics, ephemeral caches). Daemon comes up empty and rebuilds from sops + first-use. Document the decision.
-4. **Backup decision**: Pi's anti-write posture means `nori.backups.<n>.skip = "..."` for the daemon — host-aware assertion in `modules/lib/backup.nix` enforces this.
+4. **Backup decision**: Pi's anti-write posture means `nori.backups.<n>.skip = "..."` for the daemon — host-aware assertion in `modules/effects/backup.nix` enforces this.
 
 ## Step-by-step
 

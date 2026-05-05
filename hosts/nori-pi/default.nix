@@ -126,7 +126,7 @@
       # Catches the userspace-CPU-starvation pattern (kernel still
       # alive, NIC ACKs ping, but DNS is dead). LAN-side because
       # `*.nori.lan` resolution now resolves to LAN IPs (see
-      # modules/lib/lan-route.nix nori.lanIp); tailnet-side death
+      # modules/effects/lan-route.nix nori.lanIp); tailnet-side death
       # is a separate concern that doesn't break user-visible service.
       name = "station-blocky-dns";
       url = "tcp://${config.nori.lanIp}:53";

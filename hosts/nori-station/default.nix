@@ -29,7 +29,7 @@
   # Station-side Gatus probes for non-HTTP services (these don't fit
   # the lan-route auto-gen pattern). HTTP services behind Caddy are
   # auto-probed via nori.lanRoutes.<n>.monitor — see
-  # modules/lib/lan-route.nix.
+  # modules/effects/lan-route.nix.
   #
   # Mutual observability: station probes Pi's Blocky + SSH via
   # tailnet IP. Pi has matching probes for station — see

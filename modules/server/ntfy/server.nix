@@ -38,7 +38,8 @@
   nori.harden.ntfy-sh = { };
 
   # Tailnet exposure for the cross-host Caddy reverse-proxy backend.
-  # Caddy on station hits 100.100.71.3:8081 over tailnet; clients reach
+  # Caddy on station hits Pi's tailnet IP on :8081 (resolved via the
+  # nori.hosts registry — see ../../effects/hosts.nix); clients reach
   # it via https://alert.nori.lan (terminated by station's Caddy).
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8081 ];
 

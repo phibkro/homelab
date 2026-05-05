@@ -86,7 +86,7 @@ default: rebuild
 
 # Show the *.nori.lan port allocation table sorted by port. Useful before
 # adding a new service — confirms what's taken so the eval-time port-
-# uniqueness assertion in modules/lib/lan-route.nix doesn't bite, and
+# uniqueness assertion in modules/effects/lan-route.nix doesn't bite, and
 # avoids the cascade-rebind dance when an upstream module's default
 # happens to collide. Eval-only; safe to run from any cloned tree.
 # Defaults to nori-station because that's where lanRoutes are declared

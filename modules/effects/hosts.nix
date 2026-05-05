@@ -11,7 +11,7 @@ in
   # service modules and host files: the Pi tailnet IP appeared in
   # beszel/agent.nix's metrics lanRoute, in ntfy/notify.nix's alert
   # lanRoute, in nori-station/default.nix's Gatus probes for the Pi,
-  # in modules/lib/lan-route.nix's nori.lanIp default. Six grep hits
+  # in modules/effects/lan-route.nix's nori.lanIp default. Six grep hits
   # for "100.100.71.3" and "100.81.5.122". A topology change (Pi swap,
   # tailnet re-auth, replacement device) was a fan-out edit.
   #
@@ -23,7 +23,7 @@ in
   # ── Why `role` is typed (not free-form) ─────────────────────────────
   # The enum constraint ("workhorse" | "appliance") isn't decoration —
   # it's the key for *placement assertions* elsewhere in the flake.
-  # modules/lib/backup.nix asserts that appliance hosts can't have
+  # modules/effects/backup.nix asserts that appliance hosts can't have
   # paths-based backups (Pi's flash storage is anti-write; daily restic
   # snapshots to the FIT contradict that posture). Without a typed
   # role tag, that assertion would have to enumerate hostnames or
@@ -91,7 +91,7 @@ in
                 keeps resolving via the Tailscale push fallback. Has
                 anti-write storage (no swap, volatile journald, FIT/SD
                 card flash) so paths-based backups are a build error
-                via the assertion in modules/lib/backup.nix.
+                via the assertion in modules/effects/backup.nix.
 
               Adding a role: extend the enum, document the constraints,
               and add the assertions that key off it. Don't reuse an

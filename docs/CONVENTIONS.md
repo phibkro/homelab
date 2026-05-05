@@ -18,7 +18,7 @@ modules/
   desktop/                    # "this host has a graphical session" (Hyprland, greetd, ...)
   lib/                        # cross-cutting `nori.<X>` declarative options
                               #   each file: option schema + generator + flake-check pair
-                              #   live list: `ls modules/lib/`
+                              #   live list: `ls modules/effects/`
 secrets/
   secrets.yaml                # sops-encrypted, committed
   README.md                   # ops doc for the secrets workflow
@@ -70,7 +70,7 @@ Single source of truth for `*.nori.lan` services. One declaration → three thin
 2. **Blocky DNS** mapping `<name>.nori.lan` → workhorse LAN IP
 3. **Gatus monitor** (if `monitor` is set) probing the backend, alerting via ntfy on failure
 
-See `modules/lib/lan-route.nix` for the schema.
+See `modules/effects/lan-route.nix` for the schema.
 
 **Naming**: function over brand. `chat`, `ai`, `alert`, `media`, `metrics`, `status` — not `open-webui`, `ollama`, `ntfy`, `jellyfin`, `beszel`, `gatus`. Brand names only when the brand IS the identity (`auth` for Authelia, `samba` if it ever gets routed).
 
@@ -82,7 +82,7 @@ See `modules/lib/lan-route.nix` for the schema.
 
 ## Filesystem hardening: default-deny
 
-The default-deny systemd FS-namespace block (`ProtectHome = mkForce true`, `TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ]`, plus `BindPaths` / `BindReadOnlyPaths` for what's let back in) lives behind the `nori.harden` abstraction in `modules/lib/harden.nix`. One declaration per systemd unit name:
+The default-deny systemd FS-namespace block (`ProtectHome = mkForce true`, `TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ]`, plus `BindPaths` / `BindReadOnlyPaths` for what's let back in) lives behind the `nori.harden` abstraction in `modules/effects/harden.nix`. One declaration per systemd unit name:
 
 ```nix
 nori.harden.<unit> = {
@@ -332,7 +332,7 @@ assertions = [
 ];
 ```
 
-See `modules/lib/lan-route.nix` for the live examples (port uniqueness, name regex, redirectPath shape). Use when a rule depends on multiple options together — derived properties, uniqueness across attrs, conditional requirements.
+See `modules/effects/lan-route.nix` for the live examples (port uniqueness, name regex, redirectPath shape). Use when a rule depends on multiple options together — derived properties, uniqueness across attrs, conditional requirements.
 
 ### 3. Custom flake checks
 
@@ -376,14 +376,36 @@ If none fit, the rule is judgment — that's what code review is for. Don't writ
 
 **A check earns its keep when it would have caught a real mistake, not a hypothetical one.** Add when violations occur or are imminent — not preemptively.
 
+## Effect interface — Reader + collected Writer
+
+The `nori.<X>` family in `modules/effects/` is a structural Reader + collected-Writer effect interface. The NixOS module system handles both flavors via the same option-merge fixed-point semantics, which is why one folder holds them together; the distinction is in *who produces*:
+
+| Shape | Examples | Producer | Consumer |
+|---|---|---|---|
+| Reader (host-scoped context) | `nori.hosts`, `nori.gpu`, `nori.fs` | hosts only — set in `flake.nix` `identityFor`, `hardware.nix`, `disko*.nix` | services |
+| Collected Writer (assembled across modules, then interpreted) | `nori.lanRoutes`, `nori.backups`, `nori.harden` | services contribute | generators in `modules/effects/<x>.nix` and downstream handlers (`modules/server/backup/`, etc.) interpret |
+
+Each `modules/effects/<x>.nix` is one effect's full surface:
+- type signature (the `mkOption` schema with type constraints)
+- contracts (assertions — port uniqueness, DNX-safe names, host-aware appliance gating, …)
+- interpretation (the `config = mkIf ... { ... }` block that turns the collected attrset into systemd services / Caddy vhosts / restic jobs / ...)
+
+The convention is informal in the sense that nothing prevents a service from setting `nori.hosts` or a host from declaring `nori.lanRoutes` — those would be Reader/Writer violations. Today these are conventions, enforced via:
+
+- **Type system** for shape constraints inside one option (port range, DNS-safe name regex)
+- **Module assertions** for cross-attribute invariants (paths-XOR-skip, port uniqueness, appliance role can't use `paths`)
+- **`forbidden-patterns` flake check** for textual violations (no `100.x.y.z` literals outside `flake.nix`'s `identityFor` — cross-host refs go through `config.nori.hosts.<name>.tailnetIp`)
+
+Adding an effect: create `modules/effects/<n>.nix`, define the option schema + assertions + (if Writer-shaped) the consumer/handler logic. Import in `modules/common/default.nix`. Document the producer/consumer split in the file's header comment so future readers see the Reader/Writer shape at a glance.
+
 ## Module structure: concerns compose host identity
 
 `modules/<concern>/` directories represent host roles. A host's identity is the sum of which concerns it imports plus its hardware:
 
-- `modules/common/` — universal infra. Every host imports this. Contains: base system, user accounts, Tailscale, sops, plus the `lib/` option modules (`lan-route.nix`, `backup.nix`) that any module on the host can populate.
+- `modules/common/` — universal infra. Every host imports this. Contains: base system, user accounts, Tailscale, sops, plus the `effects/` interface modules (`hosts.nix`, `fs.nix`, `lan-route.nix`, `backup.nix`, `gpu.nix`, `harden.nix`) that any module on the host can populate.
 - `modules/server/` — *this host serves things*. Caddy, Authelia, *arr stack, backups, media, monitoring, etc. Hosts that import it become servers; hosts that omit it aren't.
 - `modules/desktop/` — *this host has a graphical session*. Hyprland, greetd, audio, applications.
-- `modules/lib/` — option-defining modules (the `nori.lanRoutes` and `nori.backups` schemas + assertions). Imported by `common/` so every host has the options available; populated opt-in via service modules.
+- `modules/effects/` — Reader + Writer effect interface (see above). Imported by `common/` so every host has the options available; populated by hosts (Reader) and services (Writer).
 
 A typical host file:
 

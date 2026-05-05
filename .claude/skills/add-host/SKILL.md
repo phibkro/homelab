@@ -9,7 +9,7 @@ Authoritative procedure. The flake's `readDir ./hosts/` + `genAttrs hostNames` +
 
 ## Decision summary up front
 
-1. **Role**: `workhorse` (heavy compute / state / GPU; backed up locally and offsite) or `appliance` (observability + alert plane that survives workhorse failure; anti-write storage; backups via skip-only). Drives concern selection + the placement assertion in `modules/lib/backup.nix`.
+1. **Role**: `workhorse` (heavy compute / state / GPU; backed up locally and offsite) or `appliance` (observability + alert plane that survives workhorse failure; anti-write storage; backups via skip-only). Drives concern selection + the placement assertion in `modules/effects/backup.nix`.
 2. **Architecture**: `x86_64-linux` or `aarch64-linux`. Pi-class is aarch64; needs `nixos-hardware/raspberry-pi-4` import + sd-image build path; station builds Pi closures via aarch64 binfmt emulation.
 3. **Install path**: bare-metal disko (workhorse-class x86) vs sd-image build + dd to flash (appliance-class aarch64) vs UTM dry-run (transient).
 4. **Concern selection**: `modules/common` (always) + `modules/server` (workhorse bundle) + `modules/desktop` (graphical). Or for appliance: `modules/common` + flat imports of specific modules the host needs.

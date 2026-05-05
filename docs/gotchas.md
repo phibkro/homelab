@@ -256,7 +256,7 @@ Services declared with `DynamicUser = yes` in their NixOS module (open-webui, je
 
 We hit this in production: `restic stats latest` on the open-webui repo showed 0B / 3 files for months before anyone noticed, despite daily backups running successfully.
 
-**Fix**: declare paths as `/var/lib/private/<n>` directly for DynamicUser services. The `nori.backups.<n>` abstraction (modules/lib/backup.nix) is the call site; per-module backup declarations encode the right path. Bash file ops (sqlite3, cp, etc.) in `prepareCommand` blocks DO follow symlinks, so prepareCommand source paths can use either path.
+**Fix**: declare paths as `/var/lib/private/<n>` directly for DynamicUser services. The `nori.backups.<n>` abstraction (modules/effects/backup.nix) is the call site; per-module backup declarations encode the right path. Bash file ops (sqlite3, cp, etc.) in `prepareCommand` blocks DO follow symlinks, so prepareCommand source paths can use either path.
 
 ```nix
 # Wrong (silent 0-byte snapshot for DynamicUser services):
@@ -292,7 +292,7 @@ See `docs/runbooks/inspect-windows-drive.md` for the full procedure.
 
 ## Authelia OIDC clients require `X_AUTHELIA_CONFIG_FILTERS=template`
 
-OIDC client `client_secret` values use `{{ secret "/run/secrets/oidc-<n>-client-secret-hash" }}` template syntax (see `modules/lib/lan-route.nix` + `modules/server/authelia.nix`). The substitution only happens when Authelia is invoked with the template config-filter enabled:
+OIDC client `client_secret` values use `{{ secret "/run/secrets/oidc-<n>-client-secret-hash" }}` template syntax (see `modules/effects/lan-route.nix` + `modules/server/authelia.nix`). The substitution only happens when Authelia is invoked with the template config-filter enabled:
 
 ```nix
 systemd.services.authelia-main.environment.X_AUTHELIA_CONFIG_FILTERS = "template";

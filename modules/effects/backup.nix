@@ -75,61 +75,113 @@ in
       }
     '';
     type = types.attrsOf (
-      types.submodule {
-        options = {
-          paths = mkOption {
-            type = types.nullOr (types.listOf types.str);
-            default = null;
-            description = ''
-              Filesystem paths to back up. For DynamicUser services,
-              point at /var/lib/private/<name> directly — the
-              /var/lib/<name> symlink would otherwise be stored as
-              just the symlink record (caught by the assertion
-              below). Set to `null` (default) for explicit opt-out;
-              pair with the `skip` field documenting the reason.
-            '';
+      types.submodule (
+        { config, ... }:
+        {
+          options = {
+            paths = mkOption {
+              type = types.nullOr (types.listOf types.str);
+              default = null;
+              description = ''
+                Filesystem paths to back up. For DynamicUser services,
+                point at /var/lib/private/<name> directly — the
+                /var/lib/<name> symlink would otherwise be stored as
+                just the symlink record (caught by the assertion
+                below). Set to `null` (default) for explicit opt-out;
+                pair with the `skip` field documenting the reason.
+              '';
+            };
+            skip = mkOption {
+              type = types.nullOr types.str;
+              default = null;
+              description = ''
+                When `paths` is null, this records why backup is
+                intentionally skipped. Required for opt-out — the
+                schema can't otherwise tell "intentionally skipped"
+                from "forgotten".
+              '';
+            };
+            prepareCommand = mkOption {
+              type = types.nullOr types.lines;
+              default = null;
+              description = ''
+                Bash command(s) to run before each restic backup.
+                Used for Pattern C2 (sqlite3 .backup before restic).
+                Null = Pattern A (filesystem-only). Ignored when
+                `paths` is null.
+              '';
+            };
+            timer = mkOption {
+              type = types.str;
+              default = "*-*-* 03:00:00";
+              description = ''
+                `OnCalendar` systemd timer expression. Default 03:00
+                UTC daily. Stagger across repos when concurrent USB
+                I/O on the OneTouch becomes a bottleneck. Ignored
+                when `paths` is null.
+              '';
+            };
+            tier = mkOption {
+              type = types.enum [
+                "service"
+                "user"
+                "irreplaceable"
+              ];
+              default = "service";
+              description = ''
+                Value tier — drives the default `pruneOpts` retention
+                curve. Mirrors the docs/DESIGN.md "Three value tiers"
+                framing. Per-service repos default to `service`; the
+                cross-cutting `user-data` and `media-irreplaceable`
+                repos override.
+
+                * `service`       — short retention (7d / 4w / 12m).
+                                    Service state is mostly re-buildable
+                                    if the latest snapshot is healthy.
+                * `user`          — medium retention (14d / 4w / 12m).
+                                    User-touched data is harder to
+                                    re-derive than service state.
+                * `irreplaceable` — long retention (14d / 8w / 12m / 5y).
+                                    Photos / home-videos / projects —
+                                    the data the lab exists for.
+
+                Override `pruneOpts` directly to deviate from the
+                tier's default curve.
+              '';
+            };
+            pruneOpts = mkOption {
+              type = types.listOf types.str;
+              default =
+                {
+                  service = [
+                    "--keep-daily 7"
+                    "--keep-weekly 4"
+                    "--keep-monthly 12"
+                  ];
+                  user = [
+                    "--keep-daily 14"
+                    "--keep-weekly 4"
+                    "--keep-monthly 12"
+                  ];
+                  irreplaceable = [
+                    "--keep-daily 14"
+                    "--keep-weekly 8"
+                    "--keep-monthly 12"
+                    "--keep-yearly 5"
+                  ];
+                }
+                .${config.tier};
+              defaultText = lib.literalExpression ''
+                # derived from `tier`:
+                # service       → 7d / 4w / 12m
+                # user          → 14d / 4w / 12m
+                # irreplaceable → 14d / 8w / 12m / 5y
+              '';
+              description = "Restic forget/prune options. Default derived from `tier`. Ignored when `paths` is null.";
+            };
           };
-          skip = mkOption {
-            type = types.nullOr types.str;
-            default = null;
-            description = ''
-              When `paths` is null, this records why backup is
-              intentionally skipped. Required for opt-out — the
-              schema can't otherwise tell "intentionally skipped"
-              from "forgotten".
-            '';
-          };
-          prepareCommand = mkOption {
-            type = types.nullOr types.lines;
-            default = null;
-            description = ''
-              Bash command(s) to run before each restic backup.
-              Used for Pattern C2 (sqlite3 .backup before restic).
-              Null = Pattern A (filesystem-only). Ignored when
-              `paths` is null.
-            '';
-          };
-          timer = mkOption {
-            type = types.str;
-            default = "*-*-* 03:00:00";
-            description = ''
-              `OnCalendar` systemd timer expression. Default 03:00
-              UTC daily. Stagger across repos when concurrent USB
-              I/O on the OneTouch becomes a bottleneck. Ignored
-              when `paths` is null.
-            '';
-          };
-          pruneOpts = mkOption {
-            type = types.listOf types.str;
-            default = [
-              "--keep-daily 7"
-              "--keep-weekly 4"
-              "--keep-monthly 12"
-            ];
-            description = "Restic forget/prune options. Ignored when `paths` is null.";
-          };
-        };
-      }
+        }
+      )
     );
   };
 
@@ -137,23 +189,17 @@ in
     let
       activeBackups = lib.filterAttrs (_: cfg: cfg.paths != null) config.nori.backups;
 
-      # Hardcoded list of services that use systemd DynamicUser=yes
-      # plus StateDirectory, where /var/lib/<n> is a SYMLINK to
-      # /var/lib/private/<n>. restic stores symlinks as symlinks; a
-      # backup pointing at /var/lib/<n> for one of these services
-      # produces an empty (3-file / 0-byte) snapshot. Update this
-      # list when adding a new DynamicUser service module.
-      dynamicUserServices = [
-        "open-webui"
-        "jellyseerr"
-        "prowlarr"
-        "ntfy-sh"
-        "beszel-hub"
-        "gatus"
-        "glance"
-        "blocky"
-        "ollama"
-      ];
+      # Services that use systemd DynamicUser=yes plus StateDirectory,
+      # where /var/lib/<n> is a SYMLINK to /var/lib/private/<n>. restic
+      # stores symlinks as symlinks; a backup pointing at /var/lib/<n>
+      # for one of these services produces an empty (3-file / 0-byte)
+      # snapshot. Derived from systemd unit configs — assertions run
+      # after the module fixed-point so config.systemd.services is
+      # fully resolved. Self-maintaining: a new DynamicUser service
+      # appears here automatically the moment its module enables it.
+      dynamicUserServices = lib.attrNames (
+        lib.filterAttrs (_: cfg: cfg.serviceConfig.DynamicUser or false) config.systemd.services
+      );
 
       badPaths = lib.flatten (
         lib.mapAttrsToList (
@@ -166,7 +212,7 @@ in
       );
 
       # Host-aware placement check. Reads the role tag from the
-      # nori.hosts registry (modules/lib/hosts.nix). Appliance hosts
+      # nori.hosts registry (modules/effects/hosts.nix). Appliance hosts
       # have anti-write storage (no swap, volatile journald, flash-
       # only — see hosts/nori-pi/hardware.nix) so daily restic to local
       # disk contradicts the storage philosophy. The structural answer

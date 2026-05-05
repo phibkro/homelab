@@ -16,7 +16,7 @@ For the user's request, work out:
 4. **Does it need SSO?** If yes → run `just oidc-key <short-name>`, paste into sops, add `oidc = { ... }` to the lanRoute, wire EnvironmentFile.
 5. **Does it need GPU?** If yes → `accelerationDevices = config.nori.gpu.nvidiaDevices` (or the systemd `DeviceAllow` equivalent).
 6. **Backup pattern?** A (filesystem-only), B (built-in dump path), or C2 (prepareCommand). Or `skip = "<reason>"` if stateless / re-derivable / covered elsewhere.
-7. **DynamicUser?** `/var/lib/<n>` is a SYMLINK; back up `/var/lib/private/<n>` instead. The symlink-trap assertion in `modules/lib/backup.nix` lists known DynamicUser services and catches mistakes at eval.
+7. **DynamicUser?** `/var/lib/<n>` is a SYMLINK; back up `/var/lib/private/<n>` instead. The symlink-trap assertion in `modules/effects/backup.nix` lists known DynamicUser services and catches mistakes at eval.
 
 ## Step-by-step
 
@@ -47,7 +47,7 @@ Read `modules/server/default.nix` (loose imports) or `modules/server/<cluster>/d
 }
 ```
 
-If the service runs as `DynamicUser`, note the unit name — its state lives at `/var/lib/private/<unit>` (with a `/var/lib/<unit>` symlink). Add it to the `dynamicUserServices` list in `modules/lib/backup.nix` if it's a new DynamicUser service so the symlink-trap assertion catches mistakes.
+If the service runs as `DynamicUser`, note the unit name — its state lives at `/var/lib/private/<unit>` (with a `/var/lib/<unit>` symlink). Add it to the `dynamicUserServices` list in `modules/effects/backup.nix` if it's a new DynamicUser service so the symlink-trap assertion catches mistakes.
 
 ### 3. FS hardening — REQUIRED (`every-service-has-fs-hardening` flake check)
 
@@ -139,9 +139,9 @@ nori.backups.<n> = {
 nori.backups.<n>.skip = "<one-line reason: stateless / re-derivable / covered elsewhere>";
 ```
 
-DynamicUser symlink: `/var/lib/<n>` is a symlink for DynamicUser services; restic stores symlinks AS symlinks (0-byte snapshot). Use `/var/lib/private/<n>` instead. The assertion in `modules/lib/backup.nix` catches this at eval if you target the symlink.
+DynamicUser symlink: `/var/lib/<n>` is a symlink for DynamicUser services; restic stores symlinks AS symlinks (0-byte snapshot). Use `/var/lib/private/<n>` instead. The assertion in `modules/effects/backup.nix` catches this at eval if you target the symlink.
 
-Appliance hosts (Pi) cannot use `paths` — they must `skip` (anti-write storage posture). The host-aware assertion in `modules/lib/backup.nix` enforces this.
+Appliance hosts (Pi) cannot use `paths` — they must `skip` (anti-write storage posture). The host-aware assertion in `modules/effects/backup.nix` enforces this.
 
 ### 7. GPU access (if needed)
 
@@ -151,7 +151,7 @@ services.<service>.accelerationDevices = config.nori.gpu.nvidiaDevices;
 systemd.services.<unit>.serviceConfig.DeviceAllow = config.nori.gpu.nvidiaDevices;
 ```
 
-Single source of truth in `modules/lib/gpu.nix` — host's hardware.nix sets `nori.gpu.nvidiaDevices`; consumers reference that. Empty list on hosts without a GPU; opt-in services pass through cleanly.
+Single source of truth in `modules/effects/gpu.nix` — host's hardware.nix sets `nori.gpu.nvidiaDevices`; consumers reference that. Empty list on hosts without a GPU; opt-in services pass through cleanly.
 
 ### 8. Wire imports
 
@@ -176,8 +176,8 @@ curl -sk https://<short-name>.nori.lan -m 5 | head -3                           
 If a flake check fails, the message lists the offending file(s) with what's missing. Common failure modes:
 - forgot `nori.harden.<n>` → `every-service-has-fs-hardening` fails with the file path
 - forgot `nori.backups.<n>` → `every-service-has-backup-intent` fails
-- port collision → eval-time assertion in `modules/lib/lan-route.nix`
-- DynamicUser symlink in backup paths → eval-time assertion in `modules/lib/backup.nix`
+- port collision → eval-time assertion in `modules/effects/lan-route.nix`
+- DynamicUser symlink in backup paths → eval-time assertion in `modules/effects/backup.nix`
 
 ### 10. First-run setup
 

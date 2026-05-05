@@ -96,10 +96,10 @@ nori.lanRoutes.widget = {
 **Expected (shape)**:
 - Wrong — IP literal
 - Should use `config.nori.hosts.nori-pi.tailnetIp` (the topology registry)
-- Registry schema: `modules/lib/hosts.nix`; values: `flake.nix` `identityFor`
+- Registry schema: `modules/effects/hosts.nix`; values: `flake.nix` `identityFor`
 - Topology coupling lives in the host name in the lookup, not in the IP
 
-**Source**: CLAUDE.md "Current state → Topology", `modules/lib/hosts.nix` header.
+**Source**: CLAUDE.md "Current state → Topology", `modules/effects/hosts.nix` header.
 
 ---
 
@@ -115,7 +115,7 @@ nori.lanRoutes.widget = {
 - `skip = "<reason>"` for explicit opt-out (covered elsewhere, stateless, intentionally re-derivable)
 - Appliance hosts (`role = "appliance"`) cannot use `paths` — host-aware assertion fails eval (anti-write storage posture)
 
-**Source**: `modules/lib/backup.nix` (schema + assertions), CLAUDE.md "Current state".
+**Source**: `modules/effects/backup.nix` (schema + assertions), CLAUDE.md "Current state".
 
 ---
 
@@ -126,13 +126,13 @@ nori.lanRoutes.widget = {
 **Question**: How does a service module declare default-deny FS-namespace hardening today? What's the principle, and what enforces that you don't forget?
 
 **Expected (shape)**:
-- `nori.harden.<systemd-unit-name> = { binds = [...]; readOnlyBinds = [...]; protectHome = true|false|null; };` (schema in `modules/lib/harden.nix`)
+- `nori.harden.<systemd-unit-name> = { binds = [...]; readOnlyBinds = [...]; protectHome = true|false|null; };` (schema in `modules/effects/harden.nix`)
 - Generator emits `ProtectHome = mkForce true` + `TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ]` + `BindPaths` + `BindReadOnlyPaths` on the systemd unit
 - `protectHome = null` skips the directive (preserves upstream NixOS module's value, e.g. syncthing where upstream is opinionated)
 - Principle: default-deny FS namespace; compromised service can't browse host paths it doesn't need
 - Enforcement: `every-service-has-fs-hardening` flake check fails the build if any `modules/server/*.nix` (outside the excluded list) lacks a `nori.harden.<n>` declaration
 
-**Source**: CONVENTIONS.md "Filesystem hardening", DESIGN.md "Default-deny filesystem access", `modules/lib/harden.nix`.
+**Source**: CONVENTIONS.md "Filesystem hardening", DESIGN.md "Default-deny filesystem access", `modules/effects/harden.nix`.
 
 ---
 
@@ -146,9 +146,9 @@ nori.lanRoutes.widget = {
 - Backup snapshot is empty (3 files / 0 bytes) — restic stores symlinks AS symlinks
 - `/var/lib/foo` is a symlink to `/var/lib/private/foo`
 - Fix: `nori.backups.foo.paths = [ "/var/lib/private/foo" ]`
-- The DynamicUser-symlink assertion in `modules/lib/backup.nix` catches this at eval time (lists known DynamicUser services explicitly)
+- The DynamicUser-symlink assertion in `modules/effects/backup.nix` catches this at eval time (lists known DynamicUser services explicitly)
 
-**Source**: gotchas.md "DynamicUser StateDirectory", `modules/lib/backup.nix` assertion.
+**Source**: gotchas.md "DynamicUser StateDirectory", `modules/effects/backup.nix` assertion.
 
 ---
 

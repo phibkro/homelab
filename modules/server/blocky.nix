@@ -70,10 +70,10 @@ in
       # URLs — the upstream resolvers below, blocklist sources, etc.
       # — independent of /etc/resolv.conf. Required here because the
       # Tailscale DNS push points the host's resolver back at this very
-      # Blocky instance (100.81.5.122 set as global tailnet nameserver),
-      # which would otherwise create a chicken-and-egg loop on startup
-      # — Blocky can't resolve raw.githubusercontent.com to download
-      # the blocklist before it's serving DNS.
+      # Blocky instance (the workhorse tailnet IP set as global tailnet
+      # nameserver), which would otherwise create a chicken-and-egg
+      # loop on startup — Blocky can't resolve raw.githubusercontent.com
+      # to download the blocklist before it's serving DNS.
       bootstrapDns = [
         { upstream = "1.1.1.1"; }
         { upstream = "9.9.9.9"; }
@@ -104,7 +104,7 @@ in
 
       # customDNS.mapping for self-hosted role is auto-generated from
       # nori.lanRoutes declarations in each service module — see
-      # modules/lib/lan-route.nix. Only customTTL stays here as the
+      # modules/effects/lan-route.nix. Only customTTL stays here as the
       # global default for those entries. On forwarder hosts the map
       # stays empty; conditional.mapping does the work instead.
       customDNS.customTTL = "1h";

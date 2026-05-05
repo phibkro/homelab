@@ -57,11 +57,31 @@ in
 
   options.nori.lanIp = mkOption {
     type = types.str;
-    default = config.nori.hosts.nori-station.lanIp;
+    default =
+      let
+        candidates = lib.filterAttrs (_: h: h.role == "workhorse" && h.lanIp != null) config.nori.hosts;
+        names = lib.attrNames candidates;
+      in
+      if lib.length names == 1 then
+        (lib.head (lib.attrValues candidates)).lanIp
+      else
+        throw ''
+          nori.lanIp: cannot pick a default — expected exactly one workhorse
+          host with a non-null lanIp in the registry, found ${toString (lib.length names)}
+          (${lib.concatStringsSep ", " names}). Set nori.lanIp explicitly,
+          or update the host registry (flake.nix identityFor).
+        '';
+    defaultText = lib.literalExpression ''
+      # the unique workhorse-with-lanIp from config.nori.hosts;
+      # eval-fails if zero or more than one matches.
+    '';
     description = ''
-      LAN IP that *.nori.lan names resolve to. Defaults to the
-      workhorse host's LAN IP from the nori.hosts registry (see
-      modules/lib/hosts.nix).
+      LAN IP that *.nori.lan names resolve to. Derived from the
+      nori.hosts registry as "the unique host with role=workhorse
+      and a non-null lanIp" (see modules/effects/hosts.nix). When
+      a future second workhorse with a static LAN lease lands, the
+      derivation fails eval — surfaces the ambiguity instead of
+      silently picking nori-station.
 
       Previously the workhorse's tailnet IP, which silently required
       every client to be on tailnet to reach any service — a sharp
@@ -151,6 +171,78 @@ in
                   conditions = mkOption {
                     type = types.listOf types.str;
                     default = [ "[STATUS] == 200" ];
+                  };
+                };
+              }
+            );
+          };
+          dashboard = mkOption {
+            default = null;
+            description = ''
+              If set, this route appears on the Glance dashboard
+              (https://home.nori.lan) — both as an uptime-monitor dot
+              and as a grouped bookmark. The URL is derived from the
+              route name as `https://<name>.nori.lan`; only metadata
+              lives here. Glance consumes the whole nori.lanRoutes
+              attrset and renders entries with `dashboard != null`.
+
+              Routes that should NOT appear on the dashboard (e.g.
+              cross-host backend lanRoutes whose canonical entry-point
+              lives elsewhere, or services intentionally hidden from
+              the family-facing landing page) leave `dashboard = null`.
+            '';
+            type = types.nullOr (
+              types.submodule {
+                options = {
+                  title = mkOption {
+                    type = types.str;
+                    description = ''
+                      Brand / display name shown on the dashboard
+                      (e.g. "Jellyfin"). The route name is appended
+                      as a parenthetical for the monitor widget —
+                      "Jellyfin (media)".
+                    '';
+                  };
+                  icon = mkOption {
+                    type = types.str;
+                    description = ''
+                      Glance icon spec. Two prefixes:
+                        si:<slug>  Simple Icons (most brand logos)
+                        sh:<slug>  selfh.st icons (homelab brands
+                                   that Simple Icons doesn't carry —
+                                   Calibre-web, Komga, Beszel, …)
+                    '';
+                  };
+                  group = mkOption {
+                    type = types.enum [
+                      "Consume"
+                      "Acquire"
+                      "Personal"
+                      "Admin"
+                    ];
+                    description = ''
+                      Bookmark group. Order on the dashboard follows
+                      the enum order, not declaration order — Consume
+                      first (most-clicked), Admin last.
+                    '';
+                  };
+                  description = mkOption {
+                    type = types.str;
+                    description = ''
+                      One-line blurb shown beneath the bookmark.
+                      Function-oriented ("Movies, shows, music —
+                      server-rendered"), not feature-list.
+                    '';
+                  };
+                  allowInsecure = mkOption {
+                    type = types.bool;
+                    default = false;
+                    description = ''
+                      Pass through to Glance's monitor `allow-insecure`
+                      flag. Needed for routes whose backend cert isn't
+                      trusted by Glance's HTTP client (e.g. Syncthing's
+                      WebUI redirect through Caddy's internal CA).
+                    '';
                   };
                 };
               }
