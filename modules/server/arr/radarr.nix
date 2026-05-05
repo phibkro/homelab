@@ -31,15 +31,7 @@
 
   users.users.radarr.extraGroups = [ "media" ];
 
-  systemd.services.radarr.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-    BindPaths = [ "/mnt/media/streaming" ];
-  };
+  nori.harden.radarr.binds = [ "/mnt/media/streaming" ];
 
   nori.lanRoutes.movies = {
     port = 7878;

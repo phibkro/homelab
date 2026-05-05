@@ -308,6 +308,60 @@
               fi
             '';
 
+        # Every service module under modules/server/ must declare a
+        # filesystem-hardening intent via `nori.harden.<name>`. Same
+        # silent-coverage-gap rationale as `every-service-has-backup-
+        # intent`: forgetting to harden a new service means it inherits
+        # only upstream's defaults, which often leaves /mnt and /home
+        # visible. This check turns forgetting into a build error.
+        every-service-has-fs-hardening =
+          pkgs.runCommandLocal "every-service-has-fs-hardening"
+            {
+              nativeBuildInputs = [
+                pkgs.gnugrep
+                pkgs.findutils
+              ];
+            }
+            ''
+              cd ${./.}
+              fail=0
+
+              # Excluded paths — folder aggregators, the *arr group's
+              # `media`-bootstrap helper, the backup-cluster framework
+              # (system-level, needs FS-wide access by design), the ntfy
+              # notify template (no service of its own), and samba (the
+              # one legitimate /srv-full-access exception).
+              for f in $(find modules/server -name '*.nix' | sort); do
+                case "$f" in
+                  */default.nix|\
+                  modules/server/arr/shared.nix|\
+                  modules/server/backup/restic.nix|\
+                  modules/server/backup/verify.nix|\
+                  modules/server/backup/btrbk.nix|\
+                  modules/server/ntfy/notify.nix|\
+                  modules/server/samba.nix)
+                    continue;;
+                esac
+                if ! grep -qE 'nori\.harden\.' "$f"; then
+                  echo "✗ $f: no nori.harden.<name> declaration."
+                  fail=1
+                fi
+              done
+
+              if [ $fail -eq 0 ]; then
+                touch $out
+              else
+                echo
+                echo "Every service module must declare a filesystem-hardening"
+                echo "intent via nori.harden.<service-name>. Default-deny baseline:"
+                echo "  ProtectHome=true, TemporaryFileSystem=[/mnt:ro,/srv:ro]"
+                echo "Set binds=[...] for writable paths, readOnlyBinds=[...] for"
+                echo "read-only, protectHome=null to leave upstream's value alone."
+                echo "See modules/lib/harden.nix for the schema."
+                exit 1
+              fi
+            '';
+
         # Path renames rot fastest because nothing else fails when a
         # reference is wrong; the build catching them is the cheapest
         # signal. Each entry below records a rename and the date it

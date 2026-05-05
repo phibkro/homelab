@@ -37,18 +37,10 @@
 
   # Default-deny filesystem access beyond what ollama needs (its
   # StateDirectory at /var/lib/ollama, /dev/nvidia* for CUDA, the nix
-  # store for libs). Empty BindReadOnlyPaths because no user-data
-  # paths are required. Upstream module already sets ProtectHome=true;
-  # mkForce here makes the value explicit + avoids Nix complaining
-  # about boolean-vs-string definition collisions.
-  systemd.services.ollama.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-  };
+  # store for libs). No user-data paths required. nori.harden's
+  # mkForce on ProtectHome avoids Nix complaining about boolean-vs-
+  # string definition collisions with the upstream module's setting.
+  nori.harden.ollama = { };
 
   # Exposed at https://ai.nori.lan via Caddy. Monitored by Gatus
   # against /api/tags (Ollama returns 200 with the model list).

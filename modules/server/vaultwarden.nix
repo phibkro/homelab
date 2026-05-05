@@ -83,20 +83,15 @@
     };
   };
 
-  systemd.services.vaultwarden.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
+  nori.harden.vaultwarden = { };
 
-    # SSO_CLIENT_SECRET comes from the sops template auto-generated
-    # by lan-route. Vaultwarden runs under a static `vaultwarden`
-    # user (not DynamicUser) so technically `SupplementaryGroups`
-    # could be skipped — but the upstream module owns the user, and
-    # the env file's mode is 0440 root:keys, so adding `keys`
-    # explicitly keeps the convention uniform across services.
+  # SSO_CLIENT_SECRET comes from the sops template auto-generated
+  # by lan-route. Vaultwarden runs under a static `vaultwarden`
+  # user (not DynamicUser) so technically `SupplementaryGroups`
+  # could be skipped — but the upstream module owns the user, and
+  # the env file's mode is 0440 root:keys, so adding `keys`
+  # explicitly keeps the convention uniform across services.
+  systemd.services.vaultwarden.serviceConfig = {
     EnvironmentFile = config.sops.templates."oidc-vault-env".path;
     SupplementaryGroups = [ "keys" ];
   };

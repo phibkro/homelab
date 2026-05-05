@@ -126,36 +126,22 @@
   # Default-deny FS hardening for the server + ML worker. Both need
   # /mnt/media/photos for the managed subdir; ML also reads /var/lib
   # for model weights (covered by the NixOS module's StateDirectory).
-  systemd.services.immich-server.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-    BindPaths = [ "/mnt/media/photos" ];
-  };
-  systemd.services.immich-machine-learning.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-    BindPaths = [ "/mnt/media/photos" ];
+  nori.harden.immich-server.binds = [ "/mnt/media/photos" ];
+  nori.harden.immich-machine-learning.binds = [ "/mnt/media/photos" ];
 
-    # Resource caps. April 2026 incident: ML pipeline starved the
-    # host for 4+ minutes (rtkit canary thread reported starvation
-    # repeatedly; immich-machine-learning went unhealthy; desktop
-    # hung; forced power-cycle). The kernel logged no thermal trip —
-    # this was userspace CPU starvation, not heat. Cap so a runaway
-    # ML workload can't take the rest of the system down with it.
-    #
-    # CPUQuota=600% on a 12-thread CPU = 6 cores' worth, leaving 6
-    # for everything else (Caddy, Authelia, *arr, sshd, Hyprland).
-    # MemoryMax=16G is half of system RAM; OOM-kill the cgroup
-    # before the host enters thrash territory. MemoryHigh=12G is
-    # the soft pressure point where reclaim begins.
+  # Resource caps on the ML worker. April 2026 incident: ML pipeline
+  # starved the host for 4+ minutes (rtkit canary thread reported
+  # starvation repeatedly; immich-machine-learning went unhealthy;
+  # desktop hung; forced power-cycle). The kernel logged no thermal
+  # trip — this was userspace CPU starvation, not heat. Cap so a
+  # runaway ML workload can't take the rest of the system down with it.
+  #
+  # CPUQuota=600% on a 12-thread CPU = 6 cores' worth, leaving 6
+  # for everything else (Caddy, Authelia, *arr, sshd, Hyprland).
+  # MemoryMax=16G is half of system RAM; OOM-kill the cgroup
+  # before the host enters thrash territory. MemoryHigh=12G is
+  # the soft pressure point where reclaim begins.
+  systemd.services.immich-machine-learning.serviceConfig = {
     CPUQuota = "600%";
     MemoryHigh = "12G";
     MemoryMax = "16G";

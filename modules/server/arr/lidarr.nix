@@ -40,15 +40,7 @@
 
   users.users.lidarr.extraGroups = [ "media" ];
 
-  systemd.services.lidarr.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-    BindPaths = [ "/mnt/media/streaming" ];
-  };
+  nori.harden.lidarr.binds = [ "/mnt/media/streaming" ];
 
   nori.lanRoutes.music = {
     port = 8686;

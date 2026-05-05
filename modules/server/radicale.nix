@@ -51,14 +51,7 @@
     "f /var/lib/radicale/users 0640 radicale radicale - "
   ];
 
-  systemd.services.radicale.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-  };
+  nori.harden.radicale = { };
 
   nori.lanRoutes.calendar = {
     port = 5232;

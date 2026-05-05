@@ -61,14 +61,10 @@
 
   # Default-deny FS hardening — relaxed for /home since Syncthing
   # legitimately reaches into the user's home dir to sync arbitrary
-  # paths. ProtectHome stays off here; that's the explicit trade.
-  systemd.services.syncthing.serviceConfig = {
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-  };
+  # paths. `protectHome = null` skips the ProtectHome setting entirely
+  # (rather than forcing it false), preserving the upstream NixOS
+  # module's value — explicit trade documented at modules/lib/harden.nix.
+  nori.harden.syncthing.protectHome = null;
 
   nori.lanRoutes.sync = {
     port = 8384;

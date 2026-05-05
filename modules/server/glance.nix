@@ -380,14 +380,7 @@
     };
   };
 
-  systemd.services.glance.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-  };
+  nori.harden.glance = { };
 
   nori.lanRoutes.home = {
     port = 8086;

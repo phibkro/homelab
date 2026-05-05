@@ -37,8 +37,9 @@ in
   # Agent FS hardening on top of upstream's substantial systemd
   # profile (PrivateUsers, ProtectKernel*, ProtectSystem=strict,
   # SystemCallFilter). Default-deny FS namespace is the project-wide
-  # baseline.
-  #
+  # baseline (nori.harden, modules/lib/harden.nix).
+  nori.harden.beszel-agent = { };
+
   # PrivateDevices override: upstream sets it true (when smartmon is
   # off), which hides /dev/nvidia*. On hosts that opt into NVIDIA via
   # nori.gpu.nvidiaDevices (see modules/lib/gpu.nix) the agent surfaces
@@ -46,15 +47,9 @@ in
   # rest of the hardening (ProtectKernel*, SystemCallFilter,
   # RestrictSUIDSGID, NoNewPrivileges, PrivateUsers) still applies —
   # only the device namespace loosens.
-  systemd.services.beszel-agent.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-    PrivateDevices = lib.mkIf (config.nori.gpu.nvidiaDevices != [ ]) (lib.mkForce false);
-  };
+  systemd.services.beszel-agent.serviceConfig.PrivateDevices = lib.mkIf (
+    config.nori.gpu.nvidiaDevices != [ ]
+  ) (lib.mkForce false);
 
   # Cross-host metrics URL: this host's Caddy (if running) reverse-
   # proxies https://metrics.nori.lan to the Pi-hosted hub at port 8090.

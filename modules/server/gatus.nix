@@ -84,14 +84,7 @@
     };
   };
 
-  config.systemd.services.gatus.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-  };
+  config.nori.harden.gatus = { };
 
   # Caddy vhost at https://status.nori.lan — only on hosts that run
   # Caddy. No self-monitor (Gatus can't usefully probe itself —

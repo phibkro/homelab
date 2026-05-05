@@ -32,14 +32,7 @@
     port = 5055;
   };
 
-  systemd.services.seerr.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-  };
+  nori.harden.seerr = { };
 
   nori.lanRoutes.requests = {
     port = 5055;

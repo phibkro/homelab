@@ -33,14 +33,7 @@
     USER_CREATION = "true";
   };
 
-  systemd.services.beszel-hub.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-  };
+  nori.harden.beszel-hub = { };
 
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8090 ];
 

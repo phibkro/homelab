@@ -2,7 +2,8 @@ _: {
   # The "common" concern — every host needs this regardless of role.
   # base.nix/users.nix/tailscale.nix/sops.nix are universal infra; the
   # ../lib/*.nix modules expose options (nori.lanRoutes, nori.backups,
-  # nori.hosts, nori.gpu) that any module on the host can populate.
+  # nori.hosts, nori.gpu, nori.harden) that any module on the host can
+  # populate.
   #
   # The nori.hosts registry is *populated* in flake.nix's `hostRegistry`
   # (single source of truth — every host evals the same topology). The
@@ -16,5 +17,6 @@ _: {
     ../lib/lan-route.nix
     ../lib/backup.nix
     ../lib/gpu.nix
+    ../lib/harden.nix
   ];
 }

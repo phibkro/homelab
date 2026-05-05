@@ -74,15 +74,7 @@
     fi
   '';
 
-  systemd.services.calibre-web.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-    BindPaths = [ "/mnt/media/library" ];
-  };
+  nori.harden.calibre-web.binds = [ "/mnt/media/library" ];
 
   nori.lanRoutes.books = {
     port = 8084;

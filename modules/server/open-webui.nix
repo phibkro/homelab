@@ -68,17 +68,13 @@
   # (DynamicUser StateDirectory at /var/lib/open-webui handles itself).
   # User-uploaded files land inside that state dir; no need for /mnt
   # or /srv access. If a future need arises (e.g. importing media into
-  # Open WebUI's RAG knowledge base), add the path here.
-  systemd.services.open-webui.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
+  # Open WebUI's RAG knowledge base), add the path under
+  # nori.harden.open-webui.binds.
+  nori.harden.open-webui = { };
 
-    # DynamicUser needs supplementary group `keys` to read the
-    # sops-rendered env file (mode 0440 root:keys).
+  # DynamicUser needs supplementary group `keys` to read the sops-
+  # rendered env file (mode 0440 root:keys).
+  systemd.services.open-webui.serviceConfig = {
     SupplementaryGroups = [ "keys" ];
     EnvironmentFile = config.sops.templates."oidc-chat-env".path;
   };

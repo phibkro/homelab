@@ -53,21 +53,12 @@
     # (the service module), not here.
   };
 
-  systemd.services.caddy = {
-    # Skip the system trust install attempt; the hardened service
-    # can't write to /etc/ssl/... and there's no point anyway since
-    # we install the root cert per-device manually.
-    environment.CADDY_AUTO_TRUST = "0";
+  # Skip the system trust install attempt; the hardened service can't
+  # write to /etc/ssl/... and there's no point anyway since we install
+  # the root cert per-device manually.
+  systemd.services.caddy.environment.CADDY_AUTO_TRUST = "0";
 
-    serviceConfig = {
-      ProtectHome = lib.mkForce true;
-      TemporaryFileSystem = [
-        "/mnt:ro"
-        "/srv:ro"
-      ];
-      BindReadOnlyPaths = [ ];
-    };
-  };
+  nori.harden.caddy = { };
 
   # Caddy listens on 80 (plaintext-redirect) + 443 (HTTPS). Open
   # globally, not per-interface: with `*.nori.lan` resolving to the

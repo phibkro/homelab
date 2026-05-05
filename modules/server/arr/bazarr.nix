@@ -34,15 +34,7 @@
   # paths. Same `media` group membership as the other servarrs.
   users.users.bazarr.extraGroups = [ "media" ];
 
-  systemd.services.bazarr.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-    BindPaths = [ "/mnt/media/streaming" ];
-  };
+  nori.harden.bazarr.binds = [ "/mnt/media/streaming" ];
 
   nori.lanRoutes.subtitles = {
     port = 6767;

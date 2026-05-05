@@ -36,15 +36,7 @@
 
   users.users.komga.extraGroups = [ "media" ];
 
-  systemd.services.komga.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-    BindPaths = [ "/mnt/media/library" ];
-  };
+  nori.harden.komga.binds = [ "/mnt/media/library" ];
 
   nori.lanRoutes.comics = {
     port = 8085;

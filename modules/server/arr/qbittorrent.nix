@@ -41,18 +41,10 @@
   # hardlinks across .downloads/complete → movies/shows just work.
   users.users.qbittorrent.extraGroups = [ "media" ];
 
-  # Default-deny FS hardening. qBittorrent needs:
-  #   /mnt/media/streaming  (its own incomplete + complete + library writes)
-  #   /var/lib/qbittorrent  (state, auto-created by the service)
-  systemd.services.qbittorrent.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-    BindPaths = [ "/mnt/media/streaming" ];
-  };
+  # qBittorrent needs /mnt/media/streaming for its incomplete + complete
+  # + library writes; /var/lib/qbittorrent for state (auto-created by
+  # the service, covered by the StateDirectory upstream).
+  nori.harden.qbittorrent.binds = [ "/mnt/media/streaming" ];
 
   # Exposed at https://downloads.nori.lan via Caddy. Auto-monitored at /
   # (qBittorrent's WebUI returns 401 without auth which Gatus reads as

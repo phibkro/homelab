@@ -35,14 +35,7 @@
     };
   };
 
-  systemd.services.ntfy-sh.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-  };
+  nori.harden.ntfy-sh = { };
 
   # Tailnet exposure for the cross-host Caddy reverse-proxy backend.
   # Caddy on station hits 100.100.71.3:8081 over tailnet; clients reach

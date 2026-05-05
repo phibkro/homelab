@@ -36,15 +36,7 @@
   # "permission denied".
   users.users.sonarr.extraGroups = [ "media" ];
 
-  systemd.services.sonarr.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-    BindPaths = [ "/mnt/media/streaming" ];
-  };
+  nori.harden.sonarr.binds = [ "/mnt/media/streaming" ];
 
   nori.lanRoutes.tv = {
     port = 8989;

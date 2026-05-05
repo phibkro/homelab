@@ -132,14 +132,7 @@ in
 
   # Default-deny filesystem access — Blocky only needs its config
   # (in /nix/store via the module) and network. No host paths.
-  config.systemd.services.blocky.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-  };
+  config.nori.harden.blocky = { };
 
   # Stateless — Blocky's runtime state is just the in-memory cache
   # of upstream-resolved A/AAAA records and the downloaded blocklists,

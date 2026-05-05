@@ -46,23 +46,13 @@
   # browse the entire host filesystem (read-only, but still leaky).
   #
   # Strategy: tmpfs over /mnt and /srv, then bind-mount only the
-  # specific paths Jellyfin should see back in. ProtectHome=yes also
-  # hides /home and /root (the upstream module doesn't set this).
-  #
-  # Adjust BindReadOnlyPaths if Jellyfin needs more later (e.g. you
-  # add a dedicated music library at /mnt/media/music — already covered
-  # by the /mnt/media bind).
-  systemd.services.jellyfin.serviceConfig = {
-    ProtectHome = "yes";
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [
-      "/mnt/media"
-      "/srv/share"
-    ];
-  };
+  # specific paths Jellyfin should see back in (read-only — Jellyfin
+  # never writes to /mnt/media). ProtectHome=mkForce true also hides
+  # /home and /root (the upstream module doesn't set this).
+  nori.harden.jellyfin.readOnlyBinds = [
+    "/mnt/media"
+    "/srv/share"
+  ];
 
   # Exposed at https://media.nori.lan via Caddy (default-deny on
   # tailnet — Caddy is the only entry point). Auto-monitored by Gatus

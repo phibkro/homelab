@@ -181,14 +181,7 @@ in
     X_AUTHELIA_CONFIG_FILTERS = "template";
   };
 
-  systemd.services.authelia-main.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-  };
+  nori.harden.authelia-main = { };
 
   # Exposed at https://auth.nori.lan via Caddy. Auto-monitored.
   nori.lanRoutes.auth = {

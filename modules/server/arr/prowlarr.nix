@@ -36,14 +36,7 @@
   # .serviceConfig.SupplementaryGroups; for now, prowlarr only does
   # API calls to other services and doesn't touch /mnt/media.
 
-  systemd.services.prowlarr.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [
-      "/mnt:ro"
-      "/srv:ro"
-    ];
-    BindReadOnlyPaths = [ ];
-  };
+  nori.harden.prowlarr = { };
 
   nori.lanRoutes.indexers = {
     port = 9696;
