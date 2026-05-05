@@ -108,6 +108,7 @@
   nori.lanRoutes.chat = {
     port = 8080;
     monitor = { };
+    audience = "family";
     oidc = {
       clientName = "Open WebUI";
       redirectPath = "/oauth/oidc/callback";

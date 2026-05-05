@@ -90,6 +90,7 @@ in
       port = 8090;
       host = config.nori.hosts.pi.tailnetIp;
       monitor = { };
+      audience = "operator";
       oidc = {
         clientName = "Beszel";
         redirectPath = "/api/oauth2-redirect";

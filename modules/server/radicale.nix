@@ -56,6 +56,7 @@
   nori.lanRoutes.calendar = {
     port = 5232;
     monitor.path = "/.web/";
+    audience = "family";
     dashboard = {
       title = "Radicale";
       icon = "sh:radicale";

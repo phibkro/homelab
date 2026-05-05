@@ -189,6 +189,7 @@ in
   nori.lanRoutes.home = {
     port = 8086;
     monitor = { };
+    audience = "public";
     # No `dashboard` block — Glance shouldn't link to itself.
   };
 

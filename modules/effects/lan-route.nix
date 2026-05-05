@@ -144,6 +144,42 @@ in
               handle Caddy's internal CA).
             '';
           };
+          audience = mkOption {
+            type = types.enum [
+              "operator"
+              "family"
+              "public"
+            ];
+            default = "operator";
+            description = ''
+              Who this route is for. Documents intent + drives the
+              auth-stacking principle:
+
+                * operator — admin-only management UIs (the *arr stack,
+                  qBittorrent, Beszel admin, Syncthing). Tailnet
+                  membership IS the auth; layering Authelia on top
+                  duplicates the network-perimeter guarantee for no
+                  per-user-state value, while making Authelia uptime
+                  load-bearing for operator workflows.
+
+                * family — services with per-user state inside the app
+                  (Jellyfin watch progress, Immich photos, Jellyseerr
+                  request history, Open WebUI chat, Vaultwarden vaults,
+                  Navidrome playlists). Native OIDC propagates the
+                  user identity into the app — that's the value-add.
+                  Where native OIDC isn't clean (Komga, calibre-web),
+                  forward-auth gates browser access at Caddy.
+
+                * public — intentionally open dashboards (home/Glance,
+                  status/Gatus) and the SSO portal itself (auth/
+                  Authelia). Tailnet trust is the only gate; auth
+                  inside these would defeat their purpose.
+
+              Currently informational; future flake checks may assert
+              consistency (e.g., audience=family without an oidc/
+              forwardAuth block warns).
+            '';
+          };
           monitor = mkOption {
             default = null;
             description = ''

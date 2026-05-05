@@ -39,7 +39,7 @@
   nori.lanRoutes.subtitles = {
     port = 6767;
     monitor = { };
-    forwardAuth.exemptPaths = [ "/api/*" ];
+    audience = "operator";
     dashboard = {
       title = "Bazarr";
       icon = "sh:bazarr";

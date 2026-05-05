@@ -47,7 +47,7 @@
   nori.lanRoutes.indexers = {
     port = 9696;
     monitor = { };
-    forwardAuth.exemptPaths = [ "/api/*" ];
+    audience = "operator";
     dashboard = {
       title = "Prowlarr";
       icon = "sh:prowlarr";

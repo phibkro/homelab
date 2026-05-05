@@ -173,6 +173,7 @@
   nori.lanRoutes.photos = {
     port = 2283;
     monitor = { };
+    audience = "family";
     oidc = {
       clientName = "Immich";
       redirectPath = "/auth/login";

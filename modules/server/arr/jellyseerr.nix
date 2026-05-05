@@ -58,6 +58,7 @@
   nori.lanRoutes.requests = {
     port = 5055;
     monitor = { };
+    audience = "family";
     oidc = {
       clientName = "Jellyseerr";
       redirectPath = "/login/oidc-callback";

@@ -125,6 +125,7 @@
     monitor = {
       path = "/alive";
     };
+    audience = "family";
     oidc = {
       clientName = "Vaultwarden";
       redirectPath = "/identity/connect/oidc-signin";

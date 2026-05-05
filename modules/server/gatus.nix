@@ -92,6 +92,7 @@
   config.nori.lanRoutes = lib.mkIf config.nori.gatus.exposeViaCaddy {
     status = {
       port = 8082;
+      audience = "public";
       dashboard = {
         title = "Gatus";
         icon = "sh:gatus";

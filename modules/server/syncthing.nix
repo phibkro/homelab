@@ -69,6 +69,7 @@
   nori.lanRoutes.sync = {
     port = 8384;
     monitor = { };
+    audience = "operator";
     dashboard = {
       title = "Syncthing";
       icon = "si:syncthing";

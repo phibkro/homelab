@@ -51,7 +51,7 @@
   nori.lanRoutes.music = {
     port = 8686;
     monitor = { };
-    forwardAuth.exemptPaths = [ "/api/*" ];
+    audience = "operator";
     dashboard = {
       title = "Lidarr";
       icon = "sh:lidarr";

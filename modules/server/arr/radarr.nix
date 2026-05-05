@@ -42,7 +42,7 @@
   nori.lanRoutes.movies = {
     port = 7878;
     monitor = { };
-    forwardAuth.exemptPaths = [ "/api/*" ];
+    audience = "operator";
     dashboard = {
       title = "Radarr";
       icon = "si:radarr";

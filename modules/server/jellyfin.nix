@@ -68,6 +68,7 @@
   nori.lanRoutes.media = {
     port = 8096;
     monitor = { };
+    audience = "family";
     dashboard = {
       title = "Jellyfin";
       icon = "si:jellyfin";

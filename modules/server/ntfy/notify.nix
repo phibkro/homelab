@@ -60,6 +60,7 @@
       port = 8081;
       host = config.nori.hosts.pi.tailnetIp;
       monitor.path = "/v1/health";
+      audience = "operator";
     };
   };
 

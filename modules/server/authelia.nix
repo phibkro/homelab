@@ -184,9 +184,13 @@ in
   nori.harden.authelia-main = { };
 
   # Exposed at https://auth.nori.lan via Caddy. Auto-monitored.
+  # The SSO portal itself — public by definition (anyone with tailnet
+  # trust hits this to get an Authelia session for the family-tier
+  # services that consume OIDC).
   nori.lanRoutes.auth = {
     port = 9091;
     monitor = { };
+    audience = "public";
     dashboard = {
       title = "Authelia";
       icon = "sh:authelia";

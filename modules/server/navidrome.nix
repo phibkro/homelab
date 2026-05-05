@@ -94,6 +94,7 @@
   nori.lanRoutes.audio = {
     port = 4533;
     monitor = { };
+    audience = "family";
     oidc = {
       clientName = "Navidrome";
       redirectPath = "/auth/callback";
