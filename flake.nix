@@ -44,7 +44,7 @@
       # formatter / etc run — not the target platform of any host.
       # Each host's hardware.nix sets nixpkgs.hostPlatform; mkHost
       # no longer hardcodes system, so nori-pi (aarch64-linux) and
-      # nori-station / vm-test (x86_64-linux) coexist cleanly.
+      # nori-station (x86_64-linux) coexist cleanly.
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
 
@@ -83,14 +83,6 @@
           tailnetIp = "100.100.71.3";
           lanIp = "192.168.1.225";
           role = "appliance";
-        };
-        # vm-test: transient UTM dry-run target, not a real lab host.
-        # Placeholder values keep the registry shape honest; nothing
-        # cross-host references it.
-        vm-test = {
-          tailnetIp = "100.64.0.1";
-          lanIp = null;
-          role = "workhorse";
         };
       };
 
