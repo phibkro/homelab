@@ -86,6 +86,27 @@ Tracked here only when actionable; routine done-work lives in `git log`.
 - **Tailnet IS the auth perimeter; layer Authelia only where per-user identity matters.** All access is tailnet-mediated, so device-level trust is already established before any HTTP request lands. Layering Authelia on top of operator-only services duplicates the network-perimeter guarantee for no gain while making Authelia uptime load-bearing for operator workflows. Encoded as `nori.lanRoutes.<n>.audience` (operator | family | public): operator routes trust tailnet; family routes need OIDC for per-user state propagation into the app (Jellyfin watch progress, Immich photo libraries, Vaultwarden vaults); public routes (home/Glance, status/Gatus, auth/Authelia) are intentionally open. Forward-auth survives only where the app is family-facing AND lacks native OIDC (Komga, calibre-web).
 - **Code reviewers and future-you are the audience.** Comments explain *why* (especially when the obvious approach didn't work). Trace dependencies between modules in comments.
 
+## Leverage map
+
+Snapshot of where this lab sits at each Meadows leverage tier (12 low → 1 high), across the three dimensions the `/orient` skill covers. Snapshot is dated; structural changes shift placements. Verify against current code on a fresh read.
+
+| Tier | Artifact (what runs) | Dev workflow (how it evolves) | Agentic workflow (how Claude works) |
+|---|---|---|---|
+| **12** | port allocations (`just ports`), retention values, `MemoryMax` caps | test timeouts, `restic check` cadence values | model + token budget settings |
+| **11** | `zramSwap = 16 GiB`, OneTouch capacity, `immich-ml` `MemoryMax = 16G` + `CPUQuota = 600%` | CI parallelism (single runner today) | context window budget, memory file size |
+| **10** | `nori.fs` tier-driven flows; @streaming hardlink topology; backup repo membership derived from `tier` | trunk-based; `main` is the deploy boundary | system prompt → memory → conversation flow; tool→memory writeback |
+| **9** | restic cadence ladder (daily / weekly / monthly / quarterly drill); btrbk daily; `OnFailure` is instant | pre-commit hook (per-commit), GH Actions (per push), session-end wrap-up | per-turn tool feedback; per-session memory updates; archive cadence (manual today) |
+| **8** | `OnFailure → notify@`, restic check, Gatus → ntfy alerts, OOM-killer-via-MemoryMax | pre-commit `nix flake check` + CI as commit gate | tool errors, validation feedback, user pushback |
+| **7** | flake checks accumulate strictness over commits (the more we encode, the tighter); skill capability accumulates | conventions accumulate (CONVENTIONS.md), skill set grows | active memory grows without aggressive pruning (worth watching); skill catalog grows |
+| **6** | `nori.<X>` Reader+Writer effect family; topology registry; `just ports` live oracle; `nori.fs` as named-context for paths | CLAUDE.md routing table; `docs/PROCEDURES.md`; skills as on-demand context; `git log` narrative | skill auto-discovery via descriptions; memory files in `~/.claude/projects/...`; system reminders surface deferred tools |
+| **5** | `every-service-has-fs-hardening`, `every-service-has-backup-intent`, `forbidden-patterns` (no PBKDF2, no IP literals, etc.), `no-stale-paths`, `audience` enum, port-uniqueness assertion, paths-XOR-skip assertion | "encode conventions in code, not docs" (memory: `enforce_in_code`); types > assertions > flake checks > prose | tool restrictions in `settings.json`, hooks, refusal logic, "never commit unless asked" |
+| **4** | `modules/effects/` as the meta-shape for `nori.<X>` extraction; rule-of-three for abstractions; cross-host service split-module pattern | skills extracted at three concrete uses (`add-service`, `relocate-to-pi`, etc.); `on-structural-change` skill for doc-tier decisions | skill extraction; memory schema (`active/`, `archive/`, etc.); the lift of in-session prompts → reusable skills (this `/orient` skill is an instance) |
+| **3** | DESIGN.md three principles: declarative reproducibility, default-deny exposure, policy proportional to data value | "correctness > simplicity > thoroughness > speed"; `main` is the deploy boundary; commit messages explain the *why* | "answer first, push back, no flattery"; "make the reasonable call and continue"; correctness > clarity > utility > thoroughness |
+| **2** | declarative-first (NixOS), code-as-truth, FP-flavored Reader + collected-Writer effects, Cynefin Complex framing | iterate-to-stable then codify; compose via aliases not categories; folders = coupling not categorization | tool-use + on-demand skills + persistent file-based memory; structured tool-feedback loop |
+| **1** | willingness to swap tools when they fight the paradigm (Uptime Kuma → Gatus); "tailnet IS the auth" (audience refactor); "real-debrid is a different architecture not an upgrade" | willingness to question the dev process itself (this entire session is an instance); rule-of-three guards against premature codification | willingness to question whether agent involvement helps at all (the tier-12 micro-task should not invoke `/orient`); prompt-shape transcendence (Meadows lens > open-ended exploration) |
+
+Use the `/orient` skill at session start to confirm or refine these placements against current code. Drift is expected.
+
 ## Style for prose
 
 - No hedging in commit messages or docs. Lead with the answer, justify after.
