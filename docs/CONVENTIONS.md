@@ -62,7 +62,7 @@ A service module owns *everything* about its service: the upstream module's `ena
 Single source of truth for `*.nori.lan` services. One declaration → three things generated:
 
 1. **Caddy vhost** at `<name>.nori.lan` reverse-proxying to backend
-2. **Blocky DNS** mapping `<name>.nori.lan` → tailnet IP
+2. **Blocky DNS** mapping `<name>.nori.lan` → workhorse LAN IP
 3. **Gatus monitor** (if `monitor` is set) probing the backend, alerting via ntfy on failure
 
 See `modules/lib/lan-route.nix` for the schema.

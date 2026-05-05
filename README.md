@@ -13,7 +13,7 @@ Single-user NixOS homelab flake. Two live hosts: `nori-station` (workhorse — C
 
 ## Active services
 
-All HTTP services live behind Caddy at `https://<name>.nori.lan`. Tailnet-only via Tailscale's DNS push (admin console → DNS → custom nameserver = `100.81.5.122`). Caddy uses an internal CA — install `modules/server/caddy-local-ca.crt` once per device.
+All HTTP services live behind Caddy at `https://<name>.nori.lan`. Resolution: Blocky returns nori-station's LAN IP (`192.168.1.181`), so LAN clients hit Caddy directly with no tailnet hop. Off-LAN tailnet clients reach the same address via nori-pi's subnet route advertisement (`192.168.1.0/24`); needs `--accept-routes` on the client. DNS is served by nori-pi's Blocky (Tailscale admin console → DNS → custom nameserver = `100.100.71.3`); LAN-only devices need their DNS pointed at nori-pi's LAN IP (`192.168.1.225`). Caddy uses an internal CA — install `modules/server/caddy-local-ca.crt` once per device.
 
 The live inventory is the `nori.lanRoutes` attrset in `config`. Static lists drift; query the source of truth instead:
 

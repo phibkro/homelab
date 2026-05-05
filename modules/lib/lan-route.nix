@@ -57,15 +57,25 @@ in
 
   options.nori.lanIp = mkOption {
     type = types.str;
-    default = config.nori.hosts.nori-station.tailnetIp;
+    default = config.nori.hosts.nori-station.lanIp;
     description = ''
-      Tailnet IP that *.nori.lan names resolve to. Defaults to the
-      workhorse host's tailnet IP from the nori.hosts registry (see
-      modules/lib/hosts.nix). The registry is the source of truth;
-      this option remains as a thin alias used by Blocky's forwarder
-      mode (modules/server/blocky.nix) and the lanRoutes Blocky DNS
-      generator below — both want a single "where does *.nori.lan
-      live" address.
+      LAN IP that *.nori.lan names resolve to. Defaults to the
+      workhorse host's LAN IP from the nori.hosts registry (see
+      modules/lib/hosts.nix).
+
+      Previously the workhorse's tailnet IP, which silently required
+      every client to be on tailnet to reach any service — a sharp
+      edge for LAN-resident devices that can't or don't run tailscale
+      (chromecasts, printers, occasional guest devices). Using the
+      LAN IP lets those clients hit services directly. Tailnet
+      clients off-LAN still reach the same address via Pi's subnet
+      route advertisement (services.tailscale.useRoutingFeatures =
+      "server" in hosts/nori-pi/default.nix); the client side needs
+      --accept-routes set in its tailscaled config.
+
+      Consumers: Blocky's forwarder mode (modules/server/blocky.nix)
+      and the Blocky DNS generator below. Both want a single "where
+      does *.nori.lan live" address.
     '';
   };
 

@@ -25,9 +25,11 @@
   #
   # DNS resolution:
   #   Blocky's customDNS (modules/server/blocky.nix) maps each
-  #   *.nori.lan name to nori-station's tailnet IP (100.81.5.122).
-  #   Tailnet clients hit that IP, traffic flows over the tailnet,
-  #   reaches Caddy on :443, virtual-host routing fans out to backends.
+  #   *.nori.lan name to nori-station's LAN IP (192.168.1.181). LAN
+  #   clients hit Caddy directly with no tailnet hop. Off-LAN tailnet
+  #   clients reach the same address via Pi's subnet route
+  #   advertisement (192.168.1.0/24); requires --accept-routes on
+  #   the client side.
   #
   # Adding a new service later: append a vhost below + a Blocky
   # customDNS entry. That's it.
@@ -67,12 +69,15 @@
     };
   };
 
-  # Caddy listens on 443 (HTTPS); 80 too if we want plaintext-redirect.
-  # Tailnet only — backend services keep their individual tailnet
-  # ports open as well so old URLs keep working during transition;
-  # close them per-service later if you want to enforce going through
-  # Caddy.
-  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [
+  # Caddy listens on 80 (plaintext-redirect) + 443 (HTTPS). Open
+  # globally, not per-interface: with `*.nori.lan` resolving to the
+  # workhorse LAN IP (see modules/lib/lan-route.nix nori.lanIp),
+  # request traffic arrives on the LAN interface for LAN clients
+  # and on tailscale0 for off-LAN tailnet clients via Pi's subnet
+  # route. Same precedent as Blocky's :53 (modules/server/blocky.nix);
+  # the router doesn't forward :80/:443 inbound from WAN, so the host
+  # firewall is just the second layer.
+  networking.firewall.allowedTCPPorts = [
     80
     443
   ];

@@ -122,9 +122,12 @@
 
   services.gatus.settings.endpoints = [
     {
-      # Station's Blocky on tailnet IP — the most important probe.
+      # Station's Blocky on LAN IP — the most important probe.
       # Catches the userspace-CPU-starvation pattern (kernel still
-      # alive, NIC ACKs ping, but DNS is dead).
+      # alive, NIC ACKs ping, but DNS is dead). LAN-side because
+      # `*.nori.lan` resolution now resolves to LAN IPs (see
+      # modules/lib/lan-route.nix nori.lanIp); tailnet-side death
+      # is a separate concern that doesn't break user-visible service.
       name = "station-blocky-dns";
       url = "tcp://${config.nori.lanIp}:53";
       interval = "60s";
