@@ -24,12 +24,18 @@ secrets file, just `sops secrets/<name>.yaml` and start adding keys.
 different file, override per-secret:
 
 ```nix
-sops.secrets.filmder-tmdb-token = {
+sops.secrets.tmdb-token = {
   sopsFile = ../../secrets/apps.yaml;
   owner = "filmder";
   mode = "0400";
 };
 ```
+
+Naming convention for `apps.yaml` keys: prefer **service-agnostic** names
+(`tmdb-token`, not `filmder-tmdb-token`) when multiple projects could
+plausibly consume the same secret. Use a project prefix only when the
+secret is genuinely scoped to one project (`heim-payload-secret`,
+`heim-revalidate-secret` — those mean nothing outside Payload CMS).
 
 Convention:
 - **Homelab service secrets** (used by `modules/server/<service>.nix` to run the service itself) → `secrets.yaml` (default file, no override needed).
