@@ -125,6 +125,7 @@ in
   systemd.services.finnbydel-serve = {
     description = "Serve finnbydel via Next.js";
     after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
     wantedBy = [ "multi-user.target" ];
 
     path = with pkgs; [ bun ];
