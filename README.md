@@ -54,16 +54,12 @@ The pre-commit hook (`.githooks/pre-commit`) runs `nix flake check` automaticall
 
 ## Quality gates
 
-`nix flake check` runs seven derivations alongside the implicit eval pass:
+`nix flake check` runs the standard Nix lints (statix, deadnix, nixfmt format check) plus the repo-specific guard derivations declared in `flake.nix`'s `checks.${system}` attrset. Run `nix flake show .#checks` for the current set; categories of guards:
 
-- **Eval** (implicit) — `nixosConfigurations.<host>` evaluate cleanly; catches type errors, undefined options, all module assertions
-- **statix** — Nix anti-pattern lint
-- **deadnix** — unused-binding detection
-- **format** — `nixfmt-rfc-style` compliance check
-- **forbidden-patterns** — 7 grep rules (no inline pbkdf2 hashes, no caddy/blocky bypass, no `acmeCA = "internal"` literal, no embedded-topic ntfy URLs, no deprecated `services.ollama.acceleration`, etc.)
-- **every-service-has-backup-intent** — every `modules/server/*.nix` declares `nori.backups.<n>.paths` or `.skip`
-- **every-service-has-fs-hardening** — every `modules/server/*.nix` declares `nori.harden.<n>`
-- **no-stale-paths** — directory/file-rename guards across `.nix` and `.md` files (each rule records a rename + the date; only the now-stale form is checked)
+- **Eval-time module assertions** — every type-level constraint declared in modules via `assertions = [ ... ]` (port uniqueness, exclusive paths/skip, host-aware appliance constraints, …)
+- **Pattern enforcement** — `every-service-has-<X>` derivations fail if any `modules/server/*.nix` outside the excluded list omits a required declaration
+- **Anti-pattern grep guards** — `forbidden-patterns` fails if banned strings appear (deprecated APIs, sops bypass shapes, …)
+- **Path-rename guards** — `no-stale-paths` records each rename + date; only the now-stale form is checked, so commits that miss a rename fail at build time
 
 The pre-commit hook runs the lot when `.nix` files are staged.
 
@@ -79,7 +75,7 @@ modules/
   common/                    # cross-host baseline (every host)
   server/                    # "this host serves things" concern
   desktop/                   # "this host has a graphical session"
-  lib/                       # cross-cutting abstractions (hosts, lan-route, backup, gpu, harden)
+  lib/                       # cross-cutting `nori.<X>` declarative options + generators
 secrets/
   secrets.yaml               # sops-encrypted, committed
   README.md                  # secrets workflow ops doc

@@ -16,12 +16,9 @@ modules/
     <cluster>/                #   folder = tightly-coupled services (arr, backup, beszel, ntfy)
       default.nix
   desktop/                    # "this host has a graphical session" (Hyprland, greetd, ...)
-  lib/                        # cross-cutting abstractions
-    hosts.nix                 # nori.hosts — topology registry (tailnetIp, lanIp, role)
-    lan-route.nix             # nori.lanRoutes — *.nori.lan exposure
-    backup.nix                # nori.backups — restic decisions
-    gpu.nix                   # nori.gpu.nvidiaDevices — GPU device registry
-    harden.nix                # nori.harden — systemd FS-namespace hardening
+  lib/                        # cross-cutting `nori.<X>` declarative options
+                              #   each file: option schema + generator + flake-check pair
+                              #   live list: `ls modules/lib/`
 secrets/
   secrets.yaml                # sops-encrypted, committed
   README.md                   # ops doc for the secrets workflow
