@@ -105,6 +105,7 @@ Non-deterministic recurring procedures are extracted to `.claude/skills/` so the
 
 | Skill | Triggers on |
 |---|---|
+| `/orient` | "explore the codebase", "orient yourself", "get up to speed" — fresh-session structural read |
 | `/add-service` | "add <X>", "deploy <Y>", "set up <Z>" |
 | `/add-host` | "add a host", "set up nori-<X>", "another machine" |
 | `/relocate-to-pi` | "move <X> to Pi", "should survive station outages" |
