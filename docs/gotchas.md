@@ -86,6 +86,52 @@ Either works. We chose (2) for consistency with the rest of the *.nori.lan servi
 
 `tailscale serve --https=...` returns "Serve is not enabled on your tailnet" until you toggle it in the Tailscale admin console. The CLI gives you the link to click. One-time action per tailnet.
 
+## Tailscale Funnel must use port 8443 (not 443) when Caddy is running
+
+Funnel allows binding 443/8443/10000 locally. On this homelab, **Caddy already owns `0.0.0.0:443`** for `*.nori.lan` reverse-proxy, so tailscaled can't get the tailnet-interface 443. Symptom in `journalctl -u tailscaled.service`:
+
+```
+localListener failed to listen on 100.81.5.122:443, backing off:
+listen tcp4 100.81.5.122:443: bind: address already in use
+```
+
+Followed by TLS handshakes returning "internal error" (because the cert never loaded — the listener never came up).
+
+Fix: use 8443 in `nori.funnelRoutes` (already encoded in `modules/effects/funnel-route.nix`). Tailscale's public-edge maps internet `:443` → local `:8443` transparently — visitors hit `https://<host>.<tailnet>.ts.net/<path>` (no port shown). Inside-tailnet direct access uses `:8443`.
+
+## `tailscale serve set-config` schema is a moving target
+
+As of 1.96.5, the JSON schema for `tailscale serve set-config` requires both:
+- `--all` or `--service=svc:<n>` flag (otherwise: `must specify either ...`)
+- `"version": "0.0.1"` field (otherwise: `config file must have "version" field`)
+
+But even with both, the format groups under `services.<n>` and rejects top-level `TCP`/`Web`/`AllowFunnel`. `tailscale serve get-config --all` returns just `{"version": "0.0.1"}` — empty — so reverse-engineering the right shape isn't viable.
+
+Workaround in `modules/effects/funnel-route.nix`: imperative `tailscale serve --bg --https <port> --set-path ... <target>` commands, one per route, with `tailscale serve reset` at the start of each activation to drop removed routes. tailscaled-side state persists; declarative end-state semantics from imperative primitives.
+
+## npm postinstall on systemd needs `bash` on the unit `path`
+
+Several Node packages (`@swc/core`, `esbuild`, `node-gyp`, anything with native modules) have postinstall scripts that spawn `sh` for platform detection. NixOS systemd units inherit a minimal env without `/bin/sh`, so `npm ci` fails with:
+
+```
+npm error code ENOENT
+npm error syscall spawn sh
+npm error path /var/lib/<app>/src/node_modules/@swc/core
+npm error errno -2
+npm error enoent spawn sh ENOENT
+```
+
+Fix: add `bash` to the unit's `path`:
+
+```nix
+systemd.services.<app>-build = {
+  path = with pkgs; [ bash git nodejs_22 ];
+  # ...
+};
+```
+
+Required for any Node-based deploy under systemd (filmder hit it; heim/drinks/finnbydel will too). Doesn't apply to bun-based builds since bun's postinstall scripts use bun's own JS runtime.
+
 ## macOS rsync is openrsync, not GNU rsync
 
 `/usr/bin/rsync` on Sequoia+ is `openrsync` (BSD reimplementation). Many GNU flags missing: `-A` (ACLs), `-X` (xattrs), `--info=stats2`. Worse: openrsync may exit 0 after dumping usage to stderr, so `set -e` doesn't catch it.
