@@ -61,6 +61,17 @@ let
 
   # UNIX socket peer-auth — heim user → heim DB.
   databaseUri = "postgres:///heim?host=/var/run/postgresql";
+
+  # Sharp (image-processing dep pulled in by Payload CMS) ships a
+  # native binary that loads libstdc++.so.6 at runtime via dlopen.
+  # NixOS systemd's minimal env doesn't have libstdc++ on the
+  # dynamic-linker path, so the build crashes during page-data
+  # collection with `ERR_DLOPEN_FAILED: libstdc++.so.6: cannot open
+  # shared object file`. Pointing LD_LIBRARY_PATH at the C++ stdlib
+  # from pkgs.stdenv resolves it. Required for both build (sharp
+  # loads during Next.js page-data collection) and serve (sharp
+  # called per image-transform request at runtime).
+  ldLibraryPath = lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
 in
 {
   sops.secrets.payload-secret = {
@@ -121,6 +132,7 @@ in
       DATABASE_URL = databaseUri; # payload reads URI; some next code reads URL
       NEXT_PUBLIC_SERVER_URL = publicUrl;
       NODE_ENV = "production";
+      LD_LIBRARY_PATH = ldLibraryPath;
     };
 
     serviceConfig = {
@@ -193,6 +205,7 @@ in
       NODE_ENV = "production";
       PORT = toString servePort;
       HOSTNAME = "127.0.0.1";
+      LD_LIBRARY_PATH = ldLibraryPath;
     };
 
     # Skip start until first deploy has produced .next/. Same
