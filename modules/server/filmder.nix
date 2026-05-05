@@ -137,8 +137,7 @@ in
   # internet; no auth gate (portfolio site, intentional).
   nori.funnelRoutes.filmder = {
     path = "/filmder/";
-    target = "/var/lib/filmder/dist/";
-    targetType = "Path";
+    target = "/var/lib/filmder/dist";
   };
 
   # FS hardening — tighten both build + (any future serve) units.

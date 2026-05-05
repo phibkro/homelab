@@ -10,8 +10,6 @@ let
     mkOption
     types
     mkIf
-    mapAttrs'
-    nameValuePair
     ;
 in
 {
@@ -67,26 +65,12 @@ in
           target = mkOption {
             type = types.str;
             description = ''
-              Where Tailscale forwards requests:
-                * `/var/lib/<n>/dist` for static-file serving
-                * `http://127.0.0.1:<port>` for a local backend
-                * `unix:/var/run/<n>.sock` for a Unix socket
-              `targetType` below decides which serve handler this is
-              passed to.
-            '';
-          };
-
-          targetType = mkOption {
-            type = types.enum [
-              "Path"
-              "Proxy"
-            ];
-            default = "Path";
-            description = ''
-              "Path" — Tailscale serves files directly from the
-              `target` directory (good for fully-built static sites).
-              "Proxy" — Tailscale reverse-proxies to the `target` URL
-              (good for runtime-app backends like Next.js / GraphQL).
+              Where Tailscale forwards requests. `tailscale serve`
+              auto-detects the kind from the string shape:
+                * `/var/lib/<n>/dist` — static-file directory
+                * `http://127.0.0.1:<port>` — local HTTP backend
+                * `https://localhost:<port>` (or `https+insecure://`) — local HTTPS backend
+                * `unix:/var/run/<n>.sock` — Unix socket
             '';
           };
         };
@@ -96,28 +80,34 @@ in
 
   config = mkIf (config.nori.funnelRoutes != { }) (
     let
-      # Handlers map only — the surrounding shell of the config
-      # (version, TCP, Web hostname key, AllowFunnel) is assembled at
-      # runtime in the systemd script. The Tailscale-side hostname
-      # depends on what tailscaled currently identifies the machine
-      # as (`nori-station` today on this lab, even though the NixOS
-      # hostname is `workstation` — Tailscale state didn't rename
-      # along with networking.hostName). Detecting via
-      # `tailscale status --json` makes this self-healing across
-      # rename, re-auth, and future host moves.
-      handlers = mapAttrs' (
-        _: cfg:
-        nameValuePair cfg.path {
-          ${cfg.targetType} = cfg.target;
-        }
-      ) config.nori.funnelRoutes;
+      # ── Funnel port ────────────────────────────────────────────────
+      # Funnel only accepts 443, 8443, or 10000 as the local TLS-
+      # termination port. We pick 8443: port 443 is already owned by
+      # Caddy serving `*.nori.lan` (the LAN reverse-proxy plane), and
+      # tailscaled trying to bind 443 on the tailnet interface
+      # collides with Caddy's 0.0.0.0:443 listener — symptom:
+      # `localListener failed to listen ... bind: address already in use`,
+      # then TLS handshakes fail with "internal error".
+      #
+      # Externally — for visitors on the public internet — the URL
+      # IS still `https://<host>.<tailnet>.ts.net/<path>` (port 443
+      # implicit). Tailscale's funnel infrastructure maps public
+      # :443 → our local :8443 transparently. The :8443 only shows
+      # up for inside-tailnet direct access (where there's no
+      # funnel-edge to do the mapping).
+      funnelPort = 8443;
 
-      handlersJson = pkgs.writeText "tailscale-funnel-handlers.json" (builtins.toJSON handlers);
+      # Each route is materialised as one `tailscale serve` invocation.
+      # The commands are idempotent — re-running set the same state.
+      # `tailscale serve reset` runs first so removed routes are
+      # cleaned up (declarative-feeling: state always derived from
+      # current nori.funnelRoutes).
+      serveCommands = lib.concatMapStringsSep "\n" (cfg: ''
+        tailscale serve --bg --https ${toString funnelPort} \
+          --set-path ${cfg.path} ${cfg.target}
+      '') (lib.attrValues config.nori.funnelRoutes);
     in
     {
-      # Apply the assembled serve config to tailscaled. set-config
-      # is idempotent (sets desired state from the JSON file) so
-      # re-running on every activation is safe and free.
       systemd.services.tailscale-funnel-config = {
         description = "Apply Tailscale serve + funnel config (nori.funnelRoutes)";
         after = [ "tailscaled.service" ];
@@ -141,42 +131,29 @@ in
           # only ensures the unit started, not that the daemon has
           # finished login + DNS resolution. Retry up to 60s.
           for _ in $(seq 1 30); do
-            HOSTNAME=$(tailscale status --json 2>/dev/null \
-              | jq -r '.Self.DNSName // empty' \
-              | sed 's/\.$//')
-            if [ -n "''${HOSTNAME:-}" ]; then break; fi
+            if tailscale status --json 2>/dev/null \
+                 | jq -e '.Self.DNSName // empty' >/dev/null; then
+              break
+            fi
             sleep 2
           done
 
-          if [ -z "''${HOSTNAME:-}" ]; then
+          if ! tailscale status --json 2>/dev/null \
+               | jq -e '.Self.DNSName // empty' >/dev/null; then
             echo "tailscale not ready after 60s — aborting" >&2
             exit 1
           fi
 
-          # Splice the Nix-rendered handlers into the runtime-detected
-          # hostname. `--all` applies the config across all services
-          # hosted by this node; the per-service form
-          # (`--service=svc:<n>`) is the path to distinct hostnames
-          # like `filmder.<tailnet>.ts.net` once Tailscale ACL
-          # `nodeAttrs` permit service advertisement.
-          HANDLERS=$(cat ${handlersJson})
-          install -m 0600 /dev/null /run/tailscale-serve.json
-          cat > /run/tailscale-serve.json <<EOF
-          {
-            "version": "0.0.1",
-            "TCP": { "443": { "HTTPS": true } },
-            "Web": {
-              "$HOSTNAME:443": {
-                "Handlers": $HANDLERS
-              }
-            },
-            "AllowFunnel": {
-              "$HOSTNAME:443": true
-            }
-          }
-          EOF
+          # Reset to a clean slate, then re-apply every route
+          # currently declared in nori.funnelRoutes. Removing a route
+          # from the Nix config + rebuild = it disappears from
+          # tailscaled state on the next activation.
+          tailscale serve reset
+          ${serveCommands}
 
-          tailscale serve set-config --all /run/tailscale-serve.json
+          # Enable Funnel for the local serve port. tailscale's
+          # public-edge maps internet :443 → our local :8443.
+          tailscale funnel --bg ${toString funnelPort}
         '';
       };
     }
