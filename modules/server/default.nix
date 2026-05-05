@@ -42,6 +42,7 @@ _: {
     ./finnbydel.nix
     ./gatus.nix
     ./glance.nix
+    ./heim.nix
     ./immich.nix
     ./jellyfin.nix
     ./komga.nix
