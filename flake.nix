@@ -48,6 +48,17 @@
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
 
+      # A second pkgs binding with `allowUnfree = true` for the dev
+      # shell — needed because `claude-code` is unfree and the
+      # default `legacyPackages.${system}` honours the strict
+      # default. Hosts get unfree separately via
+      # `modules/common/base.nix` setting `nixpkgs.config.allowUnfree`,
+      # but that path doesn't reach flake-level outputs like devShells.
+      pkgsUnfree = import nixpkgs {
+        inherit system;
+        config.allowUnfree = true;
+      };
+
       # ── Hosts ─────────────────────────────────────────────────────
       # The list of hosts is the filesystem: each subdirectory of
       # ./hosts/ is a host. readDir + filterAttrs gets us the names
@@ -88,6 +99,17 @@
 
       hostRegistry = lib.genAttrs hostNames (n: identityFor.${n});
 
+      # ── Dev shells ────────────────────────────────────────────────
+      # Per-project dev environments composed from atomic fragments
+      # under modules/dev/. Each fragment contributes buildInputs +
+      # Claude allowlists + shell hooks; the composer (`mkDevShell`)
+      # resolves transitive deps + merges + returns a `pkgs.mkShell`.
+      # See modules/dev/default.nix for the composer; modules/dev/
+      # *.nix for the fragment library. Exposed via `self.lib` so
+      # downstream project flakes can `inputs.lab.url = "..."` then
+      # call `lab.lib.mkDevShell pkgs { modules = [ ... ]; }`.
+      devLib = import ./modules/dev { inherit lib; };
+
       mkHost =
         name:
         lib.nixosSystem {
@@ -111,6 +133,28 @@
     in
     {
       nixosConfigurations = lib.genAttrs hostNames mkHost;
+
+      # Dev-shell composer + the available fragment list. Consumers
+      # (downstream project flakes, this flake's own devShells) call
+      # `mkDevShell pkgs { modules = [ "ts" "claude-code" ]; }` to get
+      # a configured `pkgs.mkShell`. `fragmentNames` is the live list
+      # — read it via `nix eval .#lib.fragmentNames` rather than
+      # maintaining a static doc table.
+      lib = {
+        inherit (devLib) mkDevShell fragmentNames;
+      };
+
+      # Self-test: this repo's own dev shell. `nix develop` here gives
+      # nixfmt + statix + deadnix + nh + claude-code, plus a
+      # materialized `.claude/settings.json` whose allowlist is the
+      # union of nix + claude-code fragment contributions. The
+      # operator-specific settings.local.json layers on top.
+      devShells.${system}.default = devLib.mkDevShell pkgsUnfree {
+        modules = [
+          "nix"
+          "claude-code"
+        ];
+      };
 
       formatter.${system} = pkgs.nixfmt;
 
