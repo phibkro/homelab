@@ -327,8 +327,12 @@
                   cache = "12h";
                   feeds = [
                     {
-                      url = "https://selfh.st/rss/";
-                      title = "selfh.st";
+                      url = "https://api.episciences.org/api/feed/rss/compositionality";
+                      title = "Compositionality Journal";
+                    }
+                    {
+                      url = "https://www.chess.com/rss/news";
+                      title = "Chess.com";
                     }
                     {
                       url = "https://discourse.nixos.org/latest.rss";
