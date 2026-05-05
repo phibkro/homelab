@@ -43,6 +43,20 @@ let
   finnbydelRepo = "https://github.com/phibkro/finnbydel.git";
   servePort = 9093;
   dbUrl = "file:/var/lib/finnbydel/db.sqlite";
+
+  # Prisma on NixOS: the binary engines aren't pre-built for the
+  # `linux-nixos` target, so prisma's runtime download fails (404
+  # against binaries.prisma.sh). Fix is pointing PRISMA_*_BINARY +
+  # PRISMA_QUERY_ENGINE_LIBRARY at nix-built artefacts via
+  # pkgs.prisma-engines_6 (engine major version pinned to project's
+  # @prisma/client major; v6 covers schema-engine + libquery_engine).
+  # Plus openssl on PATH because prisma probes it for libssl version
+  # detection.
+  prismaEnv = {
+    PRISMA_QUERY_ENGINE_LIBRARY = "${pkgs.prisma-engines_6}/lib/libquery_engine.node";
+    PRISMA_QUERY_ENGINE_BINARY = "${pkgs.prisma-engines_6}/bin/query-engine";
+    PRISMA_SCHEMA_ENGINE_BINARY = "${pkgs.prisma-engines_6}/bin/schema-engine";
+  };
 in
 {
   users.users.finnbydel = {
@@ -61,9 +75,11 @@ in
     path = with pkgs; [
       git
       bun
+      openssl
+      prisma-engines_6
     ];
 
-    environment = {
+    environment = prismaEnv // {
       DATABASE_URL = dbUrl;
       NODE_ENV = "production";
     };
@@ -128,9 +144,13 @@ in
     wants = [ "network-online.target" ];
     wantedBy = [ "multi-user.target" ];
 
-    path = with pkgs; [ bun ];
+    path = with pkgs; [
+      bun
+      openssl
+      prisma-engines_6
+    ];
 
-    environment = {
+    environment = prismaEnv // {
       DATABASE_URL = dbUrl;
       NODE_ENV = "production";
       PORT = toString servePort;
