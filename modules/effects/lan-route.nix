@@ -248,6 +248,55 @@ in
               }
             );
           };
+          forwardAuth = mkOption {
+            default = null;
+            description = ''
+              If set, gate this route via Authelia forward-auth at the
+              Caddy layer. Caddy asks Authelia's `/api/verify` whether
+              the request's session cookie is valid before forwarding;
+              if not, Authelia issues a 302 to the portal. The session
+              cookie at *.nori.lan covers every forward-auth'd route —
+              log in once at https://auth.nori.lan, navigate to any
+              gated service without re-auth.
+
+              Used for services that don't have native OIDC client
+              support (the *arr stack, qBittorrent). Trade vs `oidc`:
+                * `oidc`         — per-user identity inside the app;
+                                    requires the app to support OIDC.
+                * `forwardAuth`  — uniform Authelia gate at Caddy; the
+                                    app sees only the proxy, no per-user
+                                    identity propagated. Works for any
+                                    HTTP service.
+
+              `exemptPaths` lets app-to-app API calls (Sonarr → Prowlarr,
+              Bazarr → Sonarr) bypass the auth check — those flows use
+              the app's own API key, not the user session, and would
+              break under cookie-based forward-auth.
+
+              Authelia uptime becomes load-bearing: an Authelia outage
+              returns 502 for every forward-auth'd route. SSH-tunnel to
+              the backend port directly as the recovery escape hatch.
+              See modules/server/authelia.nix for the upstream.
+            '';
+            type = types.nullOr (
+              types.submodule {
+                options = {
+                  exemptPaths = mkOption {
+                    type = types.listOf types.str;
+                    default = [ "/api/*" ];
+                    description = ''
+                      Path globs that bypass forward-auth. Format is
+                      Caddy path-matcher syntax (`/api/*`, `/api/v3/*`,
+                      etc.). Default `/api/*` covers the *arr stack and
+                      most other apps that namespace their API.
+                      Override per-service when the API path is
+                      non-standard.
+                    '';
+                  };
+                };
+              }
+            );
+          };
           oidc = mkOption {
             default = null;
             description = ''
@@ -260,6 +309,9 @@ in
                   systemd EnvironmentFile in the consuming module.
 
               Set to `null` (default) for routes that don't use SSO.
+              Mutually exclusive in practice with `forwardAuth` —
+              prefer `oidc` when the app supports it (per-user
+              identity), `forwardAuth` otherwise.
             '';
             type = types.nullOr (
               types.submodule {
@@ -323,6 +375,10 @@ in
       ports = lib.mapAttrsToList (_: r: r.port) routes;
       names = lib.attrNames routes;
       oidcRoutes = filterAttrs (_: r: r.oidc != null) routes;
+      forwardAuthRoutes = filterAttrs (_: r: r.forwardAuth != null) routes;
+      autheliaEnabled =
+        config.services.authelia.instances != { }
+        && lib.any (i: i.enable) (lib.attrValues config.services.authelia.instances);
     in
     {
       # Hard constraints — eval fails if any of these are violated.
@@ -353,12 +409,56 @@ in
             the OIDC redirect URI.
           '';
         }
+        {
+          assertion = forwardAuthRoutes == { } || autheliaEnabled;
+          message = ''
+            nori.lanRoutes with `forwardAuth` set require Authelia to be
+            running on the same host (Caddy hits 127.0.0.1:9091 for the
+            auth check). Routes with forwardAuth: ${lib.concatStringsSep ", " (lib.attrNames forwardAuthRoutes)}.
+
+            Either drop the forwardAuth blocks, or import
+            modules/server/authelia.nix on this host.
+          '';
+        }
+        {
+          assertion = lib.all (r: !(r.oidc != null && r.forwardAuth != null)) (lib.attrValues routes);
+          message = ''
+            nori.lanRoutes.<n> sets BOTH `oidc` and `forwardAuth`.
+            These are mutually exclusive — `oidc` lets the app handle
+            login per-user; `forwardAuth` gates the route at Caddy with
+            no app-side awareness. Pick one. Conflicting routes:
+              ${lib.concatStringsSep ", " (
+                lib.attrNames (lib.filterAttrs (_: r: r.oidc != null && r.forwardAuth != null) routes)
+              )}
+          '';
+        }
       ];
 
       services.caddy.virtualHosts = mapAttrs' (
         name: cfg:
         nameValuePair "${name}.nori.lan" {
-          extraConfig = "reverse_proxy ${cfg.scheme}://${cfg.host}:${toString cfg.port}";
+          extraConfig =
+            let
+              backend = "reverse_proxy ${cfg.scheme}://${cfg.host}:${toString cfg.port}";
+              # Forward-auth block: Caddy hits Authelia's /api/verify
+              # for every request matching @authNeeded (everything not
+              # in exemptPaths). copy_headers propagates the Authelia
+              # response headers to the upstream so the app could read
+              # Remote-User / Remote-Email if it ever wanted to —
+              # currently no app does, but harmless to forward.
+              faBlock = lib.optionalString (cfg.forwardAuth != null) ''
+                @authNeeded {
+                  not path ${lib.concatStringsSep " " cfg.forwardAuth.exemptPaths}
+                }
+                forward_auth @authNeeded http://127.0.0.1:9091 {
+                  uri /api/verify?rd=https://auth.nori.lan
+                  copy_headers Remote-User Remote-Email Remote-Name Remote-Groups
+                }
+              '';
+            in
+            ''
+              ${faBlock}${backend}
+            '';
         }
       ) config.nori.lanRoutes;
 

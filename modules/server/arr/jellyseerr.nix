@@ -6,22 +6,38 @@
 }:
 
 {
-  # Jellyseerr — request UI for users. Family members log in (with their
-  # Jellyfin account, post-OIDC), search for a movie/show, click "Request",
-  # and Jellyseerr forwards the request to Sonarr/Radarr to grab. Removes
-  # the "ask Philip via SMS to add this show" loop.
+  # Jellyseerr — request UI for users. Family members log in (via
+  # Authelia OIDC, see below), search for a movie/show, click "Request",
+  # and Jellyseerr forwards the request to Sonarr/Radarr to grab.
+  # Removes the "ask Philip via SMS to add this show" loop.
   #
   # First-run setup:
-  #   1. Visit https://requests.nori.lan
-  #   2. First-time wizard: set up sign-in method
-  #        Option A — Jellyfin: tie to the existing Jellyfin auth so users
-  #          who already have a Jellyfin account just sign in. Recommended
-  #          (single source of family identity).
-  #        Option B — local accounts: Jellyseerr-only credentials.
-  #   3. Add Sonarr → URL http://localhost:8989, paste API key, default
+  #   1. just oidc-key requests
+  #      → outputs raw + PBKDF2 hash; copy both
+  #   2. sops secrets/secrets.yaml → paste:
+  #        oidc-requests-client-secret: '<raw>'
+  #        oidc-requests-client-secret-hash: '<hash>'
+  #   3. just rebuild
+  #   4. Visit https://requests.nori.lan
+  #   5. First-time wizard: set up sign-in method
+  #        Pick "Local accounts" or "Jellyfin" — either works alongside
+  #        OIDC. Create a master admin first (recovery path if Authelia
+  #        is ever down).
+  #   6. Settings → General → OpenID Connect:
+  #        Issuer URL:   https://auth.nori.lan
+  #        Client ID:    requests
+  #        Client Secret: paste raw secret from
+  #                       /run/secrets/oidc-requests-client-secret
+  #                       (cat it on the host)
+  #        Scopes:       openid email profile
+  #        Save. The redirect URI in Authelia (auto-set by lan-route) is
+  #        https://requests.nori.lan/login/oidc-callback — must match
+  #        whatever Jellyseerr actually uses; tweak the lanRoute
+  #        `oidc.redirectPath` below if Jellyseerr's docs say otherwise.
+  #   7. Add Sonarr → URL http://localhost:8989, paste API key, default
   #      quality profile, root folder /mnt/media/streaming/shows
-  #   4. Add Radarr similarly with /mnt/media/streaming/movies
-  #   5. (Optional) Settings → Notifications → ntfy webhook for new
+  #   8. Add Radarr similarly with /mnt/media/streaming/movies
+  #   9. (Optional) Settings → Notifications → ntfy webhook for new
   #      requests / approvals.
   #
   # Jellyseerr doesn't touch /mnt/media — it's API-orchestration only,
@@ -34,9 +50,18 @@
 
   nori.harden.seerr = { };
 
+  # Web-UI-managed OIDC (like Beszel/PocketBase) — the `oidc` block
+  # generates the Authelia client + sops secret + env-file template;
+  # the operator pastes the raw secret + redirect URI into Jellyseerr's
+  # admin UI on first run (see header comment). EnvironmentFile is NOT
+  # wired because Jellyseerr doesn't accept OIDC config via env vars.
   nori.lanRoutes.requests = {
     port = 5055;
     monitor = { };
+    oidc = {
+      clientName = "Jellyseerr";
+      redirectPath = "/login/oidc-callback";
+    };
     dashboard = {
       title = "Jellyseerr";
       icon = "sh:jellyseerr";

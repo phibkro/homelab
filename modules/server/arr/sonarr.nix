@@ -41,6 +41,10 @@
   nori.lanRoutes.tv = {
     port = 8989;
     monitor = { };
+    # Forward-auth via Authelia. /api/* exempt so app-to-app calls
+    # (Prowlarr → Sonarr push, Bazarr → Sonarr library scan, Jellyseerr
+    # → Sonarr request) keep working via the per-app API key.
+    forwardAuth.exemptPaths = [ "/api/*" ];
     dashboard = {
       title = "Sonarr";
       icon = "si:sonarr";

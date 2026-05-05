@@ -52,6 +52,10 @@
   nori.lanRoutes.downloads = {
     port = 8083;
     monitor = { };
+    # Forward-auth via Authelia. /api/* exempt so the *arr clients
+    # (Sonarr, Radarr, Lidarr) can drive downloads via qBittorrent's
+    # Web API using the per-app credentials configured on first run.
+    forwardAuth.exemptPaths = [ "/api/*" ];
     dashboard = {
       title = "qBittorrent";
       icon = "si:qbittorrent";
