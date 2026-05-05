@@ -107,10 +107,13 @@ in
       fi
 
       # 3. Inject the TMDB token (read from the sops-decrypted file).
-      #    The token is stored with its "Bearer " prefix, since that's
-      #    exactly what `Authorization:` header expects and matches
-      #    TMDB v4 read-access-token convention.
-      export VITE_API_READ_ACCESS_TOKEN="$(cat ${secrets.tmdb-token.path})"
+      #    sops stores the raw v4 read-access JWT; filmder's API
+      #    client uses the env var as the full Authorization header
+      #    value verbatim, so we prepend the `Bearer ` scheme here.
+      #    Other consumers of `tmdb-token` (future apps) get the raw
+      #    value and format their own header — the secret stays
+      #    convention-free in sops.
+      export VITE_API_READ_ACCESS_TOKEN="Bearer $(cat ${secrets.tmdb-token.path})"
 
       # 4. Path-mount under /filmder/ on the funnel host. Vite reads
       #    PUBLIC_BASE in vite.config.ts → all asset URLs become
