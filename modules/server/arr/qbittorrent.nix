@@ -59,12 +59,25 @@
   #   BanDuration=0           don't lock the IP after failed logins
   #   MaxAuthenticationFailCount=99999  defense in depth for above
   #
-  # [BitTorrent] keys (download paths on @streaming so the *arrs can
-  # hardlink completed downloads into their libraries — btrfs hardlinks
-  # across subvolumes don't work, so everything stays on /streaming):
+  # [BitTorrent] keys — split paths by IO pattern:
+  #
   #   Session\DefaultSavePath=<streaming>/.downloads/complete
-  #   Session\TempPath=<streaming>/.downloads/incomplete
-  #   Session\TempPathEnabled=true     keep incomplete separate
+  #     COMPLETE goes on the IronWolf @streaming subvolume — must be
+  #     same-subvolume as the *arr libraries (movies/, shows/, music/)
+  #     for the *arr → library hardlink to work (btrfs hardlinks don't
+  #     cross subvolumes; cross-subvol falls back to copy+delete which
+  #     breaks seeding).
+  #
+  #   Session\TempPath=/var/lib/qBittorrent/incomplete
+  #     INCOMPLETE goes on the SN750 NVMe (root FS, @var-lib subvol)
+  #     under qBittorrent's StateDirectory. Random writes from peers
+  #     stay off the spinning HDD; cross-device move on completion
+  #     adds 1-10 min copy per finished torrent (one-time cost,
+  #     doesn't break seeding — qBittorrent seeds from DefaultSavePath
+  #     after the move). HDD wear-isolation + faster downloads at
+  #     gigabit+ link speeds. Trade documented in the module header.
+  #
+  #   Session\TempPathEnabled=true     keep the split active
   systemd.services.qbittorrent.preStart = lib.mkAfter ''
     ${pkgs.python3}/bin/python3 ${pkgs.writeText "qbt-configure.py" ''
       import configparser, glob, sys
@@ -86,9 +99,14 @@
               r'WebUI\MaxAuthenticationFailCount': '99999',
           },
           'BitTorrent': {
+              # COMPLETE on @streaming (same subvol as *arr libraries
+              # for hardlink-on-import).
               r'Session\DefaultSavePath': '${config.nori.fs.streaming.path}/.downloads/complete',
-              r'Session\TempPath':         '${config.nori.fs.streaming.path}/.downloads/incomplete',
-              r'Session\TempPathEnabled':  'true',
+              # INCOMPLETE on NVMe (qBittorrent StateDirectory) for IO
+              # isolation + HDD wear-isolation. Cross-device copy on
+              # completion is the trade.
+              r'Session\TempPath':        '/var/lib/qBittorrent/incomplete',
+              r'Session\TempPathEnabled': 'true',
           },
       }
       for section, kv in sections.items():

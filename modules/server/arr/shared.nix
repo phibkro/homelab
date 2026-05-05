@@ -18,12 +18,18 @@
   #
   # Layout (paths from nori.fs — host's disko config is single source
   # of truth; see modules/effects/fs.nix):
-  #   <streaming>/movies/         Radarr library     (re-derivable)
-  #   <streaming>/shows/          Sonarr library     (re-derivable)
-  #   <streaming>/music/          Lidarr library     (re-derivable)
-  #   <streaming>/.downloads/...  qBittorrent staging
-  #   <library>/books/            calibre-web library
-  #   <library>/comics/           Komga library
+  #   <streaming>/movies/             Radarr library     (re-derivable)
+  #   <streaming>/shows/              Sonarr library     (re-derivable)
+  #   <streaming>/music/              Lidarr library     (re-derivable)
+  #   <streaming>/.downloads/complete qBittorrent finished — same
+  #                                    subvol as *arr libraries for the
+  #                                    hardlink-on-import flow
+  #   <library>/books/                calibre-web library
+  #   <library>/comics/               Komga library
+  #
+  # Note: qBittorrent's INCOMPLETE dir is /var/lib/qBittorrent/incomplete
+  # (NVMe @var-lib, not @streaming) — IO isolation. See qbittorrent.nix
+  # preStart for the rationale + path config.
   #
   # Permissions: directories owned root:media, mode 02775 (setgid +
   # group rwx). The setgid bit means new files inherit `media` as
@@ -49,14 +55,15 @@
       library = config.nori.fs.library.path;
     in
     [
-      # @streaming — re-derivable tier, *arr libraries + download staging
-      "d ${streaming}                       02775 root media -"
-      "d ${streaming}/movies                02775 root media -"
-      "d ${streaming}/shows                 02775 root media -"
-      "d ${streaming}/music                 02775 root media -"
-      "d ${streaming}/.downloads            02775 root media -"
-      "d ${streaming}/.downloads/incomplete 02775 root media -"
-      "d ${streaming}/.downloads/complete   02775 root media -"
+      # @streaming — re-derivable tier, *arr libraries + download staging.
+      # qBittorrent INCOMPLETE lives off-subvol (NVMe StateDirectory) —
+      # see qbittorrent.nix.
+      "d ${streaming}                     02775 root media -"
+      "d ${streaming}/movies              02775 root media -"
+      "d ${streaming}/shows               02775 root media -"
+      "d ${streaming}/music               02775 root media -"
+      "d ${streaming}/.downloads          02775 root media -"
+      "d ${streaming}/.downloads/complete 02775 root media -"
       # @library — curated tier, hand-uploaded media
       "d ${library}                         02775 root media -"
       "d ${library}/books                   02775 root media -"
