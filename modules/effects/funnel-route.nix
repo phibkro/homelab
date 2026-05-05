@@ -138,7 +138,15 @@ in
         };
 
         script = ''
-          ${pkgs.tailscale}/bin/tailscale serve set-config ${serveConfigJson}
+          # `--all` applies the config across all services hosted by
+          # this node (workstation in this homelab). The alternative
+          # `--service=svc:<n>` form is the newer per-service shape
+          # that lets each app advertise a distinct hostname (e.g.
+          # `filmder.<tailnet>.ts.net`) — pursue when we want
+          # service-distinct URLs and have wired the Tailscale ACL
+          # `nodeAttrs` to permit service advertisement. For now
+          # (single-host, path-mounted), `--all` is the right scope.
+          ${pkgs.tailscale}/bin/tailscale serve set-config --all ${serveConfigJson}
         '';
       };
     }
