@@ -48,7 +48,7 @@
 
     # Virtual hosts are NOT defined here. They're auto-generated from
     # `nori.lanRoutes.<name>` declarations in each service's own
-    # module — see modules/lib/lan-route.nix for the option +
+    # module — see modules/effects/lan-route.nix for the option +
     # generator. Adding/renaming a route happens at the source
     # (the service module), not here.
   };
@@ -62,7 +62,7 @@
 
   # Caddy listens on 80 (plaintext-redirect) + 443 (HTTPS). Open
   # globally, not per-interface: with `*.nori.lan` resolving to the
-  # workhorse LAN IP (see modules/lib/lan-route.nix nori.lanIp),
+  # workhorse LAN IP (see modules/effects/lan-route.nix nori.lanIp),
   # request traffic arrives on the LAN interface for LAN clients
   # and on tailscale0 for off-LAN tailnet clients via Pi's subnet
   # route. Same precedent as Blocky's :53 (modules/server/blocky.nix);

@@ -53,7 +53,7 @@
   # in pure forwarder mode.
   #
   # The ntfy-host coupling lives in the nori.hosts registry (single
-  # source of truth — see modules/lib/hosts.nix). If ntfy ever
+  # source of truth — see modules/effects/hosts.nix). If ntfy ever
   # relocates, update modules/common/topology.nix instead of this file.
   nori.lanRoutes = lib.mkIf config.services.caddy.enable {
     alert = {
