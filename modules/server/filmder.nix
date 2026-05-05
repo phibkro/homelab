@@ -60,7 +60,11 @@ in
     wants = [ "network-online.target" ];
 
     # Tooling on PATH for the script. nodejs ships bundled npm.
+    # `bash` is required by some npm postinstall scripts (notably
+    # @swc/core, which spawns `sh` to run platform-detection logic).
+    # Without it, `npm ci` fails with `spawn sh ENOENT`.
     path = with pkgs; [
+      bash
       git
       nodejs_22
     ];
