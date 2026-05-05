@@ -404,6 +404,7 @@
           #   2026-05-05  modules/lib/              → modules/effects/
           #   2026-05-05  hosts/nori-station        → hosts/workstation
           #   2026-05-05  hosts/nori-pi             → hosts/pi
+          #   2026-05-05  /orient skill             → /analyse-system
           no-stale-paths =
             pkgs.runCommandLocal "no-stale-paths"
               {
@@ -448,6 +449,27 @@
                   echo "  Renamed to 'modules/effects/' on 2026-05-05 — the"
                   echo "  directory holds the nori.<X> Reader+Writer effect"
                   echo "  family (see docs/CONVENTIONS.md 'Effect interface')."
+                  fail=1
+                fi
+
+                # /orient skill renamed to /analyse-system on 2026-05-05
+                # — generalized + made dimension-choice suggestive, then
+                # lifted into modules/desktop/claude/skills/ so home-manager
+                # ships the same skill to every operator-attached host.
+                # Matches the skill-invocation form "/orient" with a word
+                # boundary, plus the explicit skill folder paths. Bare
+                # "orient" is fine — used legitimately in prose ("orient
+                # yourself", "oriented in under 30 seconds").
+                if grep -rEn '(/orient\b|\.claude/skills/orient\b)' \
+                     --include='*.nix' --include='*.md' --include='*.yaml' \
+                     --include='Justfile' \
+                     docs/ modules/ hosts/ scripts/ \
+                     README.md CLAUDE.md Justfile 2>/dev/null ; then
+                  echo
+                  echo "✗ Stale '/orient' or '.claude/skills/orient' references above."
+                  echo "  Renamed to '/analyse-system' on 2026-05-05."
+                  echo "  User-level skill source: modules/desktop/claude/skills/analyse-system/"
+                  echo "  Project-level supplement: .claude/skills/analyse-system/"
                   fail=1
                 fi
 

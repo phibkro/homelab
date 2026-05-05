@@ -88,7 +88,7 @@ Tracked here only when actionable; routine done-work lives in `git log`.
 
 ## Leverage map
 
-Snapshot of where this lab sits at each Meadows leverage tier (12 low → 1 high), across the three dimensions the `/orient` skill covers. Snapshot is dated; structural changes shift placements. Verify against current code on a fresh read.
+Snapshot of where this lab sits at each Meadows leverage tier (12 low → 1 high), across the three dimensions the `/analyse-system` skill covers. Snapshot is dated; structural changes shift placements. Verify against current code on a fresh read.
 
 | Tier | Artifact (what runs) | Dev workflow (how it evolves) | Agentic workflow (how Claude works) |
 |---|---|---|---|
@@ -100,12 +100,12 @@ Snapshot of where this lab sits at each Meadows leverage tier (12 low → 1 high
 | **7** | flake checks accumulate strictness over commits (the more we encode, the tighter); skill capability accumulates | conventions accumulate (CONVENTIONS.md), skill set grows | active memory grows without aggressive pruning (worth watching); skill catalog grows |
 | **6** | `nori.<X>` Reader+Writer effect family; topology registry; `just ports` live oracle; `nori.fs` as named-context for paths | CLAUDE.md routing table; `docs/PROCEDURES.md`; skills as on-demand context; `git log` narrative | skill auto-discovery via descriptions; memory files in `~/.claude/projects/...`; system reminders surface deferred tools |
 | **5** | `every-service-has-fs-hardening`, `every-service-has-backup-intent`, `forbidden-patterns` (no PBKDF2, no IP literals, etc.), `no-stale-paths`, `audience` enum, port-uniqueness assertion, paths-XOR-skip assertion | "encode conventions in code, not docs" (memory: `enforce_in_code`); types > assertions > flake checks > prose | tool restrictions in `settings.json`, hooks, refusal logic, "never commit unless asked" |
-| **4** | `modules/effects/` as the meta-shape for `nori.<X>` extraction; rule-of-three for abstractions; cross-host service split-module pattern | skills extracted at three concrete uses (`add-service`, `relocate-to-pi`, etc.); `on-structural-change` skill for doc-tier decisions | skill extraction; memory schema (`active/`, `archive/`, etc.); the lift of in-session prompts → reusable skills (this `/orient` skill is an instance) |
+| **4** | `modules/effects/` as the meta-shape for `nori.<X>` extraction; rule-of-three for abstractions; cross-host service split-module pattern | skills extracted at three concrete uses (`add-service`, `relocate-to-pi`, etc.); `on-structural-change` skill for doc-tier decisions | skill extraction; memory schema (`active/`, `archive/`, etc.); the lift of in-session prompts → reusable skills (this `/analyse-system` skill is an instance); user-level skill content lives in-repo (`modules/desktop/claude/skills/`) and ships to all hosts via home-manager |
 | **3** | DESIGN.md three principles: declarative reproducibility, default-deny exposure, policy proportional to data value | "correctness > simplicity > thoroughness > speed"; `main` is the deploy boundary; commit messages explain the *why* | "answer first, push back, no flattery"; "make the reasonable call and continue"; correctness > clarity > utility > thoroughness |
 | **2** | declarative-first (NixOS), code-as-truth, FP-flavored Reader + collected-Writer effects, Cynefin Complex framing | iterate-to-stable then codify; compose via aliases not categories; folders = coupling not categorization | tool-use + on-demand skills + persistent file-based memory; structured tool-feedback loop |
-| **1** | willingness to swap tools when they fight the paradigm (Uptime Kuma → Gatus); "tailnet IS the auth" (audience refactor); "real-debrid is a different architecture not an upgrade" | willingness to question the dev process itself (this entire session is an instance); rule-of-three guards against premature codification | willingness to question whether agent involvement helps at all (the tier-12 micro-task should not invoke `/orient`); prompt-shape transcendence (Meadows lens > open-ended exploration) |
+| **1** | willingness to swap tools when they fight the paradigm (Uptime Kuma → Gatus); "tailnet IS the auth" (audience refactor); "real-debrid is a different architecture not an upgrade" | willingness to question the dev process itself (this entire session is an instance); rule-of-three guards against premature codification | willingness to question whether agent involvement helps at all (the tier-12 micro-task should not invoke `/analyse-system`); prompt-shape transcendence (Meadows lens > open-ended exploration) |
 
-Use the `/orient` skill at session start to confirm or refine these placements against current code. Drift is expected.
+Use the `/analyse-system` skill at session start to confirm or refine these placements against current code. Drift is expected.
 
 ## Style for prose
 
@@ -126,7 +126,7 @@ Non-deterministic recurring procedures are extracted to `.claude/skills/` so the
 
 | Skill | Triggers on |
 |---|---|
-| `/orient` | "explore the codebase", "orient yourself", "get up to speed" — fresh-session structural read |
+| `/analyse-system` | "explore the codebase", "analyse the system", "orient yourself", "get up to speed" — fresh-session structural read |
 | `/add-service` | "add <X>", "deploy <Y>", "set up <Z>" |
 | `/add-host` | "add a host", "set up nori-<X>", "another machine" |
 | `/relocate-to-pi` | "move <X> to Pi", "should survive station outages" |
