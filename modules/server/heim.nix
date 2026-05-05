@@ -82,10 +82,15 @@ in
   };
   users.groups.heim = { };
 
-  # Add heim to the existing postgres instance — DB + role with
-  # ownership. Peer auth handles the connection (no password row
-  # needed).
+  # Postgres dependency declared explicitly even though Immich
+  # already enables the system instance — local reasoning. Reading
+  # heim.nix should answer "what does heim need?" without chasing
+  # side effects from sibling modules. NixOS module merging is
+  # idempotent on `enable = true`, so multiple declarants are fine.
+  # If heim ever lands on a host without immich (split-stack later,
+  # or a future deploy environment), this still works.
   services.postgresql = {
+    enable = true;
     ensureDatabases = [ "heim" ];
     ensureUsers = [
       {
