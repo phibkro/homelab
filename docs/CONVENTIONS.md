@@ -17,9 +17,11 @@ modules/
       default.nix
   desktop/                    # "this host has a graphical session" (Hyprland, greetd, ...)
   lib/                        # cross-cutting abstractions
+    hosts.nix                 # nori.hosts — topology registry (tailnetIp, lanIp, role)
     lan-route.nix             # nori.lanRoutes — *.nori.lan exposure
     backup.nix                # nori.backups — restic decisions
     gpu.nix                   # nori.gpu.nvidiaDevices — GPU device registry
+    harden.nix                # nori.harden — systemd FS-namespace hardening
 secrets/
   secrets.yaml                # sops-encrypted, committed
   README.md                   # ops doc for the secrets workflow
@@ -39,11 +41,12 @@ A service module owns *everything* about its service: the upstream module's `ena
     # ...service-specific config...
   };
 
-  # Default-deny filesystem access (see "FS hardening" below)
-  systemd.services.<service>.serviceConfig = {
-    ProtectHome = lib.mkForce true;
-    TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ];
-    BindReadOnlyPaths = [ /* opt in to host paths the service needs */ ];
+  # Default-deny filesystem access — see "FS hardening" below.
+  # Attribute key MUST match the systemd service unit name.
+  nori.harden.<service> = {
+    binds = [ /* writable host paths */ ];
+    readOnlyBinds = [ /* read-only host paths */ ];
+    # protectHome = null;  # only when upstream's ProtectHome value is opinionated and you want to leave it alone (rare; see syncthing)
   };
 
   # LAN exposure — auto-generates Caddy vhost + Blocky DNS + Gatus monitor
@@ -51,6 +54,11 @@ A service module owns *everything* about its service: the upstream module's `ena
     port = N;
     monitor = { };  # or .path = "/health" if non-default
   };
+
+  # Backup intent (required — `every-service-has-backup-intent` flake check)
+  nori.backups.<service>.paths = [ "/var/lib/<service>" ];
+  # or for stateless / re-derivable services:
+  # nori.backups.<service>.skip = "<reason>";
 
   # Optional: open backend port directly on tailnet (default: closed)
   # nori.lanRoutes.<short-name>.exposeOnTailnet = true;
@@ -77,22 +85,26 @@ See `modules/lib/lan-route.nix` for the schema.
 
 ## Filesystem hardening: default-deny
 
-Every service module's `serviceConfig` includes:
+The default-deny systemd FS-namespace block (`ProtectHome = mkForce true`, `TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ]`, plus `BindPaths` / `BindReadOnlyPaths` for what's let back in) lives behind the `nori.harden` abstraction in `modules/lib/harden.nix`. One declaration per systemd unit name:
 
 ```nix
-ProtectHome = lib.mkForce true;          # /home and /root invisible
-TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ];  # tmpfs over these dirs
-BindReadOnlyPaths = [ /* opt in */ ];    # bind-mount only what's needed back in
+nori.harden.<unit> = {
+  binds         = [ /* writable host paths */ ];
+  readOnlyBinds = [ /* read-only host paths */ ];
+  protectHome   = true | false | null;  # default true; null skips
+};
 ```
 
-Verify via `sudo nsenter -t <pid> -m -U -- ls /mnt/` from the host — should show empty or only the bound paths.
+The `every-service-has-fs-hardening` flake check fails the build if any `modules/server/*.nix` is missing a `nori.harden.<n>` declaration (excluded list: aggregators, framework, ntfy/notify, samba's legitimate /srv exception).
 
-`mkForce` for `ProtectHome` is needed when the upstream module already sets it as `true` (boolean) — Nix sees `true` and `"yes"` as conflicting definitions.
+Verify a service's effective namespace via `sudo systemctl cat <unit>.service | grep -E '(ProtectHome|TemporaryFileSystem|BindPaths|BindReadOnlyPaths)'`, or `sudo nsenter -t <pid> -m -U -- ls /mnt/` to confirm the live mount namespace shows only the bound paths.
 
-Some services need access to specific host paths:
-- Jellyfin: `/mnt/media` (read media library) + `/srv/share` (optional)
-- Samba: `/mnt/media`, `/srv/share` (its job is to expose them)
-- Most others: empty `BindReadOnlyPaths` — they only need `/var/lib/<service>/`
+Common shapes:
+- **No host access** (the default): most services just need their `/var/lib/<n>` StateDirectory — `nori.harden.<n> = { };`
+- **Writable subtree**: e.g. *arr stack hardlinking into /mnt/media/streaming — `binds = [ "/mnt/media/streaming" ];`
+- **Read-only subtree**: Jellyfin streaming /mnt/media — `readOnlyBinds = [ "/mnt/media" "/srv/share" ];`
+- **Upstream-opinionated ProtectHome**: Syncthing's upstream module sets a specific value; `protectHome = null` skips the override entirely.
+- **Composed**: services with extra serviceConfig (CPUQuota, EnvironmentFile, SupplementaryGroups, PrivateDevices) declare those in a sibling `systemd.services.<n>.serviceConfig` block — module merging combines the two.
 
 ## Secrets: sops-nix patterns
 

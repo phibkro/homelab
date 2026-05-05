@@ -71,7 +71,7 @@ All three are wrap-up failures; fix and re-run.
 **Expected (shape)**:
 - New file `modules/server/widget.nix`
 - Enable the upstream module (`services.widget.enable = true`)
-- Default-deny FS hardening triple: `ProtectHome = lib.mkForce true`, `TemporaryFileSystem`, `BindReadOnlyPaths`
+- Default-deny FS hardening: `nori.harden.widget = { binds = [...]; readOnlyBinds = [...]; };` (`every-service-has-fs-hardening` flake check enforces presence)
 - `nori.lanRoutes.widget = { port = 9000; monitor = { }; };`
 - `nori.backups.widget = { paths = [...] | skip = "..."; };`
 - Append to `modules/server/default.nix` imports
@@ -119,19 +119,20 @@ nori.lanRoutes.widget = {
 
 ---
 
-## Q6: FS hardening triple
+## Q6: FS hardening abstraction
 
-**Tests**: default-deny convention.
+**Tests**: `nori.harden` shape + the principle behind it.
 
-**Question**: Every service module's `systemd.services.<n>.serviceConfig` should include what three things, and what's the principle?
+**Question**: How does a service module declare default-deny FS-namespace hardening today? What's the principle, and what enforces that you don't forget?
 
 **Expected (shape)**:
-- `ProtectHome = lib.mkForce true;` (mkForce because upstream often sets it)
-- `TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ];` (tmpfs over the two host paths)
-- `BindReadOnlyPaths = [ ... ];` (opt-in only the paths the service needs)
+- `nori.harden.<systemd-unit-name> = { binds = [...]; readOnlyBinds = [...]; protectHome = true|false|null; };` (schema in `modules/lib/harden.nix`)
+- Generator emits `ProtectHome = mkForce true` + `TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ]` + `BindPaths` + `BindReadOnlyPaths` on the systemd unit
+- `protectHome = null` skips the directive (preserves upstream NixOS module's value, e.g. syncthing where upstream is opinionated)
 - Principle: default-deny FS namespace; compromised service can't browse host paths it doesn't need
+- Enforcement: `every-service-has-fs-hardening` flake check fails the build if any `modules/server/*.nix` (outside the excluded list) lacks a `nori.harden.<n>` declaration
 
-**Source**: CONVENTIONS.md "Filesystem hardening", DESIGN.md "Default-deny filesystem access".
+**Source**: CONVENTIONS.md "Filesystem hardening", DESIGN.md "Default-deny filesystem access", `modules/lib/harden.nix`.
 
 ---
 

@@ -10,7 +10,7 @@ Routed from `CLAUDE.md` "Procedures" pointer. If you find yourself reasoning out
 
 1. Create `modules/server/<service>.nix` (loose) or land inside an existing tightly-coupled folder like `modules/server/arr/`. Folders signal coupling; flat = independent.
 2. Enable the service module.
-3. Apply default-deny FS hardening (`ProtectHome = lib.mkForce true;` + `TemporaryFileSystem` + `BindReadOnlyPaths`; full snippet in `docs/CONVENTIONS.md`).
+3. Declare default-deny FS hardening: `nori.harden.<unit> = { binds = [ ... ]; readOnlyBinds = [ ... ]; };` (full snippet in `docs/CONVENTIONS.md`). The `every-service-has-fs-hardening` flake check fails the build if you forget. Most services need just `nori.harden.<unit> = { };` (StateDirectory + `/dev` is enough).
 4. Declare `nori.lanRoutes.<name> = { port = N; monitor = { }; };` for HTTPS access via Caddy + auto-monitoring.
 5. Declare `nori.backups.<name>` — either `paths = [ ... ]` for what to back up, or `skip = "<reason>"` for explicit opt-out. Schema requires one or the other; `every-service-has-backup-intent` flake check fails the build if you forget. DynamicUser services point at `/var/lib/private/<name>` (the symlink target, not the symlink itself).
 6. Append the new file to `modules/server/default.nix` (loose) or the relevant cluster's `default.nix` (e.g. `modules/server/arr/default.nix`). Coupled clusters import their own siblings via `default.nix`; loose services land in the top-level imports list.

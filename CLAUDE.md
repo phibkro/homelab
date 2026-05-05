@@ -79,7 +79,7 @@ Tracked here only when actionable; routine done-work lives in `git log`.
 
 - **Correctness > simplicity > thoroughness > speed** for code quality decisions.
 - **Declarative over imperative.** If a service's config can live in Nix (sops-managed where secret), prefer that. When tools fight code-as-config, switch tools (we replaced Uptime Kuma with Gatus for this reason).
-- **Composable abstractions, not god modules.** `modules/lib/lan-route.nix` is the model: one option, multiple generators (Caddy + Blocky + Gatus). `modules/lib/backup.nix` and `modules/lib/gpu.nix` follow the same shape.
+- **Composable abstractions, not god modules.** `modules/lib/lan-route.nix` is the model: one option, multiple generators (Caddy + Blocky + Gatus). `modules/lib/backup.nix`, `modules/lib/gpu.nix`, and `modules/lib/harden.nix` follow the same shape — one declaration generates the systemd serviceConfig FS-namespace block.
 - **Rule of three for abstractions.** Extract a function / module / macro only when three concrete uses exist. Two instances look like a pattern but are often coincidence; the third reveals the actual axis of variation. Premature abstraction locks in conventions before the variation is understood. Currently pending: cross-host service split has 2 instances (beszel hub, ntfy server) — wait for the 3rd before extracting `mkCrossHostService`.
 - **Iterate-to-stable, then codify.** Novel patterns live in Cynefin's Complex domain — the right shape isn't visible upfront. Ship the simplest version that works, let the next constraint surface, iterate. Codify (as a "How to" / abstraction / convention) only after the shape stabilizes through use. The host registry was built three times in one session before stabilizing on `readDir` + `genAttrs` + `identityFor` — premature commitment to any of the earlier shapes would have been thrown away.
 - **Workhorse-by-default, appliance-by-exception.** Services land on station unless they need to survive station's failure (observability, alerting, DNS) or are part of the network appliance role (subnet routing, exit node). Pi has 8 GiB and anti-write storage — every additional service competes with the observer role. The exception clause is "fate-sharing breaks the function," not "feels lightweight."
@@ -93,14 +93,14 @@ Tracked here only when actionable; routine done-work lives in `git log`.
 
 ## Quality gates
 
-- `nix flake check` — eval (with module assertions) + statix + deadnix + nixfmt format check + `forbidden-patterns` (no inline pbkdf2 hashes, no caddy/blocky bypass) + `every-service-has-backup-intent`.
+- `nix flake check` — eval (with module assertions) + statix + deadnix + nixfmt format check + `forbidden-patterns` (7 grep rules: pbkdf2 hashes, clientSecretHash, caddy/blocky bypass, acmeCA literal, ntfy URL with embedded topic, ollama.acceleration deprecation) + `every-service-has-backup-intent` + `every-service-has-fs-hardening` + `no-stale-paths` (path-rename guards). 7 derivations total.
 - `nix fmt` — apply nixfmt.
 - Pre-commit hook in `.githooks/pre-commit` runs `nix flake check` automatically when staged changes touch `.nix` files — enable once per clone with `git config core.hooksPath .githooks`. Skips gracefully if nix isn't on PATH (Mac case); GitHub Actions (`.github/workflows/check.yml`) catches the skipped commits on push. Bypass with `git commit --no-verify` for emergencies only.
 - Conventions for new rules (when to encode as types vs assertions vs flake checks vs leave to review): `docs/CONVENTIONS.md` § "Enforcing conventions through code".
 
 ## On every structural change
 
-A "structural change" is anything that introduces a new pattern, abstraction, module shape, constraint, or convention — anything a fresh agent's mental model needs that isn't obvious from one file's syntax. Examples from this project: the `nori.lanRoutes` / `nori.backups` / `nori.gpu` abstractions, the topology registry, the cross-host service split pattern, the appliance/workhorse role split.
+A "structural change" is anything that introduces a new pattern, abstraction, module shape, constraint, or convention — anything a fresh agent's mental model needs that isn't obvious from one file's syntax. Examples from this project: the `nori.lanRoutes` / `nori.backups` / `nori.gpu` / `nori.harden` abstractions, the topology registry, the cross-host service split pattern, the appliance/workhorse role split.
 
 After landing such a change, ask: *what would a fresh agent need to know that they couldn't derive from the code alone?* If anything, update the right doc tier:
 

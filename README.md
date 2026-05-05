@@ -54,13 +54,18 @@ The pre-commit hook (`.githooks/pre-commit`) runs `nix flake check` automaticall
 
 ## Quality gates
 
-`nix flake check` runs four checks:
-1. **Eval** — `nixosConfigurations.<host>` evaluate cleanly (catches type errors, undefined options, etc.)
-2. **statix** — Nix anti-pattern lint
-3. **deadnix** — unused-binding detection
-4. **format** — `nixfmt-rfc-style` compliance check
+`nix flake check` runs seven derivations alongside the implicit eval pass:
 
-Run before any commit that touches `.nix` files.
+- **Eval** (implicit) — `nixosConfigurations.<host>` evaluate cleanly; catches type errors, undefined options, all module assertions
+- **statix** — Nix anti-pattern lint
+- **deadnix** — unused-binding detection
+- **format** — `nixfmt-rfc-style` compliance check
+- **forbidden-patterns** — 7 grep rules (no inline pbkdf2 hashes, no caddy/blocky bypass, no `acmeCA = "internal"` literal, no embedded-topic ntfy URLs, no deprecated `services.ollama.acceleration`, etc.)
+- **every-service-has-backup-intent** — every `modules/server/*.nix` declares `nori.backups.<n>.paths` or `.skip`
+- **every-service-has-fs-hardening** — every `modules/server/*.nix` declares `nori.harden.<n>`
+- **no-stale-paths** — directory/file-rename guards across `.nix` and `.md` files (each rule records a rename + the date; only the now-stale form is checked)
+
+The pre-commit hook runs the lot when `.nix` files are staged.
 
 ## Repo shape
 
@@ -74,7 +79,7 @@ modules/
   common/                    # cross-host baseline (every host)
   server/                    # "this host serves things" concern
   desktop/                   # "this host has a graphical session"
-  lib/                       # cross-cutting abstractions (lan-route, backup, gpu)
+  lib/                       # cross-cutting abstractions (hosts, lan-route, backup, gpu, harden)
 secrets/
   secrets.yaml               # sops-encrypted, committed
   README.md                  # secrets workflow ops doc
@@ -88,4 +93,4 @@ CLAUDE.md                    # agent prompting + current state + outstanding ite
 
 ## Phase status
 
-Phases 0–6 done. Phase 7 (tightening + new capabilities) substantively done — backup abstraction + 14-service coverage, type-level enforcement, DynamicUser symlink trap caught, OIDC auto-gen with zero hash material in committed Nix, Immich GPU acceleration with resource caps, `nori-pi` brought up as the appliance host with cross-host service split (Beszel hub + ntfy server). Live state + outstanding items in `CLAUDE.md`; canonical phasing rationale in `docs/DESIGN.md`.
+Phases 0–6 done. Phase 7 (tightening + new capabilities) substantively done — backup + FS-hardening + LAN-route abstractions covering every service module with build-time enforcement, type-level constraints with module assertions, DynamicUser symlink trap caught, OIDC auto-gen with zero hash material in committed Nix, Immich CUDA ML + NVENC with resource caps, `nori-pi` brought up as the appliance host with cross-host service split (Beszel hub + ntfy server). Live state + outstanding items in `CLAUDE.md`; canonical phasing rationale in `docs/DESIGN.md`.

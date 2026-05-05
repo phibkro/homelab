@@ -634,17 +634,18 @@ Captured for visibility, not currently being worked:
 
 **Default-deny exposure with explicit per-interface firewall.** Default-allow with exclusions is a maintenance treadmill that grows with every new file or service.
 
-**Default-deny filesystem access for service modules.** The same principle as above, applied to systemd's mount namespace. Every service module's `serviceConfig` should include a `TemporaryFileSystem` over `/mnt` and `/srv` (replacing them with empty tmpfs at service-namespace level), `ProtectHome=true` (hiding `/home` and `/root`), and an explicit `BindReadOnlyPaths` that lists only the host paths the service actually needs. Default no access; opt in per path. A compromised service can't browse the host looking for credentials, even if it can exec shell commands. Costs ~5 lines per module; rules out an entire blast-radius class.
+**Default-deny filesystem access for service modules.** The same principle as above, applied to systemd's mount namespace. Every service runs with `TemporaryFileSystem` over `/mnt` and `/srv` (replacing them with empty tmpfs at service-namespace level), `ProtectHome=true` (hiding `/home` and `/root`), and an explicit allowlist of host paths bound back in. Default no access; opt in per path. A compromised service can't browse the host looking for credentials, even if it can exec shell commands.
+
+The principle is enforced in code via `nori.harden.<unit>` (`modules/lib/harden.nix`) plus the `every-service-has-fs-hardening` flake check that fails the build if any service module forgets to declare it:
 
 ```nix
-systemd.services.<name>.serviceConfig = {
-  ProtectHome = lib.mkForce true;
-  TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ];
-  BindReadOnlyPaths = [ /* /mnt/media, /srv/share, etc. only if needed */ ];
+nori.harden.<service> = {
+  binds         = [ /* writable host paths */ ];
+  readOnlyBinds = [ /* /mnt/media, /srv/share, etc. only if needed */ ];
 };
 ```
 
-Verify via `sudo nsenter -t <pid> -m -U -- ls /mnt/`. Several upstream NixOS modules already harden some surfaces (`ProcSubset=pid`, `ProtectKernelTunables`, etc.) but leave the mount namespace wide open by default; that's the gap this principle plugs.
+Verify via `sudo systemctl cat <unit>.service | grep -E '(ProtectHome|TemporaryFileSystem|Bind)'` for the configured form, or `sudo nsenter -t <pid> -m -U -- ls /mnt/` for the live namespace. Several upstream NixOS modules already harden some surfaces (`ProcSubset=pid`, `ProtectKernelTunables`, etc.) but leave the mount namespace wide open by default; that's the gap this principle plugs.
 
 **Hyprland over GNOME/KDE.** Declarative config matches the rest of the system. Tiling matches keyboard-heavy terminal use.
 
