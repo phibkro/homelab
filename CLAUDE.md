@@ -10,7 +10,7 @@ Read these before making changes:
 1. **`docs/DESIGN.md`** — canonical architecture. The "why" lives here. v2.x.
 2. **`docs/CONVENTIONS.md`** — established patterns. How modules are shaped, secrets are wired, services are added.
 3. **`docs/gotchas.md`** — landmines. Read before touching: NVMe enumeration, Caddy CA trust, sops env files, openrsync flags, DynamicUser services.
-4. **`docs/PROCEDURES.md`** — step-by-step recipes (add a service, add a host, relocate a service to nori-pi). Read on demand for the matching intent.
+4. **`.claude/skills/`** — recurring procedures (add a service, add a host, relocate to Pi, wrap session, on structural change). Auto-discovered when the trigger phrasing matches; load on demand. `docs/PROCEDURES.md` is the index.
 5. `git log --oneline` — commit-by-commit narrative for context the docs don't catch.
 
 ## Hard rules
@@ -23,13 +23,7 @@ Read these before making changes:
 
 ## Procedures
 
-Step-by-step recipes live in [`docs/PROCEDURES.md`](docs/PROCEDURES.md) — read on demand for the matching intent (mechanical material, not worth always-loaded context):
-
-- **How to add a new service** — module structure, FS hardening, lanRoute + backup decisions, sops/SSO/GPU wiring, deploy.
-- **How to add a new host** — folder + identityFor + sops recipient + concerns picked.
-- **How to relocate a service to nori-pi** — split-module pattern (daemon side + client/proxy side), cross-host lanRoute via topology registry, deploy order, end-to-end verify.
-
-If you find yourself reasoning a procedure out from first principles, stop and read the relevant section.
+Recurring procedures live as skills under `.claude/skills/`. They auto-discover when the user's intent matches the trigger description; manually invoke with `/<skill-name>`. See `docs/PROCEDURES.md` for the index. If you find yourself reasoning a procedure out from first principles, stop and let the skill expand.
 
 ## How to operate
 
@@ -98,32 +92,18 @@ Tracked here only when actionable; routine done-work lives in `git log`.
 - Pre-commit hook in `.githooks/pre-commit` runs `nix flake check` automatically when staged changes touch `.nix` files — enable once per clone with `git config core.hooksPath .githooks`. Skips gracefully if nix isn't on PATH (Mac case); GitHub Actions (`.github/workflows/check.yml`) catches the skipped commits on push. Bypass with `git commit --no-verify` for emergencies only.
 - Conventions for new rules (when to encode as types vs assertions vs flake checks vs leave to review): `docs/CONVENTIONS.md` § "Enforcing conventions through code".
 
-## On every structural change
+## Recurring procedures live as skills
 
-A "structural change" is anything that introduces a new pattern, abstraction, module shape, constraint, or convention — anything a fresh agent's mental model needs that isn't obvious from one file's syntax. Examples from this project: the `nori.<...>` family of attrset-keyed declarative options in `modules/lib/`, the topology registry, the cross-host service split pattern, the appliance/workhorse role split.
+Non-deterministic recurring procedures are extracted to `.claude/skills/` so the body loads only when the trigger fires (zero always-loaded context cost). Auto-discovery routes user intent to the right one:
 
-After landing such a change, ask: *what would a fresh agent need to know that they couldn't derive from the code alone?* If anything, update the right doc tier:
+| Skill | Triggers on |
+|---|---|
+| `/add-service` | "add <X>", "deploy <Y>", "set up <Z>" |
+| `/add-host` | "add a host", "set up nori-<X>", "another machine" |
+| `/relocate-to-pi` | "move <X> to Pi", "should survive station outages" |
+| `/wrap-session` | "wrap up", "ending session", "that's it" |
+| `/on-structural-change` | "we just landed <X>", post-commit doc-tier decision |
 
-- **Active example in CLAUDE.md or DESIGN.md is now stale** → fix immediately (drift is the highest-cost class — fresh agent acts on wrong information)
-- **New pattern used twice or more** → codify as "How to ..." in CLAUDE.md
-- **New convention agents should follow** → CONVENTIONS.md, ideally backed by a flake check or module assertion (rules in prose drift; rules in code don't)
-- **Hard-won mistake worth surfacing** → `docs/gotchas.md`
-- **Cross-session fact** (preferences, project state, host topology) → update auto-memory
+Adding a skill: `mkdir .claude/skills/<n> && $EDITOR .claude/skills/<n>/SKILL.md`. Frontmatter requires `description` (drives auto-discovery — put the key use case first). See https://code.claude.com/docs/en/skills for the canonical format. Existing skills are good templates.
 
-Don't batch this for session end — drift compounds. The cost of an immediate update is small; the cost of a fresh agent acting on stale information is large.
-
-## On session end
-
-When the user signals wrap-up ("ending session", "wrap up", "that's it for now"), do this so the next agent (likely you with zero context) lands cleanly:
-
-1. **Push pending commits** — `git push origin main`. Local-only commits are invisible to a future agent that doesn't yet know about them.
-2. **Refresh `CLAUDE.md`** if the session shifted reality:
-   - Update the intro line if a host's status changed (planned → live, etc.).
-   - Update "Current state" if topology, service placement, or hardware changed.
-   - Prune "Outstanding" items that are done; add new ones the session surfaced.
-   - If a *new pattern* was used twice or more, codify it as a "How to …" section (the b4499ee/9e0b2b6 cross-host service split → "How to relocate a service to nori-pi" is the precedent).
-3. **Update auto-memory** if the session changed cross-conversation facts (host topology, user preferences, durable architectural decisions). Memory is in `~/.claude/projects/-Users-nori-Documents-nix-migration/memory/`. Don't duplicate what's already in CLAUDE.md — memory is for cross-project / user-personal facts.
-4. **Verify clean state** — `git status` shows nothing in flight; both hosts are up (a quick `systemctl is-active <key-services>` on each is cheap insurance).
-5. **End with a tight summary** — what changed, what was learned, what's the immediate next concrete thing — so the user (and the next agent reading the prior turn) gets oriented fast.
-
-A new agent with zero context should be able to read `CLAUDE.md` + `git log --oneline -10` + the latest commits' bodies and know exactly where you left off. If they'd be confused, the wrap-up isn't done.
+The principle: prose for facts (always-loaded), skills for procedures (load on demand). When a CLAUDE.md section grows into a procedure with non-deterministic branches, extract it.

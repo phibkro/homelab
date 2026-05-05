@@ -17,8 +17,11 @@ inventory-*.tar.gz
 *.swp
 *.swo
 
-# Per-project Claude Code state
-.claude/
+# Per-project Claude Code state — local-only (settings, scheduled tasks,
+# session caches). Skills are project artifacts and ARE committed; the
+# negation lets them through.
+.claude/*
+!.claude/skills/
 
 # OS
 .DS_Store
