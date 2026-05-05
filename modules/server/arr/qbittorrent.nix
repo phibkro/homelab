@@ -41,10 +41,10 @@
   # hardlinks across .downloads/complete → movies/shows just work.
   users.users.qbittorrent.extraGroups = [ "media" ];
 
-  # qBittorrent needs /mnt/media/streaming for its incomplete + complete
-  # + library writes; /var/lib/qbittorrent for state (auto-created by
+  # qBittorrent needs the @streaming subvolume for incomplete + complete
+  # download staging; /var/lib/qbittorrent for state (auto-created by
   # the service, covered by the StateDirectory upstream).
-  nori.harden.qbittorrent.binds = [ "/mnt/media/streaming" ];
+  nori.harden.qbittorrent.binds = [ config.nori.fs.streaming.path ];
 
   # Exposed at https://downloads.nori.lan via Caddy. Auto-monitored at /
   # (qBittorrent's WebUI returns 401 without auth which Gatus reads as

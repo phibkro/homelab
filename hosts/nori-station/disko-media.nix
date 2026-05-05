@@ -1,4 +1,38 @@
-{
+_: {
+  # ── nori.fs declarations ───────────────────────────────────────────
+  # Named filesystem locations the IronWolf carries, paired with their
+  # value tier. Service modules read `config.nori.fs.<n>.path`; backup
+  # generators in modules/server/backup/ filter by `tier`. Single
+  # source of truth for both the wire-format (disko) and the
+  # service-facing interface — change one, the other is right here
+  # next to it. See modules/effects/fs.nix for the schema.
+  nori.fs = {
+    streaming = {
+      path = "/mnt/media/streaming";
+      tier = "re-derivable";
+    };
+    photos = {
+      path = "/mnt/media/photos";
+      tier = "irreplaceable";
+    };
+    home-videos = {
+      path = "/mnt/media/home-videos";
+      tier = "irreplaceable";
+    };
+    projects = {
+      path = "/mnt/media/projects";
+      tier = "irreplaceable";
+    };
+    library = {
+      path = "/mnt/media/library";
+      tier = "irreplaceable";
+    };
+    archive = {
+      path = "/mnt/media/archive";
+      tier = "irreplaceable";
+    };
+  };
+
   # Declarative partition layout for nori-station's IronWolf Pro media drive.
   # Phase 2 — applied AFTER the Phase 4 root install. Wipes the existing
   # exfat partition; preserve any irreplaceable data first.

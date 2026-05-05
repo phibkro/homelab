@@ -36,7 +36,7 @@
   # "permission denied".
   users.users.sonarr.extraGroups = [ "media" ];
 
-  nori.harden.sonarr.binds = [ "/mnt/media/streaming" ];
+  nori.harden.sonarr.binds = [ config.nori.fs.streaming.path ];
 
   nori.lanRoutes.tv = {
     port = 8989;

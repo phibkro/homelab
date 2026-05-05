@@ -13,7 +13,7 @@
   #
   # Per-repo declarations live in the service modules they belong
   # to (`nori.backups.sonarr` in sonarr.nix, etc.) — see
-  # modules/lib/backup.nix for the abstraction. The non-service-tied
+  # modules/effects/backup.nix for the abstraction. The non-service-tied
   # repos (user-data for /home + /srv/share, media-irreplaceable for
   # /mnt/media subvolumes + Immich's Pattern B dump dir) are
   # declared at the bottom of this file because they don't belong
@@ -128,36 +128,30 @@
   # ---------------------------------------------------------------------
   # Non-service-tied backup repos. Service-specific repos live in the
   # respective service modules (modules/server/<name>.nix).
+  #
+  # Paths derived from nori.fs tier — host's disko config is the single
+  # source of truth (see modules/effects/fs.nix). Adding a new media
+  # subvolume in disko-media.nix with `tier = "irreplaceable"` flows
+  # through to media-irreplaceable.paths automatically; same for `user`
+  # → user-data.paths.
 
-  # User data: /home/nori personal stuff + /srv/share dumping ground.
-  # Both currently empty; declared now so they're backed up the
-  # moment anything lands.
   nori.backups.user-data = {
-    paths = [
-      "/home"
-      "/srv/share"
-    ];
+    paths = lib.mapAttrsToList (_: f: f.path) (lib.filterAttrs (_: f: f.tier == "user") config.nori.fs);
+    tier = "user";
     timer = "*-*-* 03:00:00";
   };
 
-  # Irreplaceable media: photos, home-videos, projects, archive, library.
-  # Streaming excluded by tier policy. archive is mostly immutable so
-  # daily restic runs are nearly-free (incremental dedup); library
-  # (curated books + comics, hand-uploaded) is treated the same.
   # /var/lib/immich/backups is Immich's Pattern B SQL dumps — Immich's
-  # own scheduled backup writes to this path (enable in admin web UI:
-  # Settings → Administration → Backup → Database Dump Settings),
-  # restic picks it up here as the second half of the consistent
-  # point-in-time restore plan (per DESIGN.md L283-289).
+  # own scheduled backup writes there (enable in admin web UI: Settings
+  # → Administration → Backup → Database Dump Settings), restic picks
+  # it up here as the second half of the consistent point-in-time
+  # restore plan (per DESIGN.md L283-289). Not in nori.fs because it's
+  # NixOS service state, not a structural FS location.
   nori.backups.media-irreplaceable = {
-    paths = [
-      "/mnt/media/photos"
-      "/mnt/media/home-videos"
-      "/mnt/media/projects"
-      "/mnt/media/archive"
-      "/mnt/media/library"
-      "/var/lib/immich/backups"
-    ];
+    paths =
+      lib.mapAttrsToList (_: f: f.path) (lib.filterAttrs (_: f: f.tier == "irreplaceable") config.nori.fs)
+      ++ [ "/var/lib/immich/backups" ];
+    tier = "irreplaceable";
     timer = "*-*-* 03:30:00";
   };
 }

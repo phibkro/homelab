@@ -1,4 +1,21 @@
-{
+_: {
+  # ── nori.fs declarations ───────────────────────────────────────────
+  # Named filesystem locations the SN750 root carries that service
+  # modules and backup generators consume by name. /var/lib lives on
+  # @var-lib but isn't in nori.fs — service StateDirectory paths are a
+  # NixOS module convention, outside this Reader-effect's scope.
+  # @nix and @ are infrastructure, not user-facing.
+  nori.fs = {
+    home = {
+      path = "/home";
+      tier = "user";
+    };
+    share = {
+      path = "/srv/share";
+      tier = "user";
+    };
+  };
+
   # Declarative partition layout for nori-station's NVMe root.
   # Applied at install time:
   #   nix run github:nix-community/disko/latest -- \

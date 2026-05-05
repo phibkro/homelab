@@ -40,7 +40,7 @@
 
   users.users.lidarr.extraGroups = [ "media" ];
 
-  nori.harden.lidarr.binds = [ "/mnt/media/streaming" ];
+  nori.harden.lidarr.binds = [ config.nori.fs.streaming.path ];
 
   nori.lanRoutes.music = {
     port = 8686;

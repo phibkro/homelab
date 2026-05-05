@@ -5,7 +5,7 @@
 #                   /var/backup tmpfile, weekly + monthly check timers
 #                   that iterate every nori.backups.<n>). Per-repo
 #                   declarations live in service modules via the
-#                   nori.backups abstraction (see modules/lib/backup.nix).
+#                   nori.backups abstraction (see modules/effects/backup.nix).
 #   * verify.nix  — quarterly restore drill + manual deep-audit
 #                   variant. Verifies that backups are *restorable*,
 #                   not just *recorded*.

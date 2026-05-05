@@ -34,7 +34,7 @@
   # paths. Same `media` group membership as the other servarrs.
   users.users.bazarr.extraGroups = [ "media" ];
 
-  nori.harden.bazarr.binds = [ "/mnt/media/streaming" ];
+  nori.harden.bazarr.binds = [ config.nori.fs.streaming.path ];
 
   nori.lanRoutes.subtitles = {
     port = 6767;

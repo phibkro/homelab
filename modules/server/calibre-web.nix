@@ -52,7 +52,7 @@
     };
     openFirewall = false;
     options = {
-      calibreLibrary = "/mnt/media/library/books";
+      calibreLibrary = "${config.nori.fs.library.path}/books";
       enableBookUploading = true; # admin upload via web UI
       enableBookConversion = true; # send-to-kindle/kobo conversion
     };
@@ -65,16 +65,20 @@
   # Bootstrap: calibre-web fails to start if its library dir lacks
   # `metadata.db`. Initialize an empty Calibre library on first run if
   # one isn't there yet.
-  systemd.services.calibre-web.preStart = lib.mkBefore ''
-    if [ ! -f /mnt/media/library/books/metadata.db ]; then
-      mkdir -p /mnt/media/library/books
-      ${pkgs.calibre}/bin/calibredb \
-        --library-path /mnt/media/library/books \
-        list >/dev/null 2>&1 || true
-    fi
-  '';
+  systemd.services.calibre-web.preStart =
+    let
+      bookDir = "${config.nori.fs.library.path}/books";
+    in
+    lib.mkBefore ''
+      if [ ! -f ${bookDir}/metadata.db ]; then
+        mkdir -p ${bookDir}
+        ${pkgs.calibre}/bin/calibredb \
+          --library-path ${bookDir} \
+          list >/dev/null 2>&1 || true
+      fi
+    '';
 
-  nori.harden.calibre-web.binds = [ "/mnt/media/library" ];
+  nori.harden.calibre-web.binds = [ config.nori.fs.library.path ];
 
   nori.lanRoutes.books = {
     port = 8084;

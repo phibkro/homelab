@@ -36,7 +36,7 @@
 
   users.users.komga.extraGroups = [ "media" ];
 
-  nori.harden.komga.binds = [ "/mnt/media/library" ];
+  nori.harden.komga.binds = [ config.nori.fs.library.path ];
 
   nori.lanRoutes.comics = {
     port = 8085;

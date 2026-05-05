@@ -31,7 +31,7 @@
 
   users.users.radarr.extraGroups = [ "media" ];
 
-  nori.harden.radarr.binds = [ "/mnt/media/streaming" ];
+  nori.harden.radarr.binds = [ config.nori.fs.streaming.path ];
 
   nori.lanRoutes.movies = {
     port = 7878;

@@ -81,7 +81,7 @@
       };
 
       "share" = {
-        path = "/srv/share";
+        inherit (config.nori.fs.share) path;
         browseable = "yes";
         "read only" = "no";
         "valid users" = "nori";
@@ -101,12 +101,18 @@
   # not just inside an existing nori-owned subdir. systemd-tmpfiles
   # asserts ownership on activation so this stays correct across
   # rebuilds and (defensively) any future disko re-run.
+  #
+  # Enumerated, not auto-derived: @library and @archive are also under
+  # /mnt/media but are owned root:media by arr/shared.nix tmpfiles
+  # (mode 02775), so a tmpfiles rule here with `nori users` would
+  # conflict. Adding a new Samba-writable subvolume = add it here +
+  # to nori.fs.
   systemd.tmpfiles.rules = [
-    "d /srv/share             0775 nori users -"
-    "d /mnt/media/streaming   0775 nori users -"
-    "d /mnt/media/photos      0775 nori users -"
-    "d /mnt/media/home-videos 0775 nori users -"
-    "d /mnt/media/projects    0775 nori users -"
+    "d ${config.nori.fs.share.path}       0775 nori users -"
+    "d ${config.nori.fs.streaming.path}   0775 nori users -"
+    "d ${config.nori.fs.photos.path}      0775 nori users -"
+    "d ${config.nori.fs.home-videos.path} 0775 nori users -"
+    "d ${config.nori.fs.projects.path}    0775 nori users -"
   ];
 
   # Config declarative in Nix; the actual share data is /mnt/media

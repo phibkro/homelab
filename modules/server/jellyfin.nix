@@ -49,9 +49,16 @@
   # specific paths Jellyfin should see back in (read-only — Jellyfin
   # never writes to /mnt/media). ProtectHome=mkForce true also hides
   # /home and /root (the upstream module doesn't set this).
+  #
+  # The /mnt/media parent is bound rather than enumerating per-subvol
+  # because Jellyfin's library config in the web UI references paths
+  # under /mnt/media/{streaming,home-videos,...} — needs the parent
+  # visible so the in-app folder picker walks the tree. Adding a new
+  # media subvolume in nori.fs becomes available to Jellyfin
+  # automatically, no harden update.
   nori.harden.jellyfin.readOnlyBinds = [
     "/mnt/media"
-    "/srv/share"
+    config.nori.fs.share.path
   ];
 
   # Exposed at https://media.nori.lan via Caddy (default-deny on

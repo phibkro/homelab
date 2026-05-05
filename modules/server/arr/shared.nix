@@ -16,13 +16,14 @@
   # under one subvolume (@streaming). Each service joins the group via
   # `users.users.<svc>.extraGroups = [ "media" ];` in its own module.
   #
-  # Layout:
-  #   /mnt/media/streaming/movies/           Radarr library     (re-derivable)
-  #   /mnt/media/streaming/shows/            Sonarr library     (re-derivable)
-  #   /mnt/media/streaming/music/            Lidarr library     (re-derivable)
-  #   /mnt/media/streaming/.downloads/...    qBittorrent staging
-  #   /mnt/media/library/books/              calibre-web library (curated)
-  #   /mnt/media/library/comics/             Komga library      (curated)
+  # Layout (paths from nori.fs — host's disko config is single source
+  # of truth; see modules/effects/fs.nix):
+  #   <streaming>/movies/         Radarr library     (re-derivable)
+  #   <streaming>/shows/          Sonarr library     (re-derivable)
+  #   <streaming>/music/          Lidarr library     (re-derivable)
+  #   <streaming>/.downloads/...  qBittorrent staging
+  #   <library>/books/            calibre-web library
+  #   <library>/comics/           Komga library
   #
   # Permissions: directories owned root:media, mode 02775 (setgid +
   # group rwx). The setgid bit means new files inherit `media` as
@@ -42,18 +43,23 @@
     extraGroups = [ "media" ];
   };
 
-  systemd.tmpfiles.rules = [
-    # @streaming — re-derivable tier, *arr libraries + download staging
-    "d /mnt/media/streaming                       02775 root media -"
-    "d /mnt/media/streaming/movies                02775 root media -"
-    "d /mnt/media/streaming/shows                 02775 root media -"
-    "d /mnt/media/streaming/music                 02775 root media -"
-    "d /mnt/media/streaming/.downloads            02775 root media -"
-    "d /mnt/media/streaming/.downloads/incomplete 02775 root media -"
-    "d /mnt/media/streaming/.downloads/complete   02775 root media -"
-    # @library — curated tier, hand-uploaded media
-    "d /mnt/media/library                         02775 root media -"
-    "d /mnt/media/library/books                   02775 root media -"
-    "d /mnt/media/library/comics                  02775 root media -"
-  ];
+  systemd.tmpfiles.rules =
+    let
+      streaming = config.nori.fs.streaming.path;
+      library = config.nori.fs.library.path;
+    in
+    [
+      # @streaming — re-derivable tier, *arr libraries + download staging
+      "d ${streaming}                       02775 root media -"
+      "d ${streaming}/movies                02775 root media -"
+      "d ${streaming}/shows                 02775 root media -"
+      "d ${streaming}/music                 02775 root media -"
+      "d ${streaming}/.downloads            02775 root media -"
+      "d ${streaming}/.downloads/incomplete 02775 root media -"
+      "d ${streaming}/.downloads/complete   02775 root media -"
+      # @library — curated tier, hand-uploaded media
+      "d ${library}                         02775 root media -"
+      "d ${library}/books                   02775 root media -"
+      "d ${library}/comics                  02775 root media -"
+    ];
 }

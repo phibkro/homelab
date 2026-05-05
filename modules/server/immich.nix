@@ -65,7 +65,7 @@
     group = "immich";
     host = "127.0.0.1";
     port = 2283;
-    mediaLocation = "/mnt/media/photos/_immich-managed";
+    mediaLocation = "${config.nori.fs.photos.path}/_immich-managed";
 
     database.enable = true; # dedicated postgres + VectorChord ext
     redis.enable = true;
@@ -120,14 +120,14 @@
   # path must exist and be writable by `immich` before the service
   # starts; tmpfiles creates it with the right ownership.
   systemd.tmpfiles.rules = [
-    "d /mnt/media/photos/_immich-managed 0750 immich immich -"
+    "d ${config.nori.fs.photos.path}/_immich-managed 0750 immich immich -"
   ];
 
   # Default-deny FS hardening for the server + ML worker. Both need
-  # /mnt/media/photos for the managed subdir; ML also reads /var/lib
-  # for model weights (covered by the NixOS module's StateDirectory).
-  nori.harden.immich-server.binds = [ "/mnt/media/photos" ];
-  nori.harden.immich-machine-learning.binds = [ "/mnt/media/photos" ];
+  # @photos for the managed subdir; ML also reads /var/lib for model
+  # weights (covered by the NixOS module's StateDirectory).
+  nori.harden.immich-server.binds = [ config.nori.fs.photos.path ];
+  nori.harden.immich-machine-learning.binds = [ config.nori.fs.photos.path ];
 
   # Resource caps on the ML worker. April 2026 incident: ML pipeline
   # starved the host for 4+ minutes (rtkit canary thread reported
