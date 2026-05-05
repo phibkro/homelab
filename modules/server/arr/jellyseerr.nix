@@ -37,6 +37,12 @@
   nori.lanRoutes.requests = {
     port = 5055;
     monitor = { };
+    dashboard = {
+      title = "Jellyseerr";
+      icon = "sh:jellyseerr";
+      group = "Acquire";
+      description = "Request shows / movies (family-facing)";
+    };
   };
 
   # Pattern A — request history + Jellyfin auth links. DynamicUser

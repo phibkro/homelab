@@ -92,6 +92,12 @@
   config.nori.lanRoutes = lib.mkIf config.nori.gatus.exposeViaCaddy {
     status = {
       port = 8082;
+      dashboard = {
+        title = "Gatus";
+        icon = "sh:gatus";
+        group = "Admin";
+        description = "Service uptime + alerts";
+      };
     };
   };
 

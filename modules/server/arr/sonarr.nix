@@ -41,6 +41,12 @@
   nori.lanRoutes.tv = {
     port = 8989;
     monitor = { };
+    dashboard = {
+      title = "Sonarr";
+      icon = "si:sonarr";
+      group = "Acquire";
+      description = "TV show automation";
+    };
   };
 
   # Pattern A — config + history sqlite + custom formats. Sonarr

@@ -63,12 +63,21 @@
   # legitimately reaches into the user's home dir to sync arbitrary
   # paths. `protectHome = null` skips the ProtectHome setting entirely
   # (rather than forcing it false), preserving the upstream NixOS
-  # module's value — explicit trade documented at modules/lib/harden.nix.
+  # module's value — explicit trade documented at modules/effects/harden.nix.
   nori.harden.syncthing.protectHome = null;
 
   nori.lanRoutes.sync = {
     port = 8384;
     monitor = { };
+    dashboard = {
+      title = "Syncthing";
+      icon = "si:syncthing";
+      group = "Personal";
+      description = "Cross-device file sync";
+      # Caddy's internal CA isn't always accepted by Glance's HTTP
+      # client when probing Syncthing's WebUI redirect path.
+      allowInsecure = true;
+    };
   };
 
   # Syncthing's pairing state + folder config + index DB live at

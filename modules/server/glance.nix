@@ -5,6 +5,46 @@
   ...
 }:
 
+let
+  # Dashboard catalog is *not* maintained in this file — it's derived
+  # from `config.nori.lanRoutes`. Each service module that should
+  # appear declares a `dashboard = { ... }` block on its own lanRoute
+  # (see modules/effects/lan-route.nix for the schema). Glance reads
+  # the collected attrset and maps to its widget shapes.
+  #
+  # Adding a new service = zero glance.nix edits. Removing a service
+  # or hiding it from the dashboard = remove or unset its dashboard
+  # block on the route. URL drift is impossible: the URL is derived
+  # from the route name as `https://<n>.nori.lan`.
+  dashed = lib.filterAttrs (_: r: r.dashboard != null) config.nori.lanRoutes;
+
+  # Glance renders bookmark groups in the order given. Sort by the
+  # group's position in this list, falling back to alphabetical
+  # within a group via attrset key order. Consume first (most-clicked),
+  # Admin last.
+  groupOrder = [
+    "Consume"
+    "Acquire"
+    "Personal"
+    "Admin"
+  ];
+
+  toMonitorSite =
+    name: r:
+    {
+      title = "${r.dashboard.title} (${name})";
+      url = "https://${name}.nori.lan";
+      inherit (r.dashboard) icon;
+    }
+    // lib.optionalAttrs r.dashboard.allowInsecure { allow-insecure = true; };
+
+  toBookmarkLink = name: r: {
+    inherit (r.dashboard) title icon description;
+    url = "https://${name}.nori.lan";
+  };
+
+  inGroup = g: lib.filterAttrs (_: r: r.dashboard.group == g) dashed;
+in
 {
   # Glance — fast, single-binary Go dashboard. Family-facing landing
   # page at home.nori.lan.
@@ -20,11 +60,16 @@
   #   Read     (col 3, small)  consumption — HN/Lobsters/Reddit, RSS,
   #                            release feeds
   #
+  # The Apps column's monitor + bookmarks widgets both derive from
+  # `config.nori.lanRoutes.<n>.dashboard` blocks across all service
+  # modules. Adding / renaming a service is a one-place edit on
+  # *that service's module*; this file doesn't change.
+  #
   # Default port 8080 collides with Open WebUI; remapped to 8086.
   #
-  # Icon prefixes: si:<slug> (Simple Icons) or sh:<slug> (selfh.st
-  # icons). selfh.st has the homelab-specific brands Simple Icons
-  # doesn't carry.
+  # Icon prefixes (declared per-service): si:<slug> (Simple Icons) or
+  # sh:<slug> (selfh.st icons). selfh.st has the homelab-specific
+  # brands Simple Icons doesn't carry.
   #
   # Glance docs: https://github.com/glanceapp/glance
   services.glance = {
@@ -73,231 +118,22 @@
               size = "full";
               widgets = [
                 # Uptime monitor — green/red status dots for every
-                # *.nori.lan service. allow-insecure on syncthing
-                # because Caddy's internal CA isn't always accepted by
-                # Glance's HTTP client.
+                # *.nori.lan service that's opted into the dashboard.
                 {
                   type = "monitor";
                   cache = "5m";
                   title = "Services";
-                  sites = [
-                    {
-                      title = "Jellyfin (media)";
-                      url = "https://media.nori.lan";
-                      icon = "si:jellyfin";
-                    }
-                    {
-                      title = "Immich (photos)";
-                      url = "https://photos.nori.lan";
-                      icon = "si:immich";
-                    }
-                    {
-                      title = "Open WebUI (chat)";
-                      url = "https://chat.nori.lan";
-                      icon = "sh:open-webui";
-                    }
-                    {
-                      title = "Calibre-web (books)";
-                      url = "https://books.nori.lan";
-                      icon = "sh:calibre-web";
-                    }
-                    {
-                      title = "Komga (comics)";
-                      url = "https://comics.nori.lan";
-                      icon = "sh:komga";
-                    }
-                    {
-                      title = "Sonarr (tv)";
-                      url = "https://tv.nori.lan";
-                      icon = "si:sonarr";
-                    }
-                    {
-                      title = "Radarr (movies)";
-                      url = "https://movies.nori.lan";
-                      icon = "si:radarr";
-                    }
-                    {
-                      title = "Lidarr (music)";
-                      url = "https://music.nori.lan";
-                      icon = "sh:lidarr";
-                    }
-                    {
-                      title = "Prowlarr (indexers)";
-                      url = "https://indexers.nori.lan";
-                      icon = "sh:prowlarr";
-                    }
-                    {
-                      title = "Bazarr (subtitles)";
-                      url = "https://subtitles.nori.lan";
-                      icon = "sh:bazarr";
-                    }
-                    {
-                      title = "Jellyseerr (requests)";
-                      url = "https://requests.nori.lan";
-                      icon = "sh:jellyseerr";
-                    }
-                    {
-                      title = "qBittorrent (downloads)";
-                      url = "https://downloads.nori.lan";
-                      icon = "si:qbittorrent";
-                    }
-                    {
-                      title = "Radicale (calendar)";
-                      url = "https://calendar.nori.lan";
-                      icon = "sh:radicale";
-                    }
-                    {
-                      title = "Syncthing (sync)";
-                      url = "https://sync.nori.lan";
-                      icon = "si:syncthing";
-                      allow-insecure = true;
-                    }
-                    {
-                      title = "Beszel (metrics)";
-                      url = "https://metrics.nori.lan";
-                      icon = "sh:beszel";
-                    }
-                    {
-                      title = "Gatus (status)";
-                      url = "https://status.nori.lan";
-                      icon = "sh:gatus";
-                    }
-                    {
-                      title = "Authelia (auth)";
-                      url = "https://auth.nori.lan";
-                      icon = "sh:authelia";
-                    }
-                  ];
+                  sites = lib.mapAttrsToList toMonitorSite dashed;
                 }
                 # Bookmarks — grouped + descriptive view, complements
                 # the monitor (which answers "is it up?" but doesn't
                 # describe each).
                 {
                   type = "bookmarks";
-                  groups = [
-                    {
-                      title = "Consume";
-                      links = [
-                        {
-                          title = "Jellyfin";
-                          url = "https://media.nori.lan";
-                          description = "Movies, shows, music — server-rendered";
-                          icon = "si:jellyfin";
-                        }
-                        {
-                          title = "Immich";
-                          url = "https://photos.nori.lan";
-                          description = "Photo library + face recognition";
-                          icon = "si:immich";
-                        }
-                        {
-                          title = "calibre-web";
-                          url = "https://books.nori.lan";
-                          description = "Ebook reader + OPDS";
-                          icon = "sh:calibre-web";
-                        }
-                        {
-                          title = "Komga";
-                          url = "https://comics.nori.lan";
-                          description = "Comics + manga + OPDS";
-                          icon = "sh:komga";
-                        }
-                        {
-                          title = "Open WebUI";
-                          url = "https://chat.nori.lan";
-                          description = "Local LLM chat (Ollama-backed)";
-                          icon = "sh:open-webui";
-                        }
-                      ];
-                    }
-                    {
-                      title = "Acquire";
-                      links = [
-                        {
-                          title = "Jellyseerr";
-                          url = "https://requests.nori.lan";
-                          description = "Request shows / movies (family-facing)";
-                          icon = "sh:jellyseerr";
-                        }
-                        {
-                          title = "Sonarr";
-                          url = "https://tv.nori.lan";
-                          description = "TV show automation";
-                          icon = "si:sonarr";
-                        }
-                        {
-                          title = "Radarr";
-                          url = "https://movies.nori.lan";
-                          description = "Movie automation";
-                          icon = "si:radarr";
-                        }
-                        {
-                          title = "Lidarr";
-                          url = "https://music.nori.lan";
-                          description = "Music automation";
-                          icon = "sh:lidarr";
-                        }
-                        {
-                          title = "Bazarr";
-                          url = "https://subtitles.nori.lan";
-                          description = "Subtitle automation";
-                          icon = "sh:bazarr";
-                        }
-                        {
-                          title = "Prowlarr";
-                          url = "https://indexers.nori.lan";
-                          description = "Indexer aggregator";
-                          icon = "sh:prowlarr";
-                        }
-                        {
-                          title = "qBittorrent";
-                          url = "https://downloads.nori.lan";
-                          description = "Download client";
-                          icon = "si:qbittorrent";
-                        }
-                      ];
-                    }
-                    {
-                      title = "Personal";
-                      links = [
-                        {
-                          title = "Radicale";
-                          url = "https://calendar.nori.lan";
-                          description = "CalDAV / CardDAV — phone calendar + contacts";
-                          icon = "sh:radicale";
-                        }
-                        {
-                          title = "Syncthing";
-                          url = "https://sync.nori.lan";
-                          description = "Cross-device file sync";
-                          icon = "si:syncthing";
-                        }
-                      ];
-                    }
-                    {
-                      title = "Admin";
-                      links = [
-                        {
-                          title = "Beszel";
-                          url = "https://metrics.nori.lan";
-                          description = "System metrics (CPU / RAM / disk / GPU)";
-                          icon = "sh:beszel";
-                        }
-                        {
-                          title = "Gatus";
-                          url = "https://status.nori.lan";
-                          description = "Service uptime + alerts";
-                          icon = "sh:gatus";
-                        }
-                        {
-                          title = "Authelia";
-                          url = "https://auth.nori.lan";
-                          description = "OIDC SSO issuer";
-                          icon = "sh:authelia";
-                        }
-                      ];
-                    }
-                  ];
+                  groups = map (g: {
+                    title = g;
+                    links = lib.mapAttrsToList toBookmarkLink (inGroup g);
+                  }) groupOrder;
                 }
               ];
             }
@@ -353,9 +189,11 @@
   nori.lanRoutes.home = {
     port = 8086;
     monitor = { };
+    # No `dashboard` block — Glance shouldn't link to itself.
   };
 
-  # Stateless — Glance's dashboard config lives in Nix (this module).
-  # No persistent state worth preserving across rebuilds. DynamicUser.
+  # Stateless — Glance's dashboard config lives in Nix (this module
+  # plus each service's lanRoute.dashboard). No persistent state worth
+  # preserving across rebuilds. DynamicUser.
   nori.backups.glance.skip = "Stateless — dashboard config rendered from Nix.";
 }

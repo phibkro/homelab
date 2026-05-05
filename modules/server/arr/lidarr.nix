@@ -45,6 +45,12 @@
   nori.lanRoutes.music = {
     port = 8686;
     monitor = { };
+    dashboard = {
+      title = "Lidarr";
+      icon = "sh:lidarr";
+      group = "Acquire";
+      description = "Music automation";
+    };
   };
 
   # Pattern A — same shape as sonarr/radarr.

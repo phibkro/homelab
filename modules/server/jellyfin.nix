@@ -63,10 +63,17 @@
 
   # Exposed at https://media.nori.lan via Caddy (default-deny on
   # tailnet — Caddy is the only entry point). Auto-monitored by Gatus
-  # (default HTTP probe to /).
+  # (default HTTP probe to /). Listed on the home.nori.lan dashboard
+  # via the `dashboard` block.
   nori.lanRoutes.media = {
     port = 8096;
     monitor = { };
+    dashboard = {
+      title = "Jellyfin";
+      icon = "si:jellyfin";
+      group = "Consume";
+      description = "Movies, shows, music — server-rendered";
+    };
   };
 
   # Pattern A — library scan, watch progress, user accounts. The

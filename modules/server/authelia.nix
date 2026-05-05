@@ -7,7 +7,7 @@
 
 let
   # OIDC clients are generated from `config.nori.lanRoutes.<n>.oidc`
-  # — see modules/lib/lan-route.nix for the schema. This module is
+  # — see modules/effects/lan-route.nix for the schema. This module is
   # the single owner of the Authelia clients list because NixOS
   # module merging on freeform-typed lists conflicts rather than
   # concatenates; centralized assembly avoids `lib.mkMerge` ceremony
@@ -71,7 +71,7 @@ in
   #   authelia-users-database          YAML block with users/groups
   #
   # OIDC secrets (Phase B) live at `oidc-<name>-client-secret`,
-  # auto-declared by modules/lib/lan-route.nix when `oidc` is set on
+  # auto-declared by modules/effects/lan-route.nix when `oidc` is set on
   # a route.
 
   sops.secrets = {
@@ -187,6 +187,12 @@ in
   nori.lanRoutes.auth = {
     port = 9091;
     monitor = { };
+    dashboard = {
+      title = "Authelia";
+      icon = "sh:authelia";
+      group = "Admin";
+      description = "OIDC SSO issuer";
+    };
   };
 
   # Pattern A — Authelia state: sqlite session store, OIDC issuer

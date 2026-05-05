@@ -151,6 +151,12 @@
   nori.lanRoutes.photos = {
     port = 2283;
     monitor = { };
+    dashboard = {
+      title = "Immich";
+      icon = "si:immich";
+      group = "Consume";
+      description = "Photo library + face recognition";
+    };
   };
 
   # Photos at /mnt/media/photos/_immich-managed live on the

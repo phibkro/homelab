@@ -36,6 +36,12 @@
   nori.lanRoutes.movies = {
     port = 7878;
     monitor = { };
+    dashboard = {
+      title = "Radarr";
+      icon = "si:radarr";
+      group = "Acquire";
+      description = "Movie automation";
+    };
   };
 
   # Pattern A — same shape as sonarr.

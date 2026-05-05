@@ -37,12 +37,12 @@ in
   # Agent FS hardening on top of upstream's substantial systemd
   # profile (PrivateUsers, ProtectKernel*, ProtectSystem=strict,
   # SystemCallFilter). Default-deny FS namespace is the project-wide
-  # baseline (nori.harden, modules/lib/harden.nix).
+  # baseline (nori.harden, modules/effects/harden.nix).
   nori.harden.beszel-agent = { };
 
   # PrivateDevices override: upstream sets it true (when smartmon is
   # off), which hides /dev/nvidia*. On hosts that opt into NVIDIA via
-  # nori.gpu.nvidiaDevices (see modules/lib/gpu.nix) the agent surfaces
+  # nori.gpu.nvidiaDevices (see modules/effects/gpu.nix) the agent surfaces
   # driver telemetry via nvidia-smi, so we expose /dev/* there. The
   # rest of the hardening (ProtectKernel*, SystemCallFilter,
   # RestrictSUIDSGID, NoNewPrivileges, PrivateUsers) still applies —
@@ -59,7 +59,7 @@ in
   # owns the *.nori.lan map.
   #
   # The hub-host coupling lives in the nori.hosts registry (single
-  # source of truth — see modules/lib/hosts.nix). If the hub ever
+  # source of truth — see modules/effects/hosts.nix). If the hub ever
   # relocates, update modules/common/topology.nix instead of editing
   # this file.
   nori.lanRoutes = lib.mkIf config.services.caddy.enable {
@@ -67,6 +67,12 @@ in
       port = 8090;
       host = config.nori.hosts.nori-pi.tailnetIp;
       monitor = { };
+      dashboard = {
+        title = "Beszel";
+        icon = "sh:beszel";
+        group = "Admin";
+        description = "System metrics (CPU / RAM / disk / GPU)";
+      };
     };
   };
 

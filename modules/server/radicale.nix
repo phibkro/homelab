@@ -56,6 +56,12 @@
   nori.lanRoutes.calendar = {
     port = 5232;
     monitor.path = "/.web/";
+    dashboard = {
+      title = "Radicale";
+      icon = "sh:radicale";
+      group = "Personal";
+      description = "CalDAV / CardDAV — phone calendar + contacts";
+    };
   };
 
   # Pattern A — calendars (CalDAV) and contacts (CardDAV) are

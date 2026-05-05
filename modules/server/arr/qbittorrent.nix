@@ -52,6 +52,12 @@
   nori.lanRoutes.downloads = {
     port = 8083;
     monitor = { };
+    dashboard = {
+      title = "qBittorrent";
+      icon = "si:qbittorrent";
+      group = "Acquire";
+      description = "Download client";
+    };
   };
 
   # Pattern A — torrent state, resume data, *arr-tied categories.

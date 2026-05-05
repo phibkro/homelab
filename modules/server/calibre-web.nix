@@ -83,6 +83,12 @@
   nori.lanRoutes.books = {
     port = 8084;
     monitor = { };
+    dashboard = {
+      title = "calibre-web";
+      icon = "sh:calibre-web";
+      group = "Consume";
+      description = "Ebook reader + OPDS";
+    };
   };
 
   # Pattern A — calibre-web's user/session DB. The book library

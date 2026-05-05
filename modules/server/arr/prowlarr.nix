@@ -41,6 +41,12 @@
   nori.lanRoutes.indexers = {
     port = 9696;
     monitor = { };
+    dashboard = {
+      title = "Prowlarr";
+      icon = "sh:prowlarr";
+      group = "Acquire";
+      description = "Indexer aggregator";
+    };
   };
 
   # Pattern A — indexer list + per-app links. DynamicUser symlink.

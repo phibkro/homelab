@@ -39,6 +39,12 @@
   nori.lanRoutes.subtitles = {
     port = 6767;
     monitor = { };
+    dashboard = {
+      title = "Bazarr";
+      icon = "sh:bazarr";
+      group = "Acquire";
+      description = "Subtitle automation";
+    };
   };
 
   # Pattern A — Bazarr's config + provider history. Static `bazarr` user.

@@ -41,6 +41,12 @@
   nori.lanRoutes.comics = {
     port = 8085;
     monitor = { };
+    dashboard = {
+      title = "Komga";
+      icon = "sh:komga";
+      group = "Consume";
+      description = "Comics + manga + OPDS";
+    };
   };
 
   # Pattern A — Komga's user/library/read-progress DB. Comic files

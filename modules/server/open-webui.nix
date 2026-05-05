@@ -103,7 +103,7 @@
   # Exposed at https://chat.nori.lan via Caddy. Auto-monitored by
   # Gatus. OIDC client + sops secret + env-file template auto-
   # generated from the `oidc = { ... }` block — see
-  # modules/lib/lan-route.nix for the schema and
+  # modules/effects/lan-route.nix for the schema and
   # modules/server/authelia.nix for the clients-list assembly.
   nori.lanRoutes.chat = {
     port = 8080;
@@ -111,6 +111,12 @@
     oidc = {
       clientName = "Open WebUI";
       redirectPath = "/oauth/oidc/callback";
+    };
+    dashboard = {
+      title = "Open WebUI";
+      icon = "sh:open-webui";
+      group = "Consume";
+      description = "Local LLM chat (Ollama-backed)";
     };
   };
 }
