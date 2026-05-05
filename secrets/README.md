@@ -7,11 +7,33 @@ unencrypted plaintext never leaves your local sops session.
 
 | File | What | Committed? |
 |---|---|---|
-| `secrets.yaml` | All secrets, encrypted with sops + age | yes (encrypted on disk) |
+| `secrets.yaml` | Homelab service secrets (Authelia, Vaultwarden, OIDC client hashes, restic password, …) | yes (encrypted on disk) |
+| `apps.yaml` | Self-deployed personal-app secrets (TMDB tokens, Payload secrets, app database passwords) — separate file so app-key rotation doesn't churn `secrets.yaml`'s blame history, and so a future co-developer could be granted decrypt access to apps without exposing homelab plumbing | yes (encrypted on disk) |
 | `README.md` | this file | yes |
 
 `.sops.yaml` lives at the repo root and declares which age public keys
-can decrypt which files.
+can decrypt which files. The current `path_regex: secrets/.*\.yaml$`
+covers any new file under this directory automatically — to add a new
+secrets file, just `sops secrets/<name>.yaml` and start adding keys.
+
+## Per-secret file routing
+
+`modules/common/sops.nix` sets `sops.defaultSopsFile =
+../../secrets/secrets.yaml`, so secrets without an explicit
+`sopsFile` declaration read from there. To route a secret at a
+different file, override per-secret:
+
+```nix
+sops.secrets.filmder-tmdb-token = {
+  sopsFile = ../../secrets/apps.yaml;
+  owner = "filmder";
+  mode = "0400";
+};
+```
+
+Convention:
+- **Homelab service secrets** (used by `modules/server/<service>.nix` to run the service itself) → `secrets.yaml` (default file, no override needed).
+- **Self-deployed app secrets** (used by personal projects: filmder, heim, drinks, finnbydel) → `apps.yaml` (override `sopsFile` per declaration).
 
 ## One-time bootstrap (do this once per editor machine)
 
