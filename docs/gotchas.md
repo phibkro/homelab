@@ -305,3 +305,25 @@ Without it, Authelia parses the literal `{{ secret "..." }}` string as the clien
 `scripts/backup.sh` writes a manifest from in-the-moment `du` of the destination directory. There's no post-write verification, no comparison on subsequent runs. Files can disappear between backup and restore (manual deletion, exfat corruption) and the manifest still claims success. Treat any pre-Phase-5 rsync-to-exfat backup as a snapshot of intent, not a guaranteed source of truth.
 
 For Phase 5+, restic (`backup/restic.nix`) provides `restic check` + content-addressed integrity by design.
+
+## Per-interface firewall rules become latent constraints when DNS routes change
+
+`networking.firewall.interfaces."<iface>".allowedTCPPorts = [ ... ]` opens a port only on that interface. If `*.nori.lan` resolves to an IP reachable only via that interface, the rule "works" because traffic always arrives there. Change DNS to a different IP family (LAN vs tailnet) and the rule silently drops everything.
+
+Hit during the 2026-05-05 LAN-IP migration: Caddy had `interfaces."tailscale0".allowedTCPPorts = [ 80 443 ]`, fine for as long as DNS pointed at the tailnet IP. After Blocky started returning the LAN IP, traffic arrived on `enp42s0` and got dropped. Pi's Gatus probe of `https://status.nori.lan` started timing out at the TCP layer; loopback `curl` from station succeeded (lo bypasses the interface match) so the failure looked weirder than it was.
+
+For services intended to be reachable from any host route (LAN client + tailnet client + cross-host subnet route), open globally with `networking.firewall.allowedTCPPorts`. Same shape as Blocky's `:53` rule. The router doesn't forward inbound from WAN, so the host firewall is just the second layer.
+
+Symptom keyword for grep: `context deadline exceeded (Client.Timeout exceeded while awaiting headers)` from a Go-stdlib HTTPS client probing a service that responds fine on loopback.
+
+## Tailscale SSH browser-auth wedges cross-host automation
+
+`tailscale ssh nori@nori-pi.saola-matrix.ts.net` (or any SSH to a tailnet IP when Tailscale SSH is enabled on the destination) periodically requires a browser auth check — `Tailscale SSH requires an additional check. To authenticate, visit: https://login.tailscale.com/a/...`. Non-interactive shells (justfile recipes, automation scripts) hang silently waiting for the browser flow.
+
+Workarounds, in order of preference:
+
+1. **Add station's pubkey to Pi's `authorized_keys` via `users.users.nori.openssh.authorizedKeys.keys`** in `modules/common/users.nix`. Cross-host automation then uses regular OpenSSH auth (LAN IP path), bypassing tailscale-SSH entirely. Bootstrap chicken-and-egg: needs SSH to deploy, so initially copy the key manually or run from a host that already has working SSH.
+2. **Re-auth interactively** via the URL in the wedge message — keeps Tailscale-SSH working but the next expiry hits again.
+3. **Drive cross-host work from Mac** — Mac's pubkey is already in Pi's authorized_keys, so `just remote nori-pi rebuild` from there works.
+
+Diagnostic: `ps -ef | grep ssh` shows the stuck SSH process; output file from `run_in_background` is empty.
