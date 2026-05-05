@@ -96,13 +96,15 @@ in
 
   config = mkIf (config.nori.funnelRoutes != { }) (
     let
-      # Funnel hostname. Hardcoded to workstation's tailnet name —
-      # the only host with Funnel access at the moment. When a
-      # second host gets Funnel, derive from `config.networking.hostName`
-      # + the tailnet domain.
-      funnelHost = "workstation.saola-matrix.ts.net";
-      funnelKey = "${funnelHost}:443";
-
+      # Handlers map only — the surrounding shell of the config
+      # (version, TCP, Web hostname key, AllowFunnel) is assembled at
+      # runtime in the systemd script. The Tailscale-side hostname
+      # depends on what tailscaled currently identifies the machine
+      # as (`nori-station` today on this lab, even though the NixOS
+      # hostname is `workstation` — Tailscale state didn't rename
+      # along with networking.hostName). Detecting via
+      # `tailscale status --json` makes this self-healing across
+      # rename, re-auth, and future host moves.
       handlers = mapAttrs' (
         _: cfg:
         nameValuePair cfg.path {
@@ -110,17 +112,7 @@ in
         }
       ) config.nori.funnelRoutes;
 
-      serveConfigJson = pkgs.writeText "tailscale-serve.json" (
-        builtins.toJSON {
-          TCP."443" = {
-            HTTPS = true;
-          };
-          Web.${funnelKey} = {
-            Handlers = handlers;
-          };
-          AllowFunnel.${funnelKey} = true;
-        }
-      );
+      handlersJson = pkgs.writeText "tailscale-funnel-handlers.json" (builtins.toJSON handlers);
     in
     {
       # Apply the assembled serve config to tailscaled. set-config
@@ -132,21 +124,59 @@ in
         wants = [ "tailscaled.service" ];
         wantedBy = [ "multi-user.target" ];
 
+        path = with pkgs; [
+          jq
+          tailscale
+        ];
+
         serviceConfig = {
           Type = "oneshot";
           RemainAfterExit = true;
         };
 
         script = ''
-          # `--all` applies the config across all services hosted by
-          # this node (workstation in this homelab). The alternative
-          # `--service=svc:<n>` form is the newer per-service shape
-          # that lets each app advertise a distinct hostname (e.g.
-          # `filmder.<tailnet>.ts.net`) — pursue when we want
-          # service-distinct URLs and have wired the Tailscale ACL
-          # `nodeAttrs` to permit service advertisement. For now
-          # (single-host, path-mounted), `--all` is the right scope.
-          ${pkgs.tailscale}/bin/tailscale serve set-config --all ${serveConfigJson}
+          set -euo pipefail
+
+          # Wait for tailscale to settle — `after = [tailscaled]`
+          # only ensures the unit started, not that the daemon has
+          # finished login + DNS resolution. Retry up to 60s.
+          for _ in $(seq 1 30); do
+            HOSTNAME=$(tailscale status --json 2>/dev/null \
+              | jq -r '.Self.DNSName // empty' \
+              | sed 's/\.$//')
+            if [ -n "''${HOSTNAME:-}" ]; then break; fi
+            sleep 2
+          done
+
+          if [ -z "''${HOSTNAME:-}" ]; then
+            echo "tailscale not ready after 60s — aborting" >&2
+            exit 1
+          fi
+
+          # Splice the Nix-rendered handlers into the runtime-detected
+          # hostname. `--all` applies the config across all services
+          # hosted by this node; the per-service form
+          # (`--service=svc:<n>`) is the path to distinct hostnames
+          # like `filmder.<tailnet>.ts.net` once Tailscale ACL
+          # `nodeAttrs` permit service advertisement.
+          HANDLERS=$(cat ${handlersJson})
+          install -m 0600 /dev/null /run/tailscale-serve.json
+          cat > /run/tailscale-serve.json <<EOF
+          {
+            "version": "0.0.1",
+            "TCP": { "443": { "HTTPS": true } },
+            "Web": {
+              "$HOSTNAME:443": {
+                "Handlers": $HANDLERS
+              }
+            },
+            "AllowFunnel": {
+              "$HOSTNAME:443": true
+            }
+          }
+          EOF
+
+          tailscale serve set-config --all /run/tailscale-serve.json
         '';
       };
     }
