@@ -310,65 +310,33 @@
                 {
                   type = "group";
                   widgets = [
-                    { type = "hacker-news"; }
-                    { type = "lobsters"; }
-                  ];
-                }
-                {
-                  type = "reddit";
-                  subreddit = "selfhosted";
-                  show-thumbnails = true;
-                }
-                {
-                  type = "rss";
-                  title = "Self-hosted news";
-                  limit = 8;
-                  collapse-after = 3;
-                  cache = "12h";
-                  feeds = [
                     {
-                      url = "https://api.episciences.org/api/feed/rss/compositionality";
-                      title = "Compositionality Journal";
+                      type = "rss";
+                      title = "Papers";
+                      limit = 10;
+                      cache = "12h";
+                      feeds = [
+                        {
+                          url = "https://api.episciences.org/api/feed/rss/compositionality";
+                          title = "Compositionality Journal";
+                        }
+                      ];
                     }
                     {
-                      url = "https://www.chess.com/rss/news";
-                      title = "Chess.com";
-                    }
-                    {
-                      url = "https://discourse.nixos.org/latest.rss";
-                      title = "NixOS Discourse";
-                      limit = 3;
-                    }
-                  ];
-                }
-                {
-                  type = "releases";
-                  title = "Releases";
-                  cache = "1d";
-                  # Without auth, GitHub API rate-limits to 60 req/h.
-                  # 8 repos × 1 req daily — well under. Add a sops
-                  # token if more get added.
-                  repositories = [
-                    "hyprwm/Hyprland"
-                    "NixOS/nixpkgs"
-                    "nix-community/home-manager"
-                    "Mic92/sops-nix"
-                    "glanceapp/glance"
-                    "immich-app/immich"
-                    "syncthing/syncthing"
-                    "restic/restic"
-                  ];
-                }
-                {
-                  type = "rss";
-                  title = "NixOS announcements";
-                  limit = 6;
-                  collapse-after = 3;
-                  cache = "12h";
-                  feeds = [
-                    {
-                      url = "https://nixos.org/blog/announcements-feed.xml";
-                      title = "NixOS announcements";
+                      type = "rss";
+                      title = "Dev";
+                      limit = 10;
+                      cache = "12h";
+                      feeds = [
+                        {
+                          url = "https://ziglang.org/news/index.xml";
+                          title = "Zig Lang";
+                        }
+                        {
+                          url = "https://effect.website/blog/rss.xml";
+                          title = "Effect TS";
+                        }
+                      ];
                     }
                   ];
                 }
