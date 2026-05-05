@@ -80,15 +80,20 @@ let
     # the warning is friction, not signal.
     skipDangerousModePermissionPrompt = true;
 
-    # MCP server posture: opt-in only.
+    # Default permission mode: auto. Tool calls run without prompting
+    # the operator for each one. Pairs with the dangerous-mode prompt
+    # skip above — same trust model, applied at the per-call layer.
+    permissions.defaultMode = "auto";
+
+    # MCP server posture: per-project opt-in.
     #   * allowManagedMcpServersOnly:    only servers explicitly
     #     allow-listed elsewhere are loadable. Blocks ad-hoc loads.
     #   * enableAllProjectMcpServers:    do NOT auto-trust project-
-    #     level .mcp.json files. Each project's MCP set has to be
-    #     opted in explicitly via enabledMcpjsonServers.
-    # Together these cap MCP-driven context consumption — large
-    # tool surfaces (Linear, Canva, etc.) only load when actually
-    # needed for the task at hand.
+    #     level .mcp.json files. Each project that wants MCP must
+    #     opt in explicitly (via enabledMcpjsonServers in this file
+    #     or by accepting the per-project trust prompt once).
+    # Together these cap MCP-driven context consumption — large tool
+    # surfaces only load when a project actually needs them.
     allowManagedMcpServersOnly = true;
     enableAllProjectMcpServers = false;
 
