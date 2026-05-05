@@ -84,6 +84,18 @@ default: rebuild
 
 # === observe (local) ===
 
+# Show the *.nori.lan port allocation table sorted by port. Useful before
+# adding a new service — confirms what's taken so the eval-time port-
+# uniqueness assertion in modules/lib/lan-route.nix doesn't bite, and
+# avoids the cascade-rebind dance when an upstream module's default
+# happens to collide. Eval-only; safe to run from any cloned tree.
+# Defaults to nori-station because that's where lanRoutes are declared
+# (Pi's lanRoutes are gated on Caddy presence and so always empty).
+@ports host=default_host:
+    nix --extra-experimental-features "nix-command flakes" eval --raw \
+        .#nixosConfigurations.{{host}}.config.nori.lanRoutes \
+        --apply 'lr: let pairs = builtins.attrValues (builtins.mapAttrs (n: v: { name = n; port = v.port; }) lr); sorted = builtins.sort (a: b: a.port < b.port) pairs; in (builtins.concatStringsSep "\n" (map (e: "  ${toString e.port}\t${e.name}") sorted)) + "\n"'
+
 # Quick health summary: failed units, disk usage, restic + btrbk timer state.
 @status:
     echo "=== failed units ==="
