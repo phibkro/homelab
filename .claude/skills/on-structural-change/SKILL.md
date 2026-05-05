@@ -51,4 +51,4 @@ nix flake check       # new conventions backed by code shouldn't break anything
 git diff --stat       # confirms only doc-tier files changed (vs accidental code edits)
 ```
 
-The doc-touching `no-stale-paths` flake check catches cross-rename drift. There's an open Outstanding item to add a content-drift detector — until that lands, this skill is the manual replacement.
+There's an open Outstanding item to add a content-drift flake check — until that lands, this skill is the manual replacement for catching doc/code drift.

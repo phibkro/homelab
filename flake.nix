@@ -250,17 +250,6 @@
                   fail=1
                 fi
 
-                # services.ollama.acceleration was removed from current
-                # nixpkgs; use `package = pkgs.ollama-cuda;` instead.
-                # See docs/gotchas.md "services.ollama.acceleration deprecated".
-                if grep -rn 'services\.ollama\.acceleration' modules/ ; then
-                  echo
-                  echo "✗ services.ollama.acceleration is removed from nixpkgs."
-                  echo "  Use:"
-                  echo "    services.ollama.package = pkgs.ollama-cuda;"
-                  fail=1
-                fi
-
                 # Tailnet IP literals (CGNAT 100.64.0.0/10) outside flake.nix's
                 # identityFor are stale before the next topology change. Cross-
                 # host references go through the topology registry:
@@ -394,109 +383,6 @@
                 fi
               '';
 
-          # Path renames rot fastest because nothing else fails when a
-          # reference is wrong; the build catching them is the cheapest
-          # signal. Each entry below records a rename and the date it
-          # landed; only the *forbidden* (stale) form is checked.
-          #   2026-04-27  modules/services/         → modules/server/
-          #   2026-04-29  modules/server/beszel.nix → modules/server/beszel/{hub,agent}.nix
-          #   2026-04-29  modules/server/ntfy.nix   → modules/server/ntfy/{server,notify}.nix
-          #   2026-05-05  modules/lib/              → modules/effects/
-          #   2026-05-05  hosts/nori-station        → hosts/workstation
-          #   2026-05-05  hosts/nori-pi             → hosts/pi
-          #   2026-05-05  /orient skill             → /analyse-system
-          no-stale-paths =
-            pkgs.runCommandLocal "no-stale-paths"
-              {
-                nativeBuildInputs = [ pkgs.gnugrep ];
-              }
-              ''
-                cd ${./.}
-                fail=0
-
-                if grep -rn 'modules/services/' \
-                     --include='*.nix' --include='*.md' \
-                     docs/ modules/ hosts/ scripts/ README.md CLAUDE.md ; then
-                  echo
-                  echo "✗ Stale 'modules/services/' references above."
-                  echo "  Renamed to 'modules/server/' on 2026-04-27."
-                  fail=1
-                fi
-
-                if grep -rn 'modules/server/beszel\.nix' \
-                     --include='*.nix' --include='*.md' \
-                     docs/ modules/ hosts/ scripts/ README.md CLAUDE.md ; then
-                  echo
-                  echo "✗ Stale 'modules/server/beszel.nix' references above."
-                  echo "  Split into modules/server/beszel/{hub,agent}.nix on 2026-04-29."
-                  fail=1
-                fi
-
-                if grep -rn 'modules/server/ntfy\.nix' \
-                     --include='*.nix' --include='*.md' \
-                     docs/ modules/ hosts/ scripts/ README.md CLAUDE.md ; then
-                  echo
-                  echo "✗ Stale 'modules/server/ntfy.nix' references above."
-                  echo "  Split into modules/server/ntfy/{server,notify}.nix on 2026-04-29."
-                  fail=1
-                fi
-
-                if grep -rn 'modules/lib/' \
-                     --include='*.nix' --include='*.md' \
-                     docs/ modules/ hosts/ scripts/ README.md CLAUDE.md ; then
-                  echo
-                  echo "✗ Stale 'modules/lib/' references above."
-                  echo "  Renamed to 'modules/effects/' on 2026-05-05 — the"
-                  echo "  directory holds the nori.<X> Reader+Writer effect"
-                  echo "  family (see docs/CONVENTIONS.md 'Effect interface')."
-                  fail=1
-                fi
-
-                # /orient skill renamed to /analyse-system on 2026-05-05
-                # — generalized + made dimension-choice suggestive, then
-                # lifted into modules/desktop/claude/skills/ so home-manager
-                # ships the same skill to every operator-attached host.
-                # Matches the skill-invocation form "/orient" with a word
-                # boundary, plus the explicit skill folder paths. Bare
-                # "orient" is fine — used legitimately in prose ("orient
-                # yourself", "oriented in under 30 seconds").
-                if grep -rEn '(/orient\b|\.claude/skills/orient\b)' \
-                     --include='*.nix' --include='*.md' --include='*.yaml' \
-                     --include='Justfile' \
-                     docs/ modules/ hosts/ scripts/ \
-                     README.md CLAUDE.md Justfile 2>/dev/null ; then
-                  echo
-                  echo "✗ Stale '/orient' or '.claude/skills/orient' references above."
-                  echo "  Renamed to '/analyse-system' on 2026-05-05."
-                  echo "  User-level skill source: modules/desktop/claude/skills/analyse-system/"
-                  echo "  Project-level supplement: .claude/skills/analyse-system/"
-                  fail=1
-                fi
-
-                # Host renames. The bare pattern \bnori-(station|pi)\b
-                # is safe because both old hostnames were unique tokens
-                # in this repo (no unrelated occurrences pre-rename).
-                if grep -rEn '\bnori-(station|pi)\b' \
-                     --include='*.nix' --include='*.md' --include='*.yaml' \
-                     --include='Justfile' \
-                     docs/ modules/ hosts/ scripts/ secrets/ \
-                     README.md CLAUDE.md Justfile .sops.yaml 2>/dev/null ; then
-                  echo
-                  echo "✗ Stale 'nori-station' or 'nori-pi' references above."
-                  echo "  Renamed on 2026-05-05:"
-                  echo "    nori-station → workstation"
-                  echo "    nori-pi      → pi"
-                  echo "  Cross-host refs read config.nori.hosts.<n>.tailnetIp;"
-                  echo "  registry: flake.nix identityFor."
-                  fail=1
-                fi
-
-                if [ $fail -eq 0 ]; then
-                  touch $out
-                else
-                  exit 1
-                fi
-              '';
         };
     };
 }

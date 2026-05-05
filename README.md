@@ -59,7 +59,6 @@ The pre-commit hook (`.githooks/pre-commit`) runs `nix flake check` automaticall
 - **Eval-time module assertions** — every type-level constraint declared in modules via `assertions = [ ... ]` (port uniqueness, exclusive paths/skip, host-aware appliance constraints, …)
 - **Pattern enforcement** — `every-service-has-<X>` derivations fail if any `modules/server/*.nix` outside the excluded list omits a required declaration
 - **Anti-pattern grep guards** — `forbidden-patterns` fails if banned strings appear (deprecated APIs, sops bypass shapes, …)
-- **Path-rename guards** — `no-stale-paths` records each rename + date; only the now-stale form is checked, so commits that miss a rename fail at build time
 
 The pre-commit hook runs the lot when `.nix` files are staged.
 
