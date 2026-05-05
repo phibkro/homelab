@@ -39,6 +39,7 @@ _: {
     ./caddy.nix
     ./calibre-web.nix
     ./filmder.nix
+    ./finnbydel.nix
     ./gatus.nix
     ./glance.nix
     ./immich.nix
