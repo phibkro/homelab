@@ -132,6 +132,11 @@ in
       # node+npx for the migrate step works since bun's install layer
       # already populated node_modules/.bin/ in npm-compatible shape.
       nodejs_22
+      # bash for npm/npx postinstall + child-spawn — same gotcha
+      # that filmder hit (docs/gotchas.md "npm postinstall on systemd
+      # needs bash on the unit path"). Surfaces here as
+      # `npm error enoent spawn sh ENOENT`.
+      bash
     ];
 
     environment = {
