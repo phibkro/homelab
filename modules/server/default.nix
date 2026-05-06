@@ -42,7 +42,15 @@ _: {
     ./finnbydel.nix
     ./gatus.nix
     ./glance.nix
-    ./heim.nix
+    # ./heim.nix — disabled 2026-05-06 pending Payload+Postgres deploy
+    # path. File preserved for revival; current blockers documented in
+    # the heim.nix header. Re-enable when:
+    #   * Payload schema is managed at deploy time (committed
+    #     migration files + `payload migrate` that doesn't trip on
+    #     bun + tsx ESM resolution), OR
+    #   * Heim's app routes can render statically without DB queries
+    #     (currently every Payload-using route reads from postgres
+    #     during SSG/generateStaticParams).
     ./immich.nix
     ./jellyfin.nix
     ./komga.nix
