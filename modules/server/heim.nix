@@ -125,13 +125,13 @@ in
     path = with pkgs; [
       git
       bun
-      # nodejs_22 needed for `npx payload` — bun's `bunx payload`
+      # nodejs_24 needed for `npx payload` — bun's `bunx payload`
       # fails with `Cannot find module 'tsx://...'` because Payload's
       # CLI uses tsx's URL-scheme loader which bun's resolver doesn't
       # support (bun-tsx-payload known incompat). Falling back to
       # node+npx for the migrate step works since bun's install layer
       # already populated node_modules/.bin/ in npm-compatible shape.
-      nodejs_22
+      nodejs_24
       # bash for npm/npx postinstall + child-spawn — same gotcha
       # that filmder hit (docs/gotchas.md "npm postinstall on systemd
       # needs bash on the unit path"). Surfaces here as
