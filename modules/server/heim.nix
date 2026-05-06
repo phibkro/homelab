@@ -125,6 +125,13 @@ in
     path = with pkgs; [
       git
       bun
+      # nodejs_22 needed for `npx payload` — bun's `bunx payload`
+      # fails with `Cannot find module 'tsx://...'` because Payload's
+      # CLI uses tsx's URL-scheme loader which bun's resolver doesn't
+      # support (bun-tsx-payload known incompat). Falling back to
+      # node+npx for the migrate step works since bun's install layer
+      # already populated node_modules/.bin/ in npm-compatible shape.
+      nodejs_22
     ];
 
     environment = {
@@ -184,10 +191,13 @@ in
       # `migrate:push` is the equivalent of `prisma db push` —
       # direct schema sync, no migration files needed. Idempotent
       # against already-synced DBs.
-      # --force-accept-warning bypasses the interactive "this is
-      # for dev" confirmation prompt (we're in a non-tty systemd
-      # unit; without the flag the command hangs forever).
-      (cd apps/portfolio && bunx payload migrate:push --force-accept-warning)
+      #
+      # `npx` not `bunx` — Payload's CLI uses tsx's URL-scheme
+      # loader (`tsx://`) which bun's module resolver chokes on.
+      # node + npx handles tsx natively. `--force-accept-warning`
+      # bypasses the interactive "this is for dev" prompt that
+      # would otherwise hang in a non-tty systemd context.
+      (cd apps/portfolio && npx payload migrate:push --force-accept-warning)
 
       # Turbo orchestrates package builds + portfolio's `next build`.
       bun run build
