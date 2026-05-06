@@ -16,6 +16,11 @@
 
     # Per-user config (desktop phase). Tracks nixos-unstable in lockstep
     # with nixpkgs; re-pin deliberately on `nix flake update`.
+    # Mac homeConfiguration also rides this — pin a separate
+    # `nixpkgs-darwin` follow when 26.05 stable ships (~May 2026), since
+    # 26.05 is announced as the LAST nixpkgs release supporting Intel
+    # Mac (x86_64-darwin). After that the Mac either stays pinned to
+    # 26.05 indefinitely or migrates off nixpkgs entirely.
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -154,6 +159,25 @@
           "nix"
           "claude-code"
         ];
+      };
+
+      # Standalone home-manager configurations for non-NixOS hosts.
+      # Activated on the target machine via:
+      #   nix run home-manager/release-25.11 -- switch --flake .#<name>
+      # or, once home-manager is installed into the user profile:
+      #   home-manager switch --flake .#<name>
+      #
+      # Distinct from `nixosConfigurations.<host>` (which embeds home-
+      # manager via the NixOS module on workstation/pi); these stand
+      # alone because the host OS isn't NixOS.
+      homeConfigurations.macbook = home-manager.lib.homeManagerConfiguration {
+        # Mac pkgs with allowUnfree so claude-code (unfree license)
+        # resolves. Same pattern as `pkgsUnfree` above for the dev shell.
+        pkgs = import nixpkgs {
+          system = "x86_64-darwin";
+          config.allowUnfree = true;
+        };
+        modules = [ ./modules/home/macbook.nix ];
       };
 
       formatter.${system} = pkgs.nixfmt;
