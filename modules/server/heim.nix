@@ -177,6 +177,18 @@ in
       # Monorepo install (resolves all workspace deps).
       bun install
 
+      # Sync Payload's collection schema to postgres before
+      # `next build` runs SSG (which queries posts/projects/tags
+      # tables for static-render). Payload uses Drizzle migrations
+      # under the hood; without committed migration files,
+      # `migrate:push` is the equivalent of `prisma db push` —
+      # direct schema sync, no migration files needed. Idempotent
+      # against already-synced DBs.
+      # --force-accept-warning bypasses the interactive "this is
+      # for dev" confirmation prompt (we're in a non-tty systemd
+      # unit; without the flag the command hangs forever).
+      (cd apps/portfolio && bunx payload migrate:push --force-accept-warning)
+
       # Turbo orchestrates package builds + portfolio's `next build`.
       bun run build
 
