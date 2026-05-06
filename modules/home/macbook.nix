@@ -64,5 +64,24 @@
     # Stays on brew: `brew install --cask utm`.
   ];
 
+  # Caddy on workstation signs *.nori.lan with its local CA, which
+  # macOS keychain doesn't ship and Node's CA bundle ignores by
+  # default. Point Node clients (immich-cli, claude-code MCP fetches,
+  # arbitrary `npm`/`bun` scripts hitting nori.lan endpoints) at the
+  # cert committed in the repo. The `${...}` interpolation copies the
+  # cert into /nix/store at build time, so the path stays valid even
+  # if the working tree moves.
+  #
+  # If you also want curl/Safari to trust the CA without
+  # NODE_EXTRA_CA_CERTS' Node-only scope, install it into the system
+  # trust store imperatively (one-shot, not declarative without
+  # nix-darwin):
+  #   sudo security add-trusted-cert -d -r trustRoot \
+  #     -k /Library/Keychains/System.keychain \
+  #     ~/Documents/nix-migration/modules/server/caddy-local-ca.crt
+  home.sessionVariables = {
+    NODE_EXTRA_CA_CERTS = "${../../modules/server/caddy-local-ca.crt}";
+  };
+
   programs.home-manager.enable = true;
 }
