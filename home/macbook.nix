@@ -87,7 +87,7 @@
   #     -k /Library/Keychains/System.keychain \
   #     ~/Documents/nix-migration/modules/server/caddy-local-ca.crt
   home.sessionVariables = {
-    NODE_EXTRA_CA_CERTS = "${../../modules/server/caddy-local-ca.crt}";
+    NODE_EXTRA_CA_CERTS = "${../modules/server/caddy-local-ca.crt}";
   };
 
   # JetBrains Mono Nerd Font installed into ~/Library/Fonts/ so macOS

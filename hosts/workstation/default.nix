@@ -17,7 +17,7 @@
     ../../modules/desktop # Hyprland + greetd + audio + bars + apps + gaming
 
     ./hardware.nix
-    ./home.nix
+    ../../home/workstation.nix
     ./disko.nix
     ./disko-media.nix
     ./disko-onetouch.nix

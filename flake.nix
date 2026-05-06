@@ -177,7 +177,7 @@
           system = "x86_64-darwin";
           config.allowUnfree = true;
         };
-        modules = [ ./modules/home/macbook.nix ];
+        modules = [ ./home/macbook.nix ];
       };
 
       formatter.${system} = pkgs.nixfmt;
