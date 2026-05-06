@@ -50,6 +50,7 @@
     ../../modules/server/ntfy/notify.nix
 
     ./hardware.nix
+    ../../home/pi.nix
   ];
 
   # networking.hostName injected from the registry key in flake.nix.

@@ -65,17 +65,19 @@
   console.keyMap = "no";
 
   # --- packages (minimal baseline shared by all hosts) ------------------
-
+  #
+  # System-scope only what root + system services + emergency operations
+  # genuinely need. Operator-interactive CLI (just, ripgrep, tmux,
+  # starship, etc.) lives at user scope in home/core.nix — every host
+  # (incl. pi) imports a home/<host>.nix that pulls in core, so nori on
+  # any machine has the same baseline.
   environment.systemPackages = with pkgs; [
     bat
     curl
     dig
     fd
-    git
+    git # nh + Nix flake operations need git on system PATH
     htop
-    just
-    ripgrep
-    tmux
     tree
     vim
     wget

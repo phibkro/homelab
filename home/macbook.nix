@@ -42,10 +42,8 @@
     pnpm
 
     # === general CLI ===
+    # just / ripgrep / tmux come from home/core.nix.
     ffmpeg
-    just
-    ripgrep
-    tmux
     tree-sitter
 
     # === GUI apps ===

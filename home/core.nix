@@ -1,32 +1,39 @@
 { pkgs, ... }:
 
-# Cross-platform home-manager core. Imported by:
-#   * modules/desktop/home.nix (Linux desktop, via home-manager NixOS module)
-#   * modules/home/macbook.nix (Mac standalone, via flake homeConfigurations)
+# Cross-platform home-manager core. Imported by every machine's
+# home/<n>.nix:
+#   * home/workstation.nix (NixOS, via home-manager-as-NixOS-module)
+#   * home/macbook.nix     (standalone, via flake homeConfigurations)
+#   * home/pi.nix          (NixOS, via home-manager-as-NixOS-module)
 #
 # What lives here: cross-platform CLI tooling and identity that the
 # operator wants on every interactive machine — same shell prompt,
-# same git config, same `,` for ad-hoc nix packages.
+# same git config, same baseline binaries on PATH.
 #
 # What does NOT live here:
 #   * Linux-desktop-specific bits (Hyprland, GTK/Qt themes, Wayland
-#     cursor, X11/Wayland-only programs) → modules/desktop/home.nix
+#     cursor, X11/Wayland-only programs) → home/workstation.nix
 #   * Mac-specific bits (~/Library/Fonts symlink, NODE_EXTRA_CA_CERTS,
-#     home.username/homeDirectory) → modules/home/macbook.nix
+#     home.username/homeDirectory) → home/macbook.nix
 #   * Hardware-tied tooling (nvtop = NVIDIA, compsize = btrfs)
-#
-# Rule-of-three threshold note: extracted at 2 instances (Mac + Linux
-# desktop) because the operator explicitly named the share. Third
-# instance (laptop NixOS) is expected to widen the shared set —
-# anticipate moving more cross-platform CLI here at that point.
 
 {
   home.packages = with pkgs; [
     comma # `, <pkg>` runs nix packages ad-hoc; companion to `nix shell`
 
+    # Interactive operator CLI — ssh-into-any-machine-and-use baseline.
+    # Previously in modules/common/base.nix systemPackages, where they
+    # were available to root + every user. Moved here once pi got
+    # home-manager (home/pi.nix) so nori has the same set everywhere
+    # without paying the system-floor scope. base.nix now keeps only
+    # what root + Nix evaluation + emergency ops genuinely need.
+    just
+    ripgrep
+    tmux
+
     # Operator tools — interactive use, not system services. Previously
     # split between modules/desktop/apps.nix systemPackages (workstation)
-    # and modules/home/macbook.nix home.packages (Mac); centralized here.
+    # and home/macbook.nix home.packages (Mac); centralized here.
     age # ad-hoc encryption (host SSH keys handle sops-nix activation)
     sops # interactive secrets editing
     claude-code # Anthropic CLI; runs as the operator, not as a service
