@@ -168,13 +168,14 @@ in
       HOSTNAME = "127.0.0.1";
     };
 
-    # Skip start until first deploy has produced .next/. Without this,
-    # cold-boot before any `just deploy-app finnbydel` would
-    # restart-loop indefinitely (no source clone, no build artifact).
-    # build's ExecStartPost runs `systemctl restart finnbydel-serve`,
-    # which re-evaluates the condition — once .next exists, serve
-    # activates cleanly.
-    unitConfig.ConditionPathExists = "/var/lib/finnbydel/src/finnbydel-app/.next";
+    # Skip start until a *complete* Next.js build exists. BUILD_ID
+    # is the file Next writes only on successful build — pointing
+    # at the .next directory itself would also match a half-failed
+    # build that left a corrupt .next/ on disk (then `next start`
+    # crashes with "Could not find a production build"). build's
+    # ExecStartPost re-evaluates the condition on success, so once
+    # BUILD_ID lands, serve activates cleanly.
+    unitConfig.ConditionPathExists = "/var/lib/finnbydel/src/finnbydel-app/.next/BUILD_ID";
 
     serviceConfig = {
       Type = "simple";

@@ -208,9 +208,13 @@ in
       LD_LIBRARY_PATH = ldLibraryPath;
     };
 
-    # Skip start until first deploy has produced .next/. Same
-    # bootstrap-gap pattern as finnbydel-serve.
-    unitConfig.ConditionPathExists = "/var/lib/heim/src/apps/portfolio/.next";
+    # Skip start until a *complete* Next.js build exists. BUILD_ID
+    # is the file Next writes only on successful build — pointing
+    # at the directory itself would match a half-failed build that
+    # left a corrupt .next/ on disk, which then trips
+    # `Could not find a production build in the '.next' directory`
+    # at start time and infinite-restart-loops.
+    unitConfig.ConditionPathExists = "/var/lib/heim/src/apps/portfolio/.next/BUILD_ID";
 
     serviceConfig = {
       Type = "simple";
