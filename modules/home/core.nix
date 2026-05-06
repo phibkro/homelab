@@ -23,6 +23,13 @@
 {
   home.packages = with pkgs; [
     comma # `, <pkg>` runs nix packages ad-hoc; companion to `nix shell`
+
+    # Operator tools — interactive use, not system services. Previously
+    # split between modules/desktop/apps.nix systemPackages (workstation)
+    # and modules/home/macbook.nix home.packages (Mac); centralized here.
+    age # ad-hoc encryption (host SSH keys handle sops-nix activation)
+    sops # interactive secrets editing
+    claude-code # Anthropic CLI; runs as the operator, not as a service
   ];
 
   programs.starship = {

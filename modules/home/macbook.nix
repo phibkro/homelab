@@ -29,9 +29,9 @@
   home.stateVersion = "25.11";
 
   home.packages = with pkgs; [
-    # === secrets ===
-    age
-    sops
+    # CLI tooling Mac-specific to this host. Cross-platform tooling
+    # that workstation also wants (comma, starship, programs.git, age,
+    # sops, claude-code) lives in core.nix.
 
     # === git + GitHub ===
     # git itself comes from `programs.git.enable` in core.nix.
@@ -48,9 +48,6 @@
     tmux
     tree-sitter
 
-    # === AI ===
-    claude-code
-
     # === GUI apps ===
     # On Mac, home-manager's targets.darwin.linkApps activation
     # script symlinks Nix-installed .app bundles into
@@ -58,12 +55,20 @@
     # them up. Built-in, no extra config needed.
     localsend
 
-    # ghostty — has no Darwin meta.platforms in nixpkgs-25.11-darwin
-    # (Linux-only build). Install via brew until upstream ships a
-    # Darwin build: `brew install --cask ghostty`.
+    # ghostty — has no Darwin meta.platforms in nixpkgs (Linux-only
+    # build). Install via brew: `brew install --cask ghostty`.
     #
     # utm — NOT in nixpkgs (proprietary Mac VM frontend).
-    # Stays on brew: `brew install --cask utm`.
+    # Brew: `brew install --cask utm`.
+    #
+    # tailscale — macOS Tailscale uses NetworkExtension framework, not
+    # a userspace daemon. The App-Store / brew-cask version provides
+    # both the daemon (system-level integration) and the CLI.
+    # Installing pkgs.tailscale here would shadow the App's CLI with
+    # potential version drift. Brew: `brew install --cask tailscale`.
+    # Sign in once via the menubar; tailnet hostnames + magicDNS work
+    # thereafter. Workstation runs full services.tailscale.enable via
+    # NixOS module; Mac standalone home-manager has no equivalent.
   ];
 
   # Caddy on workstation signs *.nori.lan with its local CA, which
@@ -85,18 +90,18 @@
     NODE_EXTRA_CA_CERTS = "${../../modules/server/caddy-local-ca.crt}";
   };
 
-  # Hack Nerd Font installed into ~/Library/Fonts/ so macOS Font Book
-  # + Ghostty pick it up. Each .ttf gets symlinked individually
-  # (recursive = true) — preserves the dir for any non-Nix fonts you
-  # drop in alongside.
+  # JetBrains Mono Nerd Font installed into ~/Library/Fonts/ so macOS
+  # Font Book + Ghostty pick it up. Each .ttf gets symlinked
+  # individually (recursive = true) — preserves the dir for any
+  # non-Nix fonts you drop in alongside.
   #
   # Pair with Ghostty config:
-  #   font-family = "Hack Nerd Font"
+  #   font-family = JetBrainsMono Nerd Font
   # in ~/Library/Application Support/com.mitchellh.ghostty/config
   # (Ghostty isn't currently managed by home-manager — set this once
   # imperatively, or wire `programs.ghostty` later).
-  home.file."Library/Fonts/HackNerdFont" = {
-    source = "${pkgs.nerd-fonts.hack}/share/fonts/truetype/NerdFonts/Hack";
+  home.file."Library/Fonts/JetBrainsMonoNerdFont" = {
+    source = "${pkgs.nerd-fonts.jetbrains-mono}/share/fonts/truetype/NerdFonts/JetBrainsMono";
     recursive = true;
   };
 

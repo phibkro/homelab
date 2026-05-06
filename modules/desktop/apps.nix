@@ -37,12 +37,6 @@
     # session aesthetic better than Trayscale's full GTK app.
     pkgs.tailscale-systray
 
-    # Claude Code CLI — Anthropic doesn't ship a Linux desktop client;
-    # the CLI is the canonical way to interact from a terminal. Already
-    # installed elsewhere (Mac), but having it here makes workstation
-    # usable as a dev environment in its own right.
-    pkgs.claude-code
-
     # DaVinci Resolve — professional video editor. ~3 GB closure;
     # unfree license (free to use, paid Studio version). NVIDIA GPU
     # used for hardware decode/encode. First launch may complain about
@@ -64,13 +58,6 @@
     pkgs.slurp # region selection (paired with grim)
     pkgs.libnotify # `notify-send` for shell scripts
     pkgs.pwvucontrol # PipeWire mixer GUI (sink/source picker, per-app vol)
-
-    # Secrets editing — sops decrypts/edits secrets/secrets.yaml
-    # interactively; age generates the per-machine keypairs (host SSH
-    # keys are used directly by sops-nix at activation, but ad-hoc age
-    # is occasionally needed for new recipient enrollment).
-    pkgs.sops
-    pkgs.age
   ];
 
   # Thunar — lightweight GUI file manager. Enabling via programs.thunar
