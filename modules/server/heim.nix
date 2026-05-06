@@ -189,20 +189,19 @@ in
       # Monorepo install (resolves all workspace deps).
       bun install
 
-      # Sync Payload's collection schema to postgres before
-      # `next build` runs SSG (which queries posts/projects/tags
-      # tables for static-render). Payload uses Drizzle migrations
-      # under the hood; without committed migration files,
-      # `migrate:push` is the equivalent of `prisma db push` —
-      # direct schema sync, no migration files needed. Idempotent
-      # against already-synced DBs.
+      # Schema sync handled at runtime by postgresAdapter's
+      # `push: true` (see apps/portfolio/payload.config.ts) —
+      # heim-serve's first connect creates the tables via Drizzle
+      # push. Build skips DB queries entirely because every
+      # Payload-using route declares `export const dynamic =
+      # "force-dynamic"`, which makes Next.js render per-request
+      # instead of pre-generating at build time.
       #
-      # `npx` not `bunx` — Payload's CLI uses tsx's URL-scheme
-      # loader (`tsx://`) which bun's module resolver chokes on.
-      # node + npx handles tsx natively. `--force-accept-warning`
-      # bypasses the interactive "this is for dev" prompt that
-      # would otherwise hang in a non-tty systemd context.
-      (cd apps/portfolio && npx payload migrate:push --force-accept-warning)
+      # No `payload migrate:push` step here because that route
+      # tripped on bun + tsx + Payload-CLI ESM-resolution incompat
+      # (extensionless TS imports in payload.config.ts). Pushing
+      # the schema-management responsibility to runtime simplifies
+      # the build pipeline + keeps it pure-bun.
 
       # Turbo orchestrates package builds + portfolio's `next build`.
       bun run build
