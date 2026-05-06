@@ -76,13 +76,14 @@
   services.dbus.enable = true;
 
   # Fonts — minimal default set so apps don't render in toofu boxes
-  # (squares for missing glyphs). Nerd-font (Hack) for terminal/launcher
-  # icons; plain Hack for documents that don't need Nerd Font icons.
+  # (squares for missing glyphs). Nerd-font (JetBrainsMono) for terminal
+  # / launcher / hyprlock; plain JetBrainsMono for documents that don't
+  # need Nerd Font icons.
   fonts.packages = [
     pkgs.noto-fonts
     pkgs.noto-fonts-color-emoji
     pkgs.dejavu_fonts
-    pkgs.hack-font
-    pkgs.nerd-fonts.hack
+    pkgs.jetbrains-mono
+    pkgs.nerd-fonts.jetbrains-mono
   ];
 }
