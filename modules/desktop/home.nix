@@ -168,6 +168,8 @@ in
     backupFileExtension = "hm-backup";
 
     users.nori = {
+      imports = [ ../home/core.nix ];
+
       home.stateVersion = "25.11"; # match host's system.stateVersion
       programs.home-manager.enable = true;
 

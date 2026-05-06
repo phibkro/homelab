@@ -19,6 +19,8 @@
 #   home-manager switch --flake ~/Documents/nix-migration#macbook
 
 {
+  imports = [ ./core.nix ];
+
   home.username = "nori";
   home.homeDirectory = "/Users/nori";
 
@@ -32,8 +34,8 @@
     sops
 
     # === git + GitHub ===
+    # git itself comes from `programs.git.enable` in core.nix.
     gh
-    git
 
     # === JS/TS runtime + tooling ===
     bun
@@ -81,6 +83,21 @@
   #     ~/Documents/nix-migration/modules/server/caddy-local-ca.crt
   home.sessionVariables = {
     NODE_EXTRA_CA_CERTS = "${../../modules/server/caddy-local-ca.crt}";
+  };
+
+  # Hack Nerd Font installed into ~/Library/Fonts/ so macOS Font Book
+  # + Ghostty pick it up. Each .ttf gets symlinked individually
+  # (recursive = true) — preserves the dir for any non-Nix fonts you
+  # drop in alongside.
+  #
+  # Pair with Ghostty config:
+  #   font-family = "Hack Nerd Font"
+  # in ~/Library/Application Support/com.mitchellh.ghostty/config
+  # (Ghostty isn't currently managed by home-manager — set this once
+  # imperatively, or wire `programs.ghostty` later).
+  home.file."Library/Fonts/HackNerdFont" = {
+    source = "${pkgs.nerd-fonts.hack}/share/fonts/truetype/NerdFonts/Hack";
+    recursive = true;
   };
 
   programs.home-manager.enable = true;
