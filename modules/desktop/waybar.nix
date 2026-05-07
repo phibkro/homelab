@@ -1,4 +1,19 @@
-_: {
+_:
+let
+  # Glyph codepoints — embedded via builtins.fromJSON so the literal
+  # PUA characters survive any Edit-tool round-trip. JSON's \uXXXX
+  # escapes are processed at eval time into real UTF-8 characters in
+  # the rendered config; printf or shell-quoted-bytes alternatives
+  # have been flaky in practice.
+  msMoon = builtins.fromJSON ''""''; # Material Symbols dark_mode
+  msSun = builtins.fromJSON ''""''; # Material Symbols light_mode
+
+  # JetBrainsMono Nerd Font Mono — Font Awesome volume icons.
+  nfVolLow = builtins.fromJSON ''""''; # fa-volume-down
+  nfVolMid = builtins.fromJSON ''""''; # fa-volume-down (same — no medium)
+  nfVolHigh = builtins.fromJSON ''""''; # fa-volume-up
+in
+{
   # Waybar — status bar at the top of the primary monitor. Auto-starts via
   # systemd user service (programs.waybar.systemd.enable). Style is bare
   # defaults; iterate when something feels rough.
@@ -56,9 +71,9 @@ _: {
           format-muted = "muted";
           format-icons = {
             default = [
-              ""
-              ""
-              ""
+              nfVolLow
+              nfVolMid
+              nfVolHigh
             ];
           };
           on-click = "pwvucontrol";
@@ -88,12 +103,8 @@ _: {
         "custom/sunset" = {
           format = "{}";
           interval = 5;
-          # printf with explicit UTF-8 byte escapes — Material Symbols
-          # codepoints (U+E51C dark_mode, U+E518 light_mode) live in
-          # the Private Use Area and don't survive copy-paste through
-          # editors that normalize PUA to nothing. \xee\x94\x9c is the
-          # 3-byte UTF-8 encoding of U+E51C; \xee\x94\x98 of U+E518.
-          exec = "systemctl --user is-active --quiet hyprsunset && printf '\\xee\\x94\\x9c' || printf '\\xee\\x94\\x98'";
+          # Glyphs from the let-block above (builtins.fromJSON-embedded).
+          exec = "systemctl --user is-active --quiet hyprsunset && echo '${msMoon}' || echo '${msSun}'";
           on-click = "systemctl --user is-active --quiet hyprsunset && systemctl --user stop hyprsunset || systemctl --user start hyprsunset";
           tooltip-format = "Click: toggle blue-light filter";
         };

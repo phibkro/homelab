@@ -170,6 +170,12 @@ in
     pkgs.lazysql # SQL TUI (Immich pg, Open WebUI sqlite, etc.)
     pkgs.nix-tree # interactive Nix dependency-graph viewer
     pkgs.nvd # diff between NixOS generations
+    # home-manager CLI. `programs.home-manager.enable = true` only wires
+    # the activation script (used by NixOS-rebuild); the binary itself
+    # isn't installed automatically when home-manager runs as a NixOS
+    # module. Useful for `home-manager news`, `home-manager generations`,
+    # introspection. Don't `home-manager switch` here — use just rebuild.
+    pkgs.home-manager
   ];
 
   # programs.<x>.enable adds shell integration + declarative config
