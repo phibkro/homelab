@@ -49,16 +49,19 @@ in
   # Glance — fast, single-binary Go dashboard. Family-facing landing
   # page at home.nori.lan.
   #
-  # Three-column layout (small | full | small) — on desktop they appear
-  # side-by-side; on phone they stack as scrollable sections (the
-  # ":pages: hint" Glance shows on narrow viewports).
+  # Two-column layout (full | small) — on desktop they appear
+  # side-by-side; on phone they stack as scrollable sections.
   #
-  #   Status   (col 1, small)  observational state — calendar, weather,
-  #                            host CPU/RAM/disk
-  #   Apps     (col 2, full)   navigation — uptime monitor + grouped
-  #                            bookmarks for all *.nori.lan
-  #   Read     (col 3, small)  consumption — HN/Lobsters/Reddit, RSS,
-  #                            release feeds
+  #   Apps   (col 1, full)   bookmarks-first — uptime monitor + grouped
+  #                          bookmarks for all *.nori.lan, then
+  #                          observational state (calendar, weather,
+  #                          host CPU/RAM/disk) below
+  #   Read   (col 2, small)  consumption — RSS / release feeds
+  #
+  # Cross-host stats (Pi) intentionally NOT here — Beszel on Pi is the
+  # canonical cross-host stats plane (it survives station outages,
+  # which a station-hosted dashboard widget cannot). The Apps bookmarks
+  # link to Beszel for that.
   #
   # The Apps column's monitor + bookmarks widgets both derive from
   # `config.nori.lanRoutes.<n>.dashboard` blocks across all service
@@ -85,35 +88,11 @@ in
           name = "Home";
           hide-desktop-navigation = true;
           columns = [
-            # ============== Col 1 — Status ==============
-            {
-              size = "small";
-              widgets = [
-                {
-                  type = "calendar";
-                  first-day-of-week = "monday";
-                }
-                {
-                  type = "weather";
-                  location = "Oslo, Norway";
-                  units = "metric";
-                  hour-format = "24h";
-                }
-                # Built-in host stats (CPU / RAM / disk) for workstation
-                # itself — no external deps, complements Beszel.
-                {
-                  type = "server-stats";
-                  servers = [
-                    {
-                      type = "local";
-                      name = "workstation";
-                    }
-                  ];
-                }
-              ];
-            }
-
-            # ============== Col 2 — Apps / Services ==============
+            # ============== Col 1 — Apps + Status ==============
+            # Bookmarks-first: monitor + grouped bookmarks at top
+            # (most-clicked, the reason this dashboard exists), then
+            # observational widgets below (calendar / weather / host
+            # stats — glanceable but not navigated to).
             {
               size = "full";
               widgets = [
@@ -135,10 +114,32 @@ in
                     links = lib.mapAttrsToList toBookmarkLink (inGroup g);
                   }) groupOrder;
                 }
+                {
+                  type = "calendar";
+                  first-day-of-week = "monday";
+                }
+                {
+                  type = "weather";
+                  location = "Oslo, Norway";
+                  units = "metric";
+                  hour-format = "24h";
+                }
+                # Built-in host stats (CPU / RAM / disk) for workstation
+                # itself — no external deps. Cross-host (Pi) stats are
+                # in Beszel, linked from the bookmarks above.
+                {
+                  type = "server-stats";
+                  servers = [
+                    {
+                      type = "local";
+                      name = "workstation";
+                    }
+                  ];
+                }
               ];
             }
 
-            # ============== Col 3 — Read ==============
+            # ============== Col 2 — Read ==============
             {
               size = "small";
               widgets = [
