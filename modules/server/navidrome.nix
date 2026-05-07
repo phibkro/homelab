@@ -76,6 +76,13 @@
     EnvironmentFile = config.sops.templates."oidc-audio-env".path;
     SupplementaryGroups = [ "keys" ];
   };
+
+  # Transcoding requires ffmpeg on PATH; upstream NixOS module doesn't
+  # add it. Without this, EnableTranscodingConfig=true exposes the UI
+  # but every transcode silently fails at runtime. Pattern: keep FLAC on
+  # disk (archival), let Navidrome transcode to MP3/Opus per-client
+  # (Subsonic clients negotiate max bitrate per network).
+  systemd.services.navidrome.path = [ pkgs.ffmpeg ];
   systemd.services.navidrome.environment = {
     ND_AUTH_OIDC_ENABLED = "true";
     ND_AUTH_OIDC_PROVIDERNAME = "Authelia";
