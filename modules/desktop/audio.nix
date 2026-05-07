@@ -1,4 +1,9 @@
 _: {
+  # Required for proper screen sharing under PipeWire+Wayland — the
+  # xdg-desktop-portal screencast path goes over the session bus.
+  # NixOS enables dbus by default, so this is largely belt-and-suspenders.
+  services.dbus.enable = true;
+
   # PipeWire with WirePlumber as session manager — the modern default.
   # ALSA + PulseAudio compatibility layers stay enabled for legacy apps
   # (anything still calling `pactl` or opening `/dev/snd/*` directly).

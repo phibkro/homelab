@@ -72,9 +72,6 @@
     ];
   };
 
-  # Required for proper screen sharing under PipeWire+Wayland.
-  services.dbus.enable = true;
-
   # Fonts — minimal default set so apps don't render in toofu boxes
   # (squares for missing glyphs). Nerd-font (JetBrainsMono) for terminal
   # / launcher / hyprlock; plain JetBrainsMono for documents that don't
