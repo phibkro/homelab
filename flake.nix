@@ -8,6 +8,15 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
 
+    # nixpkgs master — used ONLY for cherry-picking individual packages
+    # whose nixos-unstable channel cut lags far behind upstream. Don't
+    # mass-overlay from this; resolve specific lags one package at a
+    # time. Currently consumed by:
+    #   modules/desktop/apps.nix → zed-editor (nixos-unstable shipping
+    #     v0.232.3 as of 2026-05-07, master shipping v1.1.6; months of
+    #     Linux/Wayland/file-watcher fixes in the gap)
+    nixpkgs-master.url = "github:NixOS/nixpkgs/master";
+
     disko.url = "github:nix-community/disko/latest";
     disko.inputs.nixpkgs.follows = "nixpkgs";
 

@@ -232,6 +232,22 @@
         "type": "github"
       }
     },
+    "nixpkgs-master": {
+      "locked": {
+        "lastModified": 1778181961,
+        "narHash": "sha256-/vVr/YhXC0N821FK9lL4V2NOMwQkuqeOx5S8eKv64gc=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "cf80da9ddda6937fda10d96921c9e424c33c733e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "master",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "nur": {
       "inputs": {
         "flake-parts": [
@@ -263,6 +279,7 @@
         "home-manager": "home-manager",
         "nixos-hardware": "nixos-hardware",
         "nixpkgs": "nixpkgs",
+        "nixpkgs-master": "nixpkgs-master",
         "sops-nix": "sops-nix",
         "stylix": "stylix",
         "zen-browser": "zen-browser"

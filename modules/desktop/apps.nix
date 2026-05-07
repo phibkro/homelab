@@ -18,8 +18,13 @@
     # is needed.
     pkgs.bitwarden-desktop
 
-    # Editor — Zed, Rust-based, GPU-accelerated, AI-aware.
-    pkgs.zed-editor
+    # Editor — Zed, Rust-based, GPU-accelerated, AI-aware. Pulled from
+    # nixpkgs master rather than the host's nixpkgs (nixos-unstable)
+    # because the channel ships v0.232.3 while master is at v1.1.6;
+    # months of Linux/Wayland/file-watcher fixes in the gap (#55829's
+    # notify-rs runaway-CPU fix among them). Revert to plain
+    # `pkgs.zed-editor` once nixos-unstable catches up.
+    inputs.nixpkgs-master.legacyPackages.${pkgs.stdenv.hostPlatform.system}.zed-editor
 
     # Audio editor — multi-track recording + editing.
     pkgs.audacity
