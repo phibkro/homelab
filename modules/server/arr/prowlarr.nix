@@ -1,9 +1,4 @@
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}:
+_:
 
 {
   # Prowlarr — indexer aggregator for the *arr stack. Holds the list of

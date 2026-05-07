@@ -1,4 +1,4 @@
-{ pkgs, lib }:
+{ pkgs }:
 # TypeScript language fragment. Toolchain only: tsc + LSP + voidzero
 # tools (oxlint, oxfmt). Runtime (`node` / `bun`) and package manager
 # (`pnpm`) are deliberately *not* included — they're separate

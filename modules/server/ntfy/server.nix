@@ -1,9 +1,4 @@
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}:
+_:
 
 {
   # ntfy-sh server — internal alert hub for the homelab. Lives on the

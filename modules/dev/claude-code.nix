@@ -1,4 +1,4 @@
-{ pkgs, lib }:
+{ pkgs }:
 # Claude Code consent fragment.
 #
 # Including this fragment in a dev shell's `modules` list tells the

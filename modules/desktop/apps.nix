@@ -72,6 +72,8 @@
     # Voice + text chat. Slack lives in the browser; Discord's desktop
     # client is the better fit for voice quality + push-to-talk.
     pkgs.discord
+
+    pkgs.happy-coder
   ];
 
   # Thunar — lightweight GUI file manager. Enabling via programs.thunar

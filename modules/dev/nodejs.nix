@@ -1,4 +1,4 @@
-{ pkgs, lib }:
+{ pkgs }:
 # Node.js runtime + npm. Pinned to current LTS via nodejs_24; bump
 # deliberately. npm ships bundled with the nodejs derivation, so a
 # project on plain npm doesn't need a separate `npm` fragment.

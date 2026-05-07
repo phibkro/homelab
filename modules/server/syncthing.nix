@@ -1,9 +1,4 @@
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}:
+_:
 
 {
   # Syncthing — peer-to-peer file sync over tailnet. Replaces "manually

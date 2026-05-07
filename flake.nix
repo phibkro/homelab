@@ -51,13 +51,8 @@
 
   outputs =
     {
-      self,
       nixpkgs,
-      nixos-hardware,
-      disko,
-      sops-nix,
       home-manager,
-      zen-browser,
       ...
     }@inputs:
     let

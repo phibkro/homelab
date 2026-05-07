@@ -29,7 +29,7 @@ let
   loadFragment =
     pkgs: name:
     import (./. + "/${name}.nix") {
-      inherit pkgs lib;
+      inherit pkgs;
     };
 
   # Topological closure over `depends`. A fragment can declare

@@ -1,4 +1,4 @@
-{ pkgs, lib }:
+{ pkgs }:
 # Nix language fragment. Toolchain only — `nix` itself is assumed to
 # be present on the system (consumers without nix can't run a flake
 # devShell anyway, so packaging it would be circular).

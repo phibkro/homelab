@@ -1,4 +1,4 @@
-{ pkgs, lib }:
+{ pkgs }:
 # Bun runtime + package manager + bundler — a single binary covering
 # what Node + npm + esbuild would each provide. Compose `bun` into a
 # project that pins `packageManager: "bun@..."` in package.json (e.g.

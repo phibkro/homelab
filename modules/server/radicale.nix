@@ -1,9 +1,4 @@
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}:
+_:
 
 {
   # Radicale — CalDAV + CardDAV server. Replaces Google Calendar /
