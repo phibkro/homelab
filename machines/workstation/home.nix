@@ -248,7 +248,9 @@ in
       };
 
       decoration = {
-        rounding = 4;
+        # Material 3 corner-medium (12dp) — matches waybar's 12px
+        # border-radius for a unified bar/window aesthetic.
+        rounding = 12;
       };
 
       dwindle = {

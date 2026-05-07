@@ -33,11 +33,11 @@ in
         # the bar grows / shrinks with font size for ~2em vertical
         # rhythm. CSS adds 6px top/bottom padding.
         spacing = 6;
-        # Margin off the screen edges. Combined with rounded corners
-        # the bar reads as a floating pill rather than a hard rail.
-        margin-top = 6;
-        margin-left = 12;
-        margin-right = 12;
+        # Margin off the screen edges — matches Hyprland's gaps_out=8
+        # so the bar's left/right edges align with the windows below.
+        margin-top = 8;
+        margin-left = 8;
+        margin-right = 8;
 
         modules-left = [
           "hyprland/workspaces"
@@ -116,6 +116,7 @@ in
     style = ''
       window#waybar {
           border-radius: 12px;
+          border: 2px solid @base03;
           padding: 6px 0;
       }
       .modules-left, .modules-center, .modules-right {
