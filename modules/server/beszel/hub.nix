@@ -38,7 +38,7 @@
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8090 ];
 
   # Pi's storage posture is anti-write (no swap, volatile journald —
-  # see hosts/pi/hardware.nix); daily restic snapshots to the
+  # see machines/pi/hardware.nix); daily restic snapshots to the
   # SD/FIT contradict that. The data itself is metrics — non-load-
   # bearing. Gatus alerts come independently via ntfy.sh; rebuilding
   # the hub from zero loses recent metrics history, that's it.

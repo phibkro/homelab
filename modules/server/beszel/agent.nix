@@ -60,7 +60,7 @@ in
   #
   # The hub-host coupling lives in the nori.hosts registry (single
   # source of truth — see modules/effects/hosts.nix). If the hub ever
-  # relocates, update modules/common/topology.nix instead of editing
+  # relocates, update flake.nix `identityFor` instead of editing
   # this file.
   # Web-UI-managed OIDC (PocketBase per-collection OAuth2 — moved out
   # of system-wide settings in PocketBase 0.36+). The lanRoute generates

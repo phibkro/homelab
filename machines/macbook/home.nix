@@ -33,18 +33,16 @@
     # that workstation also wants (comma, starship, programs.git, age,
     # sops, claude-code) lives in core.nix.
 
-    # === git + GitHub ===
-    # git itself comes from `programs.git.enable` in core.nix.
     gh
 
-    # === JS/TS runtime + tooling ===
+    # JS/TS runtime + tooling
     bun
     pnpm
 
-    # === general CLI ===
-    # just / ripgrep / tmux come from home/core.nix.
     ffmpeg
     tree-sitter
+
+    claude-code # Anthropic CLI; per-machine, not in core.nix (pi doesn't need ~300 MB Node closure)
 
     # === GUI apps ===
     # On Mac, home-manager's targets.darwin.linkApps activation

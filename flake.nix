@@ -173,15 +173,15 @@
         ];
       };
 
-      # Standalone home-manager configurations for non-NixOS hosts.
+      # Standalone home-manager configurations for non-NixOS machines.
       # Activated on the target machine via:
-      #   nix run home-manager/release-25.11 -- switch --flake .#<name>
+      #   nix run home-manager/master -- switch --flake .#<name>
       # or, once home-manager is installed into the user profile:
       #   home-manager switch --flake .#<name>
       #
-      # Distinct from `nixosConfigurations.<host>` (which embeds home-
-      # manager via the NixOS module on workstation/pi); these stand
-      # alone because the host OS isn't NixOS.
+      # NixOS machines embed home-manager as a NixOS module inside their
+      # own machines/<n>/default.nix; these standalone entries are only
+      # for machines where the host OS isn't NixOS (Mac).
       homeConfigurations.macbook = home-manager.lib.homeManagerConfiguration {
         # Mac pkgs with allowUnfree so claude-code (unfree license)
         # resolves. Same pattern as `pkgsUnfree` above for the dev shell.

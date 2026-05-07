@@ -159,15 +159,9 @@ in
   # (name, not store path) — avoids the cycle where the binding's
   # store path would depend on the cheatsheet text which depends on
   # the bindings.
-  #
-  # CLI quality-of-life — lazy-lineage TUIs + system stats peers.
-  # Per-user (home-manager) rather than systemPackages because
-  # they're shell-driven personal tools, not system services.
-  # Naturally portable to nori-laptop / nori-macbook when those
-  # land (nix-darwin's home-manager integration uses the same
-  # `home.packages` shape).
   home.packages = [
     cheatsheet
+    pkgs.claude-code # per-machine, not core.nix (pi doesn't need Node closure)
     pkgs.nvtopPackages.nvidia # GPU monitor (NVIDIA-only build, smaller closure)
     pkgs.ncdu # interactive disk usage browser
     pkgs.bandwhich # per-process / per-connection network throughput

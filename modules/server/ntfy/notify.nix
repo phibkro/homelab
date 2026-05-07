@@ -54,7 +54,7 @@
   #
   # The ntfy-host coupling lives in the nori.hosts registry (single
   # source of truth — see modules/effects/hosts.nix). If ntfy ever
-  # relocates, update modules/common/topology.nix instead of this file.
+  # relocates, update flake.nix `identityFor` instead of this file.
   nori.lanRoutes = lib.mkIf config.services.caddy.enable {
     alert = {
       port = 8081;

@@ -20,7 +20,7 @@
   # to any one service module.
   #
   # Repository: /mnt/backup is the OneTouch ext4 mount (formatted via
-  # hosts/workstation/disko-onetouch.nix). USB-attached spinning HDD
+  # machines/workstation/disko-onetouch.nix). USB-attached spinning HDD
   # on workstation — different physical drive from the IronWolf data
   # disk and the SN750 root disk, but same chassis / same PSU / same
   # USB hub. Failure-domain independence is partial: protects against

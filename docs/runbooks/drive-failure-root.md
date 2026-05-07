@@ -52,10 +52,10 @@ cd /tmp/homelab
 ```bash
 sudo nix --extra-experimental-features 'nix-command flakes' \
   run github:nix-community/disko/latest -- \
-  --mode disko hosts/workstation/disko.nix
+  --mode disko machines/workstation/disko.nix
 ```
 
-This wipes the new root drive (by-id pinned to whatever the new SN750's serial is — **edit `hosts/workstation/disko.nix` first if the serial changed**) and creates the six-subvolume btrfs layout.
+This wipes the new root drive (by-id pinned to whatever the new SN750's serial is — **edit `machines/workstation/disko.nix` first if the serial changed**) and creates the six-subvolume btrfs layout.
 
 ### 5. Install
 

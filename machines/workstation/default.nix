@@ -52,7 +52,7 @@
   #
   # Mutual observability: station probes Pi's Blocky + SSH via
   # tailnet IP. Pi has matching probes for station — see
-  # hosts/pi/default.nix. Each host's Gatus alerts via ntfy.sh
+  # machines/pi/default.nix. Each host's Gatus alerts via ntfy.sh
   # directly (no local-ntfy dependency), so when one host wedges
   # the other catches it.
   services.gatus.settings.endpoints = [
@@ -86,7 +86,7 @@
       # pi's Blocky on tailnet IP — catches Pi outage even if
       # Pi's Gatus is down (same incident pattern in reverse). Pi's
       # tailnet IP comes from the nori.hosts registry; topology
-      # changes are a one-line edit in modules/common/topology.nix.
+      # changes are a one-line edit in flake.nix `identityFor`.
       name = "pi-blocky-dns";
       url = "tcp://${config.nori.hosts.pi.tailnetIp}:53";
       interval = "60s";

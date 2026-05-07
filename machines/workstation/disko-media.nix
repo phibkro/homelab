@@ -38,7 +38,7 @@ _: {
   # exfat partition; preserve any irreplaceable data first.
   #
   #   nix run github:nix-community/disko/latest -- \
-  #     --mode disko hosts/workstation/disko-media.nix
+  #     --mode disko machines/workstation/disko-media.nix
   #
   # Layout (per docs/DESIGN.md L130–138, plus @archive + @library added):
   #   single GPT partition spanning the disk, btrfs label

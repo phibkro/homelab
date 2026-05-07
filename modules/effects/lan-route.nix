@@ -90,7 +90,7 @@ in
       LAN IP lets those clients hit services directly. Tailnet
       clients off-LAN still reach the same address via Pi's subnet
       route advertisement (services.tailscale.useRoutingFeatures =
-      "server" in hosts/pi/default.nix); the client side needs
+      "server" in machines/pi/default.nix); the client side needs
       --accept-routes set in its tailscaled config.
 
       Consumers: Blocky's forwarder mode (modules/server/blocky.nix)

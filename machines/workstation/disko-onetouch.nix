@@ -9,7 +9,7 @@
   # on a populated drive WIPES IT.
   #
   #   nix run github:nix-community/disko/latest -- \
-  #     --mode disko hosts/workstation/disko-onetouch.nix
+  #     --mode disko machines/workstation/disko-onetouch.nix
   #
   # Layout choice — single GPT partition spanning the disk, ext4. Per
   # docs/DESIGN.md L143: restic encrypts client-side and is content-
@@ -22,7 +22,7 @@
   # module points each backup job at /mnt/backup/<name>/, restic
   # creates its own internal directory layout.
   #
-  # Mountpoint /mnt/backup — same path the future hosts/pi/ will
+  # Mountpoint /mnt/backup — same path the future machines/pi/ will
   # use, so backup-restic.nix repository URLs are host-portable.
   #
   # Disk identity is by-id (model + serial). The OneTouch's by-id is

@@ -214,7 +214,7 @@ in
       # Host-aware placement check. Reads the role tag from the
       # nori.hosts registry (modules/effects/hosts.nix). Appliance hosts
       # have anti-write storage (no swap, volatile journald, flash-
-      # only — see hosts/pi/hardware.nix) so daily restic to local
+      # only — see machines/pi/hardware.nix) so daily restic to local
       # disk contradicts the storage philosophy. The structural answer
       # (push backups to a real disk that lives on the appliance) is
       # planned but deferred — see modules/server/backup/restic.nix
