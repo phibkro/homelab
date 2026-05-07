@@ -168,6 +168,7 @@ in
   home.packages = [
     cheatsheet
     pkgs.claude-code # per-machine, not core.nix (pi doesn't need Node closure)
+    pkgs.gh # GitHub CLI — PR ops, gh auth, gh api …
     pkgs.nvtopPackages.nvidia # GPU monitor (NVIDIA-only build, smaller closure)
     pkgs.ncdu # interactive disk usage browser
     pkgs.bandwhich # per-process / per-connection network throughput
