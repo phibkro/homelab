@@ -41,10 +41,23 @@
     enable = true;
     polarity = "dark";
 
-    # Starter wallpaper from nixos-artwork. Swap to your own image
-    # path or a fetchurl block when you have one you prefer; the
-    # whole palette refreshes from whatever you point this at.
-    image = "${pkgs.nixos-artwork.wallpapers.nineish-dark-gray}/share/backgrounds/nixos/nix-wallpaper-nineish-dark-gray.png";
+    # Material Design palette — base16-schemes/material-darker. Pinned
+    # explicitly rather than image-derived because Material You from
+    # nixos-artwork wallpapers (tried nineish-dark-gray + mosaic-blue)
+    # produced flat washed-out palettes — the source images just
+    # don't have enough chromatic variance. A curated palette gives
+    # actual Material-Design colors deterministically.
+    #
+    # Options at /nix/store/<base16-schemes>/share/themes/material-*.yaml:
+    #   material-darker    deep slate background, cyan/teal accents (default)
+    #   material-lighter   light variant
+    #   material-palenight blue-leaning dark
+    #   material-vivid     more saturated dark
+    #
+    # Stylix still needs an `image` for the desktop wallpaper itself
+    # (lock screen, login bg) — independent of the palette source.
+    base16Scheme = "${pkgs.base16-schemes}/share/themes/material-darker.yaml";
+    image = "${pkgs.nixos-artwork.wallpapers.mosaic-blue}/share/backgrounds/nixos/nix-wallpaper-mosaic-blue.png";
 
     # Cursor — keep Bibata. Stylix would otherwise default to its own
     # cursor pick; this preserves the existing choice. Swap freely.
