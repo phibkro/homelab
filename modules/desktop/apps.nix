@@ -59,6 +59,7 @@
     pkgs.libnotify # `notify-send` for shell scripts
     pkgs.pwvucontrol # PipeWire mixer GUI (sink/source picker, per-app vol)
     pkgs.hyprpicker # eyedrop screen → hex/rgb (`hyprpicker -a` to autocopy)
+    pkgs.hyprsysteminfo # Hyprland's first-party system info dashboard
 
     # Voice + text chat. Slack lives in the browser; Discord's desktop
     # client is the better fit for voice quality + push-to-talk.

@@ -23,6 +23,7 @@ _: {
         ];
         modules-center = [ "clock" ];
         modules-right = [
+          "custom/sunset"
           "pulseaudio"
           "network"
           "tray"
@@ -68,6 +69,18 @@ _: {
         tray = {
           spacing = 8;
           icon-size = 18;
+        };
+
+        # Blue-light filter toggle via systemd user unit. hyprsunset's
+        # CLI is one-shot (no live IPC in 0.3.x), so toggle = start/
+        # stop the daemon; on stop hyprsunset restores neutral gamma
+        # before exiting. Icon flips with active-state.
+        "custom/sunset" = {
+          format = "{}";
+          interval = 5;
+          exec = "systemctl --user is-active --quiet hyprsunset && echo ☾ || echo ☼";
+          on-click = "systemctl --user is-active --quiet hyprsunset && systemctl --user stop hyprsunset || systemctl --user start hyprsunset";
+          tooltip-format = "Click: toggle blue-light filter";
         };
       };
     };

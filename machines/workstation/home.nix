@@ -223,9 +223,14 @@ in
       monitor = [ "DP-3,3440x1440@75,0x0,1" ];
 
       # Norwegian keymap to mirror modules/common/base.nix (console.keyMap).
+      # follow_mouse=0 → click-to-focus (sloppy-focus disabled). Hover
+      # alone never moves keyboard focus; you have to click a window
+      # to interact with it. Matches macOS / Windows default behaviour
+      # and stops the floating ghostty quick-terminal from stealing
+      # focus when the cursor passes over it.
       input = {
         kb_layout = "no";
-        follow_mouse = 1;
+        follow_mouse = 0;
         sensitivity = 0;
       };
 
