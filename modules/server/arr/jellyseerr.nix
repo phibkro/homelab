@@ -35,8 +35,8 @@
   #        whatever Jellyseerr actually uses; tweak the lanRoute
   #        `oidc.redirectPath` below if Jellyseerr's docs say otherwise.
   #   7. Add Sonarr → URL http://localhost:8989, paste API key, default
-  #      quality profile, root folder /mnt/media/streaming/shows
-  #   8. Add Radarr similarly with /mnt/media/streaming/movies
+  #      quality profile, root folder /mnt/media/downloads/shows
+  #   8. Add Radarr similarly with /mnt/media/downloads/movies
   #   9. (Optional) Settings → Notifications → ntfy webhook for new
   #      requests / approvals.
   #

@@ -11,7 +11,7 @@
   # (Symfonium, DSub, play:Sub, Substreamer, Sonixd) connect to the
   # same URL.
   #
-  # Reads music from /mnt/media/streaming/music (Lidarr's auto-grabbed
+  # Reads music from /mnt/media/downloads/music (Lidarr's auto-grabbed
   # library) read-only — Navidrome scans + indexes into its own SQLite
   # but never writes to the source tree. State (user accounts,
   # playlists, scrobble history, transcoding cache) at
@@ -63,7 +63,7 @@
     settings = {
       Address = "127.0.0.1";
       Port = 4533;
-      MusicFolder = "${config.nori.fs.streaming.path}/music";
+      MusicFolder = "${config.nori.fs.downloads.path}/music";
       EnableTranscodingConfig = true;
     };
   };
@@ -89,7 +89,7 @@
   # Default-deny FS hardening with read-only access to Lidarr's music
   # library. Navidrome's own state at /var/lib/private/navidrome is
   # handled by the upstream module's StateDirectory.
-  nori.harden.navidrome.readOnlyBinds = [ config.nori.fs.streaming.path ];
+  nori.harden.navidrome.readOnlyBinds = [ config.nori.fs.downloads.path ];
 
   nori.lanRoutes.audio = {
     port = 4533;

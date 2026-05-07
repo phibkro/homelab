@@ -8,7 +8,7 @@
 {
   # Lidarr — music management. Same role as Sonarr/Radarr but for music:
   # watches Prowlarr for releases, hands grabs to qBittorrent, hardlinks
-  # finished tracks into the music library. Library lives in @streaming
+  # finished tracks into the music library. Library lives in @downloads
   # (re-derivable tier — auto-grabbed; if a track gets lost, Lidarr will
   # re-grab from indexers).
   #
@@ -22,7 +22,7 @@
   #   1. Visit https://music.nori.lan
   #   2. Set admin password
   #   3. Settings → Media Management → Root Folders →
-  #        /mnt/media/streaming/music
+  #        /mnt/media/downloads/music
   #   4. Settings → Download Clients → Add → qBittorrent
   #        Host: localhost  Port: 8083
   #        Username/Password: from qBittorrent
@@ -46,7 +46,7 @@
 
   users.users.lidarr.extraGroups = [ "media" ];
 
-  nori.harden.lidarr.binds = [ config.nori.fs.streaming.path ];
+  nori.harden.lidarr.binds = [ config.nori.fs.downloads.path ];
 
   nori.lanRoutes.music = {
     port = 8686;

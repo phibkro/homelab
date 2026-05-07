@@ -7,28 +7,28 @@
 
 {
   # Cross-cutting shared resources for the *arr stack — the `media`
-  # group + the shared library/download paths under @streaming.
+  # group + the shared library/download paths under @downloads.
   #
   # Why a dedicated `media` group: Sonarr, Radarr, Bazarr, qBittorrent,
   # and Jellyfin all need read+write to the same paths so that
   # qBittorrent → *arr hardlinks succeed (saves disk + atomic move).
   # btrfs hardlinks across subvolumes don't work, so all of this lives
-  # under one subvolume (@streaming). Each service joins the group via
+  # under one subvolume (@downloads). Each service joins the group via
   # `users.users.<svc>.extraGroups = [ "media" ];` in its own module.
   #
   # Layout (paths from nori.fs — host's disko config is single source
   # of truth; see modules/effects/fs.nix):
-  #   <streaming>/movies/             Radarr library     (re-derivable)
-  #   <streaming>/shows/              Sonarr library     (re-derivable)
-  #   <streaming>/music/              Lidarr library     (re-derivable)
-  #   <streaming>/.downloads/complete qBittorrent finished — same
+  #   <downloads>/movies/             Radarr library     (re-derivable)
+  #   <downloads>/shows/              Sonarr library     (re-derivable)
+  #   <downloads>/music/              Lidarr library     (re-derivable)
+  #   <downloads>/.downloads/complete qBittorrent finished — same
   #                                    subvol as *arr libraries for the
   #                                    hardlink-on-import flow
   #   <library>/books/                calibre-web library
   #   <library>/comics/               Komga library
   #
-  # Note: qBittorrent's INCOMPLETE dir is /var/lib/qBittorrent/incomplete
-  # (NVMe @var-lib, not @streaming) — IO isolation. See qbittorrent.nix
+  # Note: qBittorrent's INCOMPLETE dir is /var/lib/qBittorrent/qBittorrent/incomplete
+  # (NVMe @var-lib, not @downloads) — IO isolation. See qbittorrent.nix
   # preStart for the rationale + path config.
   #
   # Permissions: directories owned root:media, mode 02775 (setgid +
@@ -51,19 +51,19 @@
 
   systemd.tmpfiles.rules =
     let
-      streaming = config.nori.fs.streaming.path;
+      downloads = config.nori.fs.downloads.path;
       library = config.nori.fs.library.path;
     in
     [
-      # @streaming — re-derivable tier, *arr libraries + download staging.
+      # @downloads — re-derivable tier, *arr libraries + download staging.
       # qBittorrent INCOMPLETE lives off-subvol (NVMe StateDirectory) —
       # see qbittorrent.nix.
-      "d ${streaming}                     02775 root media -"
-      "d ${streaming}/movies              02775 root media -"
-      "d ${streaming}/shows               02775 root media -"
-      "d ${streaming}/music               02775 root media -"
-      "d ${streaming}/.downloads          02775 root media -"
-      "d ${streaming}/.downloads/complete 02775 root media -"
+      "d ${downloads}                     02775 root media -"
+      "d ${downloads}/movies              02775 root media -"
+      "d ${downloads}/shows               02775 root media -"
+      "d ${downloads}/music               02775 root media -"
+      "d ${downloads}/.downloads          02775 root media -"
+      "d ${downloads}/.downloads/complete 02775 root media -"
       # @library — curated tier, hand-uploaded media
       "d ${library}                         02775 root media -"
       "d ${library}/books                   02775 root media -"

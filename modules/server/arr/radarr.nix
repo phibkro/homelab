@@ -14,7 +14,7 @@
   #   1. Visit https://movies.nori.lan
   #   2. Set admin password
   #   3. Settings → Media Management → Root Folders →
-  #        /mnt/media/streaming/movies
+  #        /mnt/media/downloads/movies
   #   4. Settings → Download Clients → Add → qBittorrent
   #        Host: localhost  Port: 8083
   #        Username/Password: from qBittorrent
@@ -37,7 +37,7 @@
 
   users.users.radarr.extraGroups = [ "media" ];
 
-  nori.harden.radarr.binds = [ config.nori.fs.streaming.path ];
+  nori.harden.radarr.binds = [ config.nori.fs.downloads.path ];
 
   nori.lanRoutes.movies = {
     port = 7878;

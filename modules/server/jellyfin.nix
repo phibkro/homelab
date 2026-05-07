@@ -8,7 +8,7 @@
 {
   # Jellyfin: media streaming server, tailnet-only.
   #
-  # Reads media from /mnt/media/streaming and /mnt/media/home-videos
+  # Reads media from /mnt/media/downloads and /mnt/media/home-videos
   # (configured later via Jellyfin's web UI: Dashboard → Libraries
   # → Add). Add the jellyfin user to the `users` group so it can read
   # the nori:users-owned media tree.

@@ -7,8 +7,8 @@ _: {
   # service-facing interface — change one, the other is right here
   # next to it. See modules/effects/fs.nix for the schema.
   nori.fs = {
-    streaming = {
-      path = "/mnt/media/streaming";
+    downloads = {
+      path = "/mnt/media/downloads";
       tier = "re-derivable";
     };
     photos = {
@@ -43,14 +43,14 @@ _: {
   # Layout (per docs/DESIGN.md L130–138, plus @archive + @library added):
   #   single GPT partition spanning the disk, btrfs label
   #   `ironwolf-storage`, with seven subvolumes:
-  #     @streaming    -> /mnt/media/streaming   (re-derivable: movies, shows,
+  #     @downloads    -> /mnt/media/downloads   (re-derivable: movies, shows,
   #                                              music; weekly snapshot only)
   #     @photos       -> /mnt/media/photos      (irreplaceable; daily + restic)
   #     @home-videos  -> /mnt/media/home-videos (irreplaceable; weekly + restic)
   #     @projects     -> /mnt/media/projects    (irreplaceable; weekly + restic)
   #     @library      -> /mnt/media/library     (curated media: books, comics;
   #                                              daily + restic; tier sits
-  #                                              between @streaming (re-derivable)
+  #                                              between @downloads (re-derivable)
   #                                              and @photos (irreplaceable))
   #     @archive      -> /mnt/media/archive     (cold; legacy machine backups)
   #     @snapshots    -> /mnt/media/.snapshots  (btrbk target on this FS)
@@ -93,8 +93,8 @@ _: {
               ];
 
               subvolumes = {
-                "@streaming" = {
-                  mountpoint = "/mnt/media/streaming";
+                "@downloads" = {
+                  mountpoint = "/mnt/media/downloads";
                   mountOptions = [
                     "compress=zstd:3"
                     "noatime"
@@ -123,7 +123,7 @@ _: {
                 };
                 "@library" = {
                   # Curated media library — books (calibre-web) + comics
-                  # (komga). Distinct from @streaming because these are
+                  # (komga). Distinct from @downloads because these are
                   # uploaded/imported by hand, not auto-grabbed by an
                   # *arr; treat as projects-tier (daily snapshot, restic
                   # backed up). Distinct from @projects because the

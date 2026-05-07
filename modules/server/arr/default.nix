@@ -10,8 +10,8 @@
 #     into the same media tree.
 #   * Jellyseerr presents the family-facing request UI and forwards
 #     approved requests into Sonarr/Radarr.
-#   * shared.nix sets up the `media` group, /mnt/media/streaming
-#     ownership, and the tmpfiles for /mnt/media/streaming/{shows,
+#   * shared.nix sets up the `media` group, /mnt/media/downloads
+#     ownership, and the tmpfiles for /mnt/media/downloads/{shows,
 #     movies,music,books,comics,.downloads}.
 #
 # All seven arrs + qBittorrent need to be deployed together for the

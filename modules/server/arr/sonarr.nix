@@ -14,7 +14,7 @@
   #   1. Visit https://tv.nori.lan
   #   2. Set admin password
   #   3. Settings → Media Management → Root Folders →
-  #        /mnt/media/streaming/shows
+  #        /mnt/media/downloads/shows
   #   4. Settings → Download Clients → Add → qBittorrent
   #        Host: localhost  Port: 8083
   #        Username/Password: from qBittorrent's WebUI auth
@@ -47,7 +47,7 @@
   # "permission denied".
   users.users.sonarr.extraGroups = [ "media" ];
 
-  nori.harden.sonarr.binds = [ config.nori.fs.streaming.path ];
+  nori.harden.sonarr.binds = [ config.nori.fs.downloads.path ];
 
   nori.lanRoutes.tv = {
     port = 8989;

@@ -27,7 +27,7 @@ in
   # modules now declare their hardening inline alongside lanRoutes and
   # backups:
   #
-  #   nori.harden.sonarr = { binds = [ "/mnt/media/streaming" ]; };
+  #   nori.harden.sonarr = { binds = [ "/mnt/media/downloads" ]; };
   #   nori.harden.jellyfin = { readOnlyBinds = [ "/mnt/media" "/srv/share" ]; };
   #   nori.harden.syncthing = { protectHome = null; };  # opt out
   #
@@ -64,7 +64,7 @@ in
     '';
     example = lib.literalExpression ''
       {
-        sonarr = { binds = [ "/mnt/media/streaming" ]; };
+        sonarr = { binds = [ "/mnt/media/downloads" ]; };
         jellyfin = { readOnlyBinds = [ "/mnt/media" "/srv/share" ]; };
         syncthing = { protectHome = null; };
       }

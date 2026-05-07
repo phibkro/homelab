@@ -14,7 +14,7 @@ let
 
   onMedia = _: f: lib.hasPrefix "/mnt/media/" f.path;
   onRoot = n: f: !(onMedia n f); # everything not under /mnt/...
-  # @streaming is re-derivable; intentionally excluded from snapshots
+  # @downloads is re-derivable; intentionally excluded from snapshots
   # (DESIGN tier table). Filter `re-derivable` tier out.
   isSnapshotted = _: f: f.tier != "re-derivable";
 
@@ -37,7 +37,7 @@ in
   #
   # Subvolume lists are derived from nori.fs (host's disko config is
   # the single source of truth). Anything with `tier != re-derivable`
-  # gets snapshotted; @streaming and similar are excluded by tier
+  # gets snapshotted; @downloads and similar are excluded by tier
   # filter rather than enumeration. @var/lib is added explicitly —
   # it's a btrfs subvolume but not in nori.fs (StateDirectory paths
   # are NixOS-managed, not a structural FS location services consume).
@@ -45,7 +45,7 @@ in
   # Subvolumes intentionally NOT snapshotted:
   #   @       (the system root — covered by NixOS generations)
   #   @nix    (re-derivable from the flake)
-  #   @streaming (re-derivable per DESIGN tier table — filtered out)
+  #   @downloads (re-derivable per DESIGN tier table — filtered out)
   #
   # @archive — historical/cold data (legacy machine backups etc.).
   # Snapshot daily, retain per the media instance's retention curve;

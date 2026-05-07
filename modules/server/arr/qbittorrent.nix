@@ -61,8 +61,8 @@
   #
   # [BitTorrent] keys — split paths by IO pattern:
   #
-  #   Session\DefaultSavePath=<streaming>/.downloads/complete
-  #     COMPLETE goes on the IronWolf @streaming subvolume — must be
+  #   Session\DefaultSavePath=<downloads>/.downloads/complete
+  #     COMPLETE goes on the IronWolf @downloads subvolume — must be
   #     same-subvolume as the *arr libraries (movies/, shows/, music/)
   #     for the *arr → library hardlink to work (btrfs hardlinks don't
   #     cross subvolumes; cross-subvol falls back to copy+delete which
@@ -111,9 +111,9 @@
               r'WebUI\MaxAuthenticationFailCount': '99999',
           },
           'BitTorrent': {
-              # COMPLETE on @streaming (same subvol as *arr libraries
+              # COMPLETE on @downloads (same subvol as *arr libraries
               # for hardlink-on-import).
-              r'Session\DefaultSavePath': '${config.nori.fs.streaming.path}/.downloads/complete',
+              r'Session\DefaultSavePath': '${config.nori.fs.downloads.path}/.downloads/complete',
               # INCOMPLETE on NVMe (qBittorrent StateDirectory) for IO
               # isolation + HDD wear-isolation. Cross-device copy on
               # completion is the trade.
@@ -135,14 +135,14 @@
   '';
 
   # Group membership — `media` is the cross-service shared group on the
-  # streaming subvolume. Every *arr + the download client are members so
+  # @downloads subvolume. Every *arr + the download client are members so
   # hardlinks across .downloads/complete → movies/shows just work.
   users.users.qbittorrent.extraGroups = [ "media" ];
 
-  # qBittorrent needs the @streaming subvolume for incomplete + complete
+  # qBittorrent needs the @downloads subvolume for incomplete + complete
   # download staging; /var/lib/qbittorrent for state (auto-created by
   # the service, covered by the StateDirectory upstream).
-  nori.harden.qbittorrent.binds = [ config.nori.fs.streaming.path ];
+  nori.harden.qbittorrent.binds = [ config.nori.fs.downloads.path ];
 
   # Exposed at https://downloads.nori.lan via Caddy. Auto-monitored at /
   # (qBittorrent's WebUI returns 401 without auth which Gatus reads as

@@ -109,7 +109,7 @@
   # to nori.fs.
   systemd.tmpfiles.rules = [
     "d ${config.nori.fs.share.path}       0775 nori users -"
-    "d ${config.nori.fs.streaming.path}   0775 nori users -"
+    "d ${config.nori.fs.downloads.path}   0775 nori users -"
     "d ${config.nori.fs.photos.path}      0775 nori users -"
     "d ${config.nori.fs.home-videos.path} 0775 nori users -"
     "d ${config.nori.fs.projects.path}    0775 nori users -"

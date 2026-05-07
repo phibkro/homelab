@@ -42,7 +42,7 @@ in
   # ── Cross-host portability ──────────────────────────────────────────
   # Service modules read `config.nori.fs.<n>.path`, never literals.
   # A future second workhorse with media on a different mount becomes
-  # a `nori.fs.streaming.path = "..."` change in *its* host config; no
+  # a `nori.fs.downloads.path = "..."` change in *its* host config; no
   # service module changes.
 
   options.nori.fs = mkOption {
@@ -55,7 +55,7 @@ in
     '';
     example = lib.literalExpression ''
       {
-        streaming   = { path = "/mnt/media/streaming";   tier = "re-derivable"; };
+        downloads   = { path = "/mnt/media/downloads";   tier = "re-derivable"; };
         photos      = { path = "/mnt/media/photos";      tier = "irreplaceable"; };
         share       = { path = "/srv/share";             tier = "user"; };
       }
