@@ -49,14 +49,14 @@ in
   # Glance — fast, single-binary Go dashboard. Family-facing landing
   # page at home.nori.lan.
   #
-  # Two-column layout (full | small) — on desktop they appear
+  # Three-column layout (small | full | small) — on desktop they appear
   # side-by-side; on phone they stack as scrollable sections.
   #
-  #   Apps   (col 1, full)   bookmarks-first — uptime monitor + grouped
-  #                          bookmarks for all *.nori.lan, then
-  #                          observational state (calendar, weather,
-  #                          host CPU/RAM/disk) below
-  #   Read   (col 2, small)  consumption — RSS / release feeds
+  #   Status   (col 1, small)  observational state — calendar, weather,
+  #                            host CPU/RAM/disk
+  #   Apps     (col 2, full)   navigation — grouped bookmarks for all
+  #                            *.nori.lan, then services uptime monitor
+  #   Read     (col 3, small)  consumption — RSS / release feeds
   #
   # Cross-host stats (Pi) intentionally NOT here — Beszel on Pi is the
   # canonical cross-host stats plane (it survives station outages,
@@ -88,32 +88,10 @@ in
           name = "Home";
           hide-desktop-navigation = true;
           columns = [
-            # ============== Col 1 — Apps + Status ==============
-            # Bookmarks-first: monitor + grouped bookmarks at top
-            # (most-clicked, the reason this dashboard exists), then
-            # observational widgets below (calendar / weather / host
-            # stats — glanceable but not navigated to).
+            # ============== Col 1 — Status ==============
             {
-              size = "full";
+              size = "small";
               widgets = [
-                # Uptime monitor — green/red status dots for every
-                # *.nori.lan service that's opted into the dashboard.
-                {
-                  type = "monitor";
-                  cache = "5m";
-                  title = "Services";
-                  sites = lib.mapAttrsToList toMonitorSite dashed;
-                }
-                # Bookmarks — grouped + descriptive view, complements
-                # the monitor (which answers "is it up?" but doesn't
-                # describe each).
-                {
-                  type = "bookmarks";
-                  groups = map (g: {
-                    title = g;
-                    links = lib.mapAttrsToList toBookmarkLink (inGroup g);
-                  }) groupOrder;
-                }
                 {
                   type = "calendar";
                   first-day-of-week = "monday";
@@ -125,8 +103,7 @@ in
                   hour-format = "24h";
                 }
                 # Built-in host stats (CPU / RAM / disk) for workstation
-                # itself — no external deps. Cross-host (Pi) stats are
-                # in Beszel, linked from the bookmarks above.
+                # itself — no external deps, complements Beszel.
                 {
                   type = "server-stats";
                   servers = [
@@ -139,7 +116,33 @@ in
               ];
             }
 
-            # ============== Col 2 — Read ==============
+            # ============== Col 2 — Apps / Services ==============
+            {
+              size = "full";
+              widgets = [
+                # Bookmarks first — grouped + descriptive view, the
+                # reason this dashboard exists. Most-clicked widget;
+                # put it at the top.
+                {
+                  type = "bookmarks";
+                  groups = map (g: {
+                    title = g;
+                    links = lib.mapAttrsToList toBookmarkLink (inGroup g);
+                  }) groupOrder;
+                }
+                # Services uptime monitor — green/red status dots.
+                # Below the bookmarks: glanceable health context once
+                # you've found what you're navigating to.
+                {
+                  type = "monitor";
+                  cache = "5m";
+                  title = "Services";
+                  sites = lib.mapAttrsToList toMonitorSite dashed;
+                }
+              ];
+            }
+
+            # ============== Col 3 — Read ==============
             {
               size = "small";
               widgets = [
