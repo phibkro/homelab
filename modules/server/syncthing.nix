@@ -1,4 +1,4 @@
-_:
+{ config, ... }:
 
 {
   # Syncthing — peer-to-peer file sync over tailnet. Replaces "manually
@@ -59,7 +59,18 @@ _:
   # paths. `protectHome = null` skips the ProtectHome setting entirely
   # (rather than forcing it false), preserving the upstream NixOS
   # module's value — explicit trade documented at modules/effects/harden.nix.
-  nori.harden.syncthing.protectHome = null;
+  #
+  # binds: explicit RW access to /mnt/media/{downloads,library} so
+  # Syncthing can write there (default harden baseline mounts /mnt:ro
+  # which would block writes). Both paths are owned root:media + nori
+  # is in the media group, so unit-side and FS-side perms align.
+  nori.harden.syncthing = {
+    protectHome = null;
+    binds = [
+      config.nori.fs.downloads.path
+      config.nori.fs.library.path
+    ];
+  };
 
   nori.lanRoutes.sync = {
     port = 8384;
