@@ -88,7 +88,12 @@ _: {
         "custom/sunset" = {
           format = "{}";
           interval = 5;
-          exec = "systemctl --user is-active --quiet hyprsunset && echo  || echo ";
+          # printf with explicit UTF-8 byte escapes — Material Symbols
+          # codepoints (U+E51C dark_mode, U+E518 light_mode) live in
+          # the Private Use Area and don't survive copy-paste through
+          # editors that normalize PUA to nothing. \xee\x94\x9c is the
+          # 3-byte UTF-8 encoding of U+E51C; \xee\x94\x98 of U+E518.
+          exec = "systemctl --user is-active --quiet hyprsunset && printf '\\xee\\x94\\x9c' || printf '\\xee\\x94\\x98'";
           on-click = "systemctl --user is-active --quiet hyprsunset && systemctl --user stop hyprsunset || systemctl --user start hyprsunset";
           tooltip-format = "Click: toggle blue-light filter";
         };
