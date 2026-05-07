@@ -34,4 +34,17 @@
   # debugging "why does it keep forgetting my username".
   #   /var/cache/tuigreet/lastuser
   #   /var/cache/tuigreet/lastsession
+
+  # Secret-service daemon (libsecret backend). Zed and other apps that
+  # use the Secret Service API store auth tokens here; without it they
+  # fall back to in-memory only and lose credentials on restart (Zed
+  # GitHub auth was the trigger). gnome-keyring's NixOS module sets up
+  # both the daemon and the SSH/secrets/PKCS11 components.
+  services.gnome.gnome-keyring.enable = true;
+
+  # PAM hook for auto-unlock: when greetd authenticates the user, the
+  # login password is also handed to gnome-keyring to unlock the
+  # default keyring. Without this the keyring exists but stays locked
+  # until you type the password again — same UX failure as no keyring.
+  security.pam.services.greetd.enableGnomeKeyring = true;
 }
