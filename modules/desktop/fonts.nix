@@ -19,10 +19,21 @@
   # user scope (~/Library/Fonts) in machines/macbook/home.nix because
   # macOS has no system layer here.
   fonts.packages = [
+    # Sans-serif primary — Roboto is Google's Material Design body font;
+    # pairs with Material Symbols below for a coherent UI.
+    pkgs.roboto
+    # Mono — JetBrainsMono + the Nerd Font variant (programming ligatures
+    # + powerline / device / brand glyphs for prompts, lazygit, btop).
+    pkgs.jetbrains-mono
+    pkgs.nerd-fonts.jetbrains-mono
+    # Fallback chain — Noto covers ~all of Unicode, color-emoji handles
+    # 🌍 + flags etc., dejavu fills gaps where Noto's coverage is patchy.
     pkgs.noto-fonts
     pkgs.noto-fonts-color-emoji
     pkgs.dejavu_fonts
-    pkgs.jetbrains-mono
-    pkgs.nerd-fonts.jetbrains-mono
+    # Material Symbols — Google's Material Design icon font. Used by the
+    # waybar blue-light toggle (light_mode / dark_mode glyphs); install
+    # system-wide so any future Material-Symbols-using widget just works.
+    pkgs.material-symbols
   ];
 }

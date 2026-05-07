@@ -6,7 +6,7 @@ _: {
   # Modules:
   #   left   — workspaces (Hyprland), focused-window title
   #   center — wall clock
-  #   right  — pulseaudio (click → pwvucontrol), network, system tray
+  #   right  — sunset toggle, pulseaudio (click → pwvucontrol), network, tray
   home-manager.users.nori.programs.waybar = {
     enable = true;
     systemd.enable = true;
@@ -16,6 +16,12 @@ _: {
         position = "top";
         height = 28;
         spacing = 6;
+        # Margin off the screen edges. Combined with rounded corners
+        # (Stylix-themed) the bar reads as a floating pill rather than
+        # a hard rail.
+        margin-top = 6;
+        margin-left = 12;
+        margin-right = 12;
 
         modules-left = [
           "hyprland/workspaces"
@@ -74,15 +80,28 @@ _: {
         # Blue-light filter toggle via systemd user unit. hyprsunset's
         # CLI is one-shot (no live IPC in 0.3.x), so toggle = start/
         # stop the daemon; on stop hyprsunset restores neutral gamma
-        # before exiting. Icon flips with active-state.
+        # before exiting. Icon flips with active-state — Material
+        # Symbols glyphs (dark_mode U+E51C / light_mode U+E518). The
+        # CSS override below sets the font to Material Symbols Outlined
+        # for this widget only — the codepoints live in the PUA range
+        # which JetBrainsMono Nerd Font doesn't cover.
         "custom/sunset" = {
           format = "{}";
           interval = 5;
-          exec = "systemctl --user is-active --quiet hyprsunset && echo ☾ || echo ☼";
+          exec = "systemctl --user is-active --quiet hyprsunset && echo  || echo ";
           on-click = "systemctl --user is-active --quiet hyprsunset && systemctl --user stop hyprsunset || systemctl --user start hyprsunset";
           tooltip-format = "Click: toggle blue-light filter";
         };
       };
     };
+    # Stylix owns the bulk of the waybar CSS (palette, fonts, spacing).
+    # Append a small override so #custom-sunset falls back to Material
+    # Symbols for its icon glyph.
+    style = ''
+      #custom-sunset {
+          font-family: "Material Symbols Outlined", "JetBrainsMono Nerd Font Mono";
+          font-size: 16px;
+      }
+    '';
   };
 }

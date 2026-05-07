@@ -67,12 +67,26 @@
       size = 24;
     };
 
-    # Fonts — JetBrainsMono Nerd Font matches the rest of the lab
-    # (terminal, code editors). Sans/serif left at Stylix defaults.
+    # Fonts — Material-aligned sans (Roboto) + JetBrainsMono Nerd for
+    # mono. Noto covers fallback for missing glyphs; configured at
+    # system level via modules/desktop/fonts.nix. Stylix wires these
+    # into GTK / Qt / Hyprland chrome / terminal apps in lockstep.
     fonts = {
+      sansSerif = {
+        package = pkgs.roboto;
+        name = "Roboto";
+      };
+      serif = {
+        package = pkgs.roboto;
+        name = "Roboto";
+      };
       monospace = {
         package = pkgs.nerd-fonts.jetbrains-mono;
         name = "JetBrainsMono Nerd Font Mono";
+      };
+      emoji = {
+        package = pkgs.noto-fonts-color-emoji;
+        name = "Noto Color Emoji";
       };
       sizes = {
         applications = 11;
