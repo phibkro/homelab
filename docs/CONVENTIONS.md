@@ -6,17 +6,17 @@ reason not to (and document the reason inline if you deviate).
 
 ## Module structure
 
-Two entry-point layers (`hosts/`, `home/`) backed by a shared library (`modules/`):
+One entry-point layer (`machines/`) backed by a shared library (`modules/`):
 
 ```
-hosts/<host>/                 # per-host system-scope (NixOS only)
-  default.nix                 #   imports modules/common + modules/<role> bundles
-  hardware.nix
-  disko*.nix                  #   per-host disk layout
-home/                         # per-machine user-scope (NixOS or otherwise)
-  core.nix                    #   shared interactive-user baseline
-  <machine>.nix               #   per-machine user content
-modules/                      # library — both hosts/ and home/ pull from here
+machines/                     # per-machine content; system + user under one folder
+  core.nix                    #   shared interactive-user home-manager baseline
+  <machine>/                  #   one folder per machine
+    default.nix               #     NixOS host config (omitted on non-NixOS machines like Mac)
+    hardware.nix              #     per-host hardware (omitted on non-NixOS)
+    disko*.nix                #     per-host disk layout (NixOS only)
+    home.nix                  #     pure home-manager module — user-scope content
+modules/                      # library — machines/ pulls from here
   common/                     #   cross-host system baseline (base, users, tailscale, sops)
     default.nix               #     imports the others
   server/                     #   "this host serves things" — one file per service
@@ -34,9 +34,14 @@ secrets/
 .sops.yaml                    # sops policy (which keys decrypt what)
 ```
 
-Flake reads the entry-point layers symmetrically:
-- `./hosts/<n>/` → `nixosConfigurations.<n>` (driven by `readDir ./hosts`)
-- `./home/<n>.nix` → `homeConfigurations.<n>` (Mac etc.; NixOS hosts get home content via the host's own `imports = [ ../../home/<host>.nix ]`)
+Flake derives configurations from the directory structure:
+- `./machines/<n>/default.nix` exists → `nixosConfigurations.<n>` (NixOS host)
+- `./machines/<n>/home.nix` exists without `default.nix` → `homeConfigurations.<n>` (Mac etc.; activated via standalone home-manager)
+- NixOS hosts that have `home.nix` activate it via `home-manager-as-NixOS-module` wiring inside their own `default.nix`; nori's home is part of `nixos-rebuild`.
+
+`machines/<n>/home.nix` is a **pure home-manager module** regardless of the machine's OS. The home-manager-NixOS-module wrapper (when applicable) lives once in the same folder's `default.nix`. Same file shape across NixOS + standalone, no platform-specific module conventions inside `home.nix`.
+
+`machines/core.nix` is the shared user-scope baseline imported by every machine's `home.nix` via `imports = [ ../core.nix ]`. Cross-platform CLI + identity (starship, programs.git, comma, sops/age/claude-code, just/ripgrep/tmux) — anything every interactive shell on every machine should have.
 
 A service module owns *everything* about its service: the upstream module's `enable`, its env vars, hardening, lan-route declaration, OIDC integration, backup config. Don't fan out a service across multiple files.
 
@@ -423,7 +428,7 @@ Adding an effect: create `modules/effects/<n>.nix`, define the option schema + a
 A typical host file:
 
 ```nix
-# hosts/workstation/default.nix
+# machines/workstation/default.nix
 imports = [
   inputs.disko.nixosModules.disko
   ../../modules/common
@@ -457,19 +462,19 @@ Packages and config live at one of four scopes. Pick the lowest scope that gets 
 |---|---|---|---|
 | **System floor** | `modules/common/base.nix` `environment.systemPackages` | Every host (incl. pi, which has no home-manager); root, sshd, system services | `bat curl dig fd git htop just ripgrep tmux tree vim wget` |
 | **System desktop** | `modules/desktop/apps.nix` `environment.systemPackages` + `fonts.packages` | Workstation Linux desktop session — Hyprland-invoked apps, GUI clients, fonts fontconfig discovers | `ghostty fuzzel hyprpaper zen bitwarden-desktop zed-editor davinci-resolve nerd-fonts.jetbrains-mono` |
-| **User core** | `home/core.nix` `home.packages` + `programs.<x>` | Every interactive machine where nori is the operator (workstation + Mac, future laptop) | `comma starship programs.git age sops claude-code` |
+| **User core** | `machines/core.nix` `home.packages` + `programs.<x>` | Every interactive machine where nori is the operator (workstation + Mac, future laptop) | `comma starship programs.git age sops claude-code` |
 | **Per-machine user** | `home/<machine>.nix` `home.packages` + machine-specific options | One specific machine | workstation: `nvtop` (NVIDIA), `compsize` (btrfs), Hyprland binds + monitor coords; Mac: `bun pnpm ffmpeg`, `home.file."Library/Fonts/..."`, `NODE_EXTRA_CA_CERTS` |
 
 Decision rules:
 
 - **Needed by root, system services, or pi?** → `modules/common/base.nix` (system floor). Tool is available regardless of who's logged in. Pi has no home-manager so its operator-via-ssh sessions need this layer too.
 - **Coupled to the Linux desktop session** (Hyprland binds, fontconfig, GUI launchers)? → `modules/desktop/apps.nix`. Workstation gets these system-wide so Hyprland's `exec` dispatchers find them on PATH.
-- **Interactive operator tool, every machine** (sops/age/claude-code/git/starship)? → `home/core.nix`. User-level on NixOS hosts (via home-manager-as-NixOS-module wiring inside `home/<host>.nix`); user-level on Mac (via standalone home-manager).
-- **Machine-specific** (NVIDIA-only, Mac-only, host-specific monitor config)? → `home/<machine>.nix` for user-scope, `hosts/<host>/` for system-scope.
+- **Interactive operator tool, every machine** (sops/age/claude-code/git/starship)? → `machines/core.nix`. User-level on NixOS hosts (via home-manager-as-NixOS-module wiring inside `home/<host>.nix`); user-level on Mac (via standalone home-manager).
+- **Machine-specific** (NVIDIA-only, Mac-only, host-specific monitor config)? → `home/<machine>.nix` for user-scope, `machines/<host>/` for system-scope.
 
-Acceptable cross-scope overlap: `git` lives in both `modules/common/base.nix` (system, for root + Nix's flake operations) and `home/core.nix` `programs.git` (user, for the operator's per-user config to take effect). Both load-bearing. Same logic for `just`/`ripgrep`/`tmux` — they're in `base.nix` so pi gets them at system level (no home-manager on pi); Mac picks them up via its own `home/macbook.nix` since Mac has no system layer to share with.
+Acceptable cross-scope overlap: `git` lives in both `modules/common/base.nix` (system, for root + Nix's flake operations) and `machines/core.nix` `programs.git` (user, for the operator's per-user config to take effect). Both load-bearing. Same logic for `just`/`ripgrep`/`tmux` — they're in `base.nix` so pi gets them at system level (no home-manager on pi); Mac picks them up via its own `machines/macbook/home.nix` since Mac has no system layer to share with.
 
-What does NOT belong in `home/core.nix`: anything platform-specific (NVIDIA tools, Wayland-only programs, Linux-fontconfig integration). Cross-platform CLI only — if the tool doesn't build on `x86_64-darwin`, it's not core.
+What does NOT belong in `machines/core.nix`: anything platform-specific (NVIDIA tools, Wayland-only programs, Linux-fontconfig integration). Cross-platform CLI only — if the tool doesn't build on `x86_64-darwin`, it's not core.
 
 ## Dev workflow
 

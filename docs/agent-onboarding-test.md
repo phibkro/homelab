@@ -159,9 +159,9 @@ nori.lanRoutes.widget = {
 **Question**: Walk through adding a new host called `nori-foo` (workhorse, tailnet IP `100.99.0.5`, no static LAN lease).
 
 **Expected (shape)**:
-- Create folder: `mkdir hosts/nori-foo`
+- Create folder: `mkdir machines/nori-foo`
 - Add `identityFor.nori-foo = { tailnetIp = "100.99.0.5"; lanIp = null; role = "workhorse"; };` in `flake.nix`
-- Write `hosts/nori-foo/default.nix` (imports + concerns) and `hardware.nix` — don't redeclare `networking.hostName` (injected from folder name)
+- Write `machines/nori-foo/default.nix` (imports + concerns) and `hardware.nix` — don't redeclare `networking.hostName` (injected from folder name)
 - Add host's age public key to `.sops.yaml`, run `sops updatekeys secrets/secrets.yaml`
 - First boot + `tailscale up`
 

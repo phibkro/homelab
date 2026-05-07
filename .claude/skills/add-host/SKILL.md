@@ -5,7 +5,7 @@ when_to_use: User mentions adding a new physical or virtual machine to the flake
 
 # Add a new homelab host
 
-Authoritative procedure. The flake's `readDir ./hosts/` + `genAttrs hostNames` + `identityFor` lookup means the folder structure IS the host enumeration; missing either side fails eval.
+Authoritative procedure. The flake's `readDir ./machines/` + `genAttrs hostNames` + `identityFor` lookup means the folder structure IS the host enumeration; missing either side fails eval.
 
 ## Decision summary up front
 
@@ -19,8 +19,8 @@ Authoritative procedure. The flake's `readDir ./hosts/` + `genAttrs hostNames` +
 ### 1. Create the host folder
 
 ```bash
-mkdir hosts/<name>
-touch hosts/<name>/{default,hardware}.nix
+mkdir machines/<name>
+touch machines/<name>/{default,hardware}.nix
 ```
 
 The folder name IS the hostname. `flake.nix`'s `mkHost` injects `config.networking.hostName = <folder name>`. Don't redeclare it inside the host's `default.nix`.
@@ -57,7 +57,7 @@ Required minimum:
 
 GPU host? Set `nori.gpu.nvidiaDevices = [ "/dev/nvidia0" "/dev/nvidiactl" "/dev/nvidia-uvm" ]` here.
 
-Anti-write storage host (USB flash, SD card)? See `hosts/pi/hardware.nix` — `swapDevices = []`, `journald.Storage=volatile`, `vm.mmap_rnd_bits` aarch64 fixup if applicable.
+Anti-write storage host (USB flash, SD card)? See `machines/pi/hardware.nix` — `swapDevices = []`, `journald.Storage=volatile`, `vm.mmap_rnd_bits` aarch64 fixup if applicable.
 
 ### 4. Write default.nix
 

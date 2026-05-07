@@ -1,6 +1,6 @@
 # Phase 4: NixOS install on workstation (disko-based)
 
-Bare-metal install. The flake's `hosts/workstation/disko.nix` declares
+Bare-metal install. The flake's `machines/workstation/disko.nix` declares
 the partition layout; disko applies it; `nixos-install` writes the
 system. No manual `parted` or `mkfs` — the layout is in version control.
 
@@ -89,7 +89,7 @@ nix --experimental-features 'nix-command flakes' \
 ```
 
 What this does:
-- Wipes and re-partitions `/dev/nvme0n1` per `hosts/workstation/disko.nix`.
+- Wipes and re-partitions `/dev/nvme0n1` per `machines/workstation/disko.nix`.
 - Creates the ESP (vfat, label `BOOT`) and btrfs filesystem (label
   `nixos`) with six subvolumes.
 - Mounts everything under `/mnt/` ready for `nixos-install`.
@@ -195,7 +195,7 @@ Phase 4 is done when all four work.
   (Samba, Ollama, Jellyfin, Immich, the *arr stack, Glance,
   Radicale, Syncthing, etc.) come up via `modules/server/` —
   the host imports the whole "server concern" via
-  `hosts/workstation/default.nix`.
+  `machines/workstation/default.nix`.
 - **Tailscale identity restore.** Fresh `tailscale up` registers a *new*
   node. The old `workstation` from Ubuntu lingers as expired in the
   admin console. Either delete it now or restore `/var/lib/tailscale/`
@@ -203,11 +203,11 @@ Phase 4 is done when all four work.
 - **IronWolf Pro reformat.** Phase 2. Separate operation; runs when
   you have a free evening.
 - **OneTouch as restic target.** Phase 5+ — see
-  `hosts/workstation/disko-onetouch.nix`. Don't run that disko
+  `machines/workstation/disko-onetouch.nix`. Don't run that disko
   config until the OneTouch's existing data has been migrated off
   (any Phase-1 backups it held are now on @archive on IronWolf;
   the migration is in `git log` around the OneTouch transition).
-- **Pi setup.** `hosts/pi/` declarative is deferred until a
+- **Pi setup.** `machines/pi/` declarative is deferred until a
   NixOS-bootable USB SSD lands; PiOS interim covered DNS/backup
   roles in the meantime.
 

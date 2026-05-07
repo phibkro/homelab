@@ -46,7 +46,7 @@
     # JetPack preset — https://starship.rs/presets/jetpack/
     # Minimal `$character` left, everything else right_format. Nerd
     # Font glyphs in module formats; pair with any Nerd Font in the
-    # terminal (Hack Nerd Font on Mac via home.file, on workstation
+    # terminal (JetBrains Mono on Mac via home.file, on workstation
     # via system-level fonts.packages in modules/desktop/apps.nix).
     settings = {
       add_newline = false;

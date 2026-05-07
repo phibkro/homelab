@@ -50,8 +50,19 @@
     ../../modules/server/ntfy/notify.nix
 
     ./hardware.nix
-    ../../home/pi.nix
+    inputs.home-manager.nixosModules.home-manager
   ];
+
+  # home-manager-as-NixOS-module wrapper. Same shape as
+  # machines/workstation/default.nix; extract a shared snippet at the
+  # third NixOS host (laptop NixOS would be the trigger).
+  home-manager = {
+    useGlobalPkgs = true;
+    useUserPackages = true;
+    extraSpecialArgs = { inherit inputs; };
+    backupFileExtension = "hm-backup";
+    users.nori.imports = [ ./home.nix ];
+  };
 
   # networking.hostName injected from the registry key in flake.nix.
   networking.useDHCP = lib.mkDefault true;

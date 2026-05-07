@@ -396,7 +396,7 @@ Driver 595 + explicit-sync removed most of the historical NVIDIA-Wayland pain. T
 ```
 flake.nix
 flake.lock                       # Pinned unstable revision; source of reproducibility
-hosts/
+machines/
   workstation/
     configuration.nix
     disko.nix                    # Applied during Phase 4
@@ -460,12 +460,12 @@ docs/
 
 #### Disko at install
 
-Disk layouts in `hosts/<host>/disko.nix` from day zero. First install path:
+Disk layouts in `machines/<host>/disko.nix` from day zero. First install path:
 
 1. Boot NixOS minimal installer USB
 2. SSH into installer (set `sshd` enabled in installer config) or work locally
 3. Clone the flake: `git clone https://github.com/phibkro/homelab /tmp/homelab`
-4. Run disko: `nix --experimental-features 'nix-command flakes' run github:nix-community/disko/latest -- --mode disko /tmp/homelab/hosts/workstation/disko.nix`
+4. Run disko: `nix --experimental-features 'nix-command flakes' run github:nix-community/disko/latest -- --mode disko /tmp/homelab/machines/workstation/disko.nix`
 5. `nixos-install --flake /tmp/homelab#workstation`
 6. Reboot, set user password on first login, push generated flake.lock back to Git
 
@@ -588,7 +588,7 @@ Email digest deferred. When set up: SMTP via Gmail with app password (sufficient
 | 4 | Bare-metal install on workstation | done |
 | 5 | Service migration | in progress (file/AI/media/SSO/observability live: Samba, Blocky, Ollama, Open WebUI, Jellyfin, sops, restic Pattern A+C2, Caddy, Authelia, Gatus, beszel hub, ntfy. Pending: Immich, Cloudflare Tunnel, Hetzner off-site restic) |
 | 6 | Desktop environment | done — Hyprland + greetd + waybar + mako + hyprlock + hypridle on workstation |
-| 7 | `hosts/pi/` live + cross-host service split | done — Pi appliance bringup, mutual observability, Beszel hub + ntfy server migrated to Pi via the cross-host split-module pattern (CLAUDE.md "How to relocate a service to pi") |
+| 7 | `machines/pi/` live + cross-host service split | done — Pi appliance bringup, mutual observability, Beszel hub + ntfy server migrated to Pi via the cross-host split-module pattern (CLAUDE.md "How to relocate a service to pi") |
 
 **Reactive phases (no scheduled trigger):**
 

@@ -64,30 +64,42 @@
         config.allowUnfree = true;
       };
 
-      # ── Hosts ─────────────────────────────────────────────────────
-      # The list of hosts is the filesystem: each subdirectory of
-      # ./hosts/ is a host. readDir + filterAttrs gets us the names
-      # without a parallel registry to drift out of sync.
+      # ── Machines ──────────────────────────────────────────────────
+      # The list of machines is the filesystem: each subdirectory of
+      # ./machines/ is a machine. NixOS hosts have a default.nix;
+      # standalone home-manager machines (like Mac) have only a
+      # home.nix. The flake derives both shapes from the directory.
       #
-      # Identity metadata (tailnet/lan IPs, role) is indexed by host
-      # name in `identityFor` below. The genAttrs lookup forces every
+      # Identity metadata (tailnet/lan IPs, role) is indexed by NixOS
+      # host name in `identityFor` below — non-NixOS machines aren't in
+      # the registry because nothing in the NixOS module system
+      # references them. The genAttrs lookup forces every NixOS host
       # folder to have an identity entry — a folder without identity
-      # fails eval ("attribute missing"); an identity entry without a
-      # folder is silently dead code (caught by code review, but the
-      # absence of effect is visible at deploy time).
+      # fails eval; an identity entry without a folder is silently dead
+      # code (caught by code review, visible at deploy time).
       #
       # Schema: modules/effects/hosts.nix.
       # Consumers (cross-host refs):
       #   * modules/effects/lan-route.nix       (nori.lanIp default)
       #   * modules/effects/backup.nix          (host-aware appliance assertion)
-      #   * modules/server/beszel/agent.nix (metrics route backend)
-      #   * modules/server/ntfy/notify.nix  (alert route backend)
-      #   * hosts/workstation/default.nix  (Pi probe URLs)
+      #   * modules/server/beszel/agent.nix     (metrics route backend)
+      #   * modules/server/ntfy/notify.nix      (alert route backend)
+      #   * machines/workstation/default.nix    (Pi probe URLs)
       #
-      # Topology change = edit identityFor, redeploy. Adding a host =
-      # `mkdir hosts/<n> && touch hosts/<n>/{default,hardware}.nix`
+      # Topology change = edit identityFor, redeploy. Adding a NixOS
+      # host = `mkdir machines/<n> && touch machines/<n>/{default,hardware}.nix`
       # plus an identityFor entry — eval errors on either omission.
-      hostNames = lib.attrNames (lib.filterAttrs (_: t: t == "directory") (builtins.readDir ./hosts));
+      # Adding a non-NixOS machine = `mkdir machines/<n> && touch
+      # machines/<n>/home.nix` (no default.nix; not in identityFor).
+      machineNames = lib.attrNames (
+        lib.filterAttrs (_: t: t == "directory") (builtins.readDir ./machines)
+      );
+
+      # NixOS machines are those with a default.nix. Drives both
+      # nixosConfigurations enumeration and the host registry.
+      nixosMachineNames = lib.filter (
+        n: builtins.pathExists (./machines + "/${n}/default.nix")
+      ) machineNames;
 
       identityFor = {
         workstation = {
@@ -102,7 +114,7 @@
         };
       };
 
-      hostRegistry = lib.genAttrs hostNames (n: identityFor.${n});
+      hostRegistry = lib.genAttrs nixosMachineNames (n: identityFor.${n});
 
       # ── Dev shells ────────────────────────────────────────────────
       # Per-project dev environments composed from atomic fragments
@@ -120,7 +132,7 @@
         lib.nixosSystem {
           specialArgs = { inherit inputs; };
           modules = [
-            ./hosts/${name}
+            ./machines/${name}
             # Inject from the registry: hostName comes from the same
             # name that picks the host folder. The folder name is the
             # source of truth — registry keys derive from readDir,
@@ -137,7 +149,7 @@
         };
     in
     {
-      nixosConfigurations = lib.genAttrs hostNames mkHost;
+      nixosConfigurations = lib.genAttrs nixosMachineNames mkHost;
 
       # Dev-shell composer + the available fragment list. Consumers
       # (downstream project flakes, this flake's own devShells) call
@@ -177,7 +189,7 @@
           system = "x86_64-darwin";
           config.allowUnfree = true;
         };
-        modules = [ ./home/macbook.nix ];
+        modules = [ ./machines/macbook/home.nix ];
       };
 
       formatter.${system} = pkgs.nixfmt;

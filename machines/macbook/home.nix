@@ -19,7 +19,7 @@
 #   home-manager switch --flake ~/Documents/nix-migration#macbook
 
 {
-  imports = [ ./core.nix ];
+  imports = [ ../core.nix ];
 
   home.username = "nori";
   home.homeDirectory = "/Users/nori";
@@ -85,7 +85,7 @@
   #     -k /Library/Keychains/System.keychain \
   #     ~/Documents/nix-migration/modules/server/caddy-local-ca.crt
   home.sessionVariables = {
-    NODE_EXTRA_CA_CERTS = "${../modules/server/caddy-local-ca.crt}";
+    NODE_EXTRA_CA_CERTS = "${../../modules/server/caddy-local-ca.crt}";
   };
 
   # JetBrains Mono Nerd Font installed into ~/Library/Fonts/ so macOS
