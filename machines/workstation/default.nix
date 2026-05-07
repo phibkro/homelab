@@ -45,74 +45,17 @@
   # networking.hostName injected from the registry key in flake.nix.
   networking.useDHCP = lib.mkDefault true;
 
-  # Station-side Gatus probes for non-HTTP services (these don't fit
-  # the lan-route auto-gen pattern). HTTP services behind Caddy are
-  # auto-probed via nori.lanRoutes.<n>.monitor — see
-  # modules/effects/lan-route.nix.
+  # Station-side Gatus probes for non-HTTP services. HTTP services
+  # behind Caddy are auto-probed via nori.lanRoutes.<n>.monitor.
   #
-  # Mutual observability: station probes Pi's Blocky + SSH via
-  # tailnet IP. Pi has matching probes for station — see
-  # machines/pi/default.nix. Each host's Gatus alerts via ntfy.sh
-  # directly (no local-ntfy dependency), so when one host wedges
-  # the other catches it.
-  services.gatus.settings.endpoints = [
-    {
-      name = "blocky-dns";
-      url = "tcp://127.0.0.1:53";
-      interval = "60s";
-      conditions = [ "[CONNECTED] == true" ];
-      alerts = [
-        {
-          type = "ntfy";
-          failure-threshold = 3;
-          send-on-resolved = true;
-        }
-      ];
-    }
-    {
-      name = "samba-smb";
-      url = "tcp://127.0.0.1:445";
-      interval = "60s";
-      conditions = [ "[CONNECTED] == true" ];
-      alerts = [
-        {
-          type = "ntfy";
-          failure-threshold = 3;
-          send-on-resolved = true;
-        }
-      ];
-    }
-    {
-      # pi's Blocky on tailnet IP — catches Pi outage even if
-      # Pi's Gatus is down (same incident pattern in reverse). Pi's
-      # tailnet IP comes from the nori.hosts registry; topology
-      # changes are a one-line edit in flake.nix `identityFor`.
-      name = "pi-blocky-dns";
-      url = "tcp://${config.nori.hosts.pi.tailnetIp}:53";
-      interval = "60s";
-      conditions = [ "[CONNECTED] == true" ];
-      alerts = [
-        {
-          type = "ntfy";
-          failure-threshold = 3;
-          send-on-resolved = true;
-        }
-      ];
-    }
-    {
-      # pi's SSH — full host-down detection (sshd dead = host
-      # effectively gone from operator's perspective).
-      name = "pi-ssh";
-      url = "tcp://${config.nori.hosts.pi.tailnetIp}:22";
-      interval = "60s";
-      conditions = [ "[CONNECTED] == true" ];
-      alerts = [
-        {
-          type = "ntfy";
-          failure-threshold = 3;
-          send-on-resolved = true;
-        }
-      ];
-    }
-  ];
+  # Mutual observability: station probes Pi's Blocky + SSH via tailnet
+  # IP; pi has matching probes for station (machines/pi/default.nix).
+  # Each host's Gatus alerts via ntfy.sh directly (no local-ntfy
+  # dependency), so one host's outage gets caught by the other.
+  nori.gatusProbes = {
+    blocky-dns.url = "tcp://127.0.0.1:53";
+    samba-smb.url = "tcp://127.0.0.1:445";
+    pi-blocky-dns.url = "tcp://${config.nori.hosts.pi.tailnetIp}:53";
+    pi-ssh.url = "tcp://${config.nori.hosts.pi.tailnetIp}:22";
+  };
 }

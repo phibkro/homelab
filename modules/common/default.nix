@@ -22,5 +22,6 @@ _: {
     ../effects/backup.nix
     ../effects/gpu.nix
     ../effects/harden.nix
+    ../effects/gatus-probe.nix
   ];
 }

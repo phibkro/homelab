@@ -132,72 +132,21 @@
     8082 # Gatus web UI on tailnet only
   ];
 
-  services.gatus.settings.endpoints = [
-    {
-      # Station's Blocky on LAN IP — the most important probe.
-      # Catches the userspace-CPU-starvation pattern (kernel still
-      # alive, NIC ACKs ping, but DNS is dead). LAN-side because
-      # `*.nori.lan` resolution now resolves to LAN IPs (see
-      # modules/effects/lan-route.nix nori.lanIp); tailnet-side death
-      # is a separate concern that doesn't break user-visible service.
-      name = "station-blocky-dns";
-      url = "tcp://${config.nori.lanIp}:53";
-      interval = "60s";
-      conditions = [ "[CONNECTED] == true" ];
-      alerts = [
-        {
-          type = "ntfy";
-          failure-threshold = 3;
-          send-on-resolved = true;
-        }
-      ];
-    }
-    {
-      # Station's SSH — full host-down detection (sshd dead = host
-      # dead from the user's perspective even if some daemons live).
-      name = "station-ssh";
-      url = "tcp://${config.nori.lanIp}:22";
-      interval = "60s";
-      conditions = [ "[CONNECTED] == true" ];
-      alerts = [
-        {
-          type = "ntfy";
-          failure-threshold = 3;
-          send-on-resolved = true;
-        }
-      ];
-    }
-    {
-      # Station's Caddy on HTTPS — confirms the *.nori.lan tier is
-      # serving. Probes the well-known status.nori.lan route.
-      name = "station-caddy";
+  # station-blocky-dns is the most important probe — catches the
+  # userspace-CPU-starvation pattern (kernel alive, NIC ACKs ping, DNS
+  # dead). LAN-side because `*.nori.lan` resolves to LAN IPs.
+  # station-ssh is full host-down detection.
+  # station-caddy confirms the *.nori.lan tier is serving (HTTP probe).
+  # self-blocky-dns is the self-canary; if it fires, pi's DNS is dead.
+  nori.gatusProbes = {
+    station-blocky-dns.url = "tcp://${config.nori.lanIp}:53";
+    station-ssh.url = "tcp://${config.nori.lanIp}:22";
+    station-caddy = {
       url = "https://status.nori.lan";
       interval = "120s";
       conditions = [ "[STATUS] == 200" ];
-      alerts = [
-        {
-          type = "ntfy";
-          failure-threshold = 3;
-          send-on-resolved = true;
-        }
-      ];
-    }
-    {
-      # Self-probe — Pi's own Blocky on localhost. If this fires,
-      # Pi's DNS is broken and station's Gatus should also be alerting
-      # (when station gains a Pi-side probe).
-      name = "self-blocky-dns";
-      url = "tcp://127.0.0.1:53";
-      interval = "60s";
-      conditions = [ "[CONNECTED] == true" ];
-      alerts = [
-        {
-          type = "ntfy";
-          failure-threshold = 3;
-          send-on-resolved = true;
-        }
-      ];
-    }
-  ];
+    };
+    self-blocky-dns.url = "tcp://127.0.0.1:53";
+  };
 
 }
