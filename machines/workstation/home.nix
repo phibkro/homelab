@@ -269,8 +269,11 @@ in
           enabled = true;
           range = 24;
           render_power = 3;
-          color = "rgba(82aaff4d)";
-          color_inactive = "rgba(00000000)";
+          # mkForce — Stylix's Hyprland integration also sets shadow
+          # color (defaults to a dark surface tint); we want the
+          # accent-blue glow on focus, so override.
+          color = lib.mkForce "rgba(82aaff4d)";
+          color_inactive = lib.mkForce "rgba(00000000)";
           offset = "0 0";
           scale = 1.0;
         };
@@ -278,7 +281,12 @@ in
 
       dwindle = {
         pseudotile = true;
-        preserve_split = true;
+        # preserve_split off (default) — splits are determined
+        # dynamically by the focused window's W/H ratio: wider than
+        # tall splits side-by-side, taller than wide splits top-and-
+        # bottom. Repeated opens halve the longer dimension each time
+        # (the A4→A3→A2 feel). Setting preserve_split=true would lock
+        # the direction once chosen and break that.
       };
 
       # Cursor + GTK / Qt theme env vars now exported by Stylix's
