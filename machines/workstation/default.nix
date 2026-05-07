@@ -45,6 +45,14 @@
   # networking.hostName injected from the registry key in flake.nix.
   networking.useDHCP = lib.mkDefault true;
 
+  # Add the operator user to the `media` group so shell access + any
+  # service running as `nori` (Syncthing's binds, e.g.) can write to
+  # /mnt/media/{downloads,library} which are owned root:media 02775
+  # by arr/shared.nix tmpfiles. The group itself is defined in
+  # arr/shared.nix — workstation-only, hence the workstation-host-
+  # scope here rather than common/users.nix (which Pi also reads).
+  users.users.nori.extraGroups = [ "media" ];
+
   # Station-side Gatus probes for non-HTTP services. HTTP services
   # behind Caddy are auto-probed via nori.lanRoutes.<n>.monitor.
   #
