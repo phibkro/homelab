@@ -38,7 +38,6 @@
     # module via modules/desktop/stylix.nix.
     stylix.url = "github:danth/stylix";
     stylix.inputs.nixpkgs.follows = "nixpkgs";
-    stylix.inputs.home-manager.follows = "home-manager";
   };
 
   outputs =
