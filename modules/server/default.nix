@@ -53,6 +53,7 @@ _: {
     ./open-webui.nix
     ./radicale.nix
     ./samba.nix
+    ./stremio.nix
     ./syncthing.nix
     ./vaultwarden.nix
   ];
