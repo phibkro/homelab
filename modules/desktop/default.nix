@@ -4,6 +4,7 @@ _: {
     ./greetd.nix
     ./audio.nix
     ./apps.nix
+    ./fonts.nix
     ./waybar.nix
     ./mako.nix
     ./hypr-lock.nix

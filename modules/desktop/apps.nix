@@ -71,16 +71,4 @@
       thunar-volman # auto-mount USB / removable media
     ];
   };
-
-  # Fonts — minimal default set so apps don't render in toofu boxes
-  # (squares for missing glyphs). Nerd-font (JetBrainsMono) for terminal
-  # / launcher / hyprlock; plain JetBrainsMono for documents that don't
-  # need Nerd Font icons.
-  fonts.packages = [
-    pkgs.noto-fonts
-    pkgs.noto-fonts-color-emoji
-    pkgs.dejavu_fonts
-    pkgs.jetbrains-mono
-    pkgs.nerd-fonts.jetbrains-mono
-  ];
 }
