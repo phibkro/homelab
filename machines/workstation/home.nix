@@ -243,7 +243,8 @@ in
       general = {
         gaps_in = 4;
         gaps_out = 8;
-        border_size = 2;
+        # No hard border — focus indication via shadow-as-glow below.
+        border_size = 0;
         layout = "dwindle";
       };
 
@@ -251,6 +252,28 @@ in
         # Material 3 corner-medium (12dp) — matches waybar's 12px
         # border-radius for a unified bar/window aesthetic.
         rounding = 12;
+
+        # Glow on focused window — replaces the hard 2px border with
+        # a softer Material-style elevation cue. Shadow is technically
+        # OUTER (Hyprland has no native inner-glow), but with a small
+        # soft-edged colored halo it reads as the focused window
+        # having "presence" rather than being framed.
+        #
+        #   range         glow radius in px
+        #   render_power  exponent on the falloff curve (higher = harder edge)
+        #   color         rgba(rrggbbaa) — base0D (blue) at ~30% alpha,
+        #                 matches Stylix material-darker palette
+        #   color_inactive fully transparent — no shadow on unfocused
+        #   offset        zero offset → glow not directional shadow
+        shadow = {
+          enabled = true;
+          range = 24;
+          render_power = 3;
+          color = "rgba(82aaff4d)";
+          color_inactive = "rgba(00000000)";
+          offset = "0 0";
+          scale = 1.0;
+        };
       };
 
       dwindle = {

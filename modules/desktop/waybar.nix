@@ -116,7 +116,6 @@ in
     style = ''
       window#waybar {
           border-radius: 12px;
-          border: 2px solid @base03;
           padding: 6px 0;
       }
       .modules-left, .modules-center, .modules-right {

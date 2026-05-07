@@ -147,7 +147,19 @@ in
             {
               size = "small";
               widgets = [
-                # Daily reading stream first — most-likely-to-glance.
+                # Twitch live-state — surfaces a thumbnail + viewer
+                # count when channels are streaming, "offline" line
+                # otherwise. Time-sensitive (state changes per stream
+                # session), so this lives ABOVE the RSS feeds where
+                # the eye lands first.
+                {
+                  type = "twitch-channels";
+                  channels = [
+                    "clintstevens"
+                    "jerma985"
+                  ];
+                }
+                # Daily reading stream below the live-state.
                 {
                   type = "group";
                   widgets = [
