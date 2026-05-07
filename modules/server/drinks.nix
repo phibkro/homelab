@@ -96,8 +96,11 @@ in
       # `+` prefix runs as root regardless of User= — needed because
       # systemctl restart requires privilege the drinks user doesn't
       # have. Fires only on successful build, so a failed rebuild
-      # won't bounce a known-good serve.
-      ExecStartPost = "+${pkgs.systemd}/bin/systemctl restart drinks-server.service";
+      # won't bounce known-good units. Both long-running units get
+      # bounced — serve picks up code changes, static picks up the
+      # newly-published dist (and starts cleanly on first deploy
+      # where ConditionPathExists was unmet at boot).
+      ExecStartPost = "+${pkgs.systemd}/bin/systemctl restart drinks-server.service drinks-static.service";
     };
 
     script = ''
