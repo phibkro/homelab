@@ -155,6 +155,12 @@ in
   home.stateVersion = "25.11"; # match host's system.stateVersion
   programs.home-manager.enable = true;
 
+  # Adopt home-manager's 26.05 default: gtk4 reads its theme from
+  # dconf/gsettings, not from a settings.ini write — same path Stylix
+  # uses, so explicit null is a no-op at runtime and silences the
+  # "legacy default because stateVersion < 26.05" eval warning.
+  gtk.gtk4.theme = null;
+
   # Cheatsheet on PATH. Referenced by SUPER+H as `hypr-cheatsheet`
   # (name, not store path) — avoids the cycle where the binding's
   # store path would depend on the cheatsheet text which depends on
