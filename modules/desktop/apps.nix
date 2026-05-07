@@ -58,6 +58,11 @@
     pkgs.slurp # region selection (paired with grim)
     pkgs.libnotify # `notify-send` for shell scripts
     pkgs.pwvucontrol # PipeWire mixer GUI (sink/source picker, per-app vol)
+    pkgs.hyprpicker # eyedrop screen → hex/rgb (`hyprpicker -a` to autocopy)
+
+    # Voice + text chat. Slack lives in the browser; Discord's desktop
+    # client is the better fit for voice quality + push-to-talk.
+    pkgs.discord
   ];
 
   # Thunar — lightweight GUI file manager. Enabling via programs.thunar

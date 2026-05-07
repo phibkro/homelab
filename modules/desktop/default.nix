@@ -12,5 +12,6 @@ _: {
     ./virt.nix
     ./claude.nix
     ./stylix.nix
+    ./hyprsunset.nix
   ];
 }
