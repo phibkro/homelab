@@ -258,31 +258,6 @@ in
         # Material 3 corner-medium (12dp) — matches waybar's 12px
         # border-radius for a unified bar/window aesthetic.
         rounding = 12;
-
-        # Glow on focused window — replaces the hard 2px border with
-        # a softer Material-style elevation cue. Shadow is technically
-        # OUTER (Hyprland has no native inner-glow), but with a small
-        # soft-edged colored halo it reads as the focused window
-        # having "presence" rather than being framed.
-        #
-        #   range         glow radius in px
-        #   render_power  exponent on the falloff curve (higher = harder edge)
-        #   color         rgba(rrggbbaa) — base0D (blue) at ~30% alpha,
-        #                 matches Stylix material-darker palette
-        #   color_inactive fully transparent — no shadow on unfocused
-        #   offset        zero offset → glow not directional shadow
-        shadow = {
-          enabled = true;
-          range = 24;
-          render_power = 3;
-          # mkForce — Stylix's Hyprland integration also sets shadow
-          # color (defaults to a dark surface tint); we want the
-          # accent-blue glow on focus, so override.
-          color = lib.mkForce "rgba(82aaff4d)";
-          color_inactive = lib.mkForce "rgba(00000000)";
-          offset = "0 0";
-          scale = 1.0;
-        };
       };
 
       dwindle = {
