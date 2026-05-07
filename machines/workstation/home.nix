@@ -188,58 +188,24 @@ in
 
   programs.btop = {
     enable = true;
-    settings = {
-      color_theme = "Default";
-      theme_background = false;
-    };
+    # color_theme + theme_background managed by Stylix (modules/desktop/
+    # stylix.nix) via the Material You palette. Set to `default` here
+    # would override Stylix; leave unset.
   };
 
   programs.fzf.enable = true; # Ctrl-R history, Ctrl-T file picker, **<Tab> hooks
   programs.zoxide.enable = true; # `z <fragment>` jumps to most-used dir match
 
-  # Cursor — bibata-modern-classic at 24px reads well on the 34" 1440p
-  # panel (~6.5mm physical). gtk + x11 + hyprcursor.enable = false
-  # because bibata doesn't ship the hyprcursor format yet; XCURSOR is
-  # the universal fallback Hyprland honors via the `env` directives
-  # below. Swap theme by changing `name` + `package`; size by `size`.
-  home.pointerCursor = {
-    package = pkgs.bibata-cursors;
-    name = "Bibata-Modern-Classic";
-    size = 24;
-    gtk.enable = true;
-    x11.enable = true;
-  };
-
-  # Dark mode by default. Three layers:
-  #   1. GTK theme (Adwaita-dark) — affects GTK 3/4 apps directly
-  #   2. Qt theme (adwaita-dark) — affects Qt apps via qt5ct/qt6ct
-  #   3. dconf color-scheme (prefer-dark) — modern XDG signal that
-  #      apps like zen, ghostty, Bitwarden Electron, Zed read to
-  #      pick their dark variants
-  gtk = {
-    enable = true;
-    theme = {
-      name = "Adwaita-dark";
-      package = pkgs.gnome-themes-extra;
-    };
-    # GTK4 reads its theme from gsettings/dconf (which we set in
-    # `dconf.settings."org/gnome/desktop/interface".gtk-theme`
-    # below), not from ~/.config/gtk-4.0/settings.ini. `null`
-    # adopts the new home-manager default (no settings.ini write)
-    # and silences the legacy-default warning. Visual behavior
-    # unchanged: GTK4 apps still pick up Adwaita-dark via dconf.
-    gtk4.theme = null;
-    iconTheme.name = "Adwaita";
-  };
-  qt = {
-    enable = true;
-    platformTheme.name = "adwaita";
-    style.name = "adwaita-dark";
-  };
-  dconf.settings."org/gnome/desktop/interface" = {
-    color-scheme = "prefer-dark";
-    gtk-theme = "Adwaita-dark";
-  };
+  # Cursor + GTK + Qt + dconf color-scheme are now managed by Stylix
+  # (modules/desktop/stylix.nix) — one wallpaper input drives the
+  # Material You palette across the whole desktop. Tweak the wallpaper
+  # there to restyle everything in lockstep. The cursor stays Bibata
+  # at 24px via `stylix.cursor`.
+  #
+  # Per-target opt-outs at home-manager scope. modules/desktop/
+  # hypr-lock.nix already owns hyprlock.settings.background (blur +
+  # screenshot capture); Stylix's hyprlock target would collide.
+  stylix.targets.hyprlock.enable = false;
 
   wayland.windowManager.hyprland = {
     enable = true;
@@ -279,15 +245,9 @@ in
         preserve_split = true;
       };
 
-      # Cursor + dark-mode theme propagation — Hyprland exports
-      # these to children at startup. Matches home.pointerCursor +
-      # home-manager gtk/qt theme settings above.
-      env = [
-        "XCURSOR_THEME,Bibata-Modern-Classic"
-        "XCURSOR_SIZE,24"
-        "GTK_THEME,Adwaita-dark"
-        "QT_QPA_PLATFORMTHEME,gtk3"
-      ];
+      # Cursor + GTK / Qt theme env vars now exported by Stylix's
+      # Hyprland integration (modules/desktop/stylix.nix). No manual
+      # `env = [ XCURSOR_*, GTK_THEME, QT_QPA_PLATFORMTHEME ]` here.
 
       # Mod key — SUPER (Windows / Cmd-equivalent).
       "$mod" = "SUPER";

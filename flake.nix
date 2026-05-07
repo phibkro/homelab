@@ -29,6 +29,16 @@
     # if Twilight churn becomes annoying.
     zen-browser.url = "github:0xc000022070/zen-browser-flake";
     zen-browser.inputs.nixpkgs.follows = "nixpkgs";
+
+    # Stylix — single-input system-wide theming. One wallpaper +
+    # polarity (light/dark) generates a Material You-flavored base16
+    # palette and applies it to GTK, Qt, Hyprland, Kitty, btop, etc.
+    # Same Reader+collected-Writer shape as the rest of the lab's
+    # effect family — fits cleanly. Workstation imports the NixOS
+    # module via modules/desktop/stylix.nix.
+    stylix.url = "github:danth/stylix";
+    stylix.inputs.nixpkgs.follows = "nixpkgs";
+    stylix.inputs.home-manager.follows = "home-manager";
   };
 
   outputs =

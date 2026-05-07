@@ -11,5 +11,6 @@ _: {
     ./gaming.nix
     ./virt.nix
     ./claude.nix
+    ./stylix.nix
   ];
 }
