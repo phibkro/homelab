@@ -97,7 +97,7 @@ let
     # Apps
     (mkBindApp "RETURN" "ghostty" "ghostty (terminal)")
     (mkBindApp "SPACE" "fuzzel" "fuzzel (launcher)")
-    (mkBindApp "B" "zen" "zen (browser)")
+    (mkBindApp "B" "zen-beta" "zen (browser)")
 
     # Help / session
     (mkBindApp "H" "hypr-cheatsheet" "this cheatsheet")
@@ -287,14 +287,24 @@ in
       bind = map toHyprlandBind (lib.concatMap expandRange keyBinds);
       bindm = map toHyprlandBind mouseBinds;
 
-      # Autostart — polkit agent for elevation prompts + ghostty
-      # quick-terminal (matches the windowrule above for shape +
-      # position). Status bar / notification daemon / hypridle
+      # Autostart — polkit agent for elevation prompts + dev session
+      # workspace 1 layout (zeditor + zen-beta side-by-side, dwindle
+      # splits horizontally on the second window's arrival → zed on
+      # the left, zen on the right). The `[workspace 1 silent]`
+      # dispatch prefix sends both apps to workspace 1 without
+      # switching focus to it during startup.
+      #
+      # Ghostty no longer auto-spawns — SUPER+RETURN remains the
+      # explicit launch path. The pwvucontrol-style floating window
+      # rule for ghostty (lines above) still applies if/when invoked.
+      #
+      # Status bar / notification daemon / hypridle / hyprsunset
       # auto-start via systemd-user-service (UWSM activates
       # graphical-session.target so they don't need exec-once).
       exec-once = [
         "systemctl --user start hyprpolkitagent"
-        "ghostty"
+        "[workspace 1 silent] zeditor"
+        "[workspace 1 silent] zen-beta"
       ];
     };
   };
