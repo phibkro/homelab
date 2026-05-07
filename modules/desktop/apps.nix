@@ -60,6 +60,9 @@
     pkgs.pwvucontrol # PipeWire mixer GUI (sink/source picker, per-app vol)
     pkgs.hyprpicker # eyedrop screen → hex/rgb (`hyprpicker -a` to autocopy)
     pkgs.hyprsysteminfo # Hyprland's first-party system info dashboard
+    pkgs.ags # Aylur's GTK Shell — TSX/JSX over GTK widgets via Astal/GJS.
+    # Declarative widget framework for status bars, OSDs, popups, panels.
+    # Material You styling lands via CSS + the Stylix-fed GTK theme.
 
     # Voice + text chat. Slack lives in the browser; Discord's desktop
     # client is the better fit for voice quality + push-to-talk.

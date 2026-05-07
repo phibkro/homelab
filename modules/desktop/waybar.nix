@@ -94,10 +94,28 @@ _: {
         };
       };
     };
-    # Stylix owns the bulk of the waybar CSS (palette, fonts, spacing).
-    # Append a small override so #custom-sunset falls back to Material
-    # Symbols for its icon glyph.
+    # Stylix owns the bulk of the waybar CSS (palette + base font).
+    # Append Material 3-aligned chrome:
+    #   * 12px (12dp) bar corner — Material card token
+    #   * 8/12px padding on 4dp grid
+    #   * #custom-sunset uses Material Symbols Outlined for the icon
+    # See feedback/material_you_design memory for the design system.
     style = ''
+      window#waybar {
+          border-radius: 12px;
+      }
+      .modules-left, .modules-center, .modules-right {
+          padding: 0 8px;
+      }
+      #workspaces button,
+      #window,
+      #clock,
+      #pulseaudio,
+      #network,
+      #tray,
+      #custom-sunset {
+          padding: 0 8px;
+      }
       #custom-sunset {
           font-family: "Material Symbols Outlined", "JetBrainsMono Nerd Font Mono";
           font-size: 16px;
