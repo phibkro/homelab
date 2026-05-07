@@ -30,15 +30,6 @@ let
     "Admin"
   ];
 
-  toMonitorSite =
-    name: r:
-    {
-      title = "${r.dashboard.title} (${name})";
-      url = "https://${name}.nori.lan";
-      inherit (r.dashboard) icon;
-    }
-    // lib.optionalAttrs r.dashboard.allowInsecure { allow-insecure = true; };
-
   toBookmarkLink = name: r: {
     inherit (r.dashboard) title icon description;
     url = "https://${name}.nori.lan";
@@ -56,15 +47,16 @@ in
   #   Status   (col 1, small)  observational state — calendar, weather,
   #                            host CPU/RAM/disk
   #   Apps     (col 2, full)   navigation — grouped bookmarks for all
-  #                            *.nori.lan, then services uptime monitor
-  #   Read     (col 3, small)  consumption — RSS / release feeds
+  #                            *.nori.lan
+  #   Read     (col 3, small)  consumption — Twitch live-state, RSS
   #
-  # Cross-host stats (Pi) intentionally NOT here — Beszel on Pi is the
-  # canonical cross-host stats plane (it survives station outages,
-  # which a station-hosted dashboard widget cannot). The Apps bookmarks
-  # link to Beszel for that.
+  # Cross-host stats (Pi) and service uptime monitoring intentionally
+  # NOT inline — Beszel (Pi-hosted) is the canonical stats plane (it
+  # survives station outages which a station-hosted widget cannot);
+  # Gatus is the canonical uptime monitor. Both reachable from the
+  # Admin bookmark group.
   #
-  # The Apps column's monitor + bookmarks widgets both derive from
+  # The Apps column's bookmarks derive from
   # `config.nori.lanRoutes.<n>.dashboard` blocks across all service
   # modules. Adding / renaming a service is a one-place edit on
   # *that service's module*; this file doesn't change.
@@ -118,27 +110,20 @@ in
             }
 
             # ============== Col 2 — Apps / Services ==============
+            # Bookmarks-only — service uptime status was previously
+            # rendered here as a `monitor` widget but is duplicated by
+            # the dedicated Gatus instance (linked from the Admin
+            # bookmark group). Removing the inline widget de-clutters
+            # the family-facing landing page.
             {
               size = "full";
               widgets = [
-                # Bookmarks first — grouped + descriptive view, the
-                # reason this dashboard exists. Most-clicked widget;
-                # put it at the top.
                 {
                   type = "bookmarks";
                   groups = map (g: {
                     title = g;
                     links = lib.mapAttrsToList toBookmarkLink (inGroup g);
                   }) groupOrder;
-                }
-                # Services uptime monitor — green/red status dots.
-                # Below the bookmarks: glanceable health context once
-                # you've found what you're navigating to.
-                {
-                  type = "monitor";
-                  cache = "5m";
-                  title = "Services";
-                  sites = lib.mapAttrsToList toMonitorSite dashed;
                 }
               ];
             }
