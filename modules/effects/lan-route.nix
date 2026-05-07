@@ -254,6 +254,7 @@ in
                       "Consume"
                       "Acquire"
                       "Personal"
+                      "Projects"
                       "Admin"
                     ];
                     description = ''

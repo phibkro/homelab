@@ -136,7 +136,7 @@ in
     dashboard = {
       title = "Heim";
       icon = "si:astro";
-      group = "Personal";
+      group = "Projects";
       description = "Operator's portfolio (Astro, markdown-authored)";
     };
   };

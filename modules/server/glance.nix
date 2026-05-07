@@ -26,6 +26,7 @@ let
     "Consume"
     "Acquire"
     "Personal"
+    "Projects"
     "Admin"
   ];
 

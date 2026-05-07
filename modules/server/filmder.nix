@@ -171,7 +171,7 @@ in
     dashboard = {
       title = "Filmder";
       icon = "si:themoviedatabase";
-      group = "Personal";
+      group = "Projects";
       description = "TMDB-backed movie browser (uni project, 2023)";
     };
   };

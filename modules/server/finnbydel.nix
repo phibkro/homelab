@@ -204,7 +204,7 @@ in
     dashboard = {
       title = "Finnbydel";
       icon = "si:nextdotjs";
-      group = "Personal";
+      group = "Projects";
       description = "Neighborhood marketplace (uni project, 2023)";
     };
   };
