@@ -68,17 +68,29 @@
   #     cross subvolumes; cross-subvol falls back to copy+delete which
   #     breaks seeding).
   #
-  #   Session\TempPath=/var/lib/qBittorrent/incomplete
+  #   Session\TempPath=/var/lib/qBittorrent/qBittorrent/incomplete
   #     INCOMPLETE goes on the SN750 NVMe (root FS, @var-lib subvol)
-  #     under qBittorrent's StateDirectory. Random writes from peers
-  #     stay off the spinning HDD; cross-device move on completion
-  #     adds 1-10 min copy per finished torrent (one-time cost,
-  #     doesn't break seeding — qBittorrent seeds from DefaultSavePath
-  #     after the move). HDD wear-isolation + faster downloads at
-  #     gigabit+ link speeds. Trade documented in the module header.
+  #     under the qbittorrent-owned profile dir. The outer
+  #     /var/lib/qBittorrent/ is root-owned (upstream NixOS module
+  #     doesn't set StateDirectory=); the nested qBittorrent/ folder
+  #     is the Qt profile suffix and the only qbittorrent-writable
+  #     area. Pointing TempPath one level too high (at the root-owned
+  #     parent) makes every incomplete file_open fail "Permission
+  #     denied" — caught 2026-05-07.
+  #
+  #     Random writes from peers stay off the spinning HDD; cross-
+  #     device move on completion adds 1-10 min copy per finished
+  #     torrent (one-time cost, doesn't break seeding — qBittorrent
+  #     seeds from DefaultSavePath after the move). HDD wear-isolation
+  #     + faster downloads at gigabit+ link speeds.
   #
   #   Session\TempPathEnabled=true     keep the split active
   systemd.services.qbittorrent.preStart = lib.mkAfter ''
+    # qBittorrent doesn't auto-create Session\TempPath; if it's
+    # missing, every incomplete file_open hits "Permission denied"
+    # because the parent doesn't exist either (caught 2026-05-07).
+    mkdir -p /var/lib/qBittorrent/qBittorrent/incomplete
+
     ${pkgs.python3}/bin/python3 ${pkgs.writeText "qbt-configure.py" ''
       import configparser, glob, sys
       candidates = glob.glob('/var/lib/qBittorrent/**/qBittorrent.conf', recursive=True)
@@ -105,7 +117,7 @@
               # INCOMPLETE on NVMe (qBittorrent StateDirectory) for IO
               # isolation + HDD wear-isolation. Cross-device copy on
               # completion is the trade.
-              r'Session\TempPath':        '/var/lib/qBittorrent/incomplete',
+              r'Session\TempPath':        '/var/lib/qBittorrent/qBittorrent/incomplete',
               r'Session\TempPathEnabled': 'true',
           },
       }
