@@ -223,8 +223,16 @@ in
 
   systemd.services.drinks-static = {
     description = "drinks SPA static files (darkhttpd) for Caddy reverse-proxy";
-    after = [ "drinks-build.service" ];
     wantedBy = [ "multi-user.target" ];
+    # No `After=drinks-build`: the build's `ExecStartPost = systemctl
+    # restart drinks-static` would deadlock against this — restart's
+    # start-job waits for build to be `active`, build can't reach
+    # `active` until start-post returns. Caught 14h after the fact:
+    # the original drinks-static had this directive from the initial
+    # module write; the deadlock pattern was only noticed and fixed
+    # later on heim (619c15f) and finnbydel (eedb0d4). Same pattern
+    # in modules/effects/.../feedback memory.
+    # ConditionPathExists handles cold-boot ordering.
     unitConfig.ConditionPathExists = "/var/lib/drinks/dist";
 
     serviceConfig = {
