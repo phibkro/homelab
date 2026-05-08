@@ -120,6 +120,50 @@ in
           ];
           BindReadOnlyPaths = cfg.readOnlyBinds;
           BindPaths = cfg.binds;
+
+          # ── Baseline hardening (universal, no opt-out today) ────
+          # Cheap wins: stricter than NixOS systemd defaults, no
+          # impact on existing services (verified against the live
+          # set 2026-05-08). If something legitimately needs one of
+          # these relaxed (e.g. a future service that genuinely needs
+          # AF_NETLINK), promote it to a per-entry option here on the
+          # third concrete need (rule of three).
+          #
+          # PrivateTmp        — service gets its own /tmp namespace
+          # NoNewPrivileges   — can't gain privileges via setuid
+          # LockPersonality   — block personality(2)
+          # RestrictRealtime  — no SCHED_FIFO/RR
+          # RestrictSUIDSGID  — service can't create suid/sgid files
+          # ProtectKernelTunables — /proc/sys, /sys read-only
+          # ProtectKernelLogs — block kmsg
+          # ProtectClock      — block settimeofday/adjtime
+          # RestrictAddressFamilies — IPv4/v6/Unix + AF_NETLINK
+          #                           (libuv's getifaddrs needs it,
+          #                           which Node + Bun depend on);
+          #                           still blocks AF_PACKET,
+          #                           AF_BLUETOOTH, AF_VSOCK, etc.
+          #
+          # Deliberately NOT in the baseline:
+          # ProtectSystem=strict — would block state-dir writes for
+          #   services that don't add their state path to `binds`
+          #   (bazarr's StateDirectory output is empty, and several
+          #   *arr services rely on the upstream module's writability
+          #   semantics). Promote to per-entry option if a service
+          #   needs it.
+          PrivateTmp = lib.mkDefault true;
+          NoNewPrivileges = lib.mkDefault true;
+          LockPersonality = lib.mkDefault true;
+          RestrictRealtime = lib.mkDefault true;
+          RestrictSUIDSGID = lib.mkDefault true;
+          ProtectKernelTunables = lib.mkDefault true;
+          ProtectKernelLogs = lib.mkDefault true;
+          ProtectClock = lib.mkDefault true;
+          RestrictAddressFamilies = lib.mkDefault [
+            "AF_UNIX"
+            "AF_INET"
+            "AF_INET6"
+            "AF_NETLINK"
+          ];
         }
         // optionalAttrs (cfg.protectHome != null) {
           ProtectHome = lib.mkForce cfg.protectHome;
