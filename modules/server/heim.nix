@@ -109,8 +109,17 @@ in
 
   systemd.services.heim-serve = {
     description = "Serve heim static files for Caddy reverse-proxy";
-    after = [ "heim-build.service" ];
     wantedBy = [ "multi-user.target" ];
+
+    # No `After=heim-build`. heim-build is a manually-triggered oneshot,
+    # not a boot dependency — and `After=` plus `ExecStartPost=systemctl
+    # restart heim-serve` deadlocks: heim-build's start-post fires the
+    # restart, the restart's start-job waits for heim-build to be
+    # `active`, heim-build can't reach `active` until start-post returns.
+    # ConditionPathExists guards cold-boot ordering instead (skip cleanly
+    # before the first deploy populates dist; build's ExecStartPost
+    # bounces this unit on subsequent deploys).
+    unitConfig.ConditionPathExists = "/var/lib/heim/dist";
 
     serviceConfig = {
       Type = "simple";
