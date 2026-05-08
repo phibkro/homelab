@@ -173,28 +173,6 @@ deploy-app name:
     @echo "[deploy-app {{name}}] Last 20 log lines:"
     @journalctl -u {{name}}-build.service --no-pager -n 20
 
-# Add CNAME records in Cloudflare for every nori.publicRoutes hostname,
-# pointing them at this homelab's tunnel. One-time per hostname; safe
-# to re-run (cloudflared idempotently overwrites existing records).
-# Reads every hostname from the live nix evaluation of
-# nori.publicRoutes — no separate hostname list to drift from the
-# module declarations. cloudflared comes from `nix shell` so the
-# recipe doesn't depend on the binary being on PATH.
-# Usage: just cloudflared-route-all [tunnel-name-or-id]
-@cloudflared-route-all tunnel="nori-station":
-    #!/usr/bin/env bash
-    set -euo pipefail
-    hosts=$(nix eval --raw .#nixosConfigurations.workstation.config.nori.publicRoutes \
-      --apply 'r: builtins.concatStringsSep "\n" (
-        builtins.map (n:
-          let cfg = r.${n}; in
-          if cfg.host == "@" then "phibkro.org" else "${cfg.host}.phibkro.org"
-        ) (builtins.attrNames r))')
-    for h in $hosts; do
-      echo "→ routing $h to tunnel {{tunnel}}"
-      nix shell nixpkgs#cloudflared --command cloudflared tunnel route dns {{tunnel}} "$h" || true
-    done
-
 # Print the prompt for dispatching a fresh agent through the onboarding test.
 # The test (docs/agent-onboarding-test.md) measures whether session wrap-ups
 # left enough context for a fresh agent to perform — closes the otherwise-open

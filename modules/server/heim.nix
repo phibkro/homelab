@@ -149,18 +149,6 @@ in
     };
   };
 
-  # Internet-public exposure via cloudflared at me.phibkro.org. Codename
-  # is "heim" (Norwegian "home"); public name is "me" since the apex
-  # phibkro.org is now the personal landing page.
-  nori.publicRoutes.heim = {
-    host = "me";
-    port = servePort;
-    sitemap = {
-      title = "Portfolio";
-      description = "Personal site — projects, writing, what I'm up to.";
-    };
-  };
-
   nori.harden.heim-build = {
     binds = [ "/var/lib/heim" ];
   };

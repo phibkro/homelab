@@ -38,10 +38,7 @@ _: {
     ./blocky.nix
     ./caddy.nix
     ./calibre-web.nix
-    ./cloudflared.nix
-    ./drinks.nix
     ./filmder.nix
-    ./finnbydel.nix
     ./gatus.nix
     ./glance.nix
     ./heim.nix
@@ -52,7 +49,6 @@ _: {
     ./ntfy/notify.nix
     ./ollama.nix
     ./open-webui.nix
-    ./phibkro-index.nix
     ./radicale.nix
     ./samba.nix
     ./stremio.nix

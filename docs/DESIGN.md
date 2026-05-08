@@ -350,7 +350,6 @@ The `backupPrepareCommand` runs as an `ExecStartPre` on the generated `restic-ba
 | Immich | B | Built-in dump mechanism |
 | Open WebUI | C2 | SQLite, no internal dump |
 | Ollama | A | Models are re-downloadable; chat history if any goes via Open WebUI |
-| Cloudflared | A | Just credentials in `/var/lib/cloudflared` |
 | Tailscale | A | State files |
 | `/home`, `/srv/share` | A | No databases |
 

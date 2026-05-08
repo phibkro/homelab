@@ -176,16 +176,6 @@ in
     };
   };
 
-  # Internet-public exposure via cloudflared at filmder.phibkro.org.
-  nori.publicRoutes.filmder = {
-    host = "filmder";
-    port = servePort;
-    sitemap = {
-      title = "Filmder";
-      description = "TMDB-backed movie browser. Uni group project, 2023.";
-    };
-  };
-
   nori.harden.filmder-build = {
     binds = [ "/var/lib/filmder" ];
   };
