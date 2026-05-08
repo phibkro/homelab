@@ -1,55 +1,51 @@
 {
+  lib,
   pkgs,
   ...
 }:
 
-# finnbydel — neighborhood-marketplace T3 stack (Next.js 13 + tRPC +
-# Prisma). Operator's old NTNU project. Tailnet-only access at
-# https://finnbydel.nori.lan via Caddy.
+# finnbydel — bydel-lookup tool. Operator's old NTNU project (2023).
+# Tailnet at https://finnbydel.nori.lan; public at
+# https://finnbydel.phibkro.org + https://finnbydel-api.phibkro.org.
 #
-# ── DB choice: sqlite ─────────────────────────────────────────────
-# Project's prisma/schema.prisma was originally `provider = "mysql"`
-# (with `relationMode = "prisma"` + `@db.VarChar(255)` annotations).
-# Operator chose sqlite for the deploy — fewer moving parts,
-# self-contained file at /var/lib/finnbydel/db.sqlite. Project-side
-# schema patch lives in operator's filmder repo (mysql → sqlite,
-# drop relationMode + VarChar). Phase A2 postgres is heim's
-# concern; finnbydel doesn't drag it in.
+# ── Stack (post-Astro+Hono migration) ────────────────────────────
+# - app/    Astro static SPA-ish frontend with React island for the
+#           autocomplete form. Built to dist/ and served by darkhttpd.
+# - server/ Hono on Bun + Prisma + zod for the REST API. Long-running
+#           bun process. SQLite at /var/lib/finnbydel/db.sqlite.
+#
+# Two cloudflared subdomains because Vite-built frontends bake the
+# API origin at build time, and putting the API on a separate
+# hostname keeps the tunnel ingress single-port-per-route — same
+# pattern as drinks.
 #
 # ── Build/serve shape ─────────────────────────────────────────────
-# Same skeleton as filmder, but with a long-running serve unit
-# (Next.js needs to host its server):
-#   * finnbydel-build.service — oneshot, manual trigger via
-#     `just deploy-app finnbydel`. git pull → bun install (postinstall
-#     runs prisma generate) → prisma db push (sync schema to sqlite,
-#     creating the file on first run) → next build. Sentinel-skip if
-#     already built for current commit.
-#   * finnbydel-serve.service — long-running. `bun run start`
-#     (= `next start`) on 127.0.0.1:9093. ExecStartPost on build
-#     restarts serve so a fresh deploy auto-takes-effect.
-# Caddy reverse-proxies finnbydel.nori.lan → 127.0.0.1:9093.
+# Three units:
+#   * finnbydel-build.service — oneshot, manual via `just deploy-app
+#     finnbydel`. git pull → server: bun install + prisma generate +
+#     prisma db push + idempotent seed → app: bun install + bun run
+#     build (with PUBLIC_API_URL injected) → atomic dist publish to
+#     /var/lib/finnbydel/dist. Sentinel-skip on idempotent rebuilds.
+#     ExecStartPost bounces both serve units.
+#   * finnbydel-server.service — long-running Hono on 127.0.0.1:9093
+#     (the API).
+#   * finnbydel-static.service — long-running darkhttpd serving the
+#     SPA on 127.0.0.1:9098.
 #
 # ── DB migrations ────────────────────────────────────────────────
-# `prisma db push` (not `migrate deploy`) — schema-first sync, no
-# migration files needed. Right call for personal-project scope:
-# we control both schema and DB, no parallel-environment drift to
-# worry about. `--accept-data-loss` because for a fresh deploy the
-# flag is a no-op; future schema changes that drop columns would
-# need explicit operator confirmation (rare for finnbydel).
+# Schema-first sync via `prisma db push` — no migration files. Right
+# call for personal-project scope: we own both schema + DB, no
+# parallel-environment drift. `--accept-data-loss` is a no-op on a
+# fresh DB; destructive schema changes would need explicit operator
+# confirmation in source.
 
 let
   finnbydelRepo = "https://github.com/phibkro/finnbydel.git";
-  servePort = 9093;
-  dbUrl = "file:/var/lib/finnbydel/db.sqlite";
+  serverPort = 9093;
+  staticPort = 9098;
+  dbPath = "/var/lib/finnbydel/db.sqlite";
+  apiUrl = "https://finnbydel-api.phibkro.org";
 
-  # Prisma on NixOS: the binary engines aren't pre-built for the
-  # `linux-nixos` target, so prisma's runtime download fails (404
-  # against binaries.prisma.sh). Fix is pointing PRISMA_*_BINARY +
-  # PRISMA_QUERY_ENGINE_LIBRARY at nix-built artefacts via
-  # pkgs.prisma-engines_6 (engine major version pinned to project's
-  # @prisma/client major; v6 covers schema-engine + libquery_engine).
-  # Plus openssl on PATH because prisma probes it for libssl version
-  # detection.
   prismaEnv = {
     PRISMA_QUERY_ENGINE_LIBRARY = "${pkgs.prisma-engines_6}/lib/libquery_engine.node";
     PRISMA_QUERY_ENGINE_BINARY = "${pkgs.prisma-engines_6}/bin/query-engine";
@@ -66,7 +62,7 @@ in
   users.groups.finnbydel = { };
 
   systemd.services.finnbydel-build = {
-    description = "Build finnbydel (manual trigger via `just deploy-app finnbydel`)";
+    description = "Build finnbydel server + SPA (manual trigger via `just deploy-app finnbydel`)";
     after = [ "network-online.target" ];
     wants = [ "network-online.target" ];
 
@@ -75,10 +71,12 @@ in
       bun
       openssl
       prisma-engines_6
+      sqlite
     ];
 
     environment = prismaEnv // {
-      DATABASE_URL = dbUrl;
+      DATABASE_URL = "file:${dbPath}";
+      PUBLIC_API_URL = apiUrl;
       NODE_ENV = "production";
     };
 
@@ -90,11 +88,10 @@ in
       StateDirectoryMode = "0750";
       WorkingDirectory = "/var/lib/finnbydel";
 
-      # `+` prefix runs as root regardless of User= — needed because
-      # systemctl restart requires privilege the finnbydel user
-      # doesn't have. Fires only on successful build, so a failed
-      # rebuild won't bounce a known-good serve.
-      ExecStartPost = "+${pkgs.systemd}/bin/systemctl restart finnbydel-serve.service";
+      # Bounce both long-running units on successful build. `+`
+      # prefix runs as root so finnbydel user doesn't need
+      # sudo/systemctl privileges.
+      ExecStartPost = "+${pkgs.systemd}/bin/systemctl restart finnbydel-server.service finnbydel-static.service";
     };
 
     script = ''
@@ -108,47 +105,61 @@ in
         git -C src reset --hard origin/main
       fi
 
-      cd src/finnbydel-app
+      cd src
 
       # Sentinel: skip rebuild if already built for current commit.
-      CURRENT_COMMIT=$(git -C .. rev-parse HEAD)
+      CURRENT_COMMIT=$(git rev-parse HEAD)
       SENTINEL="$STATE_DIRECTORY/.last-built-commit"
-      if [ -f "$SENTINEL" ] && [ "$(cat "$SENTINEL")" = "$CURRENT_COMMIT" ] && [ -d ".next" ]; then
+      if [ -f "$SENTINEL" ] \
+         && [ "$(cat "$SENTINEL")" = "$CURRENT_COMMIT" ] \
+         && [ -d "$STATE_DIRECTORY/dist" ] \
+         && [ -d server/node_modules/@prisma/client ]; then
         echo "finnbydel already built for $CURRENT_COMMIT — skipping"
         exit 0
       fi
 
-      # bun install triggers `postinstall: prisma generate` from
-      # package.json. Generated client lands in node_modules/.prisma.
+      # ── Server ───────────────────────────────────────────────
+      pushd server >/dev/null
       bun install
-
-      # Sync schema → sqlite. Creates the DB file on first run.
-      # --skip-generate avoids re-running prisma generate (already
-      # done by postinstall). --accept-data-loss is a no-op on a
-      # fresh DB; future destructive schema changes need operator
-      # explicit confirmation in source.
+      bunx prisma generate
       bunx prisma db push --skip-generate --accept-data-loss
 
-      # Run seed if the project has one wired (prisma.seed in
-      # package.json + a seed script). No-op if not configured —
-      # `prisma db seed` errors with "No seed command provided"
-      # which we swallow. Idempotency is the seed script's
-      # responsibility (check-existing-then-skip pattern).
-      if grep -q '"seed"' package.json 2>/dev/null; then
-        bunx prisma db seed || echo "[finnbydel-build] seed step failed; continuing"
+      # Idempotent seed: only run when the City table is empty.
+      # Prisma's `db seed` doesn't have built-in idempotency; the
+      # repo's seed.ts is upsert-shaped but still fast-paths on
+      # empty.
+      CITY_COUNT=$(sqlite3 ${dbPath} "SELECT COUNT(*) FROM City;" 2>/dev/null || echo 0)
+      if [ "$CITY_COUNT" = "0" ]; then
+        echo "[finnbydel-build] empty DB — running seed"
+        bun run prisma/seed.ts || echo "[finnbydel-build] seed step failed; continuing"
       else
-        echo "[finnbydel-build] no prisma.seed config in package.json — skipping seed"
+        echo "[finnbydel-build] DB has $CITY_COUNT cities — skipping seed"
       fi
+      popd >/dev/null
 
-      # Next.js production build → .next/
+      # ── App ──────────────────────────────────────────────────
+      pushd app >/dev/null
+      bun install
+      # PUBLIC_API_URL is read at build time and embedded in the
+      # client bundle. Set in this unit's `environment` above.
       bun run build
+      popd >/dev/null
+
+      # Atomic publish of the SPA dist.
+      rm -rf "$STATE_DIRECTORY/dist.new"
+      cp -r app/dist "$STATE_DIRECTORY/dist.new"
+      if [ -d "$STATE_DIRECTORY/dist" ]; then
+        mv "$STATE_DIRECTORY/dist" "$STATE_DIRECTORY/dist.old"
+      fi
+      mv "$STATE_DIRECTORY/dist.new" "$STATE_DIRECTORY/dist"
+      rm -rf "$STATE_DIRECTORY/dist.old"
 
       echo "$CURRENT_COMMIT" > "$SENTINEL"
     '';
   };
 
-  systemd.services.finnbydel-serve = {
-    description = "Serve finnbydel via Next.js";
+  systemd.services.finnbydel-server = {
+    description = "finnbydel REST API (Hono on Bun)";
     after = [ "network-online.target" ];
     wants = [ "network-online.target" ];
     wantedBy = [ "multi-user.target" ];
@@ -160,82 +171,106 @@ in
     ];
 
     environment = prismaEnv // {
-      DATABASE_URL = dbUrl;
+      DATABASE_URL = "file:${dbPath}";
       NODE_ENV = "production";
-      PORT = toString servePort;
-      # HOSTNAME env is documented for Next.js but not honored by
-      # this version — the listener still binds *:9093 (dual-stack).
-      # Pass -H explicitly via the start script (`--` forwards args
-      # through `bun run` to `next start`). Verified live: binds
-      # 127.0.0.1:9093 only.
-      HOSTNAME = "127.0.0.1";
+      PORT = toString serverPort;
+      HOST = "127.0.0.1";
     };
 
-    # Skip start until a *complete* Next.js build exists. BUILD_ID
-    # is the file Next writes only on successful build — pointing
-    # at the .next directory itself would also match a half-failed
-    # build that left a corrupt .next/ on disk (then `next start`
-    # crashes with "Could not find a production build"). build's
-    # ExecStartPost re-evaluates the condition on success, so once
-    # BUILD_ID lands, serve activates cleanly.
-    unitConfig.ConditionPathExists = "/var/lib/finnbydel/src/finnbydel-app/.next/BUILD_ID";
+    # Skip start until DB + generated Prisma client both exist. The
+    # build's ExecStartPost re-evaluates this on success, so the
+    # unit picks up cleanly on first deploy.
+    unitConfig.ConditionPathExists = [
+      dbPath
+      "/var/lib/finnbydel/src/server/node_modules/@prisma/client"
+    ];
 
     serviceConfig = {
       Type = "simple";
       User = "finnbydel";
       Group = "finnbydel";
-
-      # StateDirectory ensures /var/lib/finnbydel exists before the
-      # mount-namespace bind-mount setup. Without it, harden.binds
-      # fails with "No such file or directory" on cold boot before
-      # any build has run.
       StateDirectory = "finnbydel";
       StateDirectoryMode = "0750";
-      WorkingDirectory = "/var/lib/finnbydel/src/finnbydel-app";
+      WorkingDirectory = "/var/lib/finnbydel/src/server";
 
-      ExecStart = "${pkgs.bun}/bin/bun run start -- -H 127.0.0.1";
-
+      ExecStart = "${pkgs.bun}/bin/bun run src/index.ts";
       Restart = "on-failure";
       RestartSec = 5;
     };
   };
 
+  systemd.services.finnbydel-static = {
+    description = "finnbydel SPA static files (darkhttpd) for Caddy/cloudflared";
+    after = [ "finnbydel-build.service" ];
+    wantedBy = [ "multi-user.target" ];
+    unitConfig.ConditionPathExists = "/var/lib/finnbydel/dist";
+
+    serviceConfig = {
+      Type = "simple";
+      User = "finnbydel";
+      Group = "finnbydel";
+      ExecStart = lib.concatStringsSep " " [
+        "${pkgs.darkhttpd}/bin/darkhttpd"
+        "/var/lib/finnbydel/dist"
+        "--addr 127.0.0.1"
+        "--port ${toString staticPort}"
+        "--no-listing"
+      ];
+      Restart = "on-failure";
+      RestartSec = 5;
+    };
+  };
+
+  # SPA at finnbydel.{nori.lan,phibkro.org}
   nori.lanRoutes.finnbydel = {
-    port = servePort;
+    port = staticPort;
     audience = "public";
     monitor = { };
     dashboard = {
       title = "Finnbydel";
-      icon = "si:nextdotjs";
+      icon = "si:astro";
       group = "Projects";
-      description = "Neighborhood marketplace (uni project, 2023)";
+      description = "Bydel lookup (uni project, 2023; Astro+Hono refactor 2026)";
+    };
+  };
+  nori.publicRoutes.finnbydel = {
+    host = "finnbydel";
+    port = staticPort;
+    sitemap = {
+      title = "Finnbydel";
+      description = "Find your bydel — Norwegian neighbourhood lookup. Uni project, 2023.";
     };
   };
 
-  # Internet-public exposure via cloudflared at finnbydel.phibkro.org.
-  nori.publicRoutes.finnbydel = {
-    host = "finnbydel";
-    port = servePort;
-    sitemap = {
-      title = "Finnbydel";
-      description = "Neighborhood marketplace, T3 stack. Uni project, 2023.";
-    };
+  # API at finnbydel-api.{nori.lan,phibkro.org}. No dashboard entry
+  # — backend for the SPA. Hono root handler returns a small JSON
+  # health blob, so the default `/` monitor passes.
+  nori.lanRoutes.finnbydel-api = {
+    port = serverPort;
+    audience = "public";
+    monitor = { };
+  };
+  nori.publicRoutes.finnbydel-api = {
+    host = "finnbydel-api";
+    port = serverPort;
   };
 
   nori.harden.finnbydel-build = {
     binds = [ "/var/lib/finnbydel" ];
   };
-  nori.harden.finnbydel-serve = {
+  nori.harden.finnbydel-server = {
     binds = [ "/var/lib/finnbydel" ];
   };
+  nori.harden.finnbydel-static = {
+    readOnlyBinds = [ "/var/lib/finnbydel" ];
+  };
 
-  # Backup intent: paths-based, user tier. The sqlite file holds
-  # whatever data accumulates from the (currently unwired) UI
-  # interactions; even an empty seeded DB is worth backing up so a
-  # restore replays exactly the schema-version + content snapshot
-  # rather than re-running prisma db push at restore time.
+  # Backup intent: the sqlite file holds the seeded bydel polygons +
+  # whatever data accumulates from UI interactions (currently
+  # nothing, but worth a snapshot so a restore replays exactly the
+  # schema + seeded data without re-fetching from upstream sources).
   nori.backups.finnbydel = {
-    paths = [ "/var/lib/finnbydel/db.sqlite" ];
+    paths = [ dbPath ];
     tier = "user";
   };
 }
