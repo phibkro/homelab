@@ -201,8 +201,12 @@ in
 
   systemd.services.finnbydel-static = {
     description = "finnbydel SPA static files (darkhttpd) for Caddy/cloudflared";
-    after = [ "finnbydel-build.service" ];
     wantedBy = [ "multi-user.target" ];
+    # No `After=finnbydel-build`: same deadlock pattern as heim —
+    # `ExecStartPost = systemctl restart` from finnbydel-build would
+    # wait for build to be `active`, but build can't reach `active`
+    # until start-post returns. ConditionPathExists handles the
+    # cold-boot ordering instead.
     unitConfig.ConditionPathExists = "/var/lib/finnbydel/dist";
 
     serviceConfig = {
