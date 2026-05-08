@@ -163,6 +163,11 @@ in
       DATABASE_URL = dbUrl;
       NODE_ENV = "production";
       PORT = toString servePort;
+      # HOSTNAME env is documented for Next.js but not honored by
+      # this version — the listener still binds *:9093 (dual-stack).
+      # Pass -H explicitly via the start script (`--` forwards args
+      # through `bun run` to `next start`). Verified live: binds
+      # 127.0.0.1:9093 only.
       HOSTNAME = "127.0.0.1";
     };
 
@@ -188,7 +193,7 @@ in
       StateDirectoryMode = "0750";
       WorkingDirectory = "/var/lib/finnbydel/src/finnbydel-app";
 
-      ExecStart = "${pkgs.bun}/bin/bun run start";
+      ExecStart = "${pkgs.bun}/bin/bun run start -- -H 127.0.0.1";
 
       Restart = "on-failure";
       RestartSec = 5;
