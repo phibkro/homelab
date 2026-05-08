@@ -51,6 +51,37 @@ let
 
   cards = lib.concatMapStringsSep "\n" cardHtml sortedRoutes;
 
+  description = "Projects by Philip Bjørknes Krogh — developer in Oslo.";
+
+  # Sitemap: the apex + every public route flagged for sitemap inclusion.
+  # Hand-rolled XML because writeText is the simplest mechanism we
+  # have on the static-darkhttpd serving path. Apps publish their own
+  # internal sitemaps (heim's @astrojs/sitemap, etc.); this one is
+  # the cross-app index pointing at each subdomain root.
+  sitemapXml = pkgs.writeText "phibkro-sitemap.xml" ''
+    <?xml version="1.0" encoding="UTF-8"?>
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+      <url>
+        <loc>https://phibkro.org/</loc>
+        <changefreq>monthly</changefreq>
+        <priority>1.0</priority>
+      </url>
+    ${lib.concatMapStringsSep "\n" (r: ''
+      <url>
+        <loc>https://${r.value.host}.phibkro.org/</loc>
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+      </url>'') sortedRoutes}
+    </urlset>
+  '';
+
+  robotsTxt = pkgs.writeText "phibkro-robots.txt" ''
+    User-agent: *
+    Allow: /
+
+    Sitemap: https://phibkro.org/sitemap.xml
+  '';
+
   indexHtml = pkgs.writeText "phibkro-index.html" ''
     <!doctype html>
     <html lang="en">
@@ -58,11 +89,20 @@ let
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Philip Bjørknes Krogh</title>
-        <meta name="description" content="Projects by Philip Bjørknes Krogh." />
-        <link
-          rel="preconnect"
-          href="https://fonts.googleapis.com"
-        />
+        <meta name="description" content="${description}" />
+        <link rel="canonical" href="https://phibkro.org/" />
+        <link rel="sitemap" href="/sitemap.xml" />
+
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Philip Bjørknes Krogh" />
+        <meta property="og:title" content="Philip Bjørknes Krogh" />
+        <meta property="og:description" content="${description}" />
+        <meta property="og:url" content="https://phibkro.org/" />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content="Philip Bjørknes Krogh" />
+        <meta name="twitter:description" content="${description}" />
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
           href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500&display=swap"
@@ -245,6 +285,8 @@ in
       ExecStartPre = pkgs.writeShellScript "phibkro-index-stage" ''
         set -eu
         cp ${indexHtml} "$RUNTIME_DIRECTORY/index.html"
+        cp ${sitemapXml} "$RUNTIME_DIRECTORY/sitemap.xml"
+        cp ${robotsTxt} "$RUNTIME_DIRECTORY/robots.txt"
       '';
       Restart = "on-failure";
       RestartSec = 5;
