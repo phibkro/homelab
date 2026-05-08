@@ -5,62 +5,46 @@
 }:
 
 # drinks — cocktail recipe browser. Operator's old NTNU project (uni
-# group work, 2023). Tailnet-only at https://drinks.nori.lan; GraphQL
-# backend reverse-proxied at https://drinks-api.nori.lan.
+# group work, 2023). Tailnet at https://drinks.nori.lan + public at
+# https://drinks.phibkro.org; GraphQL backend at the matching `-api`
+# subdomains.
 #
 # ── Why two subdomains ───────────────────────────────────────────
 # Vite SPA + Apollo standalone GraphQL = two artefacts, two ports.
-# `nori.lanRoutes` is single-port-reverse-proxy by design, so we use
-# it twice (peer of the filmder + finnbydel pattern but with both
-# halves at once). The frontend bakes `VITE_API_URL` at *build time*,
-# so the API origin must be known when drinks-build runs — hence the
-# `drinks-api.nori.lan` constant in this module rather than runtime
-# discovery.
+# `nori.lanRoutes`/`nori.publicRoutes` are single-port-per-route by
+# design; the frontend bakes VITE_API_URL at build time so the API
+# origin must be known when drinks-build runs.
 #
 # ── Build/serve shape ─────────────────────────────────────────────
 # Three units:
-#   * drinks-build.service — oneshot, manual trigger via
-#     `just deploy-app drinks`. git pull → server: bun install +
-#     prisma generate + migrate deploy + (idempotent) seed → app:
-#     bun install + bun run build (with VITE_API_URL injected) →
-#     atomic publish to /var/lib/drinks/dist. Sentinel-skip if
-#     already built for current commit. ExecStartPost restarts
-#     drinks-server so a fresh deploy auto-takes-effect.
-#   * drinks-server.service — long-running. `bun run src/index.ts`
-#     (Apollo standalone) on 127.0.0.1:9095. Reads sqlite at
-#     /var/lib/drinks/db.sqlite.
-#   * drinks-static.service — long-running. darkhttpd on
+#   * drinks-build.service — oneshot, manual via `just deploy-app
+#     drinks`. git pull → server: bun install + migrate + idempotent
+#     seed → app: bun install + bun run build (with VITE_API_URL
+#     injected) → atomic dist publish. Sentinel-skip on idempotent
+#     rebuilds.
+#   * drinks-server.service — long-running. Apollo standalone +
+#     Drizzle ORM over bun:sqlite, on 127.0.0.1:9095.
+#   * drinks-static.service — long-running darkhttpd on
 #     127.0.0.1:9096 serving /var/lib/drinks/dist.
 #
-# ── Prisma on NixOS ───────────────────────────────────────────────
-# Same engine-binary plumbing as finnbydel: nix-built prisma-engines_6
-# pointed at via PRISMA_*_BINARY + PRISMA_QUERY_ENGINE_LIBRARY because
-# prisma's runtime download fails 404 on the `linux-nixos` target.
-# Engine major must match @prisma/client major in drinks's package.json
-# (currently v6).
+# ── Data layer (post-Drizzle migration) ──────────────────────────
+# Server uses Drizzle + `bun:sqlite` directly — no engine binary,
+# no PRISMA_*_BINARY env vars, no openssl prerequisite. Migrations
+# are CREATE TABLE IF NOT EXISTS via src/migrate.ts (idempotent
+# against the existing /var/lib/drinks/db.sqlite which was first
+# populated under Prisma's schema).
 #
 # ── Backend history ───────────────────────────────────────────────
-# Originally Cloudflare Workers + D1 — not homelab-shaped without a
-# backend rewrite. Repo now ships an Apollo standalone server +
-# plain Prisma sqlite (commit history on the drinks repo).
+# Originally Cloudflare Workers + D1. Rewritten to Apollo standalone
+# + Prisma sqlite for homelab; then migrated to Drizzle to drop the
+# prisma-engines_6 NixOS-binary maintenance surface.
 
 let
   drinksRepo = "https://github.com/phibkro/drinks.git";
   serverPort = 9095;
   staticPort = 9096;
   dbPath = "/var/lib/drinks/db.sqlite";
-  # API URL baked into the SPA build at compile time. Public-internet
-  # URL so the same bundle works for both audiences (tailnet hits go
-  # via Cloudflare too — small detour, acceptable for low-traffic
-  # personal site). Tailnet name (drinks-api.nori.lan) still works
-  # for direct-to-server probes; the SPA just doesn't use it.
   apiUrl = "https://drinks-api.phibkro.org";
-
-  prismaEnv = {
-    PRISMA_QUERY_ENGINE_LIBRARY = "${pkgs.prisma-engines_6}/lib/libquery_engine.node";
-    PRISMA_QUERY_ENGINE_BINARY = "${pkgs.prisma-engines_6}/bin/query-engine";
-    PRISMA_SCHEMA_ENGINE_BINARY = "${pkgs.prisma-engines_6}/bin/schema-engine";
-  };
 in
 {
   users.users.drinks = {
@@ -79,12 +63,10 @@ in
     path = with pkgs; [
       git
       bun
-      openssl
-      prisma-engines_6
       sqlite
     ];
 
-    environment = prismaEnv // {
+    environment = {
       DATABASE_URL = "file:${dbPath}";
       VITE_API_URL = apiUrl;
       NODE_ENV = "production";
@@ -97,14 +79,6 @@ in
       StateDirectory = "drinks";
       StateDirectoryMode = "0750";
       WorkingDirectory = "/var/lib/drinks";
-
-      # `+` prefix runs as root regardless of User= — needed because
-      # systemctl restart requires privilege the drinks user doesn't
-      # have. Fires only on successful build, so a failed rebuild
-      # won't bounce known-good units. Both long-running units get
-      # bounced — serve picks up code changes, static picks up the
-      # newly-published dist (and starts cleanly on first deploy
-      # where ConditionPathExists was unmet at boot).
       ExecStartPost = "+${pkgs.systemd}/bin/systemctl restart drinks-server.service drinks-static.service";
     };
 
@@ -127,27 +101,20 @@ in
       if [ -f "$SENTINEL" ] \
          && [ "$(cat "$SENTINEL")" = "$CURRENT_COMMIT" ] \
          && [ -d "$STATE_DIRECTORY/dist" ] \
-         && [ -d server/node_modules/@prisma/client ]; then
+         && [ -d server/node_modules/drizzle-orm ]; then
         echo "drinks already built for $CURRENT_COMMIT — skipping"
         exit 0
       fi
 
-      # ── Server side ───────────────────────────────────────────
+      # ── Server ───────────────────────────────────────────────
       pushd server >/dev/null
       bun install
 
-      # Generate Prisma client (postinstall isn't wired in this
-      # repo's package.json, so explicit step).
-      bunx prisma generate
+      # Idempotent CREATE TABLE IF NOT EXISTS via bun:sqlite.
+      bun run src/migrate.ts
 
-      # Apply migrations. Schema-first sync would also work, but
-      # this repo committed prisma/migrations/ so deploy them.
-      bunx prisma migrate deploy
-
-      # Idempotent seed: only run when the table is empty. The seed
-      # script uses createMany without onConflict and would dupe on
-      # repeat. sqlite3 query returns 0 if table doesn't exist (with
-      # a stderr error swallowed) or the row count otherwise.
+      # Idempotent seed: only run when the table is empty (the
+      # seed uses plain insert and would dupe on repeat).
       DRINK_COUNT=$(sqlite3 ${dbPath} "SELECT COUNT(*) FROM Drink;" 2>/dev/null || echo 0)
       if [ "$DRINK_COUNT" = "0" ]; then
         echo "[drinks-build] empty DB — running seed"
@@ -157,11 +124,9 @@ in
       fi
       popd >/dev/null
 
-      # ── App side ──────────────────────────────────────────────
+      # ── App ──────────────────────────────────────────────────
       pushd app >/dev/null
       bun install
-      # VITE_API_URL is read at build time and embedded in the JS
-      # bundle. Set in this unit's `environment` above.
       bun run build
       popd >/dev/null
 
@@ -179,32 +144,26 @@ in
   };
 
   systemd.services.drinks-server = {
-    description = "drinks GraphQL server (Apollo standalone)";
+    description = "drinks GraphQL server (Apollo standalone + Drizzle/bun:sqlite)";
     after = [ "network-online.target" ];
     wants = [ "network-online.target" ];
     wantedBy = [ "multi-user.target" ];
 
-    path = with pkgs; [
-      bun
-      openssl
-      prisma-engines_6
-    ];
+    path = with pkgs; [ bun ];
 
-    environment = prismaEnv // {
+    environment = {
       DATABASE_URL = "file:${dbPath}";
       NODE_ENV = "production";
       PORT = toString serverPort;
       HOST = "127.0.0.1";
     };
 
-    # Skip start until a built tree + DB exist. db.sqlite is created
-    # by `prisma migrate deploy` during drinks-build; node_modules
-    # holds the generated Prisma client. Build's ExecStartPost
-    # restarts this unit on success, so once the conditions land
-    # serve activates cleanly.
+    # Skip start until built tree + DB exist. Build's ExecStartPost
+    # restarts on success, so once these conditions land, serve
+    # activates cleanly.
     unitConfig.ConditionPathExists = [
       dbPath
-      "/var/lib/drinks/src/server/node_modules/@prisma/client"
+      "/var/lib/drinks/src/server/node_modules/drizzle-orm"
     ];
 
     serviceConfig = {
@@ -224,15 +183,11 @@ in
   systemd.services.drinks-static = {
     description = "drinks SPA static files (darkhttpd) for Caddy reverse-proxy";
     wantedBy = [ "multi-user.target" ];
-    # No `After=drinks-build`: the build's `ExecStartPost = systemctl
+    # No `After=drinks-build`: build's `ExecStartPost = systemctl
     # restart drinks-static` would deadlock against this — restart's
     # start-job waits for build to be `active`, build can't reach
-    # `active` until start-post returns. Caught 14h after the fact:
-    # the original drinks-static had this directive from the initial
-    # module write; the deadlock pattern was only noticed and fixed
-    # later on heim (619c15f) and finnbydel (eedb0d4). Same pattern
-    # in modules/effects/.../feedback memory.
-    # ConditionPathExists handles cold-boot ordering.
+    # `active` until start-post returns. ConditionPathExists handles
+    # cold-boot ordering instead. See memory/feedback.
     unitConfig.ConditionPathExists = "/var/lib/drinks/dist";
 
     serviceConfig = {
@@ -251,7 +206,7 @@ in
     };
   };
 
-  # SPA at https://drinks.nori.lan
+  # SPA at drinks.{nori.lan,phibkro.org}
   nori.lanRoutes.drinks = {
     port = staticPort;
     audience = "public";
@@ -263,18 +218,6 @@ in
       description = "Cocktail recipe browser (uni project, 2023)";
     };
   };
-
-  # GraphQL backend at https://drinks-api.nori.lan. No dashboard entry
-  # — it's the SPA's data plane, not a user-facing destination. Apollo
-  # standalone serves the Apollo Sandbox HTML at GET /, which gives
-  # the default `/` monitor a 200.
-  nori.lanRoutes.drinks-api = {
-    port = serverPort;
-    audience = "public";
-    monitor = { };
-  };
-
-  # Internet-public exposure via cloudflared.
   nori.publicRoutes.drinks = {
     host = "drinks";
     port = staticPort;
@@ -283,8 +226,14 @@ in
       description = "Cocktail recipe browser, GraphQL backed. Uni project, 2023.";
     };
   };
-  # API needs to be public too — the SPA bakes drinks-api.phibkro.org
-  # into the JS bundle at build time. Backend-only, no sitemap entry.
+
+  # API at drinks-api.{nori.lan,phibkro.org}. Apollo standalone
+  # serves Apollo Sandbox HTML at GET / so the default monitor 200s.
+  nori.lanRoutes.drinks-api = {
+    port = serverPort;
+    audience = "public";
+    monitor = { };
+  };
   nori.publicRoutes.drinks-api = {
     host = "drinks-api";
     port = serverPort;

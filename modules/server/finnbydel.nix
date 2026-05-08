@@ -8,11 +8,13 @@
 # Tailnet at https://finnbydel.nori.lan; public at
 # https://finnbydel.phibkro.org + https://finnbydel-api.phibkro.org.
 #
-# ── Stack (post-Astro+Hono migration) ────────────────────────────
+# ── Stack (post-Astro+Hono+Drizzle migration) ────────────────────
 # - app/    Astro static SPA-ish frontend with React island for the
 #           autocomplete form. Built to dist/ and served by darkhttpd.
-# - server/ Hono on Bun + Prisma + zod for the REST API. Long-running
+# - server/ Hono on Bun + Drizzle + zod over bun:sqlite. Long-running
 #           bun process. SQLite at /var/lib/finnbydel/db.sqlite.
+#           No prisma-engines_6 / openssl / PRISMA_*_BINARY env any
+#           more — bun:sqlite is built into the runtime.
 #
 # Two cloudflared subdomains because Vite-built frontends bake the
 # API origin at build time, and putting the API on a separate
@@ -22,9 +24,9 @@
 # ── Build/serve shape ─────────────────────────────────────────────
 # Three units:
 #   * finnbydel-build.service — oneshot, manual via `just deploy-app
-#     finnbydel`. git pull → server: bun install + prisma generate +
-#     prisma db push + idempotent seed → app: bun install + bun run
-#     build (with PUBLIC_API_URL injected) → atomic dist publish to
+#     finnbydel`. git pull → server: bun install + migrate +
+#     idempotent upsert seed → app: bun install + bun run build
+#     (with PUBLIC_API_URL injected) → atomic dist publish to
 #     /var/lib/finnbydel/dist. Sentinel-skip on idempotent rebuilds.
 #     ExecStartPost bounces both serve units.
 #   * finnbydel-server.service — long-running Hono on 127.0.0.1:9093
@@ -33,11 +35,10 @@
 #     SPA on 127.0.0.1:9098.
 #
 # ── DB migrations ────────────────────────────────────────────────
-# Schema-first sync via `prisma db push` — no migration files. Right
-# call for personal-project scope: we own both schema + DB, no
-# parallel-environment drift. `--accept-data-loss` is a no-op on a
-# fresh DB; destructive schema changes would need explicit operator
-# confirmation in source.
+# Idempotent CREATE TABLE IF NOT EXISTS via src/migrate.ts running
+# under bun:sqlite. Personal-project scope means schema is effectively
+# frozen; no migration framework needed. If schema changes, edit
+# migrate.ts and add an ALTER block guarded by a feature check.
 
 let
   finnbydelRepo = "https://github.com/phibkro/finnbydel.git";
@@ -46,11 +47,6 @@ let
   dbPath = "/var/lib/finnbydel/db.sqlite";
   apiUrl = "https://finnbydel-api.phibkro.org";
 
-  prismaEnv = {
-    PRISMA_QUERY_ENGINE_LIBRARY = "${pkgs.prisma-engines_6}/lib/libquery_engine.node";
-    PRISMA_QUERY_ENGINE_BINARY = "${pkgs.prisma-engines_6}/bin/query-engine";
-    PRISMA_SCHEMA_ENGINE_BINARY = "${pkgs.prisma-engines_6}/bin/schema-engine";
-  };
 in
 {
   users.users.finnbydel = {
@@ -69,12 +65,10 @@ in
     path = with pkgs; [
       git
       bun
-      openssl
-      prisma-engines_6
       sqlite
     ];
 
-    environment = prismaEnv // {
+    environment = {
       DATABASE_URL = "file:${dbPath}";
       PUBLIC_API_URL = apiUrl;
       NODE_ENV = "production";
@@ -113,7 +107,7 @@ in
       if [ -f "$SENTINEL" ] \
          && [ "$(cat "$SENTINEL")" = "$CURRENT_COMMIT" ] \
          && [ -d "$STATE_DIRECTORY/dist" ] \
-         && [ -d server/node_modules/@prisma/client ]; then
+         && [ -d server/node_modules/drizzle-orm ]; then
         echo "finnbydel already built for $CURRENT_COMMIT — skipping"
         exit 0
       fi
@@ -121,20 +115,16 @@ in
       # ── Server ───────────────────────────────────────────────
       pushd server >/dev/null
       bun install
-      bunx prisma generate
-      bunx prisma db push --skip-generate --accept-data-loss
 
-      # Idempotent seed: only run when the City table is empty.
-      # Prisma's `db seed` doesn't have built-in idempotency; the
-      # repo's seed.ts is upsert-shaped but still fast-paths on
-      # empty.
-      CITY_COUNT=$(sqlite3 ${dbPath} "SELECT COUNT(*) FROM City;" 2>/dev/null || echo 0)
-      if [ "$CITY_COUNT" = "0" ]; then
-        echo "[finnbydel-build] empty DB — running seed"
-        bun run prisma/seed.ts || echo "[finnbydel-build] seed step failed; continuing"
-      else
-        echo "[finnbydel-build] DB has $CITY_COUNT cities — skipping seed"
-      fi
+      # Idempotent CREATE TABLE IF NOT EXISTS via bun:sqlite
+      # (replaces `prisma db push`).
+      bun run src/migrate.ts
+
+      # Always run the seed: it's now upsert-shaped on the
+      # (cityId, name) unique index via drizzle's
+      # onConflictDoUpdate, so re-runs refresh polygons from the
+      # upstream open-data sources rather than duping rows.
+      bun run src/seed.ts || echo "[finnbydel-build] seed step failed; continuing"
       popd >/dev/null
 
       # ── App ──────────────────────────────────────────────────
@@ -164,25 +154,21 @@ in
     wants = [ "network-online.target" ];
     wantedBy = [ "multi-user.target" ];
 
-    path = with pkgs; [
-      bun
-      openssl
-      prisma-engines_6
-    ];
+    path = with pkgs; [ bun ];
 
-    environment = prismaEnv // {
+    environment = {
       DATABASE_URL = "file:${dbPath}";
       NODE_ENV = "production";
       PORT = toString serverPort;
       HOST = "127.0.0.1";
     };
 
-    # Skip start until DB + generated Prisma client both exist. The
-    # build's ExecStartPost re-evaluates this on success, so the
-    # unit picks up cleanly on first deploy.
+    # Skip start until DB + drizzle deps both exist. Build's
+    # ExecStartPost re-evaluates this on success, so the unit
+    # picks up cleanly on first deploy.
     unitConfig.ConditionPathExists = [
       dbPath
-      "/var/lib/finnbydel/src/server/node_modules/@prisma/client"
+      "/var/lib/finnbydel/src/server/node_modules/drizzle-orm"
     ];
 
     serviceConfig = {
