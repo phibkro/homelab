@@ -49,7 +49,12 @@ let
   serverPort = 9095;
   staticPort = 9096;
   dbPath = "/var/lib/drinks/db.sqlite";
-  apiUrl = "https://drinks-api.nori.lan";
+  # API URL baked into the SPA build at compile time. Public-internet
+  # URL so the same bundle works for both audiences (tailnet hits go
+  # via Cloudflare too — small detour, acceptable for low-traffic
+  # personal site). Tailnet name (drinks-api.nori.lan) still works
+  # for direct-to-server probes; the SPA just doesn't use it.
+  apiUrl = "https://drinks-api.phibkro.org";
 
   prismaEnv = {
     PRISMA_QUERY_ENGINE_LIBRARY = "${pkgs.prisma-engines_6}/lib/libquery_engine.node";
@@ -259,6 +264,22 @@ in
     port = serverPort;
     audience = "public";
     monitor = { };
+  };
+
+  # Internet-public exposure via cloudflared.
+  nori.publicRoutes.drinks = {
+    host = "drinks";
+    port = staticPort;
+    sitemap = {
+      title = "Drinks";
+      description = "Cocktail recipe browser, GraphQL backed. Uni project, 2023.";
+    };
+  };
+  # API needs to be public too — the SPA bakes drinks-api.phibkro.org
+  # into the JS bundle at build time. Backend-only, no sitemap entry.
+  nori.publicRoutes.drinks-api = {
+    host = "drinks-api";
+    port = serverPort;
   };
 
   nori.harden.drinks-build = {

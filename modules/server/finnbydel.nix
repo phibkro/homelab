@@ -207,6 +207,16 @@ in
     };
   };
 
+  # Internet-public exposure via cloudflared at finnbydel.phibkro.org.
+  nori.publicRoutes.finnbydel = {
+    host = "finnbydel";
+    port = servePort;
+    sitemap = {
+      title = "Finnbydel";
+      description = "Neighborhood marketplace, T3 stack. Uni project, 2023.";
+    };
+  };
+
   nori.harden.finnbydel-build = {
     binds = [ "/var/lib/finnbydel" ];
   };
