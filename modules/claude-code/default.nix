@@ -143,6 +143,33 @@ let
       "context7"
     ];
 
+    # Per-skill override map. "user-invocable-only" hides the skill's
+    # description from the auto-loaded skills listing (saves ~150-300
+    # tokens per session per skill) but keeps the slash-command
+    # accessible — `/shadcn-ui`, `/caveman`, etc. still work.
+    #
+    # Applied to:
+    #   * the 7 caveman-* skills — opt-in compressed-comms mode, not
+    #     something we want auto-loaded into every session
+    #   * frontend-design — heavy token-cost description, only relevant
+    #     when actively building UI
+    #   * shadcn-ui — same; UI-component-building tool, not a default
+    #
+    # Anything else stays auto-loaded so the ambient skill list keeps
+    # functioning. Add an entry here if a future skill turns out to be
+    # too heavy for the auto-discovery slot.
+    skillOverrides = {
+      caveman = "user-invocable-only";
+      cavecrew = "user-invocable-only";
+      caveman-commit = "user-invocable-only";
+      caveman-compress = "user-invocable-only";
+      caveman-help = "user-invocable-only";
+      caveman-review = "user-invocable-only";
+      caveman-stats = "user-invocable-only";
+      frontend-design = "user-invocable-only";
+      shadcn-ui = "user-invocable-only";
+    };
+
     # Status line: shown in Claude Code's footer/header. Path is the
     # nix-store hash of the script above; deterministic + reproducible
     # across rebuilds. No symlink in ~/.claude/ needed — Claude reads
@@ -203,11 +230,19 @@ in
       (importSkillsDir "${inputs.caveman}/skills")
 
       {
-        # Single skill from anthropics/skills (the Agent-Skills public
-        # repo) — frontend-design only. Add more here as needed; the
-        # whole repo is already pulled.
+        # Single-skill cherry-picks from larger repos. The whole repo
+        # is pulled by the flake input; we only mount the subdir we
+        # actually want.
         ".claude/skills/frontend-design" = {
           source = "${inputs.anthropics-skills}/skills/frontend-design";
+          recursive = true;
+        };
+        ".claude/skills/shadcn-ui" = {
+          source = "${inputs.shadcn}/skills/shadcn-ui";
+          recursive = true;
+        };
+        ".claude/skills/obsidian-markdown" = {
+          source = "${inputs.obsidian-skills}/skills/obsidian-markdown";
           recursive = true;
         };
       }

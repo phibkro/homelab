@@ -61,6 +61,15 @@
     # etc.) is one extra symlink away if/when needed.
     anthropics-skills.url = "github:anthropics/skills";
     anthropics-skills.flake = false;
+    # masonjames/Shadcnblocks-Skill — gives Claude Code expert
+    # knowledge of 2,500+ shadcn/ui blocks. Single `shadcn-ui` skill.
+    shadcn.url = "github:masonjames/Shadcnblocks-Skill";
+    shadcn.flake = false;
+    # kepano/obsidian-skills — multi-skill (defuddle, json-canvas,
+    # obsidian-bases, obsidian-cli, obsidian-markdown). We only
+    # consume obsidian-markdown today.
+    obsidian-skills.url = "github:kepano/obsidian-skills";
+    obsidian-skills.flake = false;
   };
 
   outputs =

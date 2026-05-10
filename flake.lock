@@ -305,6 +305,22 @@
         "type": "github"
       }
     },
+    "obsidian-skills": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1778185448,
+        "narHash": "sha256-2kr8fmkuxRLaTy2O+dTv9K+75mRIqkLmaArw2/hj5uc=",
+        "owner": "kepano",
+        "repo": "obsidian-skills",
+        "rev": "ac9398734fe719565809f7a6048b05c36b1ca38f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "kepano",
+        "repo": "obsidian-skills",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "anthropics-skills": "anthropics-skills",
@@ -314,10 +330,28 @@
         "nixos-hardware": "nixos-hardware",
         "nixpkgs": "nixpkgs",
         "nixpkgs-master": "nixpkgs-master",
+        "obsidian-skills": "obsidian-skills",
+        "shadcn": "shadcn",
         "sops-nix": "sops-nix",
         "stylix": "stylix",
         "superpowers": "superpowers",
         "zen-browser": "zen-browser"
+      }
+    },
+    "shadcn": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1769747802,
+        "narHash": "sha256-8ytqk2f4/SkgyUsTyrK/WSf7vstaPcVeMCGVJtPefeo=",
+        "owner": "masonjames",
+        "repo": "Shadcnblocks-Skill",
+        "rev": "a87b3bd218056f88375ea1417ea7b1438bcca31a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "masonjames",
+        "repo": "Shadcnblocks-Skill",
+        "type": "github"
       }
     },
     "sops-nix": {
