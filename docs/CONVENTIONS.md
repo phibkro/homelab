@@ -95,7 +95,7 @@ See `modules/effects/lan-route.nix` for the schema.
 ## Network policy: default-deny
 
 - **Tailnet firewall**: only Caddy (`80 + 443`) and Samba (`445`) are open by default. All backend ports closed. Services opt in via `nori.lanRoutes.<name>.exposeOnTailnet = true` for direct port access (rare — Caddy is the canonical entry).
-- **Public internet**: nothing exposed yet. Cloudflare Tunnel + Access is the future plan when needed.
+- **Public internet**: homelab does not serve public traffic. Personal apps that need public exposure live at the Cloudflare edge (Pages + Workers); Tailscale Funnel is the prototyped path if a future service ever needs to land public traffic on workstation.
 - **Localhost**: services bind to `0.0.0.0` so Caddy can reach them; the firewall enforces what's reachable from outside.
 
 ## Filesystem hardening: default-deny

@@ -33,7 +33,7 @@ The lab serves a small household (Philip plus a handful of family members) and i
 ## Non-goals
 
 - High availability. Single host, single PSU, single ISP.
-- Public internet hosting. Tailscale-first; Cloudflare Tunnel + Cloudflare Access only when Tailscale friction emerges.
+- Public internet hosting from the homelab. Tailscale-first internally; personal apps that need a public surface live at the Cloudflare edge (Pages + Workers), not on workstation. If a future service genuinely needs to land public traffic on workstation, Tailscale Funnel is the prototyped path.
 - Multi-machine orchestration beyond two hosts.
 - Multi-tenant OS isolation.
 
@@ -161,7 +161,7 @@ Three network zones with default-deny posture:
 
 - **Localhost.** Services bind here unless explicitly exposed.
 - **Tailnet (trusted network).** Personal devices and family members. Most services exposed here. SSH, SSHFS, Samba, direct service ports are tailnet-only.
-- **Public internet (Phase 4 deferred).** Specific HTTP services exposed via Cloudflare Tunnel at named subdomains under `phibkro.org`, with auth at the edge via Cloudflare Access (free tier, email magic links). Triggered when Tailscale friction emerges, not by schedule.
+- **Public internet (homelab does not serve).** Personal apps that need public exposure live at the Cloudflare edge — Pages for static (`phibkro.org` apex, filmder, drinks-app, finnbydel-app, heim) and Workers + D1 for stateful backends (drinks, finnbydel). The homelab keeps tailnet-only copies of `filmder` + `heim` via `nori.lanRoutes` for fast internal access. If a future service genuinely needs to land public traffic on workstation, Tailscale Funnel is the prototyped path (preserved in `memory/reference/tailscale_funnel_implementation.md`); a `cloudflared` Tunnel approach was decommissioned 2026-05-08.
 
 **Implementation pattern:** services use `openFirewall = false` and access flows through Caddy at `https://<name>.nori.lan` (see "LAN routing abstraction" below). Direct backend ports stay closed on tailnet by default; opt in per-service via `nori.lanRoutes.<name>.exposeOnTailnet = true` only when truly needed.
 
@@ -505,7 +505,7 @@ Edit on laptop → `nh os switch --target-host <host>` → atomic activation →
 | Tier | Examples | Snapshot | Local backup (Pi) | Off-site (Hetzner) |
 |---|---|---|---|---|
 | Re-derivable | Streaming media, Ollama models, Nix store, package caches | Weekly or none | No | No |
-| Service state | Jellyfin DB, Immich DB+uploads, Open WebUI, Cloudflared creds | Daily | Yes | Selected (Immich uploads yes; Open WebUI yes; Cloudflared no — re-create) |
+| Service state | Jellyfin DB, Immich DB+uploads, Open WebUI, Vaultwarden vaults | Daily | Yes | Selected (Immich uploads yes; Open WebUI yes; Vaultwarden yes) |
 | Irreplaceable | Personal photos, home videos, finished projects, work in progress, flake repo | Hourly to daily | Yes | Yes |
 
 System config covered by Git mirrored to GitHub; not a backup target.
@@ -528,16 +528,16 @@ Failure of any of these alerts via ntfy.
 
 ## Access and exposure model
 
-| Path | SSH (user) | SSH (root) | Samba | Cloudflare Tunnel | Snapshot |
-|---|---|---|---|---|---|
-| `/home/philip` | Yes | Yes | No | No | Hourly |
-| `/srv/share` | Yes | Yes | Yes (auth) | No | Daily |
-| `/mnt/media/streaming` | Yes | Yes | Yes (auth, RW) | Via Jellyfin only | Weekly |
-| `/mnt/media/photos` | Yes | Yes | No | Via Immich only | Daily |
-| `/mnt/media/home-videos` | Yes | Yes | No | Via Immich only | Weekly |
-| `/mnt/media/projects` | Yes | Yes | Yes (auth) | No | Weekly |
-| `/var/lib/<service>` | No | Yes | No | Service's own protocol | Daily |
-| `/etc`, `/nix`, `/root` | No | Yes | No | No | Per system rebuild (`@`) |
+| Path | SSH (user) | SSH (root) | Samba | Snapshot |
+|---|---|---|---|---|
+| `/home/philip` | Yes | Yes | No | Hourly |
+| `/srv/share` | Yes | Yes | Yes (auth) | Daily |
+| `/mnt/media/streaming` | Yes | Yes | Yes (auth, RW) | Weekly |
+| `/mnt/media/photos` | Yes | Yes | No | Daily |
+| `/mnt/media/home-videos` | Yes | Yes | No | Weekly |
+| `/mnt/media/projects` | Yes | Yes | Yes (auth) | Weekly |
+| `/var/lib/<service>` | No | Yes | No | Daily |
+| `/etc`, `/nix`, `/root` | No | Yes | No | Per system rebuild (`@`) |
 
 OS has one user (Philip). Family members get per-service accounts in Jellyfin, Immich, Open WebUI; their devices get Tailscale invites.
 
@@ -585,13 +585,13 @@ Email digest deferred. When set up: SMTP via Gmail with app password (sufficient
 | 2 | Reformat IronWolf Pro to btrfs | done (pulled forward into Phase 5; see "Repository conventions") |
 | 3 | VM dry-run install (UTM) | done; `vm-test` on tailnet |
 | 4 | Bare-metal install on workstation | done |
-| 5 | Service migration | in progress (file/AI/media/SSO/observability live: Samba, Blocky, Ollama, Open WebUI, Jellyfin, sops, restic Pattern A+C2, Caddy, Authelia, Gatus, beszel hub, ntfy. Pending: Immich, Cloudflare Tunnel, Hetzner off-site restic) |
+| 5 | Service migration | in progress (file/AI/media/SSO/observability live: Samba, Blocky, Ollama, Open WebUI, Jellyfin, Immich, sops, restic Pattern A+C2, Caddy, Authelia, Gatus, beszel hub, ntfy. Pending: Hetzner off-site restic) |
 | 6 | Desktop environment | done — Hyprland + greetd + waybar + mako + hyprlock + hypridle on workstation |
 | 7 | `machines/pi/` live + cross-host service split | done — Pi appliance bringup, mutual observability, Beszel hub + ntfy server migrated to Pi via the cross-host split-module pattern (CLAUDE.md "How to relocate a service to pi") |
 
 **Reactive phases (no scheduled trigger):**
 
-- **Cloudflare Tunnel + Cloudflare Access.** When Tailscale friction emerges (someone refuses to install another app, public link sharing needed).
+- **Tailscale Funnel for a homelab-served public surface.** When a future service genuinely needs to land public traffic on workstation (no current candidate; personal-app public surface lives on Cloudflare Pages + Workers, not the homelab). Reference impl preserved in `memory/reference/tailscale_funnel_implementation.md`.
 - **Email digest reports.** When ntfy alone proves noisy enough that summarization helps.
 - **Second media drive on workstation.** When IronWolf >80% full or RAID1 redundancy becomes desired.
 - **deploy-rs.** When a "deployed broken config, lost remote access" incident occurs.

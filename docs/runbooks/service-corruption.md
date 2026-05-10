@@ -10,7 +10,7 @@ A service's database / state got corrupted — Open WebUI won't start with "data
 
 Pattern matches DESIGN.md L210-289. The right flavor depends on how the service stores state.
 
-### Pattern A — filesystem-only (Jellyfin, Tailscale, Cloudflared, plain Pattern-A services)
+### Pattern A — filesystem-only (Jellyfin, Tailscale, plain Pattern-A services)
 
 ```bash
 # 1. Stop service
