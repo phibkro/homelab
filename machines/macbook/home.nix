@@ -19,7 +19,7 @@
 #   home-manager switch --flake ~/Documents/nix-migration#macbook
 
 {
-  imports = [ ../core.nix ];
+  imports = [ ../pc.nix ];
 
   home.username = "nori";
   home.homeDirectory = "/Users/nori";
@@ -30,8 +30,10 @@
 
   home.packages = with pkgs; [
     # CLI tooling Mac-specific to this host. Cross-platform tooling
-    # that workstation also wants (comma, starship, programs.git, age,
-    # sops, claude-code) lives in core.nix.
+    # for every operator-PC (claude-code + happy-coder) lives in
+    # machines/pc.nix → modules/claude-code/. Cross-machine including
+    # pi (starship, programs.git, comma, sops CLI, etc.) lives in
+    # machines/core.nix.
 
     gh
 
@@ -41,8 +43,6 @@
 
     ffmpeg
     tree-sitter
-
-    claude-code # Anthropic CLI; per-machine, not in core.nix (pi doesn't need ~300 MB Node closure)
 
     # === GUI apps ===
     # On Mac, home-manager's targets.darwin.linkApps activation

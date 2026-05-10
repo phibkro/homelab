@@ -1,10 +1,46 @@
 { lib, pkgs, ... }:
 
+# Claude Code agent — declarative + reusable. Pure home-manager module
+# imported via machines/pc.nix on every operator-attached PC (workstation
+# + macbook). The Pi appliance does NOT import this — pi has no operator
+# agent loop, just servers, and the claude-code Node closure shouldn't
+# land on pi's anti-write SSD.
+#
+# ── What's managed here ─────────────────────────────────────────
+#   pkgs.claude-code           — the `claude` CLI on home.packages
+#   ~/.claude/skills/          — recursive: every skill folder under
+#                                ./skills/ becomes available in Claude
+#                                Code automatically. Add a new skill =
+#                                create folder + rebuild.
+#   ~/.claude/settings.json    — generated from the `settings` attrset
+#                                below. Schema-validated; see
+#                                json.schemastore.org/claude-code-settings.
+#                                Includes statusLine, MCP posture,
+#                                effort level, dangerous-mode prompt skip.
+#
+# Future additions follow the same shape:
+#   ~/.claude/CLAUDE.md        — user-level CLAUDE.md (cross-project
+#                                preferences, persona, working-style)
+#   ~/.claude/agents/          — sub-agents
+#
+# ── What's NOT managed here ─────────────────────────────────────
+# Dynamic state — accumulates over sessions, isn't config:
+#   ~/.claude/projects/<project>/memory/* — per-project memory
+#   ~/.claude/projects/<project>/todos/*  — per-session todos
+#   ~/.claude/sessions/*                  — session history
+#   ~/.claude.json                        — user-scope MCP servers,
+#                                           oauth tokens, runtime
+#                                           caches; mutated on every
+#                                           launch, can't be home-
+#                                           managed wholesale.
+# Project-level config (`<project>/.claude/`) stays per-project; this
+# module only handles the user-level agent surface.
+
 let
-  # Status line script. Keeps the operator's content intact (jq-based
-  # parse of the JSON Claude Code pipes in) but injects PATH so jq + git
-  # are guaranteed available — declarative deps beats `nix-shell -p jq`
-  # at runtime.
+  # Status line script. Operator's content intact (jq-based parse of the
+  # JSON Claude Code pipes in) but PATH injects jq + git so they're
+  # guaranteed available — declarative deps beats `nix-shell -p jq` at
+  # runtime.
   statuslineScript = pkgs.writeShellScript "claude-statusline" ''
     PATH=${
       lib.makeBinPath [
@@ -59,13 +95,10 @@ let
     echo "$status"
   '';
 
-  # Settings.json — single attrset, rendered to JSON below. Each key
-  # documented inline so the rationale lives next to the value, not in
-  # the commit history.
+  # settings.json content. Single attrset, rendered to JSON below. Each
+  # key documented inline so the rationale lives next to the value, not
+  # in commit history.
   settings = {
-    # Enables IDE autocomplete + schema validation when editing this
-    # file (or its rendered output) in editors that pick up the
-    # JSON-Schema.org store.
     "$schema" = "https://json.schemastore.org/claude-code-settings.json";
 
     theme = "auto";
@@ -108,51 +141,19 @@ let
   };
 in
 {
-  # Claude Code agent configuration — declarative + reusable.
-  #
-  # Same pattern as the rest of modules/desktop: home-manager links
-  # files from the repo into ~/. The repo is the source of truth; each
-  # operator-attached host (workstation today, future Mac/laptop) picks
-  # up the same agent config via home-manager-on-NixOS or home-manager-
-  # standalone (Mac).
-  #
-  # ── What's managed here ─────────────────────────────────────────
-  #   ~/.claude/skills/        — recursive: every skill folder under
-  #                              modules/desktop/claude/skills/ becomes
-  #                              available in Claude Code automatically.
-  #                              Add a new skill = create folder + rebuild.
-  #   ~/.claude/settings.json  — generated from the `settings` attrset
-  #                              above. Schema-validated; see
-  #                              json.schemastore.org/claude-code-settings.
-  #                              Includes statusLine, MCP posture,
-  #                              effort level, dangerous-mode prompt skip.
-  #
-  # Future additions follow the same shape:
-  #   ~/.claude/CLAUDE.md      — user-level CLAUDE.md (cross-project
-  #                              preferences, persona, working-style)
-  #   ~/.claude/agents/        — sub-agents
-  #
-  # ── What's NOT managed here ─────────────────────────────────────
-  # Dynamic state — accumulates over sessions, isn't config:
-  #   ~/.claude/projects/<project>/memory/* — per-project memory
-  #   ~/.claude/projects/<project>/todos/*  — per-session todos
-  #   ~/.claude/sessions/*                  — session history
-  #   ~/.claude.json                        — user-scope MCP servers,
-  #                                           oauth tokens, runtime
-  #                                           caches; mutated on every
-  #                                           launch, can't be home-
-  #                                           managed wholesale.
-  # Project-level config (`<project>/.claude/`) stays per-project; this
-  # module only handles the user-level agent surface.
+  home.packages = [
+    pkgs.claude-code # Anthropic CLI; pulls Node closure (~300 MB)
+    pkgs.happy-coder # Mobile/web client wrapper for Claude Code + Codex
+  ];
 
-  home-manager.users.nori.home.file = {
+  home.file = {
     # Recursive symlink: home-manager links each file under
-    # ./claude/skills/<name>/SKILL.md to ~/.claude/skills/<name>/SKILL.md
+    # ./skills/<name>/SKILL.md to ~/.claude/skills/<name>/SKILL.md
     # individually. Files NOT in the source dir stay untouched in ~/,
     # so existing ~/.claude/skills/<other> from a prior setup aren't
     # clobbered (though they'd be stale — drop them manually).
     ".claude/skills" = {
-      source = ./claude/skills;
+      source = ./skills;
       recursive = true;
     };
 

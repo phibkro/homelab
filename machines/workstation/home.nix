@@ -150,7 +150,7 @@ in
 # `default.nix` so this file's shape matches every other
 # machines/<n>/home.nix regardless of NixOS-ness.
 {
-  imports = [ ../core.nix ];
+  imports = [ ../pc.nix ];
 
   home.stateVersion = "25.11"; # match host's system.stateVersion
   programs.home-manager.enable = true;
@@ -167,7 +167,6 @@ in
   # the bindings.
   home.packages = [
     cheatsheet
-    pkgs.claude-code # per-machine, not core.nix (pi doesn't need Node closure)
     pkgs.gh # GitHub CLI — PR ops, gh auth, gh api …
     pkgs.nvtopPackages.nvidia # GPU monitor (NVIDIA-only build, smaller closure)
     pkgs.ncdu # interactive disk usage browser

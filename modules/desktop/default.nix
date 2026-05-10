@@ -10,7 +10,6 @@ _: {
     ./hypr-lock.nix
     ./gaming.nix
     ./virt.nix
-    ./claude.nix
     ./stylix.nix
     ./hyprsunset.nix
   ];
