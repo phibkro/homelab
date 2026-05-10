@@ -47,6 +47,20 @@
     # module via modules/desktop/stylix.nix.
     stylix.url = "github:danth/stylix";
     stylix.inputs.nixpkgs.follows = "nixpkgs";
+
+    # Third-party Claude Code skill sources — pinned via flake.lock,
+    # consumed as plain source trees by modules/claude-code/default.nix.
+    # Update via `nix flake update --update-input <name>`. Not flakes
+    # themselves, hence flake = false.
+    superpowers.url = "github:obra/superpowers";
+    superpowers.flake = false;
+    caveman.url = "github:juliusbrussee/caveman";
+    caveman.flake = false;
+    # Anthropics' public Agent-Skills repo. We only consume the
+    # frontend-design subdir today; the rest (xlsx, pptx, mcp-builder,
+    # etc.) is one extra symlink away if/when needed.
+    anthropics-skills.url = "github:anthropics/skills";
+    anthropics-skills.flake = false;
   };
 
   outputs =
@@ -202,6 +216,11 @@
           system = "x86_64-darwin";
           config.allowUnfree = true;
         };
+        # Pass `inputs` to home-manager modules so modules/claude-code/
+        # can reach the third-party-skill flake inputs (superpowers,
+        # caveman, anthropics-skills). Workstation gets the same via
+        # extraSpecialArgs in its NixOS-side home-manager wrapper.
+        extraSpecialArgs = { inherit inputs; };
         modules = [ ./machines/macbook/home.nix ];
       };
 

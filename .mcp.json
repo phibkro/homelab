@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/mcp.json",
+  "_comment": "Project-level MCP server registrations for the homelab repo. Claude Code has no clean declarative user-scope MCP path (`~/.claude.json` is dynamic state mixed with auth tokens), so per-project .mcp.json + enabledMcpjsonServers in user settings is the most-reproducible pattern. Servers reference Nix-store-pinned binaries from modules/claude-code/default.nix's home.packages, so versions follow flake.lock not npx-fetch-at-runtime. Mirror this file (or symlink to it) in any other project that wants the same server set.",
+  "mcpServers": {
+    "fetch": {
+      "command": "mcp-server-fetch"
+    },
+    "context7": {
+      "command": "context7-mcp"
+    }
+  }
+}

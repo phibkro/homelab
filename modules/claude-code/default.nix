@@ -1,4 +1,9 @@
-{ lib, pkgs, ... }:
+{
+  inputs,
+  lib,
+  pkgs,
+  ...
+}:
 
 # Claude Code agent — declarative + reusable. Pure home-manager module
 # imported via machines/pc.nix on every operator-attached PC (workstation
@@ -129,6 +134,14 @@ let
     # surfaces only load when a project actually needs them.
     allowManagedMcpServersOnly = true;
     enableAllProjectMcpServers = false;
+    # Auto-trust these specific servers from project .mcp.json files —
+    # no per-project trust prompt for the ones we always want. Project
+    # .mcp.json declares the actual command + args; this just gates
+    # which names are allowed to load.
+    enabledMcpjsonServers = [
+      "fetch"
+      "context7"
+    ];
 
     # Status line: shown in Claude Code's footer/header. Path is the
     # nix-store hash of the script above; deterministic + reproducible
@@ -143,24 +156,60 @@ in
 {
   home.packages = [
     pkgs.claude-code # Anthropic CLI; pulls Node closure (~300 MB)
-    pkgs.happy-coder # Mobile/web client wrapper for Claude Code + Codex
+    pkgs.agent-browser # Persistent browser automation for AI agents
+    # MCP servers — direct binaries from nixpkgs (no npx-fetch latency,
+    # version pinned by flake.lock). Wired into Claude Code via the
+    # project-level .mcp.json at the repo root + enabledMcpjsonServers
+    # in settings below.
+    pkgs.mcp-server-fetch # `fetch` — URL → markdown tool
+    pkgs.context7-mcp # `context7` — library docs lookup
   ];
 
-  home.file = {
-    # Recursive symlink: home-manager links each file under
-    # ./skills/<name>/SKILL.md to ~/.claude/skills/<name>/SKILL.md
-    # individually. Files NOT in the source dir stay untouched in ~/,
-    # so existing ~/.claude/skills/<other> from a prior setup aren't
-    # clobbered (though they'd be stale — drop them manually).
-    ".claude/skills" = {
-      source = ./skills;
-      recursive = true;
-    };
+  # Pull each immediate-child directory under `src` into the user's
+  # ~/.claude/skills/ as a top-level entry. Claude Code's skill
+  # discovery is shallow (expects ~/.claude/skills/<name>/SKILL.md, not
+  # nested), so flattening collections from external sources at this
+  # boundary keeps every skill discoverable without per-skill
+  # boilerplate. recursive = true symlinks at the file level so all
+  # entries can coexist under the same parent dir.
+  home.file =
+    let
+      importSkillsDir =
+        src:
+        lib.mapAttrs' (
+          n: _:
+          lib.nameValuePair ".claude/skills/${n}" {
+            source = "${src}/${n}";
+            recursive = true;
+          }
+        ) (lib.filterAttrs (_: t: t == "directory") (builtins.readDir src));
+    in
+    lib.mkMerge [
+      {
+        # In-repo skills (ours): agent-browser, analyse-system,
+        # find-skills, wrap-session.
+        ".claude/skills" = {
+          source = ./skills;
+          recursive = true;
+        };
 
-    # Generated JSON, not a source file. The `settings` attrset above
-    # is the source of truth; the rendered file is reproducible from
-    # any rebuild. Editing ~/.claude/settings.json directly would lose
-    # the change on the next home-manager activation.
-    ".claude/settings.json".text = builtins.toJSON settings;
-  };
+        # Generated settings.json — see `settings` attrset above.
+        ".claude/settings.json".text = builtins.toJSON settings;
+      }
+
+      # Third-party skill collections — flake-input-pinned, mapped one-
+      # subdir-per-skill into the flat ~/.claude/skills/.
+      (importSkillsDir "${inputs.superpowers}/skills")
+      (importSkillsDir "${inputs.caveman}/skills")
+
+      {
+        # Single skill from anthropics/skills (the Agent-Skills public
+        # repo) — frontend-design only. Add more here as needed; the
+        # whole repo is already pulled.
+        ".claude/skills/frontend-design" = {
+          source = "${inputs.anthropics-skills}/skills/frontend-design";
+          recursive = true;
+        };
+      }
+    ];
 }
