@@ -159,13 +159,6 @@ let
     # functioning. Add an entry here if a future skill turns out to be
     # too heavy for the auto-discovery slot.
     skillOverrides = {
-      caveman = "user-invocable-only";
-      cavecrew = "user-invocable-only";
-      caveman-commit = "user-invocable-only";
-      caveman-compress = "user-invocable-only";
-      caveman-help = "user-invocable-only";
-      caveman-review = "user-invocable-only";
-      caveman-stats = "user-invocable-only";
       frontend-design = "user-invocable-only";
       shadcn-ui = "user-invocable-only";
     };
