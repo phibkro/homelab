@@ -207,9 +207,6 @@ Phase 4 is done when all four work.
   config until the OneTouch's existing data has been migrated off
   (any Phase-1 backups it held are now on @archive on IronWolf;
   the migration is in `git log` around the OneTouch transition).
-- **Pi setup.** `machines/pi/` declarative is deferred until a
-  NixOS-bootable USB SSD lands; PiOS interim covered DNS/backup
-  roles in the meantime.
 
 ## What to do if it goes catastrophically wrong
 
