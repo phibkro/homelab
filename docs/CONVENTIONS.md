@@ -92,6 +92,14 @@ See `modules/effects/lan-route.nix` for the schema.
 
 **Naming**: function over brand. `chat`, `ai`, `alert`, `media`, `metrics`, `status` — not `open-webui`, `ollama`, `ntfy`, `jellyfin`, `beszel`, `gatus`. Brand names only when the brand IS the identity (`auth` for Authelia, `samba` if it ever gets routed).
 
+**Audience drives the auth stack**: every route declares `audience = "operator" | "family" | "public"` (default `operator`).
+
+- `operator` — admin UIs. Tailnet membership IS the auth; no Authelia on top. Layering forward-auth here would duplicate the network-perimeter guarantee and make Authelia uptime load-bearing for operator workflows. This is why qBittorrent's `LocalHostAuth=false` is a deliberate design choice, not a security oversight — Caddy is the only HTTP entry, and Caddy is reachable only via tailnet.
+- `family` — services with per-user state (Jellyfin, Immich, Vaultwarden, etc.). Native OIDC where the app supports it; forward-auth at Caddy where it doesn't (Komga, calibre-web). The auth layer carries identity *into* the app.
+- `public` — intentionally open dashboards + the SSO portal itself.
+
+Full rationale + the per-audience details live in the `audience` option description in `modules/effects/lan-route.nix`.
+
 ## Network policy: default-deny
 
 - **Tailnet firewall**: only Caddy (`80 + 443`) and Samba (`445`) are open by default. All backend ports closed. Services opt in via `nori.lanRoutes.<name>.exposeOnTailnet = true` for direct port access (rare — Caddy is the canonical entry).
@@ -120,6 +128,18 @@ Common shapes:
 - **Read-only subtree**: Jellyfin streaming /mnt/media — `readOnlyBinds = [ "/mnt/media" "/srv/share" ];`
 - **Upstream-opinionated ProtectHome**: Syncthing's upstream module sets a specific value; `protectHome = null` skips the override entirely.
 - **Composed**: services with extra serviceConfig (CPUQuota, EnvironmentFile, SupplementaryGroups, PrivateDevices) declare those in a sibling `systemd.services.<n>.serviceConfig` block — module merging combines the two.
+
+## Shared-file access: the `media` group
+
+Services that read/write the same files on `@downloads` join a single shared `media` group. Each service runs as its own uid (`sonarr`, `radarr`, `qbittorrent`, `jellyfin`, `immich`, `komga`, `calibre-web`, …) but all are members of gid `media`. Library dirs are `root:media 02775` (setgid + group rwx), so new files inherit `media` as their group automatically.
+
+```nix
+users.users.<svc>.extraGroups = [ "media" ];
+```
+
+This is what makes the qBittorrent → *arr hardlink-on-import flow work: distinct uids, shared gid, group-writable files. The kernel's `fs.protected_hardlinks=1` requires the caller to either own the source or have read+write on it — group membership + 0664 mode (set via qBittorrent's `UMask=0002`) satisfies that. Without the shared group, `link()` returns EPERM and *arr falls back to reflink/copy (see `docs/gotchas.md`).
+
+Canonical doc: `modules/server/arr/shared.nix` header comment (group definition, dir layout, setgid rationale).
 
 ## Secrets: sops-nix patterns
 
