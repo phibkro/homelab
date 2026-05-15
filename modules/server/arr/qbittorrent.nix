@@ -84,7 +84,33 @@
   #     seeds from DefaultSavePath after the move). HDD wear-isolation
   #     + faster downloads at gigabit+ link speeds.
   #
+  #     FAILURE MODE — the wedge: if @downloads fills (Jellyseerr
+  #     request burst, no cull), qBittorrent cannot finalize-move
+  #     partials → they pile up on the SN750 forever until root NVMe
+  #     also wedges. Both drives hit 100% together. Hit on 2026-05-14
+  #     (572 GiB of partials across 29 torrents). Mitigations now in
+  #     place:
+  #       - disk-alert.nix watches both filesystems and pages via
+  #         ntfy at 85% / 95%
+  #       - sonarr/radarr/lidarr first-run setup directs the operator
+  #         to set MinimumFreeSpaceWhenImporting via each UI
+  #     If alerts fire, cull @downloads (via *arr UIs) before queueing
+  #     more grabs. Full recovery procedure: docs/runbooks/storage-full.md.
+  #
   #   Session\TempPathEnabled=true     keep the split active
+  # Process umask = 0002 so finished files land mode 0664 (group-writable)
+  # instead of the default 0644. Required for the *arr → library
+  # hardlink-on-import: with `fs.protected_hardlinks=1` (kernel default),
+  # link(2) only succeeds if the caller owns the source file OR has
+  # read+write on it. *arr users share the `media` group with qBittorrent
+  # but not the UID, so group-writable files satisfy the kernel check
+  # and the library entry becomes a hardlink to the seeding copy instead
+  # of a second full copy on disk. Caught 2026-05-15: Battle Royale had
+  # two distinct inodes (uid=qbittorrent for the seeding copy, uid=radarr
+  # for the library file), proving link() had silently fallen back to
+  # copy — every torrent in @downloads stored twice (~2.9T doubled).
+  systemd.services.qbittorrent.serviceConfig.UMask = "0002";
+
   systemd.services.qbittorrent.preStart = lib.mkAfter ''
     # qBittorrent doesn't auto-create Session\TempPath; if it's
     # missing, every incomplete file_open hits "Permission denied"
