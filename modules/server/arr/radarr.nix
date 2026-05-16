@@ -13,6 +13,10 @@
   #   2. Set admin password
   #   3. Settings → Media Management → Root Folders →
   #        /mnt/media/downloads/movies
+  #   3a. Settings → Media Management → "Importing" →
+  #         "Minimum Free Space When Importing" → 5 GB.
+  #         See sonarr.nix for the rationale + qbittorrent.nix for the
+  #         wedge this prevents.
   #   4. Settings → Download Clients → Add → qBittorrent
   #        Host: localhost  Port: 8083
   #        Username/Password: from qBittorrent
