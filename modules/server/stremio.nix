@@ -95,7 +95,7 @@ in
   # Cache is re-derivable; the cert/identifier costs a re-pair if lost.
   # Worth backing up at the service tier — minimal storage cost.
   nori.backups.stremio = {
-    paths = [ "/var/lib/stremio" ];
+    include = [ "/var/lib/stremio" ];
     tier = "service";
   };
 }

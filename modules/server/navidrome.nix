@@ -121,7 +121,7 @@
   # The prepareCommand can use either path — bash file ops follow
   # symlinks.
   nori.backups.navidrome = {
-    paths = [
+    include = [
       "/var/lib/private/navidrome"
       "/var/backup/navidrome"
     ];

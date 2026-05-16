@@ -454,7 +454,7 @@
               '';
 
           # Every service module under modules/server/ must declare a
-          # backup intent — either `nori.backups.<name>.paths = [...]`
+          # backup intent — either `nori.backups.<name>.include = [...]`
           # for what to back up, or `nori.backups.<name>.skip = "..."`
           # for explicit opt-out. Forgetting to declare anything is the
           # systemic cause of silent coverage gaps; this check turns
@@ -490,7 +490,7 @@
                   echo
                   echo "Every service module must declare a backup intent."
                   echo "Either:"
-                  echo "  nori.backups.<name>.paths = [ \"/var/lib/<svc>\" ];"
+                  echo "  nori.backups.<name>.include = [ \"/var/lib/<svc>\" ];"
                   echo "or:"
                   echo "  nori.backups.<name>.skip = \"<one-line reason>\";"
                   echo

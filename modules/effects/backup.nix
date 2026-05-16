@@ -20,10 +20,10 @@ in
   # Service modules declare their own backup inline alongside the
   # service definition, the same way they declare lanRoutes:
   #
-  #   nori.backups.sonarr = { paths = [ "/var/lib/sonarr" ]; };
+  #   nori.backups.sonarr = { include = [ "/var/lib/sonarr" ]; };
   #
   #   nori.backups.vaultwarden = {
-  #     paths = [ "/var/lib/vaultwarden" "/var/backup/vaultwarden" ];
+  #     include = [ "/var/lib/vaultwarden" "/var/backup/vaultwarden" ];
   #     prepareCommand = ''
   #       ${pkgs.sqlite}/bin/sqlite3 /var/lib/vaultwarden/db.sqlite3 \
   #         ".backup '/var/backup/vaultwarden/db.sqlite3'"
@@ -31,9 +31,14 @@ in
   #   };
   #
   # Three pattern shapes from DESIGN.md L210-289 fit this schema:
-  #   * Pattern A (filesystem-only)   → paths = [...];
-  #   * Pattern B (built-in dump)     → paths includes the dump dir
-  #   * Pattern C2 (external dump)    → paths + prepareCommand
+  #   * Pattern A (filesystem-only)   → include = [...];
+  #   * Pattern B (built-in dump)     → include lists the dump dir
+  #   * Pattern C2 (external dump)    → include + prepareCommand
+  #
+  # `include` + `exclude` mirror restic's `--include` / `--exclude`
+  # naming. Both singular by convention (the option holds a list of
+  # paths each, but each entry is one path; `excludes` plural would
+  # imply a list of exclude-rule-sets).
   #
   # ── DynamicUser symlink gotcha ──────────────────────────────────
   # Services declared with `DynamicUser = true` (open-webui,
@@ -42,7 +47,7 @@ in
   # /var/lib/<name>. restic stores symlinks AS symlinks; pointing
   # backups at /var/lib/<name> produces a 0-byte snapshot of just
   # the symlink record, not the data. For these services, declare
-  # paths against /var/lib/private/<name> directly. See
+  # `include` against /var/lib/private/<name> directly. See
   # docs/gotchas.md.
 
   options.nori.backups = mkOption {
@@ -52,7 +57,7 @@ in
       `/mnt/backup/<name>`).
 
       Each entry MUST set exactly one of:
-        * `paths` — list of paths to back up (Pattern A; add
+        * `include` — list of paths to back up (Pattern A; add
           `prepareCommand` for Pattern C2)
         * `skip` — string explaining why this service has no backup
           (covered elsewhere, stateless, intentionally re-derivable)
@@ -65,9 +70,9 @@ in
     '';
     example = lib.literalExpression ''
       {
-        sonarr = { paths = [ "/var/lib/sonarr" ]; };
+        sonarr = { include = [ "/var/lib/sonarr" ]; };
         vaultwarden = {
-          paths = [ "/var/lib/vaultwarden" "/var/backup/vaultwarden" ];
+          include = [ "/var/lib/vaultwarden" "/var/backup/vaultwarden" ];
           prepareCommand = "sqlite3 ... .backup ...";
           timer = "*-*-* 04:30:00";
         };
@@ -79,11 +84,13 @@ in
         { config, ... }:
         {
           options = {
-            paths = mkOption {
+            include = mkOption {
               type = types.nullOr (types.listOf types.str);
               default = null;
               description = ''
-                Filesystem paths to back up. For DynamicUser services,
+                Filesystem paths to back up. Passed through to
+                restic's positional arguments (the restic NixOS
+                module's `paths` option). For DynamicUser services,
                 point at /var/lib/private/<name> directly — the
                 /var/lib/<name> symlink would otherwise be stored as
                 just the symlink record (caught by the assertion
@@ -95,7 +102,7 @@ in
               type = types.nullOr types.str;
               default = null;
               description = ''
-                When `paths` is null, this records why backup is
+                When `include` is null, this records why backup is
                 intentionally skipped. Required for opt-out — the
                 schema can't otherwise tell "intentionally skipped"
                 from "forgotten".
@@ -108,7 +115,7 @@ in
                 Bash command(s) to run before each restic backup.
                 Used for Pattern C2 (sqlite3 .backup before restic).
                 Null = Pattern A (filesystem-only). Ignored when
-                `paths` is null.
+                `include` is null.
               '';
             };
             exclude = mkOption {
@@ -116,12 +123,12 @@ in
               default = [ ];
               example = [ "/var/lib/qBittorrent/qBittorrent/incomplete" ];
               description = ''
-                Paths to exclude from the backup. Passed straight to
-                restic's `--exclude` flag. Use for ephemeral subdirs
-                under a service's state path that re-fill from scratch
-                (qBit `incomplete/`, browser caches, etc.) — pinning
-                their chunks in old snapshots costs real bytes on the
-                backup drive. Ignored when `paths` is null.
+                Paths to exclude from the backup. Mirrors restic's
+                `--exclude`. Use for ephemeral subdirs under a
+                service's state path that re-fill from scratch (qBit
+                `incomplete/`, browser caches, etc.) — pinning their
+                chunks in old snapshots costs real bytes on the backup
+                drive. Ignored when `include` is null.
               '';
             };
             timer = mkOption {
@@ -131,7 +138,7 @@ in
                 `OnCalendar` systemd timer expression. Default 03:00
                 UTC daily. Stagger across repos when concurrent USB
                 I/O on the OneTouch becomes a bottleneck. Ignored
-                when `paths` is null.
+                when `include` is null.
               '';
             };
             tier = mkOption {
@@ -190,7 +197,7 @@ in
                 # user          → 14d / 4w / 12m
                 # irreplaceable → 14d / 8w / 12m / 5y
               '';
-              description = "Restic forget/prune options. Default derived from `tier`. Ignored when `paths` is null.";
+              description = "Restic forget/prune options. Default derived from `tier`. Ignored when `include` is null.";
             };
           };
         }
@@ -200,7 +207,7 @@ in
 
   config = mkIf (config.nori.backups != { }) (
     let
-      activeBackups = lib.filterAttrs (_: cfg: cfg.paths != null) config.nori.backups;
+      activeBackups = lib.filterAttrs (_: cfg: cfg.include != null) config.nori.backups;
 
       # Services that use systemd DynamicUser=yes plus StateDirectory,
       # where /var/lib/<n> is a SYMLINK to /var/lib/private/<n>. restic
@@ -217,10 +224,10 @@ in
       badPaths = lib.flatten (
         lib.mapAttrsToList (
           _: cfg:
-          if cfg.paths == null then
+          if cfg.include == null then
             [ ]
           else
-            lib.filter (p: lib.any (svc: p == "/var/lib/${svc}") dynamicUserServices) cfg.paths
+            lib.filter (p: lib.any (svc: p == "/var/lib/${svc}") dynamicUserServices) cfg.include
         ) config.nori.backups
       );
 
@@ -235,16 +242,16 @@ in
       # then, every nori.backups.<n> on an appliance host MUST use
       # `skip = "..."`.
       myRole = config.nori.hosts.${config.networking.hostName}.role or null;
-      appliancePaths = lib.filter (cfg: cfg.paths != null) (lib.attrValues config.nori.backups);
+      appliancePaths = lib.filter (cfg: cfg.include != null) (lib.attrValues config.nori.backups);
     in
     {
       assertions = [
         {
-          assertion = lib.all (cfg: (cfg.paths != null) != (cfg.skip != null)) (
+          assertion = lib.all (cfg: (cfg.include != null) != (cfg.skip != null)) (
             lib.attrValues config.nori.backups
           );
           message = ''
-            Each nori.backups.<n> entry must set exactly one of `paths`
+            Each nori.backups.<n> entry must set exactly one of `include`
             (with content to back up) or `skip` (with a reason string),
             never both and never neither. Forgetting to make the
             decision is exactly the silent-coverage-gap this schema
@@ -254,9 +261,9 @@ in
         {
           assertion = badPaths == [ ];
           message = ''
-            nori.backups paths reference DynamicUser symlinks. restic
-            stores symlinks AS symlinks; pointing at /var/lib/<n> for
-            a DynamicUser service produces a 0-byte snapshot. Use
+            nori.backups include entries reference DynamicUser symlinks.
+            restic stores symlinks AS symlinks; pointing at /var/lib/<n>
+            for a DynamicUser service produces a 0-byte snapshot. Use
             /var/lib/private/<n> for these paths instead.
 
             Offending paths: ${lib.concatStringsSep ", " badPaths}
@@ -273,11 +280,11 @@ in
             Appliance hosts have anti-write storage (no swap, volatile
             journald, flash-only — see hosts/${config.networking.hostName}/hardware.nix)
             and no local restic target. All nori.backups.<n> declarations
-            on appliance hosts must use `skip = "<reason>"`, not `paths`.
+            on appliance hosts must use `skip = "<reason>"`, not `include`.
 
             Offending: ${
               lib.concatStringsSep ", " (
-                lib.attrNames (lib.filterAttrs (_: cfg: cfg.paths != null) config.nori.backups)
+                lib.attrNames (lib.filterAttrs (_: cfg: cfg.include != null) config.nori.backups)
               )
             }
 
@@ -292,7 +299,8 @@ in
       services.restic.backups = mapAttrs' (
         name: cfg:
         nameValuePair name {
-          inherit (cfg) paths exclude;
+          paths = cfg.include;
+          inherit (cfg) exclude;
           repository = "/mnt/backup/${name}";
           passwordFile = config.sops.secrets.restic-password.path;
           initialize = true;

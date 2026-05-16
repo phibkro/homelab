@@ -85,7 +85,7 @@
   # paths target /var/lib/private/open-webui directly. The
   # prepareCommand can use either path — bash file ops follow symlinks.
   nori.backups.open-webui = {
-    paths = [
+    include = [
       "/var/lib/private/open-webui"
       "/var/backup/open-webui"
     ];

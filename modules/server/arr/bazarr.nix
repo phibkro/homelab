@@ -47,5 +47,5 @@
   };
 
   # Pattern A — Bazarr's config + provider history. Static `bazarr` user.
-  nori.backups.bazarr.paths = [ "/var/lib/bazarr" ];
+  nori.backups.bazarr.include = [ "/var/lib/bazarr" ];
 }

@@ -82,5 +82,5 @@ _:
   # if the CA gets regenerated, every device with the current
   # caddy-local-ca.crt installed needs to re-trust the new public
   # cert. Static `caddy` user, real /var/lib/caddy directory.
-  nori.backups.caddy.paths = [ "/var/lib/caddy" ];
+  nori.backups.caddy.include = [ "/var/lib/caddy" ];
 }

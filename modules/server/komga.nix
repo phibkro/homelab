@@ -56,5 +56,5 @@
   # Pattern A — Komga's user/library/read-progress DB. Comic files
   # themselves live at /mnt/media/library/comics (already in
   # media-irreplaceable). Static `komga` user.
-  nori.backups.komga.paths = [ "/var/lib/komga" ];
+  nori.backups.komga.include = [ "/var/lib/komga" ];
 }

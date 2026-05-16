@@ -14,7 +14,7 @@ let
   # repos. For a deep check including media, run the drill manually:
   # `sudo systemctl start restore-drill-all.service`.
   # Repos with `paths` set (skip the explicit-opt-out entries).
-  activeRepos = lib.attrNames (lib.filterAttrs (_: cfg: cfg.paths != null) config.nori.backups);
+  activeRepos = lib.attrNames (lib.filterAttrs (_: cfg: cfg.include != null) config.nori.backups);
   drillRepos = lib.filter (n: n != "media-irreplaceable") activeRepos;
 
   drillScript = repos: ''

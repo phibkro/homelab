@@ -79,5 +79,5 @@
   # library can be re-derived from media files on disk, but watch
   # history is irreplaceable convenience data. Largest of the
   # service-state repos at ~210MB.
-  nori.backups.jellyfin.paths = [ "/var/lib/jellyfin" ];
+  nori.backups.jellyfin.include = [ "/var/lib/jellyfin" ];
 }

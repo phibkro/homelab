@@ -194,7 +194,7 @@
   # snapshots referencing the bygone full-incomplete-dir state. Live
   # state without incomplete/ is ~31 MiB; backups should track that.
   nori.backups.qbittorrent = {
-    paths = [ "/var/lib/qBittorrent" ];
+    include = [ "/var/lib/qBittorrent" ];
     exclude = [ "/var/lib/qBittorrent/qBittorrent/incomplete" ];
   };
 }

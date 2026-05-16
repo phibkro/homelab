@@ -69,5 +69,5 @@
   # Pattern A — config + history sqlite + custom formats. Sonarr
   # writes infrequently; file-snapshot consistency is acceptable
   # alongside btrbk hourly snapshots as a safety net.
-  nori.backups.sonarr.paths = [ "/var/lib/sonarr" ];
+  nori.backups.sonarr.include = [ "/var/lib/sonarr" ];
 }

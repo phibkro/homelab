@@ -101,7 +101,7 @@
   # prepareCommand handles the bootstrap case where the DB doesn't
   # exist yet.
   nori.backups.vaultwarden = {
-    paths = [
+    include = [
       "/var/lib/vaultwarden"
       "/var/backup/vaultwarden"
     ];

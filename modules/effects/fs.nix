@@ -13,7 +13,7 @@ in
   #   * arr/{sonarr,radarr,lidarr,bazarr,qbittorrent}.nix     binds
   #   * arr/shared.nix                                         tmpfiles
   #   * jellyfin.nix / immich.nix / calibre-web.nix / komga.nix
-  #   * backup/restic.nix      media-irreplaceable.paths
+  #   * backup/restic.nix      media-irreplaceable.include
   #   * backup/btrbk.nix       per-instance subvolume lists
   #
   # Plus the value-tier categorization from docs/DESIGN.md (re-derivable

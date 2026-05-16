@@ -67,7 +67,7 @@
       fail=0
       for name in ${
         lib.concatStringsSep " " (
-          lib.attrNames (lib.filterAttrs (_: cfg: cfg.paths != null) config.nori.backups)
+          lib.attrNames (lib.filterAttrs (_: cfg: cfg.include != null) config.nori.backups)
         )
       }; do
         echo "[$name] restic check"
@@ -103,7 +103,7 @@
       fail=0
       for name in ${
         lib.concatStringsSep " " (
-          lib.attrNames (lib.filterAttrs (_: cfg: cfg.paths != null) config.nori.backups)
+          lib.attrNames (lib.filterAttrs (_: cfg: cfg.include != null) config.nori.backups)
         )
       }; do
         echo "[$name] restic check --read-data-subset=10%"
@@ -132,11 +132,13 @@
   # Paths derived from nori.fs tier — host's disko config is the single
   # source of truth (see modules/effects/fs.nix). Adding a new media
   # subvolume in disko-media.nix with `tier = "irreplaceable"` flows
-  # through to media-irreplaceable.paths automatically; same for `user`
-  # → user-data.paths.
+  # through to media-irreplaceable.include automatically; same for `user`
+  # → user-data.include.
 
   nori.backups.user-data = {
-    paths = lib.mapAttrsToList (_: f: f.path) (lib.filterAttrs (_: f: f.tier == "user") config.nori.fs);
+    include = lib.mapAttrsToList (_: f: f.path) (
+      lib.filterAttrs (_: f: f.tier == "user") config.nori.fs
+    );
     tier = "user";
     timer = "*-*-* 03:00:00";
   };
@@ -148,7 +150,7 @@
   # restore plan (per DESIGN.md L283-289). Not in nori.fs because it's
   # NixOS service state, not a structural FS location.
   nori.backups.media-irreplaceable = {
-    paths =
+    include =
       lib.mapAttrsToList (_: f: f.path) (lib.filterAttrs (_: f: f.tier == "irreplaceable") config.nori.fs)
       ++ [ "/var/lib/immich/backups" ];
     tier = "irreplaceable";

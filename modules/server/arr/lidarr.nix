@@ -63,5 +63,5 @@
   };
 
   # Pattern A — same shape as sonarr/radarr.
-  nori.backups.lidarr.paths = [ "/var/lib/lidarr" ];
+  nori.backups.lidarr.include = [ "/var/lib/lidarr" ];
 }

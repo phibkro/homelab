@@ -52,5 +52,5 @@ _:
   };
 
   # Pattern A — indexer list + per-app links. DynamicUser symlink.
-  nori.backups.prowlarr.paths = [ "/var/lib/private/prowlarr" ];
+  nori.backups.prowlarr.include = [ "/var/lib/private/prowlarr" ];
 }
