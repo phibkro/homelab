@@ -1,8 +1,21 @@
 {
+  lib,
   pkgs,
   ...
 }:
 
+let
+  # Paused 2026-05-16 — operator not using local LLM inference recently,
+  # the GPU + ~14 GiB VRAM at idle was not worth the cost. Flip to
+  # `true` to resume. State at /var/lib/ollama is preserved across the
+  # toggle (NixOS doesn't reap StateDirectory on disable). Flipping
+  # this single boolean restores:
+  #   * the systemd unit + CUDA acceleration
+  #   * the https://ai.nori.lan Caddy route
+  #   * Gatus monitor + Glance dashboard entry (both downstream of
+  #     nori.lanRoutes.ai)
+  enabled = false;
+in
 {
 
   # Ollama: local LLM inference server.
@@ -23,7 +36,7 @@
   # convenience but isn't load-bearing.
 
   services.ollama = {
-    enable = true;
+    enable = enabled;
     # CUDA-enabled package (replaces the deprecated acceleration = "cuda").
     # If a build issue surfaces, fall back to plain `pkgs.ollama` with
     # `acceleration = false` for CPU-only inference.
@@ -42,13 +55,19 @@
 
   # Exposed at https://ai.nori.lan via Caddy. Monitored by Gatus
   # against /api/tags (Ollama returns 200 with the model list).
-  nori.lanRoutes.ai = {
-    port = 11434;
-    monitor.path = "/api/tags";
+  nori.lanRoutes = lib.mkIf enabled {
+    ai = {
+      port = 11434;
+      monitor.path = "/api/tags";
+    };
   };
 
   # Re-derivable — Ollama's state is ~32GB of LLM weights pulled
   # via `ollama pull`, all upstream-available. Chat history lives
   # in Open WebUI's DB (covered by the open-webui repo).
-  nori.backups.ollama.skip = "Re-downloadable LLM weights (~32GB). Chat history is in Open WebUI's repo.";
+  nori.backups.ollama.skip =
+    if enabled then
+      "Re-downloadable LLM weights (~32GB). Chat history is in Open WebUI's repo."
+    else
+      "Service disabled — see `enabled` at top of file.";
 }

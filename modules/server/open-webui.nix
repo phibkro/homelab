@@ -1,9 +1,21 @@
 {
   config,
+  lib,
   pkgs,
   ...
 }:
 
+let
+  # Paused alongside Ollama 2026-05-16 — the chat front-end has no
+  # purpose without an LLM backend. Flip to `true` to resume. State at
+  # /var/lib/private/open-webui (DynamicUser symlink) is preserved.
+  # Flipping this single boolean restores:
+  #   * the systemd unit
+  #   * the https://chat.nori.lan Caddy route + Authelia OIDC client
+  #   * Gatus monitor + Glance dashboard entry
+  #   * the daily sqlite3-dump-then-restic backup
+  enabled = false;
+in
 {
   # Open WebUI: chat front-end, primarily for local Ollama. Optional
   # second backend (OpenRouter, OpenAI-compatible) can be added later
@@ -25,7 +37,7 @@
   # start service. Open WebUI runs schema migrations on boot.
 
   services.open-webui = {
-    enable = true;
+    enable = enabled;
     host = "0.0.0.0";
     port = 8080;
     openFirewall = false;
@@ -72,8 +84,11 @@
   nori.harden.open-webui = { };
 
   # DynamicUser needs supplementary group `keys` to read the sops-
-  # rendered env file (mode 0440 root:keys).
-  systemd.services.open-webui.serviceConfig = {
+  # rendered env file (mode 0440 root:keys). Wrapped in mkIf because
+  # when `enabled = false`, the lanRoute is unregistered → no OIDC
+  # block → no sops.templates."oidc-chat-env" generated, and referencing
+  # the missing template would 400 at eval.
+  systemd.services.open-webui.serviceConfig = lib.mkIf enabled {
     SupplementaryGroups = [ "keys" ];
     EnvironmentFile = config.sops.templates."oidc-chat-env".path;
   };
@@ -84,39 +99,51 @@
   # symlinks and would otherwise back up just the symlink record. So
   # paths target /var/lib/private/open-webui directly. The
   # prepareCommand can use either path — bash file ops follow symlinks.
-  nori.backups.open-webui = {
-    include = [
-      "/var/lib/private/open-webui"
-      "/var/backup/open-webui"
-    ];
-    prepareCommand = ''
-      if [ -f /var/lib/open-webui/data/webui.db ]; then
-        mkdir -p /var/backup/open-webui
-        ${pkgs.sqlite}/bin/sqlite3 /var/lib/open-webui/data/webui.db \
-          ".backup '/var/backup/open-webui/webui.db'"
-      fi
-    '';
-    timer = "*-*-* 04:00:00";
-  };
+  #
+  # When disabled, the backup is skipped — the state isn't changing,
+  # the existing restic snapshots remain on /mnt/backup/open-webui as
+  # the recovery surface. Resume the daily job by flipping `enabled`.
+  nori.backups.open-webui =
+    if enabled then
+      {
+        include = [
+          "/var/lib/private/open-webui"
+          "/var/backup/open-webui"
+        ];
+        prepareCommand = ''
+          if [ -f /var/lib/open-webui/data/webui.db ]; then
+            mkdir -p /var/backup/open-webui
+            ${pkgs.sqlite}/bin/sqlite3 /var/lib/open-webui/data/webui.db \
+              ".backup '/var/backup/open-webui/webui.db'"
+          fi
+        '';
+        timer = "*-*-* 04:00:00";
+      }
+    else
+      {
+        skip = "Service disabled — see `enabled` at top of file. Existing snapshots in /mnt/backup/open-webui retained.";
+      };
 
   # Exposed at https://chat.nori.lan via Caddy. Auto-monitored by
   # Gatus. OIDC client + sops secret + env-file template auto-
   # generated from the `oidc = { ... }` block — see
   # modules/effects/lan-route.nix for the schema and
   # modules/server/authelia.nix for the clients-list assembly.
-  nori.lanRoutes.chat = {
-    port = 8080;
-    monitor = { };
-    audience = "family";
-    oidc = {
-      clientName = "Open WebUI";
-      redirectPath = "/oauth/oidc/callback";
-    };
-    dashboard = {
-      title = "Open WebUI";
-      icon = "sh:open-webui";
-      group = "Consume";
-      description = "Local LLM chat (Ollama-backed)";
+  nori.lanRoutes = lib.mkIf enabled {
+    chat = {
+      port = 8080;
+      monitor = { };
+      audience = "family";
+      oidc = {
+        clientName = "Open WebUI";
+        redirectPath = "/oauth/oidc/callback";
+      };
+      dashboard = {
+        title = "Open WebUI";
+        icon = "sh:open-webui";
+        group = "Consume";
+        description = "Local LLM chat (Ollama-backed)";
+      };
     };
   };
 }
