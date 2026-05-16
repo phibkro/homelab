@@ -55,5 +55,6 @@ _: {
     ./stremio.nix
     ./syncthing.nix
     ./vaultwarden.nix
+    ./victorialogs/default.nix
   ];
 }

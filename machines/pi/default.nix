@@ -48,6 +48,12 @@
     ../../modules/server/ntfy/server.nix
     ../../modules/server/ntfy/notify.nix
 
+    # VictoriaLogs: Pi runs the daemon (log database + web UI). Station
+    # imports the lanRoute via modules/server/victorialogs/default.nix.
+    # Third cross-host service split — same workhorse/appliance shape
+    # as beszel and ntfy. No log producer yet; daemon stands up empty.
+    ../../modules/server/victorialogs/server.nix
+
     ./hardware.nix
     inputs.home-manager.nixosModules.home-manager
   ];
