@@ -102,4 +102,14 @@ in
 
   # Stateless — no on-disk state to back up.
   nori.backups.disk-alert.skip = "Stateless — reads df and POSTs to ntfy.sh on threshold breach.";
+
+  # df on /mnt/media/library needs the mountpoint visible inside the
+  # namespace; the baseline `/mnt:ro` tmpfs would otherwise mask it.
+  # statfs() through a read-only bind reports the underlying btrfs
+  # usage correctly. Root mount (`/`) is unaffected by the baseline.
+  # ntfy-channel under /run/secrets stays reachable — /run isn't
+  # restricted by ProtectHome.
+  nori.harden.disk-alert = {
+    readOnlyBinds = [ "/mnt/media/library" ];
+  };
 }
