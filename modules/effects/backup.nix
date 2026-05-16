@@ -111,6 +111,19 @@ in
                 `paths` is null.
               '';
             };
+            exclude = mkOption {
+              type = types.listOf types.str;
+              default = [ ];
+              example = [ "/var/lib/qBittorrent/qBittorrent/incomplete" ];
+              description = ''
+                Paths to exclude from the backup. Passed straight to
+                restic's `--exclude` flag. Use for ephemeral subdirs
+                under a service's state path that re-fill from scratch
+                (qBit `incomplete/`, browser caches, etc.) — pinning
+                their chunks in old snapshots costs real bytes on the
+                backup drive. Ignored when `paths` is null.
+              '';
+            };
             timer = mkOption {
               type = types.str;
               default = "*-*-* 03:00:00";
@@ -279,7 +292,7 @@ in
       services.restic.backups = mapAttrs' (
         name: cfg:
         nameValuePair name {
-          inherit (cfg) paths;
+          inherit (cfg) paths exclude;
           repository = "/mnt/backup/${name}";
           passwordFile = config.sops.secrets.restic-password.path;
           initialize = true;

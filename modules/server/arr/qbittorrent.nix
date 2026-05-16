@@ -187,5 +187,14 @@
 
   # Pattern A — torrent state, resume data, *arr-tied categories.
   # Static `qbittorrent` user; real path with capital Q.
-  nori.backups.qbittorrent.paths = [ "/var/lib/qBittorrent" ];
+  #
+  # Exclude `incomplete/` — qBit's in-progress download buffer is
+  # re-derivable (peers re-send the same chunks) and historically
+  # ballooned the backup repo to 560+ GiB of dead chunks pinned by
+  # snapshots referencing the bygone full-incomplete-dir state. Live
+  # state without incomplete/ is ~31 MiB; backups should track that.
+  nori.backups.qbittorrent = {
+    paths = [ "/var/lib/qBittorrent" ];
+    exclude = [ "/var/lib/qBittorrent/qBittorrent/incomplete" ];
+  };
 }
