@@ -22,11 +22,16 @@
 #                                json.schemastore.org/claude-code-settings.
 #                                Includes statusLine, MCP posture,
 #                                effort level, dangerous-mode prompt skip.
-#
-# Future additions follow the same shape:
 #   ~/.claude/CLAUDE.md        — user-level CLAUDE.md (cross-project
-#                                preferences, persona, working-style)
-#   ~/.claude/agents/          — sub-agents
+#                                preferences, persona, working-style).
+#                                Sourced from ./CLAUDE.md.
+#   ~/.claude/agents/          — sub-agents. Recursive symlink from
+#                                ./agents/; each <name>.md is a sub-
+#                                agent definition.
+#   ~/.claude/artifacts/       — long-form reference material Claude
+#                                can pull in on demand (essays,
+#                                philosophy, frozen context). Recursive
+#                                symlink from ./artifacts/.
 #
 # ── What's NOT managed here ─────────────────────────────────────
 # Dynamic state — accumulates over sessions, isn't config:
@@ -210,6 +215,22 @@ in
         # find-skills, wrap-session.
         ".claude/skills" = {
           source = ./skills;
+          recursive = true;
+        };
+
+        # User-level CLAUDE.md — cross-project rules + working-style.
+        ".claude/CLAUDE.md".source = ./CLAUDE.md;
+
+        # Sub-agents. Recursive so individual <name>.md files coexist
+        # with anything else dropped under ~/.claude/agents/.
+        ".claude/agents" = {
+          source = ./agents;
+          recursive = true;
+        };
+
+        # Reference artifacts — long-form material loaded on demand.
+        ".claude/artifacts" = {
+          source = ./artifacts;
           recursive = true;
         };
 
