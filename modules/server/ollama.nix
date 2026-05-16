@@ -44,6 +44,16 @@ in
     host = "0.0.0.0";
     port = 11434;
     openFirewall = false;
+
+    # Unload models from VRAM as soon as a request completes. Default
+    # is 5m which means one chat reserves ~14 GiB VRAM for five minutes
+    # after the last token. With `0` the base Ollama process holds
+    # only its own ~50 MB and VRAM is free for the next consumer (e.g.
+    # Immich ML, Jellyfin transcode) between requests. Trade-off:
+    # first-token latency on the next request pays the model-load cost
+    # again (~1-3s for typical models). Acceptable for low-frequency
+    # interactive use; flip to "5m" if doing burst-style chat sessions.
+    environmentVariables.OLLAMA_KEEP_ALIVE = "0";
   };
 
   # Default-deny filesystem access beyond what ollama needs (its

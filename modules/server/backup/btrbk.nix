@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  pkgs,
   ...
 }:
 
@@ -103,4 +104,53 @@ in
   # modules/server/ntfy/notify.nix.
   systemd.services.btrbk-root.unitConfig.OnFailure = [ "notify@btrbk-root.service" ];
   systemd.services.btrbk-media.unitConfig.OnFailure = [ "notify@btrbk-media.service" ];
+
+  # ── btrfs qgroup quota on @downloads ────────────────────────────
+  # Cap @downloads at 3.3 TiB on the IronWolf (3.64 TiB total) to
+  # prevent the 100%-full metadata-exhaustion wedge pattern (see
+  # docs/runbooks/storage-full.md). At 100% btrfs can't even reclaim
+  # via subvolume delete because metadata writes need reserve — that's
+  # the actual recovery-hostile failure mode, not "disk full" itself.
+  #
+  # With the cap: qBit-as-writer hits ENOSPC on the @downloads quota
+  # well before the filesystem hits the metadata wall. Recovery path
+  # stays open (delete from @downloads to free; quota doesn't apply
+  # to the system pool's metadata budget).
+  #
+  # Headroom math (snapshot 2026-05-16): @downloads = 3.2 TiB, other
+  # subvols = 462 GiB, total used ~3.66 TiB on a 3.64 TiB drive (the
+  # drive itself is the bottleneck). 3.3 TiB cap allows ~100 GiB more
+  # in-flight downloads to land before qBit stalls; the other 365 GiB
+  # of @downloads headroom on the drive stays available for the other
+  # subvols (photos growth especially).
+  #
+  # Tune via the 3300G literal below. Adjust upward if the other
+  # subvols grow such that the budget for @downloads needs to shrink.
+  #
+  # btrfs qgroup overhead: ~5% on metadata-heavy ops (modifying CoW
+  # ref counts on every write). Acceptable cost for the wedge guard
+  # on a non-CPU-bound media drive.
+  #
+  # Activation runs on every nixos-rebuild switch. `quota enable` is
+  # idempotent (no-op if already on). `qgroup limit` overwrites the
+  # existing limit cleanly. First-time enable triggers a rescan that
+  # may run for an hour on the multi-TiB filesystem; the limit takes
+  # effect after rescan completes.
+  #
+  # IMPORTANT — target path: /mnt/media itself is NOT a mountpoint
+  # (each subvol mounts directly under it: /mnt/media/{downloads,
+  # photos,...}). Targeting /mnt/media resolves to the root filesystem
+  # (SN750) and enables quotas there — wrong FS, expensive. Use a real
+  # IronWolf mountpoint instead. /mnt/media/downloads is the canonical
+  # choice (it's the subvol we're capping anyway). subvolume list also
+  # needs a real mountpoint to enumerate.
+  system.activationScripts.btrfs-quota-media.text = ''
+    ${pkgs.btrfs-progs}/bin/btrfs quota enable /mnt/media/downloads >/dev/null 2>&1 || true
+    downloads_id=$(${pkgs.btrfs-progs}/bin/btrfs subvolume list /mnt/media/downloads \
+      | ${pkgs.gawk}/bin/awk '$NF == "@downloads" { print $2 }')
+    if [ -n "$downloads_id" ]; then
+      ${pkgs.btrfs-progs}/bin/btrfs qgroup limit 3300G "0/$downloads_id" /mnt/media/downloads \
+        || echo "WARNING: failed to set @downloads quota (rescan in progress?)"
+    fi
+  '';
 }
