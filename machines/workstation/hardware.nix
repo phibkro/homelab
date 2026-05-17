@@ -41,26 +41,6 @@
   # (chattr +C). Pattern goes in disko.nix, not here.
   swapDevices = [ ];
 
-  # ── ZFS support (for the MP510 scratch pool) ──────────────────────
-  # Adding zfs to supportedFilesystems pulls the in-tree-ish ZFS
-  # kernel module (zfsutils-linux + spl) into the closure; without
-  # this, mounting any ZFS dataset fails at boot. See
-  # machines/workstation/disko-mp510.nix for the pool layout.
-  boot.supportedFilesystems = [ "zfs" ];
-
-  # ZFS requires a unique 8-char hex host ID — burned into the pool
-  # at creation, checked on import. Without it, a pool moved between
-  # hosts could be imported on two machines simultaneously and
-  # corrupt itself. Derived once from /etc/machine-id (deterministic;
-  # commits to git cleanly). Different per host.
-  networking.hostId = "07fea3e9";
-
-  # Don't auto-force-import on boot. If a pool import fails because
-  # another host (or a previous boot) thinks it owns the pool, we
-  # want to see the error and decide, not silently override.
-  boot.zfs.forceImportRoot = false;
-  boot.zfs.forceImportAll = false;
-
   # --- gpu (nvidia open, RTX 5060 Ti / Blackwell) -----------------------
   #
   # Driver-package fallback ladder per docs/DESIGN.md L91–106:
