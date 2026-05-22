@@ -17,20 +17,17 @@ let
     "/mnt/media/library"
   ];
 
-  # Thresholds chosen to leave btrbk + qBittorrent enough headroom to
-  # operate. At 85% on root we still have ~140 GiB free; at 85% on
-  # media ~550 GiB. That's lead time to cull or reconfigure before
-  # qBittorrent's incomplete-on-NVMe wedge (see qbittorrent.nix) can
-  # form. 95% is the last call before btrfs metadata pressure starts
-  # failing operations including snapshot deletes — past that point
-  # recovery gets harder (see docs/runbooks/storage-full.md).
-  warnPct = 85;
+  # Single critical threshold. 95% is the last call before btrfs
+  # metadata pressure starts failing operations including snapshot
+  # deletes — past that point recovery gets harder (see
+  # docs/runbooks/storage-full.md). The earlier 85% warning tier was
+  # dropped — only the critical alert fires now.
   critPct = 95;
 in
 {
   # disk-alert — periodic free-space watchdog. Fires an ntfy
-  # notification when any monitored filesystem crosses warn or
-  # critical thresholds.
+  # notification when any monitored filesystem crosses the critical
+  # threshold.
   #
   # WHY: btrbk retention works in the steady state (proven by the
   # 2026-05-14 incident's btrbk-media run pruning correctly once we'd
@@ -71,10 +68,6 @@ in
               level=critical
               prio=urgent
               tags="rotating_light,sos"
-            elif [ "$pct" -ge ${toString warnPct} ]; then
-              level=warning
-              prio=high
-              tags="warning"
             else
               continue
             fi
