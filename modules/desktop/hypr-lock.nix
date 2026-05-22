@@ -4,7 +4,7 @@ _: {
   # the Hyprland project; they're designed to work together.
   #
   # Idle ladder (desktop, no battery — skip dim-via-brightnessctl):
-  #   10 min  → loginctl lock-session  (hypridle invokes hyprlock)
+  #   10 min  → hyprlock directly  (see on-timeout note below)
   #   15 min  → hyprctl dispatch dpms off (monitor sleep)
   #   on-resume → dpms on (re-wake monitor)
   #
@@ -69,7 +69,12 @@ _: {
         listener = [
           {
             timeout = 600; # 10 min → lock
-            on-timeout = "loginctl lock-session";
+            # Invoke hyprlock directly rather than via `loginctl
+            # lock-session`: hypridle runs under the systemd user manager
+            # (user@1000), not pinned to the graphical logind session, so
+            # with multiple live sessions the Lock signal didn't reach
+            # hyprlock. `pidof` guard prevents stacking lock instances.
+            on-timeout = "pidof hyprlock || hyprlock";
           }
           {
             timeout = 900; # 15 min → DPMS off

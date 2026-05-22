@@ -101,7 +101,7 @@ let
 
     # Help / session
     (mkBindApp "H" "hypr-cheatsheet" "this cheatsheet")
-    (mkBindApp "L" "loginctl lock-session" "lock screen")
+    (mkBindApp "L" "pidof hyprlock || hyprlock" "lock screen")
 
     # Window
     (mkBind "Q" "killactive," "close window")
