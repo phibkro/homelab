@@ -176,6 +176,7 @@ in
     pkgs.lazysql # SQL TUI (Immich pg, Open WebUI sqlite, etc.)
     pkgs.nix-tree # interactive Nix dependency-graph viewer
     pkgs.nvd # diff between NixOS generations
+    pkgs.handbrake # GUI video transcoder (GTK). Mac counterpart is a brew cask — broken on x86_64-darwin in nixpkgs; see machines/macbook/home.nix.
     # home-manager CLI. `programs.home-manager.enable = true` only wires
     # the activation script (used by NixOS-rebuild); the binary itself
     # isn't installed automatically when home-manager runs as a NixOS

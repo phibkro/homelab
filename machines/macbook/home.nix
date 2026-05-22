@@ -51,6 +51,11 @@
     # them up. Built-in, no extra config needed.
     localsend
 
+    # handbrake — GUI video transcoder. nixpkgs lists x86_64-darwin in
+    # meta.platforms but marks the package `broken` there (refuses to
+    # eval), so it can't come from Nix on this host. Workstation gets
+    # pkgs.handbrake (cached, Linux). Brew: `brew install --cask handbrake`.
+    #
     # ghostty — has no Darwin meta.platforms in nixpkgs (Linux-only
     # build). Install via brew: `brew install --cask ghostty`.
     #
