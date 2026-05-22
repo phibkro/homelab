@@ -49,6 +49,12 @@
     # package via overrideAttrs.cudaPackages or upgrade the driver.
     pkgs.davinci-resolve
 
+    # Media player — VLC. Plays effectively any codec/container without
+    # transcoding (HEVC/H.265 phone footage included), so it's the quick
+    # "does this file actually play / how does it sound" check that sits
+    # outside the editor.
+    pkgs.vlc
+
     # File management — yazi (TUI, run from ghostty) as primary;
     # Thunar (GUI) as fallback for drag-drop / file:// xdg-open from
     # other apps. Thunar's NixOS-side wiring is below via
