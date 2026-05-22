@@ -70,6 +70,14 @@
     # Sign in once via the menubar; tailnet hostnames + magicDNS work
     # thereafter. Workstation runs full services.tailscale.enable via
     # NixOS module; Mac standalone home-manager has no equivalent.
+    #
+    # moonlight — game-stream client for the Sunshine host on the
+    # workstation (remote DaVinci Resolve editing over the tailnet).
+    # GUI cask, not usable from nixpkgs on this Darwin host.
+    # Brew: `brew install --cask moonlight`. Add the host by tailnet
+    # name `workstation` if mDNS doesn't auto-list it, and pair via the
+    # Sunshine web UI at https://workstation:47990. Host config:
+    # modules/desktop/sunshine.nix.
   ];
 
   # Caddy on workstation signs *.nori.lan with its local CA, which
