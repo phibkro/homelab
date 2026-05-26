@@ -23,5 +23,9 @@ inventory-*.tar.gz
 .claude/*
 !.claude/skills/
 
+# Nested standalone project — pagu has its own git repo; homelab must
+# not track it. (Local dev checkout; published separately.)
+/pagu/
+
 # OS
 .DS_Store
