@@ -108,6 +108,7 @@ let
     (mkBindMod "$mod SHIFT" "E" "exit," "exit Hyprland")
     (mkBind "V" "togglefloating," "toggle floating")
     (mkBind "F" "fullscreen," "fullscreen")
+    (mkBind "S" "togglesplit," "toggle split orientation")
 
     # Focus — H/L claimed by cheatsheet/lock; J/K kept for vim down/up;
     # arrows cover all four directions.
@@ -263,12 +264,12 @@ in
 
       dwindle = {
         pseudotile = true;
-        # preserve_split off (default) — splits are determined
-        # dynamically by the focused window's W/H ratio: wider than
-        # tall splits side-by-side, taller than wide splits top-and-
-        # bottom. Repeated opens halve the longer dimension each time
-        # (the A4→A3→A2 feel). Setting preserve_split=true would lock
-        # the direction once chosen and break that.
+        # preserve_split on — once a split's orientation is set it
+        # sticks instead of being recomputed from the focused window's
+        # W/H ratio on each new open. Pairs with the SUPER+S
+        # `togglesplit` bind: flip a container to top/bottom (or back)
+        # and it holds as more windows open into it.
+        preserve_split = true;
       };
 
       # Cursor + GTK / Qt theme env vars now exported by Stylix's
