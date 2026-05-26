@@ -108,7 +108,7 @@ let
     (mkBindMod "$mod SHIFT" "E" "exit," "exit Hyprland")
     (mkBind "V" "togglefloating," "toggle floating")
     (mkBind "F" "fullscreen," "fullscreen")
-    (mkBind "S" "togglesplit," "toggle split orientation")
+    (mkBind "S" "layoutmsg, togglesplit" "toggle split orientation")
 
     # Focus — H/L claimed by cheatsheet/lock; J/K kept for vim down/up;
     # arrows cover all four directions.
