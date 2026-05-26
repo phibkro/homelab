@@ -55,6 +55,19 @@
     # outside the editor.
     pkgs.vlc
 
+    # resolve-remux — batch-transcode camera clips (HEVC/H.264, often
+    # VFR) into DNxHR .mov the free Resolve on Linux can edit. ffmpeg is
+    # bundled via runtimeInputs, so it runs without `nix-shell -p ffmpeg`.
+    #   resolve-remux <input-dir> [fps]   (fps default 29.97)
+    # Writes to a sibling remux/ dir, auto-picks DNxHR HQ/HQX by source
+    # bit depth, maps audio only when present. Script body in the sibling
+    # resolve-remux.sh (kept out of Nix to avoid ''${} escaping).
+    (pkgs.writeShellApplication {
+      name = "resolve-remux";
+      runtimeInputs = [ pkgs.ffmpeg ];
+      text = builtins.readFile ./resolve-remux.sh;
+    })
+
     # File management — yazi (TUI, run from ghostty) as primary;
     # Thunar (GUI) as fallback for drag-drop / file:// xdg-open from
     # other apps. Thunar's NixOS-side wiring is below via
