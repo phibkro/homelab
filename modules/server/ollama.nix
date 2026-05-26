@@ -14,7 +14,7 @@ let
   #   * the https://ai.nori.lan Caddy route
   #   * Gatus monitor + Glance dashboard entry (both downstream of
   #     nori.lanRoutes.ai)
-  enabled = false;
+  enabled = true;
 in
 {
 
