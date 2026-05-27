@@ -1,6 +1,6 @@
 ---
-description: Analyse a system using Meadows' 12 leverage points to produce a structural map sharp enough to critique and evolve, not just describe. Pick dimensions that separate the system's concerns; place observations at leverage tiers per dimension; synthesize 3-5 high-leverage active patterns + 1-3 leverage gaps + the inferred paradigm. Code is source of truth; docs are approximation. Pair with concrete reading — don't apply the framework abstractly without specific files in hand.
-when_to_use: Fresh-context session that needs comprehensive structural understanding before substantive work — phrases like "explore the codebase", "analyse the system", "orient yourself", "get up to speed", "what's here". Skip for narrow procedural tasks ("fix bug X", "add this dependency") — the framework's leverage isn't worth the context budget for micro-work.
+name: analyse-system
+description: Analyse a system using Meadows' 12 leverage points to produce a structural map sharp enough to critique and evolve, not just describe — code is source of truth, docs are approximation, and the framework is paired with concrete reading rather than applied abstractly. Use at the start of a fresh-context session that needs comprehensive structural understanding before substantive work ("explore the codebase", "analyse the system", "orient yourself", "get up to speed", "what's here"); skip for narrow procedural tasks like "fix bug X" or "add this dependency", where the leverage isn't worth the context budget.
 ---
 
 # Analyse a system via Meadows leverage points
