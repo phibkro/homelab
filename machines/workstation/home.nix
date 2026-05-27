@@ -182,6 +182,11 @@ in
     # capability-gated agent in the gitignored ./pagu repo). pagu runs on
     # Deno and its permission model IS pagu's sandbox, so deno must be on
     # PATH; `~/.deno/bin` (deno install targets) is added to PATH below.
+    pkgs.bubblewrap # pagu's OS sandbox tier: when `bwrap` is on PATH, the
+    # runner wraps each script in a kernel-level wall beneath Deno's perms
+    # (denies network, confines writes — contains even --allow-run
+    # subprocesses, which Deno doesn't bound). Optional; pagu falls back to
+    # the Deno-permission floor without it.
     # home-manager CLI. `programs.home-manager.enable = true` only wires
     # the activation script (used by NixOS-rebuild); the binary itself
     # isn't installed automatically when home-manager runs as a NixOS
