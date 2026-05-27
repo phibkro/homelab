@@ -154,8 +154,8 @@ let
     # accessible — `/shadcn-ui`, `/caveman`, etc. still work.
     #
     # Applied to:
-    #   * the 7 caveman-* skills — opt-in compressed-comms mode, not
-    #     something we want auto-loaded into every session
+    #   * caveman — opt-in compressed-comms mode, not something we want
+    #     auto-loaded into every session (still reachable via /caveman)
     #   * frontend-design — heavy token-cost description, only relevant
     #     when actively building UI
     #   * shadcn-ui — same; UI-component-building tool, not a default
@@ -164,6 +164,7 @@ let
     # functioning. Add an entry here if a future skill turns out to be
     # too heavy for the auto-discovery slot.
     skillOverrides = {
+      caveman = "user-invocable-only";
       frontend-design = "user-invocable-only";
       shadcn-ui = "user-invocable-only";
     };
@@ -199,20 +200,28 @@ in
   # entries can coexist under the same parent dir.
   home.file =
     let
-      importSkillsDir =
-        src:
-        lib.mapAttrs' (
-          n: _:
-          lib.nameValuePair ".claude/skills/${n}" {
-            source = "${src}/${n}";
-            recursive = true;
-          }
-        ) (lib.filterAttrs (_: t: t == "directory") (builtins.readDir src));
+      # Allowlist a named subset of a third-party skill collection into the
+      # flat ~/.claude/skills/. We allowlist rather than import-all so the
+      # curated feature-engineering set in ./skills isn't drowned by upstream
+      # skills we've replaced (tdd/diagnose/write-a-skill/…) or don't use.
+      importSkills =
+        src: names:
+        lib.listToAttrs (
+          map (
+            n:
+            lib.nameValuePair ".claude/skills/${n}" {
+              source = "${src}/${n}";
+              recursive = true;
+            }
+          ) names
+        );
     in
     lib.mkMerge [
       {
-        # In-repo skills (ours): agent-browser, analyse-system,
-        # find-skills, wrap-session.
+        # In-repo skills (ours): the curated feature-engineering set —
+        # brainstorming, grill-with-docs, tdd, diagnose, wrap-feature,
+        # wrap-session, write-a-skill, improve-codebase-architecture — plus
+        # agent-browser, analyse-system, find-skills.
         ".claude/skills" = {
           source = ./skills;
           recursive = true;
@@ -240,8 +249,22 @@ in
 
       # Third-party skill collections — flake-input-pinned, mapped one-
       # subdir-per-skill into the flat ~/.claude/skills/.
-      (importSkillsDir "${inputs.superpowers}/skills")
-      (importSkillsDir "${inputs.caveman}/skills")
+      # superpowers: only the survivors of the curation (utilities + code
+      # review). brainstorming is vendored + adapted in ./skills (repointed
+      # to grill-with-docs); test-driven-development/systematic-debugging/
+      # writing-skills were replaced by ./skills (tdd/diagnose/write-a-skill);
+      # writing-plans/executing-plans/subagent-driven-development/
+      # verification-before-completion/finishing-a-development-branch/
+      # using-superpowers were dropped.
+      (importSkills "${inputs.superpowers}/skills" [
+        "dispatching-parallel-agents"
+        "receiving-code-review"
+        "requesting-code-review"
+        "using-git-worktrees"
+      ])
+      # caveman: keep only the core compressed-comms mode; the -commit/
+      # -compress/-help/-review/-stats variants + cavecrew are pruned.
+      (importSkills "${inputs.caveman}/skills" [ "caveman" ])
 
       {
         # Single-skill cherry-picks from larger repos. The whole repo
