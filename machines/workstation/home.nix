@@ -95,13 +95,14 @@ let
 
   keyBinds = [
     # Apps
-    (mkBindApp "RETURN" "ghostty" "ghostty (terminal)")
+    (mkBindApp "RETURN" "popup-term" "ghostty (toggle)")
     (mkBindApp "SPACE" "fuzzel" "fuzzel (launcher)")
     (mkBindApp "B" "zen-beta" "zen (browser)")
 
     # Help / session
     (mkBindApp "H" "hypr-cheatsheet" "this cheatsheet")
     (mkBindApp "L" "pidof hyprlock || hyprlock" "lock screen")
+    (mkBindApp "P" "cmd-menu" "command menu (lock / night / power)")
 
     # Window
     (mkBind "Q" "killactive," "close window")
@@ -143,6 +144,34 @@ let
   cheatsheet = pkgs.writeShellScriptBin "hypr-cheatsheet" ''
     cat ${cheatsheetFile} | ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt "binds: " --width 64 --lines 24 >/dev/null
   '';
+
+  # Command menu — a fuzzel dmenu of system actions (same pattern as the
+  # cheatsheet, same Stylix theme). Each entry wraps a tool already in use:
+  # lock = hyprlock, night mode = the hyprsunset user unit (mirrors waybar's
+  # toggle), reboot/poweroff = systemctl. Destructive actions gate behind a
+  # yes/no confirm. Bound to SUPER+ESCAPE.
+  cmdMenu = pkgs.writeShellScriptBin "cmd-menu" ''
+    fuzzel=${pkgs.fuzzel}/bin/fuzzel
+    confirm() { [ "$(printf 'No\nYes\n' | "$fuzzel" --dmenu --prompt "$1 ")" = "Yes" ]; }
+    case "$(printf 'Lock\nNight mode\nReboot\nPower off\n' | "$fuzzel" --dmenu --prompt "cmd: ")" in
+      "Lock")       pidof hyprlock || hyprlock ;;
+      "Night mode") systemctl --user is-active --quiet hyprsunset && systemctl --user stop hyprsunset || systemctl --user start hyprsunset ;;
+      "Reboot")     confirm "Reboot?"    && systemctl reboot ;;
+      "Power off")  confirm "Power off?" && systemctl poweroff ;;
+    esac
+  '';
+
+  # SUPER+RETURN terminal — togglable/ephemeral, a special-workspace
+  # scratchpad. Lazy-spawn the ghostty (its own class so it's detectable and
+  # the default-ghostty float rule doesn't catch it) on first press if it
+  # isn't already running, then toggle show/hide. Lazy beats an exec-once
+  # pre-spawn: survives `hyprctl reload`, needs no relogin, no startup race.
+  popupTerm = pkgs.writeShellScriptBin "popup-term" ''
+    if ! hyprctl clients | grep -q "com.mitchellh.ghostty.scratch"; then
+      hyprctl dispatch exec "[workspace special:term silent] ghostty --class=com.mitchellh.ghostty.scratch"
+    fi
+    hyprctl dispatch togglespecialworkspace term
+  '';
 in
 # Pure home-manager module — workstation user content. The
 # home-manager-as-NixOS-module wrapper (`useGlobalPkgs`,
@@ -168,6 +197,8 @@ in
   # the bindings.
   home.packages = [
     cheatsheet
+    cmdMenu # SUPER+ESCAPE command menu (lock / night mode / reboot / power off)
+    popupTerm # SUPER+RETURN togglable terminal (lazy-spawns its own ghostty)
     pkgs.gh # GitHub CLI — PR ops, gh auth, gh api …
     pkgs.nvtopPackages.nvidia # GPU monitor (NVIDIA-only build, smaller closure)
     pkgs.ncdu # interactive disk usage browser
@@ -313,6 +344,10 @@ in
         # the bottom edge, near-centered horizontally on 3440-wide.
         # Auto-spawned on session start via exec-once below.
         "match:class ^(com\\.mitchellh\\.ghostty)$, float on, size 1010 220, move 1180 1150"
+        # SUPER+RETURN toggle terminal — its own class so it's detectable for
+        # the toggle and kept separate from default-class ghostty. Same
+        # bottom-center quick-term size/position as the default-class rule.
+        "match:class ^(com\\.mitchellh\\.ghostty\\.scratch)$, float on, size 1010 220, move 1180 1150"
       ];
 
       # Generated from the structured keyBinds / mouseBinds lists at
@@ -332,6 +367,8 @@ in
       # Ghostty no longer auto-spawns — SUPER+RETURN remains the
       # explicit launch path. The pwvucontrol-style floating window
       # rule for ghostty (lines above) still applies if/when invoked.
+      # The SUPER+P popup terminal lazy-spawns its scratchpad on first
+      # press (see the popup-term script), so it needs no exec-once.
       #
       # Status bar / notification daemon / hypridle / hyprsunset
       # auto-start via systemd-user-service (UWSM activates
