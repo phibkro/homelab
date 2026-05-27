@@ -178,6 +178,10 @@ in
     pkgs.nix-tree # interactive Nix dependency-graph viewer
     pkgs.nvd # diff between NixOS generations
     pkgs.handbrake # GUI video transcoder (GTK). Mac counterpart is a brew cask — broken on x86_64-darwin in nixpkgs; see machines/macbook/home.nix.
+    pkgs.deno # TS/JS runtime + the security sandbox for `pagu` (the local
+    # capability-gated agent in the gitignored ./pagu repo). pagu runs on
+    # Deno and its permission model IS pagu's sandbox, so deno must be on
+    # PATH; `~/.deno/bin` (deno install targets) is added to PATH below.
     # home-manager CLI. `programs.home-manager.enable = true` only wires
     # the activation script (used by NixOS-rebuild); the binary itself
     # isn't installed automatically when home-manager runs as a NixOS
@@ -185,6 +189,10 @@ in
     # introspection. Don't `home-manager switch` here — use just rebuild.
     pkgs.home-manager
   ];
+
+  # `deno install -g` drops shims here (e.g. the `pagu` command); put it on
+  # PATH so they're runnable from a bare shell.
+  home.sessionPath = [ "$HOME/.deno/bin" ];
 
   # programs.<x>.enable adds shell integration + declarative config
   # in addition to the binary. Use this form when the integration
