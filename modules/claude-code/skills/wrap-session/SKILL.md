@@ -1,76 +1,79 @@
 ---
-description: Run the homelab end-of-session wrap-up — push pending commits, refresh CLAUDE.md if reality shifted, archive resolved memory items, verify clean state, end with a tight summary that lets the next agent (likely you with zero context) land cleanly.
-when_to_use: User signals the session is wrapping up — phrases like "wrap up", "ending session", "that's it for now", "we're done", "session end", "done for today", "let's wrap up", "anything else before we end?".
+name: wrap-session
+description: Run an end-of-session wrap-up so the next agent (likely you, with zero context) lands cleanly — push pending commits, refresh the project's orientation docs if reality shifted, update durable memory, verify clean state, and end with a compact handoff (summary, suggested skills, references). Use when the user signals the session is wrapping up — "wrap up", "ending session", "that's it for now", "we're done", "session end", "done for today", or "anything else before we end?".
 ---
 
-# Homelab session wrap-up
+# Session wrap-up
 
-A new agent with zero context should be able to read `CLAUDE.md` + `git log --oneline -10` + the latest commits' bodies and know exactly where you left off. If they'd be confused, the wrap-up isn't done.
+A new agent with zero context should be able to read the project's orientation docs
++ `git log --oneline -10` + the latest commit bodies and know exactly where you left
+off. If they'd be confused, the wrap-up isn't done.
+
+> **Project-specific bits live in the project's own `CLAUDE.md`/`AGENTS.md`** — which
+> docs are the source of truth, the health-check command, where durable memory lives.
+> This skill is the project-agnostic skeleton; defer to the project supplement for
+> specifics.
 
 ## Live context at invocation
 
 - Working tree: !`git status --short`
 - Pending unpushed commits: !`git log --oneline @{u}.. 2>/dev/null || echo "(branch not tracking remote)"`
 - Recent commit history: !`git log --oneline -10`
-- Active memory: !`ls /home/nori/.claude/projects/-home-nori-Downloads-homelab/memory/active/ 2>/dev/null`
-- Failed units (station): !`systemctl --failed --no-pager 2>&1 | head`
 
 ## Procedure
 
 ### 1. Push pending commits
 
-If any local-only commits exist, push them. Local-only commits are invisible to the next agent.
+If any local-only commits exist, push them — local-only commits are invisible to the
+next agent. If a push fails, surface the reason and stop; don't force-push without an
+explicit go-ahead.
 
-```bash
-git push origin main
-```
+### 2. Refresh the orientation docs if reality shifted
 
-If a push fails, surface the reason and stop — don't try to force-push without explicit go-ahead.
+Walk the project's source-of-truth docs (e.g. `CONTEXT.md`, `AGENTS.md`, `README`,
+`CLAUDE.md`) and update what changed this session. The drift cost is asymmetric: a
+stale doc misleads the next agent immediately; an up-to-date one costs nothing.
 
-### 2. Refresh CLAUDE.md if reality shifted
+- **Current state** — architecture, status, what's shipped vs. in progress.
+- **Outstanding** — prune what's done; add what this session surfaced.
+- **Rule of three** — if a new pattern landed twice or more this session, codify it
+  (a skill if the trigger is clean, otherwise a "How to" in the docs).
 
-Walk the sections and update what changed this session. The drift-cost is asymmetric: a stale CLAUDE.md acts on the next agent immediately; an up-to-date one costs nothing.
+### 3. Update durable memory if cross-session facts shifted
 
-- **Intro line** — host status changed (planned → live, etc.)
-- **Current state** — topology, service placement, hardware changed
-- **Outstanding** — prune items that are done; add new items the session surfaced
-- **Procedures pointer** — if a new procedure used twice or more, codify it (preferably as a skill in `.claude/skills/<n>/` or a "How to" in CLAUDE.md if the trigger isn't clean)
-
-If a *new pattern* landed twice or more during the session, that's the rule-of-three trigger to codify. The cross-host service split → "How to relocate a service to pi" → `relocate-to-pi` skill is the precedent.
-
-### 3. Update auto-memory (if cross-conversation facts shifted)
-
-Memory lives in `/home/nori/.claude/projects/-home-nori-Downloads-homelab/memory/`. Don't duplicate what's already in CLAUDE.md — memory is for cross-project / user-personal facts.
-
-- New active item the next session needs to pick up → write to `memory/active/<slug>.md` + index in `MEMORY.md`
-- Resolved item from `memory/active/` → move to `memory/archive/` + drop the line from `MEMORY.md`
-- New durable fact (user preference, project state, host topology) → write to the right subfolder (`feedback/`, `project/`, `user/`, `reference/`)
+If the project keeps cross-session memory, update it (don't duplicate what's already
+in the docs — memory is for cross-project / user-personal facts). Resolved items get
+archived, not deleted; new items the next session needs get added.
 
 ### 4. Verify clean state
 
-Quick spot-check that nothing's mid-migration:
+Spot-check nothing is mid-flight: `git status` clean, and the project's health check
+green (test suite / CI / status command — see the project supplement). If something
+is unreachable or mid-migration, surface it explicitly.
 
-```bash
-git status                        # should be clean (no in-flight changes)
-just status                       # failed units empty, disks healthy, timers green
-systemctl is-active <key services for the work this session touched>
-```
+### 5. End with a compact handoff
 
-If any host is unreachable (e.g. Pi after a tailscale SSH expiry), surface that explicitly so the user knows the next session may need to drive it from Mac.
+The bridge for the next agent. Three sections, kept tight — **link, don't duplicate**,
+and redact secrets (API keys, tokens, PII):
 
-### 5. End with a tight summary
+- **Summary** — what changed (commits pushed, decisions made), one non-obvious thing
+  learned worth carrying forward, and the immediate next concrete action.
+- **Suggested skills** — which skill the next agent should reach for to resume (e.g.
+  "resume at `tdd` for the half-built parser", "`grill-with-docs` the open design").
+- **References** — paths/links to the artifacts (commits, docs, ADRs, issues), not
+  their contents. If the user named a focus for next session, tailor the handoff to it.
 
-One or two paragraphs covering:
-- **What changed** — commits pushed, files modified, decisions made
-- **What was learned** — a non-obvious finding worth carrying forward
-- **What's the immediate next concrete thing** — for the next agent's first action
-
-The summary is the bridge for the next agent. Specific is better than thorough — a fresh agent reading the prior turn should get oriented in under 30 seconds.
+Specific beats thorough: a fresh agent reading this should orient in under 30 seconds.
 
 ## What this skill does NOT do
 
-- It does NOT push without checking the user's commit history first (force-push is destructive; surface and ask)
-- It does NOT delete memory files without first archiving them (recovery via archive is cheap; deletion is permanent)
-- It does NOT restart services, run drills, or make config changes — those would be in-flight work, not wrap-up
+- Push without checking the commit history first (force-push is destructive — surface
+  and ask).
+- Delete memory without archiving first (recovery from archive is cheap; deletion is
+  permanent).
+- Run in-flight work — restart services, run migrations, change config. That's work,
+  not wrap-up.
 
-If the session ended mid-task, say so in the summary rather than masking the loose end. "Pi rebuild deferred — tailscale SSH browser-auth expired; next session can drive from Mac" is more useful than pretending it's done.
+If the session ended mid-task, say so in the summary rather than masking the loose
+end. An honest "X deferred because Y; next session picks it up at Z" beats pretending
+it's done.
