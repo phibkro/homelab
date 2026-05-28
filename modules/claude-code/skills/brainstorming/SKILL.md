@@ -14,13 +14,31 @@ Start by understanding the current project context, then ask questions one at a 
 to refine the idea. Once you understand what you're building, present the design and
 get user approval.
 
+## When to use this skill
+
+Design earns its keep for **conceptual / abstract / ambiguous** work — new
+abstractions, mental models, cross-cutting decisions, unclear scope. There the design
+*is* the real artifact (and any code in it is **illustrative** — detached from
+implementation, which TDD writes fresh).
+
+**Purely mechanical / concrete work can skip this skill** and go straight to `tdd`
+(or `diagnose` for a bug): a localized fix, a well-understood refactor, adding a thing
+whose shape is obvious. TDD's own planning gate suffices. Forcing a design onto
+mechanical work adds ceremony without insight — a one-line "this is mechanical, going
+straight to tdd" and proceeding is fine.
+
 <HARD-GATE>
-Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This applies to EVERY project regardless of perceived simplicity.
+Do NOT invoke any implementation skill, write any code, scaffold any project, or take any implementation action until you have presented a design and the user has approved it. This gate holds **once you're designing** — it stops you jumping to code mid-design — but it does not force every task through design (see "When to use this skill").
 </HARD-GATE>
 
-## Anti-Pattern: "This Is Too Simple To Need A Design"
+## Anti-Pattern: mistaking conceptual work for mechanical
 
-Every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.
+Skipping design for genuinely mechanical work is correct. The trap is **mistaking
+conceptual work for mechanical**: if a task hides an unexamined assumption, a new
+abstraction, or an ambiguous boundary, "it's simple" is exactly where the wasted work
+happens — design it (a few sentences is fine). Judge honestly: is the shape obvious
+(mechanical → straight to tdd), or are you about to invent or assume something
+(conceptual → design first)?
 
 ## Checklist
 
