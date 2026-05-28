@@ -108,6 +108,42 @@ small pure function is complete as it is. Over-architecting trivial code (a clas
 tree for a lookup table) is its own smell; a senior reader should never call the
 result overcomplicated.
 
+## Choosing the test level
+
+Match the test to the **shape of the spec**, not habit. Default to the cheapest
+level that can actually catch the bug; reserve the expensive ones for where the
+risk genuinely lives.
+
+- **Example test** — a specific input→output, a *small enumerable* set of cases, or
+  a readable regression anchor. The default. Clearest RED, best at *driving* design.
+  If the cases are genuinely few, enumerate them — clearer than a generator.
+- **Property test** — when the spec is a **universal law over a large/infinite input
+  space** *and* you have an **independent** characterization. The tell is being able
+  to write `∀ input, <invariant>` instead of `input X → output Y`. Property-shaped
+  signatures: **round-trip** (`decode∘encode = id`), **algebraic law**
+  (associativity / identity / idempotence), **invariant preserved** (never throws;
+  never widens a permission), **oracle/model** (a simpler reference agrees),
+  **metamorphic** (related inputs → related outputs). Two rules: properties
+  **complement** examples — examples drive the shape, add properties to *harden* the
+  invariants once the shape is stable — and beware the **oracle trap**: a property
+  that re-implements the code under test proves nothing. Characterize from the other
+  side instead (generate *valid* inputs and require acceptance; inject *invalid*
+  mutations and require rejection).
+- **Integration test** — at real-I/O **seams and contracts** where the bug lives in
+  the *interaction*, not the logic: subprocess, filesystem, serialization, protocol
+  round-trips, and especially **enforcement** (you can't unit-test that a sandbox
+  actually blocks the network). Use the real dependency, not a mock.
+- **e2e test** — a **golden user journey**, where failure is *emergent* (only shows
+  when every piece runs together). Expensive: slow, flaky, hard to diagnose — so few
+  of them, on the critical paths and on regressions that escaped lower levels.
+- **Model-based / stateful property test** — the property analog of e2e. Instead of
+  generating *inputs*, generate random **sequences of operations** against a stateful
+  system and assert invariants (or agreement with a simple model) hold after each
+  step. Reach for it when the interface is **stateful and the interaction space is
+  combinatorially large** — the point where enumerated journeys can't keep up.
+
+Roughly a pyramid: many fast unit/property tests, fewer integration, few e2e.
+
 ## When stuck
 
 | Problem | Move |
