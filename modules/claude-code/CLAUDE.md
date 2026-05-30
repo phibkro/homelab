@@ -18,6 +18,21 @@ rebuild. (Per-project `.claude/` config, and per-project memory under
 `~/.claude/projects/<project>/memory/`, are separate and _not_ nix-managed —
 edit those in place.)
 
+## Tooling is a `nix shell` away (don't get stuck on a missing command)
+
+Almost any tool is available ad-hoc without installing anything — run it via
+`nix shell nixpkgs#<pkg> -c <cmd>` (e.g. `nix shell nixpkgs#jq -c jq .`) or
+`nix run nixpkgs#<pkg> -- <args>`. A "command not found" on PATH is rarely a
+dead end: reach for nixpkgs first (node, pnpm, ripgrep, jq, shellcheck, …).
+
+For work _inside a project_, prefer the project's own dev shell if it has one
+(`nix develop`, or `direnv` auto-loads it from `.envrc`): it pins the exact
+toolchain (node/pnpm/etc.) via the project's own `flake.lock`. Some projects
+also ship a **supply-chain sandbox** — run untrusted dev commands (`pnpm
+install`, test, build) through `scripts/dev-sandbox.sh` (bubblewrap: repo
+read-write, `$HOME` secrets invisible, env scrubbed, network droppable with
+`--no-net`), so a malicious dependency can't read your keys or escape the repo.
+
 ## Think Before Coding
 State assumptions explicitly. If uncertain, ask rather than guess.
 Present multiple interpretations when ambiguity exists.
