@@ -178,10 +178,85 @@ let
       command = "${statuslineScript}";
     };
   };
+
+  # claude-box — OPT-IN sandboxed launcher for the agent itself. `claude` stays
+  # the normal unsandboxed command; `claude-box` runs it under bubblewrap with a
+  # strict whitelist so a prompt-injection / rogue-tool can't exfiltrate secrets
+  # or escape its work. The bwrap FLAGS are the security boundary, not this
+  # script — read them.
+  #
+  # Inside the box the agent CAN: read/write /srv/share/projects, read/write its
+  # own ~/.claude state, run its full toolchain (project flakes via `nix
+  # develop` over the daemon socket), commit (git identity is bound read-only),
+  # and reach the network (the API).
+  # It CANNOT: read secrets (~/.ssh, ~/.config/sops age key, ~/.config/gh, and
+  # crucially /etc/ssh host keys — sops-nix's master key — and /etc/shadow are
+  # all absent), push (no SSH key → run `git push` from a normal shell), mutate
+  # the system (no setuid wrappers bound, user namespace blocks sudo), or touch
+  # the rest of $HOME (fresh tmpfs; dotfiles absent).
+  #
+  # Trade-off accepted (operator, 2026-05-30): maximum isolation over
+  # convenience — push + system rebuilds happen outside the box, deliberately.
+  claudeBox = pkgs.writeShellApplication {
+    name = "claude-box";
+    runtimeInputs = [ pkgs.bubblewrap ];
+    text = ''
+      projects="/srv/share/projects"
+
+      # The API credential is the one secret the agent legitimately needs; keep
+      # it, clear everything else from the env.
+      api_env=()
+      if [ -n "''${ANTHROPIC_API_KEY:-}" ]; then
+        api_env=(--setenv ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY")
+      fi
+
+      exec bwrap \
+        --ro-bind /nix/store /nix/store \
+        --bind /nix/var/nix/daemon-socket /nix/var/nix/daemon-socket \
+        --ro-bind /run/current-system /run/current-system \
+        --ro-bind-try /etc/static /etc/static \
+        --ro-bind-try /etc/profiles /etc/profiles \
+        --ro-bind-try /etc/nix /etc/nix \
+        --ro-bind-try /etc/resolv.conf /etc/resolv.conf \
+        --ro-bind-try /etc/nsswitch.conf /etc/nsswitch.conf \
+        --ro-bind-try /etc/hosts /etc/hosts \
+        --ro-bind-try /etc/ssl /etc/ssl \
+        --ro-bind-try /etc/passwd /etc/passwd \
+        --ro-bind-try /etc/group /etc/group \
+        --ro-bind-try /bin /bin \
+        --ro-bind-try /usr/bin /usr/bin \
+        --proc /proc \
+        --dev /dev \
+        --tmpfs /tmp \
+        --tmpfs "$HOME" \
+        --bind "$projects" "$projects" \
+        --bind "$HOME/.claude" "$HOME/.claude" \
+        --bind-try "$HOME/.claude.json" "$HOME/.claude.json" \
+        --ro-bind-try "$HOME/.config/git" "$HOME/.config/git" \
+        --ro-bind-try "$HOME/.nix-profile" "$HOME/.nix-profile" \
+        --ro-bind-try "$HOME/.local/state/nix" "$HOME/.local/state/nix" \
+        --ro-bind-try "$HOME/.deno" "$HOME/.deno" \
+        --chdir "$projects" \
+        --clearenv \
+        --setenv HOME "$HOME" \
+        --setenv USER "''${USER:-nori}" \
+        --setenv PATH "$PATH" \
+        --setenv TERM "''${TERM:-xterm}" \
+        --setenv LANG "''${LANG:-C.UTF-8}" \
+        --setenv NIX_REMOTE daemon \
+        --setenv SSL_CERT_FILE "''${SSL_CERT_FILE:-''${NIX_SSL_CERT_FILE:-/etc/ssl/certs/ca-certificates.crt}}" \
+        "''${api_env[@]}" \
+        --unshare-all \
+        --share-net \
+        --die-with-parent \
+        -- claude "$@"
+    '';
+  };
 in
 {
   home.packages = [
     pkgs.claude-code # Anthropic CLI; pulls Node closure (~300 MB)
+    claudeBox # opt-in `claude-box` — sandboxed agent launcher (see let-block)
     pkgs.agent-browser # Persistent browser automation for AI agents
     # MCP servers — direct binaries from nixpkgs (no npx-fetch latency,
     # version pinned by flake.lock). Wired into Claude Code via the
