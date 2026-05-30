@@ -1,4 +1,9 @@
-{ pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 let
   # ---------------------------------------------------------------------
   # Bind data — single source of truth for the Hyprland config + the
@@ -253,6 +258,14 @@ in
 
   programs.fzf.enable = true; # Ctrl-R history, Ctrl-T file picker, **<Tab> hooks
   programs.zoxide.enable = true; # `z <fragment>` jumps to most-used dir match
+
+  # Convenience shortcut: ~/nori → /srv/nori (the @srv-nori personal working
+  # subvolume — networked over Samba + backed up). An out-of-store symlink to
+  # the live mutable path (NOT a store copy). $HOME itself stays the private
+  # root: secrets (~/.ssh, ~/.config/sops, ~/.claude.json) live in home,
+  # never on the share. /srv/nori only exists on workstation, so this lives
+  # here rather than in the cross-machine core.nix.
+  home.file."nori".source = config.lib.file.mkOutOfStoreSymlink "/srv/nori";
 
   # Cursor + GTK + Qt + dconf color-scheme are now managed by Stylix
   # (modules/desktop/stylix.nix) — one wallpaper input drives the
