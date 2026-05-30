@@ -6,12 +6,16 @@
 {
   # Samba server, tailnet-only.
   #
-  # Two shares:
+  # Three shares:
   #   media → /mnt/media   (whole IronWolf btrfs root; subvolumes visible
   #                          as subdirs: streaming, photos, home-videos,
   #                          projects)
   #   share → /srv/share   (the @srv-share subvolume on root; family-
   #                          shared dumping ground per DESIGN access matrix)
+  #   nori  → /srv/share/nori  (operator's personal networked working dir;
+  #                          recursive dotfile veto so nested secrets — a
+  #                          project's .env, .git-credentials, an .npmrc
+  #                          token — can't be read across the tailnet)
   #
   # Auth: smbpasswd-managed, separate from system passwords. After
   # first rebuild, on the host:
@@ -88,6 +92,34 @@
         "create mask" = "0664";
         "directory mask" = "0775";
       };
+
+      # Operator's personal networked working dir. Same tailnet-only,
+      # single-user posture as the others, PLUS a recursive dotfile veto:
+      # `veto files = /.*/` denies SMB access to any dot-prefixed entry at
+      # EVERY depth (not just the top level) — the backstop that keeps a
+      # nested secret (a repo's .env, .git-credentials, .npmrc token, a
+      # stray ~/.ssh layout) off the tailnet. `delete veto files = yes` so
+      # a directory can still be removed despite vetoed dotfiles inside.
+      #
+      # Limits (by design, not a guarantee): the veto only catches
+      # dot-prefixed NAMES — non-dot secret files (credentials.json,
+      # kubeconfig, *.key) are NOT hidden, so don't store those here. And
+      # it hides .git/.envrc over SMB, which is fine for the local-work +
+      # remote-access pattern (you work on workstation; SMB is for reading
+      # files from other tailnet devices). Real secrets stay in $HOME
+      # (local-only), never relocated here.
+      "nori" = {
+        path = "${config.nori.fs.share.path}/nori";
+        browseable = "yes";
+        "read only" = "no";
+        "valid users" = "nori";
+        "force user" = "nori";
+        "force group" = "users";
+        "create mask" = "0664";
+        "directory mask" = "0775";
+        "veto files" = "/.*/";
+        "delete veto files" = "yes";
+      };
     };
   };
 
@@ -107,6 +139,7 @@
   # to nori.fs.
   systemd.tmpfiles.rules = [
     "d ${config.nori.fs.share.path}       0775 nori users -"
+    "d ${config.nori.fs.share.path}/nori  0775 nori users -"
     "d ${config.nori.fs.downloads.path}   0775 nori users -"
     "d ${config.nori.fs.photos.path}      0775 nori users -"
     "d ${config.nori.fs.home-videos.path} 0775 nori users -"
