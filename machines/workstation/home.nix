@@ -259,13 +259,29 @@ in
   programs.fzf.enable = true; # Ctrl-R history, Ctrl-T file picker, **<Tab> hooks
   programs.zoxide.enable = true; # `z <fragment>` jumps to most-used dir match
 
-  # Convenience shortcut: ~/nori → /srv/nori (the @srv-nori personal working
-  # subvolume — networked over Samba + backed up). An out-of-store symlink to
-  # the live mutable path (NOT a store copy). $HOME itself stays the private
-  # root: secrets (~/.ssh, ~/.config/sops, ~/.claude.json) live in home,
-  # never on the share. /srv/nori only exists on workstation, so this lives
-  # here rather than in the cross-machine core.nix.
-  home.file."nori".source = config.lib.file.mkOutOfStoreSymlink "/srv/nori";
+  # ~/nori + the standard working folders are out-of-store symlinks into the
+  # @srv-nori subvolume (networked over Samba + own backup tier). Canonical
+  # data lives on /srv/nori; apps use the normal home paths; Samba serves the
+  # real dirs natively (no follow-symlink needed). This is the allowlist shape:
+  # only these harmless working dirs are relocated onto the share — secrets
+  # (~/.ssh, ~/.config/sops, ~/.claude.json) stay on @home and never enter the
+  # shared tree, so there's nothing to filter out. /srv/nori only exists on
+  # workstation, so this lives here, not in the cross-machine core.nix.
+  home.file =
+    let
+      link = target: {
+        source = config.lib.file.mkOutOfStoreSymlink target;
+      };
+    in
+    {
+      "nori" = link "/srv/nori";
+      "Documents" = link "/srv/nori/Documents";
+      "Videos" = link "/srv/nori/Videos";
+      "Photos" = link "/srv/nori/Photos";
+      "Downloads" = link "/srv/nori/Downloads";
+      "Desktop" = link "/srv/nori/Desktop";
+      "Projects" = link "/srv/nori/Projects";
+    };
 
   # Cursor + GTK + Qt + dconf color-scheme are now managed by Stylix
   # (modules/desktop/stylix.nix) — one wallpaper input drives the
