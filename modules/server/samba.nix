@@ -11,11 +11,14 @@
   #                          as subdirs: streaming, photos, home-videos,
   #                          projects)
   #   share → /srv/share   (the @srv-share subvolume on root; family-
-  #                          shared dumping ground per DESIGN access matrix)
-  #   nori  → /srv/share/nori  (operator's personal networked working dir;
-  #                          recursive dotfile veto so nested secrets — a
-  #                          project's .env, .git-credentials, an .npmrc
-  #                          token — can't be read across the tailnet)
+  #                          shared dumping ground / storage per DESIGN matrix)
+  #   nori  → /srv/nori    (the @srv-nori subvolume; operator's personal
+  #                          networked working dir — separate subvolume so it
+  #                          gets its own snapshot/backup tier, NOT mixed into
+  #                          the storage share; recursive dotfile veto so
+  #                          nested secrets — a project's .env, .git-
+  #                          credentials, an .npmrc token — can't be read
+  #                          across the tailnet)
   #
   # Auth: smbpasswd-managed, separate from system passwords. After
   # first rebuild, on the host:
@@ -109,7 +112,7 @@
       # files from other tailnet devices). Real secrets stay in $HOME
       # (local-only), never relocated here.
       "nori" = {
-        path = "${config.nori.fs.share.path}/nori";
+        inherit (config.nori.fs.nori) path;
         browseable = "yes";
         "read only" = "no";
         "valid users" = "nori";
@@ -139,7 +142,7 @@
   # to nori.fs.
   systemd.tmpfiles.rules = [
     "d ${config.nori.fs.share.path}       0775 nori users -"
-    "d ${config.nori.fs.share.path}/nori  0775 nori users -"
+    "d ${config.nori.fs.nori.path}        0775 nori users -"
     "d ${config.nori.fs.downloads.path}   0775 nori users -"
     "d ${config.nori.fs.photos.path}      0775 nori users -"
     "d ${config.nori.fs.home-videos.path} 0775 nori users -"

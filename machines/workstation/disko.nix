@@ -14,6 +14,10 @@ _: {
       path = "/srv/share";
       tier = "user";
     };
+    nori = {
+      path = "/srv/nori";
+      tier = "user";
+    };
   };
 
   # Declarative partition layout for workstation's NVMe root.
@@ -23,12 +27,13 @@ _: {
   #
   # Layout (per docs/DESIGN.md L111–124):
   #   p1  ESP, 1 GiB, vfat, label BOOT
-  #   p2  rest, btrfs, label nixos, six subvolumes:
+  #   p2  rest, btrfs, label nixos, seven subvolumes:
   #     @            -> /
   #     @home        -> /home
   #     @nix         -> /nix
   #     @var-lib     -> /var/lib       (service state, separate snapshot cadence)
-  #     @srv-share   -> /srv/share     (Samba-shared dumping ground)
+  #     @srv-share   -> /srv/share     (Samba-shared dumping ground / storage)
+  #     @srv-nori    -> /srv/nori      (operator's personal networked working dir)
   #     @snapshots   -> /.snapshots    (snapshot target)
   #
   # All btrfs subvolumes mount with compress=zstd:3,noatime. Disko emits
@@ -109,6 +114,13 @@ _: {
                 };
                 "@srv-share" = {
                   mountpoint = "/srv/share";
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
+                };
+                "@srv-nori" = {
+                  mountpoint = "/srv/nori";
                   mountOptions = [
                     "compress=zstd:3"
                     "noatime"
