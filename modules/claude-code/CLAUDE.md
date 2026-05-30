@@ -18,6 +18,11 @@ rebuild. (Per-project `.claude/` config, and per-project memory under
 `~/.claude/projects/<project>/memory/`, are separate and _not_ nix-managed —
 edit those in place.)
 
+**Working across the several projects on this machine** — which repo is what,
+how to build/test each, the shared conventions and gotchas — is mapped in
+`/srv/share/projects/homelab/docs/PROJECTS.md` (also surfaced at
+`/srv/share/projects/AGENTS.md`). Read it before orchestrating multiple repos.
+
 ## Tooling is a `nix shell` away (don't get stuck on a missing command)
 
 Almost any tool is available ad-hoc without installing anything — run it via
