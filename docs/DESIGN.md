@@ -606,7 +606,6 @@ Captured for visibility, not currently being worked:
 - **UPS for workstation.** Single PSU is a non-goal for HA, but mid-write power loss on USB-attached IronWolf is a real recovery scenario. Cheap (~1500-3000 NOK for 600VA) insurance. No commitment yet.
 - **Migration of IronWolf Pro from USB to internal SATA.** When SATA capacity becomes available (e.g., adding a SATA HBA via PCIe). USB enclosures have their own failure mode at the controller level.
 - **`common-cpu-amd-pstate`** module on workstation hardware. Deferred from Phase 3.
-- **Authelia/Authentik self-hosted SSO.** Triggered by Cloudflare Access becoming insufficient.
 - **NVIDIA Wayland edge cases** (multi-monitor VRR, suspend/resume nuances). Not blocking; document fixes in `hardware.nix` as they're encountered.
 - **CUDA/Ollama drift.** Stable 25.11 had a CUDA 13 / 12.8 toolkit mismatch breaking some CUDA apps. Ollama bundles its own CUDA libs typically; verify Ollama works at install and pin nixpkgs version if it doesn't.
 - **Home automation on the Pi.** Not currently planned; no concrete use case.
@@ -660,7 +659,7 @@ Verify via `sudo systemctl cat <unit>.service | grep -E '(ProtectHome|TemporaryF
 
 **restic over btrbk send/receive for backup transport.** Filesystem-agnostic (Pi backup drive doesn't need to be btrfs). Same tool for Pi target and Hetzner target — single mental model.
 
-**Cloudflare Access over self-hosted SSO (Authelia/Authentik).** At household scale, free, requires no self-hosted infrastructure.
+**Self-hosted Authelia OIDC over Cloudflare Access (reversed 2026-05).** The original call (Phase-5 planning) was Cloudflare Access — free, no self-hosted infrastructure. That was reversed once the public surface moved off workstation entirely to the Cloudflare edge (Pages + Workers, 2026-05-08): with no homelab-served public traffic, Cloudflare Access had nothing to gate, while family-facing internal services (Jellyfin, Immich, Vaultwarden) needed per-user identity propagated *into the app* — which Access at the edge can't do for tailnet-only routes. Authelia OIDC is live today, auto-generated from `nori.lanRoutes.<n>.oidc`, layered only where per-user state matters (the `audience` model — see CLAUDE.md bias section). Forward-auth covers the family-facing apps that lack native OIDC (Komga, calibre-web).
 
 **Backup-correctness via three documented patterns (A/B/C), not assumption.** Filesystem snapshot of a live database is roulette. Logical dumps before backup is the discipline; the patterns document which kind of dump for which kind of service.
 
