@@ -86,3 +86,48 @@ If you lose track, stop and restate.
 "Completed" is wrong if anything was skipped silently.
 "Tests pass" is wrong if any were skipped.
 Default to surfacing uncertainty, not hiding it.
+
+## Run the real journey
+For anything touching a security, I/O, network, or system boundary, watch the
+real end-to-end journey run against the real system — including the model, the
+network, the cloud — before calling it "verified." Green or stubbed tests are
+necessary, not sufficient: a stub removes exactly the seam where the bug hides,
+so the bug lives in what the stub faked. The cost is seconds; the findings are real.
+
+## Correctness by construction
+Make illegal states unrepresentable — reach for types first; reserve runtime
+checks for what types can't express. Pre-launch (no external API consumers yet),
+prefer the correct model over backwards-compat — change public shapes freely to
+reach it; a compromise shape kept only for compat is a worse model.
+Deep dive: `~/.claude/artifacts/correctness-by-construction.md`.
+
+## Design only when the work is conceptual
+Brainstorming/design earns its keep for conceptual/ambiguous work — new
+abstractions, mental models, cross-cutting decisions. Mechanical, well-shaped work
+(a localized fix, an obvious addition, a known refactor) skips straight to TDD
+(or `diagnose` for a bug); code in a design doc is illustrative, not the
+implementation. Two modes: **feature** (research → analysis → abstraction-design →
+TDD → wrap) vs **task/issue** (research → solve → match conventions, no
+abstraction phase). The `dev-loop` skill routes this.
+
+## Explore the state of the art first
+Before inventing a codebase-local solution, look up how this shape of problem is
+solved in the wild (reliable sources), then match it to the codebase's shape.
+Don't jump straight to local invention — this holds in both modes above.
+
+## One construct per problem
+Unify mechanisms that share an underlying problem; introduce separate constructs
+only for genuinely separate problems (e.g. separate presentations sharing one
+dispatch). Collapsing parallel systems into one construct is the win, even if the
+diff widens.
+
+## Dependencies: judge by attack surface, not bundle size
+Take a dependency when it's reliable and improves correctness/quality; one already
+in the tree (even transitively) adds ~no attack surface and beats hand-rolling.
+Hand-roll only the security-critical core and fiddly/unreliable deps. "Minimal
+trusted core" means minimize attack surface, not dependency count.
+
+## Commit to the working branch (solo dev)
+This is a solo-with-agents workflow: commit directly to the working branch
+(usually `main`). Don't create or suggest feature branches — this overrides any
+generic "branch off the default branch first" habit. Pushing is the operator's call.
