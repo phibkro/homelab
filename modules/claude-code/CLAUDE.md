@@ -1,8 +1,22 @@
-
-# CLAUDE.md rules
+# CLAUDE.md
 
 These rules apply to every task in this project unless explicitly overridden.
 Bias: caution over speed on non-trivial work. Use judgment on trivial tasks.
+
+## This machine's configuration (read once)
+
+This machine (`workstation`) is configured by the **homelab repo at
+`/srv/share/projects/homelab`** — the canonical source of truth for the whole
+machine (NixOS + home-manager). **`~/.claude/` is a generated _derivation_, not
+the source:** `~/.claude/CLAUDE.md` (this file), `~/.claude/skills/`, and
+`~/.claude/settings.json` are home-manager symlinks into the nix store, built
+from `homelab/modules/claude-code/`. To change global Claude config — this file,
+a global skill, settings — **edit the homelab source and rebuild** (`just
+rebuild` in the repo), and it re-materializes. **Never edit `~/.claude/`
+directly**: a loose file there is unmanaged and gets clobbered on the next
+rebuild. (Per-project `.claude/` config, and per-project memory under
+`~/.claude/projects/<project>/memory/`, are separate and _not_ nix-managed —
+edit those in place.)
 
 ## Think Before Coding
 State assumptions explicitly. If uncertain, ask rather than guess.
