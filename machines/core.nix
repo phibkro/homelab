@@ -66,4 +66,14 @@
       init.defaultBranch = "main";
     };
   };
+
+  # Per-project dev shells without a manual `nix develop`: direnv reads a
+  # repo's `.envrc` (`use flake`) on `cd` and loads its pinned toolchain;
+  # nix-direnv caches the built shell so re-entry is instant and GC-pins the
+  # closure. Pairs with the self-contained project flakes (pagu, bang-lang,
+  # occupational-health). Opt in per repo with `direnv allow`.
+  programs.direnv = {
+    enable = true;
+    nix-direnv.enable = true;
+  };
 }
