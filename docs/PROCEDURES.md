@@ -1,3 +1,8 @@
+---
+summary: The skill index — which recurring-procedure skill handles what intent, and
+  how to add a new skill. Skills live in .claude/skills/ and load on demand.
+---
+
 # Procedures
 
 The non-deterministic recurring procedures — analysing the system, adding a service, adding a host, relocating a service to pi, wrapping up a session, refreshing docs after a structural change — live as skills under `.claude/skills/`, not as prose here. Skills load on demand (zero context cost when not invoked) and Claude auto-discovers them when the trigger phrasing matches.
@@ -14,3 +19,9 @@ The non-deterministic recurring procedures — analysing the system, adding a se
 To invoke manually: `/skill-name`. To let Claude auto-discover: just describe the intent in natural language. Skill content (`.claude/skills/<name>/SKILL.md`) is the authoritative procedure; if you find yourself reasoning a procedure out from first principles, stop and let the skill expand.
 
 For mechanical operations not large enough to warrant a skill (build, deploy, snapshot, restore-drill), see `just --list`.
+
+## Adding a skill
+
+`mkdir .claude/skills/<n> && $EDITOR .claude/skills/<n>/SKILL.md`. Frontmatter requires `description` (drives auto-discovery — put the key use case first). See https://code.claude.com/docs/en/skills for the canonical format; existing skills are good templates.
+
+The principle: prose for facts (always-loaded in CLAUDE.md), skills for procedures (load on demand, zero always-loaded cost). When a CLAUDE.md section grows into a procedure with non-deterministic branches, extract it.

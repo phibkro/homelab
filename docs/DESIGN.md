@@ -1,3 +1,8 @@
+---
+summary: Canonical architecture + current-state reference — the seven-layer system
+  design, the data/backup model, design rationales, and the Meadows leverage map. The "why".
+---
+
 # nori — Home Lab Design Document (v2)
 
 **Status:** Canonical. Supersedes DESIGN.md v1.
@@ -81,13 +86,34 @@ The lab decomposes into seven layers.
 
 **Failure domain independence:** the two persistent hosts share no storage, no power supply, no critical dependency in the boot path. Either host's failure does not block the other.
 
+**Operator facts:** single user `nori`, passwordless wheel sudo, SSH key-only. The workstation CPU cooler was repasted 2026-04-29 — sustained 12-thread load now ~72°C (was 95°C TJ_max throttling pre-repaste).
+
+#### Topology registry and service placement
+
+Cross-host references go through a registry, never IP literals: `config.nori.hosts.<n>.tailnetIp`. Schema in `modules/effects/hosts.nix`; values in `flake.nix` `identityFor`. A `readDir` over `./machines/` drives both `nixosConfigurations` enumeration and the registry, so adding a host is "create the folder + add identity" — either omission fails eval. The `role` field (`workhorse` | `appliance`) drives the placement assertion in `modules/effects/backup.nix` (appliance hosts cannot use `paths`-based backups).
+
+Service placement follows the role split (live list: `just ports` for Caddy-exposed services; each host's flat imports + `modules/server/*.nix` for the full set):
+
+- **workstation** (workhorse): the HTTP entry plane (Caddy reverse proxy + Authelia OIDC), every GPU-bound service (Immich CUDA ML + NVENC, Ollama CUDA, Jellyfin NVENC), the *arr stack, and the long tail of state-bearing apps (password manager, calendar/contacts, ebook + comics + photo libraries, file sync, dashboard, SMB shares). Per-host telemetry: Beszel agent + Gatus + Blocky self-hosted.
+- **pi** (appliance): the observability + alert plane that must survive station outages (Beszel hub, ntfy server, Gatus, Blocky forwarder) plus tailnet plumbing (subnet router + opt-in exit node). Per-host telemetry: Beszel agent.
+
+**Cross-host services use the split-module pattern** — daemon module on the host that runs it, client/proxy module on every host. The cross-host Caddy lanRoute is gated `lib.mkIf config.services.caddy.enable` so the daemon-host's Blocky stays in pure forwarder mode. Live examples in `modules/server/{beszel,ntfy}/`.
+
+#### GPU access and resource caps
+
+**GPU access pattern:** services that need the GPU set `accelerationDevices` (or systemd `DeviceAllow`) from `config.nori.gpu.nvidiaDevices` — single source of truth in `modules/effects/gpu.nix`. Confirmed working: Ollama (CUDA, 14+ GiB used at idle with model loaded), Jellyfin (devices visible, web-UI flag still off), Immich (NVENC ready, CUDA ML live).
+
+**Memory pressure:** `zramSwap.enable = true` in `modules/common/base.nix` — 16 GiB compressed swap on station, required for nvcc/CUDA builds (previously caused OOM + host hang). Pi keeps swap off per its anti-write posture.
+
+**Resource caps where it matters:** `immich-machine-learning.serviceConfig` has `CPUQuota=600%` + `MemoryMax=16G` — guards against the userspace-CPU-starvation pattern that wedged the host on 2026-04-28 (rtkit canary thread starved 4+ minutes; full incident record in commit `c0a557d`).
+
 ### Layer 2: Boot and OS
 
 UEFI multi-boot on workstation. NixOS as primary OS, Windows preserved on its own NVMe, OS selection via firmware boot menu. Each OS owns its drive completely; no shared bootloader.
 
 `systemd-boot` as the bootloader for NixOS (default for UEFI on NixOS, handles btrfs subvolumes natively). UEFI NVRAM persists boot entries on the Gigabyte board; if first boot fails to register the entry (a known UTM quirk that may not appear on real hardware), recovery is `bootctl install` from a chroot.
 
-**Channel:** `nixos-unstable`, pinned via flake.lock. Re-pin on a deliberate cadence (monthly or when a needed feature lands), not on every `nix flake update`.
+**Channel:** `nixos-unstable`, pinned via flake.lock. Re-pin on a deliberate cadence (monthly or when a needed feature lands), not on every `nix flake update`. A 2026-04-29 attempt to switch to stable 25.11 was activated then rolled back — three services broke on the downgrade because their state had been migrated forward by unstable (ntfy DB schema v15 vs 25.11's v13, Postgres VectorChord 1.1.1 vs 25.11's 0.5.3, plus an open-webui home-dir regression). See `docs/ROADMAP.md` "Migration to next stable channel" for the path forward.
 
 **NVIDIA driver path:**
 
@@ -155,6 +181,10 @@ Postgres and other databases write in a copy-on-write-unfriendly pattern. Two in
 
 **Backup-consistency interaction (logical dumps before backup).** Filesystem-level snapshot of a running database produces inconsistent state. Backup correctness requires a logical dump (`pg_dump` for Postgres, `.backup` API for SQLite) before restic touches the data. Pattern in Layer 5.
 
+#### Filesystem context abstraction (`nori.fs`)
+
+`nori.fs.<n>` (Reader-shaped) is declared alongside the host's disko config; each entry pairs a path with a value tier (`re-derivable` | `user` | `irreplaceable`). Service modules read `config.nori.fs.<n>.path`; backup repo paths + btrbk subvolume lists derive from the tier filter. Schema in `modules/effects/fs.nix`; declarations in `machines/workstation/disko*.nix`. Adding a media subvolume = one declaration; backup + snapshot wiring follows automatically.
+
 ### Layer 4: Networking and access control
 
 Three network zones with default-deny posture:
@@ -194,6 +224,8 @@ nori.lanRoutes.<name> = {
 
 See `docs/CONVENTIONS.md` for the canonical service-module shape and how to extend lan-route (firewall opening + Authelia OIDC client auto-gen are the natural next extensions).
 
+**Dashboard enrollment:** `nori.lanRoutes.<n>.dashboard = { ... }` enrolls the route in the family-facing Glance dashboard at `home.nori.lan`. The URL is derived from the route name; metadata (title/icon/group/description) lives next to the rest of the service's route config. `glance.nix` is a pure transformer over `config.nori.lanRoutes`.
+
 #### TLS + naming
 
 Caddy terminates TLS for every `<name>.nori.lan` using its internal CA (auto-generated). The root cert is committed at `modules/server/caddy-local-ca.crt` and added to system trust via `security.pki.certificateFiles` so curl/Go/openssl trust it transparently. Python services need explicit `SSL_CERT_FILE = "/etc/ssl/certs/ca-bundle.crt"` (certifi doesn't read system trust).
@@ -207,7 +239,7 @@ Devices accessing the homelab need to install the Caddy root CA once:
 
 #### Single Sign-On (SSO)
 
-`Authelia` provides OIDC. Services that opt in get a one-click login flow (visit service → redirect to `auth.nori.lan` → log in once → returned authenticated). Per-service setup is auto-generated from the `nori.lanRoutes.<n>.oidc` block in each service module: lan-route generates the Authelia client entry, two sops secrets (raw + PBKDF2 hash), and a sops env-file template. Authelia's `template` config-filter reads the hash from sops at startup, so zero hash material lives in committed Nix. See `docs/CONVENTIONS.md` "Authelia OIDC pattern" for the bootstrap flow and `flake.nix`'s `forbidden-patterns` check for the enforcement.
+`Authelia` provides OIDC. Services that opt in get a one-click login flow (visit service → redirect to `auth.nori.lan` → log in once → returned authenticated). Per-service setup is auto-generated from the `nori.lanRoutes.<n>.oidc` block in each service module: lan-route generates the Authelia client entry, two sops secrets (raw + PBKDF2 hash), and a sops env-file template. Authelia's `template` config-filter reads the hash from sops at startup, so zero hash material lives in committed Nix. `just oidc-key <name>` is the bootstrap. See `docs/CONVENTIONS.md` "Authelia OIDC pattern" for the bootstrap flow and `flake.nix`'s `forbidden-patterns` check for the enforcement.
 
 #### DNS architecture
 
@@ -355,6 +387,10 @@ The `backupPrepareCommand` runs as an `ExecStartPre` on the generated `restic-ba
 
 New services pick a pattern at onboarding time. (The patterns A/B/C live above; an earlier plan to split them into `docs/backup-patterns.md` was abandoned to avoid the indirection.)
 
+#### Backup intent abstraction (`nori.backups`)
+
+`nori.backups.<n>` (paths or skip + optional `tier`) drives every restic job. `tier` (`service` | `user` | `irreplaceable`) drives the default `pruneOpts` retention curve. The OneTouch external is the local repo at `/mnt/backup` on station. Pi services skip until Pi gains its own disk; Hetzner off-site is still on the roadmap. The `dynamicUserServices` symlink-trap assertion derives from `config.systemd.services` introspection — self-maintaining. Schema in `modules/effects/backup.nix`.
+
 #### Backup destinations
 
 Two restic repositories per service, three retention policies:
@@ -387,6 +423,8 @@ Hyprland on Wayland, on `workstation` only, configured via home-manager as a Nix
 - Some Electron apps still need explicit `--ozone-platform=wayland` flags despite Electron 35+ syncobj support; `NIXOS_OZONE_WL=1` covers most via the NixOS-specific shim.
 
 Driver 595 + explicit-sync removed most of the historical NVIDIA-Wayland pain. The session env-var set in `modules/desktop/hyprland.nix` is intentionally minimal (`NIXOS_OZONE_WL`, `__GLX_VENDOR_LIBRARY_NAME`); expand only when something concretely breaks.
+
+**Visual design system:** Stylix (`modules/desktop/stylix.nix`) drives a Material-3 base16 palette across GTK / Qt / Hyprland / waybar / kitty / btop / fuzzel — a single declarative knob (currently a pinned `material-darker` scheme; image-derived-from-wallpaper is supported but the from-image generator washed out on stock nixos-artwork wallpapers, so an explicit scheme is preferred). Per-target opt-out via `stylix.targets.<name>.enable = false` (NixOS scope) or `home-manager.users.<u>.stylix.targets.<name>` (HM scope, e.g. `hyprlock`, whose background we own ourselves). Material You guidelines (m3.material.io) are the canonical reference for visual choices — see the `feedback/material_you_design` memory.
 
 ### Layer 7: Operations
 
@@ -495,6 +533,14 @@ Edit on laptop → `nh os switch --target-host <host>` → atomic activation →
 #### Secrets
 
 `sops-nix` with `age` keys derived from SSH host keys via `ssh-to-age`. Introduced when the first secret is needed (likely with restic-password for Phase 4-5).
+
+#### Dev shells (`mkDevShell` fragments)
+
+`modules/dev/<n>.nix` are atomic dev-environment fragments (language toolchain, runtime, package manager, tool, service). The composer at `modules/dev/default.nix` exposes `mkDevShell pkgs { modules = [ "ts" "nix" "claude-code" ]; }` — resolves transitive deps, dedupes buildInputs, merges Claude allowlists. The `claude-code` fragment is the consent signal: present → composer materializes `.claude/settings.json`; absent → contributions are collected silently (project usable without Claude Code). Reachable from downstream project flakes via `self.lib.mkDevShell`. Live fragments: `nix eval .#lib.fragmentNames`.
+
+#### Self-deployed apps + app secrets
+
+`secrets/apps.yaml` (separate sops file from `secrets/secrets.yaml`) holds tokens for the operator's personal apps deployed on the homelab; `.sops.yaml`'s `secrets/.*\.yaml$` regex covers both with the same recipient set. Per-secret `sopsFile = ../../secrets/apps.yaml` override on the consuming module side. Naming convention: agnostic (`tmdb-token` not `filmder-tmdb-token`) when multiple projects could plausibly share the same key. Live worked example: `modules/server/filmder.nix` — sops decrypt → systemd build oneshot (manual trigger via `just deploy-app filmder`, sentinel-skip on idempotent rebuilds, `bun install + bun run build`) → atomic publish to `/var/lib/<n>/dist` → darkhttpd-on-port → `nori.lanRoutes` for `<n>.nori.lan`. Internet-public exposure was prototyped via Tailscale Funnel and reverted (portfolios not ready); reference impl preserved in `memory/reference/tailscale_funnel_implementation.md` for revival.
 
 ---
 
@@ -700,6 +746,27 @@ Re-checked quarterly. Growth trends inform when a second drive on workstation is
 - `nixd` LSP for editor integration. `direnv` + `nix-direnv` for dev shells.
 - Commit messages: imperative mood. Conventional commits not enforced.
 - `main` is what's deployed. Feature branches for non-trivial changes. Squash-merge.
+
+---
+
+## Leverage map
+
+Snapshot of where this lab sits at each Meadows leverage tier (12 low → 1 high), across the three dimensions the `/analyse-system` skill covers. The snapshot is dated; structural changes shift placements. Verify against current code on a fresh read — use `/analyse-system` at session start to confirm or refine these placements. Drift is expected.
+
+| Tier | Artifact (what runs) | Dev workflow (how it evolves) | Agentic workflow (how Claude works) |
+|---|---|---|---|
+| **12** | port allocations (`just ports`), retention values, `MemoryMax` caps | test timeouts, `restic check` cadence values | model + token budget settings |
+| **11** | `zramSwap = 16 GiB`, OneTouch capacity, `immich-ml` `MemoryMax = 16G` + `CPUQuota = 600%` | CI parallelism (single runner today) | context window budget, memory file size |
+| **10** | `nori.fs` tier-driven flows; @downloads hardlink topology + @library promote-target separation; backup repo membership derived from `tier` | trunk-based; `main` is the deploy boundary | system prompt → memory → conversation flow; tool→memory writeback |
+| **9** | restic cadence ladder (daily / weekly / monthly / quarterly drill); btrbk daily; `OnFailure` is instant | pre-commit hook (per-commit), GH Actions (per push), session-end wrap-up | per-turn tool feedback; per-session memory updates; archive cadence (manual today) |
+| **8** | `OnFailure → notify@`, restic check, Gatus → ntfy alerts, OOM-killer-via-MemoryMax | pre-commit `nix flake check` + CI as commit gate | tool errors, validation feedback, user pushback |
+| **7** | flake checks accumulate strictness over commits (the more we encode, the tighter); skill capability accumulates | conventions accumulate (CONVENTIONS.md), skill set grows | active memory grows without aggressive pruning (worth watching); skill catalog grows |
+| **6** | `nori.<X>` Reader+Writer effect family; topology registry; `just ports` live oracle; `nori.fs` as named-context for paths | CLAUDE.md routing table; `docs/PROCEDURES.md`; skills as on-demand context; `git log` narrative; `nix eval .#lib.fragmentNames` lists available dev fragments | skill auto-discovery via descriptions; memory files in `~/.claude/projects/...`; system reminders surface deferred tools |
+| **5** | `every-service-has-fs-hardening`, `every-service-has-backup-intent`, `forbidden-patterns` (no PBKDF2, no IP literals, etc.), `audience` enum, port-uniqueness assertion, paths-XOR-skip assertion | "encode conventions in code, not docs" (memory: `enforce_in_code`); types > assertions > flake checks > prose | tool restrictions in `settings.json`, hooks, refusal logic, "never commit unless asked" |
+| **4** | `modules/effects/` as the meta-shape for `nori.<X>` extraction; `modules/dev/` atomic dev-shell fragments + composer (same Reader+Writer shape applied to per-project tooling); rule-of-three for abstractions; cross-host service split-module pattern | skills extracted at three concrete uses (`add-service`, `relocate-to-pi`, etc.); `on-structural-change` skill for doc-tier decisions; `just deploy-app <n>` recipe pattern for self-deployed apps | skill extraction; memory schema (`active/`, `archive/`, etc.); the lift of in-session prompts → reusable skills (`/analyse-system` is an instance); user-level skill + settings content lives in-repo (`modules/claude-code/`) and ships to operator-attached hosts via home-manager |
+| **3** | DESIGN.md three principles: declarative reproducibility, default-deny exposure, policy proportional to data value | "correctness > simplicity > thoroughness > speed"; `main` is the deploy boundary; commit messages explain the *why* | "answer first, push back, no flattery"; "make the reasonable call and continue"; correctness > clarity > utility > thoroughness |
+| **2** | declarative-first (NixOS), code-as-truth, FP-flavored Reader + collected-Writer effects, Cynefin Complex framing | iterate-to-stable then codify; compose via aliases not categories; folders = coupling not categorization | tool-use + on-demand skills + persistent file-based memory; structured tool-feedback loop |
+| **1** | willingness to swap tools when they fight the paradigm (Uptime Kuma → Gatus); "tailnet IS the auth" (audience refactor); "real-debrid is a different architecture not an upgrade" | willingness to question the dev process itself (this entire session is an instance); rule-of-three guards against premature codification | willingness to question whether agent involvement helps at all (the tier-12 micro-task should not invoke `/analyse-system`); prompt-shape transcendence (Meadows lens > open-ended exploration) |
 
 ---
 

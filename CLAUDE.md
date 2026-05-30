@@ -10,12 +10,13 @@ Per-machine layout: `machines/<n>/` holds everything for one machine. NixOS host
 
 Read these before making changes:
 
-1. **`docs/DESIGN.md`** — canonical architecture. The "why" lives here. v2.x.
-1. **`docs/ROADMAP.md`** — the forward plan: outstanding work, deferred items, idea backlog. The "what's next" (single home; `git log` is the shipped history).
-2. **`docs/CONVENTIONS.md`** — established patterns. How modules are shaped, secrets are wired, services are added.
-3. **`docs/gotchas.md`** — landmines. Read before touching: NVMe enumeration, Caddy CA trust, sops env files, openrsync flags, DynamicUser services.
-4. **`.claude/skills/`** — recurring procedures (add a service, add a host, relocate to Pi, wrap session, on structural change). Auto-discovered when the trigger phrasing matches; load on demand. `docs/PROCEDURES.md` is the index.
-5. `git log --oneline` — commit-by-commit narrative for context the docs don't catch.
+1. **`docs/DESIGN.md`** — canonical architecture + current-state reference. The "why" lives here. v2.x.
+2. **`docs/ROADMAP.md`** — the forward plan: outstanding work, deferred items, idea backlog. The "what's next" (single home; `git log` is the shipped history).
+3. **`docs/CONCEPTS.md`** — glossary of the coined vocabulary (roles, the `nori.<X>` effect family, value tiers, audience, split-module, fate-sharing, dev-shell fragments). Read when a term is unfamiliar.
+4. **`docs/CONVENTIONS.md`** — established patterns. How modules are shaped, secrets are wired, services are added.
+5. **`docs/gotchas.md`** — landmines. Read before touching: NVMe enumeration, Caddy CA trust, sops env files, openrsync flags, DynamicUser services.
+6. **`.claude/skills/`** — recurring procedures (add a service, add a host, relocate to Pi, wrap session, on structural change). Auto-discovered when the trigger phrasing matches; load on demand. `docs/PROCEDURES.md` is the index.
+7. `git log --oneline` — commit-by-commit narrative for context the docs don't catch.
 
 ## Hard rules
 
@@ -27,7 +28,7 @@ Read these before making changes:
 
 ## Procedures
 
-Recurring procedures live as skills under `.claude/skills/`. They auto-discover when the user's intent matches the trigger description; manually invoke with `/<skill-name>`. See `docs/PROCEDURES.md` for the index. If you find yourself reasoning a procedure out from first principles, stop and let the skill expand.
+Recurring procedures live as skills under `.claude/skills/` so the body loads only when the trigger fires (zero always-loaded cost). They auto-discover when the user's intent matches the trigger description; manually invoke with `/<skill-name>`. The skill index (which skill, what triggers it) and how to add one live in **`docs/PROCEDURES.md`** — the single home. If you find yourself reasoning a procedure out from first principles, stop and let the skill expand. The principle: prose for facts (always-loaded here), skills for procedures (load on demand); when a CLAUDE.md section grows into a procedure with non-deterministic branches, extract it.
 
 ## How to operate
 
@@ -43,27 +44,11 @@ Recurring procedures live as skills under `.claude/skills/`. They auto-discover 
 
 ## Current state
 
-- **Channel**: `nixos-unstable` (2026-04-29 attempt to switch to 25.11 was activated then rolled back — three services broke on the downgrade because their state had been migrated forward by unstable: ntfy DB schema v15 vs 25.11's v13, Postgres VectorChord 1.1.1 vs 25.11's 0.5.3, plus an open-webui home-dir regression. See `docs/ROADMAP.md` "Migration to next stable channel" for the path forward).
-
-- **Topology + service placement** (live list: `just ports` for Caddy-exposed services; each host's flat imports + `modules/server/*.nix` for the full set):
-  - **workstation** (workhorse): the HTTP entry plane (Caddy reverse proxy + Authelia OIDC), every GPU-bound service (Immich CUDA ML + NVENC, Ollama CUDA, Jellyfin NVENC), the *arr stack, and the long tail of state-bearing apps (password manager, calendar/contacts, ebook + comics + photo libraries, file sync, dashboard, SMB shares). Per-host telemetry: Beszel agent + Gatus + Blocky self-hosted.
-  - **pi** (appliance): the observability + alert plane that must survive station outages (Beszel hub, ntfy server, Gatus, Blocky forwarder) plus tailnet plumbing (subnet router + opt-in exit node). Per-host telemetry: Beszel agent.
-  - **Cross-host services use the split-module pattern** — daemon module on the host that runs it, client/proxy module on every host. The cross-host Caddy lanRoute is gated `lib.mkIf config.services.caddy.enable` so the daemon-host's Blocky stays in pure forwarder mode. Live examples in `modules/server/{beszel,ntfy}/`.
-  - **Cross-host references go through the topology registry** — `config.nori.hosts.<n>.tailnetIp`, never IP literals. Schema in `modules/effects/hosts.nix`; values in `flake.nix` `identityFor`. `readDir` over `./machines/` drives both `nixosConfigurations` enumeration and the registry, so adding a host is "create the folder + add identity"; either omission fails eval. The `role` field (`workhorse` | `appliance`) drives the placement assertion in `modules/effects/backup.nix` (appliance hosts cannot use `paths`-based backups).
-
-- **workstation hardware**: NixOS on bare metal (Ryzen 5600X, 32 GiB, RTX 5060 Ti, WD SN750 root + IronWolf media). Single user `nori`, passwordless wheel sudo, SSH key-only. Cooler repasted 2026-04-29 — sustained 12-thread load now ~72°C (was 95°C TJ_max throttling pre-repaste).
-- **pi hardware**: Pi 4 (8 GiB) on Samsung FIT 128GB USB. EEPROM `BOOT_ORDER=0xf41` (USB-then-SD). Anti-write storage posture in `machines/pi/hardware.nix`: no swap, `journald.Storage=volatile`, `vm.mmap_rnd_bits=18` aarch64 fixup. Means: services on Pi declare `nori.backups.<n>.skip = "..."` for now; restic-as-target is deferred until a real disk lands.
-
-- **GPU access pattern**: services that need the GPU set `accelerationDevices` (or systemd `DeviceAllow`) from `config.nori.gpu.nvidiaDevices` — single source of truth in `modules/effects/gpu.nix`. Confirmed working: Ollama (CUDA, 14+ GiB used at idle with model loaded), Jellyfin (devices visible, web-UI flag still off), Immich (NVENC ready, CUDA ML live).
-- **Memory pressure handling**: `zramSwap.enable = true` in `modules/common/base.nix` — 16 GiB compressed swap on station. Required for nvcc/CUDA builds; previously caused OOM + host hang. Pi keeps swap off per anti-write posture.
-- **Resource caps where it matters**: `immich-machine-learning.serviceConfig` has `CPUQuota=600%` + `MemoryMax=16G` — guard against the userspace-CPU-starvation pattern that wedged the host on 2026-04-28 (rtkit canary thread starved for 4+ minutes; full incident record in commit `c0a557d`).
-- **Filesystem context**: `nori.fs.<n>` (Reader-shaped) is declared alongside the host's disko config; each entry pairs a path with a value tier (`re-derivable` | `user` | `irreplaceable`). Service modules read `config.nori.fs.<n>.path`; backup repo paths + btrbk subvolume lists derive from the tier filter. Schema in `modules/effects/fs.nix`; declarations in `machines/workstation/disko*.nix`. Adding a media subvolume = one declaration; backup + snapshot wiring follows automatically.
-- **Backups**: `nori.backups.<n>` (paths or skip + optional `tier`) drives every restic job. `tier` (`service` | `user` | `irreplaceable`) drives the default `pruneOpts` retention curve. OneTouch external is the local repo at `/mnt/backup` on station. Pi services skip until Pi gains its own disk. Hetzner off-site still on the roadmap. The `dynamicUserServices` symlink-trap assertion derives from `config.systemd.services` introspection — self-maintaining.
-- **OIDC**: `nori.lanRoutes.<n>.oidc = { ... }` auto-generates the Authelia client + sops secret + env-file template. Hash material lives only in sops (template config-filter expands at startup). `just oidc-key <name>` is the bootstrap.
-- **Dashboard**: `nori.lanRoutes.<n>.dashboard = { ... }` enrolls the route in the family-facing Glance dashboard at `home.nori.lan`. URL is derived from the route name; metadata (title/icon/group/description) lives next to the rest of the service's route config. `glance.nix` is a pure transformer over `config.nori.lanRoutes`.
-- **Dev shells**: `modules/dev/<n>.nix` are atomic dev-environment fragments (language toolchain, runtime, package manager, tool, service). Composer at `modules/dev/default.nix` exposes `mkDevShell pkgs { modules = [ "ts" "nix" "claude-code" ]; }` — resolves transitive deps, dedupes buildInputs, merges Claude allowlists. The `claude-code` fragment is the consent signal: present → composer materializes `.claude/settings.json`; absent → contributions collected silently (project usable without Claude Code). Reachable from downstream project flakes via `self.lib.mkDevShell`. Live fragments: `nix eval .#lib.fragmentNames`.
-- **Visual design system**: Stylix (`modules/desktop/stylix.nix`) drives a Material-3 base16 palette across GTK / Qt / Hyprland / waybar / kitty / btop / fuzzel — single declarative knob (currently a pinned `material-darker` scheme; image-derived from a wallpaper is supported but the from-image generator was washed-out on stock nixos-artwork wallpapers, so explicit scheme is preferred). Per-target opt-out via `stylix.targets.<name>.enable = false` (NixOS-scope) or `home-manager.users.<u>.stylix.targets.<name>` (HM-scope, e.g. `hyprlock` whose background we own ourselves). Material You guidelines (m3.material.io) are the canonical reference for visual choices — see `feedback/material_you_design` memory.
-- **Self-deployed apps + app secrets**: `secrets/apps.yaml` (separate sops file from `secrets/secrets.yaml`) holds tokens for operator's personal apps deployed on the homelab; `.sops.yaml`'s `secrets/.*\.yaml$` regex covers both with the same recipient set. Per-secret `sopsFile = ../../secrets/apps.yaml` override on the consuming module side. Naming convention: agnostic (`tmdb-token` not `filmder-tmdb-token`) when multiple projects could plausibly share the same key. Live shape worked example: `modules/server/filmder.nix` — sops decrypt → systemd build oneshot (manual trigger via `just deploy-app filmder`, sentinel-skip on idempotent rebuilds, `bun install + bun run build`) → atomic publish to `/var/lib/<n>/dist` → darkhttpd-on-port → `nori.lanRoutes` for `<n>.nori.lan`. Internet-public exposure was prototyped via Tailscale Funnel and reverted (portfolios not ready); reference impl preserved in `memory/reference/tailscale_funnel_implementation.md` for revival.
+The durable architecture reference — topology + service placement, the topology
+registry, hardware, GPU/memory/resource caps, the `nori.fs`/`nori.backups`/OIDC/
+dashboard abstractions, dev-shell composer, Stylix, self-deployed apps — lives in
+**`docs/DESIGN.md`** (canonical architecture + current-state reference). Read it
+before touching any of those areas.
 
 ## Outstanding
 
@@ -83,24 +68,7 @@ The forward plan — actionable work, deferred items, idea backlog — lives in
 
 ## Leverage map
 
-Snapshot of where this lab sits at each Meadows leverage tier (12 low → 1 high), across the three dimensions the `/analyse-system` skill covers. Snapshot is dated; structural changes shift placements. Verify against current code on a fresh read.
-
-| Tier | Artifact (what runs) | Dev workflow (how it evolves) | Agentic workflow (how Claude works) |
-|---|---|---|---|
-| **12** | port allocations (`just ports`), retention values, `MemoryMax` caps | test timeouts, `restic check` cadence values | model + token budget settings |
-| **11** | `zramSwap = 16 GiB`, OneTouch capacity, `immich-ml` `MemoryMax = 16G` + `CPUQuota = 600%` | CI parallelism (single runner today) | context window budget, memory file size |
-| **10** | `nori.fs` tier-driven flows; @downloads hardlink topology + @library promote-target separation; backup repo membership derived from `tier` | trunk-based; `main` is the deploy boundary | system prompt → memory → conversation flow; tool→memory writeback |
-| **9** | restic cadence ladder (daily / weekly / monthly / quarterly drill); btrbk daily; `OnFailure` is instant | pre-commit hook (per-commit), GH Actions (per push), session-end wrap-up | per-turn tool feedback; per-session memory updates; archive cadence (manual today) |
-| **8** | `OnFailure → notify@`, restic check, Gatus → ntfy alerts, OOM-killer-via-MemoryMax | pre-commit `nix flake check` + CI as commit gate | tool errors, validation feedback, user pushback |
-| **7** | flake checks accumulate strictness over commits (the more we encode, the tighter); skill capability accumulates | conventions accumulate (CONVENTIONS.md), skill set grows | active memory grows without aggressive pruning (worth watching); skill catalog grows |
-| **6** | `nori.<X>` Reader+Writer effect family; topology registry; `just ports` live oracle; `nori.fs` as named-context for paths | CLAUDE.md routing table; `docs/PROCEDURES.md`; skills as on-demand context; `git log` narrative; `nix eval .#lib.fragmentNames` lists available dev fragments | skill auto-discovery via descriptions; memory files in `~/.claude/projects/...`; system reminders surface deferred tools |
-| **5** | `every-service-has-fs-hardening`, `every-service-has-backup-intent`, `forbidden-patterns` (no PBKDF2, no IP literals, etc.), `audience` enum, port-uniqueness assertion, paths-XOR-skip assertion | "encode conventions in code, not docs" (memory: `enforce_in_code`); types > assertions > flake checks > prose | tool restrictions in `settings.json`, hooks, refusal logic, "never commit unless asked" |
-| **4** | `modules/effects/` as the meta-shape for `nori.<X>` extraction; `modules/dev/` atomic dev-shell fragments + composer (same Reader+Writer shape applied to per-project tooling); rule-of-three for abstractions; cross-host service split-module pattern | skills extracted at three concrete uses (`add-service`, `relocate-to-pi`, etc.); `on-structural-change` skill for doc-tier decisions; `just deploy-app <n>` recipe pattern for self-deployed apps | skill extraction; memory schema (`active/`, `archive/`, etc.); the lift of in-session prompts → reusable skills (`/analyse-system` is an instance); user-level skill + settings content lives in-repo (`modules/claude-code/`) and ships to operator-attached hosts via home-manager |
-| **3** | DESIGN.md three principles: declarative reproducibility, default-deny exposure, policy proportional to data value | "correctness > simplicity > thoroughness > speed"; `main` is the deploy boundary; commit messages explain the *why* | "answer first, push back, no flattery"; "make the reasonable call and continue"; correctness > clarity > utility > thoroughness |
-| **2** | declarative-first (NixOS), code-as-truth, FP-flavored Reader + collected-Writer effects, Cynefin Complex framing | iterate-to-stable then codify; compose via aliases not categories; folders = coupling not categorization | tool-use + on-demand skills + persistent file-based memory; structured tool-feedback loop |
-| **1** | willingness to swap tools when they fight the paradigm (Uptime Kuma → Gatus); "tailnet IS the auth" (audience refactor); "real-debrid is a different architecture not an upgrade" | willingness to question the dev process itself (this entire session is an instance); rule-of-three guards against premature codification | willingness to question whether agent involvement helps at all (the tier-12 micro-task should not invoke `/analyse-system`); prompt-shape transcendence (Meadows lens > open-ended exploration) |
-
-Use the `/analyse-system` skill at session start to confirm or refine these placements against current code. Drift is expected.
+The dated Meadows-leverage-tier snapshot (where the lab sits at each tier, across artifact / dev-workflow / agentic-workflow) lives in **`docs/DESIGN.md`** § "Leverage map". Use `/analyse-system` at session start to refresh it against current code; drift is expected.
 
 ## Style for prose
 
@@ -115,19 +83,3 @@ Use the `/analyse-system` skill at session start to confirm or refine these plac
 - Pre-commit hook in `.githooks/pre-commit` runs `nix flake check` automatically when staged changes touch `.nix` files — enable once per clone with `git config core.hooksPath .githooks`. Skips gracefully if nix isn't on PATH (Mac case); GitHub Actions (`.github/workflows/check.yml`) catches the skipped commits on push. Bypass with `git commit --no-verify` for emergencies only.
 - Conventions for new rules (when to encode as types vs assertions vs flake checks vs leave to review): `docs/CONVENTIONS.md` § "Enforcing conventions through code".
 
-## Recurring procedures live as skills
-
-Non-deterministic recurring procedures are extracted to `.claude/skills/` so the body loads only when the trigger fires (zero always-loaded context cost). Auto-discovery routes user intent to the right one:
-
-| Skill | Triggers on |
-|---|---|
-| `/analyse-system` | "explore the codebase", "analyse the system", "orient yourself", "get up to speed" — fresh-session structural read |
-| `/add-service` | "add <X>", "deploy <Y>", "set up <Z>" |
-| `/add-host` | "add a host", "set up nori-<X>", "another machine" |
-| `/relocate-to-pi` | "move <X> to Pi", "should survive station outages" |
-| `/wrap-session` | "wrap up", "ending session", "that's it" |
-| `/on-structural-change` | "we just landed <X>", post-commit doc-tier decision |
-
-Adding a skill: `mkdir .claude/skills/<n> && $EDITOR .claude/skills/<n>/SKILL.md`. Frontmatter requires `description` (drives auto-discovery — put the key use case first). See https://code.claude.com/docs/en/skills for the canonical format. Existing skills are good templates.
-
-The principle: prose for facts (always-loaded), skills for procedures (load on demand). When a CLAUDE.md section grows into a procedure with non-deterministic branches, extract it.

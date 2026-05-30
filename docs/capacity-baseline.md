@@ -1,3 +1,8 @@
+---
+summary: Quarterly resource-utilization snapshot schema (disk/RAM/CPU/off-site usage);
+  values filled at review time to inform storage-tier decisions.
+---
+
 # Capacity baseline
 
 Snapshot of resource utilization, captured at quarterly cadence. Used to

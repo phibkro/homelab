@@ -1,3 +1,8 @@
+---
+summary: The measure for the wrap-up loop — questions a fresh agent should answer
+  from CLAUDE.md plus on-demand reads; failures indicate doc gaps to fix.
+---
+
 # Agent onboarding test
 
 A fresh agent (no prior session context) should be able to answer these from `CLAUDE.md` plus on-demand reads of files it references. If the agent has to invent details or reach for tribal knowledge, the test failed — and the wrap-up rubric ("On every structural change", "On session end") needs adjusting.

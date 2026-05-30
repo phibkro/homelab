@@ -1,3 +1,8 @@
+---
+summary: Repository-wide patterns + their enforcement layers — module shape, lan-route,
+  default-deny network/fs, sops, Authelia OIDC, backup patterns, the Reader+Writer effect interface.
+---
+
 # Conventions
 
 Repository-wide patterns. Established by lived experience over the

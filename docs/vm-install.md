@@ -1,3 +1,8 @@
+---
+summary: Phase 3 — validate the install pipeline against the flake in a UTM VM before
+  touching workstation bare metal.
+---
+
 # Phase 3: NixOS VM dry-run install
 
 Validates the install pipeline against the flake before touching workstation.

@@ -1,3 +1,8 @@
+---
+summary: Phase 4 step-by-step — disko-applied bare-metal NixOS install on workstation,
+  from installer USB through nixos-install to first boot.
+---
+
 # Phase 4: NixOS install on workstation (disko-based)
 
 Bare-metal install. The flake's `machines/workstation/disko.nix` declares

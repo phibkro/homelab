@@ -1,3 +1,8 @@
+---
+summary: Landmines learned the hard way — NVMe enumeration, Caddy CA trust, sops env
+  files, openrsync flags, DynamicUser services. Read before touching these areas.
+---
+
 # Gotchas
 
 Lessons learned the hard way during Phase 5. Read before doing anything that touches these areas.
