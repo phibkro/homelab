@@ -12,16 +12,14 @@ this file when done (folded into git log / DESIGN.md) or when explicitly killed.
 
 ## Outstanding (actionable)
 
-- **Migration to next stable channel** — 2026-04-29 attempt failed because state
-  had been forward-migrated by unstable's newer software (ntfy schema,
-  VectorChord extension version) and couldn't be downgraded. When 26.05 stable
-  cuts (~May 2026), services should be at-or-ahead of current unstable, so
-  forward migration works. Pre-migration checklist: take fresh restic backups of
-  `/var/lib/{immich,private/open-webui}` (ntfy state now on Pi and intentionally
-  non-backed-up) for restore-and-init paths if a service barfs. Or accept
-  overlay-pinned newer-than-stable for the few state-heavy services and treat the
-  rest as stable. Full diagnosis of the failed attempt: commit b3650b0 → reverted
-  in 48846ca.
+- ~~**Migration to next stable channel**~~ — **DONE 2026-06-03** (commit `4c8eab3`).
+  Pinned to `nixos-26.05` + matched `home-manager`/`stylix` release-26.05 branches.
+  One state-strand on the move: `redis-immich`'s RDB v14 (written by unstable
+  Redis 9.x) couldn't be read by 26.05's Redis 8.6.3 — recovery was wiping the
+  cache-class dump.rdb. Codified as a gotcha (`docs/gotchas.md` "Downgrading
+  nixpkgs can strand persistent state"). All other state-heavy services
+  (Postgres, Vaultwarden, ntfy, Immich's Postgres + filesystem) survived the
+  downgrade unchanged. See DESIGN.md "Channel" section for the durable record.
 - **Mac is on x86_64-darwin EOL clock** — Mac home-manager landed
   (`homeConfigurations.macbook` in `flake.nix`, content at
   `machines/macbook/home.nix`, pulls shared `nixpkgs` + `home-manager` unstable
