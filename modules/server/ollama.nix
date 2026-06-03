@@ -54,6 +54,23 @@ in
     # again (~1-3s for typical models). Acceptable for low-frequency
     # interactive use; flip to "5m" if doing burst-style chat sessions.
     environmentVariables.OLLAMA_KEEP_ALIVE = "0";
+
+    # Models pulled at activation and cached at /var/lib/ollama/models.
+    # Re-derivable, so no backup — see backups.skip below.
+    #
+    # gemma4:12b-mxfp8 — Gemma 4 12B in mixed-FP8 quantization (~12GB on
+    # disk, ~13GB in VRAM with context). Picked over the alternatives:
+    #   * 12b-nvfp4: NVIDIA-native FP4. Blackwell supports it; would be
+    #     ~6-7GB and leave headroom for parallel workloads. Try this if
+    #     mxfp8 leaves no room for Immich ML / transcode VRAM contention.
+    #   * 12b-mlx / 12b-mlx-bf16: Apple-Silicon only, would not run here.
+    #   * gemma4 26b/31b: too large for 16GB VRAM without heavy quant.
+    #   * gemma3:12b: older generation, fully supported but superseded.
+    # Activation pulls ~12GB from registry; first rebuild after this
+    # change needs network. Subsequent rebuilds are no-ops.
+    loadModels = [
+      "gemma4:12b-mxfp8"
+    ];
   };
 
   # Default-deny filesystem access beyond what ollama needs (its
