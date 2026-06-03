@@ -99,13 +99,5 @@
     # out from the home-manager config instead — see
     # machines/workstation/home.nix `stylix.targets.<X>.enable`.
 
-    # Stylix's kmscon module still sets `services.kmscon.extraConfig`
-    # and `services.kmscon.fonts`, both removed in nixpkgs unstable
-    # (renamed to `services.kmscon.config` + `fonts.packages` +
-    # `services.kmscon.config.font-name`). Stylix hasn't caught up yet
-    # — the deprecated options trigger eval-time assertions. Disable
-    # the integration until upstream Stylix follows. Cost: kmscon TTY
-    # rendering doesn't get auto-themed; the rest of Stylix is fine.
-    targets.kmscon.enable = false;
   };
 }

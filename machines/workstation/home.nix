@@ -306,123 +306,12 @@ in
     # release-26.05 eval warning about the default flipping from
     # "hyprlang" to "lua" at home.stateVersion ≥ 26.05.
     configType = "lua";
-
-    settings = {
-      # Samsung S34J552 — 34" ultrawide, native 3440x1440 @ 75Hz on DP-3.
-      # Position 0x0, scale 1.0 (panel is large enough that 1440p reads
-      # well at 1:1; bump to 1.25 if text feels small).
-      monitor = [ "DP-3,3440x1440@75,0x0,1" ];
-
-      # Norwegian keymap to mirror modules/common/base.nix (console.keyMap).
-      # follow_mouse=0 → click-to-focus (sloppy-focus disabled). Hover
-      # alone never moves keyboard focus; you have to click a window
-      # to interact with it. Matches macOS / Windows default behaviour
-      # and stops the floating ghostty quick-terminal from stealing
-      # focus when the cursor passes over it.
-      input = {
-        kb_layout = "no";
-        follow_mouse = 0;
-        sensitivity = 0;
-      };
-
-      general = {
-        gaps_in = 4;
-        gaps_out = 8;
-        # No hard border — focus indication via shadow-as-glow below.
-        border_size = 0;
-        layout = "dwindle";
-      };
-
-      decoration = {
-        # Material 3 corner-medium (12dp) — matches waybar's 12px
-        # border-radius for a unified bar/window aesthetic.
-        rounding = 12;
-      };
-
-      dwindle = {
-        # `pseudotile` was removed in Hyprland 0.55 (it wasn't doing
-        # anything; see https://hypr.land/news/update55/). Leaving it
-        # in throws "config option <dwindle:pseudotile> does not exist"
-        # at session start.
-        # preserve_split on — once a split's orientation is set it
-        # sticks instead of being recomputed from the focused window's
-        # W/H ratio on each new open. Pairs with the SUPER+S
-        # `togglesplit` bind: flip a container to top/bottom (or back)
-        # and it holds as more windows open into it.
-        preserve_split = true;
-      };
-
-      # Cursor + GTK / Qt theme env vars now exported by Stylix's
-      # Hyprland integration (modules/desktop/stylix.nix). No manual
-      # `env = [ XCURSOR_*, GTK_THEME, QT_QPA_PLATFORMTHEME ]` here.
-
-      # Mod key — SUPER (Windows / Cmd-equivalent).
-      "$mod" = "SUPER";
-
-      # Window rules — opt floating apps out of tiling.
-      # pwvucontrol: small dialog-style mixer; tiles awkwardly in
-      # the dwindle layout. Float + center + sized to a readable
-      # footprint.
-      #
-      # Uses the unified `windowrule` keyword (current Hyprland 0.54
-      # syntax — supersedes both `windowrule` v1 and `windowrulev2`).
-      # Format: `match:<prop> <regex>, <effect>[, <effect>...]`.
-      # See https://wiki.hypr.land/0.54.0/Configuring/Window-Rules/.
-      windowrule = [
-        # pwvucontrol — float at the captured live state, rounded
-        # to the nearest 10. Top-right of the 3440x1440 panel:
-        # x=2420 + width=1000 leaves a 20px gap from the right edge;
-        # y=50 keeps it below waybar (28px) with breathing room.
-        # `center on` competes with `move`, so it's dropped.
-        "match:class ^(com\\.saivert\\.pwvucontrol)$, float on, size 1000 500, move 2420 50"
-        # ghostty quick-terminal — bottom center, 100x10 cells
-        # (1010x220 px). Position (1180, 1150) leaves ~70px from
-        # the bottom edge, near-centered horizontally on 3440-wide.
-        # Auto-spawned on session start via exec-once below.
-        "match:class ^(com\\.mitchellh\\.ghostty)$, float on, size 1010 220, move 1180 1150"
-        # SUPER+RETURN toggle terminal — its own class so it's detectable for
-        # the toggle and kept separate from default-class ghostty. Same
-        # bottom-center quick-term size/position as the default-class rule.
-        "match:class ^(com\\.mitchellh\\.ghostty\\.scratch)$, float on, size 1010 220, move 1180 1150"
-      ];
-
-      # Generated from the structured keyBinds / mouseBinds lists at
-      # the top of this file. Range records (e.g. workspaces 1..9)
-      # expand to one Hyprland bind per integer; the cheatsheet
-      # shows the same range as a single line.
-      bind = map toHyprlandBind (lib.concatMap expandRange keyBinds);
-      bindm = map toHyprlandBind mouseBinds;
-
-      # Autostart — polkit agent for elevation prompts + dev session
-      # workspace 1 layout (zeditor + zen-beta side-by-side, dwindle
-      # splits horizontally on the second window's arrival → zed on
-      # the left, zen on the right). The `[workspace 1 silent]`
-      # dispatch prefix sends both apps to workspace 1 without
-      # switching focus to it during startup.
-      #
-      # Ghostty no longer auto-spawns — SUPER+RETURN remains the
-      # explicit launch path. The pwvucontrol-style floating window
-      # rule for ghostty (lines above) still applies if/when invoked.
-      # The SUPER+P popup terminal lazy-spawns its scratchpad on first
-      # press (see the popup-term script), so it needs no exec-once.
-      #
-      # Status bar / notification daemon / hypridle / hyprsunset
-      # auto-start via systemd-user-service (UWSM activates
-      # graphical-session.target so they don't need exec-once).
-      exec-once = [
-        "systemctl --user start hyprpolkitagent"
-        "[workspace 1 silent] zeditor"
-        "[workspace 1 silent] zen-beta"
-      ];
-    };
   };
 
-  # Hyprland 0.55+ Lua config. When `~/.config/hypr/hyprland.lua` exists,
-  # Hyprland uses it and ignores `hyprland.conf`; the `settings = {...}`
-  # block above still renders the conf as an unused safety net. To roll
-  # back to hyprlang at runtime: `rm ~/.config/hypr/hyprland.lua &&
-  # hyprctl reload`. To roll back permanently: remove this entry.
-  # The conf-side block can be deleted once Hyprland drops hyprlang
-  # (1-2 releases after 0.55 per https://hypr.land/news/26_lua/).
+  # Hyprland 0.55+ Lua config. With `configType = "lua"` above,
+  # home-manager stops rendering hyprland.conf — Hyprland reads this
+  # `.lua` exclusively. Rollback now means revert + rebuild (the
+  # runtime `rm hyprland.lua + hyprctl reload` shortcut documented in
+  # the lua-migration commit no longer applies).
   xdg.configFile."hypr/hyprland.lua".source = ./hyprland.lua;
 }
