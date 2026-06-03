@@ -108,8 +108,9 @@ for i = 1, 9 do
     hl.bind(mod .. " + SHIFT + " .. i, hl.dsp.window.move({ workspace = i }))
 end
 
--- Region screenshot → clipboard
-hl.bind(", PRINT", hl.dsp.exec_cmd("grim -g \"$(slurp)\" - | wl-copy -t image/png"))
+-- Region screenshot → clipboard (no-modifier bind: just the key string,
+-- no leading comma like hyprlang uses).
+hl.bind("PRINT", hl.dsp.exec_cmd("grim -g \"$(slurp)\" - | wl-copy -t image/png"))
 
 -- Mouse binds — move/resize by dragging
 hl.bind(mod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
