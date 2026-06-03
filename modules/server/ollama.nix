@@ -55,22 +55,26 @@ in
     # interactive use; flip to "5m" if doing burst-style chat sessions.
     environmentVariables.OLLAMA_KEEP_ALIVE = "0";
 
-    # Models pulled at activation and cached at /var/lib/ollama/models.
-    # Re-derivable, so no backup — see backups.skip below.
+    # loadModels intentionally unset.
     #
-    # gemma4:12b-mxfp8 — Gemma 4 12B in mixed-FP8 quantization (~12GB on
-    # disk, ~13GB in VRAM with context). Picked over the alternatives:
-    #   * 12b-nvfp4: NVIDIA-native FP4. Blackwell supports it; would be
-    #     ~6-7GB and leave headroom for parallel workloads. Try this if
-    #     mxfp8 leaves no room for Immich ML / transcode VRAM contention.
-    #   * 12b-mlx / 12b-mlx-bf16: Apple-Silicon only, would not run here.
-    #   * gemma4 26b/31b: too large for 16GB VRAM without heavy quant.
-    #   * gemma3:12b: older generation, fully supported but superseded.
-    # Activation pulls ~12GB from registry; first rebuild after this
-    # change needs network. Subsequent rebuilds are no-ops.
-    loadModels = [
-      "gemma4:12b-mxfp8"
-    ];
+    # mxfp8 (and the related nvfp4) quants require an Ollama version
+    # newer than nixpkgs currently ships (0.24.0 returns HTTP 412
+    # "requires a newer version of Ollama" on pull). Setting loadModels
+    # to a model the daemon rejects triggers the exact restart-loop
+    # bomb documented in docs/gotchas.md (the NixOS module's
+    # ollama-model-loader.service is `Restart=on-failure` with a 10s
+    # interval).
+    #
+    # Until nixpkgs ships ollama with mxfp8 support, pull models
+    # manually:
+    #   sudo -u ollama OLLAMA_HOST=127.0.0.1:11434 ollama pull <model>
+    # then restore loadModels once that pull succeeds (it's idempotent
+    # — repeat pulls of a present model are no-ops).
+    #
+    # When restoring: gemma4:12b-mxfp8 (~12GB, mixed-FP8, fits 16GB VRAM
+    # with context) is the original pick. Alternatives if VRAM-tight:
+    #   * gemma4:12b-nvfp4 — NVIDIA Blackwell FP4, ~6-7GB
+    #   * gemma3:12b       — older generation, works on current Ollama
   };
 
   # Default-deny filesystem access beyond what ollama needs (its
