@@ -1,11 +1,15 @@
 {
   description = "nori infrastructure (NixOS) — workstation and future lab hosts";
 
-  # Pinned to nixos-unstable because workstation has an RTX 5060 Ti
-  # (Blackwell), whose driver lands in recent nixpkgs. Treat unstable +
-  # flake.lock as the de-facto stable channel; re-pin deliberately.
+  # Pinned to stable nixos-26.05 (shipped 2026-06). Moved off unstable
+  # after a cascade of mismatched-version pain (Stylix moved ahead of
+  # home-manager → `configType` errors, hyprland 0.55 hyprlang
+  # deprecation, electron-39 EOL etc.). Trade-off accepted: no more
+  # 0-day packages, but Stylix/home-manager match by version label
+  # (warnings gone) and rebuilds follow predictable stable-line churn.
+  # Re-pin to a newer stable deliberately on `nix flake update`.
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
 
     # nixpkgs master — used ONLY for cherry-picking individual packages
@@ -23,14 +27,12 @@
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
 
-    # Per-user config (desktop phase). Tracks nixos-unstable in lockstep
-    # with nixpkgs; re-pin deliberately on `nix flake update`.
-    # Mac homeConfiguration also rides this — pin a separate
-    # `nixpkgs-darwin` follow when 26.05 stable ships (~May 2026), since
-    # 26.05 is announced as the LAST nixpkgs release supporting Intel
-    # Mac (x86_64-darwin). After that the Mac either stays pinned to
-    # 26.05 indefinitely or migrates off nixpkgs entirely.
-    home-manager.url = "github:nix-community/home-manager";
+    # Per-user config (desktop phase). Pinned to release-26.05 to match
+    # nixpkgs. Mac homeConfiguration rides this too — 26.05 was
+    # announced as the LAST nixpkgs release supporting Intel Mac
+    # (x86_64-darwin), so this pin is the natural Mac end-of-line:
+    # either keep 26.05 indefinitely or migrate Mac off nixpkgs.
+    home-manager.url = "github:nix-community/home-manager/release-26.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
 
     # Zen browser. Not in nixpkgs; consumed via upstream community flake.
@@ -45,7 +47,7 @@
     # Same Reader+collected-Writer shape as the rest of the lab's
     # effect family — fits cleanly. Workstation imports the NixOS
     # module via modules/desktop/stylix.nix.
-    stylix.url = "github:danth/stylix";
+    stylix.url = "github:danth/stylix/release-26.05";
     stylix.inputs.nixpkgs.follows = "nixpkgs";
 
     # Third-party Claude Code skill sources — pinned via flake.lock,
