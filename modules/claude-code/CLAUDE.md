@@ -131,3 +131,8 @@ trusted core" means minimize attack surface, not dependency count.
 This is a solo-with-agents workflow: commit directly to the working branch
 (usually `main`). Don't create or suggest feature branches — this overrides any
 generic "branch off the default branch first" habit. Pushing is the operator's call.
+
+## Memory hygiene
+At session start, announce which `MEMORY.md` entries are relevant to the task — don't silently use or ignore them.
+When you touch a memory file, update `last_verified` to today's date.
+Same fact appears in a second project's memory → flag for promotion to the orchestration namespace. Procedural + project-independent → flag for promotion to a `homelab/modules/claude-code/skills/` skill. The `writing-memory-entries` skill has the full criteria.

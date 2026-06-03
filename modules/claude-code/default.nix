@@ -359,4 +359,48 @@ in
         };
       }
     ];
+
+  # Shared memory across all /srv/share/projects/* namespaces. Claude Code keys
+  # MEMORY.md by the cwd at session-start, so opening `claude` in
+  # /srv/share/projects vs. /srv/share/projects/homelab vs. /srv/share/projects/
+  # bang-lang gives three disjoint memory pools — the "amnesiac team member"
+  # problem. This walks every -srv-share-projects-* namespace Claude Code has
+  # already created and symlinks its memory/ to the single canonical at
+  # ~/.claude/projects/-srv-share-projects/memory (the orchestration namespace).
+  #
+  # Reactive — only acts on namespaces that already exist; a fresh project's
+  # first session gets a project-local memory dir until the next rebuild
+  # symlinks it. Never clobbers a non-empty memory dir (operator merges manually
+  # if it ever happens). Idempotent.
+  home.activation.claudeSharedMemorySymlinks = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    canonical="$HOME/.claude/projects/-srv-share-projects/memory"
+
+    if [ -L "$canonical" ]; then
+      echo "claude-shared-memory: $canonical is a symlink, expected real dir; skipping" >&2
+      exit 0
+    fi
+    mkdir -p "$canonical"
+
+    for namespace_dir in "$HOME"/.claude/projects/-srv-share-projects-*/; do
+      [ -d "$namespace_dir" ] || continue
+      memory_link="''${namespace_dir%/}/memory"
+
+      if [ -L "$memory_link" ]; then
+        target=$(readlink "$memory_link")
+        if [ "$target" != "$canonical" ]; then
+          rm "$memory_link"
+          ln -s "$canonical" "$memory_link"
+        fi
+      elif [ -d "$memory_link" ]; then
+        if [ -z "$(ls -A "$memory_link" 2>/dev/null)" ]; then
+          rmdir "$memory_link"
+          ln -s "$canonical" "$memory_link"
+        else
+          echo "claude-shared-memory: $memory_link has content, not symlinking; merge manually if desired" >&2
+        fi
+      else
+        ln -s "$canonical" "$memory_link"
+      fi
+    done
+  '';
 }
