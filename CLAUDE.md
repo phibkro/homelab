@@ -14,9 +14,11 @@ Read these before making changes:
 2. **`docs/ROADMAP.md`** — the forward plan: outstanding work, deferred items, idea backlog. The "what's next" (single home; `git log` is the shipped history).
 3. **`docs/CONCEPTS.md`** — glossary of the coined vocabulary (roles, the `nori.<X>` effect family, value tiers, audience, split-module, fate-sharing, dev-shell fragments). Read when a term is unfamiliar.
 4. **`docs/CONVENTIONS.md`** — established patterns. How modules are shaped, secrets are wired, services are added.
-5. **`docs/gotchas.md`** — landmines. Read before touching: NVMe enumeration, Caddy CA trust, sops env files, openrsync flags, DynamicUser services.
-6. **`.claude/skills/`** — recurring procedures (add a service, add a host, relocate to Pi, wrap session, on structural change). Auto-discovered when the trigger phrasing matches; load on demand. `docs/PROCEDURES.md` is the index.
-7. `git log --oneline` — commit-by-commit narrative for context the docs don't catch.
+5. **`docs/INVARIANTS.md`** — load-bearing claims, each tagged by enforcement tier (`[law: …]` / `[structural]` / `[prose: unchecked]` / `[judgment]`). The drift register: `[prose: unchecked]` items are explicit promotion candidates.
+6. **`docs/decisions/`** — ADR log: dated, statused records of hard-to-reverse decisions. Read `0001-agentic-homelab-practices.md` first; it sets the *why* behind everything else.
+7. **`docs/gotchas.md`** — landmines. Read before touching: NVMe enumeration, Caddy CA trust, sops env files, openrsync flags, DynamicUser services.
+8. **`.claude/skills/`** — recurring procedures (add a service, add a host, relocate to Pi, wrap session, on structural change). Auto-discovered when the trigger phrasing matches; load on demand. `docs/PROCEDURES.md` is the index.
+9. `git log --oneline` — commit-by-commit narrative for context the docs don't catch.
 
 ## Hard rules
 
