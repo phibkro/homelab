@@ -75,7 +75,12 @@ end)
 ---------------------
 
 -- Programs
-hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd("popup-term"))
+-- SUPER+RETURN focuses the existing scratch ghostty if one is open;
+-- only spawns a fresh popup-term when no scratch window exists. Without
+-- the focuswindow guard each press spawned a new ghostty.
+hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd(
+    "hyprctl dispatch focuswindow class:com.mitchellh.ghostty.scratch || popup-term"
+))
 hl.bind(mod .. " + SPACE",  hl.dsp.exec_cmd("fuzzel"))
 hl.bind(mod .. " + B",      hl.dsp.exec_cmd("zen-beta"))
 hl.bind(mod .. " + H",      hl.dsp.exec_cmd("hypr-cheatsheet"))
