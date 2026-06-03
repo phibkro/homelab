@@ -17,6 +17,9 @@
     tmux
     age
     sops
+    nixd
+    nil
+    devenv
   ];
 
   programs.starship = {
