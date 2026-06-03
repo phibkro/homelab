@@ -84,6 +84,11 @@
     pkgs.pwvucontrol # PipeWire mixer GUI (sink/source picker, per-app vol)
     pkgs.hyprpicker # eyedrop screen → hex/rgb (`hyprpicker -a` to autocopy)
     pkgs.hyprsysteminfo # Hyprland's first-party system info dashboard
+
+    # snappy-switcher — Hyprland alt-tab overlay (pure C, Cairo/Pango,
+    # Wayland layer shell; no GTK/Electron). Upstream flake; binds and
+    # daemon autostart live in machines/workstation/hyprland.lua.
+    inputs.snappy-switcher.packages.${pkgs.stdenv.hostPlatform.system}.default
     pkgs.ags # Aylur's GTK Shell — TSX/JSX over GTK widgets via Astal/GJS.
     # Declarative widget framework for status bars, OSDs, popups, panels.
     # Material You styling lands via CSS + the Stylix-fed GTK theme.

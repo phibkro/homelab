@@ -41,6 +41,13 @@
     zen-browser.url = "github:0xc000022070/zen-browser-flake";
     zen-browser.inputs.nixpkgs.follows = "nixpkgs";
 
+    # snappy-switcher — Hyprland-native alt-tab overlay (pure C, Wayland
+    # layer shell, no GTK/Electron). Not in nixpkgs; upstream ships a
+    # flake. ALT+Tab (MRU global) + SUPER+Tab (workspace-local) bound
+    # in machines/workstation/hyprland.lua; daemon autostarted there too.
+    snappy-switcher.url = "github:OpalAayan/snappy-switcher";
+    snappy-switcher.inputs.nixpkgs.follows = "nixpkgs";
+
     # Stylix — single-input system-wide theming. One wallpaper +
     # polarity (light/dark) generates a Material You-flavored base16
     # palette and applies it to GTK, Qt, Hyprland, Kitty, btop, etc.

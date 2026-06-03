@@ -67,6 +67,9 @@ hl.on("hyprland.start", function()
     -- land on ws 1 anyway via dwindle.
     hl.exec_cmd("zeditor")
     hl.exec_cmd("zen-beta")
+    -- snappy-switcher daemon — pre-fetches window list + thumbnails so
+    -- the alt+tab overlay shows up instantly on first press.
+    hl.exec_cmd("snappy-switcher --daemon")
 end)
 
 
@@ -108,6 +111,12 @@ for i = 1, 9 do
     hl.bind(mod .. " + " .. i,         hl.dsp.focus({ workspace = i }))
     hl.bind(mod .. " + SHIFT + " .. i, hl.dsp.window.move({ workspace = i }))
 end
+
+-- App switcher (snappy-switcher). MRU global = ALT+Tab; workspace-local
+-- = SUPER+Tab. The --mod flag MUST match the bind's modifier (snappy
+-- uses XKB depressed-modifier tracking for dismiss-on-release).
+hl.bind("ALT + TAB",   hl.dsp.exec_cmd("snappy-switcher next --mod alt"))
+hl.bind("SUPER + TAB", hl.dsp.exec_cmd("snappy-switcher next --workspace --mod super"))
 
 -- Region screenshot → clipboard (no-modifier bind: just the key string,
 -- no leading comma like hyprlang uses).
