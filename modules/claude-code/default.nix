@@ -252,11 +252,129 @@ let
         -- claude "$@"
     '';
   };
+
+  # opencode-box — OPT-IN sandboxed launcher for opencode (BYO-model agent
+  # harness, MIT, anomalyco/opencode). Same bwrap shape as claudeBox PLUS
+  # landrun (Landlock LSM) layered inside as a kernel-level seatbelt on
+  # filesystem and TCP access. Two walls, defense-in-depth: bwrap supplies
+  # the namespace + env scrub + mount tree; landrun's kernel-LSM rules apply
+  # to the inner exec so a process that escapes the namespace still hits
+  # Landlock denials. Read the bwrap flags + the landrun args — they're the
+  # security boundary, not this script.
+  #
+  # Inside the box opencode CAN: r/w /srv/share/projects (work), r/w
+  # ~/.config/opencode (state), reach local Ollama at 127.0.0.1:11434
+  # (network namespace shared, so localhost: works), reach
+  # api.anthropic.com / api.openai.com / OpenRouter / etc. on :443. API
+  # keys are passed through only if set in the launching env; whitelist
+  # below.
+  #
+  # It CANNOT: read ~/.ssh, ~/.config/sops, ~/.config/gh, /etc/ssh host
+  # keys, /etc/shadow, or the rest of $HOME (fresh tmpfs; dotfiles absent).
+  # Cannot `git push` (no SSH key) — run that from a normal shell. Cannot
+  # mutate the system (user namespace blocks sudo).
+  #
+  # Talking to local Ollama from opencode — TL;DR config:
+  #   ~/.config/opencode/config.json (NOT inside the box; OpenCode reads
+  #   it from $HOME which we tmpfs — bind-mount or set $XDG_CONFIG_HOME
+  #   to the bound state dir). Provider block:
+  #     {
+  #       "providers": {
+  #         "ollama-local": {
+  #           "npm": "@ai-sdk/openai-compatible",
+  #           "options": { "baseURL": "http://127.0.0.1:11434/v1" },
+  #           "models": { "gemma4:12b-mxfp8": {} }
+  #         }
+  #       }
+  #     }
+  #   See https://opencode.ai/docs/providers/ for the current schema;
+  #   it has moved between versions.
+  opencodeBox = pkgs.writeShellApplication {
+    name = "opencode-box";
+    runtimeInputs = [
+      pkgs.bubblewrap
+      pkgs.landrun
+      pkgs.opencode
+    ];
+    text = ''
+      projects="/srv/share/projects"
+      state="$HOME/.config/opencode"
+      mkdir -p "$state"
+
+      # Pass through only the API keys that are actually set; never inject
+      # empty values (tools misread empty as "configured"). Whitelist what
+      # opencode might want — add more here if you adopt another provider.
+      key_envs=()
+      for k in ANTHROPIC_API_KEY OPENAI_API_KEY OPENROUTER_API_KEY \
+               GROQ_API_KEY OPENCODE_API_KEY; do
+        v="''${!k:-}"
+        if [ -n "$v" ]; then
+          key_envs+=(--setenv "$k" "$v")
+        fi
+      done
+
+      exec bwrap \
+        --ro-bind /nix/store /nix/store \
+        --bind /nix/var/nix/daemon-socket /nix/var/nix/daemon-socket \
+        --ro-bind /run/current-system /run/current-system \
+        --ro-bind-try /etc/static /etc/static \
+        --ro-bind-try /etc/profiles /etc/profiles \
+        --ro-bind-try /etc/nix /etc/nix \
+        --ro-bind-try /etc/resolv.conf /etc/resolv.conf \
+        --ro-bind-try /etc/nsswitch.conf /etc/nsswitch.conf \
+        --ro-bind-try /etc/hosts /etc/hosts \
+        --ro-bind-try /etc/ssl /etc/ssl \
+        --ro-bind-try /etc/passwd /etc/passwd \
+        --ro-bind-try /etc/group /etc/group \
+        --ro-bind-try /bin /bin \
+        --ro-bind-try /usr/bin /usr/bin \
+        --proc /proc \
+        --dev /dev \
+        --tmpfs /tmp \
+        --tmpfs "$HOME" \
+        --bind "$projects" "$projects" \
+        --bind "$state" "$state" \
+        --ro-bind-try "$HOME/.config/git" "$HOME/.config/git" \
+        --ro-bind-try "$HOME/.nix-profile" "$HOME/.nix-profile" \
+        --ro-bind-try "$HOME/.local/state/nix" "$HOME/.local/state/nix" \
+        --chdir "$projects" \
+        --clearenv \
+        --setenv HOME "$HOME" \
+        --setenv USER "''${USER:-nori}" \
+        --setenv PATH "$PATH" \
+        --setenv TERM "''${TERM:-xterm}" \
+        --setenv LANG "''${LANG:-C.UTF-8}" \
+        --setenv NIX_REMOTE daemon \
+        --setenv SSL_CERT_FILE "''${SSL_CERT_FILE:-''${NIX_SSL_CERT_FILE:-/etc/ssl/certs/ca-certificates.crt}}" \
+        "''${key_envs[@]}" \
+        --unshare-all \
+        --share-net \
+        --die-with-parent \
+        -- landrun \
+             --rwx "$projects" \
+             --rwx "$state" \
+             --rox /nix/store \
+             --rox /etc \
+             --rox /bin \
+             --rox /usr/bin \
+             --rox /run/current-system \
+             --rox "$HOME/.nix-profile" \
+             --rox "$HOME/.local/state/nix" \
+             --connect-tcp 443 \
+             --connect-tcp 11434 \
+             --add-exec \
+             --ldd \
+             --best-effort \
+             -- opencode "$@"
+    '';
+  };
 in
 {
   home.packages = [
     pkgs.claude-code # Anthropic CLI; pulls Node closure (~300 MB)
     claudeBox # opt-in `claude-box` — sandboxed agent launcher (see let-block)
+    pkgs.opencode # BYO-model agent harness (Ollama / Anthropic / OpenAI / etc.)
+    opencodeBox # opt-in `opencode-box` — bwrap + landrun (Landlock) layered
     pkgs.agent-browser # Persistent browser automation for AI agents
     # MCP servers — direct binaries from nixpkgs (no npx-fetch latency,
     # version pinned by flake.lock). Wired into Claude Code via the
@@ -382,11 +500,13 @@ in
   #
   # Runs INSIDE claude-box, so a prompt-injected remote session inherits
   # the same blast-radius cap as a local one (no ~/.ssh, no sops keys, no
-  # system mutate, no `git push`). Auto-approves tool calls
-  # (--dangerously-skip-permissions) because there's nobody at the keyboard
-  # to approve — sandbox + auto-approve is the right pairing for unattended
-  # remote operation. settings.json `permissions.defaultMode = "auto"` is
-  # the load-bearing setting at the per-session layer.
+  # system mutate, no `git push`). Per-session permission policy comes
+  # from settings.json `permissions.defaultMode = "auto"` — that's the
+  # load-bearing setting. Earlier draft passed --dangerously-skip-permissions
+  # here; `claude remote-control` (server mode) rejects that flag with
+  # "Unknown argument: --dangerously-skip-permissions" and the unit went
+  # into a permanent restart loop. The flag only applies to interactive
+  # `claude`, not the server-mode subcommand.
   #
   # Multi-session via server mode: each spawned session shares cwd
   # (/srv/share/projects, can cd into projects), gets an auto-generated
@@ -418,7 +538,7 @@ in
     Service = {
       Type = "exec";
       WorkingDirectory = "/srv/share/projects";
-      ExecStart = "${claudeBox}/bin/claude-box remote-control --dangerously-skip-permissions --remote-control-session-name-prefix workstation --verbose";
+      ExecStart = "${claudeBox}/bin/claude-box remote-control --remote-control-session-name-prefix workstation --verbose";
       Restart = "on-failure";
       RestartSec = "10s";
       # Cap restart loop so a chronic outage / bad creds don't burn CPU

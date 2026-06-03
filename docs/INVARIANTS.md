@@ -31,6 +31,8 @@ Strongest rung each claim has reached. "Promote?" notes mark `[prose: unchecked]
 | One `nori.lanRoutes` entry generates Caddy vhost + Blocky DNS + Gatus monitor consistently | `[structural]` (single schema → multiple generators in `modules/effects/lan-route.nix`) |
 | `audience: operator` routes get no Authelia overlay; `family` gets OIDC; `public` is intentionally open | `[structural]` (typed `audience` enum, generators branch on it) |
 | Service names function over brand (`status`, not `gatus`; `chat`, not `ollama`) unless brand IS identity | `[prose: unchecked]` — promote? brand-name grep against a known list |
+| **systemd units** | |
+| Every `Restart=on-failure` unit's `ExecStart` is smoke-tested before landing (prevents restart-loop bombs that break the next `switch-to-configuration` — incident 2026-06-03 in `docs/gotchas.md`) | `[prose: unchecked]` — promote? flake check resolving each `ExecStart` to a real nix-store binary path |
 | **Convention shapes** | |
 | `nori.<X>` effects are one input → multiple generators (Reader + collected-Writer interface) | `[structural]` (the abstraction shape itself; documented in `CONCEPTS.md`) |
 | A service module owns *everything* about its service in one file (no fan-out) | `[prose: unchecked]` — promote? per-service file boundary check |
@@ -55,6 +57,7 @@ Strongest rung each claim has reached. "Promote?" notes mark `[prose: unchecked]
 1. **`disko-uses-by-id`** — grep `modules/server/*.nix` + `machines/*/disko*.nix` for `/dev/nvme[0-9]` or `/dev/sda[0-9]?` (only `by-id/*` permitted). **High value**: NVMe enumeration is unstable (gotchas.md); a single mistake wipes the wrong disk. **Implementation**: a new derivation in `flake.nix` `checks` that runs `rg` over the matching files.
 2. **`function-named-subdomains`** — grep `nori.lanRoutes.*` declarations for brand names against a known list (`gatus`, `ntfy`, `jellyfin`, `immich`, `ollama`, `open-webui`, `beszel`, …). **Medium value**: noise prevention, not safety.
 3. **`workhorse-vs-appliance-placement`** — derived check: for each service module, assert it's placed on a host whose role tag matches the service's declared role. Currently `nori.hosts` carries role tags; could be cross-referenced. **Medium value**: prevents accidental Pi-bloat.
+4. **`systemd-execstart-resolves`** — scan all `systemd.services.*.serviceConfig.ExecStart` (and the user-services variant) and assert the first token resolves to a path inside the build closure. Won't catch invalid CLI flags (incident 2026-06-03) but catches the more common typo + uninstalled-tool failures that cause restart loops. **High value** given the incident class: a single mistake at ExecStart cascades into mass-service-outage on next rebuild because `switch-to-configuration`'s stop-timeout path doesn't run the start phase. Implementation: a check derivation iterating `config.systemd.services` and `config.home-manager.users.*.systemd.user.services`.
 
 Others (the `[judgment]` ones) stay where they are — they're not staleness risks.
 
