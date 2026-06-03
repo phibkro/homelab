@@ -75,12 +75,13 @@ end)
 ---------------------
 
 -- Programs
--- SUPER+RETURN focuses the existing scratch ghostty if one is open;
--- only spawns a fresh popup-term when no scratch window exists. Without
--- the focuswindow guard each press spawned a new ghostty.
-hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd(
-    "hyprctl dispatch focuswindow class:com.mitchellh.ghostty.scratch || popup-term"
-))
+-- SUPER+RETURN runs `popup-term` which is a shell script that:
+--   (1) spawns a ghostty.scratch into `special:term` workspace if none exists,
+--   (2) `togglespecialworkspace term` to show/hide the overlay.
+-- The toggle IS the desired drop-down/quake-style overlay. Don't wrap it
+-- in `focuswindow` — that bypasses the togglespecialworkspace step and
+-- the overlay stops working.
+hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd("popup-term"))
 hl.bind(mod .. " + SPACE",  hl.dsp.exec_cmd("fuzzel"))
 hl.bind(mod .. " + B",      hl.dsp.exec_cmd("zen-beta"))
 hl.bind(mod .. " + H",      hl.dsp.exec_cmd("hypr-cheatsheet"))
