@@ -101,6 +101,13 @@ prefer the correct model over backwards-compat — change public shapes freely t
 reach it; a compromise shape kept only for compat is a worse model.
 Deep dive: `~/.claude/artifacts/correctness-by-construction.md`.
 
+## Config is explicit at boundaries
+No hidden defaults at module / API / system boundaries — the caller declares the
+intent, not the receiver. A surprising default is a bug waiting to surface; an
+opaque "we'll guess" path is worse than a loud "you must declare." If a value
+matters, expose it. If it doesn't, lift it out of config entirely — don't bury
+it as a default no reader will discover.
+
 ## Design only when the work is conceptual
 Brainstorming/design earns its keep for conceptual/ambiguous work — new
 abstractions, mental models, cross-cutting decisions. Mechanical, well-shaped work
