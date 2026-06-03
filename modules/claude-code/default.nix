@@ -372,6 +372,64 @@ in
   # first session gets a project-local memory dir until the next rebuild
   # symlinks it. Never clobbers a non-empty memory dir (operator merges manually
   # if it ever happens). Idempotent.
+  # Claude Code Remote Control — register a long-running SERVER-MODE session
+  # so the Claude mobile app + claude.ai/code can spawn fresh sessions on
+  # demand against this workstation. The local process polls Anthropic's
+  # API for work over outbound HTTPS only — NO inbound ports open here.
+  # Code/repos never leave the machine; only chat + tool results flow
+  # through an encrypted bridge (their relay, not tailnet — the trade for
+  # zero infra and off-tailnet access).
+  #
+  # Runs INSIDE claude-box, so a prompt-injected remote session inherits
+  # the same blast-radius cap as a local one (no ~/.ssh, no sops keys, no
+  # system mutate, no `git push`). Auto-approves tool calls
+  # (--dangerously-skip-permissions) because there's nobody at the keyboard
+  # to approve — sandbox + auto-approve is the right pairing for unattended
+  # remote operation. settings.json `permissions.defaultMode = "auto"` is
+  # the load-bearing setting at the per-session layer.
+  #
+  # Multi-session via server mode: each spawned session shares cwd
+  # (/srv/share/projects, can cd into projects), gets an auto-generated
+  # name like `workstation-graceful-unicorn`.
+  #
+  # First-time setup (one-shot, manual — service won't run cleanly otherwise):
+  #   1. `claude` in a normal interactive shell
+  #   2. `/login` and complete the claude.ai OAuth flow
+  #      (Remote Control requires OAuth; API key auth NOT supported)
+  #   3. `systemctl --user enable --now claude-remote-control`
+  #
+  # Inspect:    `systemctl --user status claude-remote-control`
+  # Logs:       `journalctl --user -fu claude-remote-control`
+  # Session URL/QR: in startup logs, plus claude.ai/code session list
+  #             (look for `workstation-*` entries).
+  # Push notifications: enable inside any spawned session via `/config`
+  #             → "Push when Claude decides" (needs v2.1.110+).
+  #
+  # Limits (per Anthropic docs as of 2026-06): >10 min unreachable relay =
+  # process exits cleanly; systemd restarts. Each server-mode process
+  # supports many concurrent spawned sessions (default cap 32). Ultraplan
+  # disconnects Remote Control.
+  systemd.user.services.claude-remote-control = {
+    Unit = {
+      Description = "Claude Code Remote Control (multi-session bridge for phone/web)";
+      After = [ "network-online.target" ];
+      Wants = [ "network-online.target" ];
+    };
+    Service = {
+      Type = "exec";
+      WorkingDirectory = "/srv/share/projects";
+      ExecStart = "${claudeBox}/bin/claude-box remote-control --dangerously-skip-permissions --remote-control-session-name-prefix workstation --verbose";
+      Restart = "on-failure";
+      RestartSec = "10s";
+      # Cap restart loop so a chronic outage / bad creds don't burn CPU
+      # in a tight retry spin — five tries in five minutes is enough to
+      # surface the failure via `systemctl status`.
+      StartLimitIntervalSec = "300";
+      StartLimitBurst = "5";
+    };
+    Install.WantedBy = [ "default.target" ];
+  };
+
   home.activation.claudeSharedMemorySymlinks = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     canonical="$HOME/.claude/projects/-srv-share-projects/memory"
 
