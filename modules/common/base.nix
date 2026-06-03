@@ -53,6 +53,19 @@
 
   nixpkgs.config.allowUnfree = true;
 
+  # Known-insecure packages we accept. Each entry is a deliberate
+  # trade-off, not a blanket allow. Promote to removal as soon as
+  # nixpkgs ships a non-EOL bump.
+  #
+  # electron-39.8.10 — bundled by bitwarden-desktop-2026.5.0; nixpkgs
+  #   bitwarden hasn't moved to electron-40+ yet. Accepted because the
+  #   electron renderer here only displays the vault UI (sandboxed,
+  #   no broad attack surface in this app's usage). Remove when
+  #   `bitwarden-desktop` in nixpkgs bumps electron.
+  nixpkgs.config.permittedInsecurePackages = [
+    "electron-39.8.10"
+  ];
+
   # --- locale / time -----------------------------------------------------
 
   time.timeZone = "Europe/Oslo";

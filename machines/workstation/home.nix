@@ -190,12 +190,6 @@ in
   home.stateVersion = "25.11"; # match host's system.stateVersion
   programs.home-manager.enable = true;
 
-  # Adopt home-manager's 26.05 default: gtk4 reads its theme from
-  # dconf/gsettings, not from a settings.ini write — same path Stylix
-  # uses, so explicit null is a no-op at runtime and silences the
-  # "legacy default because stateVersion < 26.05" eval warning.
-  gtk.gtk4.theme = null;
-
   # Cheatsheet on PATH. Referenced by SUPER+H as `hypr-cheatsheet`
   # (name, not store path) — avoids the cycle where the binding's
   # store path would depend on the cheatsheet text which depends on
@@ -294,6 +288,16 @@ in
   # screenshot capture); Stylix's hyprlock target would collide.
   stylix.targets.hyprlock.enable = false;
 
+  # Stylix's bumped hyprland module reads `wayland.windowManager.hyprland.
+  # configType` (Hyprland 0.55+ hyprlang-vs-lua selector) but the
+  # home-manager module in this nixpkgs doesn't expose that option yet
+  # → Stylix throws "attribute 'configType' missing" on every eval.
+  # Disabling Stylix's hyprland integration sidesteps the version skew;
+  # only the auto-color emission to hyprland is lost (terminal/cursor/
+  # GTK/kitty/etc. theming via Stylix is unaffected). Re-enable once
+  # home-manager catches up.
+  stylix.targets.hyprland.enable = false;
+
   wayland.windowManager.hyprland = {
     enable = true;
 
@@ -336,7 +340,10 @@ in
       };
 
       dwindle = {
-        pseudotile = true;
+        # `pseudotile` was removed in Hyprland 0.55 (it wasn't doing
+        # anything; see https://hypr.land/news/update55/). Leaving it
+        # in throws "config option <dwindle:pseudotile> does not exist"
+        # at session start.
         # preserve_split on — once a split's orientation is set it
         # sticks instead of being recomputed from the focused window's
         # W/H ratio on each new open. Pairs with the SUPER+S
