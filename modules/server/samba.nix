@@ -26,7 +26,7 @@
   # The Samba password is independent of the Linux login password.
   #
   # Exposure: openFirewall = false. The firewall opens SMB only on
-  # tailscale0 (per DESIGN.md L160-166). `hosts allow`/`hosts deny`
+  # tailscale0 (per NETWORK.md § zones). `hosts allow`/`hosts deny`
   # adds defense-in-depth at the smbd layer.
   #
   # Single-user assumption: nori is the only valid user on both shares.

@@ -30,7 +30,7 @@
   # Wayland session env vars.
   #
   # Driver 595 + explicit-sync removes most historical NVIDIA-Wayland pain
-  # (see DESIGN.md L355-363); we keep the set deliberately minimal and add
+  # (see TOPOLOGY.md § GPU access); we keep the set deliberately minimal and add
   # hints only when something actually breaks.
   #
   #   NIXOS_OZONE_WL=1                 — NixOS-specific shim that flips

@@ -310,8 +310,8 @@
                 if grep -rn '\$pbkdf2-' modules/ ; then
                   echo
                   echo "✗ Inline pbkdf2 hashes found above. OIDC hashes belong in sops"
-                  echo "  (key: oidc-<n>-client-secret-hash). See docs/CONVENTIONS.md"
-                  echo "  'Authelia OIDC pattern'."
+                  echo "  (key: oidc-<n>-client-secret-hash). See"
+                  echo "  .claude/skills/add-oidc-client/ for the bootstrap workflow."
                   fail=1
                 fi
 
@@ -349,8 +349,7 @@
                 # Caddy's internal CA is enabled via globalConfig =
                 # "local_certs", not via acmeCA = "internal" — Caddy will
                 # literally try to dial `internal` as an ACME directory URL
-                # and fail. See docs/gotchas.md "Caddy: acmeCA = internal
-                # is wrong".
+                # and fail. See .claude/skills/gotcha-caddy-acme-internal/
                 if grep -rn 'acmeCA = "internal"' modules/ ; then
                   echo
                   echo "✗ acmeCA = \"internal\" found above. Caddy interprets this"
@@ -363,7 +362,7 @@
                 # SEPARATE fields. Embedding the topic in the URL silently
                 # disables alerting (logs "Ignoring provider=ntfy due to
                 # error=topic not set" once at startup, then nothing).
-                # See docs/gotchas.md "Gatus ntfy provider".
+                # See .claude/skills/gotcha-gatus-ntfy-provider/
                 if grep -rn 'url = "https://ntfy.sh/' modules/ ; then
                   echo
                   echo "✗ Gatus ntfy URL with embedded topic found above. Split into"

@@ -8,7 +8,7 @@ A service's database / state got corrupted — Open WebUI won't start with "data
 
 ## Three flavors of restore
 
-Pattern matches DESIGN.md L210-289. The right flavor depends on how the service stores state.
+Pattern matches SERVICES.md § "Backup-correctness patterns". The right flavor depends on how the service stores state.
 
 ### Pattern A — filesystem-only (Jellyfin, Tailscale, plain Pattern-A services)
 

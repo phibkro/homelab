@@ -165,8 +165,7 @@ in
       # site; PBKDF2 is one-way so the raw secret can't be recovered
       # from it. The raw secret lives sops-encrypted at
       # `/run/secrets/oidc-<name>-client-secret`. See
-      # docs/CONVENTIONS.md "Authelia OIDC pattern" for the bootstrap
-      # workflow.
+      # .claude/skills/add-oidc-client/ for the bootstrap workflow.
       identity_providers.oidc.clients = generatedClients;
     };
   };

@@ -18,8 +18,8 @@ Write an ADR when:
 Don't write an ADR for:
 
 - Routine implementation choices (commit message is enough).
-- Patterns already documented in `docs/CONVENTIONS.md` (just follow the convention).
-- Tactical landmines (`docs/gotchas.md` is the right home).
+- Patterns already documented in `docs/MODULES.md` / `docs/ENFORCEMENT.md` (just follow the convention).
+- Tactical landmines (`.claude/skills/gotcha-*/` is the right home — one skill per landmine).
 - Load-bearing claims (`docs/INVARIANTS.md` carries those with their enforcement tier).
 
 ## File shape

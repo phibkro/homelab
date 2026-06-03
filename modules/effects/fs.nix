@@ -16,7 +16,7 @@ in
   #   * backup/restic.nix      media-irreplaceable.include
   #   * backup/btrbk.nix       per-instance subvolume lists
   #
-  # Plus the value-tier categorization from docs/DESIGN.md (re-derivable
+  # Plus the value-tier categorization from docs/STORAGE.md (re-derivable
   # / user / irreplaceable) lived only in prose. Adding a new media
   # subvolume meant editing ~5 places + remembering which restic repo
   # picks it up.
@@ -78,7 +78,7 @@ in
               "irreplaceable"
             ];
             description = ''
-              Value tier per docs/DESIGN.md "Three value tiers".
+              Value tier per docs/STORAGE.md "Value tiers".
               Drives which restic repo (if any) the path lands in
               and the snapshot retention class. Adding a tier:
               extend the enum, document the contract, update the

@@ -38,7 +38,7 @@
   ];
 
   # ---------------------------------------------------------------------
-  # Backup verification cadence (DESIGN.md L390-398).
+  # Backup verification cadence (STORAGE.md § "Backup verification").
   #
   # Two timers in addition to the daily backup runs:
   #   weekly  — `restic check`               (metadata only, fast)
@@ -147,7 +147,7 @@
   # own scheduled backup writes there (enable in admin web UI: Settings
   # → Administration → Backup → Database Dump Settings), restic picks
   # it up here as the second half of the consistent point-in-time
-  # restore plan (per DESIGN.md L283-289). Not in nori.fs because it's
+  # restore plan (per SERVICES.md Pattern B). Not in nori.fs because it's
   # NixOS service state, not a structural FS location.
   nori.backups.media-irreplaceable = {
     include =

@@ -61,7 +61,7 @@ in
     # newer than nixpkgs currently ships (0.24.0 returns HTTP 412
     # "requires a newer version of Ollama" on pull). Setting loadModels
     # to a model the daemon rejects triggers the exact restart-loop
-    # bomb documented in docs/gotchas.md (the NixOS module's
+    # bomb documented in .claude/skills/gotcha-systemd-restart-loop-bombs/ (the NixOS module's
     # ollama-model-loader.service is `Restart=on-failure` with a 10s
     # interval).
     #

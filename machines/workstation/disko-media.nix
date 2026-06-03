@@ -40,7 +40,7 @@ _: {
   #   nix run github:nix-community/disko/latest -- \
   #     --mode disko machines/workstation/disko-media.nix
   #
-  # Layout (per docs/DESIGN.md L130–138, plus @archive + @library added):
+  # Layout (per docs/STORAGE.md § "Workstation media", plus @archive + @library added):
   #   single GPT partition spanning the disk, btrfs label
   #   `ironwolf-storage`, with seven subvolumes:
   #     @downloads    -> /mnt/media/downloads   (re-derivable: movies, shows,

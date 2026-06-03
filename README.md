@@ -6,10 +6,14 @@ Single-user NixOS homelab flake. Two live hosts: `workstation` (workhorse — Ca
 
 | If you're… | Read |
 |---|---|
-| New here, want the architecture | `docs/DESIGN.md` |
-| Adding a service or making changes | `docs/CONVENTIONS.md` |
-| Debugging anything that touches disks, certs, sops, or DynamicUser | `docs/gotchas.md` |
-| Resuming work, want current state + outstanding items | `CLAUDE.md` |
+| New here, want the routing map | `CLAUDE.md` |
+| Wanting the vocabulary + mental models | `docs/CONCEPTS.md` |
+| Adding a service or making changes | `docs/MODULES.md` + `docs/SERVICES.md` |
+| Wiring topology / placement | `docs/TOPOLOGY.md` |
+| Touching storage, backups, snapshots | `docs/STORAGE.md` |
+| Touching network, lanRoutes, Authelia, DNS | `docs/NETWORK.md` |
+| Debugging a known landmine (NVMe, Caddy CA, sops, DynamicUser, …) | `.claude/skills/gotcha-*/SKILL.md` (~35 individual auto-loaded skills) |
+| Resuming work, forward plan | `docs/ROADMAP.md` |
 
 ## Active services
 
@@ -39,8 +43,10 @@ git config core.hooksPath .githooks
 git push
 
 # Sync to workstation and rebuild
+just remote workstation rebuild
+# or directly:
 rsync -aH --delete --exclude=.git . nori@192.168.1.181:/tmp/nix-migration/
-ssh nori@192.168.1.181 'cd /tmp/nix-migration && sudo nixos-rebuild switch --flake .#workstation'
+ssh nori@192.168.1.181 'cd /tmp/nix-migration && just rebuild'
 
 # Validate before pushing
 nix flake check     # eval + statix + deadnix + format
@@ -50,42 +56,52 @@ nix fmt             # auto-format
 sops secrets/secrets.yaml
 ```
 
-The pre-commit hook (`.githooks/pre-commit`) runs `nix flake check` automatically when any `.nix` or `flake.lock` file is staged — catches eval errors, statix anti-patterns, deadnix unused bindings, and unformatted files. Skips gracefully if `nix` isn't on PATH (most commits originate from the Mac without nix; the host catches issues at rebuild time anyway). Bypass for emergency commits with `git commit --no-verify`.
+The pre-commit hook (`.githooks/pre-commit`) runs `nix flake check` automatically when any `.nix` or `flake.lock` file is staged. Skips gracefully if `nix` isn't on PATH (most commits originate from the Mac without nix; the host catches issues at rebuild time anyway). Bypass for emergency commits with `git commit --no-verify`.
 
 ## Quality gates
 
-`nix flake check` runs the standard Nix lints (statix, deadnix, nixfmt format check) plus the repo-specific guard derivations declared in `flake.nix`'s `checks.${system}` attrset. Run `nix flake show .#checks` for the current set; categories of guards:
+`nix flake check` runs the standard Nix lints (statix, deadnix, nixfmt format check) plus the repo-specific guard derivations in `flake.nix`'s `checks.${system}` attrset. Run `nix flake show .#checks` for the current set; categories:
 
-- **Eval-time module assertions** — every type-level constraint declared in modules via `assertions = [ ... ]` (port uniqueness, exclusive paths/skip, host-aware appliance constraints, …)
-- **Pattern enforcement** — `every-service-has-<X>` derivations fail if any `modules/server/*.nix` outside the excluded list omits a required declaration
-- **Anti-pattern grep guards** — `forbidden-patterns` fails if banned strings appear (deprecated APIs, sops bypass shapes, …)
+- **Eval-time module assertions** — port uniqueness, exclusive paths/skip, host-aware appliance constraints, …
+- **Pattern enforcement** — `every-service-has-<X>` derivations fail if any `modules/server/*.nix` omits a required declaration
+- **Anti-pattern grep guards** — `forbidden-patterns` fails if banned strings appear
 
-The pre-commit hook runs the lot when `.nix` files are staged.
+Adding a new rule: `docs/ENFORCEMENT.md` § decision tree.
 
 ## Repo shape
 
 ```
 flake.nix                    # entry, inputs, host definitions, checks
-hosts/
-  workstation/              # bare-metal x86_64 workhorse
-  pi/                   # Raspberry Pi 4 aarch64 appliance
-  vm-test/                   # UTM dry-run target
+machines/
+  workstation/               # bare-metal x86_64 workhorse
+  pi/                        # Raspberry Pi 4 aarch64 appliance
+  macbook/                   # Intel Mac, standalone home-manager only
+  core.nix                   # shared interactive-user home-manager baseline
 modules/
-  common/                    # cross-host baseline (every host)
+  common/                    # cross-host system baseline
+  effects/                   # cross-cutting `nori.<X>` declarative options
   server/                    # "this host serves things" concern
   desktop/                   # "this host has a graphical session"
-  lib/                       # cross-cutting `nori.<X>` declarative options + generators
+  dev/                       # dev-shell fragments + composer
+  claude-code/               # operator's global Claude config
 secrets/
   secrets.yaml               # sops-encrypted, committed
-  README.md                  # secrets workflow ops doc
+  apps.yaml                  # personal-app tokens; sops-encrypted
 .sops.yaml                   # sops policy (recipients + path patterns)
 docs/
-  DESIGN.md                  # architecture (canonical)
-  CONVENTIONS.md             # repo patterns
-  gotchas.md                 # landmines
-CLAUDE.md                    # agent prompting + current state + outstanding items
+  CONCEPTS.md INVARIANTS.md  # tier-1 reference (vocab, mental models, load-bearing claims)
+  PROCEDURES.md ROADMAP.md   # tier-1 reference (skill index, forward plan)
+  TOPOLOGY.md STORAGE.md     # tier-2 reference (one job each)
+  NETWORK.md SERVICES.md
+  MODULES.md ENFORCEMENT.md
+  RECOVERY.md RATIONALES.md
+  decisions/                 # ADRs (dated)
+  runbooks/                  # per-failure step-by-step
+  superpowers/               # per-feature specs and plans
+.claude/skills/              # procedure skills + gotcha skills (load on demand)
+CLAUDE.md                    # tier-0 entrypoint — read order + hard rules + bias + how-to-operate
 ```
 
-## Phase status
+## Status
 
-Phases 0–6 done. Phase 7 (tightening + new capabilities) substantively done — backup + FS-hardening + LAN-route abstractions covering every service module with build-time enforcement, type-level constraints with module assertions, DynamicUser symlink trap caught, OIDC auto-gen with zero hash material in committed Nix, Immich CUDA ML + NVENC with resource caps, `pi` brought up as the appliance host with cross-host service split (Beszel hub + ntfy server). Live state + outstanding items in `CLAUDE.md`; canonical phasing rationale in `docs/DESIGN.md`.
+Phases 0–7 done — backup + FS-hardening + LAN-route abstractions cover every service module with build-time enforcement, type-level constraints with module assertions, DynamicUser symlink trap caught, OIDC auto-gen with zero hash material in committed Nix, Immich CUDA ML + NVENC with resource caps, `pi` brought up as the appliance host with cross-host service split (Beszel hub + ntfy server). Channel pinned to stable `nixos-26.05` since 2026-06-03. Forward plan in `docs/ROADMAP.md`; durable rationales in `docs/RATIONALES.md`.

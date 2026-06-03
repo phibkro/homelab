@@ -30,7 +30,7 @@ in
   #     '';
   #   };
   #
-  # Three pattern shapes from DESIGN.md L210-289 fit this schema:
+  # Three pattern shapes from docs/SERVICES.md § "Backup-correctness patterns" fit this schema:
   #   * Pattern A (filesystem-only)   → include = [...];
   #   * Pattern B (built-in dump)     → include lists the dump dir
   #   * Pattern C2 (external dump)    → include + prepareCommand
@@ -48,7 +48,7 @@ in
   # backups at /var/lib/<name> produces a 0-byte snapshot of just
   # the symlink record, not the data. For these services, declare
   # `include` against /var/lib/private/<name> directly. See
-  # docs/gotchas.md.
+  # .claude/skills/gotcha-dynamicuser-statedirectory-symlink/
 
   options.nori.backups = mkOption {
     default = { };
@@ -150,8 +150,7 @@ in
               default = "service";
               description = ''
                 Value tier — drives the default `pruneOpts` retention
-                curve. Mirrors the docs/DESIGN.md "Three value tiers"
-                framing. Per-service repos default to `service`; the
+                curve. Mirrors the docs/STORAGE.md "Value tiers" framing. Per-service repos default to `service`; the
                 cross-cutting `user-data` and `media-irreplaceable`
                 repos override.
 
@@ -269,8 +268,8 @@ in
             Offending paths: ${lib.concatStringsSep ", " badPaths}
 
             Known DynamicUser services: ${lib.concatStringsSep ", " dynamicUserServices}
-            See docs/gotchas.md "DynamicUser StateDirectory" for the
-            full story.
+            See .claude/skills/gotcha-dynamicuser-statedirectory-symlink/
+            for the full story.
           '';
         }
         {

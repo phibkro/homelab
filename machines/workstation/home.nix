@@ -57,32 +57,6 @@ let
         ]
         m;
 
-  # Expand a record with `range` into one record per integer in the
-  # sequence, substituting {n} in `key` and `action`. Records without
-  # `range` pass through unchanged.
-  expandRange =
-    b:
-    if b ? range then
-      let
-        step = b.range.step or 1;
-        count = ((b.range.to - b.range.from) / step) + 1;
-        ns = lib.genList (i: b.range.from + i * step) count;
-        sub = n: lib.replaceStrings [ "{n}" ] [ (toString n) ];
-      in
-      map (
-        n:
-        b
-        // {
-          key = sub n b.key;
-          action = sub n b.action;
-        }
-      ) ns
-    else
-      [ b ];
-
-  # `mod, key, action` — Hyprland's bind/bindm value format.
-  toHyprlandBind = b: "${b.mod}, ${b.key}, ${b.action}";
-
   # One cheatsheet line per logical bind (range records render once with
   # `from..to` in the key slot, not N times).
   cheatsheetLine =

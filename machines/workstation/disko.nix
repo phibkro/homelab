@@ -25,7 +25,7 @@ _: {
   #   nix run github:nix-community/disko/latest -- \
   #     --mode disko machines/workstation/disko.nix
   #
-  # Layout (per docs/DESIGN.md L111–124):
+  # Layout (per docs/STORAGE.md § "Workstation root"):
   #   p1  ESP, 1 GiB, vfat, label BOOT
   #   p2  rest, btrfs, label nixos, seven subvolumes:
   #     @            -> /

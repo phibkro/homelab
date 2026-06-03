@@ -1,12 +1,12 @@
 _: {
   # MP510 (Windows NVMe) read-only mount. Lets the desktop session
   # browse / copy off the Windows partition without booting Windows.
-  # Stays within DESIGN.md's "never touch the Windows drive" hard rule:
+  # Stays within CLAUDE.md's "never touch the Windows drive" hard rule:
   # `ro` means the kernel rejects writes — there is no path through
   # which this mount can mutate the partition. Phase 7 item 1.
   #
   # by-id path is the only safe identifier here — /dev/nvmeN
-  # enumeration swaps across reboots (see docs/gotchas.md). part3 is
+  # enumeration swaps across reboots (see .claude/skills/gotcha-nvme-enumeration/). part3 is
   # the Windows C: NTFS partition (893.6 GB, label "Corsair MP510");
   # part1=ESP, part2=MSR, part4=WinRE.
   #

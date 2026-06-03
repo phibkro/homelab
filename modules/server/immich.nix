@@ -30,7 +30,7 @@
   # Canon EOS, ...} sit alongside _immich-managed/ — Immich won't
   # see them unless explicitly imported via the web UI or CLI.
   #
-  # Backup: Pattern B per DESIGN.md L283-289. Immich writes Postgres
+  # Backup: Pattern B per SERVICES.md § "Backup-correctness patterns". Immich writes Postgres
   # dumps to /var/lib/immich/backups on a schedule; restic picks up
   # that path + the photos themselves (already in
   # media-irreplaceable.include via /mnt/media/photos). The dumps path

@@ -31,7 +31,7 @@ the row diff.
 | `/mnt/media/archive` | | | | cold |
 | `/mnt/backup` | | | | restic OneTouch |
 
-Trigger thresholds (per DESIGN.md):
+Trigger thresholds (per STORAGE.md):
 - Subvolume >80% full → warn (beszel rule)
 - Subvolume >90% full → urgent (beszel rule)
 - IronWolf >80% → revisit second-drive-on-station decision

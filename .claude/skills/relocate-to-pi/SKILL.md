@@ -29,7 +29,7 @@ modules/server/<service>/
   default.nix    # optional aggregator if both sides go on the same host
 ```
 
-Folder = coupling (per CONVENTIONS.md "Module structure"). The `daemon.nix`/`client.nix` naming follows the established pattern: beszel uses `{hub,agent}.nix`, ntfy uses `{server,notify}.nix` — pick names that match the service's vocabulary.
+Folder = coupling (per MODULES.md § "Coupling vs categorization"). The `daemon.nix`/`client.nix` naming follows the established pattern: beszel uses `{hub,agent}.nix`, ntfy uses `{server,notify}.nix` — pick names that match the service's vocabulary.
 
 ### 2. Daemon side (lives on Pi)
 

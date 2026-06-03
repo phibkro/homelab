@@ -12,7 +12,7 @@
   #     --mode disko machines/workstation/disko-onetouch.nix
   #
   # Layout choice — single GPT partition spanning the disk, ext4. Per
-  # docs/DESIGN.md L143: restic encrypts client-side and is content-
+  # docs/STORAGE.md: restic encrypts client-side and is content-
   # addressable, so the underlying FS doesn't need btrfs's CoW or
   # snapshots; ext4 is the boring well-trodden choice for backup
   # targets. Keeping the FS family different from IronWolf's btrfs

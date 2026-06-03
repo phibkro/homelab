@@ -19,7 +19,7 @@ The WD Black SN750 NVMe (NixOS root) is dead, dying, or otherwise unrecoverable.
 
 ### 0. Verify Windows drive is untouched
 
-The Corsair MP510 (Windows) is on a different NVMe slot. Disko configs are by-id-pinned to prevent target confusion. **Re-read `docs/gotchas.md` "NVMe `/dev` enumeration is unstable"** before any partition operation.
+The Corsair MP510 (Windows) is on a different NVMe slot. Disko configs are by-id-pinned to prevent target confusion. **Re-read `.claude/skills/gotcha-nvme-enumeration/`** before any partition operation.
 
 ### 1. Boot the NixOS minimal installer USB
 

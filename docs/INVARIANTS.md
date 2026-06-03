@@ -32,9 +32,9 @@ Strongest rung each claim has reached. "Promote?" notes mark `[prose: unchecked]
 | `audience: operator` routes get no Authelia overlay; `family` gets OIDC; `public` is intentionally open | `[structural]` (typed `audience` enum, generators branch on it) |
 | Service names function over brand (`status`, not `gatus`; `chat`, not `ollama`) unless brand IS identity | `[prose: unchecked]` — promote? brand-name grep against a known list |
 | **systemd units** | |
-| Every `Restart=on-failure` unit's `ExecStart` is smoke-tested before landing (prevents restart-loop bombs that break the next `switch-to-configuration` — incident 2026-06-03 in `docs/gotchas.md`) | `[prose: unchecked]` — promote? flake check resolving each `ExecStart` to a real nix-store binary path |
+| Every `Restart=on-failure` unit's `ExecStart` is smoke-tested before landing (prevents restart-loop bombs that break the next `switch-to-configuration` — incident 2026-06-03 in `.claude/skills/gotcha-*/`) | `[prose: unchecked]` — promote? flake check resolving each `ExecStart` to a real nix-store binary path |
 | **Convention shapes** | |
-| `nori.<X>` effects are one input → multiple generators (Reader + collected-Writer interface) | `[structural]` (the abstraction shape itself; documented in `CONCEPTS.md`) |
+| `nori.<X>` effects are one input → multiple generators (Reader + collected-Writer interface) | `[structural]` (the abstraction shape itself; documented in `CONCEPTS.md` § effect-interface deep-dive) |
 | A service module owns *everything* about its service in one file (no fan-out) | `[prose: unchecked]` — promote? per-service file boundary check |
 | Rule of three before extracting an abstraction | `[judgment]` |
 | Iterate-to-stable, then codify | `[judgment]` |
@@ -64,3 +64,9 @@ Others (the `[judgment]` ones) stay where they are — they're not staleness ris
 ## Citation pattern
 
 When a doc elsewhere relies on an invariant, cite it as `(INVARIANTS § <claim-short-name>)`. When a code comment relies on one, write `# invariant: see INVARIANTS § <claim-short-name>`. The catalog is the single home; the citations point in.
+
+## See also
+
+- `ENFORCEMENT.md` — the enforcement ladder mechanics + how to add a new rule
+- `CONCEPTS.md` § enforcement ladder — the conceptual model
+- `docs/decisions/0001-agentic-homelab-practices.md` — why prose alone is the staleness floor

@@ -28,7 +28,7 @@ let
 in
 {
   # btrbk — local btrfs subvolume snapshots, the "single file
-  # deletion" recovery path per DESIGN.md RTO table (target: <15 min
+  # deletion" recovery path per RECOVERY.md RTO targets (target: <15 min
   # to restore an accidentally-deleted file).
   #
   # Two instances, one per btrfs filesystem:

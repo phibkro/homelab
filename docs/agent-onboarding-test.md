@@ -48,7 +48,7 @@ All three are wrap-up failures; fix and re-run.
 - Jellyfin → workstation (media volume + GPU)
 - ntfy `notify@` template → both (each host posts to ntfy.sh with its own hostname)
 
-**Source**: CLAUDE.md "Current state → Topology + service placement".
+**Source**: TOPOLOGY.md "Service placement" and SERVICES.md "Catalog".
 
 ---
 
@@ -104,7 +104,7 @@ nori.lanRoutes.widget = {
 - Registry schema: `modules/effects/hosts.nix`; values: `flake.nix` `identityFor`
 - Topology coupling lives in the host name in the lookup, not in the IP
 
-**Source**: CLAUDE.md "Current state → Topology", `modules/effects/hosts.nix` header.
+**Source**: TOPOLOGY.md "Topology registry (`nori.hosts`)", `modules/effects/hosts.nix` header.
 
 ---
 
@@ -120,7 +120,7 @@ nori.lanRoutes.widget = {
 - `skip = "<reason>"` for explicit opt-out (covered elsewhere, stateless, intentionally re-derivable)
 - Appliance hosts (`role = "appliance"`) cannot use `paths` — host-aware assertion fails eval (anti-write storage posture)
 
-**Source**: `modules/effects/backup.nix` (schema + assertions), CLAUDE.md "Current state".
+**Source**: `modules/effects/backup.nix` (schema + assertions), STORAGE.md "Backup intent abstraction".
 
 ---
 
@@ -137,7 +137,7 @@ nori.lanRoutes.widget = {
 - Principle: default-deny FS namespace; compromised service can't browse host paths it doesn't need
 - Enforcement: `every-service-has-fs-hardening` flake check fails the build if any `modules/server/*.nix` (outside the excluded list) lacks a `nori.harden.<n>` declaration
 
-**Source**: CONVENTIONS.md "Filesystem hardening", DESIGN.md "Default-deny filesystem access", `modules/effects/harden.nix`.
+**Source**: MODULES.md "Filesystem hardening", RATIONALES.md "Default-deny filesystem access", `modules/effects/harden.nix`.
 
 ---
 
@@ -153,7 +153,7 @@ nori.lanRoutes.widget = {
 - Fix: `nori.backups.foo.paths = [ "/var/lib/private/foo" ]`
 - The DynamicUser-symlink assertion in `modules/effects/backup.nix` catches this at eval time (lists known DynamicUser services explicitly)
 
-**Source**: gotchas.md "DynamicUser StateDirectory", `modules/effects/backup.nix` assertion.
+**Source**: `.claude/skills/gotcha-dynamicuser-statedirectory-symlink/`, `modules/effects/backup.nix` assertion.
 
 ---
 
@@ -186,7 +186,7 @@ nori.lanRoutes.widget = {
 - Ignoring this risks wiping the wrong drive
 - Verify by-id mapping via `ls /dev/disk/by-id/` before any destructive command
 
-**Source**: CLAUDE.md "Hard rules", gotchas.md "NVMe enumeration", DESIGN.md "Permanent constraints".
+**Source**: CLAUDE.md "Hard rules", `.claude/skills/gotcha-nvme-enumeration/`, RECOVERY.md "Permanent constraints".
 
 ---
 
@@ -198,10 +198,10 @@ nori.lanRoutes.widget = {
 
 **Expected (shape)**:
 - Apply the "On every structural change" rubric — don't wait for session end
-- Stale active examples in CLAUDE.md / DESIGN.md → fix immediately (highest-cost class)
-- Pattern used twice or more → codify as "How to ..." in PROCEDURES.md
-- New convention agents should follow → CONVENTIONS.md, ideally backed by a flake check / module assertion
-- Hard-won mistake → gotchas.md
+- Stale active examples in CLAUDE.md / the tier-2 reference docs → fix immediately (highest-cost class)
+- Pattern used twice or more → codify as a procedure skill (PROCEDURES.md indexes them)
+- New convention agents should follow → MODULES.md (shape) + ENFORCEMENT.md (rule rung), ideally backed by a flake check / module assertion
+- Hard-won mistake → new `.claude/skills/gotcha-<name>/SKILL.md` with USE-WHEN trigger
 - Cross-session fact (preferences, project state, host topology) → memory
 
 **Source**: CLAUDE.md "On every structural change".

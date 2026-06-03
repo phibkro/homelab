@@ -129,8 +129,8 @@ Most likely culprits:
 - **Driver build failure**: as of April 2026 `nvidiaPackages.production`
   is 595.x and kernel 6.18 LTS; the historical 580.119/6.19 build break
   is resolved. If a regression returns, fall back via the ladder
-  documented in `docs/DESIGN.md` L94–106 (`production` → `beta` →
-  `latest` → explicit `mkDriver`).
+  documented in `docs/TOPOLOGY.md` § GPU access pattern (`production` →
+  `beta` → `latest` → explicit `mkDriver`).
 - **`nixos-hardware.nixosModules.common-pc-ssd` missing**: drop the
   import.
 

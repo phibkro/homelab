@@ -19,18 +19,18 @@ If the answer is "nothing — it's self-documenting via flake check + module hea
 
 | Symptom | Action |
 |---|---|
-| Active example in `CLAUDE.md` or `docs/DESIGN.md` is now stale | Fix immediately. Drift acted on by the next agent is the highest-cost class. |
+| Active example in `CLAUDE.md` or any tier-2 reference doc (`TOPOLOGY.md`, `STORAGE.md`, `NETWORK.md`, `SERVICES.md`, `MODULES.md`, `ENFORCEMENT.md`, `RECOVERY.md`, `RATIONALES.md`) is now stale | Fix immediately. Drift acted on by the next agent is the highest-cost class. |
 | New pattern used twice or more, with non-deterministic decisions per use | Codify as a skill in `.claude/skills/<n>/`. The cross-host service split → `relocate-to-pi` is the precedent. |
-| New convention agents should follow (rule, not example) | Add to `docs/CONVENTIONS.md`, ideally backed by a flake check or module assertion. Rules in prose drift; rules in code don't. |
-| Hard-won mistake worth surfacing (subtle gotcha, footgun) | Add to `docs/gotchas.md`. Each gotcha is an inoculation. |
+| New convention agents should follow (rule, not example) | Add the shape to `docs/MODULES.md`; add the rule + its rung to `docs/ENFORCEMENT.md`. Ideally backed by a flake check or module assertion. Rules in prose drift; rules in code don't. |
+| Hard-won mistake worth surfacing (subtle gotcha, footgun) | New `.claude/skills/gotcha-<name>/SKILL.md` with USE-WHEN trigger. Each gotcha is an inoculation. |
 | Cross-session fact (preferences, project state, host topology) | Update auto-memory in `~/.claude/projects/.../memory/`. Don't duplicate what's in CLAUDE.md. |
 | Stale enumeration / count that mirrors code cardinality | Replace with a category description + live oracle (`nix flake show .#checks`, `just ports`, `ls modules/effects/`). Per `feedback/stratify_by_leverage` memory. |
 
 ## Specific patterns this session has seen
 
-- **New `nori.<X>` lib module** → mention in CLAUDE.md "Composable abstractions" bias bullet (the family list); update CONVENTIONS.md "Service module template" if the abstraction changes how services declare their own config
-- **New flake check** → no doc enumeration needed if you describe the category instead; if the check enforces a new convention, mention the convention in CONVENTIONS.md
-- **New host** → CLAUDE.md "Topology + service placement" + `flake.nix` `identityFor` (eval enforces the latter); maybe `add-host` skill if the path is new
+- **New `nori.<X>` lib module** → mention in CLAUDE.md "Composable abstractions" bias bullet (the family list); update MODULES.md "Service module template" if the abstraction changes how services declare their own config; deep-dive lives in CONCEPTS.md § "Effect interface deep-dive"
+- **New flake check** → no doc enumeration needed if you describe the category instead; if the check enforces a new convention, mention the convention in MODULES.md and the rule + rung in ENFORCEMENT.md
+- **New host** → TOPOLOGY.md § "Hosts at a glance" + `flake.nix` `identityFor` (eval enforces the latter); maybe `add-host` skill if the path is new
 - **New cross-host split** → if it's the third instance, extract `mkCrossHostService` (rule of three); update `relocate-to-pi` skill
 - **Stale doc artifact noticed** → fix it now, not at session end. The cost of an immediate update is small; the cost of a fresh agent acting on stale information is large.
 

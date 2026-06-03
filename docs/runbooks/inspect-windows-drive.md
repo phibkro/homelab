@@ -1,7 +1,7 @@
 # Inspect the Windows drive (MP510) from NixOS
 
 The Corsair Force MP510 is the Windows NVMe and is **never** written
-to from NixOS (DESIGN.md hard rule). This runbook covers the
+to from NixOS (CLAUDE.md hard rule; full constraint in RECOVERY.md § "Permanent constraints"). This runbook covers the
 read-only access path.
 
 ## Default state
