@@ -59,6 +59,19 @@ config.nori.hosts.<name> = {
 
 The `role` field drives the placement assertion in `modules/effects/backup.nix`: appliance hosts cannot use `paths`-based backups (they're observers, not state holders).
 
+**Consumer-side lookup** (this is how cross-host wiring stays IP-literal-free):
+
+```nix
+# In a service module on workstation that reverse-proxies to pi:
+nori.lanRoutes.metrics = {
+  port = 8090;
+  host = config.nori.hosts.pi.tailnetIp;   # ← never "100.100.71.3"
+  monitor = { };
+};
+```
+
+The `forbidden-patterns` flake check fails the build on a stray `100.x.y.z` literal anywhere outside `flake.nix`'s `identityFor`.
+
 ## Service placement
 
 | Cluster | Where | Why |
@@ -106,4 +119,9 @@ Services that need the GPU set `accelerationDevices` (or systemd `DeviceAllow`) 
 
 ## Adding a host
 
-See `/add-host`. Short version: create `machines/<name>/`, add an `identityFor` entry in `flake.nix`, declare the role + tailnet/lan IPs. Eval fails if either side is missing.
+See `/add-host`. Short version:
+
+1. Create `machines/<name>/` (folder name = `networking.hostName` — injected, don't redeclare).
+2. Add an `identityFor` entry in `flake.nix` with `role`, `tailnetIp`, `lanIp`. Eval fails if folder or registry is missing.
+3. **Add the new host's age public key** (derived from its SSH host key via `ssh-to-age`) to `.sops.yaml` and run `sops updatekeys secrets/secrets.yaml` to re-encrypt existing secrets so the new host can decrypt them. Without this, sops secrets are unreachable on first boot.
+4. First boot → `tailscale up` → approve in admin console for subnet route / exit node if applicable.

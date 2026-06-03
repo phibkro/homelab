@@ -244,7 +244,7 @@ NixOS services using `DynamicUser=yes` (open-webui, ollama, ntfy-sh, beszel-hub,
 |---|---|
 | Can't `chown <name>:<name>` — users don't exist statically | `chown --reference=<existing-file>` to copy ownership from a sibling |
 | `/run/secrets/*` is `0440 root:keys` | `SupplementaryGroups = [ "keys" ]` to grant access |
-| `StateDirectory` is `/var/lib/private/<name>` symlinked to `/var/lib/<name>` | Don't add the symlink path to backups directly — see `.claude/skills/gotcha-dynamicuser-statedirectory-symlink/` |
+| `StateDirectory` is `/var/lib/private/<name>` symlinked to `/var/lib/<name>` | Target the real path: `nori.backups.<n>.paths = [ "/var/lib/private/<name>" ];`. Restic stores symlinks AS symlinks → pointing at `/var/lib/<name>` produces a 0-byte snapshot. A self-maintaining assertion in `modules/effects/backup.nix` (derived from `config.systemd.services` introspection) catches this at eval time. Deep dive: `.claude/skills/gotcha-dynamicuser-statedirectory-symlink/` |
 
 Adding a new OIDC client → `/add-oidc-client` (procedure skill — bootstrap, sops paste, route declaration, systemd wiring).
 
