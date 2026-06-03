@@ -288,16 +288,6 @@ in
   # screenshot capture); Stylix's hyprlock target would collide.
   stylix.targets.hyprlock.enable = false;
 
-  # Stylix's bumped hyprland module reads `wayland.windowManager.hyprland.
-  # configType` (Hyprland 0.55+ hyprlang-vs-lua selector) but the
-  # home-manager module in this nixpkgs doesn't expose that option yet
-  # → Stylix throws "attribute 'configType' missing" on every eval.
-  # Disabling Stylix's hyprland integration sidesteps the version skew;
-  # only the auto-color emission to hyprland is lost (terminal/cursor/
-  # GTK/kitty/etc. theming via Stylix is unaffected). Re-enable once
-  # home-manager catches up.
-  stylix.targets.hyprland.enable = false;
-
   wayland.windowManager.hyprland = {
     enable = true;
 
@@ -306,6 +296,16 @@ in
     # and the two could drift across rebuilds.
     package = null;
     portalPackage = null;
+
+    # Hyprland 0.55+ hyprlang-vs-lua selector. We use lua via
+    # xdg.configFile."hypr/hyprland.lua" at the bottom of this file.
+    # The conf-side `settings = {...}` block below still renders
+    # hyprland.conf as a fallback (Hyprland prefers .lua when present),
+    # so `rm ~/.config/hypr/hyprland.lua && hyprctl reload` is a clean
+    # runtime rollback to hyprlang. Also silences the home-manager
+    # release-26.05 eval warning about the default flipping from
+    # "hyprlang" to "lua" at home.stateVersion ≥ 26.05.
+    configType = "lua";
 
     settings = {
       # Samsung S34J552 — 34" ultrawide, native 3440x1440 @ 75Hz on DP-3.
