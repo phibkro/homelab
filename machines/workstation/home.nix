@@ -416,4 +416,13 @@ in
       ];
     };
   };
+
+  # Hyprland 0.55+ Lua config. When `~/.config/hypr/hyprland.lua` exists,
+  # Hyprland uses it and ignores `hyprland.conf`; the `settings = {...}`
+  # block above still renders the conf as an unused safety net. To roll
+  # back to hyprlang at runtime: `rm ~/.config/hypr/hyprland.lua &&
+  # hyprctl reload`. To roll back permanently: remove this entry.
+  # The conf-side block can be deleted once Hyprland drops hyprlang
+  # (1-2 releases after 0.55 per https://hypr.land/news/26_lua/).
+  xdg.configFile."hypr/hyprland.lua".source = ./hyprland.lua;
 }
