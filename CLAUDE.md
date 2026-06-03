@@ -16,8 +16,8 @@ Read these before making changes:
 4. **`docs/CONVENTIONS.md`** — established patterns. How modules are shaped, secrets are wired, services are added.
 5. **`docs/INVARIANTS.md`** — load-bearing claims, each tagged by enforcement tier (`[law: …]` / `[structural]` / `[prose: unchecked]` / `[judgment]`). The drift register: `[prose: unchecked]` items are explicit promotion candidates.
 6. **`docs/decisions/`** — ADR log: dated, statused records of hard-to-reverse decisions. Read `0001-agentic-homelab-practices.md` first; it sets the *why* behind everything else.
-7. **`docs/gotchas.md`** — landmines. Read before touching: NVMe enumeration, Caddy CA trust, sops env files, openrsync flags, DynamicUser services.
-8. **`.claude/skills/`** — recurring procedures (add a service, add a host, relocate to Pi, wrap session, on structural change). Auto-discovered when the trigger phrasing matches; load on demand. `docs/PROCEDURES.md` is the index.
+7. **`.claude/skills/gotcha-*/`** — landmines as individual auto-loaded skills. Each one fires when its USE-WHEN trigger matches (e.g. editing disko configs auto-loads `gotcha-nvme-enumeration`). 35 of them as of 2026-06-03: NVMe enumeration, Caddy CA trust, sops env files, DynamicUser services, restart-loop bombs, downgrading-strands-state, the *arr reflink-vs-hardlink trap, …. Browse the list with `ls .claude/skills/gotcha-*`.
+8. **`.claude/skills/`** (everything else) — recurring procedures (add a service, add a host, relocate to Pi, wrap session, on structural change). Auto-discovered when the trigger phrasing matches; load on demand. `docs/PROCEDURES.md` is the procedure-skill index.
 9. `git log --oneline` — commit-by-commit narrative for context the docs don't catch.
 
 ## Hard rules
