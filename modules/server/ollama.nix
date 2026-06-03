@@ -1,6 +1,7 @@
 {
   lib,
   pkgs,
+  inputs,
   ...
 }:
 
@@ -37,10 +38,24 @@ in
 
   services.ollama = {
     enable = enabled;
-    # CUDA-enabled package (replaces the deprecated acceleration = "cuda").
-    # If a build issue surfaces, fall back to plain `pkgs.ollama` with
-    # `acceleration = false` for CPU-only inference.
-    package = pkgs.ollama-cuda;
+    # CUDA-enabled package, pulled from the local nixpkgs fork at
+    # `ollama-0.30.3` (input `nixpkgs-ollama` in ../../flake.nix). The
+    # bump is needed for mxfp8 / nvfp4 quants — stable 26.05 ships
+    # 0.24.0, which fails pulls with HTTP 412 on those quants. Revert
+    # to `pkgs.ollama-cuda` once nixpkgs upstreams the bump (PR open
+    # from this branch); the input goes with it.
+    #
+    # `legacyPackages` evaluates with default (allowUnfree=false,
+    # cudaSupport=false), which rejects ollama-cuda's CUDA closure —
+    # import the fork's nixpkgs ourselves with our config to bypass.
+    package =
+      (import inputs.nixpkgs-ollama {
+        system = pkgs.stdenv.hostPlatform.system;
+        config = {
+          allowUnfree = true;
+          cudaSupport = true;
+        };
+      }).ollama-cuda;
     host = "0.0.0.0";
     port = 11434;
     openFirewall = false;
@@ -57,24 +72,22 @@ in
 
     # loadModels intentionally unset.
     #
-    # mxfp8 (and the related nvfp4) quants require an Ollama version
-    # newer than nixpkgs currently ships (0.24.0 returns HTTP 412
-    # "requires a newer version of Ollama" on pull). Setting loadModels
-    # to a model the daemon rejects triggers the exact restart-loop
-    # bomb documented in .claude/skills/gotcha-systemd-restart-loop-bombs/ (the NixOS module's
-    # ollama-model-loader.service is `Restart=on-failure` with a 10s
-    # interval).
+    # Pulls are now done manually first, then this list is filled in once a
+    # tag is confirmed to load on the running daemon:
+    #   sudo -u ollama OLLAMA_HOST=127.0.0.1:11434 ollama pull <tag>
+    # Repeat pulls of a present model are no-ops, so adding the tag here
+    # after a successful manual pull is safe (and survives reinstalls).
     #
-    # Until nixpkgs ships ollama with mxfp8 support, pull models
-    # manually:
-    #   sudo -u ollama OLLAMA_HOST=127.0.0.1:11434 ollama pull <model>
-    # then restore loadModels once that pull succeeds (it's idempotent
-    # — repeat pulls of a present model are no-ops).
+    # The 0.24-era restart-loop hazard
+    # (.claude/skills/gotcha-systemd-restart-loop-bombs/) was: setting
+    # loadModels to a tag the daemon rejects → systemd respawns every
+    # 10s → cascade. The Ollama 0.30 bump (see `package` above) clears
+    # the mxfp8 / nvfp4 rejection class. Still verify any new tag via
+    # manual pull before listing it here.
     #
-    # When restoring: gemma4:12b-mxfp8 (~12GB, mixed-FP8, fits 16GB VRAM
-    # with context) is the original pick. Alternatives if VRAM-tight:
-    #   * gemma4:12b-nvfp4 — NVIDIA Blackwell FP4, ~6-7GB
-    #   * gemma3:12b       — older generation, works on current Ollama
+    # Candidates (gemma4 family): gemma4:12b (general, ~12GB mxfp8 in
+    # 16GB VRAM), gemma4:12b-nvfp4 (Blackwell FP4, ~6-7GB), gemma3:12b
+    # (older gen, works on any Ollama).
   };
 
   # Default-deny filesystem access beyond what ollama needs (its

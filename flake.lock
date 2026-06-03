@@ -299,6 +299,23 @@
         "type": "github"
       }
     },
+    "nixpkgs-ollama": {
+      "locked": {
+        "lastModified": 1780526471,
+        "narHash": "sha256-pg2XspmxUwRtJJTWTnxfXF1ChXdZQUB8AV81hgV8rUc=",
+        "ref": "ollama-0.30.3",
+        "rev": "f46406a9f4af5552e705a2f5c13ecdcba1248db3",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///srv/share/projects/nixpkgs"
+      },
+      "original": {
+        "ref": "ollama-0.30.3",
+        "shallow": true,
+        "type": "git",
+        "url": "file:///srv/share/projects/nixpkgs"
+      }
+    },
     "nixpkgs_2": {
       "locked": {
         "lastModified": 1780203844,
@@ -365,6 +382,7 @@
         "nixos-hardware": "nixos-hardware",
         "nixpkgs": "nixpkgs_2",
         "nixpkgs-master": "nixpkgs-master",
+        "nixpkgs-ollama": "nixpkgs-ollama",
         "obsidian-skills": "obsidian-skills",
         "shadcn": "shadcn",
         "snappy-switcher": "snappy-switcher",
