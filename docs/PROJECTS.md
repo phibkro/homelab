@@ -38,9 +38,12 @@ not the territory. Don't duplicate per-repo detail here; point to it.
 - **Untrusted dev commands** (`pnpm install` / test / build) — run through
   `scripts/dev-sandbox.sh` (bubblewrap: repo RW, nix store RO, `$HOME` secrets
   masked, env scrubbed, network droppable with `--no-net`) in the pnpm repos.
-- **`claude-box`** — opt-in bubblewrap-sandboxed launcher for the agent itself
-  (masks secrets incl. the `/etc/ssh` sops-master key, blocks push + sudo).
-  `claude` stays the normal unsandboxed command.
+- **`pagu-box`** — cross-platform sandboxed launcher (Linux: bubblewrap; macOS:
+  sandbox-exec). Process-agnostic — wraps any command, not just agents. Profiles
+  (`default | strict | paranoid | loose`) trade off ergonomics vs. lockdown.
+  Repo: github:phibkro/pagu-box. Workstation also ships thin aliases
+  `claude-box` (= `pagu-box --profile=strict ... -- claude`) and
+  `opencode-box` for muscle memory; both consolidate onto pagu-box internally.
 
 ## Per-project cheat-sheet
 
@@ -49,7 +52,8 @@ not the territory. Don't duplicate per-repo detail here; point to it.
 | **pagu** | Deno; local-first security agent (the 6 invariants) | `deno task ci` | runner spawns bwrap (the cage); security-critical; flake = deno + git-cliff + bwrap |
 | **bang-lang** | TS compiler → Effect; pnpm monorepo (core / compiler / cli) | `pnpm test` (≈322) | correctness-critical; `README.md` is a symlink to `CLAUDE.md` |
 | **occupational-health** | TS pnpm-monorepo platform (Effect / @effect/rpc, 8 packages) | per-package tests (a known workspace cycle breaks `vp run test -r`) | **commit from inside `nix develop`** — the `.vite-hooks` pre-commit hook needs `node`; dependency-cruiser enforces module boundaries |
-| **homelab** | Nix flake — the machine itself | `nix flake check` (guard derivations) | changes need `nh os switch` to apply; direnv / claude-box / samba / disko live here |
+| **homelab** | Nix flake — the machine itself | `nix flake check` (guard derivations) | changes need `nh os switch` to apply; direnv / pagu-box / samba / disko live here |
+| **pagu-box** | Cross-platform shell-script sandbox (no test suite yet) | `nix build .#pagu-box` | bwrap (linux) + sandbox-exec (darwin); profile system; consumed by homelab via flake input |
 | **phibkro.org/** | app fleet (drinks, filmder, finnbydel, heim) | per-app | these *do* consume the homelab `lab.lib.mkDevShell` profile (the per-project-flake rule is for the substantial standalone repos, not this fleet) |
 | beatopia, rice-registry | see each repo's own entrypoint | — | less load-bearing; orient from their `README`/`CLAUDE.md` |
 

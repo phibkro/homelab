@@ -18,3 +18,15 @@ home-manager.backupFileExtension = "hm-backup";
 ```
 
 HM then moves any pre-existing file aside (`<path>.hm-backup`) instead of bailing. Same applies to anything else that auto-generates config under XDG_CONFIG_HOME on first run — fish shell history, gtk settings, etc.
+
+## Standalone home-manager (macbook): different fix
+
+The `home-manager.backupFileExtension` option only exists when HM is consumed AS a NixOS module (workstation). The macbook runs standalone HM via `home-manager switch --flake .#macbook`, where that option does NOT exist (eval fails with "Did you mean `home.activation`...").
+
+For standalone HM, the equivalent is the `-b SUFFIX` CLI flag at switch time:
+
+```sh
+home-manager switch -b hm-backup --flake .#macbook
+```
+
+This is baked into the iteration command in `machines/macbook/home.nix`'s file header. If you find yourself hitting the clobber error on the mac, you forgot `-b hm-backup` — re-run with it.
