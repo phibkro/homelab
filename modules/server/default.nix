@@ -47,6 +47,7 @@ _: {
     ./immich.nix
     ./jellyfin.nix
     ./komga.nix
+    ./miniflux.nix
     ./navidrome.nix
     ./ntfy/notify.nix
     ./ollama.nix

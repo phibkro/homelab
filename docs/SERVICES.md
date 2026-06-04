@@ -30,6 +30,7 @@ Verified on `nixos-26.05`.
 | **Books, comics, dashboard** | | | |
 | calibre-web | `services.calibre-web` | workstation | `books.nori.lan` (family); ebook + OPDS; port 8084 |
 | Komga | `services.komga` | workstation | `comics.nori.lan` (family); comics/manga + OPDS; port 8085 |
+| Miniflux | `services.miniflux` | workstation | `news.nori.lan` (family); RSS reader; port 8087; shares system Postgres |
 | Glance | `services.glance` | workstation | `home.nori.lan` (public); dashboard; port 8086 |
 | **PIM** | | | |
 | Radicale | `services.radicale` | workstation | `calendar.nori.lan` (family); CalDAV + CardDAV; htpasswd |
