@@ -48,14 +48,15 @@
     snappy-switcher.url = "github:OpalAayan/snappy-switcher";
     snappy-switcher.inputs.nixpkgs.follows = "nixpkgs";
 
-    # TEMPORARY — local nixpkgs fork with ollama bumped to 0.30.3.
-    # gemma4 (12b mxfp8 / nvfp4 quants) needs Ollama 0.25+; stable 26.05
-    # ships 0.24.0 (also true of nixpkgs master as of 2026-06-03). PR
-    # against NixOS/nixpkgs in flight from this branch — remove this
-    # input + the services.ollama.package override in modules/server/
-    # ollama.nix once it merges and the next stable bumps Ollama.
-    # Branch lives at /srv/share/projects/nixpkgs `ollama-0.30.3`.
-    nixpkgs-ollama.url = "git+file:///srv/share/projects/nixpkgs?ref=ollama-0.30.3&shallow=1";
+    # TEMPORARY — local nixpkgs fork with ollama 0.30.5 (incl. darwin
+    # build fix + gemma4:12b divide-by-zero fix). Two PRs against
+    # NixOS/nixpkgs: the 0.24 → 0.30.4 + vulkan jump (#527892) merged
+    # already; 0.30.4 → 0.30.5 + darwin fixes (#528150) in review.
+    # Drop this input + the services.ollama.package override in
+    # modules/server/ollama.nix once 0.30.5 lands on master AND
+    # release-26.05 backports it. Branch lives at
+    # /srv/share/projects/nixpkgs `ollama-0.30.5`.
+    nixpkgs-ollama.url = "git+file:///srv/share/projects/nixpkgs?ref=ollama-0.30.5&shallow=1";
 
     # Stylix — single-input system-wide theming. One wallpaper +
     # polarity (light/dark) generates a Material You-flavored base16
