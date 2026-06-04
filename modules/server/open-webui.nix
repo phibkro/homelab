@@ -6,15 +6,14 @@
 }:
 
 let
-  # Paused alongside Ollama 2026-05-16 — the chat front-end has no
-  # purpose without an LLM backend. Flip to `true` to resume. State at
-  # /var/lib/private/open-webui (DynamicUser symlink) is preserved.
-  # Flipping this single boolean restores:
+  # Flip to `false` to pause the chat front-end without dropping its
+  # state at /var/lib/private/open-webui (DynamicUser symlink). The
+  # single boolean toggles:
   #   * the systemd unit
   #   * the https://chat.nori.lan Caddy route + Authelia OIDC client
   #   * Gatus monitor + Glance dashboard entry
   #   * the daily sqlite3-dump-then-restic backup
-  enabled = false;
+  enabled = true;
 in
 {
   # Open WebUI: chat front-end, primarily for local Ollama. Optional

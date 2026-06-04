@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ pkgs, inputs, ... }:
 
 # nori on Mac (Intel x86_64-darwin) — standalone home-manager,
 # no nix-darwin (yet). Migrates the daily-driver CLI tier off
@@ -19,7 +19,17 @@
 #   home-manager switch --flake ~/Documents/nix-migration#macbook
 
 {
-  imports = [ ../pc.nix ];
+  imports = [
+    ../pc.nix
+    inputs.pagu-box.homeManagerModules.default
+  ];
+
+  # Sandboxed launcher for any CLI process (claude, aider, opencode, …).
+  # See https://github.com/phibkro/pagu-box. Use `pagu-box --profile=NAME
+  # <cmd>` — defaults to the `default` profile (allow-by-default, secret
+  # deny-list, network allowed) which is the equivalent of the
+  # workstation's `claude-box` shape.
+  programs.pagu-box.enable = true;
 
   home.username = "nori";
   home.homeDirectory = "/Users/nori";

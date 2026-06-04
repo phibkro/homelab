@@ -373,6 +373,26 @@
         "type": "github"
       }
     },
+    "pagu-box": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1780614149,
+        "narHash": "sha256-M4V9Y8g6+9gBJsD2KGf0cLPoCHawDxJ7uxNOa/K8FRs=",
+        "owner": "phibkro",
+        "repo": "pagu-box",
+        "rev": "9602eb6c9fea51a3230602eab42a67d001470f99",
+        "type": "github"
+      },
+      "original": {
+        "owner": "phibkro",
+        "repo": "pagu-box",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "anthropics-skills": "anthropics-skills",
@@ -384,6 +404,7 @@
         "nixpkgs-master": "nixpkgs-master",
         "nixpkgs-ollama": "nixpkgs-ollama",
         "obsidian-skills": "obsidian-skills",
+        "pagu-box": "pagu-box",
         "shadcn": "shadcn",
         "snappy-switcher": "snappy-switcher",
         "sops-nix": "sops-nix",

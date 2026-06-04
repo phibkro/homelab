@@ -88,6 +88,14 @@
     # consume obsidian-markdown today.
     obsidian-skills.url = "github:kepano/obsidian-skills";
     obsidian-skills.flake = false;
+
+    # pagu-box — cross-platform sandboxed launcher for any process.
+    # Consumed by the Mac home-manager config (no Linux equivalent yet
+    # — workstation still uses the inline `claudeBox` in
+    # modules/claude-code/default.nix; consolidating those two paths
+    # onto pagu-box is a follow-up once the Mac side burns in).
+    pagu-box.url = "github:phibkro/pagu-box";
+    pagu-box.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
