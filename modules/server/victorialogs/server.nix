@@ -29,6 +29,17 @@ _:
   services.victorialogs = {
     enable = true;
     listenAddress = ":9428";
+    extraOptions = [
+      # Two-week wall: long enough to catch a vacation-length absence,
+      # short enough that retention pressure on pi's flash stays bounded.
+      "-retentionPeriod=14d"
+      # Hard disk cap (40% of pi's 128 GiB FIT = ~50 GiB). Belt to the
+      # retentionPeriod's suspenders — if log volume spikes, the disk
+      # bound takes over before the time bound does. Both must be
+      # present (intent + safety); -retentionPeriod alone wouldn't
+      # protect pi's flash from a runaway producer.
+      "-retention.maxDiskUsagePercent=40"
+    ];
   };
 
   nori.harden.victorialogs = { };

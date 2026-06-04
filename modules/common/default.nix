@@ -16,6 +16,7 @@ _: {
     ./users.nix
     ./tailscale.nix
     ./sops.nix
+    ./journal-upload.nix
     ../effects/hosts.nix
     ../effects/fs.nix
     ../effects/lan-route.nix
