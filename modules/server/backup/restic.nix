@@ -5,28 +5,63 @@
   ...
 }:
 
+let
+  # Shared shell-side iteration helper: emit one
+  # "<job> <target> <repoPath>" line per (job, target) pair. The weekly
+  # + monthly check scripts read this via a heredoc and loop over
+  # them, so the bash side knows nothing about Nix attribute sets.
+  activeJobs = lib.filterAttrs (_: cfg: cfg.include != null) config.nori.backups;
+  pairsShell = lib.concatStringsSep "\n" (
+    lib.flatten (
+      lib.mapAttrsToList (
+        jobName: cfg:
+        let
+          targets = if cfg.targets == null then lib.attrNames config.nori.backupTargets else cfg.targets;
+        in
+        map (t: "${jobName} ${t} ${config.nori.backupTargets.${t}.repoBase}/${jobName}") targets
+      ) activeJobs
+    )
+  );
+in
 {
   # Cross-cutting restic infrastructure: the shared password secret,
   # the /var/backup tmpfiles rule that Pattern C2 prepareCommands
-  # write into, and the weekly + monthly verification timers that
-  # iterate over every repo declared via `nori.backups`.
+  # write into, the backup target declarations, and the weekly +
+  # monthly verification timers that iterate over every repo declared
+  # via `nori.backups`.
   #
-  # Per-repo declarations live in the service modules they belong
+  # Per-job declarations live in the service modules they belong
   # to (`nori.backups.sonarr` in sonarr.nix, etc.) — see
   # modules/effects/backup.nix for the abstraction. The non-service-tied
-  # repos (user-data for /home + /srv/share, media-irreplaceable for
+  # jobs (user-data for /home + /srv/share, media-irreplaceable for
   # /mnt/media subvolumes + Immich's Pattern B dump dir) are
   # declared at the bottom of this file because they don't belong
   # to any one service module.
   #
-  # Repository: /mnt/backup is the OneTouch ext4 mount (formatted via
-  # machines/workstation/disko-onetouch.nix). USB-attached spinning HDD
-  # on workstation — different physical drive from the IronWolf data
-  # disk and the SN750 root disk, but same chassis / same PSU / same
-  # USB hub. Failure-domain independence is partial: protects against
-  # single-drive failure, not whole-machine loss. pi (local fast
-  # restore, when the SSD lands) and Hetzner Storage Box (off-site,
-  # reactive) remain on the roadmap as additional repos.
+  # Backup targets (the `where`): every job fans out to every target
+  # declared below by default. Each (job, target) becomes its own
+  # systemd unit `restic-backups-<job>-<target>.service` with
+  # independent failure mode + OnFailure → notify@.
+  #
+  # Current targets:
+  #   onetouch  — USB OneTouch ext4 mount at /mnt/backup (formatted via
+  #               machines/workstation/disko-onetouch.nix). Different
+  #               physical drive from IronWolf data + SN750 root,
+  #               same chassis + PSU + USB hub. Failure-domain
+  #               independence is partial: drives apart, but USB-side
+  #               glitches affect this one specifically (2026-06-04
+  #               wedged-controller incident).
+  #   ironwolf  — Always-mounted @restic-local btrfs subvolume on the
+  #               IronWolf media drive (see disko-media.nix). Catches
+  #               OneTouch-offline failure mode; doesn't protect
+  #               against a full IronWolf drive failure (the source
+  #               irreplaceable data lives there too).
+  #
+  # Roadmap targets:
+  #   hetzner   — Off-site Hetzner Storage Box via SFTP (true
+  #               geographic resilience for irreplaceable tier).
+  #   pi        — Local fast-restore on the appliance once a real
+  #               disk replaces the FIT-USB (anti-write storage today).
 
   sops.secrets.restic-password = {
     owner = "root";
@@ -38,6 +73,22 @@
   ];
 
   # ---------------------------------------------------------------------
+  # Backup target registry. See modules/effects/backup.nix for the
+  # schema; each nori.backups.<job> fans out to every target listed
+  # here by default, producing one restic-backups-<job>-<target>
+  # systemd unit per pair.
+  nori.backupTargets = {
+    onetouch = {
+      repoBase = "/mnt/backup";
+      description = "USB OneTouch external HDD — autofs lazy-mount; can survive workstation reboot.";
+    };
+    ironwolf = {
+      repoBase = "/mnt/backup-local";
+      description = "Always-mounted btrfs subvolume on the IronWolf media drive (@restic-local).";
+    };
+  };
+
+  # ---------------------------------------------------------------------
   # Backup verification cadence (STORAGE.md § "Backup verification").
   #
   # Two timers in addition to the daily backup runs:
@@ -45,18 +96,20 @@
   #   monthly — `restic check --read-data-subset=10%`
   #             (samples 10% of pack data; covers 100% over ~10 months)
   #
-  # Both iterate every repo declared via `nori.backups`. Either step
-  # failing for any repo trips OnFailure → notify@ → ntfy.sh urgent
-  # alert. A backup that succeeds-but-rots silently is the failure
-  # mode this guards against.
+  # Both iterate every (job, target) pair derived from `nori.backups`
+  # and `nori.backupTargets`. Either step failing for any pair trips
+  # OnFailure → notify@ → ntfy.sh urgent alert. A backup that
+  # succeeds-but-rots silently is the failure mode this guards against.
   #
   # The wrapper iterates serially (USB HDD; concurrent reads thrash).
   # Failures don't short-circuit — every repo gets attempted so a
-  # corrupt repo doesn't hide rot in the others.
+  # corrupt repo doesn't hide rot in the others. A pair failure
+  # against an offline target (e.g. OneTouch USB unplugged) is also
+  # a real signal, not just noise — restic will report
+  # "no such file or directory" / "no such device" and the ntfy
+  # alert names which target.
   systemd.services.restic-check-weekly = {
     description = "Weekly metadata check of all restic repositories";
-    after = [ "mnt-backup.mount" ];
-    requires = [ "mnt-backup.mount" ];
     unitConfig.OnFailure = [ "notify@restic-check-weekly.service" ];
     serviceConfig = {
       Type = "oneshot";
@@ -65,17 +118,16 @@
     environment.RESTIC_PASSWORD_FILE = config.sops.secrets.restic-password.path;
     script = ''
       fail=0
-      for name in ${
-        lib.concatStringsSep " " (
-          lib.attrNames (lib.filterAttrs (_: cfg: cfg.include != null) config.nori.backups)
-        )
-      }; do
-        echo "[$name] restic check"
-        if ! ${pkgs.restic}/bin/restic -r /mnt/backup/$name check; then
-          echo "[$name] FAILED"
+      while read job target repo; do
+        [ -z "$job" ] && continue
+        echo "[$job @ $target] restic check ($repo)"
+        if ! ${pkgs.restic}/bin/restic -r "$repo" check; then
+          echo "[$job @ $target] FAILED"
           fail=1
         fi
-      done
+      done <<'EOF'
+      ${pairsShell}
+      EOF
       exit $fail
     '';
   };
@@ -91,8 +143,6 @@
 
   systemd.services.restic-check-monthly = {
     description = "Monthly read-10% data sample check of all restic repositories";
-    after = [ "mnt-backup.mount" ];
-    requires = [ "mnt-backup.mount" ];
     unitConfig.OnFailure = [ "notify@restic-check-monthly.service" ];
     serviceConfig = {
       Type = "oneshot";
@@ -101,17 +151,16 @@
     environment.RESTIC_PASSWORD_FILE = config.sops.secrets.restic-password.path;
     script = ''
       fail=0
-      for name in ${
-        lib.concatStringsSep " " (
-          lib.attrNames (lib.filterAttrs (_: cfg: cfg.include != null) config.nori.backups)
-        )
-      }; do
-        echo "[$name] restic check --read-data-subset=10%"
-        if ! ${pkgs.restic}/bin/restic -r /mnt/backup/$name check --read-data-subset=10%; then
-          echo "[$name] FAILED"
+      while read job target repo; do
+        [ -z "$job" ] && continue
+        echo "[$job @ $target] restic check --read-data-subset=10% ($repo)"
+        if ! ${pkgs.restic}/bin/restic -r "$repo" check --read-data-subset=10%; then
+          echo "[$job @ $target] FAILED"
           fail=1
         fi
-      done
+      done <<'EOF'
+      ${pairsShell}
+      EOF
       exit $fail
     '';
   };

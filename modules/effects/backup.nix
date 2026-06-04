@@ -5,20 +5,30 @@ let
     mkOption
     types
     mkIf
-    mapAttrs'
-    nameValuePair
     ;
 in
 {
-  # nori.backups — single source of truth for restic backup repos.
-  # Each entry generates ALL of:
-  #   * services.restic.backups.<name>        (the backup job)
-  #   * systemd OnFailure → notify@ wiring    (ntfy alert on failure)
-  #   * inclusion in the weekly + monthly     (verification cadence)
-  #     restic check loops in modules/server/backup/restic.nix
+  # nori.backups + nori.backupTargets — declarative restic backup model.
   #
-  # Service modules declare their own backup inline alongside the
-  # service definition, the same way they declare lanRoutes:
+  # Two-layer schema:
+  #
+  #   nori.backupTargets.<target>  — WHERE backups go (the destination
+  #                                  repo bases). Declared once at
+  #                                  host scope.
+  #   nori.backups.<job>           — WHAT to back up (paths, prepare
+  #                                  commands, retention). Declared per
+  #                                  service module alongside the
+  #                                  service definition.
+  #
+  # The generator fans out: each (job, target) pair becomes its own
+  # `services.restic.backups.<job>-<target>` and corresponding
+  # `restic-backups-<job>-<target>.service` systemd unit with its own
+  # OnFailure → notify@ wiring. That's deliberate — independent units
+  # mean independent failure modes. A wedged OneTouch USB controller
+  # (2026-06-04 incident) doesn't take down the ironwolf-local backups,
+  # and ntfy alerts disambiguate which target failed.
+  #
+  # Service modules look like:
   #
   #   nori.backups.sonarr = { include = [ "/var/lib/sonarr" ]; };
   #
@@ -30,15 +40,14 @@ in
   #     '';
   #   };
   #
-  # Three pattern shapes from docs/SERVICES.md § "Backup-correctness patterns" fit this schema:
+  # By default every job writes to every declared target. Override
+  # selectively via `targets = [ "onetouch" ];` per job.
+  #
+  # Three pattern shapes from docs/SERVICES.md § "Backup-correctness
+  # patterns" fit this schema:
   #   * Pattern A (filesystem-only)   → include = [...];
   #   * Pattern B (built-in dump)     → include lists the dump dir
   #   * Pattern C2 (external dump)    → include + prepareCommand
-  #
-  # `include` + `exclude` mirror restic's `--include` / `--exclude`
-  # naming. Both singular by convention (the option holds a list of
-  # paths each, but each entry is one path; `excludes` plural would
-  # imply a list of exclude-rule-sets).
   #
   # ── DynamicUser symlink gotcha ──────────────────────────────────
   # Services declared with `DynamicUser = true` (open-webui,
@@ -50,11 +59,61 @@ in
   # `include` against /var/lib/private/<name> directly. See
   # .claude/skills/gotcha-dynamicuser-statedirectory-symlink/
 
+  options.nori.backupTargets = mkOption {
+    default = { };
+    description = ''
+      Available restic backup destinations on this host. Each target
+      provides a `repoBase` directory under which the per-job repos
+      will live; the generated repo path for a job named `vaultwarden`
+      and a target named `onetouch` with repoBase `/mnt/backup` is
+      `/mnt/backup/vaultwarden`.
+
+      Targets are independent — every backup job fans out to every
+      target it lists by default, and each (job, target) pair gets its
+      own systemd unit + OnFailure notify@ wiring. A failed target
+      doesn't block other targets.
+
+      Declared once at host scope (typically in
+      modules/server/backup/restic.nix).
+    '';
+    example = lib.literalExpression ''
+      {
+        onetouch = {
+          repoBase = "/mnt/backup";
+          description = "USB OneTouch external HDD (lazy-mounted via autofs)";
+        };
+        ironwolf = {
+          repoBase = "/mnt/backup-local";
+          description = "Always-mounted btrfs subvolume on the media drive";
+        };
+      }
+    '';
+    type = types.attrsOf (
+      types.submodule {
+        options = {
+          repoBase = mkOption {
+            type = types.str;
+            description = ''
+              Directory under which per-job repos are created. Repo
+              paths derive as `<repoBase>/<jobName>`. The path must
+              exist (or be mountable) at backup time; restic's
+              `initialize = true` will create the per-job subdirectory
+              and init the repo on first run.
+            '';
+          };
+          description = mkOption {
+            type = types.str;
+            description = "One-line human-readable description; surfaces in commit messages and runbooks.";
+          };
+        };
+      }
+    );
+  };
+
   options.nori.backups = mkOption {
     default = { };
     description = ''
-      Restic backup decisions. Attribute name = repo name (becomes
-      `/mnt/backup/<name>`).
+      Restic backup decisions per service / cross-cutting concern.
 
       Each entry MUST set exactly one of:
         * `include` — list of paths to back up (Pattern A; add
@@ -67,6 +126,11 @@ in
       paired flake check (`every-service-has-backup-intent` in
       flake.nix) enforces that every modules/server/**.nix
       contains a nori.backups.<n> declaration.
+
+      Active backups (those with non-null `include`) fan out across
+      all `targets` listed (default: every declared
+      nori.backupTargets entry). The generated systemd unit names
+      follow `restic-backups-<jobName>-<targetName>`.
     '';
     example = lib.literalExpression ''
       {
@@ -75,6 +139,9 @@ in
           include = [ "/var/lib/vaultwarden" "/var/backup/vaultwarden" ];
           prepareCommand = "sqlite3 ... .backup ...";
           timer = "*-*-* 04:30:00";
+          # targets defaults to all declared nori.backupTargets;
+          # override here to limit, e.g.:
+          # targets = [ "onetouch" ];
         };
         gatus = { skip = "memory-only storage; no on-disk state."; };
       }
@@ -115,7 +182,9 @@ in
                 Bash command(s) to run before each restic backup.
                 Used for Pattern C2 (sqlite3 .backup before restic).
                 Null = Pattern A (filesystem-only). Ignored when
-                `include` is null.
+                `include` is null. Same prepareCommand runs once per
+                target; the dump output it produces gets included in
+                every target's snapshot.
               '';
             };
             exclude = mkOption {
@@ -136,9 +205,10 @@ in
               default = "*-*-* 03:00:00";
               description = ''
                 `OnCalendar` systemd timer expression. Default 03:00
-                UTC daily. Stagger across repos when concurrent USB
-                I/O on the OneTouch becomes a bottleneck. Ignored
-                when `include` is null.
+                UTC daily. All targets for a job share the same timer;
+                they fire concurrently. Stagger across jobs when
+                concurrent USB I/O on the OneTouch becomes a
+                bottleneck. Ignored when `include` is null.
               '';
             };
             tier = mkOption {
@@ -198,6 +268,24 @@ in
               '';
               description = "Restic forget/prune options. Default derived from `tier`. Ignored when `include` is null.";
             };
+            targets = mkOption {
+              type = types.nullOr (types.listOf types.str);
+              # Default = every declared nori.backupTargets entry. The
+              # default is read from the outer `config` argument because
+              # this submodule can't see the parent without `mkOptionDefault`
+              # gymnastics; the actual resolution happens in the generator
+              # below.
+              default = null;
+              defaultText = lib.literalExpression "lib.attrNames config.nori.backupTargets";
+              description = ''
+                Backup targets this job should fan out to. Default
+                (null) = every declared nori.backupTargets entry —
+                belt-and-suspenders coverage. Override with a subset
+                when a job should NOT write to a particular target
+                (e.g. a service whose data is too large for the
+                always-mounted target).
+              '';
+            };
           };
         }
       )
@@ -206,7 +294,25 @@ in
 
   config = mkIf (config.nori.backups != { }) (
     let
-      activeBackups = lib.filterAttrs (_: cfg: cfg.include != null) config.nori.backups;
+      # Default targets to all declared destinations if a job didn't
+      # specify them — done here rather than in the submodule default
+      # so each entry sees the full top-level `nori.backupTargets`.
+      effectiveTargets =
+        cfg: if cfg.targets == null then lib.attrNames config.nori.backupTargets else cfg.targets;
+
+      activeJobs = lib.filterAttrs (_: cfg: cfg.include != null) config.nori.backups;
+
+      # Flattened (jobName, target, cfg) triples — the cartesian
+      # product of jobs × their targets. Used by both the
+      # services.restic.backups generator and the OnFailure wiring.
+      activePairs = lib.flatten (
+        lib.mapAttrsToList (
+          jobName: cfg:
+          map (target: {
+            inherit jobName cfg target;
+          }) (effectiveTargets cfg)
+        ) activeJobs
+      );
 
       # Services that use systemd DynamicUser=yes plus StateDirectory,
       # where /var/lib/<n> is a SYMLINK to /var/lib/private/<n>. restic
@@ -242,6 +348,21 @@ in
       # `skip = "..."`.
       myRole = config.nori.hosts.${config.networking.hostName}.role or null;
       appliancePaths = lib.filter (cfg: cfg.include != null) (lib.attrValues config.nori.backups);
+
+      # Validate that every per-job `targets` references a real
+      # declared target. Catches typos at eval time rather than at
+      # daily-3am restic failure time.
+      unknownTargets = lib.flatten (
+        lib.mapAttrsToList (
+          jobName: cfg:
+          if cfg.include == null then
+            [ ]
+          else
+            map (t: "${jobName} → ${t}") (
+              lib.filter (t: !(builtins.hasAttr t config.nori.backupTargets)) (effectiveTargets cfg)
+            )
+        ) config.nori.backups
+      );
     in
     {
       assertions = [
@@ -293,34 +414,72 @@ in
             lands, declare `skip = "..."` and document the rationale.
           '';
         }
+        {
+          assertion = unknownTargets == [ ];
+          message = ''
+            nori.backups.<job>.targets references a backup target that
+            isn't declared in nori.backupTargets.
+
+            Offending pairs: ${lib.concatStringsSep ", " unknownTargets}
+
+            Declared targets: ${lib.concatStringsSep ", " (lib.attrNames config.nori.backupTargets)}
+
+            Either declare the missing target (top-level
+            `nori.backupTargets.<name> = { repoBase = ...; }`) or fix
+            the typo on the offending job.
+          '';
+        }
+        {
+          # No-targets vacuously satisfies the cartesian product but
+          # silently produces zero backup units, which would let a
+          # service slip through `every-service-has-backup-intent`
+          # without any actual backup running. Flag it.
+          assertion = activeJobs == { } || config.nori.backupTargets != { };
+          message = ''
+            nori.backups has active jobs (with non-null `include`) but
+            nori.backupTargets is empty — no targets means no restic
+            units get generated. Declare at least one target in
+            modules/server/backup/restic.nix (or override per-host).
+          '';
+        }
       ];
 
-      services.restic.backups = mapAttrs' (
-        name: cfg:
-        nameValuePair name {
-          paths = cfg.include;
-          inherit (cfg) exclude;
-          repository = "/mnt/backup/${name}";
-          passwordFile = config.sops.secrets.restic-password.path;
-          initialize = true;
-          backupPrepareCommand = cfg.prepareCommand;
-          timerConfig = {
-            OnCalendar = cfg.timer;
-            Persistent = true;
-          };
-          inherit (cfg) pruneOpts;
-        }
-      ) activeBackups;
+      services.restic.backups = lib.listToAttrs (
+        map (
+          {
+            jobName,
+            cfg,
+            target,
+          }:
+          lib.nameValuePair "${jobName}-${target}" {
+            paths = cfg.include;
+            inherit (cfg) exclude;
+            repository = "${config.nori.backupTargets.${target}.repoBase}/${jobName}";
+            passwordFile = config.sops.secrets.restic-password.path;
+            initialize = true;
+            backupPrepareCommand = cfg.prepareCommand;
+            timerConfig = {
+              OnCalendar = cfg.timer;
+              Persistent = true;
+            };
+            inherit (cfg) pruneOpts;
+          }
+        ) activePairs
+      );
 
-      # Auto-generated OnFailure → notify@ wiring per repo. Mirror
-      # of the manual block this replaced in modules/server/backup/restic.nix;
-      # without it a silent backup failure stays silent.
-      systemd.services = mapAttrs' (
-        name: _:
-        nameValuePair "restic-backups-${name}" {
-          unitConfig.OnFailure = [ "notify@restic-backups-${name}.service" ];
-        }
-      ) activeBackups;
+      # Auto-generated OnFailure → notify@ wiring per (job, target).
+      # Mirror of the manual block this replaced in
+      # modules/server/backup/restic.nix; without it a silent backup
+      # failure stays silent. Per-target means the ntfy message names
+      # exactly which target failed.
+      systemd.services = lib.listToAttrs (
+        map (
+          { jobName, target, ... }:
+          lib.nameValuePair "restic-backups-${jobName}-${target}" {
+            unitConfig.OnFailure = [ "notify@restic-backups-${jobName}-${target}.service" ];
+          }
+        ) activePairs
+      );
     }
   );
 }

@@ -149,6 +149,27 @@ _: {
                     "noatime"
                   ];
                 };
+                "@restic-local" = {
+                  # Always-mounted restic target, paired with the
+                  # OneTouch via nori.backupTargets.ironwolf. Catches
+                  # the failure mode where the OneTouch USB-bridge
+                  # wedges (incident 2026-06-04): jobs writing here
+                  # still succeed regardless of OneTouch state.
+                  # Trade-off: same-drive backup of @photos/@projects/
+                  # etc. doesn't survive an IronWolf drive failure —
+                  # that's what the OneTouch (and future Hetzner)
+                  # cover. The IronWolf target catches bit-rot,
+                  # accidental delete, and OneTouch-glitch, which is
+                  # the bulk of real recovery events.
+                  # Mounted outside /mnt/media so the Samba shares
+                  # (scoped to /mnt/media) can't accidentally expose
+                  # the backup data.
+                  mountpoint = "/mnt/backup-local";
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
+                };
                 "@snapshots" = {
                   # Mounted so btrbk can write IronWolf-side snapshots
                   # there. Cross-filesystem snapshots aren't a thing in

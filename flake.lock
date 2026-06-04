@@ -301,10 +301,10 @@
     },
     "nixpkgs-ollama": {
       "locked": {
-        "lastModified": 1780526471,
-        "narHash": "sha256-pg2XspmxUwRtJJTWTnxfXF1ChXdZQUB8AV81hgV8rUc=",
+        "lastModified": 1780553702,
+        "narHash": "sha256-KIfsNeFUfZ5dPV8Zdqcr3xjfCKxDl//6eHp0un6emv0=",
         "ref": "ollama-0.30.3",
-        "rev": "f46406a9f4af5552e705a2f5c13ecdcba1248db3",
+        "rev": "63e0d2d52d8824e811b41d1082ac4dda02be85be",
         "shallow": true,
         "type": "git",
         "url": "file:///srv/share/projects/nixpkgs"
