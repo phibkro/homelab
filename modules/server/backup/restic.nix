@@ -198,11 +198,23 @@ in
   # it up here as the second half of the consistent point-in-time
   # restore plan (per SERVICES.md Pattern B). Not in nori.fs because it's
   # NixOS service state, not a structural FS location.
+  #
+  # `targets = [ "onetouch" ]` — opted out of the ironwolf target because
+  # the source data IS the irreplaceable subvolumes on the IronWolf
+  # itself (@photos/@home-videos/@projects/@library/@archive). Backing
+  # those up to a sibling subvolume on the same drive would (a) come
+  # close to doubling drive usage (3.0T used of 3.7T already as of
+  # 2026-06-04 — wouldn't fit) and (b) provide zero protection against
+  # the failure mode same-drive-backup can't catch (full IronWolf
+  # drive failure). Until Hetzner off-site lands, this tier rides
+  # the OneTouch alone. Service-tier and user-tier still dual-write —
+  # those are small and benefit from the OneTouch-glitch resilience.
   nori.backups.media-irreplaceable = {
     include =
       lib.mapAttrsToList (_: f: f.path) (lib.filterAttrs (_: f: f.tier == "irreplaceable") config.nori.fs)
       ++ [ "/var/lib/immich/backups" ];
     tier = "irreplaceable";
     timer = "*-*-* 03:30:00";
+    targets = [ "onetouch" ];
   };
 }
