@@ -24,6 +24,11 @@ user         := "nori"
 remote_path  := "/tmp/nix-migration"
 tailnet      := "saola-matrix.ts.net"
 
+# Every NixOS host in the homelab. Macbook is intentionally NOT here —
+# it's a standalone home-manager target, not part of the NixOS flake.
+# Used by `rebuild-homelab` to fan rebuild across the set.
+homelab_hosts := "workstation pi"
+
 # rsync flags — BSD openrsync compatible (Mac default rsync is openrsync;
 # some GNU flags like --info=stats2 fail silently). See docs/gotchas.md.
 rsync_args := "-aH --no-owner --no-group --partial --delete --exclude='.git' --exclude='result' --exclude='inventory-*'"
@@ -50,6 +55,23 @@ default: rebuild
 # Build + activate this host's configuration from the working tree.
 @rebuild *args:
     nh os switch . -H $(hostname) {{args}}
+
+# Sequential rebuild: local first (catches typos fast), then each remote.
+# Use after any change that affects multiple hosts — most commonly adding
+# a new `nori.lanRoutes.<n>` entry. `just rebuild` only touches whichever
+# host you're sitting on; this fans across the homelab set
+# ({{homelab_hosts}}) to avoid silent split-brain.
+# Build + activate workstation + pi from the working tree.
+@rebuild-homelab *args:
+    for h in {{homelab_hosts}}; do \
+      if [ "$h" = "$(hostname)" ]; then \
+        echo "=== local ($h) ==="; \
+        just rebuild {{args}}; \
+      else \
+        echo "=== remote $h ==="; \
+        just remote $h rebuild {{args}}; \
+      fi; \
+    done
 
 # Build but don't activate.
 @build *args:
