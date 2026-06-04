@@ -370,19 +370,28 @@ let
   };
 in
 {
-  home.packages = [
-    pkgs.claude-code # Anthropic CLI; pulls Node closure (~300 MB)
-    claudeBox # opt-in `claude-box` — sandboxed agent launcher (see let-block)
-    pkgs.opencode # BYO-model agent harness (Ollama / Anthropic / OpenAI / etc.)
-    opencodeBox # opt-in `opencode-box` — bwrap + landrun (Landlock) layered
-    pkgs.agent-browser # Persistent browser automation for AI agents
-    # MCP servers — direct binaries from nixpkgs (no npx-fetch latency,
-    # version pinned by flake.lock). Wired into Claude Code via the
-    # project-level .mcp.json at the repo root + enabledMcpjsonServers
-    # in settings below.
-    pkgs.mcp-server-fetch # `fetch` — URL → markdown tool
-    pkgs.context7-mcp # `context7` — library docs lookup
-  ];
+  home.packages =
+    [
+      pkgs.claude-code # Anthropic CLI; pulls Node closure (~300 MB)
+      pkgs.agent-browser # Persistent browser automation for AI agents
+      # MCP servers — direct binaries from nixpkgs (no npx-fetch latency,
+      # version pinned by flake.lock). Wired into Claude Code via the
+      # project-level .mcp.json at the repo root + enabledMcpjsonServers
+      # in settings below.
+      pkgs.mcp-server-fetch # `fetch` — URL → markdown tool
+      pkgs.context7-mcp # `context7` — library docs lookup
+    ]
+    # opencode lacks x86_64-darwin support in nixpkgs 26.05 (aarch64-darwin
+    # only). Skip on Intel Mac.
+    ++ lib.optional (pkgs.stdenv.hostPlatform.system != "x86_64-darwin") pkgs.opencode
+    # claudeBox / opencodeBox are bwrap (+ landrun) wrappers — Linux-only.
+    # The cross-platform replacement is `pagu-box` (consumed via the
+    # pagu-box flake input on macbook); workstation still uses these
+    # inline scripts until the pagu-box port subsumes them.
+    ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+      claudeBox
+      opencodeBox
+    ];
 
   # Pull each immediate-child directory under `src` into the user's
   # ~/.claude/skills/ as a top-level entry. Claude Code's skill
@@ -529,25 +538,31 @@ in
   # process exits cleanly; systemd restarts. Each server-mode process
   # supports many concurrent spawned sessions (default cap 32). Ultraplan
   # disconnects Remote Control.
-  systemd.user.services.claude-remote-control = {
-    Unit = {
-      Description = "Claude Code Remote Control (multi-session bridge for phone/web)";
-      After = [ "network-online.target" ];
-      Wants = [ "network-online.target" ];
+  # Linux-only: systemd user services don't exist on darwin, and ExecStart
+  # references claudeBox which is bwrap-based. The mac equivalent (launchd)
+  # for remote-control isn't wired up yet — when it is, mirror this block
+  # under `launchd.user.agents` gated on isDarwin.
+  systemd.user.services = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+    claude-remote-control = {
+      Unit = {
+        Description = "Claude Code Remote Control (multi-session bridge for phone/web)";
+        After = [ "network-online.target" ];
+        Wants = [ "network-online.target" ];
+      };
+      Service = {
+        Type = "exec";
+        WorkingDirectory = "/srv/share/projects";
+        ExecStart = "${claudeBox}/bin/claude-box remote-control --remote-control-session-name-prefix workstation --verbose";
+        Restart = "on-failure";
+        RestartSec = "10s";
+        # Cap restart loop so a chronic outage / bad creds don't burn CPU
+        # in a tight retry spin — five tries in five minutes is enough to
+        # surface the failure via `systemctl status`.
+        StartLimitIntervalSec = "300";
+        StartLimitBurst = "5";
+      };
+      Install.WantedBy = [ "default.target" ];
     };
-    Service = {
-      Type = "exec";
-      WorkingDirectory = "/srv/share/projects";
-      ExecStart = "${claudeBox}/bin/claude-box remote-control --remote-control-session-name-prefix workstation --verbose";
-      Restart = "on-failure";
-      RestartSec = "10s";
-      # Cap restart loop so a chronic outage / bad creds don't burn CPU
-      # in a tight retry spin — five tries in five minutes is enough to
-      # surface the failure via `systemctl status`.
-      StartLimitIntervalSec = "300";
-      StartLimitBurst = "5";
-    };
-    Install.WantedBy = [ "default.target" ];
   };
 
   home.activation.claudeSharedMemorySymlinks = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
