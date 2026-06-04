@@ -380,11 +380,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1780614149,
-        "narHash": "sha256-M4V9Y8g6+9gBJsD2KGf0cLPoCHawDxJ7uxNOa/K8FRs=",
+        "lastModified": 1780615579,
+        "narHash": "sha256-TSHq3snNtrFx9g3QfK7wm11eHrd8S5BsyD2YU65CV/8=",
         "owner": "phibkro",
         "repo": "pagu-box",
-        "rev": "9602eb6c9fea51a3230602eab42a67d001470f99",
+        "rev": "890f10dd755e98c458c296757717476a0cd0b68e",
         "type": "github"
       },
       "original": {

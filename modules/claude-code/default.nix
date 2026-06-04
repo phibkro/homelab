@@ -179,105 +179,55 @@ let
     };
   };
 
-  # claude-box — OPT-IN sandboxed launcher for the agent itself. `claude` stays
-  # the normal unsandboxed command; `claude-box` runs it under bubblewrap with a
-  # strict whitelist so a prompt-injection / rogue-tool can't exfiltrate secrets
-  # or escape its work. The bwrap FLAGS are the security boundary, not this
-  # script — read them.
+  # claude-box / opencode-box — thin aliases over `pagu-box` (the
+  # cross-platform sandboxed launcher; see github:phibkro/pagu-box).
+  # Both wrap their respective agent under pagu-box's `strict` profile:
+  # $HOME is tmpfs, only $PWD + ~/.claude (config + state) bound RW,
+  # and a workstation-specific RO set is added for git config / nix
+  # profile / deno cache.
   #
-  # Inside the box the agent CAN: read/write /srv/share/projects, read/write its
-  # own ~/.claude state, run its full toolchain (project flakes via `nix
-  # develop` over the daemon socket), commit (git identity is bound read-only),
-  # and reach the network (the API).
-  # It CANNOT: read secrets (~/.ssh, ~/.config/sops age key, ~/.config/gh, and
-  # crucially /etc/ssh host keys — sops-nix's master key — and /etc/shadow are
-  # all absent), push (no SSH key → run `git push` from a normal shell), mutate
-  # the system (no setuid wrappers bound, user namespace blocks sudo), or touch
-  # the rest of $HOME (fresh tmpfs; dotfiles absent).
+  # Inside the box the agent CAN: read/write /srv/share/projects, read/
+  # write its own ~/.claude state (or ~/.config/opencode for opencode),
+  # run its full toolchain (project flakes via `nix develop` over the
+  # daemon socket), commit (git identity is RO-bound), and reach the
+  # network (the API).
+  # It CANNOT: read secrets (~/.ssh, ~/.config/sops age key, ~/.config/gh,
+  # /etc/ssh host keys, /etc/shadow), push (no SSH key — run `git push`
+  # from a normal shell), mutate the system (no setuid wrappers bound,
+  # user namespace blocks sudo), or touch the rest of $HOME.
   #
-  # Trade-off accepted (operator, 2026-05-30): maximum isolation over
-  # convenience — push + system rebuilds happen outside the box, deliberately.
+  # The strict-profile + --ro-allow list IS the security boundary; the
+  # alias just sets cwd and forwards args. Before-state (inline ~50-line
+  # bwrap script + opencode's landrun layer) consolidated 2026-06-05 —
+  # landrun dropped, the bwrap shape now lives in pagu-box itself.
+  pagu-box = inputs.pagu-box.packages.${pkgs.stdenv.hostPlatform.system}.default;
+
   claudeBox = pkgs.writeShellApplication {
     name = "claude-box";
-    runtimeInputs = [ pkgs.bubblewrap ];
+    runtimeInputs = [
+      pagu-box
+      pkgs.claude-code
+    ];
     text = ''
-      projects="/srv/share/projects"
-
-      # The API credential is the one secret the agent legitimately needs; keep
-      # it, clear everything else from the env.
-      api_env=()
-      if [ -n "''${ANTHROPIC_API_KEY:-}" ]; then
-        api_env=(--setenv ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY")
-      fi
-
-      exec bwrap \
-        --ro-bind /nix/store /nix/store \
-        --bind /nix/var/nix/daemon-socket /nix/var/nix/daemon-socket \
-        --ro-bind /run/current-system /run/current-system \
-        --ro-bind-try /etc/static /etc/static \
-        --ro-bind-try /etc/profiles /etc/profiles \
-        --ro-bind-try /etc/nix /etc/nix \
-        --ro-bind-try /etc/resolv.conf /etc/resolv.conf \
-        --ro-bind-try /etc/nsswitch.conf /etc/nsswitch.conf \
-        --ro-bind-try /etc/hosts /etc/hosts \
-        --ro-bind-try /etc/ssl /etc/ssl \
-        --ro-bind-try /etc/passwd /etc/passwd \
-        --ro-bind-try /etc/group /etc/group \
-        --ro-bind-try /bin /bin \
-        --ro-bind-try /usr/bin /usr/bin \
-        --proc /proc \
-        --dev /dev \
-        --tmpfs /tmp \
-        --tmpfs "$HOME" \
-        --bind "$projects" "$projects" \
-        --bind "$HOME/.claude" "$HOME/.claude" \
-        --bind-try "$HOME/.claude.json" "$HOME/.claude.json" \
-        --ro-bind-try "$HOME/.config/git" "$HOME/.config/git" \
-        --ro-bind-try "$HOME/.nix-profile" "$HOME/.nix-profile" \
-        --ro-bind-try "$HOME/.local/state/nix" "$HOME/.local/state/nix" \
-        --ro-bind-try "$HOME/.deno" "$HOME/.deno" \
-        --chdir "$projects" \
-        --clearenv \
-        --setenv HOME "$HOME" \
-        --setenv USER "''${USER:-nori}" \
-        --setenv PATH "$PATH" \
-        --setenv TERM "''${TERM:-xterm}" \
-        --setenv LANG "''${LANG:-C.UTF-8}" \
-        --setenv NIX_REMOTE daemon \
-        --setenv SSL_CERT_FILE "''${SSL_CERT_FILE:-''${NIX_SSL_CERT_FILE:-/etc/ssl/certs/ca-certificates.crt}}" \
-        "''${api_env[@]}" \
-        --unshare-all \
-        --share-net \
-        --die-with-parent \
+      cd /srv/share/projects
+      exec pagu-box --profile=strict \
+        --ro-allow "$HOME/.config/git" \
+        --ro-allow "$HOME/.nix-profile" \
+        --ro-allow "$HOME/.local/state/nix" \
+        --ro-allow "$HOME/.deno" \
         -- claude "$@"
     '';
   };
 
-  # opencode-box — OPT-IN sandboxed launcher for opencode (BYO-model agent
-  # harness, MIT, anomalyco/opencode). Same bwrap shape as claudeBox PLUS
-  # landrun (Landlock LSM) layered inside as a kernel-level seatbelt on
-  # filesystem and TCP access. Two walls, defense-in-depth: bwrap supplies
-  # the namespace + env scrub + mount tree; landrun's kernel-LSM rules apply
-  # to the inner exec so a process that escapes the namespace still hits
-  # Landlock denials. Read the bwrap flags + the landrun args — they're the
-  # security boundary, not this script.
-  #
-  # Inside the box opencode CAN: r/w /srv/share/projects (work), r/w
-  # ~/.config/opencode (state), reach local Ollama at 127.0.0.1:11434
-  # (network namespace shared, so localhost: works), reach
-  # api.anthropic.com / api.openai.com / OpenRouter / etc. on :443. API
-  # keys are passed through only if set in the launching env; whitelist
-  # below.
-  #
-  # It CANNOT: read ~/.ssh, ~/.config/sops, ~/.config/gh, /etc/ssh host
-  # keys, /etc/shadow, or the rest of $HOME (fresh tmpfs; dotfiles absent).
-  # Cannot `git push` (no SSH key) — run that from a normal shell. Cannot
-  # mutate the system (user namespace blocks sudo).
+  # opencode-box — pagu-box wrapping opencode under the strict profile.
+  # Same shape as claudeBox but bound state dir is ~/.config/opencode.
+  # Pre-consolidation this also layered landrun (Landlock LSM) inside
+  # bwrap for defense-in-depth; dropped 2026-06-05 — bwrap alone is the
+  # security boundary, the second wall added complexity disproportionate
+  # to the marginal extra hardening.
   #
   # Talking to local Ollama from opencode — TL;DR config:
-  #   ~/.config/opencode/config.json (NOT inside the box; OpenCode reads
-  #   it from $HOME which we tmpfs — bind-mount or set $XDG_CONFIG_HOME
-  #   to the bound state dir). Provider block:
+  #   ~/.config/opencode/config.json. Provider block:
   #     {
   #       "providers": {
   #         "ollama-local": {
@@ -287,85 +237,25 @@ let
   #         }
   #       }
   #     }
-  #   See https://opencode.ai/docs/providers/ for the current schema;
-  #   it has moved between versions.
+  #   See https://opencode.ai/docs/providers/ for the current schema.
   opencodeBox = pkgs.writeShellApplication {
     name = "opencode-box";
     runtimeInputs = [
-      pkgs.bubblewrap
-      pkgs.landrun
+      pagu-box
       pkgs.opencode
     ];
     text = ''
-      projects="/srv/share/projects"
-      state="$HOME/.config/opencode"
-      mkdir -p "$state"
-
-      # Pass through only the API keys that are actually set; never inject
-      # empty values (tools misread empty as "configured"). Whitelist what
-      # opencode might want — add more here if you adopt another provider.
-      key_envs=()
-      for k in ANTHROPIC_API_KEY OPENAI_API_KEY OPENROUTER_API_KEY \
-               GROQ_API_KEY OPENCODE_API_KEY; do
-        v="''${!k:-}"
-        if [ -n "$v" ]; then
-          key_envs+=(--setenv "$k" "$v")
-        fi
-      done
-
-      exec bwrap \
-        --ro-bind /nix/store /nix/store \
-        --bind /nix/var/nix/daemon-socket /nix/var/nix/daemon-socket \
-        --ro-bind /run/current-system /run/current-system \
-        --ro-bind-try /etc/static /etc/static \
-        --ro-bind-try /etc/profiles /etc/profiles \
-        --ro-bind-try /etc/nix /etc/nix \
-        --ro-bind-try /etc/resolv.conf /etc/resolv.conf \
-        --ro-bind-try /etc/nsswitch.conf /etc/nsswitch.conf \
-        --ro-bind-try /etc/hosts /etc/hosts \
-        --ro-bind-try /etc/ssl /etc/ssl \
-        --ro-bind-try /etc/passwd /etc/passwd \
-        --ro-bind-try /etc/group /etc/group \
-        --ro-bind-try /bin /bin \
-        --ro-bind-try /usr/bin /usr/bin \
-        --proc /proc \
-        --dev /dev \
-        --tmpfs /tmp \
-        --tmpfs "$HOME" \
-        --bind "$projects" "$projects" \
-        --bind "$state" "$state" \
-        --ro-bind-try "$HOME/.config/git" "$HOME/.config/git" \
-        --ro-bind-try "$HOME/.nix-profile" "$HOME/.nix-profile" \
-        --ro-bind-try "$HOME/.local/state/nix" "$HOME/.local/state/nix" \
-        --chdir "$projects" \
-        --clearenv \
-        --setenv HOME "$HOME" \
-        --setenv USER "''${USER:-nori}" \
-        --setenv PATH "$PATH" \
-        --setenv TERM "''${TERM:-xterm}" \
-        --setenv LANG "''${LANG:-C.UTF-8}" \
-        --setenv NIX_REMOTE daemon \
-        --setenv SSL_CERT_FILE "''${SSL_CERT_FILE:-''${NIX_SSL_CERT_FILE:-/etc/ssl/certs/ca-certificates.crt}}" \
-        "''${key_envs[@]}" \
-        --unshare-all \
-        --share-net \
-        --die-with-parent \
-        -- landrun \
-             --rwx "$projects" \
-             --rwx "$state" \
-             --rox /nix/store \
-             --rox /etc \
-             --rox /bin \
-             --rox /usr/bin \
-             --rox /run/current-system \
-             --rox "$HOME/.nix-profile" \
-             --rox "$HOME/.local/state/nix" \
-             --connect-tcp 443 \
-             --connect-tcp 11434 \
-             --add-exec \
-             --ldd \
-             --best-effort \
-             -- opencode "$@"
+      cd /srv/share/projects
+      mkdir -p "$HOME/.config/opencode"
+      exec pagu-box --profile=strict \
+        --allow "$HOME/.config/opencode" \
+        --ro-allow "$HOME/.config/git" \
+        --ro-allow "$HOME/.nix-profile" \
+        --ro-allow "$HOME/.local/state/nix" \
+        --env OPENROUTER_API_KEY \
+        --env GROQ_API_KEY \
+        --env OPENCODE_API_KEY \
+        -- opencode "$@"
     '';
   };
 in
