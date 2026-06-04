@@ -42,14 +42,15 @@ Every record is JSON with these conventional fields:
 | Field | Source | Example |
 |---|---|---|
 | `_msg` | journald message text | `time=... level=WARN msg="bad manifest"...` |
-| `_time` | ingest time (override) | `2026-06-04T08:37:44.714Z` |
-| `journal_timestamp` | original journal time | `2026-05-09T03:11:01.992444Z` |
+| `_time` | journal event time (`__REALTIME_TIMESTAMP`) | `2026-05-09T03:11:01.992444Z` |
 | `host` | source host (stream id) | `workstation` / `pi` |
 | `unit` | systemd unit (stream id) | `ollama.service` |
 | `priority` | journald priority 0–7 | `3` = err, `6` = info |
 | `level`, `source`, `error` | parsed from `_msg` if logfmt/JSON | `error`, `manifest.go:209`, `"failed: …"` |
 | `parsed.*` | full parsed JSON/logfmt | `parsed.req_id`, `parsed.duration` |
 | `_SYSTEMD_*`, `_BOOT_ID`, `_PID`, `_EXE`, `_CMDLINE` | raw journald metadata | exact systemd internals |
+
+`_time` reflects the **actual event time** — `_time:1h` means "happened in the last hour," not "ingested in the last hour." Entries older than VictoriaLogs's `-retentionPeriod` (currently 14d on pi) are dropped at ingest as `vl_rows_dropped_total{reason="too_small_timestamp"}` rather than backfilled with skewed timestamps.
 
 Vector preserves *everything* from journald — even when promoted to a friendly top-level name, the raw `_SYSTEMD_*` and `__*` fields are still queryable for forensic lookups.
 

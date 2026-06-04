@@ -48,16 +48,15 @@
           .unit = ._SYSTEMD_UNIT
           .pid = ._PID
           .priority = .PRIORITY
-          # Preserve the journal's original timestamp under a separate
-          # field for forensic queries, then bump `.timestamp` (the
-          # field VictoriaLogs reads via `_time_field`) to NOW so the
-          # default retention window doesn't drop replayed entries on
-          # ingest. Trade-off: queries by time return ingest-time, not
-          # journal-time. Acceptable while the retention window is
-          # short — pivot to journal-time once pi's retention is set
-          # to cover the full journal horizon.
-          .journal_timestamp = .timestamp
-          .timestamp = now()
+          # `.timestamp` (which VictoriaLogs reads via _time_field) is
+          # Vector's journald source mapping of __REALTIME_TIMESTAMP —
+          # i.e. the event's actual journal time, not ingest time. Pass
+          # it through unmodified so `_time:1h`-style LogsQL queries are
+          # truthful. Trade-off: on first ingest, entries older than
+          # the retention window (currently 14d, set on pi at
+          # modules/server/victorialogs/server.nix) get silently dropped
+          # by VictoriaLogs as `too_small_timestamp`. Widen retention if
+          # we want deeper backfill queryable.
 
           # ── Inner-message parsing ──────────────────────────────────
           # Many NixOS services emit logfmt or JSON inside the journald
