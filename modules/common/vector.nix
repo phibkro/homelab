@@ -42,8 +42,11 @@
         type = "remap";
         inputs = [ "journald" ];
         source = ''
-          .unit = .SYSTEMD_UNIT
-          .pid = .PID
+          # Trusted systemd fields are prefixed with `_` in Vector's
+          # journald output (user-set fields are bare). Promote a few
+          # to friendly top-level names so query syntax stays short.
+          .unit = ._SYSTEMD_UNIT
+          .pid = ._PID
           .priority = .PRIORITY
           # Preserve the journal's original timestamp under a separate
           # field for forensic queries, then bump `.timestamp` (the
@@ -55,6 +58,37 @@
           # to cover the full journal horizon.
           .journal_timestamp = .timestamp
           .timestamp = now()
+
+          # ── Inner-message parsing ──────────────────────────────────
+          # Many NixOS services emit logfmt or JSON inside the journald
+          # `.message` payload (ollama uses logfmt; caddy emits JSON;
+          # the Go ecosystem leans logfmt; Python apps vary). Parse on
+          # a best-effort basis: try JSON first (cheap to fail), fall
+          # back to logfmt. Whatever sticks lands under `.parsed`,
+          # with a handful of high-frequency fields promoted to
+          # top-level for terse query syntax (`level:error` reads
+          # better than `parsed.level:error`).
+          #
+          # Errors are silently ignored — a plaintext logger isn't a
+          # bug, it just doesn't yield parsed fields.
+          msg = to_string(.message) ?? ""
+          if starts_with(msg, "{") {
+            parsed, err = parse_json(msg)
+            if err == null { .parsed = parsed }
+          }
+          if !exists(.parsed) && contains(msg, "=") {
+            parsed, err = parse_logfmt(msg)
+            if err == null && length(parsed) > 1 { .parsed = parsed }
+          }
+
+          # Promote a small, conventional set. Adding more here grows
+          # column cardinality on the indexdb side — keep it tight.
+          if exists(.parsed.level)  { .level  = .parsed.level }
+          if exists(.parsed.lvl)    { .level  = .parsed.lvl   }
+          if exists(.parsed.source) { .source = .parsed.source }
+          if exists(.parsed.caller) { .source = .parsed.caller }
+          if exists(.parsed.error)  { .error  = .parsed.error  }
+          if exists(.parsed.err)    { .error  = .parsed.err    }
         '';
       };
 

@@ -115,6 +115,16 @@ default: rebuild
 @follow unit:
     sudo journalctl -u {{unit}} -f
 
+# Query the central VictoriaLogs index via LogsQL. Usage:
+#   just query-logs 'unit:ollama.service priority:<=3 | head 20'
+#   just query-logs 'level:error | _time:1h | stats by (unit) count()'
+# Pi tailnet IP is hardcoded — it's stable and avoids an extra nix-eval
+# per invocation. See .claude/skills/query-logs/SKILL.md for syntax.
+@query-logs query:
+    curl -sG "http://100.100.71.3:9428/select/logsql/query" \
+        --data-urlencode 'query={{query}}' \
+      | (command -v jq >/dev/null && jq . || cat)
+
 # === backup ===
 
 # Trigger an immediate backup. Usage: just backup <repo>
