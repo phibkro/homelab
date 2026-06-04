@@ -32,6 +32,14 @@ _:
     extraOptions = [
       # Two-week wall: long enough to catch a vacation-length absence,
       # short enough that retention pressure on pi's flash stays bounded.
+      # Doubles as the ingest-time drop threshold — rows older than
+      # `now - retentionPeriod` get dropped at the door (drop counter:
+      # vl_rows_dropped_total{reason="too_small_timestamp"}). Bites
+      # journal-upload's first-run backfill, which streams from the
+      # start of the local journal; reset its cursor (rm the state
+      # file at /var/lib/private/systemd-journal-upload/state then
+      # restart the unit) when that happens — `/var/lib/systemd/
+      # journal-upload/state` if DynamicUser is off.
       "-retentionPeriod=14d"
       # Hard disk cap (40% of pi's 128 GiB FIT = ~50 GiB). Belt to the
       # retentionPeriod's suspenders — if log volume spikes, the disk
