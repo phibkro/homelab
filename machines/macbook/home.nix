@@ -12,11 +12,18 @@
 # release supporting x86_64-darwin (release-notes link in flake.nix).
 #
 # Iteration:
-#   home-manager switch --flake ~/Documents/nix-migration#macbook
+#   home-manager switch -b hm-backup --flake ~/Documents/nix-migration#macbook
+#
+# The `-b hm-backup` is load-bearing: standalone home-manager has no
+# `home.backupFileExtension` option (that's NixOS-module-only). Without
+# it, any first-rebuild after a tool (Claude Code, etc.) wrote into
+# ~/.claude/ or ~/.config/ aborts with "Existing file ... would be
+# clobbered". With it, conflicting files get renamed `<name>.hm-backup`
+# and activation proceeds.
 #
 # Update inputs:
 #   nix flake update --flake ~/Documents/nix-migration
-#   home-manager switch --flake ~/Documents/nix-migration#macbook
+#   home-manager switch -b hm-backup --flake ~/Documents/nix-migration#macbook
 
 {
   imports = [
@@ -36,7 +43,7 @@
 
   # `stateVersion` is a *migration* marker, not the home-manager
   # version. Don't bump unless you've read the release notes.
-  home.stateVersion = "25.11";
+  home.stateVersion = "26.05";
 
   home.packages = with pkgs; [
     # CLI tooling Mac-specific to this host. Cross-platform tooling
