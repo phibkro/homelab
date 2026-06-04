@@ -1,0 +1,5 @@
+# Drop dashboard JSON files here. Each becomes a UI-visible dashboard
+# in the "Lab" folder, refreshed every 60s via grafana's provisioner.
+# Workflow: build in the UI, "Settings → JSON Model → Copy to clipboard",
+# paste as <name>.json here, commit. The DB-side edit gets overridden
+# on next provisioner sweep — the JSON file is the source of truth.

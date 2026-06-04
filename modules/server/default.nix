@@ -42,6 +42,7 @@ _: {
     ./filmder.nix
     ./gatus.nix
     ./glance.nix
+    ./grafana.nix
     ./heim.nix
     ./immich.nix
     ./jellyfin.nix
