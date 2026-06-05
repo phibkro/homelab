@@ -148,6 +148,23 @@ in
               rejects requests whose Host header isn't a loopback name.
             '';
           };
+          upstreamOriginHeader = mkOption {
+            type = types.nullOr types.str;
+            default = null;
+            example = "http://127.0.0.1:9119";
+            description = ''
+              Optional rewrite of the `Origin` header before forwarding
+              WebSocket / fetch upgrade requests. Paired companion to
+              `upstreamHostHeader`: apps that validate `Host` against
+              their bind address as a DNS-rebinding defence usually
+              run the same check on the WebSocket `Origin` field too
+              (since FastAPI HTTP middleware doesn't fire for WS
+              upgrades, the check is re-implemented at the WS handler).
+              Hermes' embedded chat PTY is the canonical case —
+              without this rewrite, the chat WebSocket upgrade refuses
+              with `origin_mismatch origin=https://… bound=127.0.0.1`.
+            '';
+          };
           exposeOnTailnet = mkOption {
             type = types.bool;
             default = false;
@@ -491,11 +508,21 @@ in
         nameValuePair "${name}.nori.lan" {
           extraConfig =
             let
-              hostRewrite = lib.optionalString (cfg.upstreamHostHeader != null) ''
+              # Collect optional header rewrites; emit a single
+              # `reverse_proxy { ... }` block when any are set, so
+              # Host + Origin (and any future additions) compose
+              # cleanly inside one directive.
+              headerLines = lib.concatStringsSep "\n                  " (
+                lib.optional (cfg.upstreamHostHeader != null)
+                  "header_up Host ${cfg.upstreamHostHeader}"
+                ++ lib.optional (cfg.upstreamOriginHeader != null)
+                  "header_up Origin ${cfg.upstreamOriginHeader}"
+              );
+              headerBlock = lib.optionalString (headerLines != "") ''
                  {
-                  header_up Host ${cfg.upstreamHostHeader}
+                  ${headerLines}
                 }'';
-              backend = "reverse_proxy ${cfg.scheme}://${cfg.host}:${toString cfg.port}${hostRewrite}";
+              backend = "reverse_proxy ${cfg.scheme}://${cfg.host}:${toString cfg.port}${headerBlock}";
               # Forward-auth block: Caddy hits Authelia's /api/verify
               # for every request matching @authNeeded (everything not
               # in exemptPaths). copy_headers propagates the Authelia

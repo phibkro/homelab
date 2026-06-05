@@ -8,7 +8,17 @@
 
 let
   isLinux = pkgs.stdenv.hostPlatform.isLinux;
-  hermes = inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  # `messaging` output pre-bundles discord.py + python-telegram-bot +
+  # slack-sdk. Without this we'd be on `.default`, which tries to
+  # lazy-pip-install these into the runtime env on first use — that
+  # writes to a path inside the (read-only) /nix/store and loops
+  # forever (filling agent.log with a steady stream of "Lazy-installing
+  # discord.py" every 10s, ~/.hermes/logs/agent.log evidence on this
+  # machine). The upstream flake's packages.nix calls this out
+  # explicitly: "lazy-install can't write to the read-only /nix/store".
+  # Swap to `.full` if external memory providers (Honcho, Mem0,
+  # Hindsight) or voice/edge-tts become wanted.
+  hermes = inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.messaging;
   dashboardPort = 9119; # hermes dashboard default — matches modules/hermes/route.nix
 in
 

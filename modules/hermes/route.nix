@@ -27,8 +27,12 @@
     # that isn't a loopback name as a DNS-rebinding defence
     # (GHSA-ppp5-vxwm-4cf7). Rewrite Host before forwarding so the
     # public name `hermes.nori.lan` reaches a backend that thinks it's
-    # being asked for `127.0.0.1:9119`.
+    # being asked for `127.0.0.1:9119`. The same defence is applied at
+    # the WebSocket-upgrade handler against `Origin` — required for
+    # the embedded chat PTY to work over the proxied route, otherwise
+    # chat sessions refuse with `origin_mismatch …`.
     upstreamHostHeader = "127.0.0.1:9119";
+    upstreamOriginHeader = "http://127.0.0.1:9119";
     monitor = { };
     dashboard = {
       title = "Hermes";
