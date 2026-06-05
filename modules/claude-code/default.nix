@@ -202,6 +202,16 @@ let
   # landrun dropped, the bwrap shape now lives in pagu-box itself.
   pagu-box = inputs.pagu-box.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
+  # Short alias for muscle memory — `box <cmd>` is much less typing than
+  # `pagu-box <cmd>` for the launcher that should land in every shell
+  # invocation. Repo + nix package keep the longer name for clarity;
+  # the CLI is `box`.
+  box = pkgs.writeShellApplication {
+    name = "box";
+    runtimeInputs = [ pagu-box ];
+    text = ''exec pagu-box "$@"'';
+  };
+
   claudeBox = pkgs.writeShellApplication {
     name = "claude-box";
     runtimeInputs = [
@@ -274,10 +284,13 @@ in
     # opencode lacks x86_64-darwin support in nixpkgs 26.05 (aarch64-darwin
     # only). Skip on Intel Mac.
     ++ lib.optional (pkgs.stdenv.hostPlatform.system != "x86_64-darwin") pkgs.opencode
+    # pagu-box itself on PATH (was previously only reachable via the
+    # claude-box / opencode-box runtimeInputs). Lets nixpkgs-agent's
+    # solve.sh exec it directly. Both names — the canonical `pagu-box`
+    # and the short alias `box` — go on PATH.
+    ++ [ pagu-box box ]
     # claudeBox / opencodeBox are bwrap (+ landrun) wrappers — Linux-only.
-    # The cross-platform replacement is `pagu-box` (consumed via the
-    # pagu-box flake input on macbook); workstation still uses these
-    # inline scripts until the pagu-box port subsumes them.
+    # Both delegate to pagu-box internally now.
     ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
       claudeBox
       opencodeBox
