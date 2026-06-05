@@ -208,6 +208,14 @@
   users.users.nori.openssh.authorizedKeys.keys = [
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEgBC1J2CYrhdwFerwCa9GZD15I03vqS07bFtiYRl2FU nori-station@github"
   ];
+
+  # Console-fallback password for `nori` — TEMPORARY (placeholder
+  # "temp"), set at deploy time so the operator never gets stuck at
+  # a TTY login when network drops. Rotate via:
+  #   mkpasswd -m yescrypt   # then paste the hash here, commit, redeploy
+  # Or move to a sops-encrypted secret + users.users.nori.hashedPasswordFile.
+  users.users.nori.hashedPassword =
+    "$y$j9T$tpPHfhX/.CWM6TKcQThdq/$cfEGxBsEhlBcv3ulkVxNsHNyjrpHsYDPdTeTsOu/Vb7";
   users.users.root.openssh.authorizedKeys.keys = [
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEgBC1J2CYrhdwFerwCa9GZD15I03vqS07bFtiYRl2FU nori-station@github"
   ];
