@@ -347,7 +347,11 @@ in
       # then, every nori.backups.<n> on an appliance host MUST use
       # `skip = "..."`.
       myRole = config.nori.hosts.${config.networking.hostName}.role or null;
-      appliancePaths = lib.filter (cfg: cfg.include != null) (lib.attrValues config.nori.backups);
+      # Both appliance and agent hosts reject path-based backups, for
+      # different reasons (anti-write storage vs intentional impermanence
+      # — see role enum docs in hosts.nix). Reuse the same path filter
+      # for both assertions.
+      backupPaths = lib.filter (cfg: cfg.include != null) (lib.attrValues config.nori.backups);
 
       # Validate that every per-job `targets` references a real
       # declared target. Catches typos at eval time rather than at
@@ -394,7 +398,7 @@ in
           '';
         }
         {
-          assertion = myRole != "appliance" || appliancePaths == [ ];
+          assertion = myRole != "appliance" || backupPaths == [ ];
           message = ''
             Host ${config.networking.hostName} has nori.hosts.<self>.role = "appliance".
             Appliance hosts have anti-write storage (no swap, volatile
@@ -412,6 +416,32 @@ in
             host, the structural fix is the planned local-fast-restore
             disk (see modules/server/backup/restic.nix L28). Until that
             lands, declare `skip = "..."` and document the rationale.
+          '';
+        }
+        {
+          assertion = myRole != "agent" || backupPaths == [ ];
+          message = ''
+            Host ${config.networking.hostName} has nori.hosts.<self>.role = "agent".
+            Agent hosts are designed to be wiped every boot (root on
+            tmpfs via impermanence; only /persist survives — see
+            machines/${config.networking.hostName}/default.nix). Local
+            state is intentionally ephemeral; restic-ing it would
+            contradict the entire posture. All nori.backups.<n>
+            declarations on agent hosts must use `skip = "<reason>"`,
+            not `include`.
+
+            Offending: ${
+              lib.concatStringsSep ", " (
+                lib.attrNames (lib.filterAttrs (_: cfg: cfg.include != null) config.nori.backups)
+              )
+            }
+
+            If there's data that legitimately needs to outlive a
+            reboot, add it to environment.persistence."/persist" in
+            this host's default.nix — that's the agent-host equivalent
+            of "back this up." If it doesn't need to survive, leave it
+            ephemeral (the desired state for anything an agent
+            generates).
           '';
         }
         {

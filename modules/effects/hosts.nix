@@ -77,6 +77,7 @@ in
             type = types.enum [
               "workhorse"
               "appliance"
+              "agent"
             ];
             description = ''
               The host's structural role in the lab:
@@ -92,6 +93,20 @@ in
                 anti-write storage (no swap, volatile journald, FIT/SD
                 card flash) so paths-based backups are a build error
                 via the assertion in modules/effects/backup.nix.
+
+              * `agent` — untrusted-compute quarantine host. Runs the
+                nixpkgs-agent harness (pi + box + nix-build verification
+                loop). Stateless by design: root on tmpfs via
+                impermanence; only `/persist` (ssh host keys, tailscale
+                state, machine-id) survives reboot. Worktrees live in
+                /tmp and vanish on reboot. No GPU — inference is
+                offloaded to the workhorse over tailnet. No claude-code,
+                no GH credential, no SSH key inbound from
+                appliance/agent tier (the tailscale ACL split). If
+                anything were ever to escape the box sandbox, a reboot
+                wipes the residue; backups-by-default would be the
+                wrong posture, so `nori.backups.<X>` declarations are a
+                build error (modules/effects/backup.nix assertion).
 
               Adding a role: extend the enum, document the constraints,
               and add the assertions that key off it. Don't reuse an

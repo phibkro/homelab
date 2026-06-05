@@ -102,6 +102,16 @@
     obsidian-skills.url = "github:kepano/obsidian-skills";
     obsidian-skills.flake = false;
 
+    # nix-community/impermanence — "erase your darlings" mechanism.
+    # Consumed by machines/pavilion (the agent quarantine host) so
+    # every boot starts from a clean state and only declared paths
+    # under /persist survive. Pavilion uses btrfs-rollback rather
+    # than tmpfs root (3.6 GB RAM ceiling) — the impermanence module
+    # is FS-agnostic; the rollback service in pavilion's default.nix
+    # is what provides the clean state on disk. Workstation, pi, and
+    # macbook all keep mutable roots; impermanence is opt-in per host.
+    impermanence.url = "github:nix-community/impermanence";
+
     # pagu-box — cross-platform sandboxed launcher for any process.
     # Pinned to the LOCAL checkout (path:) rather than github so the
     # homelab picks up uncommitted operator edits without a push +
@@ -188,6 +198,18 @@
           tailnetIp = "100.100.71.3";
           lanIp = "192.168.1.225";
           role = "appliance";
+        };
+        # Pavilion — HP g6 retasked as the agent quarantine host.
+        # Tailnet IP fills in after first `tailscale up`; lan stays
+        # null since the device roams (no static DHCP reservation).
+        # See machines/pavilion/default.nix for the impermanence /
+        # agent-role posture. Sits under tag:agent in the Tailscale ACL
+        # — can reach workhorse :11434 (ollama) only; cannot SSH any
+        # privileged-tier host.
+        pavilion = {
+          tailnetIp = "100.0.0.0"; # TODO: set after first `tailscale up`
+          lanIp = null;
+          role = "agent";
         };
       };
 
