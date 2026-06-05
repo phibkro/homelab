@@ -159,7 +159,6 @@
   environment.persistence."/persist" = {
     hideMounts = true;
     directories = [
-      "/etc/ssh"
       "/var/lib/tailscale"
       "/var/lib/nixos"
       "/var/log/journal"
@@ -172,6 +171,20 @@
     ];
     files = [
       "/etc/machine-id"
+      # SSH host keys — files, NOT the whole /etc/ssh dir. Persisting
+      # /etc/ssh as a directory bind-mounts over the dir and HIDES
+      # the NixOS-managed sshd_config symlink (which points into
+      # /etc/static/ssh/sshd_config). With sshd_config gone, sshd
+      # refuses to start:
+      #   /etc/ssh/sshd_config: No such file or directory
+      #   sshd.service: Failed with result 'exit-code'
+      # Files-level persistence does an overlay, not a mask — host
+      # keys survive across reboots while NixOS retains control over
+      # the config. Caught on the third pavilion deploy.
+      "/etc/ssh/ssh_host_ed25519_key"
+      "/etc/ssh/ssh_host_ed25519_key.pub"
+      "/etc/ssh/ssh_host_rsa_key"
+      "/etc/ssh/ssh_host_rsa_key.pub"
     ];
   };
 

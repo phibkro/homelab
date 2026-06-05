@@ -1,4 +1,4 @@
-{ lib, ... }:
+{ config, lib, ... }:
 
 # Default restart policy for every systemd service on every host.
 #
@@ -48,6 +48,13 @@
 # The `notify@` template itself is excluded — if it failed, sending a
 # notify@notify@%i.service alert would just fail again, forever.
 
+let
+  # The notify@ template is defined in modules/server/ntfy/notify.nix.
+  # Hosts that don't import it (pavilion — agent-quarantine host has
+  # no notify infrastructure) shouldn't get OnFailure pointed at a
+  # unit that doesn't exist. Check once at module-eval time.
+  hasNotifyTemplate = config.systemd.services ? "notify@";
+in
 {
   options.systemd.services = lib.mkOption {
     type = lib.types.attrsOf (
@@ -72,14 +79,17 @@
               StartLimitIntervalSec = lib.mkDefault "1h";
               StartLimitBurst = lib.mkDefault 15;
             };
-            unitConfig.OnFailure = lib.mkIf restartEnabled (
-              # `${name}.service`, not the `%n` specifier — `%n` expands
-              # to the full unit name *with* `.service`, so
-              # `notify@%n.service` would render as
-              # `notify@caddy.service.service` (template + instance +
-              # suffix). The literal interpolation gives
-              # `notify@caddy.service`, matching the existing manual
-              # uses in backup.nix and btrbk.nix.
+            # Apply OnFailure default only when the notify@ template
+            # is actually defined on this host (modules/server/ntfy/
+            # notify.nix). Hosts that don't import it — pavilion
+            # being the canonical case — would otherwise spam the
+            # journal with "Failed to enqueue OnFailure job, ignoring:
+            # Unit notify@<X>.service not found" on every restart.
+            #
+            # Literal `${name}.service` instead of `%n` — %n expands
+            # to the full name with .service, so notify@%n.service
+            # renders as notify@caddy.service.service.
+            unitConfig.OnFailure = lib.mkIf (restartEnabled && hasNotifyTemplate) (
               lib.mkDefault [ "notify@${name}.service" ]
             );
           };
