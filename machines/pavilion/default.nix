@@ -163,11 +163,29 @@
       "/var/lib/tailscale"
       "/var/lib/nixos"
       "/var/log/journal"
+      # iwd holds the wifi SSID + PSK after first connection. Without
+      # this, every reboot loses wifi and the host falls back to
+      # whatever ethernet config it has — for a roaming laptop that
+      # means going offline. Caught the hard way during first deploy
+      # (no wifi config = no network = no SSH).
+      "/var/lib/iwd"
     ];
     files = [
       "/etc/machine-id"
     ];
   };
+
+  # ── Wifi (iwd, declarative-state) ─────────────────────────────────
+  # iwd is the modern wifi daemon NixOS uses on installer images. We
+  # enable it here so the installed system can keep the wifi
+  # connection alive. SSID + PSK live in /var/lib/iwd (persisted
+  # above); the operator runs `iwctl station wlan0 connect <SSID>`
+  # once on first boot, then it's permanent.
+  networking.wireless.iwd.enable = true;
+
+  # Disable wpa_supplicant explicitly — iwd is the chosen wifi stack
+  # and the two conflict if both are enabled.
+  networking.wireless.enable = false;
 
   # ── SSH ───────────────────────────────────────────────────────────
   services.openssh = {
@@ -175,9 +193,24 @@
     settings = {
       PasswordAuthentication = false;
       KbdInteractiveAuthentication = false;
-      PermitRootLogin = "no";
+      # `prohibit-password` lets root in via SSH key but not via
+      # password — needed for nixos-anywhere redeploys (which use
+      # root over SSH). Operator's day-to-day SSH is the `nori` user.
+      # mkForce overrides modules/common/users.nix's safe-default
+      # "no" — this host's role specifically requires root key login.
+      PermitRootLogin = lib.mkForce "prohibit-password";
     };
   };
+
+  # Operator's pubkey authorized for both `nori` (interactive) and
+  # `root` (nixos-anywhere deploys). nori-station@github is the
+  # workstation's ed25519 key — same key authorized on other lab hosts.
+  users.users.nori.openssh.authorizedKeys.keys = [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEgBC1J2CYrhdwFerwCa9GZD15I03vqS07bFtiYRl2FU nori-station@github"
+  ];
+  users.users.root.openssh.authorizedKeys.keys = [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEgBC1J2CYrhdwFerwCa9GZD15I03vqS07bFtiYRl2FU nori-station@github"
+  ];
 
   # ── Posture assertions ────────────────────────────────────────────
   # Make the agent posture failure modes loud at eval time rather than
