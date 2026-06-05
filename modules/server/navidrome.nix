@@ -128,7 +128,12 @@
     prepareCommand = ''
       if [ -f /var/lib/navidrome/navidrome.db ]; then
         mkdir -p /var/backup/navidrome
+        # .timeout 30000 — wait up to 30s for the write lock to clear
+        # before failing. Without it sqlite3 returns "database is locked"
+        # the instant a writer holds the lock, which is exactly the case
+        # at 04:45 when navidrome may be mid-scan/scrobble.
         ${pkgs.sqlite}/bin/sqlite3 /var/lib/navidrome/navidrome.db \
+          ".timeout 30000" \
           ".backup '/var/backup/navidrome/navidrome.db'"
       fi
     '';

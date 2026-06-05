@@ -108,7 +108,11 @@
     prepareCommand = ''
       if [ -f /var/lib/vaultwarden/db.sqlite3 ]; then
         mkdir -p /var/backup/vaultwarden
+        # .timeout 30000 — wait up to 30s for the write lock before
+        # failing. Vaultwarden writes on every sync/login, so the
+        # nightly window can land mid-write.
         ${pkgs.sqlite}/bin/sqlite3 /var/lib/vaultwarden/db.sqlite3 \
+          ".timeout 30000" \
           ".backup '/var/backup/vaultwarden/db.sqlite3'"
       fi
     '';

@@ -112,7 +112,12 @@ in
         prepareCommand = ''
           if [ -f /var/lib/open-webui/data/webui.db ]; then
             mkdir -p /var/backup/open-webui
+            # .timeout 30000 — wait up to 30s for the write lock before
+            # failing. Open WebUI's scheduler-worker polls every 10s and
+            # ongoing chat completions write to the DB, so the nightly
+            # window can land mid-write.
             ${pkgs.sqlite}/bin/sqlite3 /var/lib/open-webui/data/webui.db \
+              ".timeout 30000" \
               ".backup '/var/backup/open-webui/webui.db'"
           fi
         '';
