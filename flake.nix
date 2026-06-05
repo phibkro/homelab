@@ -207,8 +207,8 @@
         # — can reach workhorse :11434 (ollama) only; cannot SSH any
         # privileged-tier host.
         pavilion = {
-          tailnetIp = "100.0.0.0"; # TODO: set after first `tailscale up`
-          lanIp = null;
+          tailnetIp = "100.93.230.66";
+          lanIp = null; # roams; no static DHCP lease
           role = "agent";
         };
       };

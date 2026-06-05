@@ -105,7 +105,16 @@
   boot.initrd.systemd.services.rollback = {
     description = "Rollback @root to @root-blank for impermanence";
     wantedBy = [ "initrd.target" ];
+    # `requires=` actually PULLS IN the device unit; `after=` only
+    # orders if the unit is already in the transaction. Without
+    # requires=, rollback fires before udev has created the
+    # /dev/disk/by-label/pavilion-root symlink and the mount fails:
+    #   mount: /btrfs_tmp: special device … does not exist
+    # Caught on pavilion's first impermanence test — /etc/burner
+    # survived a reboot. Joyer-style btrfs-rollback configs always
+    # pair these two directives.
     after = [ "dev-disk-by\\x2dlabel-pavilion\\x2droot.device" ];
+    requires = [ "dev-disk-by\\x2dlabel-pavilion\\x2droot.device" ];
     before = [ "sysroot.mount" ];
     unitConfig.DefaultDependencies = "no";
     serviceConfig.Type = "oneshot";
