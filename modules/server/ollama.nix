@@ -38,12 +38,12 @@ in
 
   services.ollama = {
     enable = enabled;
-    # CUDA-enabled package, pulled from the local nixpkgs fork at
-    # `ollama-0.30.3` (input `nixpkgs-ollama` in ../../flake.nix). The
-    # bump is needed for mxfp8 / nvfp4 quants — stable 26.05 ships
-    # 0.24.0, which fails pulls with HTTP 412 on those quants. Revert
-    # to `pkgs.ollama-cuda` once nixpkgs upstreams the bump (PR open
-    # from this branch); the input goes with it.
+    # CUDA-enabled package, pulled from nixpkgs `release-26.05`
+    # (input `nixpkgs-ollama` in ../../flake.nix), which now carries
+    # ollama 0.30.5 via backport. The bump is needed for mxfp8 /
+    # nvfp4 quants — the `nixos-26.05` channel still ships 0.24.0
+    # (HTTP 412 on those quants). Revert to `pkgs.ollama-cuda` once
+    # the channel flows past the backport; the input goes with it.
     #
     # `legacyPackages` evaluates with default (allowUnfree=false,
     # cudaSupport=false), which rejects ollama-cuda's CUDA closure —
