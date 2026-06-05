@@ -48,6 +48,20 @@
     snappy-switcher.url = "github:OpalAayan/snappy-switcher";
     snappy-switcher.inputs.nixpkgs.follows = "nixpkgs";
 
+    # hermes-agent — NousResearch's open-source self-improving coding agent
+    # with persistent memory (SQLite session DB + MEMORY.md + pluggable
+    # provider plugins). Not in nixpkgs; upstream ships an official flake
+    # using uv2nix. We consume `packages.default` (bare CLI) for
+    # interactive use inside `box`. The `messaging` / `full` variants are
+    # available if we ever want Discord/Telegram or external memory
+    # providers like Honcho/Mem0.
+    #
+    # No GitHub credential is plumbed into hermes by design — see the
+    # security note in modules/claude-code/default.nix; operator-driven
+    # claude-code remains the only path to commit/push.
+    hermes-agent.url = "github:NousResearch/hermes-agent";
+    hermes-agent.inputs.nixpkgs.follows = "nixpkgs";
+
     # ollama package overlaid from nixpkgs `release-26.05` (which
     # carries 0.30.5 via backport of #527892 + #528150). The main
     # `nixpkgs` input above tracks the `nixos-26.05` channel, which
@@ -89,11 +103,13 @@
     obsidian-skills.flake = false;
 
     # pagu-box — cross-platform sandboxed launcher for any process.
-    # Consumed by the Mac home-manager config (no Linux equivalent yet
-    # — workstation still uses the inline `claudeBox` in
-    # modules/claude-code/default.nix; consolidating those two paths
-    # onto pagu-box is a follow-up once the Mac side burns in).
-    pagu-box.url = "github:phibkro/pagu-box";
+    # Pinned to the LOCAL checkout (path:) rather than github so the
+    # homelab picks up uncommitted operator edits without a push +
+    # `flake update` cycle each iteration. pagu-box is operator-owned
+    # and lives alongside the homelab; pinning local matches the dev
+    # model. Flip to `github:phibkro/pagu-box` if someone else needs
+    # to consume this flake on a machine without that checkout.
+    pagu-box.url = "path:/srv/share/projects/pagu-box";
     pagu-box.inputs.nixpkgs.follows = "nixpkgs";
   };
 

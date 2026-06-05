@@ -206,10 +206,61 @@ let
   # `pagu-box <cmd>` for the launcher that should land in every shell
   # invocation. Repo + nix package keep the longer name for clarity;
   # the CLI is `box`.
+  # `box` is the operator-deployed wrapper around upstream pagu-box. It's
+  # where operator-specific policy goes — pagu-box itself is general (a
+  # `--pwd-ro` primitive); the homelab-tree-is-read-only rule belongs HERE,
+  # not in upstream. The wrapper detects "strict + $PWD under the homelab
+  # repo" and injects --pwd-ro so any sandboxed agent (hermes, pi, opencode
+  # …) reads homelab config but can't edit it. Operator's own claude-code
+  # runs OUTSIDE the sandbox and is unaffected.
   box = pkgs.writeShellApplication {
     name = "box";
     runtimeInputs = [ pagu-box ];
-    text = ''exec pagu-box "$@"'';
+    text = ''
+      # Inspect args for --profile=strict (or `--profile strict`) without
+      # consuming them. If yes AND $PWD is under the homelab repo, prepend
+      # --pwd-ro. Anything else passes through untouched.
+      homelab_prefix="/srv/share/projects/homelab"
+      profile=""
+      args=("$@")
+      i=0
+      while [ $i -lt ''${#args[@]} ]; do
+        case "''${args[$i]}" in
+          --profile=*) profile="''${args[$i]#--profile=}" ;;
+          --profile)
+            i=$((i + 1))
+            profile="''${args[$i]:-}"
+            ;;
+        esac
+        i=$((i + 1))
+      done
+
+      extra=()
+      case "$PWD" in
+        "$homelab_prefix"|"$homelab_prefix"/*)
+          if [ "$profile" = "strict" ]; then
+            echo "box: \$PWD is under $homelab_prefix — injecting --pwd-ro." >&2
+            echo "     Homelab config edits go through operator review (claude-code)." >&2
+            extra+=( --pwd-ro )
+          fi
+          ;;
+      esac
+
+      exec pagu-box "''${extra[@]}" "$@"
+    '';
+  };
+
+  # pi — github:badlogic/pi-mono coding-agent CLI. Installed via npm at
+  # ~/.local/lib/node_modules/@earendil-works/pi-coding-agent. The wrapper
+  # puts `pi` on the system PATH (so it's reachable from inside box) and
+  # uses nixpkgs nodejs to run it, so the user doesn't need a separately
+  # installed node.
+  piAgent = pkgs.writeShellApplication {
+    name = "pi";
+    runtimeInputs = [ pkgs.nodejs ];
+    text = ''
+      exec node /home/nori/.local/lib/node_modules/@earendil-works/pi-coding-agent/dist/cli.js "$@"
+    '';
   };
 
   claudeBox = pkgs.writeShellApplication {
@@ -288,7 +339,9 @@ in
     # claude-box / opencode-box runtimeInputs). Lets nixpkgs-agent's
     # solve.sh exec it directly. Both names — the canonical `pagu-box`
     # and the short alias `box` — go on PATH.
-    ++ [ pagu-box box ]
+    ++ [ pagu-box box piAgent ]
+    # Hermes Agent (NousResearch) lives in its own module — see
+    # ../hermes/default.nix. Imported alongside this one from pc.nix.
     # claudeBox / opencodeBox are bwrap (+ landrun) wrappers — Linux-only.
     # Both delegate to pagu-box internally now.
     ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [

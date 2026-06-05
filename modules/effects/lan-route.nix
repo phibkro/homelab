@@ -133,6 +133,21 @@ in
             default = "http";
             description = "Backend scheme. Most services run plain HTTP; Caddy terminates TLS.";
           };
+          upstreamHostHeader = mkOption {
+            type = types.nullOr types.str;
+            default = null;
+            example = "127.0.0.1:9119";
+            description = ''
+              Optional rewrite of the `Host` request header before
+              forwarding to the upstream. By default Caddy forwards
+              the original Host (the public `<n>.nori.lan`), which
+              most backends accept. Set this when the backend
+              validates Host as a DNS-rebinding defence and rejects
+              anything other than its bind address — Hermes' dashboard
+              is the canonical case: it binds to 127.0.0.1:9119 and
+              rejects requests whose Host header isn't a loopback name.
+            '';
+          };
           exposeOnTailnet = mkOption {
             type = types.bool;
             default = false;
@@ -476,7 +491,11 @@ in
         nameValuePair "${name}.nori.lan" {
           extraConfig =
             let
-              backend = "reverse_proxy ${cfg.scheme}://${cfg.host}:${toString cfg.port}";
+              hostRewrite = lib.optionalString (cfg.upstreamHostHeader != null) ''
+                 {
+                  header_up Host ${cfg.upstreamHostHeader}
+                }'';
+              backend = "reverse_proxy ${cfg.scheme}://${cfg.host}:${toString cfg.port}${hostRewrite}";
               # Forward-auth block: Caddy hits Authelia's /api/verify
               # for every request matching @authNeeded (everything not
               # in exemptPaths). copy_headers propagates the Authelia
