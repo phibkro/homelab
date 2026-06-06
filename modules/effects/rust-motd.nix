@@ -22,7 +22,7 @@ let
     name = "motd-fontdir";
     paths = [
       "${pkgs.toilet}/share/figlet"
-      "${pkgs.figlet}/share/figlet/fonts"
+      "${pkgs.figlet}/share/figlet"
     ];
   };
 in
