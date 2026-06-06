@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, ... }:
 
 # VictoriaMetrics — single-binary metrics database, sibling of
 # VictoriaLogs. Lives on the appliance host (pi) for the same fate-
@@ -20,37 +20,46 @@
 # flash storage is treated as ephemeral; retention bounded so
 # pressure stays manageable.
 
-let
-  prometheusConfig = pkgs.writeText "victoriametrics-scrape.yml" ''
-    global:
-      scrape_interval: 30s
-      scrape_timeout: 10s
-
-    scrape_configs:
-      - job_name: gatus-workstation
-        metrics_path: /metrics
-        scheme: http
-        static_configs:
-          - targets:
-              - ${config.nori.hosts.workstation.tailnetIp}:8082
-            labels:
-              host: workstation
-
-      - job_name: gatus-pi
-        metrics_path: /metrics
-        scheme: http
-        static_configs:
-          - targets:
-              - ${config.nori.hosts.pi.tailnetIp}:8082
-            labels:
-              host: pi
-  '';
-in
 {
   services.victoriametrics = {
     enable = true;
     listenAddress = ":8428";
-    prometheusConfig = prometheusConfig;
+    # `prometheusConfig` takes the structured attrset, NOT a YAML
+    # string or file path. The NixOS module serialises this to JSON
+    # (which VM also accepts) and passes the resulting path via
+    # -promscrape.config. Passing a path here would write the path
+    # STRING into the file, not the YAML content, and VM rejects it
+    # with "cannot unmarshal !!str into promscrape.Config".
+    prometheusConfig = {
+      global = {
+        scrape_interval = "30s";
+        scrape_timeout = "10s";
+      };
+      scrape_configs = [
+        {
+          job_name = "gatus-workstation";
+          metrics_path = "/metrics";
+          scheme = "http";
+          static_configs = [
+            {
+              targets = [ "${config.nori.hosts.workstation.tailnetIp}:8082" ];
+              labels.host = "workstation";
+            }
+          ];
+        }
+        {
+          job_name = "gatus-pi";
+          metrics_path = "/metrics";
+          scheme = "http";
+          static_configs = [
+            {
+              targets = [ "${config.nori.hosts.pi.tailnetIp}:8082" ];
+              labels.host = "pi";
+            }
+          ];
+        }
+      ];
+    };
     extraOptions = [
       # Two-week retention — enough for "what happened last weekend?"
       # without unbounded growth on Pi's flash. Matches VictoriaLogs.
