@@ -39,6 +39,13 @@ in
         prefix = "Uptime";
       };
 
+      # CPU load — 1/5/15-minute averages. rust-motd's only CPU-side
+      # component (no direct % utilisation widget; `load_avg` is what
+      # ships, mirrors what `uptime` shows).
+      load_avg = {
+        format = "Load avg  {one}  {five}  {fifteen}";
+      };
+
       memory = {
         swap_pos = "beside"; # 'below' | 'beside' | 'none'
       };
