@@ -33,16 +33,17 @@ in
         # toilet brings its own ANSI colour codes through filters —
         # rust-motd's single-colour wrap would clobber that.
         color = "white";
-        # Pick a font + filter pair at random ($RANDOM is bash's
-        # ~free LCG; ~µs per roll) and render the codename text.
-        # Each motd-refresh is a fresh roll. Followed by a one-line
-        # (hostname) — role subtitle. No stub-file cat — the
-        # banner is purely the randomised codename rendering.
+        # Pick a font + filter pair at random and render the codename.
+        # $RANDOM is bash's LCG seeded from PID — under rust-motd's
+        # systemd unit the PID space is tiny and predictable, so rolls
+        # cluster on the same value. /dev/urandom is the kernel CSPRNG;
+        # two bytes via od is genuinely unpredictable and still ~µs.
         command = ''
           fonts=(mono9 smblock smmono9 future term smbraille)
           filters=(border metal gay "metal:border" "border:gay" crop)
-          f=''${fonts[$RANDOM % ''${#fonts[@]}]}
-          F=''${filters[$RANDOM % ''${#filters[@]}]}
+          rand() { od -An -N2 -tu2 /dev/urandom | tr -d ' '; }
+          f=''${fonts[$(rand) % ''${#fonts[@]}]}
+          F=''${filters[$(rand) % ''${#filters[@]}]}
           ${pkgs.toilet}/bin/toilet -f "$f" -F "$F" '${codename}'
           echo '(${config.networking.hostName}) — ${self.role or "?"}'
         '';
