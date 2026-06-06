@@ -29,6 +29,25 @@ in
     # last render) when you want it now.
     refreshInterval = "1d";
     settings = {
+      banner = {
+        # toilet brings its own ANSI colour codes through filters —
+        # rust-motd's single-colour wrap would clobber that.
+        color = "white";
+        # Pick a font + filter pair at random ($RANDOM is bash's
+        # ~free LCG; ~µs per roll) and render the codename text.
+        # Each motd-refresh is a fresh roll. Followed by a one-line
+        # (hostname) — role subtitle. No stub-file cat — the
+        # banner is purely the randomised codename rendering.
+        command = ''
+          fonts=(mono9 smblock smmono9 future term smbraille)
+          filters=(border metal gay "metal:border" "border:gay" crop)
+          f=''${fonts[$RANDOM % ''${#fonts[@]}]}
+          F=''${filters[$RANDOM % ''${#filters[@]}]}
+          ${pkgs.toilet}/bin/toilet -f "$f" -F "$F" '${codename}'
+          echo '(${config.networking.hostName}) — ${self.role or "?"}'
+        '';
+      };
+
       uptime = {
         prefix = "Uptime";
       };

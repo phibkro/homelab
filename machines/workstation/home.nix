@@ -161,7 +161,7 @@ in
 {
   imports = [ ../pc.nix ];
 
-  home.stateVersion = "25.11"; # match host's system.stateVersion
+  home.stateVersion = "26.05"; # match host's system.stateVersion
   programs.home-manager.enable = true;
 
   # Cheatsheet on PATH. Referenced by SUPER+H as `hypr-cheatsheet`

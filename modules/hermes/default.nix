@@ -54,7 +54,21 @@ in
   # output (aarch64-darwin only, and we don't ship hermes on the Intel
   # Mac yet). Skip cleanly on the Mac side so this module is safe to
   # import from pc.nix unconditionally.
-  home.packages = lib.optional isLinux hermes;
+  #
+  # python313 lands on the user PATH so hermes's `terminal` tool can
+  # exec `python` directly without `nix shell nixpkgs#python3 -c …`
+  # boilerplate. NO pip binary on PATH — global pip installs would
+  # pollute ~/.local/lib/python3.13/site-packages and accrete
+  # untracked state. If hermes needs a non-stdlib package:
+  #   * Ephemeral: `nix shell nixpkgs#python313Packages.<pkg> -c …`
+  #   * Persistent: declare it here in a `python313.withPackages`
+  #     override and rebuild
+  # The `PIP_REQUIRE_VIRTUALENV` env on the dashboard service blocks
+  # the ensurepip fallback (`python -m pip install …`) from writing
+  # anywhere outside an explicit venv, so even that escape hatch is
+  # gated.
+  home.packages = lib.optional isLinux hermes
+    ++ lib.optional isLinux pkgs.python313;
 
   # Persistent dashboard — `hermes dashboard` binds 127.0.0.1:9119 by
   # default. We DELIBERATELY keep the default localhost bind (NOT the
@@ -86,6 +100,13 @@ in
       RestartSec = "1s";
       RestartSteps = 9;
       RestartMaxDelaySec = "5min";
+      # Belt for the suspender of "no pip on PATH": when hermes' agent
+      # spawns a child python and invokes the ensurepip-backed module,
+      # this env var makes pip refuse to install outside an active
+      # virtualenv. Together they block both `pip install` and
+      # `python -m pip install` from polluting ~/.local site-packages
+      # without a deliberate venv activation step.
+      Environment = [ "PIP_REQUIRE_VIRTUALENV=true" ];
       # Hermes reads ~/.hermes/{config.yaml,.env,sessions/,...} — the
       # user service already runs as $USER with $HOME set correctly,
       # nothing extra needed here.

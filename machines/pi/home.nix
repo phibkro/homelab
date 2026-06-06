@@ -8,6 +8,6 @@
 {
   imports = [ ../core.nix ];
 
-  home.stateVersion = "25.11"; # match host's system.stateVersion
+  home.stateVersion = "26.05"; # match host's system.stateVersion
   programs.home-manager.enable = true;
 }
