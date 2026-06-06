@@ -30,7 +30,9 @@ in
   programs.rust-motd = {
     enable = true;
     enableMotdInSSHD = true;
-    refreshInterval = "1d";
+    # systemd OnCalendar spec, NOT a duration. "1d" silently breaks
+    # the timer with `bad-setting`. Use `daily` (or e.g. `*:0/30`).
+    refreshInterval = "daily";
     settings = {
       # No `banner` section — owned by the `motd` wrapper.
 
