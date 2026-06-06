@@ -76,9 +76,17 @@ in
               RestartSec = lib.mkDefault "1s";
               RestartSteps = lib.mkDefault 9;
               RestartMaxDelaySec = lib.mkDefault "5min";
-              StartLimitIntervalSec = lib.mkDefault "1h";
-              StartLimitBurst = lib.mkDefault 15;
             };
+            # StartLimitIntervalSec + StartLimitBurst are [Unit] section
+            # directives, NOT [Service]. Putting them in serviceConfig
+            # makes systemd ignore them silently with
+            #   /etc/systemd/system/foo.service:N: Unknown key
+            #   'StartLimitIntervalSec' in section [Service], ignoring
+            # — which meant the "give up after 15 restarts in 1h" cap
+            # never actually applied. Moved here. Caught on
+            # restic-backups-*-ironwolf failure 2026-06-06.
+            unitConfig.StartLimitIntervalSec = lib.mkDefault "1h";
+            unitConfig.StartLimitBurst = lib.mkDefault 15;
             # Apply OnFailure default only when the notify@ template
             # is actually defined on this host (modules/server/ntfy/
             # notify.nix). Hosts that don't import it — pavilion

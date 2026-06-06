@@ -128,13 +128,21 @@
     prepareCommand = ''
       if [ -f /var/lib/navidrome/navidrome.db ]; then
         mkdir -p /var/backup/navidrome
-        # .timeout 30000 — wait up to 30s for the write lock to clear
-        # before failing. Without it sqlite3 returns "database is locked"
-        # the instant a writer holds the lock, which is exactly the case
-        # at 04:45 when navidrome may be mid-scan/scrobble.
+        # VACUUM INTO + PRAGMA busy_timeout, NOT `.backup`. The sqlite3
+        # CLI's `.backup` dot-command has a hard-coded retry loop of
+        # ~2.5s and silently ignores busy_timeout — so the previous
+        # `.timeout 30000` "fix" was a no-op; navidrome's 04:45 backup
+        # kept failing with "database is locked" the instant a writer
+        # held the lock. VACUUM INTO is a regular SQL statement, runs
+        # on the main connection, and honors busy_timeout. Tmp +
+        # atomic rename so a torn write never leaves a half-finished
+        # target. Caught 2026-06-06; same pattern applies to
+        # open-webui.nix + vaultwarden.nix.
+        rm -f /var/backup/navidrome/navidrome.db.tmp
         ${pkgs.sqlite}/bin/sqlite3 /var/lib/navidrome/navidrome.db \
-          ".timeout 30000" \
-          ".backup '/var/backup/navidrome/navidrome.db'"
+          "PRAGMA busy_timeout = 30000;" \
+          "VACUUM INTO '/var/backup/navidrome/navidrome.db.tmp';"
+        mv /var/backup/navidrome/navidrome.db.tmp /var/backup/navidrome/navidrome.db
       fi
     '';
     timer = "*-*-* 04:45:00"; # stagger off vaultwarden (04:30) + open-webui (04:00)

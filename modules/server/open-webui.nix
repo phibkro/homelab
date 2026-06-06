@@ -112,13 +112,18 @@ in
         prepareCommand = ''
           if [ -f /var/lib/open-webui/data/webui.db ]; then
             mkdir -p /var/backup/open-webui
-            # .timeout 30000 — wait up to 30s for the write lock before
-            # failing. Open WebUI's scheduler-worker polls every 10s and
-            # ongoing chat completions write to the DB, so the nightly
-            # window can land mid-write.
+            # VACUUM INTO + PRAGMA busy_timeout — see the long-form
+            # rationale in navidrome.nix. The sqlite3 CLI's `.backup`
+            # ignores busy_timeout (hard-coded ~2.5s retry), so the
+            # previous `.timeout 30000` was a no-op. Open WebUI's
+            # scheduler-worker polls every 10s + chat completions
+            # write constantly, so the lock is held more often than
+            # for navidrome — but the same fix applies.
+            rm -f /var/backup/open-webui/webui.db.tmp
             ${pkgs.sqlite}/bin/sqlite3 /var/lib/open-webui/data/webui.db \
-              ".timeout 30000" \
-              ".backup '/var/backup/open-webui/webui.db'"
+              "PRAGMA busy_timeout = 30000;" \
+              "VACUUM INTO '/var/backup/open-webui/webui.db.tmp';"
+            mv /var/backup/open-webui/webui.db.tmp /var/backup/open-webui/webui.db
           fi
         '';
         timer = "*-*-* 04:00:00";
