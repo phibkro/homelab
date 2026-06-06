@@ -28,7 +28,7 @@ let
 
     scrape_configs:
       - job_name: gatus-workstation
-        metrics_path: /api/v1/metrics
+        metrics_path: /metrics
         scheme: http
         static_configs:
           - targets:
@@ -37,7 +37,7 @@ let
               host: workstation
 
       - job_name: gatus-pi
-        metrics_path: /api/v1/metrics
+        metrics_path: /metrics
         scheme: http
         static_configs:
           - targets:

@@ -56,8 +56,11 @@
     enable = true;
     environmentFile = config.sops.secrets.gatus-env.path;
     settings = {
-      # Exposes /api/v1/metrics in Prometheus format. Scraped by the
-      # VictoriaMetrics instance on Pi (modules/server/victoriametrics.nix)
+      # Exposes /metrics in Prometheus format (NOT /api/v1/metrics —
+      # Gatus puts its API surface under /api/v1/ but the Prometheus
+      # endpoint sits at the top level, per standard Prom convention).
+      # Scraped by the VictoriaMetrics instance on Pi (modules/server/
+      # victoriametrics.nix)
       # and surfaced in Grafana via the VictoriaMetrics datasource so
       # Gatus state lives alongside logs in the ops.nori.lan dashboard.
       # Gatus's own UI at status.nori.lan still exists for drill-down —
