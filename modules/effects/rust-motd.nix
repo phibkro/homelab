@@ -1,4 +1,4 @@
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 # rust-motd config for laptop hosts (pavilion, aurora). Renders a
 # polar-codename banner + live system specs into /var/lib/rust-motd/
@@ -81,8 +81,31 @@ in
   #   sudo systemctl start rust-motd.service
   # Or — convenient alias below — just type `motd`.
 
-  # Type `motd` in any shell to dump the current rendered file. The
-  # ANSI codes survive cat; if you've aliased cat to bat you'll want
-  # `bat --paging=never /var/lib/rust-motd/motd` instead.
-  environment.shellAliases.motd = "cat /var/lib/rust-motd/motd";
+  # `motd`         → dump the cached render (no privilege needed)
+  # `motd refresh` → trigger rust-motd.service via systemctl (sudo
+  #                  prompts if not already root), then dump fresh
+  # `motd <other>` → same as no args, prints help once for unknown
+  #
+  # Script wrapper rather than shellAlias because aliases can't take
+  # arguments. Installed to system PATH so it works in every shell.
+  environment.systemPackages = [
+    (pkgs.writeShellScriptBin "motd" ''
+      MOTD_FILE=/var/lib/rust-motd/motd
+      case "''${1:-}" in
+        ""|"show")
+          cat "$MOTD_FILE"
+          ;;
+        "refresh"|"regen")
+          sudo systemctl start rust-motd.service && cat "$MOTD_FILE"
+          ;;
+        "path")
+          echo "$MOTD_FILE"
+          ;;
+        *)
+          echo "usage: motd [show|refresh|path]" >&2
+          exit 64
+          ;;
+      esac
+    '')
+  ];
 }
