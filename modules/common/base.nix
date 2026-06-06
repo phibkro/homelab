@@ -164,15 +164,23 @@
 
   # --- MOTD --------------------------------------------------------------
 
-  # Codename + role banner on login. Hostnames stay as identifiers
-  # (SSH / known_hosts / Tailscale / nix flake refs); codenames are
-  # aesthetic. Theme: polar / penguin. See modules/effects/hosts.nix
-  # for the full mapping.
-  users.motd = let
+  # Codename + role banner on login. Written directly to /etc/motd
+  # (via environment.etc rather than users.motd) so sshd's
+  # PrintMotd picks it up — users.motd goes through pam_motd which
+  # isn't enabled for sshd by default and would silently not show.
+  #
+  # Hostnames stay as identifiers (SSH / known_hosts / Tailscale /
+  # nix flake refs); codenames are aesthetic. Theme: polar / penguin.
+  # See modules/effects/hosts.nix for the full mapping.
+  environment.etc.motd = let
     self = config.nori.hosts.${config.networking.hostName} or null;
-  in lib.optionalString (self != null) ''
+  in lib.mkIf (self != null) {
+    text = ''
 
-      ${self.codename or config.networking.hostName} (${config.networking.hostName}) — ${self.role}
+        ${self.codename or config.networking.hostName} (${config.networking.hostName}) — ${self.role}
 
-  '';
+    '';
+  };
+
+  services.openssh.settings.PrintMotd = lib.mkDefault true;
 }
