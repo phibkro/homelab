@@ -34,16 +34,13 @@ in
         # rust-motd's single-colour wrap would clobber that.
         color = "white";
         # Pick a font + filter pair at random and render the codename.
-        # $RANDOM is bash's LCG seeded from PID — under rust-motd's
-        # systemd unit the PID space is tiny and predictable, so rolls
-        # cluster on the same value. /dev/urandom is the kernel CSPRNG;
-        # two bytes via od is genuinely unpredictable and still ~µs.
+        # `shuf -n1 -e` reads the kernel CSPRNG internally — simpler
+        # and more reliable than wrangling /dev/urandom + od + bash
+        # arithmetic (which clustered on the same draw under rust-motd's
+        # systemd unit).
         command = ''
-          fonts=(mono9 smblock smmono9 future term smbraille)
-          filters=(border metal gay "metal:border" "border:gay" crop)
-          rand() { od -An -N2 -tu2 /dev/urandom | tr -d ' '; }
-          f=''${fonts[$(rand) % ''${#fonts[@]}]}
-          F=''${filters[$(rand) % ''${#filters[@]}]}
+          f=$(${pkgs.coreutils}/bin/shuf -n1 -e mono9 smblock smmono9 future term smbraille)
+          F=$(${pkgs.coreutils}/bin/shuf -n1 -e border metal gay metal:border border:gay crop)
           ${pkgs.toilet}/bin/toilet -f "$f" -F "$F" '${codename}'
           echo '(${config.networking.hostName}) — ${self.role or "?"}'
         '';
