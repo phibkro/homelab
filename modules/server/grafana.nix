@@ -96,6 +96,12 @@
         }
         {
           name = "VictoriaMetrics";
+          # Stable UID so provisioned dashboards under ./grafana-
+          # dashboards/ can reference this datasource by uid without
+          # having to discover the auto-generated value at runtime.
+          # The Gatus dashboard (./grafana-dashboards/gatus.json)
+          # uses this exact uid.
+          uid = "victoriametrics";
           # Native Prometheus-compatible API — Grafana's built-in
           # `prometheus` datasource type works as-is, no plugin needed.
           # (The dedicated victoriametrics-datasource plugin adds VM-
