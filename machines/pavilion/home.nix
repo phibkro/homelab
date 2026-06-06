@@ -18,10 +18,13 @@
 # import that module. Wire what we need directly here.
 
 {
+  # Shared operator CLI baseline (starship, git, direnv, just, ripgrep,
+  # comma, tmux, sops/age, devenv, nixd, nil). `just` here is
+  # load-bearing for `just remote pavilion rebuild` from workstation.
+  imports = [ ../../home/core.nix ];
+
   home.packages = with pkgs; [
-    # Core CLI for the operator's SSH session.
-    git
-    ripgrep
+    # Pavilion-only extras on top of core.
     fd
     jq
     bat
