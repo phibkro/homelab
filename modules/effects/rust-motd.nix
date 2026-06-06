@@ -22,9 +22,11 @@ in
   programs.rust-motd = {
     enable = true;
     enableMotdInSSHD = true;
-    # `refreshInterval` is set on the systemd timer the module
-    # generates. We disable that timer below — operator regenerates
-    # manually via `sudo systemctl start rust-motd.service`.
+    # Cadence for the systemd timer's auto-regen. Daily is reasonable
+    # — laptop MOTD content (uptime, services, load avg) is
+    # non-critical-real-time; force-regen with `sudo systemctl start
+    # rust-motd.service` (or the `motd` alias just dumps the cached
+    # last render) when you want it now.
     refreshInterval = "1d";
     settings = {
       banner = {
@@ -75,7 +77,14 @@ in
     };
   };
 
-  # Belt for "no auto-render": disable the systemd timer that the
-  # rust-motd module wires up. Operator triggers regen manually.
-  systemd.timers.rust-motd.enable = false;
+  # Auto-refresh on the upstream-recommended cadence (every refreshInterval,
+  # = 1d in our settings above, dialed up here per-host if desired).
+  # Operator can still force-regen at any time:
+  #   sudo systemctl start rust-motd.service
+  # Or — convenient alias below — just type `motd`.
+
+  # Type `motd` in any shell to dump the current rendered file. The
+  # ANSI codes survive cat; if you've aliased cat to bat you'll want
+  # `bat --paging=never /var/lib/rust-motd/motd` instead.
+  environment.shellAliases.motd = "cat /var/lib/rust-motd/motd";
 }
