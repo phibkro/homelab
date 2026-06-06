@@ -172,9 +172,15 @@
   # Hostnames stay as identifiers (SSH / known_hosts / Tailscale /
   # nix flake refs); codenames are aesthetic. Theme: polar / penguin.
   # See modules/effects/hosts.nix for the full mapping.
+  #
+  # Gated on rust-motd not being enabled — pavilion + aurora opt in
+  # to rust-motd for live battery/cpu/memory/service data; this
+  # static banner is the fallback for hosts that don't (pi,
+  # workstation).
   environment.etc.motd = let
     self = config.nori.hosts.${config.networking.hostName} or null;
-  in lib.mkIf (self != null) {
+    useRust = config.programs.rust-motd.enable or false;
+  in lib.mkIf (self != null && !useRust) {
     text = ''
 
         ${self.codename or config.networking.hostName} (${config.networking.hostName}) — ${self.role}

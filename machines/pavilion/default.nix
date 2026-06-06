@@ -66,6 +66,9 @@
     #   modules/server/default.nix    — no LAN services
     #   modules/desktop/default.nix   — headless
 
+    # Laptop niceties — live MOTD on login.
+    ../../modules/effects/rust-motd.nix
+
     ./hardware.nix
   ];
 
