@@ -37,9 +37,19 @@
   # fileSystems here; disko's NixOS module produces them from the disko
   # config, and re-declaring would be a definition conflict.
 
-  # No swap yet. If/when added: swapfile on the btrfs root with NoCoW
-  # (chattr +C). Pattern goes in disko.nix, not here.
-  swapDevices = [ ];
+  # Disk-backed swap as overflow tier behind zram (16 GiB compressed,
+  # configured in modules/common/base.nix). zram absorbs most pressure
+  # in-memory; this swapfile catches what zram can't compress further
+  # — observed pre-freeze on 2026-06-06 (zram pegged at 16 GiB ceiling
+  # for ~3 weeks before the UI froze under sustained memory pressure).
+  #
+  # Created out-of-band on @ subvol (not snapshotted by btrbk, which
+  # only covers @home / @srv-share / @var-lib) via
+  #   sudo btrfs filesystem mkswapfile --size 8G /swapfile
+  # — handles NoCoW + no-compression + block preallocation in one step
+  # (btrfs-progs 6.1+). Disko config should bake this into the install
+  # path for future hosts.
+  swapDevices = [ { device = "/swapfile"; } ];
 
   # --- gpu (nvidia open, RTX 5060 Ti / Blackwell) -----------------------
   #
