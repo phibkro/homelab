@@ -30,13 +30,28 @@ in
     refreshInterval = "1d";
     settings = {
       banner = {
-        color = "cyan";
-        # `cat` the hand-drafted ASCII art for this host's codename
-        # from ./banners/<codename>.txt, followed by a one-line
-        # "<codename> (<hostname>) — <role>" subtitle. Operator
-        # drafts the art in those text files; rust-motd renders
-        # whatever stdout this command produces.
-        command = "cat ${./banners}/${codename}.txt; echo ${codename} \\(${config.networking.hostName}\\) — ${self.role or "?"}";
+        # toilet brings its own ANSI colour codes via filters — let
+        # those flow through rather than wrapping in rust-motd's
+        # single-colour setting.
+        color = "white";
+        # Multi-stage banner:
+        #   1. cat the hand-drafted ASCII art for this codename
+        #   2. render the codename text with toilet, picking a font +
+        #      filter at random on each invocation — every motd-refresh
+        #      is a fresh roll
+        #   3. echo the (hostname) — role subtitle
+        # Fonts curated to narrower ones so 80-col laptop consoles
+        # don't truncate; filters include border / metal / gay / crop
+        # plus a few combos for variety.
+        command = ''
+          cat ${./banners}/${codename}.txt
+          fonts=(mono9 smblock smmono9 future term smbraille)
+          filters=(border metal gay "metal:border" "border:gay" crop)
+          f=''${fonts[$RANDOM % ''${#fonts[@]}]}
+          F=''${filters[$RANDOM % ''${#filters[@]}]}
+          ${pkgs.toilet}/bin/toilet -f "$f" -F "$F" '${codename}'
+          echo '(${config.networking.hostName}) — ${self.role or "?"}'
+        '';
       };
 
       uptime = {
