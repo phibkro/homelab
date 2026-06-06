@@ -2,6 +2,7 @@
   config,
   lib,
   inputs,
+  pkgs,
   ...
 }:
 
@@ -131,16 +132,34 @@
     '';
   };
 
-  # ── Lid-close behaviour ───────────────────────────────────────────
-  # Pavilion is a laptop running as a 24/7 server — folding the lid
-  # for storage shouldn't suspend the system. Setting all three
-  # lidSwitch knobs to "ignore" keeps compute running; the display
-  # still blanks via kernel ACPI when the lid actually closes.
+  # ── Stay awake when folded ────────────────────────────────────────
+  # Pavilion is a laptop running as a 24/7 server. Multiple layers of
+  # power-saving have to be defeated for "fold the lid, keep working"
+  # to actually work:
+  #
+  # 1. logind lid handlers — set all three to "ignore" so closing the
+  #    lid doesn't fire a suspend request.
+  # 2. systemd sleep targets — masked. Belt for the suspender of (1):
+  #    if anything else (a stray DBus call, a power-manager daemon)
+  #    tries to suspend the host, the target itself is gone.
+  # 3. Wifi power-save — Broadcom BCM4313's runtime power_save was
+  #    already "off" in testing, but a udev rule keeps it off across
+  #    driver reloads / replug. Pavilion's first lid-fold test still
+  #    dropped the network; cause was probably a different layer
+  #    (PCIe ASPM or BIOS-level), but disabling wifi power-save is
+  #    cheap insurance.
   services.logind = {
     lidSwitch = "ignore";
     lidSwitchExternalPower = "ignore";
     lidSwitchDocked = "ignore";
   };
+  systemd.targets.sleep.enable = false;
+  systemd.targets.suspend.enable = false;
+  systemd.targets.hibernate.enable = false;
+  systemd.targets.hybrid-sleep.enable = false;
+  services.udev.extraRules = ''
+    ACTION=="add", SUBSYSTEM=="net", KERNEL=="wl*", RUN+="${pkgs.iw}/bin/iw dev %k set power_save off"
+  '';
 
   # ── Networking ─────────────────────────────────────────────────────
   # networking.hostName injected from the registry key in flake.nix.

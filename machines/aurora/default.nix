@@ -75,16 +75,29 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  # ── Lid-close behaviour ───────────────────────────────────────────
-  # Aurora is a laptop running as the immich-ml compute peer — folding
-  # the lid for storage shouldn't suspend the system. Setting all three
-  # lidSwitch knobs to "ignore" keeps compute running; display still
-  # blanks via kernel ACPI when the lid actually closes.
+  # ── Stay awake when folded ────────────────────────────────────────
+  # Same defense-in-depth as pavilion (see comment there):
+  #   1. logind lid handlers ignore
+  #   2. systemd sleep/suspend/hibernate targets masked
+  #   3. wifi power-save off via udev
+  #   4. Intel iwlwifi `power_save=0` modprobe option (Aurora's NIC
+  #      is the 7265 — Intel's default is power_save=1 which dropped
+  #      the link on first fold test)
   services.logind = {
     lidSwitch = "ignore";
     lidSwitchExternalPower = "ignore";
     lidSwitchDocked = "ignore";
   };
+  systemd.targets.sleep.enable = false;
+  systemd.targets.suspend.enable = false;
+  systemd.targets.hibernate.enable = false;
+  systemd.targets.hybrid-sleep.enable = false;
+  services.udev.extraRules = ''
+    ACTION=="add", SUBSYSTEM=="net", KERNEL=="wl*", RUN+="${pkgs.iw}/bin/iw dev %k set power_save off"
+  '';
+  boot.extraModprobeConfig = ''
+    options iwlwifi power_save=0
+  '';
 
   # ── Networking ─────────────────────────────────────────────────────
   networking.useDHCP = lib.mkDefault true;
