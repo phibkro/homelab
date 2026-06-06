@@ -211,6 +211,18 @@
           lanIp = null; # roams; no static DHCP lease
           role = "agent";
         };
+        # Aurora — retired Asus N552V gaming laptop (i7-6700HQ, 12 GB
+        # RAM, GTX 950M, dead battery). Repurposed as a single-role
+        # immich machine-learning offload host so workstation's 5060 Ti
+        # stays dedicated to ollama. Classified workhorse — has GPU,
+        # has compute, hosts a service — but it's a *minimal* workhorse;
+        # if a second compute-offload host ever appears, that's the
+        # rule-of-three signal to extract a dedicated `compute` role.
+        aurora = {
+          tailnetIp = "100.0.0.0"; # TODO: set after first `tailscale up`
+          lanIp = null;
+          role = "workhorse";
+        };
       };
 
       hostRegistry = lib.genAttrs nixosMachineNames (n: identityFor.${n});
