@@ -81,31 +81,17 @@ in
   #   sudo systemctl start rust-motd.service
   # Or — convenient alias below — just type `motd`.
 
-  # `motd`         → dump the cached render (no privilege needed)
-  # `motd refresh` → trigger rust-motd.service via systemctl (sudo
-  #                  prompts if not already root), then dump fresh
-  # `motd <other>` → same as no args, prints help once for unknown
+  # Two commands, separate so tab-completion finds them independently:
+  #   motd          — dump cached render (no privilege needed)
+  #   motd-refresh  — trigger rust-motd.service then dump fresh (sudo)
   #
-  # Script wrapper rather than shellAlias because aliases can't take
-  # arguments. Installed to system PATH so it works in every shell.
+  # Script wrappers (not shellAliases) so they work in every shell.
   environment.systemPackages = [
     (pkgs.writeShellScriptBin "motd" ''
-      MOTD_FILE=/var/lib/rust-motd/motd
-      case "''${1:-}" in
-        ""|"show")
-          cat "$MOTD_FILE"
-          ;;
-        "refresh"|"regen")
-          sudo systemctl start rust-motd.service && cat "$MOTD_FILE"
-          ;;
-        "path")
-          echo "$MOTD_FILE"
-          ;;
-        *)
-          echo "usage: motd [show|refresh|path]" >&2
-          exit 64
-          ;;
-      esac
+      cat /var/lib/rust-motd/motd
+    '')
+    (pkgs.writeShellScriptBin "motd-refresh" ''
+      sudo systemctl start rust-motd.service && cat /var/lib/rust-motd/motd
     '')
   ];
 }
