@@ -219,8 +219,8 @@
         # if a second compute-offload host ever appears, that's the
         # rule-of-three signal to extract a dedicated `compute` role.
         aurora = {
-          tailnetIp = "100.0.0.0"; # TODO: set after first `tailscale up`
-          lanIp = null;
+          tailnetIp = "100.101.67.111";
+          lanIp = null; # wifi-only, no static lease
           role = "workhorse";
         };
       };
