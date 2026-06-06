@@ -31,10 +31,12 @@ in
     settings = {
       banner = {
         color = "cyan";
-        # Echo the codename — rust-motd's banner component renders
-        # whatever its `command` outputs. Keep it short so it fits
-        # on a laptop console even with line-wrapping disabled.
-        command = "echo ${codename} \\(${config.networking.hostName}\\) — ${self.role or "?"}";
+        # `cat` the hand-drafted ASCII art for this host's codename
+        # from ./banners/<codename>.txt, followed by a one-line
+        # "<codename> (<hostname>) — <role>" subtitle. Operator
+        # drafts the art in those text files; rust-motd renders
+        # whatever stdout this command produces.
+        command = "cat ${./banners}/${codename}.txt; echo ${codename} \\(${config.networking.hostName}\\) — ${self.role or "?"}";
       };
 
       uptime = {
