@@ -193,11 +193,13 @@
           tailnetIp = "100.81.5.122";
           lanIp = "192.168.1.181";
           role = "workhorse";
+          codename = "emperor";
         };
         pi = {
           tailnetIp = "100.100.71.3";
           lanIp = "192.168.1.225";
           role = "appliance";
+          codename = "fairy";
         };
         # Pavilion — HP g6 retasked as the agent quarantine host.
         # Tailnet IP fills in after first `tailscale up`; lan stays
@@ -210,6 +212,7 @@
           tailnetIp = "100.93.230.66";
           lanIp = null; # roams; no static DHCP lease
           role = "agent";
+          codename = "pavilion"; # hostname-equal — "pavilion" already evokes the polar/exploration theme
         };
         # Aurora — retired Asus N552V gaming laptop (i7-6700HQ, 12 GB
         # RAM, GTX 950M, dead battery). Repurposed as a single-role
@@ -222,6 +225,7 @@
           tailnetIp = "100.101.67.111";
           lanIp = null; # wifi-only, no static lease
           role = "workhorse";
+          codename = "aurora"; # already polar
         };
       };
 

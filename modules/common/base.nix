@@ -1,4 +1,6 @@
 {
+  config,
+  lib,
   pkgs,
   ...
 }:
@@ -159,4 +161,18 @@
   # Do not bump this casually. It captures the defaults in effect when the
   # system was first installed so stateful services don't silently reshape.
   system.stateVersion = "25.11";
+
+  # --- MOTD --------------------------------------------------------------
+
+  # Codename + role banner on login. Hostnames stay as identifiers
+  # (SSH / known_hosts / Tailscale / nix flake refs); codenames are
+  # aesthetic. Theme: polar / penguin. See modules/effects/hosts.nix
+  # for the full mapping.
+  users.motd = let
+    self = config.nori.hosts.${config.networking.hostName} or null;
+  in lib.optionalString (self != null) ''
+
+      ${self.codename or config.networking.hostName} (${config.networking.hostName}) — ${self.role}
+
+  '';
 }

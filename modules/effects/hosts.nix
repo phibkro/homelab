@@ -73,6 +73,25 @@ in
               Mac without tailnet DNS.
             '';
           };
+          codename = mkOption {
+            type = types.str;
+            description = ''
+              Aesthetic codename for the host. Used in MOTD, dashboard
+              titles, and casual reference — the hostname stays the
+              identifier that SSH / known_hosts / Tailscale / nix
+              flakes know.
+
+              Theme is cold / polar / penguin. The 2026-06-06 set:
+                workstation → emperor   (Emperor penguin — the workhorse)
+                macbook     → adelie    (Adélie penguin — small, agile)
+                pi          → fairy     (Fairy / Little penguin — the smallest)
+                pavilion    → pavilion  (already polar-evocative)
+                aurora      → aurora    (polar light)
+
+              Adding a host: pick a codename that fits the theme and
+              hints at the host's role.
+            '';
+          };
           role = mkOption {
             type = types.enum [
               "workhorse"
