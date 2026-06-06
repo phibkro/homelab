@@ -54,6 +54,12 @@
     # as beszel and ntfy. No log producer yet; daemon stands up empty.
     ../../modules/server/victorialogs/server.nix
 
+    # VictoriaMetrics — sibling TSDB for Gatus + future node_exporter
+    # scrape. Same fate-sharing rationale as VictoriaLogs. Surfaces in
+    # Grafana on workstation as the second datasource (logs + metrics
+    # = unified pane).
+    ../../modules/server/victoriametrics.nix
+
     ./hardware.nix
     inputs.home-manager.nixosModules.home-manager
   ];

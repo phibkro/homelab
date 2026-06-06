@@ -94,6 +94,18 @@
           isDefault = true;
           jsonData.timeout = 60;
         }
+        {
+          name = "VictoriaMetrics";
+          # Native Prometheus-compatible API — Grafana's built-in
+          # `prometheus` datasource type works as-is, no plugin needed.
+          # (The dedicated victoriametrics-datasource plugin adds VM-
+          # specific features; not required for our queries today.)
+          type = "prometheus";
+          access = "proxy";
+          url = "http://${config.nori.hosts.pi.tailnetIp}:8428";
+          isDefault = false;
+          jsonData.timeInterval = "30s"; # matches the scrape interval
+        }
       ];
 
       # Dashboards committed to the repo at ./grafana-dashboards/ get
