@@ -85,6 +85,17 @@
 
     provision = {
       enable = true;
+      # Delete the auto-UID copy of VictoriaMetrics from the running
+      # Grafana DB so the provisioned `uid = "victoriametrics"` below
+      # can take over. Without this, provisioning fails on a name
+      # conflict (same name + different uid), the dashboard's
+      # `uid: victoriametrics` reference resolves to "not found", and
+      # grafana exits 1 on start. This entry is idempotent — after the
+      # first restart the orphan is gone; the directive becomes a
+      # no-op but stays for documentation.
+      datasources.settings.deleteDatasources = [
+        { name = "VictoriaMetrics"; orgId = 1; }
+      ];
       datasources.settings.datasources = [
         {
           name = "VictoriaLogs";
