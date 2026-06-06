@@ -6,7 +6,7 @@
 }:
 
 # Claude Code agent — declarative + reusable. Pure home-manager module
-# imported via machines/pc.nix on every operator-attached PC (workstation
+# imported via home/pc.nix on every operator-attached PC (workstation
 # + macbook). The Pi appliance does NOT import this — pi has no operator
 # agent loop, just servers, and the claude-code Node closure shouldn't
 # land on pi's anti-write SSD.

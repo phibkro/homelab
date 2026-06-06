@@ -64,7 +64,7 @@ Full rationale in the `audience` option description in `modules/effects/lan-rout
 
 ## Caddy + TLS + naming
 
-Caddy terminates TLS for every `<name>.nori.lan` using its **internal CA** (auto-generated). The root cert is committed at `modules/server/caddy-local-ca.crt` and added to system trust via `security.pki.certificateFiles` so `curl` / Go / OpenSSL trust it transparently.
+Caddy terminates TLS for every `<name>.nori.lan` using its **internal CA** (auto-generated). The root cert is committed at `modules/services/caddy-local-ca.crt` and added to system trust via `security.pki.certificateFiles` so `curl` / Go / OpenSSL trust it transparently.
 
 **Python services** need explicit `SSL_CERT_FILE = "/etc/ssl/certs/ca-bundle.crt"` — `certifi` doesn't read system trust. See `.claude/skills/gotcha-python-certifi-bypass-system-trust/`.
 
@@ -72,7 +72,7 @@ Caddy terminates TLS for every `<name>.nori.lan` using its **internal CA** (auto
 
 | Device | Command / path |
 |---|---|
-| macOS system | `sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain modules/server/caddy-local-ca.crt` |
+| macOS system | `sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain modules/services/caddy-local-ca.crt` |
 | Firefox / Zen | Settings → Privacy → Certificates → Import (browsers don't read macOS keychain) |
 | iOS | AirDrop the cert → install via Settings → Profile → enable in Cert Trust Settings |
 

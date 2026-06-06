@@ -198,7 +198,7 @@ Phase 4 is done when all four work.
 - **Service migration.** Tailscale comes up by virtue of
   `services.tailscale` in `modules/common/`. Phase 5 services
   (Samba, Ollama, Jellyfin, Immich, the *arr stack, Glance,
-  Radicale, Syncthing, etc.) come up via `modules/server/` —
+  Radicale, Syncthing, etc.) come up via `modules/services/` —
   the host imports the whole "server concern" via
   `machines/workstation/default.nix`.
 - **Tailscale identity restore.** Fresh `tailscale up` registers a *new*

@@ -57,7 +57,7 @@
     # providers like Honcho/Mem0.
     #
     # No GitHub credential is plumbed into hermes by design — see the
-    # security note in modules/claude-code/default.nix; operator-driven
+    # security note in home/claude-code/default.nix; operator-driven
     # claude-code remains the only path to commit/push.
     hermes-agent.url = "github:NousResearch/hermes-agent";
     hermes-agent.inputs.nixpkgs.follows = "nixpkgs";
@@ -67,7 +67,7 @@
     # `nixpkgs` input above tracks the `nixos-26.05` channel, which
     # currently lags behind release-26.05 on ollama. Drop this input
     # + the `services.ollama.package` override in
-    # modules/server/ollama.nix when the channel catches up.
+    # modules/services/ollama.nix when the channel catches up.
     nixpkgs-ollama.url = "github:NixOS/nixpkgs/release-26.05";
 
     # Stylix — single-input system-wide theming. One wallpaper +
@@ -80,7 +80,7 @@
     stylix.inputs.nixpkgs.follows = "nixpkgs";
 
     # Third-party Claude Code skill sources — pinned via flake.lock,
-    # consumed as plain source trees by modules/claude-code/default.nix.
+    # consumed as plain source trees by home/claude-code/default.nix.
     # Update via `nix flake update --update-input <name>`. Not flakes
     # themselves, hence flake = false.
     superpowers.url = "github:obra/superpowers";
@@ -169,8 +169,8 @@
       # Consumers (cross-host refs):
       #   * modules/effects/lan-route.nix       (nori.lanIp default)
       #   * modules/effects/backup.nix          (host-aware appliance assertion)
-      #   * modules/server/beszel/agent.nix     (metrics route backend)
-      #   * modules/server/ntfy/notify.nix      (alert route backend)
+      #   * modules/services/beszel/agent.nix     (metrics route backend)
+      #   * modules/services/ntfy/notify.nix      (alert route backend)
       #   * machines/workstation/default.nix    (Pi probe URLs)
       #
       # Topology change = edit identityFor, redeploy. Adding a NixOS
@@ -304,7 +304,7 @@
           system = "x86_64-darwin";
           config.allowUnfree = true;
         };
-        # Pass `inputs` to home-manager modules so modules/claude-code/
+        # Pass `inputs` to home-manager modules so home/claude-code/
         # can reach the third-party-skill flake inputs (superpowers,
         # caveman, anthropics-skills). Workstation gets the same via
         # extraSpecialArgs in its NixOS-side home-manager wrapper.
@@ -324,7 +324,7 @@
       #     (no inline OIDC hashes, no direct caddy/blocky bypass)
       checks.${system} =
         let
-          # Files under modules/server/ that aren't user-facing services —
+          # Files under modules/services/ that aren't user-facing services —
           # folder aggregators, the *arr group's `media`-bootstrap helper,
           # and the backup-cluster framework. Both `every-service-has-<X>`
           # checks share this baseline; per-check additions (e.g. samba's
@@ -332,10 +332,10 @@
           # below at the call site.
           baseNonServicePatterns = [
             "*/default.nix"
-            "modules/server/arr/shared.nix"
-            "modules/server/backup/restic.nix"
-            "modules/server/backup/verify.nix"
-            "modules/server/backup/btrbk.nix"
+            "modules/services/arr/shared.nix"
+            "modules/services/backup/restic.nix"
+            "modules/services/backup/verify.nix"
+            "modules/services/backup/btrbk.nix"
           ];
           # Generate a `case` glob from a list of patterns, joined with
           # `|`. Used at the head of each scanner loop to skip framework
@@ -531,7 +531,7 @@
                 fi
               '';
 
-          # Every service module under modules/server/ must declare a
+          # Every service module under modules/services/ must declare a
           # backup intent — either `nori.backups.<name>.include = [...]`
           # for what to back up, or `nori.backups.<name>.skip = "..."`
           # for explicit opt-out. Forgetting to declare anything is the
@@ -551,7 +551,7 @@
 
                 # Excluded paths — see baseNonServicePatterns at the
                 # top of `checks.${system}` for the shared list.
-                for f in $(find modules/server -name '*.nix' | sort); do
+                for f in $(find modules/services -name '*.nix' | sort); do
                   case "$f" in
                     ${mkCasePattern baseNonServicePatterns})
                       continue;;
@@ -577,7 +577,7 @@
                 fi
               '';
 
-          # Every service module under modules/server/ must declare a
+          # Every service module under modules/services/ must declare a
           # filesystem-hardening intent via `nori.harden.<name>`. Same
           # silent-coverage-gap rationale as `every-service-has-backup-
           # intent`: forgetting to harden a new service means it inherits
@@ -599,14 +599,14 @@
                 # of `checks.${system}`. Plus this check's specifics:
                 #   * ntfy/notify.nix — template only, no service of its own
                 #   * samba.nix       — legitimate /srv-full-access exception
-                for f in $(find modules/server -name '*.nix' | sort); do
+                for f in $(find modules/services -name '*.nix' | sort); do
                   case "$f" in
                     ${
                       mkCasePattern (
                         baseNonServicePatterns
                         ++ [
-                          "modules/server/ntfy/notify.nix"
-                          "modules/server/samba.nix"
+                          "modules/services/ntfy/notify.nix"
+                          "modules/services/samba.nix"
                         ]
                       )
                     })

@@ -73,7 +73,7 @@ Schema in `modules/effects/fs.nix`; declarations in `machines/workstation/disko*
 
 ## Snapshot policy (btrbk)
 
-`modules/server/backup/btrbk.nix` declares two btrfs subvolume snapshot instances (root + media). Daily by default; retention follows the value-tier table above.
+`modules/services/backup/btrbk.nix` declares two btrfs subvolume snapshot instances (root + media). Daily by default; retention follows the value-tier table above.
 
 Both `restic-backups-*` and `btrbk-*` units get `OnFailure = [ "notify@%n.service" ]` so silent failures fire an ntfy alert.
 
@@ -115,4 +115,4 @@ Failure of any of these alerts via ntfy. Quarterly drill is the **real RTO measu
 
 The DynamicUser `StateDirectory` symlink-trap assertion derives from `config.systemd.services` introspection — self-maintaining. See `.claude/skills/gotcha-dynamicuser-statedirectory-symlink/`.
 
-Schema in `modules/effects/backup.nix`. Cross-cutting infra (sops password, check timers) is in `modules/server/backup/restic.nix`. Restic repos live at `/mnt/backup/<job>` (OneTouch ext4); Hetzner Storage Box is still on the roadmap as the second per-job repo.
+Schema in `modules/effects/backup.nix`. Cross-cutting infra (sops password, check timers) is in `modules/services/backup/restic.nix`. Restic repos live at `/mnt/backup/<job>` (OneTouch ext4); Hetzner Storage Box is still on the roadmap as the second per-job repo.

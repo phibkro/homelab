@@ -14,7 +14,7 @@
 #   * No nixpkgs-master overlays, no zen-browser, no themes
 #
 # `pi` + `box` (and pagu-box itself) come via system PATH from
-# modules/claude-code/default.nix on the PCs — but pavilion doesn't
+# home/claude-code/default.nix on the PCs — but pavilion doesn't
 # import that module. Wire what we need directly here.
 
 {
@@ -33,7 +33,7 @@
 
   # `pi` (badlogic/pi-mono) + `pagu-box` + `box` alias are added
   # separately once those wrappers land in a shared module.
-  # Today they live in modules/claude-code/default.nix, which we
+  # Today they live in home/claude-code/default.nix, which we
   # explicitly DON'T import here (claude-code itself shouldn't run on
   # pavilion). Follow-up: extract the agent-tooling subset of
   # claude-code/default.nix into a small shared module that pavilion

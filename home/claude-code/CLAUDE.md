@@ -10,7 +10,7 @@ This machine (`workstation`) is configured by the **homelab repo at
 machine (NixOS + home-manager). **`~/.claude/` is a generated _derivation_, not
 the source:** `~/.claude/CLAUDE.md` (this file), `~/.claude/skills/`, and
 `~/.claude/settings.json` are home-manager symlinks into the nix store, built
-from `homelab/modules/claude-code/`. To change global Claude config — this file,
+from `homelab/home/claude-code/`. To change global Claude config — this file,
 a global skill, settings — **edit the homelab source and rebuild** (`just
 rebuild` in the repo), and it re-materializes. **Never edit `~/.claude/`
 directly**: a loose file there is unmanaged and gets clobbered on the next
@@ -142,4 +142,4 @@ generic "branch off the default branch first" habit. Pushing is the operator's c
 ## Memory hygiene
 At session start, announce which `MEMORY.md` entries are relevant to the task — don't silently use or ignore them.
 When you touch a memory file, update `last_verified` to today's date.
-Same fact appears in a second project's memory → flag for promotion to the orchestration namespace. Procedural + project-independent → flag for promotion to a `homelab/modules/claude-code/skills/` skill. The `writing-memory-entries` skill has the full criteria.
+Same fact appears in a second project's memory → flag for promotion to the orchestration namespace. Procedural + project-independent → flag for promotion to a `homelab/home/claude-code/skills/` skill. The `writing-memory-entries` skill has the full criteria.

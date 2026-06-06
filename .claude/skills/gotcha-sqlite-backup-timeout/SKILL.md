@@ -46,7 +46,7 @@ prepareCommand = ''
 
 ## Where this applies (as of 2026-06-05)
 
-All Pattern C2 SQLite services in `modules/server/`:
+All Pattern C2 SQLite services in `modules/services/`:
 - `vaultwarden.nix`
 - `open-webui.nix`
 - `navidrome.nix`

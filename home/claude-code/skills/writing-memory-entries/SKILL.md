@@ -117,7 +117,7 @@ Lead with the project or system noun. Keep each line under ~150 chars. The index
 - The same pattern appears in a second project, OR
 - The fact is cross-project by nature (shared toolchain, user preference, repo conventions across the org)
 
-**Orchestration → global skill** (add to `homelab/modules/claude-code/skills/` and `just rebuild`):
+**Orchestration → global skill** (add to `homelab/home/claude-code/skills/` and `just rebuild`):
 - It's procedural (`do X then Y then Z`) rather than factual
 - It would apply to a future fresh project, not just the current set
 - It deserves to be loaded into every Claude Code session everywhere, not just under `/srv/share/projects/*`

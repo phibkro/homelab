@@ -51,7 +51,7 @@
 #
 # ── Imports ────────────────────────────────────────────────────────
 # Flat imports per the homelab convention: pull only what this host
-# needs, NOT modules/server/default.nix. Most service modules
+# needs, NOT modules/services/default.nix. Most service modules
 # (Caddy, Authelia, Jellyfin, the *arr stack) make no sense here.
 
 {
@@ -63,7 +63,7 @@
     ../../modules/common # base + users + sops + tailscale + lib options
 
     # Notably absent:
-    #   modules/server/default.nix    — no LAN services
+    #   modules/services/default.nix    — no LAN services
     #   modules/desktop/default.nix   — headless
 
     ./hardware.nix

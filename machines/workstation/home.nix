@@ -159,7 +159,7 @@ in
 # `default.nix` so this file's shape matches every other
 # machines/<n>/home.nix regardless of NixOS-ness.
 {
-  imports = [ ../pc.nix ];
+  imports = [ ../../home/pc.nix ];
 
   home.stateVersion = "26.05"; # match host's system.stateVersion
   programs.home-manager.enable = true;

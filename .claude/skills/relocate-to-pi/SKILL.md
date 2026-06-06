@@ -10,7 +10,7 @@ Pattern established by beszel-hub (commit b4499ee) and ntfy-server (commit 9e0b2
 ## Decision summary up front
 
 1. **Does the service genuinely belong on Pi?** Workhorse-by-default per CLAUDE.md bias. The exception is observability + alerting + DNS + network plumbing — services whose entire reason to exist is to observe / alert / route, which lose their function when the host they monitor goes down. Pi has 8 GiB and anti-write storage; every additional service competes with the observer role.
-2. **Split shape**: `modules/server/<service>/{daemon,client}.nix` where the daemon is the actual server (lives on Pi) and the client is the proxy / notification template / agent (lives on every host).
+2. **Split shape**: `modules/services/<service>/{daemon,client}.nix` where the daemon is the actual server (lives on Pi) and the client is the proxy / notification template / agent (lives on every host).
 3. **State migration**: usually NOT worth it for non-load-bearing data (metrics, ephemeral caches). Daemon comes up empty and rebuilds from sops + first-use. Document the decision.
 4. **Backup decision**: Pi's anti-write posture means `nori.backups.<n>.skip = "..."` for the daemon — host-aware assertion in `modules/effects/backup.nix` enforces this.
 
@@ -20,10 +20,10 @@ Pattern established by beszel-hub (commit b4499ee) and ntfy-server (commit 9e0b2
 
 ```bash
 # Before:
-modules/server/<service>.nix         # one file with everything
+modules/services/<service>.nix         # one file with everything
 
 # After:
-modules/server/<service>/
+modules/services/<service>/
   daemon.nix     # the actual server (or hub, or whatever the daemon is)
   client.nix     # the proxy, notification template, agent — what every host needs
   default.nix    # optional aggregator if both sides go on the same host
@@ -34,7 +34,7 @@ Folder = coupling (per MODULES.md § "Coupling vs categorization"). The `daemon.
 ### 2. Daemon side (lives on Pi)
 
 ```nix
-# modules/server/<service>/daemon.nix
+# modules/services/<service>/daemon.nix
 { config, lib, pkgs, ... }:
 {
   services.<service> = {
@@ -51,14 +51,14 @@ Folder = coupling (per MODULES.md § "Coupling vs categorization"). The `daemon.
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ N ];
 
   # Pi anti-write posture — backup must skip
-  nori.backups.<n>.skip = "Hub on appliance host. Pi flash anti-write posture; <reason data is non-load-bearing>. Defer until Pi gains the planned local fast-restore disk repo (see modules/server/backup/restic.nix).";
+  nori.backups.<n>.skip = "Hub on appliance host. Pi flash anti-write posture; <reason data is non-load-bearing>. Defer until Pi gains the planned local fast-restore disk repo (see modules/services/backup/restic.nix).";
 }
 ```
 
 ### 3. Client side (lives on every host)
 
 ```nix
-# modules/server/<service>/client.nix
+# modules/services/<service>/client.nix
 { config, lib, pkgs, ... }:
 {
   # Cross-host lanRoute gated on Caddy presence — only the host running
@@ -85,18 +85,18 @@ The `host = config.nori.hosts.pi.tailnetIp` is also load-bearing — never use I
 ### 4. Update host imports
 
 ```nix
-# machines/workstation/default.nix → modules/server/default.nix bundle
+# machines/workstation/default.nix → modules/services/default.nix bundle
 # imports the client side (notify / agent / proxy) automatically.
 # DO NOT import the daemon side — station shouldn't be running it.
 
 # machines/pi/default.nix
 imports = [
-  ../../modules/server/<service>/daemon.nix
-  ../../modules/server/<service>/client.nix  # Pi runs both — agent talks to its own hub, etc.
+  ../../modules/services/<service>/daemon.nix
+  ../../modules/services/<service>/client.nix  # Pi runs both — agent talks to its own hub, etc.
 ];
 ```
 
-Update `modules/server/default.nix` (the workhorse bundle) to import only the client side. Update `machines/pi/default.nix` (flat imports) to import both daemon + client.
+Update `modules/services/default.nix` (the workhorse bundle) to import only the client side. Update `machines/pi/default.nix` (flat imports) to import both daemon + client.
 
 ### 5. Per-host config that varies
 
@@ -160,7 +160,7 @@ feat(<scope>): migrate <service> from station to Pi
 <reason it belongs on Pi — typically fate-sharing>
 
 ── Split-module shape ────────────────────────────────────────────
-modules/server/<service>/{daemon,client}.nix.
+modules/services/<service>/{daemon,client}.nix.
 * daemon.nix on Pi — runs the actual server
 * client.nix everywhere — Caddy lanRoute gated on services.caddy.enable
   so only station registers it; backend reads

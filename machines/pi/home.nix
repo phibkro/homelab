@@ -6,7 +6,7 @@
 # stay out of core.nix and live per-machine.
 
 {
-  imports = [ ../core.nix ];
+  imports = [ ../../home/core.nix ];
 
   home.stateVersion = "26.05"; # match host's system.stateVersion
   programs.home-manager.enable = true;

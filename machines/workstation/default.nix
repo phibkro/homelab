@@ -14,9 +14,9 @@
     inputs.home-manager.nixosModules.home-manager
 
     ../../modules/common # base + users + sops + tailscale + lib options
-    ../../modules/server # every server module (HTTP, *arr, backup, …)
+    ../../modules/services # every server module (HTTP, *arr, backup, …)
     ../../modules/desktop # Hyprland + greetd + audio + bars + apps + gaming
-    ../../modules/hermes/route.nix # hermes.nori.lan → user dashboard on 127.0.0.1:9119
+    ../../modules/services/hermes.nix # hermes.nori.lan → user dashboard on 127.0.0.1:9119
 
     ./hardware.nix
     ./disko.nix

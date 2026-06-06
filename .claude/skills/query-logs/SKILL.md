@@ -121,7 +121,7 @@ just query-logs 'unit:restic-backups-* "snapshot " | tail 5'
 
 ## Where things live
 
-- Pi daemon module: `modules/server/victorialogs/server.nix`
+- Pi daemon module: `modules/services/victorialogs/server.nix`
 - Workstation/pi shipper: `modules/common/vector.nix`
-- Caddy route + Gatus monitor + Glance entry: `modules/server/victorialogs/default.nix`
-- Grafana datasource: `modules/server/grafana.nix` (`ops.nori.lan` → "VictoriaLogs")
+- Caddy route + Gatus monitor + Glance entry: `modules/services/victorialogs/default.nix`
+- Grafana datasource: `modules/services/grafana.nix` (`ops.nori.lan` → "VictoriaLogs")

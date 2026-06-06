@@ -35,7 +35,7 @@ This filter explains and justifies the existing shape of the homelab. It also gi
 
 - **Heavy docs as code-equivalent.** The tier-2 reference docs (`docs/TOPOLOGY.md`, `STORAGE.md`, `NETWORK.md`, `SERVICES.md`, `MODULES.md`, `ENFORCEMENT.md`, `RECOVERY.md`, `RATIONALES.md`), the tier-1 indexes (`docs/CONCEPTS.md`, `INVARIANTS.md`, `PROCEDURES.md`, `ROADMAP.md`), and the per-gotcha skills (`.claude/skills/gotcha-*/`) — one home per topic, no overlap. They're the onboarding artifact, not insurance.
 - **Conventional commits + structured messages.** Commits encode the *why* for future-you; the conventional-commit type makes intent grep-able. This ADR layer carries the heavier decisions commit messages can't fit.
-- **Skills for procedures, prose for facts.** Procedures (`add-service`, `add-host`, `relocate-to-pi`, `on-structural-change`, `wrap-session`, `wrap-feature`) live as skills under `modules/claude-code/skills/`; they load on demand when their trigger fires, paying context only when relevant. Prose facts stay in `CLAUDE.md` and `docs/`.
+- **Skills for procedures, prose for facts.** Procedures (`add-service`, `add-host`, `relocate-to-pi`, `on-structural-change`, `wrap-session`, `wrap-feature`) live as skills under `home/claude-code/skills/`; they load on demand when their trigger fires, paying context only when relevant. Prose facts stay in `CLAUDE.md` and `docs/`.
 - **Flake checks as binding contracts.** `every-service-has-fs-hardening`, `every-service-has-backup-intent`, `forbidden-patterns` derivations bind doc claims to CI evidence. A claim with a check is self-defending; a claim without is staleness-prone — `docs/INVARIANTS.md` is the catalog of which is which.
 - **`nori.<X>` effect modules.** Each effect is one input → multiple generators (Reader + collected Writer). Single source for cross-cutting declarations: `nori.lanRoutes.<name>` generates Caddy + DNS + Gatus + dashboard from one entry. This *externalizes* the cross-cutting knowledge a human would otherwise have to remember.
 
@@ -66,4 +66,4 @@ When a prose rule survives, ask "what's its enforcement tier?" (`docs/INVARIANTS
 
 - `docs/INVARIANTS.md` — catalog of load-bearing claims with current enforcement tier (some are `[prose: unchecked]` — explicit promotion candidates).
 - `docs/ENFORCEMENT.md` — the prose on the enforcement ladder; this ADR is the *why*.
-- `modules/claude-code/CLAUDE.md` — operator's global rules across all projects; many are downstream of this ADR's filter.
+- `home/claude-code/CLAUDE.md` — operator's global rules across all projects; many are downstream of this ADR's filter.

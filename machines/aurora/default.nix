@@ -33,7 +33,7 @@
 #   driver stays on workstation.
 #
 # ── Open items (post-deploy) ───────────────────────────────────────
-# 1. Workstation's modules/server/immich.nix needs an env override
+# 1. Workstation's modules/services/immich.nix needs an env override
 #    to point at aurora:
 #       IMMICH_MACHINE_LEARNING_URL=http://aurora.saola-matrix.ts.net:3003
 #    plus disable services.immich.machine-learning.enable locally.
@@ -54,7 +54,7 @@
     ../../modules/common
 
     # Notably absent:
-    #   modules/server/default.nix — no LAN service stack
+    #   modules/services/default.nix — no LAN service stack
     #   modules/desktop/default.nix — headless
 
     ./hardware.nix

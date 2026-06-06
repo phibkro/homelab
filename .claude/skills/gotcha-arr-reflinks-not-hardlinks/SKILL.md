@@ -21,6 +21,6 @@ The chain:
 - To tell reflink vs plain copy: `btrfs filesystem du <file>`. Reflink → `Exclusive: 0.00B, Set shared: <full size>`. Plain copy → `Exclusive: <full size>, Set shared: 0.00B`. Hardlink — `btrfs fi du` reports the file with `nlink>1` once.
 - `find <dir> -links 1` is **not** an orphan-detection heuristic in this setup — reflinks look like singletons.
 
-**Fix going forward** — `systemd.services.qbittorrent.serviceConfig.UMask = "0002";` (live in `modules/server/arr/qbittorrent.nix`). Files land mode `0664`; `media`-group members satisfy the kernel write-check; `link()` succeeds; library entries become true hardlinks (nlink≥2, same uid as source).
+**Fix going forward** — `systemd.services.qbittorrent.serviceConfig.UMask = "0002";` (live in `modules/services/arr/qbittorrent.nix`). Files land mode `0664`; `media`-group members satisfy the kernel write-check; `link()` succeeds; library entries become true hardlinks (nlink≥2, same uid as source).
 
 **The trap to avoid** — don't try to "free space by deduping" the library when you see two-inode, different-uid pairs. If `btrfs fi du` says `Exclusive: 0`, the extents are already shared and there's nothing to recover. A script that replaces reflinks with hardlinks frees zero bytes (verified 2026-05-15: 1855 file ops, 1.6 TiB of apparent size relinked, `df` unchanged). The disk-pressure causes are elsewhere — see `docs/runbooks/storage-full.md`.

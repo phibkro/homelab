@@ -2,7 +2,7 @@ _: {
   # ── nori.fs declarations ───────────────────────────────────────────
   # Named filesystem locations the IronWolf carries, paired with their
   # value tier. Service modules read `config.nori.fs.<n>.path`; backup
-  # generators in modules/server/backup/ filter by `tier`. Single
+  # generators in modules/services/backup/ filter by `tier`. Single
   # source of truth for both the wire-format (disko) and the
   # service-facing interface — change one, the other is right here
   # next to it. See modules/effects/fs.nix for the schema.

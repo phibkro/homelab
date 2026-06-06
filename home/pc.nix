@@ -1,7 +1,7 @@
 _:
 
 # Shared home-manager baseline for operator-attached PCs (workstation +
-# macbook). The shape that sits between machines/core.nix (every machine
+# macbook). The shape that sits between home/core.nix (every machine
 # including the pi appliance) and per-machine machines/<n>/home.nix
 # (machine-specific bits).
 #
@@ -24,7 +24,7 @@ _:
 {
   imports = [
     ./core.nix
-    ../modules/claude-code # CLI + settings.json + skills (~300 MB Node closure)
-    ../modules/hermes      # Hermes Agent CLI (Linux-only; skips cleanly on Mac)
+    ./claude-code # CLI + settings.json + skills (~300 MB Node closure)
+    ./hermes      # Hermes Agent CLI (Linux-only; skips cleanly on Mac)
   ];
 }

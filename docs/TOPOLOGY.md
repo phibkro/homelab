@@ -90,7 +90,7 @@ The placement test is **fate-sharing breaks the function**, not "feels lightweig
 
 Live: Beszel hub (`metrics.nori.lan`), ntfy server (`alert.nori.lan`). Both follow the **split-module pattern** — daemon module on the host that runs it, client/proxy module on every host. The cross-host Caddy lanRoute is gated `lib.mkIf config.services.caddy.enable` so the daemon-host's Blocky stays in pure forwarder mode.
 
-Add another via `/relocate-to-pi`. Precedents: `modules/server/beszel/{hub,agent}.nix`, `modules/server/ntfy/{server,notify}.nix`.
+Add another via `/relocate-to-pi`. Precedents: `modules/services/beszel/{hub,agent}.nix`, `modules/services/ntfy/{server,notify}.nix`.
 
 ## GPU access pattern
 

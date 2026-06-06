@@ -74,12 +74,12 @@ All three are wrap-up failures; fix and re-run.
 **Question**: You're adding a service `widget` that serves HTTP on port 9000. What abstractions and files do you touch?
 
 **Expected (shape)**:
-- New file `modules/server/widget.nix`
+- New file `modules/services/widget.nix`
 - Enable the upstream module (`services.widget.enable = true`)
 - Default-deny FS hardening: `nori.harden.widget = { binds = [...]; readOnlyBinds = [...]; };` (`every-service-has-fs-hardening` flake check enforces presence)
 - `nori.lanRoutes.widget = { port = 9000; monitor = { }; };`
 - `nori.backups.widget = { paths = [...] | skip = "..."; };`
-- Append to `modules/server/default.nix` imports
+- Append to `modules/services/default.nix` imports
 
 **Source**: PROCEDURES.md "How to add a new service".
 
@@ -135,7 +135,7 @@ nori.lanRoutes.widget = {
 - Generator emits `ProtectHome = mkForce true` + `TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ]` + `BindPaths` + `BindReadOnlyPaths` on the systemd unit
 - `protectHome = null` skips the directive (preserves upstream NixOS module's value, e.g. syncthing where upstream is opinionated)
 - Principle: default-deny FS namespace; compromised service can't browse host paths it doesn't need
-- Enforcement: `every-service-has-fs-hardening` flake check fails the build if any `modules/server/*.nix` (outside the excluded list) lacks a `nori.harden.<n>` declaration
+- Enforcement: `every-service-has-fs-hardening` flake check fails the build if any `modules/services/*.nix` (outside the excluded list) lacks a `nori.harden.<n>` declaration
 
 **Source**: MODULES.md "Filesystem hardening", RATIONALES.md "Default-deny filesystem access", `modules/effects/harden.nix`.
 

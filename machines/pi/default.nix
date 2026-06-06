@@ -14,7 +14,7 @@
   # backup target for fast restores.
   #
   # Per the "flat imports" decision (CLAUDE.md), this host does NOT
-  # import modules/server/default.nix (the workstation bundle).
+  # import modules/services/default.nix (the workstation bundle).
   # Pi-specific service modules will be added file-by-file once they're
   # refactored to be role-parametric.
   imports = [
@@ -29,36 +29,36 @@
     ../../modules/common
 
     # Pi-specific service modules — flat imports per CLAUDE.md
-    # "flat imports first." NOT modules/server/default.nix; just the
+    # "flat imports first." NOT modules/services/default.nix; just the
     # specific files Pi needs.
-    ../../modules/server/blocky.nix
-    ../../modules/server/gatus.nix
+    ../../modules/services/blocky.nix
+    ../../modules/services/gatus.nix
 
     # Beszel: Pi runs both the hub (collects metrics) and an agent
     # (reports its own metrics). Station only imports agent.nix. The
     # hub-host is intentionally the appliance side so it survives
     # station outages (forensics use case).
-    ../../modules/server/beszel/hub.nix
-    ../../modules/server/beszel/agent.nix
+    ../../modules/services/beszel/hub.nix
+    ../../modules/services/beszel/agent.nix
 
     # ntfy: Pi runs the local server (for future internal-only alerts);
     # both hosts import notify.nix for the OnFailure → ntfy.sh template.
     # Same workhorse/appliance split as beszel — alert plane lives on
     # the appliance so it survives station outages.
-    ../../modules/server/ntfy/server.nix
-    ../../modules/server/ntfy/notify.nix
+    ../../modules/services/ntfy/server.nix
+    ../../modules/services/ntfy/notify.nix
 
     # VictoriaLogs: Pi runs the daemon (log database + web UI). Station
-    # imports the lanRoute via modules/server/victorialogs/default.nix.
+    # imports the lanRoute via modules/services/victorialogs/default.nix.
     # Third cross-host service split — same workhorse/appliance shape
     # as beszel and ntfy. No log producer yet; daemon stands up empty.
-    ../../modules/server/victorialogs/server.nix
+    ../../modules/services/victorialogs/server.nix
 
     # VictoriaMetrics — sibling TSDB for Gatus + future node_exporter
     # scrape. Same fate-sharing rationale as VictoriaLogs. Surfaces in
     # Grafana on workstation as the second datasource (logs + metrics
     # = unified pane).
-    ../../modules/server/victoriametrics.nix
+    ../../modules/services/victoriametrics.nix
 
     ./hardware.nix
     inputs.home-manager.nixosModules.home-manager
@@ -115,8 +115,8 @@
   # which terminates TLS using Caddy's internal CA. Trust that CA
   # at the system level so Go-stdlib HTTPS clients (Gatus, curl,
   # etc.) verify successfully without per-call --insecure flags.
-  # Same pattern station uses (see modules/server/caddy.nix).
-  security.pki.certificateFiles = [ ../../modules/server/caddy-local-ca.crt ];
+  # Same pattern station uses (see modules/services/caddy.nix).
+  security.pki.certificateFiles = [ ../../modules/services/caddy-local-ca.crt ];
 
   # ── Blocky: forwarder mode ───────────────────────────────────────
   # Pi serves DNS + ad blocking to LAN clients. *.nori.lan queries

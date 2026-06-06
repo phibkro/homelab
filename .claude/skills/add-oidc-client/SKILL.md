@@ -34,7 +34,7 @@ Single-quote the hash so YAML doesn't interpret the `$` chars. Single-quote the 
 
 ### 3. Declare the route's `oidc` block
 
-In the service's module (`modules/server/<svc>.nix`) — the service module is the single source of truth for the route; co-locate everything about that service:
+In the service's module (`modules/services/<svc>.nix`) — the service module is the single source of truth for the route; co-locate everything about that service:
 
 ```nix
 nori.lanRoutes.<name> = {

@@ -194,7 +194,7 @@ default: rebuild
     grep '^## ' docs/{{doc}}.md | sed 's/^## /  /'
 
 # Build + publish a self-deployed app's static artifact (or refresh a
-# running one). Each app's modules/server/<name>.nix declares a
+# running one). Each app's modules/services/<name>.nix declares a
 # `<name>-build.service` oneshot — this recipe just kicks it. Operator
 # triggers explicitly so nixos-rebuild stays fast (no npm-install on
 # every rebuild). Logs stream live, exit code matches the unit's.

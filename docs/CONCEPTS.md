@@ -31,7 +31,7 @@ make those rules make sense.
 | **Writer (effect)** | `nori.<X>` flavor that services *contribute* and generators *interpret*: declarations assembled across modules (`nori.lanRoutes`, `nori.backups`, `nori.harden`). | `modules/effects/{lan-route,backup,harden}.nix` |
 | **value tier** | Data-protection level driving snapshot/backup/retention: `re-derivable` (minimal) → `user`/`service` (daily + local) → `irreplaceable` (snapshots + local + off-site). | `modules/effects/fs.nix` (tier); STORAGE.md "Value tiers" |
 | **audience** | Per-route trust level: `operator` (trusts tailnet, no Authelia) / `family` (needs OIDC for per-user state) / `public` (intentionally open). Decides where Authelia layers on. | `modules/effects/lan-route.nix` (`audience`); CLAUDE.md bias section |
-| **split-module pattern** | Cross-host service shipped as two modules: daemon module on the host that runs it, client/proxy module on every host. Live: `beszel`, `ntfy`. | `modules/server/{beszel,ntfy}/`; `/relocate-to-pi` skill |
+| **split-module pattern** | Cross-host service shipped as two modules: daemon module on the host that runs it, client/proxy module on every host. Live: `beszel`, `ntfy`. | `modules/services/{beszel,ntfy}/`; `/relocate-to-pi` skill |
 | **fate-sharing** | The placement test: a service moves to the appliance only when "fate-sharing breaks the function" (it must outlive the workhorse), not because it "feels lightweight." | TOPOLOGY.md "Service placement"; CLAUDE.md "workhorse-by-default" bias |
 | **`mkDevShell` / fragment** | Atomic dev-environment fragment (`modules/dev/<n>.nix`: a toolchain/runtime/tool); the composer resolves transitive deps, dedupes inputs, merges Claude allowlists. `nix eval .#lib.fragmentNames` lists them. | `modules/dev/default.nix` (composer); `modules/dev/*.nix` (fragments) |
 
@@ -57,7 +57,7 @@ The `nori.<X>` family in `modules/effects/` is a structural Reader + collected-W
 | Shape | Examples | Producer | Consumer |
 |---|---|---|---|
 | Reader (host-scoped context) | `nori.hosts`, `nori.gpu`, `nori.fs` | hosts only — set in `flake.nix` `identityFor`, `hardware.nix`, `disko*.nix` | services |
-| Collected Writer (assembled across modules, then interpreted) | `nori.lanRoutes`, `nori.backups`, `nori.harden` | services contribute | generators in `modules/effects/<x>.nix` and downstream handlers (`modules/server/backup/`, …) interpret |
+| Collected Writer (assembled across modules, then interpreted) | `nori.lanRoutes`, `nori.backups`, `nori.harden` | services contribute | generators in `modules/effects/<x>.nix` and downstream handlers (`modules/services/backup/`, …) interpret |
 
 Each `modules/effects/<x>.nix` is one effect's full surface:
 

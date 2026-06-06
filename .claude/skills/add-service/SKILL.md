@@ -1,6 +1,6 @@
 ---
 description: Add a new self-hosted service to this homelab NixOS flake — wires the upstream module enable, FS hardening (`nori.harden`), Caddy + DNS exposure (`nori.lanRoutes`), backup intent (`nori.backups`), GPU access (`nori.gpu`), OIDC SSO, and import plumbing in the right order with the right decisions.
-when_to_use: The user asks to install, deploy, set up, or run a new service on the homelab — phrases like "add <service>", "let's set up <X>", "I want <Y> running", "deploy a new service", "install <service>", "bring up <something> on the homelab". Also when a new file is being created under `modules/server/`.
+when_to_use: The user asks to install, deploy, set up, or run a new service on the homelab — phrases like "add <service>", "let's set up <X>", "I want <Y> running", "deploy a new service", "install <service>", "bring up <something> on the homelab". Also when a new file is being created under `modules/services/`.
 ---
 
 # Add a new homelab service
@@ -10,7 +10,7 @@ Authoritative procedure. Three flake checks (`every-service-has-fs-hardening`, `
 ## Decision summary up front
 
 For the user's request, work out:
-1. **Is it loose or part of an existing cluster?** Loose → `modules/server/<service>.nix`. Cluster (arr / backup / beszel / ntfy) → `modules/server/<cluster>/<service>.nix`. Folders signal coupling, not categorization.
+1. **Is it loose or part of an existing cluster?** Loose → `modules/services/<service>.nix`. Cluster (arr / backup / beszel / ntfy) → `modules/services/<cluster>/<service>.nix`. Folders signal coupling, not categorization.
 2. **What FS access does it need?** None (90% of services), writable subtree (e.g. *arr writes /mnt/media/streaming), read-only subtree (e.g. Jellyfin streams /mnt/media), or upstream-opinionated ProtectHome (Syncthing).
 3. **Is it HTTP-exposed via Caddy?** If yes → `nori.lanRoutes.<short-name>`. Pick a function-named subdomain (`media` not `jellyfin`).
 4. **Does it need SSO?** If yes → run `just oidc-key <short-name>`, paste into sops, add `oidc = { ... }` to the lanRoute, wire EnvironmentFile.
@@ -24,13 +24,13 @@ For the user's request, work out:
 
 ```bash
 # Loose:
-modules/server/<service>.nix
+modules/services/<service>.nix
 
 # Cluster:
-modules/server/<cluster>/<service>.nix
+modules/services/<cluster>/<service>.nix
 ```
 
-Read `modules/server/default.nix` (loose imports) or `modules/server/<cluster>/default.nix` (cluster imports) — you'll add the new file there in step 7.
+Read `modules/services/default.nix` (loose imports) or `modules/services/<cluster>/default.nix` (cluster imports) — you'll add the new file there in step 7.
 
 ### 2. Enable the upstream module
 
@@ -167,10 +167,10 @@ Single source of truth in `modules/effects/gpu.nix` — host's hardware.nix sets
 
 ```bash
 # Loose service:
-$EDITOR modules/server/default.nix    # add ./<service>.nix to imports list
+$EDITOR modules/services/default.nix    # add ./<service>.nix to imports list
 
 # Cluster service:
-$EDITOR modules/server/<cluster>/default.nix
+$EDITOR modules/services/<cluster>/default.nix
 ```
 
 ### 9. Build + verify

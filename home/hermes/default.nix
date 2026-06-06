@@ -19,13 +19,13 @@ let
   # Swap to `.full` if external memory providers (Honcho, Mem0,
   # Hindsight) or voice/edge-tts become wanted.
   hermes = inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.messaging;
-  dashboardPort = 9119; # hermes dashboard default — matches modules/hermes/route.nix
+  dashboardPort = 9119; # hermes dashboard default — matches modules/services/hermes.nix
 in
 
 # Hermes Agent — NousResearch's open-source coding agent with persistent
 # memory (SQLite session DB + MEMORY.md + pluggable provider plugins).
 #
-# Why its own module (not lumped into modules/claude-code/)
+# Why its own module (not lumped into home/claude-code/)
 # --------------------------------------------------------
 # Claude Code and Hermes are parallel agents, not variants of each other.
 # They have distinct config dirs (~/.claude vs ~/.hermes), distinct

@@ -27,7 +27,7 @@
 
 {
   imports = [
-    ../pc.nix
+    ../../home/pc.nix
     inputs.pagu-box.homeManagerModules.default
   ];
 
@@ -48,9 +48,9 @@
   home.packages = with pkgs; [
     # CLI tooling Mac-specific to this host. Cross-platform tooling
     # for every operator-PC (claude-code + happy-coder) lives in
-    # machines/pc.nix → modules/claude-code/. Cross-machine including
+    # home/pc.nix → home/claude-code/. Cross-machine including
     # pi (starship, programs.git, comma, sops CLI, etc.) lives in
-    # machines/core.nix.
+    # home/core.nix.
 
     gh
 
@@ -111,9 +111,9 @@
   # nix-darwin):
   #   sudo security add-trusted-cert -d -r trustRoot \
   #     -k /Library/Keychains/System.keychain \
-  #     ~/Documents/nix-migration/modules/server/caddy-local-ca.crt
+  #     ~/Documents/nix-migration/modules/services/caddy-local-ca.crt
   home.sessionVariables = {
-    NODE_EXTRA_CA_CERTS = "${../../modules/server/caddy-local-ca.crt}";
+    NODE_EXTRA_CA_CERTS = "${../../modules/services/caddy-local-ca.crt}";
   };
 
   # JetBrains Mono Nerd Font installed into ~/Library/Fonts/ so macOS

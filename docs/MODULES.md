@@ -70,7 +70,7 @@ The flake derives configurations from the directory structure:
 
 `machines/<n>/home.nix` is a **pure home-manager module** regardless of the host's OS. Same file shape across NixOS + standalone — no platform-specific module conventions inside `home.nix`.
 
-`machines/core.nix` is the shared user-scope baseline imported by every machine's `home.nix` via `imports = [ ../core.nix ]`. Cross-platform CLI + identity (starship, programs.git, comma, sops/age/claude-code, just/ripgrep/tmux).
+`home/core.nix` is the shared user-scope baseline imported by every machine's `home.nix` via `imports = [ ../core.nix ]`. Cross-platform CLI + identity (starship, programs.git, comma, sops/age/claude-code, just/ripgrep/tmux).
 
 ## Concerns compose host identity
 
@@ -90,7 +90,7 @@ A typical NixOS host file:
 imports = [
   inputs.disko.nixosModules.disko
   ../../modules/common
-  ../../modules/server
+  ../../modules/services
   ../../modules/desktop
   ./hardware.nix
   ./disko.nix
@@ -101,7 +101,7 @@ Reading this answers "what kind of machine is `workstation`?" at a glance. `pi` 
 
 ### Coupling vs categorization
 
-**Within `modules/server/`, folders signal coupling, not categorization.** Tightly-coupled clusters get their own folder + `default.nix`:
+**Within `modules/services/`, folders signal coupling, not categorization.** Tightly-coupled clusters get their own folder + `default.nix`:
 
 | Cluster | Coupling |
 |---|---|
@@ -159,7 +159,7 @@ nori.harden.<unit> = {
 };
 ```
 
-The `every-service-has-fs-hardening` flake check fails the build if any `modules/server/*.nix` is missing a `nori.harden.<n>` declaration (excluded list: aggregators, framework, ntfy/notify, samba's legitimate /srv exception).
+The `every-service-has-fs-hardening` flake check fails the build if any `modules/services/*.nix` is missing a `nori.harden.<n>` declaration (excluded list: aggregators, framework, ntfy/notify, samba's legitimate /srv exception).
 
 Verify a service's effective namespace:
 
@@ -188,7 +188,7 @@ users.users.<svc>.extraGroups = [ "media" ];
 
 This is what makes the qBittorrent → *arr hardlink-on-import flow work — distinct uids, shared gid, group-writable files (set via qBittorrent's `UMask=0002`). Without it the kernel's `fs.protected_hardlinks=1` makes `link()` fail with EPERM and *arr silently falls back to reflink/copy. See `.claude/skills/gotcha-arr-reflinks-not-hardlinks/`.
 
-Canonical doc: `modules/server/arr/shared.nix` header comment.
+Canonical doc: `modules/services/arr/shared.nix` header comment.
 
 ## Secrets: sops-nix patterns
 
@@ -256,7 +256,7 @@ Packages and config live at one of four scopes. Pick the **lowest** scope that g
 |---|---|---|---|
 | **System floor** | `modules/common/base.nix` `environment.systemPackages` | Every host (incl. pi, which has no home-manager); root, sshd, system services | `bat curl dig fd git htop just ripgrep tmux tree vim wget` |
 | **System desktop** | `modules/desktop/apps.nix` `environment.systemPackages` + `fonts.packages` | Workstation Linux desktop session — Hyprland-invoked apps, GUI clients, fonts | `ghostty fuzzel hyprpaper zen bitwarden-desktop zed-editor davinci-resolve nerd-fonts.jetbrains-mono` |
-| **User core** | `machines/core.nix` `home.packages` + `programs.<x>` | Every interactive machine where nori is the operator | `comma starship programs.git age sops claude-code` |
+| **User core** | `home/core.nix` `home.packages` + `programs.<x>` | Every interactive machine where nori is the operator | `comma starship programs.git age sops claude-code` |
 | **Per-machine user** | `machines/<host>/home.nix` `home.packages` | One specific machine | workstation: `nvtop` (NVIDIA), `compsize` (btrfs), Hyprland binds; Mac: `bun pnpm ffmpeg`, `home.file."Library/Fonts/..."`, `NODE_EXTRA_CA_CERTS` |
 
 Decision rules:

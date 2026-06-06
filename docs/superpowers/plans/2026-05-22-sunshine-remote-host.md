@@ -10,7 +10,7 @@
 
 **Note on "TDD" here:** this is declarative config, not a test-suite codebase. The per-task verification is `nix-instantiate --parse` (syntax), `nh os build` / `nix flake check` (eval + build), and runtime checks after `just rebuild` — substituting for unit tests. Commit after each green step.
 
-**Spec deviation (intentional):** the spec mentioned `nori.backups.sunshine.skip`. Dropped — the `every-service-has-{backup-intent,fs-hardening}` flake checks scan `modules/server/*.nix` only; Sunshine is a `modules/desktop/` user service with no homelab state, matching `gaming.nix`/`virt.nix` which carry neither declaration.
+**Spec deviation (intentional):** the spec mentioned `nori.backups.sunshine.skip`. Dropped — the `every-service-has-{backup-intent,fs-hardening}` flake checks scan `modules/services/*.nix` only; Sunshine is a `modules/desktop/` user service with no homelab state, matching `gaming.nix`/`virt.nix` which carry neither declaration.
 
 **Reference:** design doc `docs/superpowers/specs/2026-05-22-sunshine-remote-host-design.md`.
 

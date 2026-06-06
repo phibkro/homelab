@@ -4,7 +4,7 @@
 #
 # Split from ./default.nix because that module is home-manager scope
 # (user package + user systemd service) and `nori.lanRoutes` is a NixOS
-# option. Both live under modules/hermes/ for ownership clarity;
+# option. Both live under home/hermes/ for ownership clarity;
 # pc.nix imports ./default.nix (HM) and workstation/default.nix
 # imports ./route.nix (NixOS).
 #

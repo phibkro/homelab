@@ -17,7 +17,7 @@ not the territory. Don't duplicate per-repo detail here; point to it.
 - **`workstation` (NixOS) is configured by the homelab flake at
   `/srv/share/projects/homelab`** — the canonical source for the whole machine
   (NixOS + home-manager). `~/.claude/` is a *generated derivation*: edit
-  `homelab/modules/claude-code/` + rebuild (`just rebuild`, or
+  `homelab/home/claude-code/` + rebuild (`just rebuild`, or
   `nh os switch -H workstation`; sudo is passwordless), never `~/.claude/`
   directly. Doc-only homelab changes don't need a rebuild; config changes do.
 - **Projects** live under `/srv/share/projects/` (user-agnostic). **Personal
