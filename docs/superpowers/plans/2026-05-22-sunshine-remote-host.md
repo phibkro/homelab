@@ -33,7 +33,7 @@
   #
   # Workstation-only by construction: imported via
   # modules/desktop/default.nix, which the darwin MacBook never imports
-  # (it pulls only ../pc.nix). Design + rationale:
+  # (it pulls only ../../home/pc.nix). Design + rationale:
   # docs/superpowers/specs/2026-05-22-sunshine-remote-host-design.md.
   services.sunshine = {
     enable = true;

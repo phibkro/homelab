@@ -17,7 +17,7 @@ Single-user NixOS homelab flake. Two live hosts: `workstation` (workhorse — Ca
 
 ## Active services
 
-All HTTP services live behind Caddy at `https://<name>.nori.lan`. Resolution: Blocky returns workstation's LAN IP (`192.168.1.181`), so LAN clients hit Caddy directly with no tailnet hop. Off-LAN tailnet clients reach the same address via pi's subnet route advertisement (`192.168.1.0/24`); needs `--accept-routes` on the client. DNS is served by pi's Blocky (Tailscale admin console → DNS → custom nameserver = `100.100.71.3`); LAN-only devices need their DNS pointed at pi's LAN IP (`192.168.1.225`). Caddy uses an internal CA — install `modules/server/caddy-local-ca.crt` once per device.
+All HTTP services live behind Caddy at `https://<name>.nori.lan`. Resolution: Blocky returns workstation's LAN IP (`192.168.1.181`), so LAN clients hit Caddy directly with no tailnet hop. Off-LAN tailnet clients reach the same address via pi's subnet route advertisement (`192.168.1.0/24`); needs `--accept-routes` on the client. DNS is served by pi's Blocky (Tailscale admin console → DNS → custom nameserver = `100.100.71.3`); LAN-only devices need their DNS pointed at pi's LAN IP (`192.168.1.225`). Caddy uses an internal CA — install `modules/services/caddy-local-ca.crt` once per device.
 
 The live inventory is the `nori.lanRoutes` attrset in `config`. Static lists drift; query the source of truth instead:
 
@@ -63,7 +63,7 @@ The pre-commit hook (`.githooks/pre-commit`) runs `nix flake check` automaticall
 `nix flake check` runs the standard Nix lints (statix, deadnix, nixfmt format check) plus the repo-specific guard derivations in `flake.nix`'s `checks.${system}` attrset. Run `nix flake show .#checks` for the current set; categories:
 
 - **Eval-time module assertions** — port uniqueness, exclusive paths/skip, host-aware appliance constraints, …
-- **Pattern enforcement** — `every-service-has-<X>` derivations fail if any `modules/server/*.nix` omits a required declaration
+- **Pattern enforcement** — `every-service-has-<X>` derivations fail if any `modules/services/*.nix` omits a required declaration
 - **Anti-pattern grep guards** — `forbidden-patterns` fails if banned strings appear
 
 Adding a new rule: `docs/ENFORCEMENT.md` § decision tree.

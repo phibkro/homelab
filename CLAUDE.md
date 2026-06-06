@@ -30,7 +30,7 @@ NixOS flake managing three machines:
 
 - **Code is the single source of truth**; docs approximate.
 - **Never touch `nvme0n1`** without verifying the model string via `/dev/disk/by-id/`. NVMe enumeration is unstable across reboots. Disko configs target by-id paths.
-- **Don't commit secrets.** `secrets/secrets.yaml` is sops-encrypted and safe. `.env` files are gitignored. Public certs (e.g. `modules/server/caddy-local-ca.crt`) are fine.
+- **Don't commit secrets.** `secrets/secrets.yaml` is sops-encrypted and safe. `.env` files are gitignored. Public certs (e.g. `modules/services/caddy-local-ca.crt`) are fine.
 - **Don't bypass the safety net.** Don't disable `services.restic.backups.*`, `services.btrbk.*`, OnFailure → ntfy alerts, or any other passive backend without naming why and how it'll be re-enabled.
 - **Default-deny everywhere.** Network exposure, filesystem access, tailnet ports — services opt in to specific access, never wildcard.
 

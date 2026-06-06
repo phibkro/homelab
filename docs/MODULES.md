@@ -70,7 +70,7 @@ The flake derives configurations from the directory structure:
 
 `machines/<n>/home.nix` is a **pure home-manager module** regardless of the host's OS. Same file shape across NixOS + standalone — no platform-specific module conventions inside `home.nix`.
 
-`home/core.nix` is the shared user-scope baseline imported by every machine's `home.nix` via `imports = [ ../core.nix ]`. Cross-platform CLI + identity (starship, programs.git, comma, sops/age/claude-code, just/ripgrep/tmux).
+`home/core.nix` is the shared user-scope baseline imported by every machine's `home.nix` via `imports = [ ../../home/core.nix ]`. Cross-platform CLI + identity (starship, programs.git, comma, sops/age/claude-code, just/ripgrep/tmux).
 
 ## Concerns compose host identity
 
