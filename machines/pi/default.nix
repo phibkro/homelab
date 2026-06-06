@@ -60,6 +60,11 @@
     # = unified pane).
     ../../modules/services/victoriametrics.nix
 
+    # Dead-man-switch: pings healthchecks.io every 60s so the operator
+    # gets notified off-host if pi dies. Mitigates pi's role as SPOF
+    # for the alert plane (ntfy server lives here too).
+    ../../modules/services/heartbeat.nix
+
     ./hardware.nix
     inputs.home-manager.nixosModules.home-manager
   ];
