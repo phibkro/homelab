@@ -87,38 +87,15 @@
   systemd.services.immich-server.environment.IMMICH_MACHINE_LEARNING_URL =
     lib.mkForce "http://${config.nori.hosts.aurora.tailnetIp}:3003";
 
-  services.immich.machine-learning.environment = {
-    # CUDA execution provider .so is dlopen'd at runtime from
-    # onnxruntime's capi/ dir under the python site-packages tree; the
-    # second path covers the C++ shared library (libonnxruntime.so).
-    # Without LD_LIBRARY_PATH the worker logs "Failed to find onnxruntime
-    # CUDAExecutionProvider" and silently falls back to CPU.
-    LD_LIBRARY_PATH =
-      "${pkgs.python3Packages.onnxruntime}/lib:"
-      + "${pkgs.python3Packages.onnxruntime}/${pkgs.python3.sitePackages}/onnxruntime/capi";
-
-    # Cap the per-worker HTTP-handling threadpool. Default is
-    # `os.cpu_count()` (12 on the 5600X) which oversubscribes when
-    # the upstream module's CPUQuota of 600% caps the cgroup at 6
-    # effective cores. 4 leaves headroom for preprocessing on the
-    # immich-server side without thread-thrashing.
-    MACHINE_LEARNING_REQUEST_THREADS = "4";
-
-    # Worker count NOT bumped. Each gunicorn worker is a separate
-    # Python process holding its own CUDA context — workers cannot
-    # share GPU memory. With Immich preloading CLIP + face detection
-    # + face recognition + OCR, a single worker's steady-state
-    # GPU draw is ~14 GB on a 16 GB 5060 Ti (observed 2026-04-30).
-    # Two workers = ~28 GB, would OOM the card. Default
-    # `MACHINE_LEARNING_WORKERS = 1` stays. The 10-15% SM utilization
-    # under sustained jobs is data-pipeline-bound (CPU preprocess +
-    # Postgres writes), not GPU-bound; bumping workers wouldn't help
-    # even with the memory.
-    #
-    # MODEL_TTL also left at the upstream default (300s). Pinning
-    # 14 GB of VRAM indefinitely (with TTL = 0) would block any
-    # other GPU consumer — jellyfin NVENC, ollama, etc.
-  };
+  # Workstation-side ML tunings DROPPED — ML now lives on aurora
+  # (see machines/aurora/default.nix). The historical knobs were
+  # workstation-specific (5060 Ti's 16 GB VRAM = 1 worker; 5600X's
+  # 12 threads = 4 request threads; LD_LIBRARY_PATH for the local
+  # onnxruntime CUDA build). Aurora has different hardware (Maxwell
+  # GTX 950M, 2 GB VRAM, Skylake-H 4c/8t) and its own tuning lives
+  # there. Keeping these here as a dead override produces a unit
+  # file with no ExecStart on workstation — systemd refuses to load
+  # it, the rebuild fails.
 
   # Cross-service photo access: Immich joins `media` so it can read
   # the existing user-organized photo tree if you point External
@@ -132,30 +109,19 @@
     "d ${config.nori.fs.photos.path}/_immich-managed 0750 immich immich -"
   ];
 
-  # Default-deny FS hardening for the server + ML worker. Both need
-  # @photos for the managed subdir; ML also reads /var/lib for model
-  # weights (covered by the NixOS module's StateDirectory).
+  # Default-deny FS hardening for the server only. ML's hardening
+  # lives on aurora now (when added there); workstation doesn't run
+  # the ML unit, so the harden.immich-machine-learning entry that
+  # was here is dropped — leaving it produced a malformed unit when
+  # services.immich.machine-learning.enable = false (no ExecStart +
+  # our overrides = systemd refuses to load).
   nori.harden.immich-server.binds = [ config.nori.fs.photos.path ];
-  nori.harden.immich-machine-learning.binds = [ config.nori.fs.photos.path ];
 
-  # Resource caps on the ML worker. April 2026 incident: ML pipeline
-  # starved the host for 4+ minutes (rtkit canary thread reported
-  # starvation repeatedly; immich-machine-learning went unhealthy;
-  # desktop hung; forced power-cycle). The kernel logged no thermal
-  # trip — this was userspace CPU starvation, not heat. Cap so a
-  # runaway ML workload can't take the rest of the system down with it.
-  #
-  # CPUQuota=600% on a 12-thread CPU = 6 cores' worth, leaving 6
-  # for everything else (Caddy, Authelia, *arr, sshd, Hyprland).
-  # MemoryMax=16G is half of system RAM; OOM-kill the cgroup
-  # before the host enters thrash territory. MemoryHigh=12G is
-  # the soft pressure point where reclaim begins.
-  systemd.services.immich-machine-learning.serviceConfig = {
-    CPUQuota = "600%";
-    MemoryHigh = "12G";
-    MemoryMax = "16G";
-    TasksMax = 4096;
-  };
+  # Resource caps on ML — historical workstation tuning (CPUQuota
+  # 600%, MemoryMax 16G) was sized for the 5600X + 5060 Ti shape.
+  # Aurora has different hardware; if it needs caps, set them there.
+  # Keeping these here while machine-learning.enable=false produced
+  # a unit with no ExecStart and broke activation.
 
   # Web-UI-managed OIDC (like Jellyseerr/Beszel). Immich stores its
   # OAuth config in postgres (system_config table); env-var override
