@@ -62,6 +62,11 @@
 
     ../../modules/common # base + users + sops + tailscale + lib options
 
+    # Per-process RSS + system metrics → pi VictoriaMetrics. Imported
+    # file-by-file (not the whole services/ bundle) since pavilion has
+    # no LAN services. Catches agent-process leaks before they OOM.
+    ../../modules/services/node-exporter.nix
+
     # Notably absent:
     #   modules/services/default.nix    — no LAN services
     #   modules/desktop/default.nix   — headless

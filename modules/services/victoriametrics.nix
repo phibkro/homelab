@@ -58,32 +58,28 @@
             }
           ];
         }
-        # System metrics from workstation's node-exporter (CPU, mem,
-        # swap, fs, net). Configured in modules/services/node-exporter.nix.
+        # System + per-process metrics from each host's node-exporter
+        # and process-exporter (modules/services/node-exporter.nix).
+        # Single static_configs block per kind, one label per target,
+        # so the {host=...} dimension carries the dispatch.
         {
-          job_name = "node-workstation";
+          job_name = "node";
           metrics_path = "/metrics";
           scheme = "http";
           static_configs = [
-            {
-              targets = [ "${config.nori.hosts.workstation.tailnetIp}:9100" ];
-              labels.host = "workstation";
-            }
+            { targets = [ "${config.nori.hosts.workstation.tailnetIp}:9100" ]; labels.host = "workstation"; }
+            { targets = [ "${config.nori.hosts.pavilion.tailnetIp}:9100"    ]; labels.host = "pavilion";    }
+            { targets = [ "${config.nori.hosts.aurora.tailnetIp}:9100"      ]; labels.host = "aurora";      }
           ];
         }
-        # Per-process RSS / CPU / FD from workstation's process-exporter.
-        # The leak hunter — `namedprocess_namegroup_memory_resident_bytes
-        # {groupname=...}` grouped by command. Configured in
-        # modules/services/node-exporter.nix.
         {
-          job_name = "process-workstation";
+          job_name = "process";
           metrics_path = "/metrics";
           scheme = "http";
           static_configs = [
-            {
-              targets = [ "${config.nori.hosts.workstation.tailnetIp}:9256" ];
-              labels.host = "workstation";
-            }
+            { targets = [ "${config.nori.hosts.workstation.tailnetIp}:9256" ]; labels.host = "workstation"; }
+            { targets = [ "${config.nori.hosts.pavilion.tailnetIp}:9256"    ]; labels.host = "pavilion";    }
+            { targets = [ "${config.nori.hosts.aurora.tailnetIp}:9256"      ]; labels.host = "aurora";      }
           ];
         }
       ];

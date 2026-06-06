@@ -53,6 +53,11 @@
 
     ../../modules/common
 
+    # Per-process RSS + system metrics → pi VictoriaMetrics. Imported
+    # file-by-file (not the whole services/ bundle) since aurora runs
+    # only immich-machine-learning. PyTorch RSS is the known leak shape.
+    ../../modules/services/node-exporter.nix
+
     # Notably absent:
     #   modules/services/default.nix — no LAN service stack
     #   modules/desktop/default.nix — headless
