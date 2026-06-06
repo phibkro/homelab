@@ -94,16 +94,11 @@ in
   #   sudo systemctl start rust-motd.service
   # Or — convenient alias below — just type `motd`.
 
-  # Two commands, separate so tab-completion finds them independently:
-  #   motd          — dump cached render (no privilege needed)
-  #   motd-refresh  — trigger rust-motd.service then dump fresh (sudo)
-  #
-  # Script wrappers (not shellAliases) so they work in every shell.
+  # `motd` always re-renders before dumping — there's no value in a
+  # stale view, and the render is sub-second. Wrapper (not shellAlias)
+  # so it works in every shell.
   environment.systemPackages = [
     (pkgs.writeShellScriptBin "motd" ''
-      cat /var/lib/rust-motd/motd
-    '')
-    (pkgs.writeShellScriptBin "motd-refresh" ''
       sudo systemctl start rust-motd.service && cat /var/lib/rust-motd/motd
     '')
   ];
