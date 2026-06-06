@@ -78,6 +78,18 @@
   # ── Networking ─────────────────────────────────────────────────────
   networking.useDHCP = lib.mkDefault true;
 
+  # Wifi via iwd. Aurora's a laptop with no impermanence, so iwd
+  # state in /var/lib/iwd persists naturally on the @root subvol —
+  # no /persist binds needed (unlike pavilion). Captured Akkar PSK
+  # gets dropped at install time; subsequent SSID changes can use
+  # `iwctl station wlp2s0 connect <SSID>` interactively.
+  #
+  # Captured in [[nixos-anywhere-first-install-gotchas]] — this is
+  # gap #1 from the pavilion lesson. Re-learned on aurora because I
+  # forgot to apply the lesson to the sketch.
+  networking.wireless.iwd.enable = true;
+  networking.wireless.enable = false;
+
   services.tailscale.useRoutingFeatures = lib.mkForce "none";
 
   # Tailnet firewall — operator SSH inbound only by default. immich-ml
