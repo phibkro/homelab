@@ -29,40 +29,16 @@ in
     # last render) when you want it now.
     refreshInterval = "1d";
     settings = {
-      banner = {
-        # toilet brings its own ANSI colour codes via filters — let
-        # those flow through rather than wrapping in rust-motd's
-        # single-colour setting.
-        color = "white";
-        # Multi-stage banner:
-        #   1. cat the hand-drafted ASCII art for this codename
-        #   2. render the codename text with toilet, picking a font +
-        #      filter at random on each invocation — every motd-refresh
-        #      is a fresh roll
-        #   3. echo the (hostname) — role subtitle
-        # Fonts curated to narrower ones so 80-col laptop consoles
-        # don't truncate; filters include border / metal / gay / crop
-        # plus a few combos for variety.
-        command = ''
-          cat ${./banners}/${codename}.txt
-          fonts=(mono9 smblock smmono9 future term smbraille)
-          filters=(border metal gay "metal:border" "border:gay" crop)
-          f=''${fonts[$RANDOM % ''${#fonts[@]}]}
-          F=''${filters[$RANDOM % ''${#filters[@]}]}
-          ${pkgs.toilet}/bin/toilet -f "$f" -F "$F" '${codename}'
-          echo '(${config.networking.hostName}) — ${self.role or "?"}'
-        '';
-      };
-
       uptime = {
         prefix = "Uptime";
       };
 
       # CPU load — 1/5/15-minute averages. rust-motd's only CPU-side
       # component (no direct % utilisation widget; `load_avg` is what
-      # ships, mirrors what `uptime` shows).
+      # ships, mirrors what `uptime` shows). `:.2` precision is Rust's
+      # format syntax — caps the long floats at two decimal places.
       load_avg = {
-        format = "Load avg  {one}  {five}  {fifteen}";
+        format = "Load    1m  {one:.2}   ·   5m  {five:.2}   ·   15m  {fifteen:.2}";
       };
 
       memory = {
@@ -74,9 +50,9 @@ in
       };
 
       last_login = {
-        # Show last 2 logins per user; surfaces unexpected access at
-        # a glance. Keeping the count small so the MOTD stays brief.
-        root = 2;
+        # Operator-level access only — root logins are noise (root is
+        # ssh-key for nixos-anywhere deploys, hits twice on every
+        # rebuild, no auth-anomaly value).
         nori = 2;
       };
 

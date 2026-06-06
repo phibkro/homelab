@@ -1,6 +1,0 @@
-TODO: draft adelie ASCII art here.
-
-This file is dumped as-is at the top of the MOTD on the host whose
-codename is "adelie". Keep it under ~12 lines tall so it doesn't
-push the live stats off-screen. No newline-prefix needed; rust-motd
-adds spacing.
