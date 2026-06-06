@@ -67,6 +67,16 @@
       size = 24;
     };
 
+    # Icon theme. Default GTK icons are low-res (24px raster).
+    # Papirus is the standard pick — scalable SVG, vast mime coverage,
+    # Material-aligned. Light/dark variants get picked from polarity.
+    iconTheme = {
+      enable = true;
+      package = pkgs.papirus-icon-theme;
+      dark = "Papirus-Dark";
+      light = "Papirus-Light";
+    };
+
     # Fonts — Material-aligned sans (Roboto) + JetBrainsMono Nerd for
     # mono. Noto covers fallback for missing glyphs; configured at
     # system level via modules/desktop/fonts.nix. Stylix wires these

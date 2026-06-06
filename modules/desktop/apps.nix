@@ -97,6 +97,14 @@
     # client is the better fit for voice quality + push-to-talk.
     pkgs.discord
     pkgs.obsidian
+
+    # Archive handling. thunar-archive-plugin (registered below under
+    # programs.thunar.plugins) is just the menu integration — it shells
+    # out to xarchiver, which in turn shells out to unzip / 7z / etc.
+    # Without these on PATH, right-click → Extract silently no-ops.
+    pkgs.xarchiver
+    pkgs.unzip
+    pkgs.p7zip
   ];
 
   # Thunar — lightweight GUI file manager. Enabling via programs.thunar
@@ -106,8 +114,15 @@
   programs.thunar = {
     enable = true;
     plugins = with pkgs; [
-      thunar-archive-plugin # right-click extract / compress
+      thunar-archive-plugin # right-click extract / compress (menu only)
       thunar-volman # auto-mount USB / removable media
     ];
   };
+
+  # Thumbnail daemon — Thunar (and other XDG file managers) talk to it
+  # over D-Bus to render image/PDF/video thumbnails in place instead of
+  # generic mime icons. Without this, folder views look "low-res" even
+  # with a proper icon theme — Stylix paints chrome but the file tiles
+  # stay as scaled-up mime symbols.
+  services.tumbler.enable = true;
 }
