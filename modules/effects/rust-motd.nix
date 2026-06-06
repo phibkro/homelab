@@ -64,15 +64,13 @@ in
       };
 
       service_status = {
-        # Per-host status — most are universal, immich-machine-
-        # learning will be "not found" on hosts that don't run it
-        # (rust-motd shows it as "?" rather than failing).
+        # Universal core — present on every NixOS host in the lab.
+        # Hosts add their own entries (laptop wifi via iwd, immich-ml
+        # on aurora, caddy/jellyfin on workstation, blocky/gatus on
+        # pi, etc) by extending programs.rust-motd.settings.service_status
+        # in their own default.nix.
         sshd = "sshd";
         tailscaled = "tailscaled";
-        iwd = "iwd";
-        # Only present on aurora; harmless on pavilion (shown as
-        # not-running).
-        immich-ml = "immich-machine-learning";
       };
     };
   };

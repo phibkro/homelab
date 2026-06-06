@@ -57,9 +57,6 @@
     #   modules/server/default.nix — no LAN service stack
     #   modules/desktop/default.nix — headless
 
-    # Laptop niceties — live MOTD on login.
-    ../../modules/effects/rust-motd.nix
-
     ./hardware.nix
   ];
 
@@ -77,6 +74,14 @@
   # the BIOS-mode shape).
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+
+  # MOTD additions on top of the universal core (modules/effects/
+  # rust-motd.nix) — iwd is laptop-specific, immich-ml is aurora's
+  # reason for existing.
+  programs.rust-motd.settings.service_status = {
+    iwd = "iwd";
+    immich-ml = "immich-machine-learning";
+  };
 
   # ── Stay awake when folded ────────────────────────────────────────
   # Same defense-in-depth as pavilion (see comment there):

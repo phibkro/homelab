@@ -25,5 +25,6 @@ _: {
     ../effects/harden.nix
     ../effects/gatus-probe.nix
     ../effects/restart-policy.nix
+    ../effects/rust-motd.nix # codename banner + live MOTD on login
   ];
 }

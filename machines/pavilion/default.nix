@@ -66,9 +66,6 @@
     #   modules/server/default.nix    — no LAN services
     #   modules/desktop/default.nix   — headless
 
-    # Laptop niceties — live MOTD on login.
-    ../../modules/effects/rust-motd.nix
-
     ./hardware.nix
   ];
 
@@ -134,6 +131,10 @@
       umount /btrfs_tmp
     '';
   };
+
+  # MOTD additions on top of the universal core (modules/effects/
+  # rust-motd.nix) — iwd is laptop-specific.
+  programs.rust-motd.settings.service_status.iwd = "iwd";
 
   # ── Stay awake when folded ────────────────────────────────────────
   # Pavilion is a laptop running as a 24/7 server. Multiple layers of
