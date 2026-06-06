@@ -13,7 +13,11 @@ let
   #   * the https://chat.nori.lan Caddy route + Authelia OIDC client
   #   * Gatus monitor + Glance dashboard entry
   #   * the daily sqlite3-dump-then-restic backup
-  enabled = true;
+  # Paused 2026-06-06 — open-webui's Python process held a steady
+  # multi-GB RSS contributing to the workstation memory-pressure
+  # freeze. Re-flip to `true` when chat is wanted; sqlite + restic
+  # state at /var/lib/private/open-webui survives the toggle.
+  enabled = false;
 in
 {
   # Open WebUI: chat front-end, primarily for local Ollama. Optional
@@ -80,7 +84,11 @@ in
   # or /srv access. If a future need arises (e.g. importing media into
   # Open WebUI's RAG knowledge base), add the path under
   # nori.harden.open-webui.binds.
-  nori.harden.open-webui = { };
+  #
+  # mkIf-gated: when `enabled = false`, services.open-webui itself is
+  # off (no ExecStart) but nori.harden + other systemd.services.open-webui
+  # additions would still fire, producing a stub unit with `bad-setting`.
+  nori.harden = lib.mkIf enabled { open-webui = { }; };
 
   # DynamicUser needs supplementary group `keys` to read the sops-
   # rendered env file (mode 0440 root:keys). Wrapped in mkIf because

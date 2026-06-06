@@ -58,6 +58,34 @@
             }
           ];
         }
+        # System metrics from workstation's node-exporter (CPU, mem,
+        # swap, fs, net). Configured in modules/services/node-exporter.nix.
+        {
+          job_name = "node-workstation";
+          metrics_path = "/metrics";
+          scheme = "http";
+          static_configs = [
+            {
+              targets = [ "${config.nori.hosts.workstation.tailnetIp}:9100" ];
+              labels.host = "workstation";
+            }
+          ];
+        }
+        # Per-process RSS / CPU / FD from workstation's process-exporter.
+        # The leak hunter — `namedprocess_namegroup_memory_resident_bytes
+        # {groupname=...}` grouped by command. Configured in
+        # modules/services/node-exporter.nix.
+        {
+          job_name = "process-workstation";
+          metrics_path = "/metrics";
+          scheme = "http";
+          static_configs = [
+            {
+              targets = [ "${config.nori.hosts.workstation.tailnetIp}:9256" ];
+              labels.host = "workstation";
+            }
+          ];
+        }
       ];
     };
     extraOptions = [
