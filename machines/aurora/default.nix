@@ -75,6 +75,17 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
+  # ── Lid-close behaviour ───────────────────────────────────────────
+  # Aurora is a laptop running as the immich-ml compute peer — folding
+  # the lid for storage shouldn't suspend the system. Setting all three
+  # lidSwitch knobs to "ignore" keeps compute running; display still
+  # blanks via kernel ACPI when the lid actually closes.
+  services.logind = {
+    lidSwitch = "ignore";
+    lidSwitchExternalPower = "ignore";
+    lidSwitchDocked = "ignore";
+  };
+
   # ── Networking ─────────────────────────────────────────────────────
   networking.useDHCP = lib.mkDefault true;
 

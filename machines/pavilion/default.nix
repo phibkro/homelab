@@ -131,6 +131,17 @@
     '';
   };
 
+  # ── Lid-close behaviour ───────────────────────────────────────────
+  # Pavilion is a laptop running as a 24/7 server — folding the lid
+  # for storage shouldn't suspend the system. Setting all three
+  # lidSwitch knobs to "ignore" keeps compute running; the display
+  # still blanks via kernel ACPI when the lid actually closes.
+  services.logind = {
+    lidSwitch = "ignore";
+    lidSwitchExternalPower = "ignore";
+    lidSwitchDocked = "ignore";
+  };
+
   # ── Networking ─────────────────────────────────────────────────────
   # networking.hostName injected from the registry key in flake.nix.
   networking.useDHCP = lib.mkDefault true;
