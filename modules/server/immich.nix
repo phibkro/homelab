@@ -1,5 +1,6 @@
 {
   config,
+  lib,
   pkgs,
   ...
 }:
@@ -68,14 +69,23 @@
 
     database.enable = true; # dedicated postgres + VectorChord ext
     redis.enable = true;
-    machine-learning.enable = true; # face/object detection on RTX 5060 Ti
+    # ML offloaded to aurora (machines/aurora/default.nix) — the 5060
+    # Ti stays dedicated to ollama, no contention on heavy photo
+    # ingest. immich-server reaches the remote ML via env override
+    # below. Maxwell 950M on aurora is plenty for CLIP + face
+    # detection workloads.
+    machine-learning.enable = false;
 
-    # Grant immich-server (NVENC transcoding) and immich-machine-learning
-    # (CUDA inference) access to the GPU. The NixOS module sets
-    # PrivateDevices=true by default when this list is empty; setting it
-    # to the canonical device list unlocks DeviceAllow for both units.
+    # accelerationDevices still relevant for immich-server's NVENC
+    # transcoding path (HW video conversion). Keep set.
     accelerationDevices = config.nori.gpu.nvidiaDevices;
   };
+
+  # Point immich-server at aurora's ML over tailnet. mkForce because
+  # the upstream module sets this env at the same priority pointing
+  # at the local ML port; we override to the remote aurora endpoint.
+  systemd.services.immich-server.environment.IMMICH_MACHINE_LEARNING_URL =
+    lib.mkForce "http://${config.nori.hosts.aurora.tailnetIp}:3003";
 
   services.immich.machine-learning.environment = {
     # CUDA execution provider .so is dlopen'd at runtime from

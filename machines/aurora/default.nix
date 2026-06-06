@@ -119,18 +119,36 @@
   nixpkgs.config.cudaSupport = true;
 
   # ── immich machine-learning (the actual reason this host exists) ──
-  # Placeholder — the upstream services.immich.machine-learning option
-  # may require the umbrella services.immich.enable. Verify on first
-  # deploy; if the sub-option doesn't work standalone, fall back to a
-  # hand-rolled systemd unit running the immich-machine-learning
-  # container with --gpus all. Either way it should listen on
-  # 0.0.0.0:3003 so workstation reaches it via tailnet.
+  # The upstream services.immich module gates everything on
+  # services.immich.enable. To run *only* ML on aurora we enable the
+  # umbrella but turn off the local DB + redis (immich-server can't
+  # work without them; we don't need server-side here anyway) and
+  # force-disable the server + microservices units which would
+  # otherwise crash-loop trying to connect to a missing postgres.
   #
-  # services.immich.machine-learning = {
-  #   enable = true;
-  #   host = "0.0.0.0";
-  #   port = 3003;
-  # };
+  # IMMICH_HOST = "0.0.0.0" rebinds the ML listener from localhost so
+  # workstation's immich-server can reach it over tailnet at
+  # http://aurora.saola-matrix.ts.net:3003 (firewall rule above
+  # already opens this port).
+  services.immich = {
+    enable = true;
+    database.enable = false; # workstation hosts the canonical DB
+    redis.enable = false; # ditto
+    machine-learning = {
+      enable = true;
+      environment = {
+        # Override upstream's localhost default; need mkForce because
+        # the upstream module sets the same key at the same priority.
+        IMMICH_HOST = lib.mkForce "0.0.0.0";
+      };
+    };
+    accelerationDevices = config.nori.gpu.nvidiaDevices;
+  };
+
+  # Aurora is ML-only — kill the server + microservices units so they
+  # don't restart-loop trying to reach a postgres that isn't there.
+  systemd.services.immich-server.enable = lib.mkForce false;
+  systemd.services.immich-microservices.enable = lib.mkForce false;
 
   # ── SSH ───────────────────────────────────────────────────────────
   services.openssh = {
