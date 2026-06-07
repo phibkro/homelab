@@ -21,6 +21,7 @@ NixOS flake managing three machines:
 | 9 | `docs/MODULES.md` | Module shape, service template, sops, packages-by-scope, dev workflow |
 | 10 | `docs/ENFORCEMENT.md` | The enforcement ladder + how to add a rule |
 | 11 | `docs/RECOVERY.md` | RTO targets, runbook index, permanent constraints |
+| 11.5 | `docs/TESTING.md` | Runtime introspection test framework — when/where tests pay off, mapped to `nori.<X>` effects |
 | 12 | `docs/RATIONALES.md` | Hard-to-revisit design decisions (legacy list; newer go to `docs/decisions/`) |
 | 13 | `docs/decisions/0001-agentic-homelab-practices.md` | The meta-ADR that sets the *why* behind everything |
 | 14 | `.claude/skills/gotcha-*/` | Landmines as auto-loaded skills (35+). Each fires when its USE-WHEN trigger matches |

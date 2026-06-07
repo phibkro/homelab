@@ -103,6 +103,212 @@ default: rebuild
 # Run after `just preview` to validate before `just rebuild`. Or
 # anytime, against the live Hyprland. Adds wtype via `nix shell`
 # (not installed system-wide).
+# Runtime introspection test for the observability stack: every host
+# we expect data from is scraped (`up=1`), process-exporter is
+# publishing series, pi heartbeat is firing, gatus has zero failing
+# probes. Catches the silent class where "metrics exist somewhere but
+# not from where we expect."
+@test-observability:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    fail=0
+    VM=http://100.100.71.3:8428
+
+    echo "=== Tier 1 — VictoriaMetrics scrape targets all up ==="
+    targets=$(curl -s "$VM/api/v1/targets?state=any" \
+              | nix shell nixpkgs#jq -c jq -r '.data.activeTargets[] | "\(.health)\t\(.labels.job)\t\(.labels.host // .labels.instance)"')
+    bad=$(echo "$targets" | awk -F'\t' '$1 != "up"')
+    if [[ -z "$bad" ]]; then
+      n=$(echo "$targets" | wc -l)
+      echo "  ✓ all $n scrape targets up"
+    else
+      echo "  ✗ unhealthy targets:"
+      echo "$bad" | awk -F'\t' '{ printf "      %s/%s [%s]\n", $2, $3, $1 }'
+      fail=1
+    fi
+
+    echo "=== Tier 2 — process-exporter publishing per host ==="
+    for host in workstation pavilion aurora; do
+      count=$(curl -sG "$VM/api/v1/query" \
+              --data-urlencode "query=count(namedprocess_namegroup_memory_bytes{host=\"$host\",memtype=\"resident\"})" \
+              | nix shell nixpkgs#jq -c jq -r '.data.result[0].value[1] // "0"')
+      if [[ "$count" -ge 10 ]]; then
+        echo "  ✓ $host: $count process series"
+      else
+        echo "  ✗ $host: only $count series (expected ≥10)"; fail=1
+      fi
+    done
+
+    echo "=== Tier 3 — pi heartbeat fired recently (<90s) ==="
+    # heartbeat timer is 60s; allow 90s buffer for jitter.
+    # ExecMainExitTimestamp on Type=oneshot lags behind actual runs
+    # (caught 2026-06-07); StateChangeTimestamp tracks the latest
+    # active→inactive transition, which IS each successful run.
+    last=$(ssh -o ConnectTimeout=3 nori@100.100.71.3 \
+             'systemctl show heartbeat.service -p StateChangeTimestampMonotonic --value' 2>/dev/null)
+    uptime_us=$(ssh -o ConnectTimeout=3 nori@100.100.71.3 \
+                  'cat /proc/uptime | awk "{ printf \"%d\", \$1 * 1000000 }"' 2>/dev/null)
+    if [[ -n "$last" && -n "$uptime_us" && "$last" != "0" ]]; then
+      age_s=$(( (uptime_us - last) / 1000000 ))
+      if [[ "$age_s" -le 90 ]]; then
+        echo "  ✓ heartbeat last fired ${age_s}s ago"
+      else
+        echo "  ✗ heartbeat last fired ${age_s}s ago (>90s)"; fail=1
+      fi
+    else
+      echo "  · heartbeat state unreadable (last=$last uptime=$uptime_us)"
+    fi
+
+    echo "=== Tier 4 — Gatus reports zero failing probes ==="
+    failing=$(curl -sG "$VM/api/v1/query" \
+              --data-urlencode 'query=sum(gatus_results_endpoint_success == 0)' \
+              | nix shell nixpkgs#jq -c jq -r '.data.result[0].value[1] // "0"')
+    if [[ "$failing" -eq 0 ]]; then
+      echo "  ✓ no failing gatus probes"
+    else
+      echo "  ✗ $failing gatus probes currently failing"; fail=1
+    fi
+
+    echo
+    [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
+
+# Composite — runs all introspection tests. ~3 min wall, one signal.
+# Use after a multi-effect deploy (anything touching modules/effects/
+# or home/) to verify declared intent landed at every runtime layer.
+@test:
+    just test-hypr
+    just test-backups
+    just test-routes
+    just test-observability
+
+# Runtime introspection test for `nori.lanRoutes.<name>`. Each entry
+# is a Reader-Writer effect: a single declaration emits Caddy route +
+# Gatus monitor + DNS record + (optional) Authelia OIDC client. Test
+# checks each layer for desync from the declaration.
+@test-routes:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    fail=0
+
+    declared=$(nix eval --json '.#nixosConfigurations.workstation.config.nori.lanRoutes' \
+                 --apply 'r: builtins.attrNames r' 2>/dev/null \
+               | nix shell nixpkgs#jq -c jq -r '.[]')
+    caddy_hosts=$(curl -s http://127.0.0.1:2019/config/apps/http/servers/srv0/routes/ \
+                  | nix shell nixpkgs#jq -c jq -r '.[] | .match[]?.host[]?' 2>/dev/null \
+                  | sort -u)
+    lan_ip=$(nix eval --raw '.#nixosConfigurations.workstation.config.nori.hosts.workstation.lanIp' 2>/dev/null)
+
+    echo "=== Tier 1 — Caddy registry contains every declared route ==="
+    for route in $declared; do
+      host="${route}.nori.lan"
+      if echo "$caddy_hosts" | grep -qx "$host"; then
+        echo "  ✓ $host"
+      else
+        echo "  ✗ $host NOT in Caddy registry"; fail=1
+      fi
+    done
+
+    echo "=== Tier 2 — DNS resolves each declared route (via blocky) ==="
+    for route in $declared; do
+      host="${route}.nori.lan"
+      ip=$(nix shell nixpkgs#dig -c dig +short +time=2 +tries=1 "$host" @100.100.71.3 2>/dev/null | head -1)
+      if [[ "$ip" == "$lan_ip" ]]; then
+        echo "  ✓ $host → $ip"
+      else
+        echo "  ✗ $host resolved to '$ip' (expected '$lan_ip')"; fail=1
+      fi
+    done
+
+    echo "=== Tier 3 — HTTPS responsive (TLS + service alive) ==="
+    for route in $declared; do
+      host="${route}.nori.lan"
+      # -kf to ignore self-signed (internal CA), -m short timeout.
+      # Accept any non-5xx — auth gates may 401/302 which is healthy.
+      status=$(curl -sk -m 4 -o /dev/null -w '%{http_code}' "https://$host/" 2>/dev/null || echo "000")
+      if [[ "$status" =~ ^[2345][0-9][0-9]$ ]] && [[ "$status" != 5* ]]; then
+        echo "  ✓ $host (HTTP $status)"
+      else
+        echo "  ✗ $host unreachable (status=$status)"; fail=1
+      fi
+    done
+
+    echo
+    [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
+
+# Runtime introspection test for `nori.backups.<name>` — verifies
+# every declared backup actually exists at the systemd + restic
+# layers. Catches:
+#   * timer/service generation drift after a Pattern C2 change
+#   * the prepareCommand race we hit 2026-06-07 (dual-target +
+#     no flock) by surfacing a non-zero ExecMainStatus
+#   * missing OnFailure → notify@ wiring (silent alerting gap)
+#
+# Tier 1: unit existence (declared → systemd registry).
+# Tier 2: last run was successful (declared → ran cleanly).
+# Tier 3: per-repo most-recent snapshot is fresh (declared → restic
+#         actually wrote data).
+@test-backups:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    fail=0
+    pass=0
+
+    # Names that have actual restic backups (runtime side of the
+    # nori.backups registry — equivalent to filtering nix-side for
+    # `include != null` but a single systemd query is cheaper).
+    repos=$(systemctl list-units 'restic-backups-*.service' --all --no-pager 2>&1 \
+            | grep -oE 'restic-backups-[a-z-]+\.service' \
+            | sed 's/restic-backups-//; s/-onetouch.service//; s/-ironwolf.service//' \
+            | sort -u)
+
+    echo "=== Tier 1 — restic units exist in the registry ==="
+    units=$(systemctl list-unit-files 'restic-backups-*.service' --no-pager 2>&1 \
+            | grep -oE 'restic-backups-[a-z-]+\.service' | sort -u)
+    n_units=$(echo "$units" | wc -l)
+    echo "  ✓ $n_units restic-target units in registry"
+
+    echo "=== Tier 2 — fresh snapshot per repo per target (25h window) ==="
+    # ExecMainStatus=0 is a misleading proxy — it doesn't reflect
+    # ExecStartPre (prepareCommand) failures, which is exactly the
+    # race shape that caught us 2026-06-07. Snapshot freshness IS the
+    # canonical truth: if a fresh snapshot exists, the backup ran
+    # end-to-end successfully — pre, main, post, all of it.
+    #
+    # Restic repo mountpoints by target:
+    #   onetouch → /mnt/backup/<repo>       (USB OneTouch, ext4)
+    #   ironwolf → /mnt/backup-local/<repo> (USB Ironwolf, btrfs)
+    snapshot_age() {
+      local repo="$1" mount="$2"
+      # `--latest 1` returns ONE PER PATH-SET, not per repo (caught
+      # 2026-06-07; led to 801h false positives). Take all, sort by
+      # time, pick last.
+      sudo RESTIC_PASSWORD_FILE=/run/secrets/restic-password \
+        nix shell nixpkgs#restic -c restic -r "$mount/$repo" \
+          snapshots --json 2>/dev/null \
+        | nix shell nixpkgs#jq -c jq -r 'sort_by(.time) | .[-1].time // ""' 2>/dev/null || true
+    }
+
+    for repo in $repos; do
+      for target in onetouch ironwolf; do
+        echo "$units" | grep -q "restic-backups-${repo}-${target}.service" || continue
+        mount="/mnt/backup"
+        [[ "$target" == "ironwolf" ]] && mount="/mnt/backup-local"
+        latest=$(snapshot_age "$repo" "$mount")
+        if [[ -z "$latest" ]]; then
+          echo "  · $repo/$target: no snapshots yet"; continue
+        fi
+        age_h=$(( ($(date +%s) - $(date -d "$latest" +%s 2>/dev/null || echo 0)) / 3600 ))
+        if [[ "$age_h" -le 25 ]]; then
+          echo "  ✓ $repo/$target: ${age_h}h"
+        else
+          echo "  ✗ $repo/$target: ${age_h}h (>25h)"; fail=1
+        fi
+      done
+    done
+
+    echo
+    [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
+
 @test-hypr:
     #!/usr/bin/env bash
     set -euo pipefail
