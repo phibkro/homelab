@@ -77,6 +77,59 @@ default: rebuild
 @build *args:
     nh os build . -H $(hostname) {{args}}
 
+# Activate this rebuild for the current session only — no boot entry.
+# Reboot reverts to the last `just rebuild`/`switch` generation. Ideal
+# for iterating on visual / UX changes (icon themes, Hyprland binds,
+# fonts) without polluting the boot menu with throwaway generations.
+# Once happy: `just rebuild` to persist as the new default.
+@preview *args:
+    nh os test . -H $(hostname) {{args}}
+
+# Set a NixOS option to a value via AST edit, no regex. Wraps
+# snowfallorg/nix-editor (-i: in-place, -f: format after). Preserves
+# comments + style. Doesn't activate — pair with `just preview` to
+# test, `just rebuild` to commit, or `git checkout` to revert.
+#
+# The repo is module-graph not single-file, so the operator picks
+# the file (nix-editor is honest about its scope: it won't infer
+# where in the import tree a brand-new attribute belongs).
+#
+# Usage:
+#   just set modules/desktop/stylix.nix stylix.image '"${pkgs.nixos-artwork.wallpapers.dracula}/share/.../image.png"'
+#   just set modules/services/blocky.nix services.blocky.enable false
+#
+# Quoting matters: shell-quote the whole value-expression so that
+# Nix-level quotes (for strings) survive. For complex expressions or
+# attribute set values, edit by hand — nix-editor's sweet spot is
+# scalar assignments.
+@set file attr value:
+    # nix-editor's -f flag uses nixpkgs-fmt; project uses nixfmt (see
+    # flake.nix `formatter.${system} = pkgs.nixfmt;`). Skip -f and run
+    # project's nixfmt after to keep style consistent.
+    nix run github:snowfallorg/nix-editor -- -i -v '{{value}}' '{{file}}' '{{attr}}'
+    nix fmt -- '{{file}}'
+    @echo "--- diff ---"
+    @git --no-pager diff -- '{{file}}' | head -30
+    @echo "--- next: just preview (try) → just rebuild (commit) — or git checkout '{{file}}' to revert ---"
+
+# Inspect a NixOS option from THIS flake's evaluated config — type,
+# default, current value, description. The in-terminal version of
+# search.nixos.org/options scoped to your actual config, not generic
+# nixpkgs. Usage:
+#   just option services.tailscale.enable
+#   just option stylix.iconTheme.package
+# Pass the dotted attribute path; trailing `.*` for everything under
+# a prefix.
+@option path:
+    @echo "=== type ===" && \
+    nix eval --raw .#nixosConfigurations.$(hostname).options.{{path}}.type.description 2>/dev/null || echo "(unknown — wrong path?)"; \
+    echo "=== default ===" && \
+    nix eval .#nixosConfigurations.$(hostname).options.{{path}}.default 2>/dev/null || echo "(no default)"; \
+    echo "=== current ===" && \
+    nix eval .#nixosConfigurations.$(hostname).config.{{path}} 2>/dev/null || echo "(unset or computed)"; \
+    echo "=== description ===" && \
+    nix eval --raw .#nixosConfigurations.$(hostname).options.{{path}}.description 2>/dev/null || echo "(no description)"
+
 # Activate at next boot only (for kernel/initrd changes).
 @boot *args:
     nh os boot . -H $(hostname) {{args}}
