@@ -2,6 +2,7 @@
   config,
   lib,
   inputs,
+  pkgs,
   ...
 }:
 
@@ -49,6 +50,27 @@
   # (btrfs-progs 6.1+). Disko config should bake this into the install
   # path for future hosts.
   swapDevices = [ { device = "/swapfile"; } ];
+
+  # --- IronWolf idle spindown -------------------------------------------
+  # 4 TB Seagate IronWolf NAS HDD; ~5-7 W spinning at idle. Most media
+  # access is bursty (jellyfin transcode start, immich library import,
+  # btrbk hourly snapshot is metadata-only so doesn't require spin-up).
+  # 20-min idle spindown trades ~50 kWh/year vs an ~8s spin-up latency
+  # on first access. NAS-tier drives are rated for far more start/stop
+  # cycles than consumer drives so the wear cost is acceptable.
+  #
+  # `-S 240` = 240 × 5s = 20 min spindown timer. Set on every boot
+  # because the drive forgets it across power cycles.
+  systemd.services.ironwolf-spindown = {
+    description = "Set IronWolf 20min idle spindown timer";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "local-fs.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.hdparm}/bin/hdparm -S 240 /dev/disk/by-id/ata-ST4000NE001-2MA101_WS24X543";
+    };
+  };
 
   # --- gpu (nvidia open, RTX 5060 Ti / Blackwell) -----------------------
   #

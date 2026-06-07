@@ -64,7 +64,7 @@ _: {
           # Wrapped to prevent multiple lock instances stacking up.
           lock_cmd = "pidof hyprlock || hyprlock";
           # before_sleep_cmd left unset — desktop doesn't sleep.
-          after_sleep_cmd = "hyprctl dispatch dpms on";
+          after_sleep_cmd = ''hyprctl dispatch 'hl.dsp.dpms("on")' '';
         };
         listener = [
           {
@@ -77,9 +77,17 @@ _: {
             on-timeout = "pidof hyprlock || hyprlock";
           }
           {
-            timeout = 900; # 15 min → DPMS off
-            on-timeout = "hyprctl dispatch dpms off";
-            on-resume = "hyprctl dispatch dpms on";
+            timeout = 900; # 15 min → DPMS off (monitors enter standby)
+            # Lua-mode dispatcher syntax (configType="lua" in workstation/
+            # home.nix). The hyprlang-style `hyprctl dispatch dpms off`
+            # parses as `return hl.dispatch(dpms off)` in lua and fails
+            # silently with "')' expected near 'off'" — so the DPMS off
+            # call NEVER FIRED post-lua-migration; monitors stayed on at
+            # the lock screen drawing ~30-60W each. Caught 2026-06-07.
+            # Same shape as the popup-term breakage (gotcha-hyprland-lua-
+            # migration). Use the `hl.dsp.*` builder form.
+            on-timeout = ''hyprctl dispatch 'hl.dsp.dpms("off")' '';
+            on-resume = ''hyprctl dispatch 'hl.dsp.dpms("on")' '';
           }
         ];
       };
