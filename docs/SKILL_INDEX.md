@@ -17,6 +17,7 @@ The non-deterministic recurring procedures — analysing the system, adding a se
 | Query journald logs across the lab | `/query-logs` | "search logs", "what errored on <host>", "find <message> in journald" |
 | End-of-session wrap-up | `/wrap-session` | "wrap up", "ending session", "that's it for now" |
 | Doc-tier decision after a structural change | `/on-structural-change` | "we just landed <X>", "what doc tier needs updating?" |
+| Audit code comments + names + structural shape | `/audit-structure` | "audit comments in <X>", "clean up <Y>", "the names feel off", "review staleness" |
 
 **Auto-loaded gotcha skills** (35+ of them as of 2026-06-07): each `.claude/skills/gotcha-<short-name>/` has a USE-WHEN trigger in its frontmatter. Claude auto-loads them when relevant; you don't invoke by name. List: `ls .claude/skills/gotcha-*`. They cover incident-derived landmines (PR-mortems converted into skill form).
 
@@ -31,6 +32,7 @@ To invoke manually: `/skill-name`. To let Claude auto-discover: just describe th
 | `/add-oidc-client` | At the moment of bootstrapping a new SSO client |
 | `/on-structural-change` | **Immediately after a structural change lands** — not at session end. Drift compounds; the cost of an immediate doc refresh is small, the cost of a fresh agent acting on stale info is large. |
 | `/wrap-session` | **At session end** — pushes pending commits, refreshes orientation docs, updates memory, writes the handoff. Per-change updates should already have happened via `/on-structural-change`. |
+| `/audit-structure` | **When the operator asks for it** — a sweep across a directory, file group, or whole tree to surface staleness in comments + names + structure. Operator-invoked because it's deliberate maintenance work, not session-flow. |
 
 Both `/on-structural-change` and `/wrap-session` fire during a session that included structural changes — the first per-change as a small immediate fix, the second once at the end as the broader compactor + handoff.
 
