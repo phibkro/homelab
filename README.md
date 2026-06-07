@@ -7,8 +7,8 @@ Single-user NixOS homelab flake. Two live hosts: `workstation` (workhorse — Ca
 | If you're… | Read |
 |---|---|
 | New here, want the routing map | `CLAUDE.md` |
-| Wanting the vocabulary + mental models | `docs/CONCEPTS.md` |
-| Adding a service or making changes | `docs/MODULES.md` + `docs/SERVICES.md` |
+| Wanting the vocabulary + mental models | `docs/GLOSSARY.md` |
+| Adding a service or making changes | `docs/MODULE_AUTHORING.md` + `docs/SERVICES.md` |
 | Wiring topology / placement | `docs/TOPOLOGY.md` |
 | Touching storage, backups, snapshots | `docs/STORAGE.md` |
 | Touching network, lanRoutes, Authelia, DNS | `docs/NETWORK.md` |

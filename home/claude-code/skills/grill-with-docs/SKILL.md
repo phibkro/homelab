@@ -22,7 +22,7 @@ Read these first so you interrogate in the project's own language, not generic t
 
 - The **design source of truth** (e.g. `CONTEXT.md`) — rationale, constraints, the
   decisions already made.
-- The **glossary / mental-models doc** (e.g. `docs/CONCEPTS.md`) — the canonical
+- The **glossary / mental-models doc** (e.g. `docs/GLOSSARY.md`) — the canonical
   nouns and verbs.
 - Any **decision log / ADRs** — settled trade-offs you must **not** re-litigate.
   (No decision log yet? Then nothing is closed — proceed.)

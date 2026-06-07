@@ -1,4 +1,4 @@
-# STYLE — comments and prose
+# Documentation writing — comments and prose
 
 Reference for *how* comments and docs are written in this repo. Pairs
 with `MODULES.md` (code shape) and `ENFORCEMENT.md` (how to promote a

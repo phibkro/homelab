@@ -6,27 +6,35 @@ NixOS flake managing three machines:
 - **pi** — appliance, NixOS aarch64. Observability + alerting + DNS + tailnet plumbing that survives station outages.
 - **macbook** — Intel Mac, standalone home-manager. Daily-driver laptop.
 
-## Read in this order
+## Docs map
 
-| # | Doc | When to read |
+Filenames encode the topic. The `USE WHEN` column matches the skill/
+memory convention — grep for the trigger phrase that fits your intent.
+Sequencing matters only for early-orient docs (1-3); the rest is reached
+on demand.
+
+| # | Doc | USE WHEN |
 |---|---|---|
-| 1 | `docs/CONCEPTS.md` | Always-early — glossary + mental models. Without these, every other doc reads as undefined jargon |
-| 2 | `docs/INVARIANTS.md` | Always-early — load-bearing claims tagged by enforcement tier. The drift register |
-| 3 | `docs/PROCEDURES.md` | Skill index — which procedure-skill matches what intent |
-| 4 | `docs/ROADMAP.md` | Forward plan: outstanding, deferred, backlog |
-| 5 | `docs/TOPOLOGY.md` | Hosts, hardware, roles, GPU, resource caps |
-| 6 | `docs/STORAGE.md` | btrfs, subvolumes, `nori.fs`, snapshot + backup policy |
-| 7 | `docs/NETWORK.md` | Zones, `nori.lanRoutes`, audience model, Caddy + Authelia + DNS |
-| 8 | `docs/SERVICES.md` | Service catalog + backup patterns A/B/C + observability |
-| 9 | `docs/MODULES.md` | Module shape, service template, sops, packages-by-scope, dev workflow |
-| 9.5 | `docs/STYLE.md` | Comment + prose rules. Agent-imitation feedback loop; earns-rent vs cut taxonomy |
-| 10 | `docs/ENFORCEMENT.md` | The enforcement ladder + how to add a rule |
-| 11 | `docs/RECOVERY.md` | RTO targets, runbook index, permanent constraints |
-| 11.5 | `docs/TESTING.md` | Runtime introspection test framework — when/where tests pay off, mapped to `nori.<X>` effects |
-| 12 | `docs/RATIONALES.md` | Hard-to-revisit design decisions (legacy list; newer go to `docs/decisions/`) |
-| 13 | `docs/decisions/0001-agentic-homelab-practices.md` | The meta-ADR that sets the *why* behind everything |
-| 14 | `.claude/skills/gotcha-*/` | Landmines as auto-loaded skills (35+). Each fires when its USE-WHEN trigger matches |
-| 15 | `git log --oneline` | Commit-by-commit narrative for what the docs don't catch |
+| 1 | `docs/GLOSSARY.md` | first session in this repo, OR you hit jargon (`nori.<X>` effect family, audience, fate-sharing, split-module, value tiers) and need the canonical definition |
+| 2 | `docs/INVARIANTS.md` | a claim sounds load-bearing and you want its enforcement rung, OR before writing prose that asserts "X is always Y" |
+| 3 | `docs/SKILL_INDEX.md` | looking for a `/<skill-name>` that matches your current intent — recurring procedures live as skills, not prose |
+| 4 | `docs/ROADMAP.md` | considering deferring work, checking what's queued, or wondering whether something is already planned |
+| 5 | `docs/TOPOLOGY.md` | placing a service across hosts, sizing GPU/RAM caps, or reasoning about workhorse/appliance/agent roles |
+| 6 | `docs/STORAGE.md` | touching btrfs subvolumes, `nori.fs.<X>`, snapshot/backup policy, or value-tier classifications |
+| 7 | `docs/NETWORK.md` | adding a `nori.lanRoutes` entry, picking an audience, or working with Caddy + Authelia + DNS |
+| 8 | `docs/SERVICES.md` | adding a service module, picking a backup pattern (A/B/C), or wiring observability for it |
+| 9 | `docs/MODULE_AUTHORING.md` | writing a new module — the template, sops conventions, packages-by-scope, dev workflow |
+| 9.5 | `docs/DOCUMENTATION_WRITING.md` | writing/auditing comments + prose — earns-rent taxonomy, anti-patterns, the agent-imitation loop |
+| 10 | `docs/ENFORCEMENT.md` | promoting a claim from prose → comment → test → type, or deciding the right rung for a new rule |
+| 11 | `docs/RECOVERY.md` | something is broken or you're planning recovery — RTO targets, runbook index, permanent constraints |
+| 11.5 | `docs/RUNTIME_TESTS.md` | adding a `just test-<X>` lever or auditing whether an effect family ships with one |
+| 12 | `docs/RATIONALES.md` | wondering "why was X chosen?" before re-litigating a design decision |
+| 13 | `docs/decisions/0001-agentic-homelab-practices.md` | the meta-ADR that sets the *why* behind everything; read once, refer back when in doubt |
+| 14 | `.claude/skills/gotcha-*/` | auto-load on trigger; manually `/<skill-name>` if it fits a known landmine |
+| 15 | `git log --oneline` | a recent change isn't yet reflected in docs, or a comment references "2026-MM-DD incident" without enough context |
+
+`docs/README.md` mirrors this table for agents that land in `docs/`
+without CLAUDE.md context.
 
 ## Hard rules
 
@@ -45,7 +53,7 @@ NixOS flake managing three machines:
 - **Iterate-to-stable, then codify.** Novel patterns live in Cynefin's Complex domain — ship the simplest version, let the next constraint surface, codify after the shape stabilizes.
 - **Workhorse-by-default, appliance-by-exception.** Services land on station unless they need to survive station's failure or are network appliance functions. The exception clause is "fate-sharing breaks the function," not "feels lightweight."
 - **Tailnet IS the auth perimeter; Authelia only for per-user identity.** Encoded as the `audience` enum on `nori.lanRoutes` — `operator` trusts tailnet, `family` needs OIDC, `public` is intentionally open.
-- **Code describes behavior; comments encode intent.** See `docs/STYLE.md` — the earns-rent vs cut taxonomy + the amnesiac-imitation loop that makes seeding rent-paying examples load-bearing in an agent-driven codebase.
+- **Code describes behavior; comments encode intent.** See `docs/DOCUMENTATION_WRITING.md` — the earns-rent vs cut taxonomy + the amnesiac-imitation loop that makes seeding rent-paying examples load-bearing in an agent-driven codebase.
 
 ## How to operate
 
@@ -67,7 +75,7 @@ NixOS flake managing three machines:
 
 ## Procedures
 
-Recurring procedures live as skills under `.claude/skills/` so the body loads only when triggered. They auto-discover when the user's intent matches the trigger; manually invoke with `/<skill-name>`. The skill index lives in `docs/PROCEDURES.md`. The principle: **prose for facts (here + docs), skills for procedures (on demand)**; when a CLAUDE.md section grows into a procedure with non-deterministic branches, extract it.
+Recurring procedures live as skills under `.claude/skills/` so the body loads only when triggered. They auto-discover when the user's intent matches the trigger; manually invoke with `/<skill-name>`. The skill index lives in `docs/SKILL_INDEX.md`. The principle: **prose for facts (here + docs), skills for procedures (on demand)**; when a CLAUDE.md section grows into a procedure with non-deterministic branches, extract it.
 
 ## Quality gates
 
@@ -81,4 +89,4 @@ Recurring procedures live as skills under `.claude/skills/` so the body loads on
 - No hedging in commits or docs. Lead with the answer, justify after.
 - Match the existing tone — terse, technical, no fluff. The operator (Philip) reads fast and pushes back on weak decisions.
 - Function-named subdomains, agnostic over branded: `status.nori.lan` not `gatus.nori.lan` unless the brand IS the identity.
-- Full rules for comments + docs (earns-rent taxonomy, hard rules on derived lists, anti-patterns) → `docs/STYLE.md`.
+- Full rules for comments + docs (earns-rent taxonomy, hard rules on derived lists, anti-patterns) → `docs/DOCUMENTATION_WRITING.md`.

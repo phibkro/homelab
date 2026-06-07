@@ -3,7 +3,7 @@ summary: The skill index — which recurring-procedure skill handles what intent
   how to add a new skill. Skills live in .claude/skills/ and load on demand.
 ---
 
-# Procedures
+# Skill index
 
 The non-deterministic recurring procedures — analysing the system, adding a service, adding a host, relocating a service to pi, wrapping up a session, refreshing docs after a structural change — live as skills under `.claude/skills/`, not as prose here. Skills load on demand (zero context cost when not invoked) and Claude auto-discovers them when the trigger phrasing matches.
 

@@ -110,7 +110,7 @@ The `forbidden-patterns` flake check fails the build on a stray `100.x.y.z` lite
 | Agent quarantine (hermes-agent CLI + dashboard) | pavilion | Sandboxed; pavilion's impermanence root makes pollution self-healing |
 | Process metrics (`node-exporter` + `process-exporter`) | workstation + pavilion + aurora | Pi VM scrapes each; per-process RSS for leak hunts |
 
-Placement test = **fate-sharing breaks the function** (not "feels lightweight"). See `docs/CONCEPTS.md § fate-sharing`.
+Placement test = **fate-sharing breaks the function** (not "feels lightweight"). See `docs/GLOSSARY.md § fate-sharing`.
 
 ## Cross-host services (split-module pattern)
 

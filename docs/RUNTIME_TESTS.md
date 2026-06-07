@@ -3,7 +3,7 @@ summary: Runtime introspection tests for the homelab — when they pay
   off, where they live, and which `nori.<X>` effect each one covers.
 ---
 
-# TESTING
+# Runtime tests
 
 The homelab's tests are **runtime introspection** recipes: query the
 live system's registries (systemd, restic, Caddy, VictoriaMetrics,

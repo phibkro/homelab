@@ -6,7 +6,7 @@ summary: Glossary of the coined vocabulary (roles, `nori.<X>` effect family,
   appliance fate-sharing, enforcement ladder, value-tier protection tree).
 ---
 
-# Concepts
+# Glossary
 
 Coined nouns/verbs + mental models that frame the lab. One line per term →
 source-of-truth doc. Read here to skip vocabulary-by-osmosis; read the linked
@@ -84,4 +84,4 @@ Convention-not-rule (Reader/Writer split isn't structurally prevented). Enforced
 1. `modules/effects/<n>.nix` — option schema + assertions + (Writer-shaped: consumer logic)
 2. Import in `modules/common/default.nix`
 3. Header comment names the producer/consumer split (Reader/Writer at a glance)
-4. **Ship its test** — adding an effect = committing to `just test-<n>` (see `docs/TESTING.md`)
+4. **Ship its test** — adding an effect = committing to `just test-<n>` (see `docs/RUNTIME_TESTS.md`)

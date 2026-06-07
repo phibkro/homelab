@@ -63,7 +63,7 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 | `function-named-subdomains` | `[law]` — flake check, brand denylist | service-name leakage in `nori.lanRoutes` |
 | `workhorse-vs-appliance-placement` | `[law]` — module assertion | service placement matches host role |
 | `systemd-execstart-resolves` | `[law]` — flake check | ExecStart's first token resolves to closure path (incident 2026-06-03 class) |
-| `effects-have-tests` *(added 2026-06-07)* | `[law]` — meta-check | every `modules/effects/<X>.nix` with Reader+Writer shape has matching `just test-<X>` recipe in `Justfile`. See `docs/TESTING.md` |
+| `effects-have-tests` *(added 2026-06-07)* | `[law]` — meta-check | every `modules/effects/<X>.nix` with Reader+Writer shape has matching `just test-<X>` recipe in `Justfile`. See `docs/RUNTIME_TESTS.md` |
 
 ## Idea backlog (no commitment)
 
