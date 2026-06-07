@@ -19,6 +19,7 @@ NixOS flake managing three machines:
 | 7 | `docs/NETWORK.md` | Zones, `nori.lanRoutes`, audience model, Caddy + Authelia + DNS |
 | 8 | `docs/SERVICES.md` | Service catalog + backup patterns A/B/C + observability |
 | 9 | `docs/MODULES.md` | Module shape, service template, sops, packages-by-scope, dev workflow |
+| 9.5 | `docs/STYLE.md` | Comment + prose rules. Agent-imitation feedback loop; earns-rent vs cut taxonomy |
 | 10 | `docs/ENFORCEMENT.md` | The enforcement ladder + how to add a rule |
 | 11 | `docs/RECOVERY.md` | RTO targets, runbook index, permanent constraints |
 | 11.5 | `docs/TESTING.md` | Runtime introspection test framework — when/where tests pay off, mapped to `nori.<X>` effects |
@@ -44,7 +45,7 @@ NixOS flake managing three machines:
 - **Iterate-to-stable, then codify.** Novel patterns live in Cynefin's Complex domain — ship the simplest version, let the next constraint surface, codify after the shape stabilizes.
 - **Workhorse-by-default, appliance-by-exception.** Services land on station unless they need to survive station's failure or are network appliance functions. The exception clause is "fate-sharing breaks the function," not "feels lightweight."
 - **Tailnet IS the auth perimeter; Authelia only for per-user identity.** Encoded as the `audience` enum on `nori.lanRoutes` — `operator` trusts tailnet, `family` needs OIDC, `public` is intentionally open.
-- **Comments explain WHY** (especially when the obvious approach didn't work).
+- **Code describes behavior; comments encode intent.** See `docs/STYLE.md` — the earns-rent vs cut taxonomy + the amnesiac-imitation loop that makes seeding rent-paying examples load-bearing in an agent-driven codebase.
 
 ## How to operate
 
@@ -80,5 +81,4 @@ Recurring procedures live as skills under `.claude/skills/` so the body loads on
 - No hedging in commits or docs. Lead with the answer, justify after.
 - Match the existing tone — terse, technical, no fluff. The operator (Philip) reads fast and pushes back on weak decisions.
 - Function-named subdomains, agnostic over branded: `status.nori.lan` not `gatus.nori.lan` unless the brand IS the identity.
-- **Lists of things dependent on code → derive from the code, never duplicate in prose.** A list of services, hosts, subvolumes, skills, lanRoutes, modules etc. drifts the second code changes. Either generate it (`nix eval`-driven docs, the Batch C item in `ROADMAP.md`) or link to the live registry (`nix flake show`, `just --list`, `ls .claude/skills/`, etc.). If a doc is purely derivative information, **eliminate the doc** — the canonical source is the code.
-- What stays in docs: WHY (decisions, ADRs, `RATIONALES.md`), HOW (procedures, runbooks), mental models, frameworks, constraints. Code can't carry those.
+- Full rules for comments + docs (earns-rent taxonomy, hard rules on derived lists, anti-patterns) → `docs/STYLE.md`.
