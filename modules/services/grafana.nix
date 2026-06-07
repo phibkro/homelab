@@ -49,8 +49,6 @@
         enforce_domain = false;
       };
 
-      # Anonymous-Admin on the tailnet — see header comment + the
-      # audience model in modules/effects/lan-route.nix.
       "auth.anonymous" = {
         enabled = true;
         org_role = "Admin";
@@ -73,11 +71,8 @@
       security.secret_key = "$__file{${config.sops.secrets.grafana-secret-key.path}}";
     };
 
-    # Bring the VictoriaLogs Grafana plugin in declaratively rather
-    # than via Grafana's plugin manager (the manager downloads at
-    # runtime → not reproducible). The metrics-datasource is here
-    # too, ready for when VictoriaMetrics lands as the time-series
-    # store; harmless until then.
+    # Declarative plugins rather than Grafana's plugin manager (the
+    # manager downloads at runtime → not reproducible).
     declarativePlugins = with pkgs.grafanaPlugins; [
       victoriametrics-logs-datasource
       victoriametrics-metrics-datasource
@@ -94,7 +89,10 @@
       # first restart the orphan is gone; the directive becomes a
       # no-op but stays for documentation.
       datasources.settings.deleteDatasources = [
-        { name = "VictoriaMetrics"; orgId = 1; }
+        {
+          name = "VictoriaMetrics";
+          orgId = 1;
+        }
       ];
       datasources.settings.datasources = [
         {
@@ -125,25 +123,19 @@
         }
       ];
 
-      # Dashboards committed to the repo at ./grafana-dashboards/ get
-      # loaded on every grafana restart. New dashboards land via JSON
-      # exports from the UI committed back here, NOT by clicking
-      # "Save" in-UI (which writes to the DB and gets overridden).
       dashboards.settings.providers = [
         {
           name = "Default";
           folder = "Lab";
           options.path = ./grafana-dashboards;
           updateIntervalSeconds = 60;
-          # foldersFromFilesStructure means a subdir = a UI folder;
-          # nest as the dashboard set grows.
+          # Subdir = UI folder; nest as the dashboard set grows.
           foldersFromFilesStructure = true;
         }
       ];
     };
   };
 
-  # Cross-source operator console — see grafana.settings.server.root_url.
   nori.lanRoutes.ops = {
     port = 3000;
     audience = "operator";
@@ -164,10 +156,6 @@
     binds = [ "/var/lib/grafana" ];
   };
 
-  # Provisioned declaratively → /var/lib/grafana is rebuildable from
-  # the flake + the JSON dashboards. Session state (last-viewed
-  # dashboard, query history, annotations) is convenience-tier, not
-  # worth the backup overhead for a single-operator lab. Re-evaluate
-  # if alerts-as-code accrue useful firing-history state.
+  # Re-evaluate if alerts-as-code accrue useful firing-history state.
   nori.backups.grafana.skip = "Provisioned from flake (datasources + dashboards); DB holds only session-scoped state.";
 }

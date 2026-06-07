@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 # Workstation system + per-process metrics → scraped by pi VictoriaMetrics.
 #
@@ -23,7 +28,10 @@ in
     # Default collector set is fine; explicitly enable processes
     # (counts, states) which isn't on by default. RSS-per-process
     # lives in process-exporter below, NOT here.
-    enabledCollectors = [ "processes" "systemd" ];
+    enabledCollectors = [
+      "processes"
+      "systemd"
+    ];
   };
 
   services.prometheus.exporters.process = {
@@ -51,7 +59,9 @@ in
     AmbientCapabilities = [ "CAP_SYS_PTRACE" ];
   };
 
-  # Open the scrape ports to the tailnet only — pi reaches them via
-  # the workstation tailnet IP. Default-deny everywhere else.
-  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 9100 9256 ];
+  # Tailnet-only scrape ports — pi reaches them via the host's tailnet IP.
+  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [
+    9100
+    9256
+  ];
 }

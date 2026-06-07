@@ -1,24 +1,10 @@
 { config, ... }:
 
-# VictoriaMetrics — single-binary metrics database, sibling of
-# VictoriaLogs. Lives on the appliance host (pi) for the same fate-
-# sharing reason: observability infra shouldn't go down with the host
-# being observed. When workstation hangs, the metrics history that
-# might explain why has to live somewhere that's still up.
-#
-# Listens on :8428 (VM's default — distinct from VictoriaLogs on
-# :9428). Scraped targets:
-#   - workstation gatus → /api/v1/metrics (uptime/probe state)
-#   - pi gatus           → same
-# Future scrape targets (Tier B): node_exporter on each host.
-#
-# Surfaced to Grafana on workstation via a datasource pointing at
-# this Pi instance — see modules/server/grafana.nix.
-#
-# State at /var/lib/private/victoriametrics (DynamicUser via the
-# upstream module). Same anti-write posture as VictoriaLogs — Pi's
-# flash storage is treated as ephemeral; retention bounded so
-# pressure stays manageable.
+# VictoriaMetrics — single-binary metrics database. Lives on the
+# appliance host (pi) for the same fate-sharing reason as VictoriaLogs:
+# observability infra shouldn't go down with the host being observed.
+# When workstation hangs, the metrics history that might explain why
+# has to live somewhere that's still up.
 
 {
   services.victoriametrics = {
@@ -67,9 +53,18 @@
           metrics_path = "/metrics";
           scheme = "http";
           static_configs = [
-            { targets = [ "${config.nori.hosts.workstation.tailnetIp}:9100" ]; labels.host = "workstation"; }
-            { targets = [ "${config.nori.hosts.pavilion.tailnetIp}:9100"    ]; labels.host = "pavilion";    }
-            { targets = [ "${config.nori.hosts.aurora.tailnetIp}:9100"      ]; labels.host = "aurora";      }
+            {
+              targets = [ "${config.nori.hosts.workstation.tailnetIp}:9100" ];
+              labels.host = "workstation";
+            }
+            {
+              targets = [ "${config.nori.hosts.pavilion.tailnetIp}:9100" ];
+              labels.host = "pavilion";
+            }
+            {
+              targets = [ "${config.nori.hosts.aurora.tailnetIp}:9100" ];
+              labels.host = "aurora";
+            }
           ];
         }
         {
@@ -77,23 +72,31 @@
           metrics_path = "/metrics";
           scheme = "http";
           static_configs = [
-            { targets = [ "${config.nori.hosts.workstation.tailnetIp}:9256" ]; labels.host = "workstation"; }
-            { targets = [ "${config.nori.hosts.pavilion.tailnetIp}:9256"    ]; labels.host = "pavilion";    }
-            { targets = [ "${config.nori.hosts.aurora.tailnetIp}:9256"      ]; labels.host = "aurora";      }
+            {
+              targets = [ "${config.nori.hosts.workstation.tailnetIp}:9256" ];
+              labels.host = "workstation";
+            }
+            {
+              targets = [ "${config.nori.hosts.pavilion.tailnetIp}:9256" ];
+              labels.host = "pavilion";
+            }
+            {
+              targets = [ "${config.nori.hosts.aurora.tailnetIp}:9256" ];
+              labels.host = "aurora";
+            }
           ];
         }
       ];
     };
     extraOptions = [
       # Two-week retention — enough for "what happened last weekend?"
-      # without unbounded growth on Pi's flash. Matches VictoriaLogs.
+      # without unbounded growth on Pi's flash.
       "-retentionPeriod=14d"
     ];
   };
 
-  # Tailnet firewall: open the scrape/query port for tailnet clients
-  # (Grafana on workstation queries via this). LAN exposure is via
-  # Caddy on workstation, declared as a lanRoute below.
+  # Tailnet firewall: Grafana on workstation queries via this; LAN
+  # exposure is via Caddy on workstation (lanRoute below).
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [
     8428
   ];
@@ -116,9 +119,5 @@
     };
   };
 
-  # No on-disk state to back up — VM here is event-history scratch
-  # (same posture as VictoriaLogs on this host); Pi flash is anti-
-  # write. If retention ever moves to a real disk, revisit.
-  nori.backups.victoriametrics.skip =
-    "Event-history scratch on Pi flash; same anti-write posture as VictoriaLogs.";
+  nori.backups.victoriametrics.skip = "Event-history scratch on Pi flash; same anti-write posture as VictoriaLogs.";
 }
