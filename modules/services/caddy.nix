@@ -47,11 +47,12 @@ _:
 
   nori.harden.caddy = { };
 
-  # Open globally, not per-interface: traffic arrives on the LAN
-  # interface for LAN clients and on tailscale0 for off-LAN tailnet
-  # clients via Pi's subnet route — same precedent as Blocky's :53.
-  # The router doesn't forward :80/:443 inbound from WAN, so the host
-  # firewall is just the second layer.
+  # Open globally, not per-interface: with `*.nori.lan` resolving to
+  # the workhorse LAN IP (`nori.lanIp` in modules/effects/lan-route.nix),
+  # requests arrive on the LAN interface for LAN clients and on
+  # tailscale0 for off-LAN tailnet clients via Pi's subnet route. Same
+  # precedent as Blocky's :53. The router doesn't forward :80/:443
+  # inbound from WAN, so the host firewall is just the second layer.
   networking.firewall.allowedTCPPorts = [
     80
     443

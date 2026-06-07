@@ -10,7 +10,8 @@ in
 {
   # Blocky: ad-blocking DNS resolver, LAN-facing. Two roles via
   # `nori.blocky.role` — see the option below for self-hosted vs
-  # forwarder semantics.
+  # forwarder semantics. Listens on 0.0.0.0:53. Upstreams to
+  # Cloudflare + Quad9 with `parallel_best` (whichever responds first).
   #
   # Tailscale DNS push order (set in admin console): primary =
   # whichever Blocky host you trust to be up most. With Pi running,

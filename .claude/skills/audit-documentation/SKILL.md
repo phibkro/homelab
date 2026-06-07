@@ -49,6 +49,32 @@ Apply the **earns-rent test** to every comment block:
 | **Non-obvious placement choice**           | **Downstream-of-canonical-home paraphrase** |
 | **Visual structure** (bullets/tables) when content is enumerable | **Per-section paraphrase in a list literal** |
 
+### Cross-file rationale (the multi-file case)
+
+When file A's comment refers to file B's behavior, apply this test:
+
+> **Does the cross-reference explain a decision in file A — or just
+> restate B's behavior?**
+>
+> Explains a decision in A → KEEP (load-bearing why-this-shape).
+> Just restates B → CUT (downstream-of-canonical-home paraphrase).
+
+Worked examples (from `git show fb1edfc`, the auth-perimeter run):
+
+* **KEEP**: `authelia.nix` cookies-domain comment that references Caddy
+  terminating TLS. The Caddy reference explains why the cookie domain
+  is `nori.lan` — load-bearing decision in authelia.nix.
+* **KEEP**: `caddy.nix` firewall comment that references `nori.lanIp`
+  in `modules/effects/lan-route.nix`. The reference explains why caddy
+  can listen globally (the resolution chain `*.nori.lan → nori.lanIp`
+  determines which interface traffic arrives on).
+* **CUT**: `authelia.nix` preamble that restates Caddy's reverse-proxy
+  framing without adding why-it-matters-here. Pure paraphrase of
+  Caddy's role.
+
+The cross-file pointer earns rent when it's *load-bearing for the file
+it lives in*; it's paraphrase when it just restates the other file.
+
 ### Tighten vs cut (the gray zone)
 
 Many comments are partial-paraphrase + partial-rationale. The rewrite
