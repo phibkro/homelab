@@ -124,22 +124,42 @@ default: rebuild
       check "toggle special:$tag (off)" "hl.dsp.workspace.toggle_special({ name = \"$tag\" })"
     done
 
-    # Tier 3 — keypress → state via wtype.
+    echo "=== Tier 3 — bind registry introspection ==="
+    # Pivoted away from live keypress synthesis after research:
+    #   * wtype + Hyprland keybinds is known-broken (issue
+    #     hyprwm/Hyprland#6647) — virtual keyboard events get filtered
+    #     somewhere in the bind matcher pipeline.
+    #   * `hl.dsp.send_shortcut(...)` sends to a target window, NOT
+    #     through the compositor bind matcher — wrong tool.
+    #   * `ydotool` (uinput-level) would work but needs daemon +
+    #     /dev/uinput perms + extra setup; not worth the complexity.
     #
-    # TODO: Tier 3 ships disabled. First attempt (2026-06-07) sent keys
-    # via wtype but Hyprland didn't fire the bind. Likely Norwegian
-    # keymap × wtype's US-keysym assumption — `wtype -k 1` sends
-    # something the layout doesn't route to `key 1`. Or virtual
-    # keyboard binding ordering / activation race.
+    # Static introspection via `hyprctl binds -j` is strictly better:
+    # deterministic, layout-independent, runs in <100ms, catches the
+    # "I changed my mod combo and forgot to update lua" class of bug
+    # that keypress synthesis would also catch — and a few that it
+    # wouldn't (binds registered but pointing nowhere).
     #
-    # Resolution paths to try when picking this back up:
-    #   * `nix shell nixpkgs#wtype -c wtype --xkb-layout us -k 1 ...`
-    #   * `ydotool` instead of wtype (different protocol — uinput)
-    #   * `hyprctl dispatch sendshortcut SUPER+ALT,1,,` — Hyprland's
-    #     own keypress synthesiser; bypasses virtual-keyboard entirely
-    #
-    # The hyprctl-side smoke is the bigger value; defer keypress test
-    # rather than ship something flaky.
+    # Modmask bits: SHIFT=1, CTRL=4, ALT=8, LOGO/SUPER=64
+    # SUPER+ALT = 64+8 = 72.
+
+    binds_json=$(hyprctl binds -j)
+    check_bind() {
+      local label="$1" modmask="$2" key="$3"
+      hit=$(echo "$binds_json" | nix shell nixpkgs#jq -c jq --argjson m "$modmask" --arg k "$key" \
+        '[.[] | select(.modmask == $m and .key == $k)] | length')
+      if [[ "$hit" -ge 1 ]]; then
+        echo "  ✓ $label registered (modmask=$modmask key=$key)"
+      else
+        echo "  ✗ $label NOT registered (expected modmask=$modmask key=$key)"
+        fail=1
+      fi
+    }
+    for tag_n in 1 2 3 4 5 6; do
+      check_bind "SUPER+ALT+$tag_n (toggle tag)"        72 "$tag_n"
+      check_bind "SUPER+ALT+SHIFT+$tag_n (move to tag)" 73 "$tag_n"
+    done
+    check_bind "SUPER+RETURN (popup-term)" 64 "RETURN"
 
     echo
     if [[ "$fail" -eq 0 ]]; then
