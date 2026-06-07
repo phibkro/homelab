@@ -12,11 +12,6 @@
   # alerts still fire when station's down), Tailscale subnet
   # router + opt-in exit node, and eventually the local restic
   # backup target for fast restores.
-  #
-  # Per the "flat imports" decision (CLAUDE.md), this host does NOT
-  # import modules/services/default.nix (the workstation bundle).
-  # Pi-specific service modules will be added file-by-file once they're
-  # refactored to be role-parametric.
   imports = [
     inputs.nixos-hardware.nixosModules.raspberry-pi-4
 
@@ -28,9 +23,6 @@
 
     ../../modules/common
 
-    # Pi-specific service modules — flat imports per CLAUDE.md
-    # "flat imports first." NOT modules/services/default.nix; just the
-    # specific files Pi needs.
     ../../modules/services/blocky.nix
     ../../modules/services/gatus.nix
 

@@ -6,22 +6,11 @@
   ...
 }:
 
-# pavilion — HP Pavilion g6, retasked as an agent quarantine host.
-#
-# ── Why a separate machine ─────────────────────────────────────────
-# `nixpkgs-agent` (and any future agent-driven loop) runs the model +
-# bash + nix-build in `box --pi` on workstation today. That's fine for
-# the iterative phase, but the long-term shape is:
-#
-#   * untrusted-compute should NOT share a kernel with the workhorse's
-#     state-rich services (Caddy, Authelia, Jellyfin, Vaultwarden …)
-#   * agent outputs are the only artefact we keep — everything else is
-#     ephemeral by construction (no logs to preserve, no sessions to
-#     resume, no SSH key inbound from agent tier)
-#   * a reboot should be a safety valve, not a recovery procedure
-#
-# Pavilion is the realisation of that: a NixOS host designed to be
-# wiped every boot.
+# pavilion — HP Pavilion g6, agent-quarantine host. The `agent` role
+# in modules/effects/hosts.nix is the source of truth for why: untrusted
+# compute kept off the workhorse kernel, ephemeral by construction,
+# reboot-as-safety-valve. This file enforces that posture; the assertion
+# at the bottom catches role-drift at eval time.
 #
 # ── Posture ────────────────────────────────────────────────────────
 # 1. **Root on tmpfs via nix-community/impermanence.** Everything not
@@ -97,16 +86,11 @@
   boot.loader.systemd-boot.enable = false;
 
   # ── btrfs-rollback impermanence ───────────────────────────────────
-  # Tmpfs root would eat ~1.8 GB of the 3.6 GB RAM on this host — too
-  # expensive. Instead we keep / on a btrfs subvol (@root) and roll it
-  # back to the empty @root-blank snapshot in early initrd, before
-  # systemd brings up sysroot. End-state property is the same: every
-  # boot starts from a clean root; only paths under /persist
-  # (declared below) survive.
-  #
-  # The rollback runs in initrd-systemd before the actual / mount, so
-  # we don't risk capturing in-flight files into the snapshot. The
-  # @root subvol is delete-and-recreate from @root-blank.
+  # Tmpfs root would eat ~1.8 GB of the 3.6 GB RAM — too expensive.
+  # Instead / lives on a btrfs subvol (@root); the initrd rollback
+  # service below delete-and-recreates @root from the empty @root-blank
+  # snapshot before sysroot.mount, so every boot starts clean and no
+  # in-flight files leak into the snapshot. Only /persist (below) survives.
   boot.initrd.systemd.enable = true;
   boot.initrd.systemd.services.rollback = {
     description = "Rollback @root to @root-blank for impermanence";
@@ -142,21 +126,11 @@
   programs.rust-motd.settings.service_status.iwd = "iwd";
 
   # ── Stay awake when folded ────────────────────────────────────────
-  # Pavilion is a laptop running as a 24/7 server. Multiple layers of
-  # power-saving have to be defeated for "fold the lid, keep working"
-  # to actually work:
-  #
-  # 1. logind lid handlers — set all three to "ignore" so closing the
-  #    lid doesn't fire a suspend request.
-  # 2. systemd sleep targets — masked. Belt for the suspender of (1):
-  #    if anything else (a stray DBus call, a power-manager daemon)
-  #    tries to suspend the host, the target itself is gone.
-  # 3. Wifi power-save — Broadcom BCM4313's runtime power_save was
-  #    already "off" in testing, but a udev rule keeps it off across
-  #    driver reloads / replug. Pavilion's first lid-fold test still
-  #    dropped the network; cause was probably a different layer
-  #    (PCIe ASPM or BIOS-level), but disabling wifi power-save is
-  #    cheap insurance.
+  # Laptop running as 24/7 server. Three layers defeat power-saving:
+  # 1. logind lid handlers → ignore.
+  # 2. systemd sleep/suspend targets → masked (belt for layer 1).
+  # 3. Wifi power_save off via udev rule (survives driver reload/
+  #    replug). Cheap insurance against the BCM4313 dropping the link.
   services.logind = {
     lidSwitch = "ignore";
     lidSwitchExternalPower = "ignore";

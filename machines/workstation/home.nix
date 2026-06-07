@@ -39,8 +39,6 @@ let
     from: to: bind:
     bind // { range = { inherit from to; }; };
 
-  # Pretty-print the mod prefix for the cheatsheet.
-  # "$mod SHIFT" → "SUPER + SHIFT"; "$mod" → "SUPER"; "" → "".
   prettyMod =
     m:
     if m == "" then
@@ -114,9 +112,8 @@ let
     (mkBind "mouse:273" "resizewindow" "drag-RMB: resize window")
   ];
 
-  # Cheatsheet text → /nix/store file → cat'd into fuzzel by the wrapper.
-  # File-based to dodge heredoc indentation quirks; also self-documenting
-  # (`cat /nix/store/...-hypr-cheatsheet.txt` to see the rendered text).
+  # File-based (not heredoc) to dodge shell-quoting quirks at the
+  # fuzzel call site below.
   cheatsheetText = lib.concatMapStringsSep "\n" cheatsheetLine (keyBinds ++ mouseBinds);
   cheatsheetFile = pkgs.writeText "hypr-cheatsheet.txt" cheatsheetText;
 
@@ -124,11 +121,8 @@ let
     cat ${cheatsheetFile} | ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt "binds: " --width 64 --lines 24 >/dev/null
   '';
 
-  # Command menu — a fuzzel dmenu of system actions (same pattern as the
-  # cheatsheet, same Stylix theme). Each entry wraps a tool already in use:
-  # lock = hyprlock, night mode = the hyprsunset user unit (mirrors waybar's
-  # toggle), reboot/poweroff = systemctl. Destructive actions gate behind a
-  # yes/no confirm. Bound to SUPER+ESCAPE.
+  # fuzzel-driven system-action menu. Destructive entries gate behind
+  # a yes/no confirm.
   cmdMenu = pkgs.writeShellScriptBin "cmd-menu" ''
     fuzzel=${pkgs.fuzzel}/bin/fuzzel
     confirm() { [ "$(printf 'No\nYes\n' | "$fuzzel" --dmenu --prompt "$1 ")" = "Yes" ]; }
@@ -159,12 +153,9 @@ let
     hyprctl dispatch 'hl.dsp.workspace.toggle_special({ name = "term" })'
   '';
 in
-# Pure home-manager module — workstation user content. The
-# home-manager-as-NixOS-module wrapper (`useGlobalPkgs`,
-# `useUserPackages`, `extraSpecialArgs`, `backupFileExtension`,
-# `users.nori.imports = [ ./home.nix ]`) lives in the sibling
-# `default.nix` so this file's shape matches every other
-# machines/<n>/home.nix regardless of NixOS-ness.
+# Pure home-manager module — same shape as every other
+# machines/<n>/home.nix. The home-manager-as-NixOS-module wrapper
+# lives in the sibling default.nix so this file is portable.
 {
   imports = [ ../../home/pc.nix ];
 
@@ -198,11 +189,10 @@ in
     # (denies network, confines writes — contains even --allow-run
     # subprocesses, which Deno doesn't bound). Optional; pagu falls back to
     # the Deno-permission floor without it.
-    # home-manager CLI. `programs.home-manager.enable = true` only wires
-    # the activation script (used by NixOS-rebuild); the binary itself
-    # isn't installed automatically when home-manager runs as a NixOS
-    # module. Useful for `home-manager news`, `home-manager generations`,
-    # introspection. Don't `home-manager switch` here — use just rebuild.
+    # home-manager CLI for introspection (`news`, `generations`). The
+    # `programs.home-manager.enable` above wires only the activation
+    # script when HM runs as a NixOS module; the binary isn't auto-
+    # installed. Don't `home-manager switch` — use `just rebuild`.
     pkgs.home-manager
   ];
 
@@ -210,10 +200,6 @@ in
   # PATH so they're runnable from a bare shell.
   home.sessionPath = [ "$HOME/.deno/bin" ];
 
-  # programs.<x>.enable adds shell integration + declarative config
-  # in addition to the binary. Use this form when the integration
-  # is the value (fzf Ctrl-R, zoxide z command); use plain
-  # home.packages when only the binary is needed (above).
   programs.bash.enable = true; # home-manager owns ~/.bashrc — lets fzf/zoxide auto-source
 
   programs.lazygit = {
@@ -258,15 +244,8 @@ in
       "Projects" = link "/srv/nori/Projects";
     };
 
-  # Cursor + GTK + Qt + dconf color-scheme are now managed by Stylix
-  # (modules/desktop/stylix.nix) — one wallpaper input drives the
-  # Material You palette across the whole desktop. Tweak the wallpaper
-  # there to restyle everything in lockstep. The cursor stays Bibata
-  # at 24px via `stylix.cursor`.
-  #
-  # Per-target opt-outs at home-manager scope. modules/desktop/
-  # hypr-lock.nix already owns hyprlock.settings.background (blur +
-  # screenshot capture); Stylix's hyprlock target would collide.
+  # modules/desktop/hypr-lock.nix already owns hyprlock.settings.background
+  # (blur + screenshot capture); Stylix's hyprlock target would collide.
   stylix.targets.hyprlock.enable = false;
 
   wayland.windowManager.hyprland = {
@@ -278,21 +257,14 @@ in
     package = null;
     portalPackage = null;
 
-    # Hyprland 0.55+ hyprlang-vs-lua selector. We use lua via
-    # xdg.configFile."hypr/hyprland.lua" at the bottom of this file.
-    # The conf-side `settings = {...}` block below still renders
-    # hyprland.conf as a fallback (Hyprland prefers .lua when present),
-    # so `rm ~/.config/hypr/hyprland.lua && hyprctl reload` is a clean
-    # runtime rollback to hyprlang. Also silences the home-manager
-    # release-26.05 eval warning about the default flipping from
-    # "hyprlang" to "lua" at home.stateVersion ≥ 26.05.
+    # We use lua via xdg.configFile."hypr/hyprland.lua" at the bottom
+    # of this file. The conf-side `settings = {...}` block below still
+    # renders hyprland.conf as a fallback (Hyprland prefers .lua when
+    # present).
     configType = "lua";
   };
 
-  # Hyprland 0.55+ Lua config. With `configType = "lua"` above,
-  # home-manager stops rendering hyprland.conf — Hyprland reads this
-  # `.lua` exclusively. Rollback now means revert + rebuild (the
-  # runtime `rm hyprland.lua + hyprctl reload` shortcut documented in
-  # the lua-migration commit no longer applies).
+  # Hyprland reads this .lua exclusively (configType=lua above).
+  # Rollback = revert + rebuild; no runtime `rm + reload` shortcut.
   xdg.configFile."hypr/hyprland.lua".source = ./hyprland.lua;
 }

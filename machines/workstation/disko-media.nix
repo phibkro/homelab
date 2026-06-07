@@ -33,30 +33,16 @@ _: {
     };
   };
 
-  # Declarative partition layout for workstation's IronWolf Pro media drive.
-  # Phase 2 — applied AFTER the Phase 4 root install. Wipes the existing
-  # exfat partition; preserve any irreplaceable data first.
+  # Declarative partition layout for workstation's IronWolf Pro media
+  # drive. Phase 2 — applied AFTER the Phase 4 root install. Wipes the
+  # existing exfat partition; preserve any irreplaceable data first.
   #
   #   nix run github:nix-community/disko/latest -- \
   #     --mode disko machines/workstation/disko-media.nix
   #
-  # Layout (per docs/STORAGE.md § "Workstation media", plus @archive + @library added):
-  #   single GPT partition spanning the disk, btrfs label
-  #   `ironwolf-storage`, with seven subvolumes:
-  #     @downloads    -> /mnt/media/downloads   (re-derivable: movies, shows,
-  #                                              music; weekly snapshot only)
-  #     @photos       -> /mnt/media/photos      (irreplaceable; daily + restic)
-  #     @home-videos  -> /mnt/media/home-videos (irreplaceable; weekly + restic)
-  #     @projects     -> /mnt/media/projects    (irreplaceable; weekly + restic)
-  #     @library      -> /mnt/media/library     (curated media: books, comics;
-  #                                              daily + restic; tier sits
-  #                                              between @downloads (re-derivable)
-  #                                              and @photos (irreplaceable))
-  #     @archive      -> /mnt/media/archive     (cold; legacy machine backups)
-  #     @snapshots    -> /mnt/media/.snapshots  (btrbk target on this FS)
-  #
-  # Mountpoints stay under /mnt/media/ — the label describes the
-  # underlying drive, the mount path describes how it's served.
+  # See docs/STORAGE.md § "Workstation media" for the subvol → tier
+  # table. Mountpoints stay under /mnt/media/ — the label describes the
+  # drive, the mount path describes how it's served.
   #
   # All mounted subvolumes use compress=zstd:3,noatime. Disko emits the
   # corresponding fileSystems entries automatically when this module is
@@ -135,14 +121,8 @@ _: {
                   ];
                 };
                 "@archive" = {
-                  # Archive — historical / cold data that doesn't belong
-                  # in the active subvolumes. Backed up via restic per
-                  # the same tier as @projects; weekly btrbk snapshots,
-                  # keep 4. Initial population: legacy machine backups
-                  # (asus-laptop, FIT-128GB, ubuntu-pc, nori-backup)
-                  # migrated off the OneTouch when it became the restic
-                  # target (Phase 5+; see git log around the OneTouch
-                  # transition).
+                  # Cold historical data. Backed up via restic at the
+                  # @projects tier; weekly btrbk snapshots, keep 4.
                   mountpoint = "/mnt/media/archive";
                   mountOptions = [
                     "compress=zstd:3"

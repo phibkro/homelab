@@ -12,39 +12,22 @@
 #
 # ── Why it exists ──────────────────────────────────────────────────
 # Workstation runs ollama AND immich's CLIP/face/OCR pipeline on the
-# same 5060 Ti. Under heavy photo ingest (Immich's smart-search re-
-# index or face-detection backfill), the model evict/reload thrash
-# tanks ollama latency for the operator. Splitting immich-ml onto a
-# dedicated GPU peer fixes that. The 950M's 2 GB VRAM is plenty for
-# CLIP-ViT-B/32 (≈350 MB) + RetinaFace (≈250 MB) + Tesseract OCR
-# (CPU-side), and its Maxwell-era CUDA is genuinely fast at batched
-# inference even if it's a decade old.
+# same 5060 Ti. Heavy photo ingest (smart-search re-index, face-
+# detection backfill) evict/reload-thrashes ollama and tanks
+# operator latency. The 950M's 2 GB VRAM fits CLIP-ViT-B/32 (~350 MB)
+# + RetinaFace (~250 MB) with Tesseract OCR on CPU, and Maxwell CUDA
+# is still fast at batched inference.
 #
 # ── Posture ────────────────────────────────────────────────────────
 # * Stateless from a backup perspective — immich's authoritative
-#   state (DB, originals, embeddings) lives on workstation. What
-#   aurora caches is just downloaded ML model weights, replaceable
-#   on first run.
-# * No impermanence — model weights are ~2 GB and re-downloading
-#   every boot would be wasteful. Regular btrfs root.
+#   state (DB, originals, embeddings) lives on workstation. Aurora
+#   only caches downloaded ML weights, replaceable on first run.
+# * No impermanence — weights are ~2 GB; re-downloading every boot
+#   wastes bandwidth + startup. Regular btrfs root.
 # * No services exposed to LAN. immich-ml listens on tailnet only;
 #   workstation's immich-server reaches it via tailnet ACL.
 # * No claude-code, no operator GitHub credential. Operator's daily
 #   driver stays on workstation.
-#
-# ── Open items (post-deploy) ───────────────────────────────────────
-# 1. Workstation's modules/services/immich.nix needs an env override
-#    to point at aurora:
-#       IMMICH_MACHINE_LEARNING_URL=http://aurora.saola-matrix.ts.net:3003
-#    plus disable services.immich.machine-learning.enable locally.
-# 2. Verify the upstream services.immich.machine-learning sub-module
-#    can run standalone (without the umbrella server). If not, fall
-#    back to a custom systemd unit running the container directly.
-# 3. NVIDIA driver: legacy 535-series for Maxwell. Verify CUDA
-#    available to the ML container.
-#
-# Captured in [[nixos-anywhere-first-install-gotchas]] for the
-# pre-deploy checklist.
 
 {
   imports = [
@@ -115,15 +98,11 @@
   # ── Networking ─────────────────────────────────────────────────────
   networking.useDHCP = lib.mkDefault true;
 
-  # Wifi via iwd. Aurora's a laptop with no impermanence, so iwd
-  # state in /var/lib/iwd persists naturally on the @root subvol —
-  # no /persist binds needed (unlike pavilion). Captured Akkar PSK
-  # gets dropped at install time; subsequent SSID changes can use
-  # `iwctl station wlp2s0 connect <SSID>` interactively.
-  #
-  # Captured in [[nixos-anywhere-first-install-gotchas]] — this is
-  # gap #1 from the pavilion lesson. Re-learned on aurora because I
-  # forgot to apply the lesson to the sketch.
+  # Wifi via iwd. No impermanence here, so /var/lib/iwd persists on
+  # the @root subvol — no /persist binds needed (unlike pavilion).
+  # SSID + PSK dropped at install time; rotate via
+  # `iwctl station wlp2s0 connect <SSID>`. See
+  # [[nixos-anywhere-first-install-gotchas]].
   networking.wireless.iwd.enable = true;
   networking.wireless.enable = false;
 
@@ -174,8 +153,6 @@
     machine-learning = {
       enable = true;
       environment = {
-        # Override upstream's localhost default; need mkForce because
-        # the upstream module sets the same key at the same priority.
         IMMICH_HOST = lib.mkForce "0.0.0.0";
       };
     };
@@ -219,10 +196,10 @@
     {
       assertion = config.nori.hosts.${config.networking.hostName}.role == "workhorse";
       message =
-        "aurora's role must be 'workhorse' in flake.nix identityFor "
-        + "(currently classified workhorse despite minimal service "
-        + "footprint — see header comment about the rule-of-three "
-        + "trigger for a future `compute` role).";
+        "aurora's role must be 'workhorse' in flake.nix identityFor. "
+        + "(Currently classified workhorse despite the single-service "
+        + "footprint; promote to a dedicated `compute` role on the "
+        + "third single-GPU-peer host — rule of three.)";
     }
   ];
 }
