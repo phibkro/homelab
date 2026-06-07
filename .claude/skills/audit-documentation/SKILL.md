@@ -48,6 +48,7 @@ Apply the **earns-rent test** to every comment block:
 | Cross-ref to spec / skill / ADR / runbook  | List-of-derived-things                 |
 | **Non-obvious placement choice**           | **Downstream-of-canonical-home paraphrase** |
 | **Visual structure** (bullets/tables) when content is enumerable | **Per-section paraphrase in a list literal** |
+| **Scan-anchor inline why-tag at a literal** | **Pure NixOS-idiom paraphrase** (e.g. comment restating `mode = "0440"`) |
 
 ### Cross-file rationale (the multi-file case)
 
@@ -187,6 +188,13 @@ paraphrase (CUT).
 ## Workflow per file
 
 The per-file workflow that worked across 40+ files:
+
+0. **Verify starting state is clean.** Run `git status` first. If
+   the working tree has uncommitted modifications when you start,
+   STOP and surface them — don't blend them into your own edits.
+   Treat any modification you observe *during* your work as your
+   own (because it is). Confusing prior state with your edits leads
+   to mis-attribution in commit messages.
 
 1. **Read the target file** completely (no skim — sub-readings miss
    structural drift).

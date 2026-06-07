@@ -43,7 +43,9 @@
     # No OnFailure handler — silence at hc.io IS the alert.
     serviceConfig = {
       Type = "oneshot";
+      # Allow the curl to read the sops-rendered URL file.
       SupplementaryGroups = [ "keys" ];
+      # Hardening — process needs nothing beyond network egress.
       DynamicUser = true;
       PrivateTmp = true;
       ProtectSystem = "strict";
