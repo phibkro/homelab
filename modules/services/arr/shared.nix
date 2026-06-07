@@ -20,6 +20,9 @@
 
   users.groups.media = { };
 
+  # Jellyfin joins `media` here (not in its own module) so jellyfin.nix
+  # stays unaware of the *arr stack — the *arrs are the ones adding the
+  # group; jellyfin is just a downstream consumer of what they produce.
   users.users.jellyfin = lib.mkIf config.services.jellyfin.enable {
     extraGroups = [ "media" ];
   };
