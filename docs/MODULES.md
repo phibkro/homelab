@@ -13,50 +13,41 @@ Repository-wide patterns for *writing* modules. Rules and how they're checked li
 ```
 flake.nix
 flake.lock                       # Pinned 26.05 revision; source of reproducibility
-machines/
-  core.nix                       # Shared interactive-user home-manager baseline
-  workstation/
-    default.nix                  # NixOS host config
-    hardware.nix
-    disko.nix                    # Applied at install
-    disko-media.nix              # Applied post-install (IronWolf reformat)
-    home.nix                     # Pure home-manager module
-    hyprland.lua                 # Lua config for Hyprland 0.55+
-  pi/
-    default.nix
-    hardware.nix
-    disko.nix
-    home.nix
-  macbook/
-    home.nix                     # Standalone home-manager (no NixOS layer)
-modules/
-  common/                        # Universal infra — every host imports
-    default.nix
-    base.nix · users.nix · sops.nix · tailscale.nix
-  effects/                       # Cross-cutting `nori.<X>` declarative options
-    hosts.nix · gpu.nix · fs.nix          # Reader-shaped
-    lan-route.nix · backup.nix · harden.nix  # Writer-shaped
-  server/                        # "This host serves things"
-    default.nix                  # workhorse bundle (station imports whole; pi picks flat)
-    <service>.nix                # Loose: independent services
-    arr/                         # Tightly-coupled *arr stack
-    backup/                      # Tightly-coupled durability stack
-    beszel/                      # Cross-host hub + agent split
-    ntfy/                        # Cross-host server + notify split
-  desktop/                       # "This host has a graphical session"
-    hyprland.nix · greetd.nix · stylix.nix · apps.nix
-  dev/                           # Dev-shell fragments composed via mkDevShell
-  claude-code/                   # Operator's global Claude config (skills + settings)
+machines/                        # PER-HOST: NixOS system config only
+  workstation/    pi/    pavilion/    aurora/   # NixOS hosts (default.nix + hardware + disko + home.nix)
+  macbook/                       # Standalone home-manager (no NixOS layer)
+home/                            # HOME-MANAGER modules (user-space, dotfiles, CLIs)
+  core.nix                       # cross-platform CLI baseline — every host imports
+  pc.nix                         # operator-PC tier — heavy closures (claude-code, hermes)
+  claude-code/                   # CLI + ~/.claude/skills/* + settings.json
+  hermes/                        # Hermes Agent CLI (Linux-only; skips on Mac)
+modules/                         # NixOS modules (root, system)
+  common/                        # universal infra — every host imports
+    base.nix · users.nix · sops.nix · tailscale.nix · vector.nix
+  effects/                       # `nori.<X>` Reader + Writer interface options
+    hosts.nix · gpu.nix · fs.nix              # Reader-shaped
+    lan-route.nix · backup.nix · harden.nix   # Writer-shaped
+    gatus-probe.nix · resource-tiers.nix · restart-policy.nix · rust-motd.nix · hosts.nix
+  services/                      # "this host serves things"
+    default.nix                  # workhorse bundle (workstation imports whole; pi picks flat)
+    <service>.nix                # loose: independent services
+    arr/    backup/    beszel/    ntfy/    victorialogs/   # tightly-coupled clusters
+  desktop/                       # "this host has a graphical session"
+    hyprland.nix · greetd.nix · stylix.nix · apps.nix · ...
+  dev/                           # dev-shell fragments composed via mkDevShell
 secrets/
   secrets.yaml · apps.yaml · .sops.yaml
 docs/
   decisions/                     # ADRs — hard-to-reverse decisions, dated
-  runbooks/                      # Per-failure step-by-step recovery
-  superpowers/                   # Per-feature specs and plans
-  <REFERENCE>.md                 # Tier-2 reference docs (see CLAUDE.md routing)
+  runbooks/                      # per-failure recovery
+  superpowers/                   # per-feature specs + plans
+  TESTING.md                     # runtime introspection framework + recipes
+  <REFERENCE>.md                 # tier-2 reference docs (see CLAUDE.md routing)
 .claude/
-  skills/                        # Procedure skills (load on demand)
+  skills/                        # procedure skills (load on demand)
 ```
+
+**Layout principle:** `machines/<host>/` = pure machine-specific NixOS wiring; `home/` = home-manager (cross-host operator-side); `modules/effects/` = `nori.<X>` declarative options; `modules/services/` = NixOS-side service modules. The split between `modules/` and `home/` is the **NixOS-vs-home-manager** module-system boundary.
 
 ## Configuration derivation from layout
 
@@ -138,13 +129,25 @@ A service module owns *everything* about its service in one file. No fan-out.
   };
 
   # Backup intent (required — `every-service-has-backup-intent` flake check)
-  nori.backups.<service>.paths = [ "/var/lib/<service>" ];
+  nori.backups.<service>.include = [ "/var/lib/<service>" ];
   # or for stateless / re-derivable services:
   # nori.backups.<service>.skip = "<reason>";
+
+  # SQLite-backed services: use Pattern C2 (VACUUM INTO + flock)
+  # See modules/services/navidrome.nix for canonical impl + SERVICES.md § Pattern C2.
 
   # Optional: open backend port directly on tailnet (default: closed)
   # nori.lanRoutes.<short-name>.exposeOnTailnet = true;
 }
+```
+
+**After landing:**
+
+```
+just preview      → activate without boot entry
+just test         → runs all introspection tests (test-hypr / -backups / -routes / -observability)
+just pending      → review diff before push
+just rebuild      → persist
 ```
 
 ## Filesystem hardening (`nori.harden`)

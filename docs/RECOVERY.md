@@ -15,8 +15,10 @@ RTO targets for each failure class, the runbooks that hit them, and the permanen
 | Bad config | < 15 min | NixOS rollback (atomic generations); `bad-config.md` |
 | Single file deletion | < 15 min | btrbk snapshot restore; `file-deletion.md` |
 | Service corruption | < 1 hour | Stop service, restore subvolume snapshot, restart; `service-corruption.md` |
-| Pi total failure | < 2 hours | Spare USB SSD or reflash from flake; `pi-failure.md` |
-| Root drive failure (main host) | < 1 day | Reinstall via disko + flake, restic restore from Pi; `drive-failure-root.md` |
+| Pi total failure | < 2 hours | Spare USB SSD or reflash from flake. **healthchecks.io alerts off-host** when pi misses 3+ heartbeats |
+| Aurora total failure | degraded only — immich-ml falls back to host CPU via env-var change | Operator updates `IMMICH_MACHINE_LEARNING_URL` on workstation; non-blocking |
+| Pavilion total failure | degraded only — agent quarantine unavailable | Agents fall back to workstation (less isolated). Pavilion uses impermanence so reinstall is fast |
+| Root drive failure (workstation) | < 1 day | Reinstall via disko + flake, restic restore from `/mnt/backup` USB drives; `drive-failure-root.md` |
 | Media drive failure | < 1 day for services, days for media data | Service config restored fast; bulk media restore is bandwidth-bound; `drive-failure-media.md` |
 | Whole-machine loss | Days+ | Hardware procurement is the bottleneck |
 
@@ -45,7 +47,7 @@ These are **inviolable** — every recovery action must respect them or the reco
 | **Disko configs MUST target `/dev/disk/by-id/...`** | by-id paths follow the hardware; `/dev` paths follow PCIe scan order |
 | **Disambiguate disks by model + by-id, never `/dev/nvmeN`** | Same reason as above; codified in `.claude/skills/gotcha-nvme-enumeration/` |
 | **Don't schedule destructive system changes during weeks with Aker demo pressure** | The lab is the operator's daily-driver; outage during high-load weeks isn't acceptable |
-| **Backup verification is part of the system, not optional** | Quarterly restore drill is the **real RTO measurement** — green CI is necessary, not sufficient |
+| **Backup verification is part of the system, not optional** | Tiered drill (`restore-drill-services` monthly + `restore-drill-user-data` quarterly) + `just test-backups` per deploy are the **real RTO measurement** — green CI is necessary, not sufficient |
 | **Phase 2 (IronWolf reformat) does not happen during Phase 4 (install)** | Two separate sequential operations. Do not combine. (Phase 2 was eventually pulled forward as part of Phase 5 service migration, *after* Phase 4 was complete — same constraint, different timing than original plan.) |
 
 ## Capacity baseline

@@ -12,9 +12,13 @@ The non-deterministic recurring procedures — analysing the system, adding a se
 | Fresh-session structural read | `/analyse-system` | "explore the codebase", "analyse the system", "orient yourself", "get up to speed" |
 | Add a new self-hosted service | `/add-service` | "add <X>", "set up <Y>", "let's deploy <Z>" |
 | Add a new NixOS host to the flake | `/add-host` | "add a new host", "set up nori-<X>", "another machine" |
+| Bootstrap a new Authelia OIDC client | `/add-oidc-client` | "add OIDC for <X>", "wire SSO for <Y>" |
 | Migrate a service to pi | `/relocate-to-pi` | "move <X> to Pi", "<X> should survive station outages" |
+| Query journald logs across the lab | `/query-logs` | "search logs", "what errored on <host>", "find <message> in journald" |
 | End-of-session wrap-up | `/wrap-session` | "wrap up", "ending session", "that's it for now" |
 | Doc-tier decision after a structural change | `/on-structural-change` | "we just landed <X>", "what doc tier needs updating?" |
+
+**Auto-loaded gotcha skills** (35+ of them as of 2026-06-07): each `.claude/skills/gotcha-<short-name>/` has a USE-WHEN trigger in its frontmatter. Claude auto-loads them when relevant; you don't invoke by name. List: `ls .claude/skills/gotcha-*`. They cover incident-derived landmines (PR-mortems converted into skill form).
 
 To invoke manually: `/skill-name`. To let Claude auto-discover: just describe the intent in natural language. Skill content (`.claude/skills/<name>/SKILL.md`) is the authoritative procedure; if you find yourself reasoning a procedure out from first principles, stop and let the skill expand.
 

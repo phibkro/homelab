@@ -11,11 +11,19 @@ Rules written as prose drift the moment they're written. Conventions in this rep
 ## The ladder
 
 ```
-prose  →  comment  →  test  →  type / lint / CI rule
-(weakest, drifts silently)              (strongest, can't drift)
+prose  →  comment  →  runtime-introspection  →  test  →  type / lint / CI rule
+(weakest, drifts silently)                                     (strongest, can't drift)
 ```
 
-Each rung is a different mechanism for staying true. **The bias is to push every load-bearing claim toward the rightmost rung the toolchain can reach.** A claim that lives only in prose is one refactor from silent staleness; a claim bound to a flake check fails CI the moment code diverges.
+| Rung | Mechanism | When it fires | Self-defending? |
+|---|---|---|---|
+| Type / lint / CI rule | `flake.nix checks.${system}` derivation | `nix flake check` (CI + pre-commit) | yes — can't merge violation |
+| Test (eval-time) | Module assertions in `modules/effects/<X>.nix` | `nixos-rebuild` eval phase | yes — can't deploy violation |
+| **Runtime introspection** | `just test-<X>` queries live registries | operator-triggered post-deploy | yes when run; silent if forgotten |
+| Comment | `# invariant: …` next to load-bearing code | reader-time only | no — passive prompt |
+| Prose | `INVARIANTS.md`, this doc, etc. | reader-time only | no — drifts |
+
+**The bias: push every load-bearing claim toward the rightmost rung the toolchain can reach.** A claim that lives only in prose is one refactor from silent staleness; a claim bound to a flake check fails CI the moment code diverges. Runtime introspection (the new-since-2026-06-07 rung) covers the case where the rule is correctness-against-runtime — the declaration ↔ runtime gap that no static check can see.
 
 Conceptual model: see `CONCEPTS.md` § enforcement ladder.
 
@@ -84,6 +92,7 @@ When you write the words **"we should always..."** or **"don't ever..."** in pro
 | Forbidden text pattern in source files | **flake check (grep)** |
 | Forbidden semantic pattern (needs eval introspection) | **flake check** via `nix eval` over `config.…` |
 | AST-shape rule | **flake check** wrapping `tree-sitter-nix` (not yet present) |
+| Declaration matches a queryable runtime registry (`nori.backups` → restic snapshots; `nori.lanRoutes` → Caddy admin API; hyprland binds → `hyprctl binds -j`) | **runtime introspection** — new `just test-<X>` recipe per `docs/TESTING.md` |
 | None of the above | **judgment** — that's what review is for. Don't write it down; it'll rot |
 
 ## When NOT to add a rule
@@ -96,13 +105,14 @@ When you write the words **"we should always..."** or **"don't ever..."** in pro
 
 ## Live `nori.<X>` enforcement
 
-The effect-interface family in `modules/effects/` is enforced by all four rungs simultaneously:
+The effect-interface family in `modules/effects/` is enforced by all five rungs simultaneously:
 
 | Rung | Example |
 |---|---|
 | Type | `port`, `audience`, `scheme`, name regex on `nori.lanRoutes.<n>` |
 | Assertion | port uniqueness; paths-XOR-skip on `nori.backups`; appliance role can't use `paths`; DynamicUser `StateDirectory` symlink-trap check |
 | Flake check | `every-service-has-fs-hardening`, `every-service-has-backup-intent`, `forbidden-patterns` |
+| **Runtime introspection** | `just test-backups` (per-target snapshot ≤25h), `just test-routes` (Caddy + DNS + HTTPS per route), `just test-observability` (scrape targets up, per-host series, heartbeat <90s) |
 | CI gate | All of the above run on every push via `.github/workflows/check.yml` |
 
 ## Promoting a `[prose: unchecked]` claim
