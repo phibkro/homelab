@@ -63,6 +63,15 @@ without examples drift; examples without rules don't generalise.
 
 ## Hard rules
 
+- **Prefer visual structure over prose** when the content is
+  enumerable. A set of distinct things (services that cross-couple,
+  options with distinct purposes, hosts with distinct roles) belongs
+  in a table, bullet list, or mermaid diagram — even if the prose
+  version would be shorter. The scannability the visual carries IS
+  the value. Distinguish from "derived list" below: visual structure
+  earns rent when each row has distinct content; it doesn't earn rent
+  when each row paraphrases a literal that appears verbatim in the
+  code nearby.
 - **Lists derived from code → derive from code, never duplicate in
   prose.** Lists of services / hosts / subvolumes / skills / lanRoutes /
   modules drift the second code changes. Generate them (`nix eval`),
@@ -75,6 +84,11 @@ without examples drift; examples without rules don't generalise.
 - **Bind load-bearing claims to evidence.** "X is enforced" / "Y lives
   at Z" names the test, path, or type that makes it true. `INVARIANTS.md`
   tags each claim by enforcement rung.
+- **Borderline → KEEP.** A comment whose value is unclear in 30 seconds
+  of inspection probably encodes operator judgment that would be missed
+  without it. Cost of keeping a borderline-redundant comment is one
+  screen of vertical space; cost of cutting a borderline-load-bearing
+  one is operator knowledge lost.
 - **What stays in docs.** WHY (decisions, ADRs, rationales), HOW
   (procedures, runbooks), mental models, frameworks, constraints —
   things code can't carry.
@@ -93,6 +107,9 @@ without examples drift; examples without rules don't generalise.
 | Per-section paraphrase in a list literal | `# in-repo skills`, `# user-level CLAUDE.md` on attrs   | drop; the attribute name carries the meaning              |
 | Transcribed framework docs               | per-flag systemd.exec glossary inline                    | drop; `man` is authoritative                              |
 | Per-subvol layout enumeration            | layout diagram repeating disko's literals                | drop; the declaration carries the layout                  |
+| Sibling meta-narration ("same shape as X") | `# Pattern A — same shape as sonarr` on every consumer  | drop; the pattern tag earns rent only if paired with a why |
+| Attribute-literal parade                 | prose listing `[Preferences]` keys 30 lines above the dict that sets them | drop; the dict is the canonical list |
+| Downstream-of-canonical-home paraphrase  | shared.nix carries the `media` group rationale; every *arr restates it | drop from consumers; the canonical home keeps it |
 
 ## Style for prose (the doc-refresh prompt)
 
