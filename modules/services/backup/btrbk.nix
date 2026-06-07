@@ -35,35 +35,16 @@ in
   #   root (SN750):    /home, /srv/share, /var/lib  → /.snapshots
   #   media (IronWolf): /mnt/media/{photos,...}     → /mnt/media/.snapshots
   #
-  # Subvolume lists are derived from nori.fs (host's disko config is
-  # the single source of truth). Anything with `tier != re-derivable`
-  # gets snapshotted; @downloads and similar are excluded by tier
-  # filter rather than enumeration. @var/lib is added explicitly —
-  # it's a btrfs subvolume but not in nori.fs (StateDirectory paths
-  # are NixOS-managed, not a structural FS location services consume).
+  # Subvolume lists derived from nori.fs by tier filter (anything
+  # `tier != re-derivable`); @var/lib added explicitly because it's
+  # NixOS-managed StateDirectory, not a structural FS location.
   #
   # Subvolumes intentionally NOT snapshotted:
-  #   @       (the system root — covered by NixOS generations)
+  #   @       (system root — covered by NixOS generations)
   #   @nix    (re-derivable from the flake)
   #   @downloads (re-derivable per DESIGN tier table — filtered out)
   #
-  # @archive — historical/cold data (legacy machine backups etc.).
-  # Snapshot daily, retain per the media instance's retention curve;
-  # the data is mostly immutable so daily snapshots are nearly-free.
-  #
-  # @library — curated media (books, comics). Daily snapshot, included
-  # in restic media-irreplaceable.
-  #
-  # Retention is conservative for first run; tighten/loosen per
-  # actual disk growth observation. DESIGN's retention targets:
-  #   @home: hourly + daily          ← starting daily-only; bump to
-  #                                     hourly later if churn warrants
-  #   @var-lib, @srv-share: daily
-  #   @photos: daily 14 + monthly 12
-  #   @home-videos, @projects: daily / weekly retention
-  #
-  # btrbk's onCalendar fires the snapshot job. Retention is enforced
-  # on each run via snapshot_preserve.
+  # Retention conservative for first run; tune per disk growth.
 
   services.btrbk = {
     instances.root = {
@@ -97,11 +78,7 @@ in
     };
   };
 
-  # btrbk needs btrfs-progs for snapshot creation; the module pulls
-  # it in automatically.
-
-  # Alert on snapshot job failure via ntfy template in
-  # modules/server/ntfy/notify.nix.
+  # Alert via ntfy template in modules/server/ntfy/notify.nix.
   systemd.services.btrbk-root.unitConfig.OnFailure = [ "notify@btrbk-root.service" ];
   systemd.services.btrbk-media.unitConfig.OnFailure = [ "notify@btrbk-media.service" ];
 

@@ -72,11 +72,7 @@ in
     "d /var/backup 0755 root root -"
   ];
 
-  # ---------------------------------------------------------------------
-  # Backup target registry. See modules/effects/backup.nix for the
-  # schema; each nori.backups.<job> fans out to every target listed
-  # here by default, producing one restic-backups-<job>-<target>
-  # systemd unit per pair.
+  # Backup target registry — schema in modules/effects/backup.nix.
   nori.backupTargets = {
     onetouch = {
       repoBase = "/mnt/backup";
@@ -174,15 +170,10 @@ in
     };
   };
 
-  # ---------------------------------------------------------------------
-  # Non-service-tied backup repos. Service-specific repos live in the
-  # respective service modules (modules/server/<name>.nix).
-  #
-  # Paths derived from nori.fs tier — host's disko config is the single
-  # source of truth (see modules/effects/fs.nix). Adding a new media
-  # subvolume in disko-media.nix with `tier = "irreplaceable"` flows
-  # through to media-irreplaceable.include automatically; same for `user`
-  # → user-data.include.
+  # Non-service-tied backup repos. Paths derived from nori.fs tier —
+  # adding a new subvol in disko-media.nix with `tier = "irreplaceable"`
+  # flows through to media-irreplaceable.include automatically; same for
+  # `user` → user-data.include.
 
   nori.backups.user-data = {
     include = lib.mapAttrsToList (_: f: f.path) (

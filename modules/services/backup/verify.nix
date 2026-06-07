@@ -133,9 +133,8 @@ in
     description = "Monthly service-tier restore drill timer";
     wantedBy = [ "timers.target" ];
     timerConfig = {
-      # First Sunday of each month at 04:00. Services are cheap to
-      # drill so monthly cadence gives faster signal on any backup-side
-      # regression.
+      # First Sunday of the month at 04:00. Services are cheap to drill
+      # so monthly cadence gives faster signal on backup-side regression.
       OnCalendar = "Sun *-*-01..07 04:00:00";
       Persistent = true;
     };
