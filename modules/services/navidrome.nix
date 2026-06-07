@@ -17,11 +17,7 @@
   # /var/lib/navidrome (DynamicUser symlink → /var/lib/private/navidrome;
   # backup paths target the private dir per the symlink-trap assertion).
   #
-  # ── Naming ──────────────────────────────────────────────────────
-  # The `music` lanRoute is taken by Lidarr (acquire-tier). Navidrome
-  # uses `audio` to avoid the conflict. Rename one if the asymmetry
-  # ever bothers you — single-line edit, DNS + Caddy + Glance auto-
-  # update.
+  # `music` is taken by Lidarr (acquire-tier); Navidrome uses `audio`.
   #
   # ── First-run setup ────────────────────────────────────────────
   #   1. just generate-oidc-key audio
@@ -67,10 +63,9 @@
     };
   };
 
-  # OIDC env vars + the env-file-injected client secret. The lan-route
-  # abstraction generates the env file at /run/secrets/rendered/oidc-audio-env
-  # with key `ND_AUTH_OIDC_CLIENTSECRET=<raw>` (per `secretEnvName`
-  # below). Non-secret config goes in `environment` directly.
+  # Client secret arrives via lan-route's generated env file (key
+  # `ND_AUTH_OIDC_CLIENTSECRET` per `secretEnvName` below). Non-secret
+  # OIDC knobs go in `environment` directly.
   systemd.services.navidrome.serviceConfig = {
     EnvironmentFile = config.sops.templates."oidc-audio-env".path;
     SupplementaryGroups = [ "keys" ];
@@ -92,9 +87,8 @@
     ND_AUTH_OIDC_USERNAMECLAIM = "preferred_username";
   };
 
-  # Default-deny FS hardening with read-only access to Lidarr's music
-  # library. Navidrome's own state at /var/lib/private/navidrome is
-  # handled by the upstream module's StateDirectory.
+  # Read-only access to Lidarr's music library; navidrome's own state
+  # at /var/lib/private/navidrome rides upstream's StateDirectory.
   nori.harden.navidrome.readOnlyBinds = [ config.nori.fs.downloads.path ];
 
   nori.lanRoutes.audio = {

@@ -7,35 +7,14 @@
 
 {
   # Immich — self-hosted photo management. Phone → server auto-upload,
-  # face recognition, object detection, shared albums. The photo
-  # equivalent of Jellyfin (which is video-focused). The Phase 5
-  # service originally planned but deferred until after backup
-  # infrastructure landed.
+  # face recognition, object detection, shared albums.
   #
-  # Architecture: server + redis + postgres (with VectorChord for
-  # vector search) + ML worker (uses NVIDIA GPU for face/object
-  # detection inference). All four sub-services provisioned by the
-  # NixOS module; we just enable + point at the right paths.
-  #
-  # Storage:
-  #   /mnt/media/photos/_immich-managed   — uploads / library /
-  #                                          profile (managed by
-  #                                          Immich; capacity-bound,
-  #                                          lives on @photos
-  #                                          subvolume on IronWolf)
-  #   /var/lib/immich                      — service state (DB, ML
-  #                                          model weights, backup
-  #                                          dumps) on root NVMe
-  #
-  # Pre-existing user-organized photos at /mnt/media/photos/{2022,
-  # Canon EOS, ...} sit alongside _immich-managed/ — Immich won't
-  # see them unless explicitly imported via the web UI or CLI.
-  #
-  # Backup: Pattern B per SERVICES.md § "Backup-correctness patterns". Immich writes Postgres
-  # dumps to /var/lib/immich/backups on a schedule; restic picks up
-  # that path + the photos themselves (already in
-  # media-irreplaceable.include via /mnt/media/photos). The dumps path
-  # is added to backup/restic.nix in this commit.
+  # Storage split: managed library under _immich-managed/ on @photos
+  # (capacity-bound, IronWolf); service state (DB, ML weights, dumps)
+  # on root NVMe. Pre-existing user-organized photos at
+  # /mnt/media/photos/{2022, Canon EOS, ...} sit alongside
+  # _immich-managed/ — Immich won't see them unless explicitly imported
+  # via the web UI (External Library) or `immich-cli upload`.
   #
   # First-run setup:
   #   1. Visit https://photos.nori.lan
@@ -87,41 +66,21 @@
   systemd.services.immich-server.environment.IMMICH_MACHINE_LEARNING_URL =
     lib.mkForce "http://${config.nori.hosts.aurora.tailnetIp}:3003";
 
-  # Workstation-side ML tunings DROPPED — ML now lives on aurora
-  # (see machines/aurora/default.nix). The historical knobs were
-  # workstation-specific (5060 Ti's 16 GB VRAM = 1 worker; 5600X's
-  # 12 threads = 4 request threads; LD_LIBRARY_PATH for the local
-  # onnxruntime CUDA build). Aurora has different hardware (Maxwell
-  # GTX 950M, 2 GB VRAM, Skylake-H 4c/8t) and its own tuning lives
-  # there. Keeping these here as a dead override produces a unit
-  # file with no ExecStart on workstation — systemd refuses to load
-  # it, the rebuild fails.
+  # ML-side knobs (tunings, harden entry, resource caps) DROPPED with
+  # the aurora migration. Workstation no longer runs the ML unit, so
+  # any override targeting immich-machine-learning here produces a
+  # unit with no ExecStart — systemd refuses to load it and activation
+  # fails. Aurora-side tuning lives in machines/aurora/default.nix.
 
-  # Cross-service photo access: Immich joins `media` so it can read
-  # the existing user-organized photo tree if you point External
-  # Library at it; future services (e.g. PhotoPrism) would do the same.
+  # Joins `media` to read the user-organized photo tree if you point
+  # External Library at it.
   users.users.immich.extraGroups = [ "media" ];
 
-  # Bootstrap the immich-managed subdir at activation. The mediaLocation
-  # path must exist and be writable by `immich` before the service
-  # starts; tmpfiles creates it with the right ownership.
   systemd.tmpfiles.rules = [
     "d ${config.nori.fs.photos.path}/_immich-managed 0750 immich immich -"
   ];
 
-  # Default-deny FS hardening for the server only. ML's hardening
-  # lives on aurora now (when added there); workstation doesn't run
-  # the ML unit, so the harden.immich-machine-learning entry that
-  # was here is dropped — leaving it produced a malformed unit when
-  # services.immich.machine-learning.enable = false (no ExecStart +
-  # our overrides = systemd refuses to load).
   nori.harden.immich-server.binds = [ config.nori.fs.photos.path ];
-
-  # Resource caps on ML — historical workstation tuning (CPUQuota
-  # 600%, MemoryMax 16G) was sized for the 5600X + 5060 Ti shape.
-  # Aurora has different hardware; if it needs caps, set them there.
-  # Keeping these here while machine-learning.enable=false produced
-  # a unit with no ExecStart and broke activation.
 
   # Web-UI-managed OIDC (like Jellyseerr/Beszel). Immich stores its
   # OAuth config in postgres (system_config table); env-var override
@@ -161,11 +120,5 @@
     };
   };
 
-  # Photos at /mnt/media/photos/_immich-managed live on the
-  # @photos subvolume, already covered by media-irreplaceable.
-  # Pattern B SQL dumps land at /var/lib/immich/backups (Immich's
-  # web-UI Scheduled Database Backup, cron 02:00) — also in
-  # media-irreplaceable. Everything else under /var/lib/immich is
-  # ML models + transcoded thumbnails (re-derivable).
   nori.backups.immich.skip = "Photos covered by media-irreplaceable (@photos); DB dumps via Pattern B at /var/lib/immich/backups also in media-irreplaceable.";
 }

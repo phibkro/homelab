@@ -6,16 +6,13 @@
 }:
 
 {
-  # calibre-web — web UI for an ebook library. Distinct from Calibre's
-  # own content server: calibre-web is community-maintained, has a
-  # nicer UI, supports OPDS at /opds (e-readers, mobile apps), and
-  # does on-the-fly format conversion for Kindle/Kobo when the
-  # `calibre` binary is available on PATH.
+  # calibre-web — community-maintained web UI for an ebook library.
+  # Distinct from Calibre's own content server: nicer UI, OPDS at
+  # /opds for e-readers, on-the-fly Kindle/Kobo format conversion
+  # when the `calibre` binary is on PATH.
   #
-  # Library lives at /mnt/media/library/books on @library — the
-  # curated tier (daily snapshot + restic). Books are typically
-  # hand-uploaded via the web UI (no Readarr in scope; auto-grabbing
-  # books was deferred).
+  # Library lives on @library (curated tier). Books are hand-uploaded
+  # via the web UI — no Readarr in scope; auto-grabbing was deferred.
   #
   # Default port 8083 collides with qBittorrent (which itself remapped
   # off the 8080 collision with Open WebUI) — calibre-web → 8084.
@@ -58,13 +55,11 @@
     };
   };
 
-  # Member of `media` group so calibre-web can write into @library
-  # alongside Komga (and any other future curated-media service).
+  # `media` group for write access to @library (shared with Komga).
   users.users.calibre-web.extraGroups = [ "media" ];
 
-  # Bootstrap: calibre-web fails to start if its library dir lacks
-  # `metadata.db`. Initialize an empty Calibre library on first run if
-  # one isn't there yet.
+  # calibre-web refuses to start without metadata.db; initialize an
+  # empty Calibre library on first run.
   systemd.services.calibre-web.preStart =
     let
       bookDir = "${config.nori.fs.library.path}/books";

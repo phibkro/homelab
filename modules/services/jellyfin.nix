@@ -4,39 +4,25 @@
 }:
 
 {
-  # Jellyfin: media streaming server, tailnet-only.
-  #
-  # Reads media from /mnt/media/downloads and /mnt/media/home-videos
-  # (configured later via Jellyfin's web UI: Dashboard → Libraries
-  # → Add). Add the jellyfin user to the `users` group so it can read
-  # the nori:users-owned media tree.
-  #
-  # Per DESIGN tier table, Jellyfin's database is re-derivable from
-  # the media library (just media metadata + watch progress + user
-  # accounts). Not in scope for off-site backup; Pattern A daily to
-  # Pi-or-Hetzner is enough as a fast restore convenience. Backup
-  # config is in backup/restic.nix (or will be when added) — for now
-  # nothing valuable to lose.
+  # Jellyfin — media streaming server. Library paths configured via
+  # web UI (Dashboard → Libraries → Add).
   #
   # First-time setup: connect to
   #   http://workstation.saola-matrix.ts.net:8096
-  # …walk through the wizard (admin user, library paths, transcoding
-  # preferences). The admin user is independent of the system `nori`
-  # user.
+  # …walk through the wizard. Admin user is independent of the
+  # system `nori` user.
   #
-  # Hardware transcoding via the RTX 5060 Ti is supported via NVENC
-  # but requires explicit Jellyfin configuration in the web UI
+  # NVENC on the RTX 5060 Ti works but requires opt-in via web UI
   # (Dashboard → Playback → Hardware acceleration → Nvidia NVENC,
-  # then reload). NixOS module exposes the GPU automatically since
-  # the nvidia driver is loaded host-wide.
+  # then reload). The host-wide nvidia driver exposes the GPU
+  # automatically; no module-level switch.
 
   services.jellyfin = {
     enable = true;
     openFirewall = false;
   };
 
-  # /mnt/media/* is owned nori:users; the jellyfin service user needs
-  # group membership to read it.
+  # /mnt/media/* is owned nori:users — group membership grants read.
   users.users.jellyfin.extraGroups = [ "users" ];
 
   # Tighten Jellyfin's mount namespace beyond the upstream module's
@@ -59,10 +45,6 @@
     config.nori.fs.share.path
   ];
 
-  # Exposed at https://media.nori.lan via Caddy (default-deny on
-  # tailnet — Caddy is the only entry point). Auto-monitored by Gatus
-  # (default HTTP probe to /). Listed on the home.nori.lan dashboard
-  # via the `dashboard` block.
   nori.lanRoutes.media = {
     port = 8096;
     monitor = { };
