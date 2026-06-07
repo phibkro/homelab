@@ -211,11 +211,12 @@ default: rebuild
 @restic-check:
     sudo systemctl start restic-check-weekly.service && journalctl -u restic-check-weekly.service -f
 
-# Trigger the restore drill — verifies backups are *restorable*, not just
-# *recorded*. Excludes media-irreplaceable by default; pass `all` to include
-# it (multi-hour run). Usage: just restore-drill [all]
-@restore-drill mode="quarterly":
-    sudo systemctl start restore-drill{{ if mode == "all" { "-all" } else { "" } }}.service && journalctl -u restore-drill{{ if mode == "all" { "-all" } else { "" } }}.service -f
+# Trigger a restore drill — verifies backups are *restorable*, not just
+# *recorded*. Three tiers split by cost + cadence; `services` is cheap and
+# fast, `user-data` is the heavy one, `all` includes media-irreplaceable
+# (multi-hour). Usage: just restore-drill [services|user-data|all]
+@restore-drill tier="services":
+    sudo systemctl start restore-drill-{{tier}}.service && journalctl -u restore-drill-{{tier}}.service -f
 
 # List restic snapshots for a repo. Usage: just snapshots <repo>
 @snapshots repo:
