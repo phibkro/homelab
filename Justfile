@@ -433,6 +433,24 @@ default: rebuild
 @deploy:
     nh os switch github:phibkro/homelab -H $(hostname)
 
+# Show what's queued for push — full diff and commit subjects between
+# local `main` and `origin/main`. This is the operator's review surface
+# for the push gate (CLAUDE.md § How to operate). Agents must run this
+# (or the raw `git log -p origin/main..HEAD`) before any `git push` and
+# get explicit OK.
+@pending:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "=== commits queued for push ==="
+    if git log --oneline --no-decorate origin/main..HEAD | grep -q .; then
+      git log --oneline --no-decorate origin/main..HEAD
+      echo
+      echo "=== full diff ==="
+      git log -p --reverse origin/main..HEAD
+    else
+      echo "(none — local is at origin/main)"
+    fi
+
 # === validate ===
 
 # Run nix flake check (statix + deadnix + nixfmt + eval) locally.
