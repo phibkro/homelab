@@ -45,11 +45,10 @@ _:
 
   nori.harden.seerr = { };
 
-  # Web-UI-managed OIDC (like Beszel/PocketBase) — the `oidc` block
-  # generates the Authelia client + sops secret + env-file template;
-  # the operator pastes the raw secret + redirect URI into Jellyseerr's
-  # admin UI on first run (see header comment). EnvironmentFile is NOT
-  # wired because Jellyseerr doesn't accept OIDC config via env vars.
+  # Web-UI-managed OIDC (like Beszel/PocketBase) — Jellyseerr doesn't
+  # accept OIDC config via env vars, so EnvironmentFile is deliberately
+  # NOT wired and the operator pastes the secret into the admin UI on
+  # first run (see header).
   nori.lanRoutes.requests = {
     port = 5055;
     monitor = { };
@@ -66,8 +65,7 @@ _:
     };
   };
 
-  # Pattern A — request history + Jellyfin auth links. DynamicUser
-  # → /var/lib/jellyseerr is a symlink to /var/lib/private/jellyseerr;
-  # restic stores symlinks as symlinks, so we point at the target.
+  # DynamicUser — /var/lib/jellyseerr is a symlink; restic stores the
+  # link not the target, so back up the real path.
   nori.backups.jellyseerr.include = [ "/var/lib/private/jellyseerr" ];
 }

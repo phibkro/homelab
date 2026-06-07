@@ -40,7 +40,7 @@
     openFirewall = false;
   };
 
-  # See sonarr.nix header comment for the rationale.
+  # See sonarr.nix for the env-var override + auth-disabled rationale.
   systemd.services.lidarr.environment = {
     LIDARR__AUTH__METHOD = "Forms";
     LIDARR__AUTH__REQUIRED = "DisabledForLocalAddresses";
@@ -62,6 +62,5 @@
     };
   };
 
-  # Pattern A — same shape as sonarr/radarr.
   nori.backups.lidarr.include = [ "/var/lib/lidarr" ];
 }

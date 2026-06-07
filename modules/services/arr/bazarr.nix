@@ -28,8 +28,6 @@
     listenPort = 6767;
   };
 
-  # Bazarr writes subtitle files into Sonarr's + Radarr's library
-  # paths. Same `media` group membership as the other servarrs.
   users.users.bazarr.extraGroups = [ "media" ];
 
   nori.harden.bazarr.binds = [ config.nori.fs.downloads.path ];
@@ -46,6 +44,5 @@
     };
   };
 
-  # Pattern A — Bazarr's config + provider history. Static `bazarr` user.
   nori.backups.bazarr.include = [ "/var/lib/bazarr" ];
 }

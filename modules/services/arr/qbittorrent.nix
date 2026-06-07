@@ -42,62 +42,39 @@
     openFirewall = false;
   };
 
-  # qBittorrent doesn't accept env-var config like Servarr does — its
-  # state lives in qBittorrent.conf (Qt INI format). preStart edits a
-  # handful of keys idempotently before the daemon reads them. Python's
-  # configparser handles the backslash-in-key pattern qBittorrent uses
-  # (`WebUI\LocalHostAuth`, `Session\DefaultSavePath`) cleanly;
-  # sed-based alternatives need ugly escaping.
+  # qBittorrent has no env-var config; state lives in qBittorrent.conf
+  # (Qt INI). preStart idempotently rewrites the keys below via Python
+  # configparser — it handles Qt's backslash-in-key (`WebUI\…`) cleanly,
+  # sed needs ugly escaping.
   #
-  # [Preferences] keys (auth + reverse-proxy compat):
-  #   LocalHostAuth=false     localhost connections (Caddy proxy on
-  #                           workstation) skip the qBittorrent login.
-  #                           Forward-auth at Caddy is the user gate.
-  #   HostHeaderValidation=false  accept Host: downloads.nori.lan from
-  #                                Caddy without complaint
-  #   CSRFProtection=false    works fine through Caddy reverse proxy
-  #   BanDuration=0           don't lock the IP after failed logins
-  #   MaxAuthenticationFailCount=99999  defense in depth for above
+  # [Preferences] disables qBittorrent's own auth + ban for localhost so
+  # Caddy forward-auth is the only browser gate; reverse-proxy compat
+  # keys (HostHeaderValidation/CSRFProtection) just stop qBittorrent
+  # refusing Caddy's rewritten Host/CSRF posture.
   #
-  # [BitTorrent] keys — split paths by IO pattern:
+  # [BitTorrent] splits COMPLETE vs INCOMPLETE by IO pattern:
   #
-  #   Session\DefaultSavePath=<downloads>/.downloads/complete
-  #     COMPLETE goes on the IronWolf @downloads subvolume — must be
-  #     same-subvolume as the *arr libraries (movies/, shows/, music/)
-  #     for the *arr → library hardlink to work (btrfs hardlinks don't
-  #     cross subvolumes; cross-subvol falls back to copy+delete which
-  #     breaks seeding).
+  #   COMPLETE → @downloads (same subvol as the *arr libraries; btrfs
+  #     hardlinks don't cross subvols and the cross-subvol copy+delete
+  #     fallback breaks seeding).
   #
-  #   Session\TempPath=/var/lib/qBittorrent/qBittorrent/incomplete
-  #     INCOMPLETE goes on the SN750 NVMe (root FS, @var-lib subvol)
-  #     under the qbittorrent-owned profile dir. The outer
-  #     /var/lib/qBittorrent/ is root-owned (upstream NixOS module
-  #     doesn't set StateDirectory=); the nested qBittorrent/ folder
-  #     is the Qt profile suffix and the only qbittorrent-writable
-  #     area. Pointing TempPath one level too high (at the root-owned
-  #     parent) makes every incomplete file_open fail "Permission
-  #     denied" — caught 2026-05-07.
+  #   INCOMPLETE → SN750 NVMe under the qbittorrent-owned Qt profile
+  #     dir (/var/lib/qBittorrent/qBittorrent/incomplete). The outer
+  #     /var/lib/qBittorrent/ is root-owned (upstream module doesn't set
+  #     StateDirectory=); pointing TempPath one level higher fails every
+  #     file_open with EACCES — caught 2026-05-07. Random peer writes
+  #     stay off the HDD; cross-device move on completion is the trade.
   #
-  #     Random writes from peers stay off the spinning HDD; cross-
-  #     device move on completion adds 1-10 min copy per finished
-  #     torrent (one-time cost, doesn't break seeding — qBittorrent
-  #     seeds from DefaultSavePath after the move). HDD wear-isolation
-  #     + faster downloads at gigabit+ link speeds.
-  #
-  #     FAILURE MODE — the wedge: if @downloads fills (Jellyseerr
-  #     request burst, no cull), qBittorrent cannot finalize-move
-  #     partials → they pile up on the SN750 forever until root NVMe
-  #     also wedges. Both drives hit 100% together. Hit on 2026-05-14
-  #     (572 GiB of partials across 29 torrents). Mitigations now in
-  #     place:
-  #       - disk-alert.nix watches both filesystems and pages via
-  #         ntfy at 85% / 95%
-  #       - sonarr/radarr/lidarr first-run setup directs the operator
-  #         to set MinimumFreeSpaceWhenImporting via each UI
-  #     If alerts fire, cull @downloads (via *arr UIs) before queueing
-  #     more grabs. Full recovery procedure: docs/runbooks/storage-full.md.
-  #
-  #   Session\TempPathEnabled=true     keep the split active
+  #   FAILURE MODE — the wedge: if @downloads fills (Jellyseerr request
+  #   burst, no cull), qBittorrent can't finalize-move partials → they
+  #   pile up on SN750 forever until both drives hit 100% together. Hit
+  #   2026-05-14 (572 GiB of partials across 29 torrents). Mitigations:
+  #   disk-alert.nix pages at 85%/95% on both filesystems; sonarr/
+  #   radarr/lidarr first-run setup directs the operator to set
+  #   MinimumFreeSpaceWhenImporting in each UI (lives in their sqlite,
+  #   not config.xml, so not env-overridable). Recovery procedure:
+  #   docs/runbooks/storage-full.md.
+
   # Process umask = 0002 so finished files land mode 0664 (group-writable)
   # instead of the default 0644. Required for the *arr → library
   # hardlink-on-import: with `fs.protected_hardlinks=1` (kernel default),
@@ -160,19 +137,12 @@
     ''}
   '';
 
-  # Group membership — `media` is the cross-service shared group on the
-  # @downloads subvolume. Every *arr + the download client are members so
-  # hardlinks across .downloads/complete → movies/shows just work.
   users.users.qbittorrent.extraGroups = [ "media" ];
 
-  # qBittorrent needs the @downloads subvolume for incomplete + complete
-  # download staging; /var/lib/qbittorrent for state (auto-created by
-  # the service, covered by the StateDirectory upstream).
   nori.harden.qbittorrent.binds = [ config.nori.fs.downloads.path ];
 
-  # Exposed at https://downloads.nori.lan via Caddy. Auto-monitored at /
-  # (qBittorrent's WebUI returns 401 without auth which Gatus reads as
-  # service-up; that's fine — we just want to know the process answers).
+  # Gatus reads qBittorrent's 401-without-auth at / as service-up, which
+  # is the intent here — we just want to know the process answers.
   nori.lanRoutes.downloads = {
     port = 8083;
     monitor = { };
@@ -185,14 +155,10 @@
     };
   };
 
-  # Pattern A — torrent state, resume data, *arr-tied categories.
-  # Static `qbittorrent` user; real path with capital Q.
-  #
-  # Exclude `incomplete/` — qBit's in-progress download buffer is
-  # re-derivable (peers re-send the same chunks) and historically
-  # ballooned the backup repo to 560+ GiB of dead chunks pinned by
-  # snapshots referencing the bygone full-incomplete-dir state. Live
-  # state without incomplete/ is ~31 MiB; backups should track that.
+  # Exclude `incomplete/` — re-derivable (peers re-send chunks) and
+  # historically ballooned the backup repo to 560+ GiB of dead chunks
+  # pinned by snapshots referencing a bygone full-incomplete state.
+  # Live state without it is ~31 MiB.
   nori.backups.qbittorrent = {
     include = [ "/var/lib/qBittorrent" ];
     exclude = [ "/var/lib/qBittorrent/qBittorrent/incomplete" ];

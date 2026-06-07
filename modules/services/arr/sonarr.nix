@@ -36,20 +36,15 @@
     openFirewall = false;
   };
 
-  # Servarr config.xml settings overridden via env vars (double-
-  # underscore-prefixed keys take precedence over existing values
-  # in config.xml at startup; see Servarr post-install-configuration
-  # docs). Forces auth-disabled-for-localhost so Caddy's forward-auth
-  # is the only gate for browser access; SSH-tunnel-direct still
-  # requires the Forms login as a defense-in-depth fallback.
+  # Servarr `<APP>__<SECTION>__<KEY>` env vars override config.xml at
+  # startup. Auth disabled for localhost so Caddy's forward-auth is the
+  # only browser gate; the Forms login still covers SSH-tunnel-direct
+  # access as defense-in-depth.
   systemd.services.sonarr.environment = {
     SONARR__AUTH__METHOD = "Forms";
     SONARR__AUTH__REQUIRED = "DisabledForLocalAddresses";
   };
 
-  # Hardlink target paths share `media` group with qBittorrent + Radarr +
-  # Bazarr. Without group membership, post-download imports fail with
-  # "permission denied".
   users.users.sonarr.extraGroups = [ "media" ];
 
   nori.harden.sonarr.binds = [ config.nori.fs.downloads.path ];
@@ -66,8 +61,7 @@
     };
   };
 
-  # Pattern A — config + history sqlite + custom formats. Sonarr
-  # writes infrequently; file-snapshot consistency is acceptable
-  # alongside btrbk hourly snapshots as a safety net.
+  # Pattern A — file-snapshot consistency is fine, sonarr writes
+  # infrequently and btrbk hourly snapshots are the safety net.
   nori.backups.sonarr.include = [ "/var/lib/sonarr" ];
 }

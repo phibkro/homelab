@@ -23,19 +23,16 @@ _:
     openFirewall = false;
   };
 
-  # See sonarr.nix header comment for the rationale.
+  # See sonarr.nix for the env-var override + auth-disabled rationale.
   systemd.services.prowlarr.environment = {
     PROWLARR__AUTH__METHOD = "Forms";
     PROWLARR__AUTH__REQUIRED = "DisabledForLocalAddresses";
   };
 
-  # Note: the prowlarr module runs the service as the `prowlarr` user
-  # but doesn't accept user/group options to add to extra groups
-  # (see /run/current-system/sw/share/nixos/modules — module hardcodes
-  # User=prowlarr). If we ever need the prowlarr user in `media` for
-  # cross-service file access, override via systemd.services.prowlarr
-  # .serviceConfig.SupplementaryGroups; for now, prowlarr only does
-  # API calls to other services and doesn't touch /mnt/media.
+  # Upstream prowlarr module hardcodes User=prowlarr and exposes no
+  # extraGroups knob. Prowlarr only makes API calls to other *arrs and
+  # never touches /mnt/media, so it doesn't need `media`; if that ever
+  # changes, override via serviceConfig.SupplementaryGroups.
 
   nori.harden.prowlarr = { };
 
@@ -51,6 +48,7 @@ _:
     };
   };
 
-  # Pattern A — indexer list + per-app links. DynamicUser symlink.
+  # DynamicUser — /var/lib/prowlarr is a symlink; restic stores the link
+  # not the target, so back up the real path.
   nori.backups.prowlarr.include = [ "/var/lib/private/prowlarr" ];
 }

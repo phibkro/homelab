@@ -83,12 +83,7 @@ in
     };
   };
 
-  # No FS access beyond the systemd-managed StateDirectory; default-deny
-  # baseline is sufficient (no /mnt or /home read).
   nori.harden.recyclarr-sync = { };
 
-  # Stateless — config is in /nix/store, cache + TRaSH guide clone is
-  # re-derivable in /var/lib/recyclarr. Profile assignments themselves
-  # live in Sonarr/Radarr's sqlite, already covered by their own backups.
   nori.backups.recyclarr.skip = "stateless — config in store, cache re-derivable, profile state lives in sonarr/radarr backups";
 }

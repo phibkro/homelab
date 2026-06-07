@@ -6,44 +6,20 @@
 
 {
   # Cross-cutting shared resources for the *arr stack — the `media`
-  # group + the shared library/download paths under @downloads.
+  # group + the shared library/download tmpfiles.
   #
-  # Why a dedicated `media` group: Sonarr, Radarr, Bazarr, qBittorrent,
-  # and Jellyfin all need read+write to the same paths so that
-  # qBittorrent → *arr hardlinks succeed (saves disk + atomic move).
-  # btrfs hardlinks across subvolumes don't work, so all of this lives
-  # under one subvolume (@downloads). Each service joins the group via
-  # `users.users.<svc>.extraGroups = [ "media" ];` in its own module.
+  # Why a dedicated `media` group: qBittorrent → *arr import is a
+  # hardlink (saves disk + atomic move), and btrfs hardlinks don't
+  # cross subvolumes — so all *arr libraries + the qBittorrent complete
+  # dir share @downloads, and every consumer joins `media` via its own
+  # module. Setgid (02775) on the dirs propagates the group to new
+  # files without per-service umask config.
   #
-  # Layout (paths from nori.fs — host's disko config is single source
-  # of truth; see modules/effects/fs.nix):
-  #   <downloads>/movies/             Radarr library     (re-derivable)
-  #   <downloads>/shows/              Sonarr library     (re-derivable)
-  #   <downloads>/music/              Lidarr library     (re-derivable)
-  #   <downloads>/.downloads/complete qBittorrent finished — same
-  #                                    subvol as *arr libraries for the
-  #                                    hardlink-on-import flow
-  #   <library>/books/                calibre-web library
-  #   <library>/comics/               Komga library
-  #
-  # Note: qBittorrent's INCOMPLETE dir is /var/lib/qBittorrent/qBittorrent/incomplete
-  # (NVMe @var-lib, not @downloads) — IO isolation. See qbittorrent.nix
-  # preStart for the rationale + path config.
-  #
-  # Permissions: directories owned root:media, mode 02775 (setgid +
-  # group rwx). The setgid bit means new files inherit `media` as
-  # their group, so all stack members can read/write each other's
-  # output without umask gymnastics.
-  #
-  # Jellyfin needs read access too; the existing jellyfin module's user
-  # joins `media` via this file rather than each consumer module having
-  # to know about jellyfin.
+  # qBittorrent's INCOMPLETE dir is deliberately off-subvol — NVMe IO
+  # isolation; see qbittorrent.nix.
 
   users.groups.media = { };
 
-  # Jellyfin already exists; fold it into the media group so it can read
-  # the libraries the *arrs populate. (qBittorrent + each *arr add their
-  # own user to `media` in their respective modules.)
   users.users.jellyfin = lib.mkIf config.services.jellyfin.enable {
     extraGroups = [ "media" ];
   };
@@ -54,16 +30,12 @@
       library = config.nori.fs.library.path;
     in
     [
-      # @downloads — re-derivable tier, *arr libraries + download staging.
-      # qBittorrent INCOMPLETE lives off-subvol (NVMe StateDirectory) —
-      # see qbittorrent.nix.
       "d ${downloads}                     02775 root media -"
       "d ${downloads}/movies              02775 root media -"
       "d ${downloads}/shows               02775 root media -"
       "d ${downloads}/music               02775 root media -"
       "d ${downloads}/.downloads          02775 root media -"
       "d ${downloads}/.downloads/complete 02775 root media -"
-      # @library — curated tier, hand-uploaded media
       "d ${library}                         02775 root media -"
       "d ${library}/books                   02775 root media -"
       "d ${library}/comics                  02775 root media -"

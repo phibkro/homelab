@@ -31,7 +31,7 @@
     openFirewall = false;
   };
 
-  # See sonarr.nix header comment for the rationale.
+  # See sonarr.nix for the env-var override + auth-disabled rationale.
   systemd.services.radarr.environment = {
     RADARR__AUTH__METHOD = "Forms";
     RADARR__AUTH__REQUIRED = "DisabledForLocalAddresses";
@@ -53,6 +53,5 @@
     };
   };
 
-  # Pattern A — same shape as sonarr.
   nori.backups.radarr.include = [ "/var/lib/radarr" ];
 }
