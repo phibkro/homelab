@@ -53,6 +53,34 @@ One lever maxed = nice-to-have. Two = ship it. Three+ = required.
 
 Corollary: **adding a new file to `modules/effects/` is implicitly committing to a runtime introspection test for it.** If the new file is a config wrapper without the Reader-Writer shape (rust-motd, gpu), it probably doesn't belong in `effects/` at all — it's just a service or desktop module that happens to live there for historical reasons.
 
+## Next potential test targets
+
+These are the unshipped recipes the four-lever evaluation flagged as worth-doing-but-not-yet. Ranked by where the next incident is most likely to surface a gap they'd catch. **Ship one only when an incident touches its area** — building tests speculatively before then leaks into busywork.
+
+| Recipe | What it would assert | Effect under test | Lever score | Trigger to ship |
+|---|---|---|---|---|
+| `test-harden` | For each `nori.harden.<n>`: declared `ProtectSystem/PrivateTmp/binds` actually applied to the systemd unit (`systemctl show` matches the option declaration) | `modules/effects/harden.nix` | leverage 3 · volatility 2 · opacity 3 · blast 3 | A hardening-bypass incident, or after the `every-service-has-fs-hardening` flake check is removed |
+| `test-fs` | For each `nori.fs.<n>`: path exists, owner/mode/subvolume matches, AND entry exists in `nori.backups` or has an explicit excluded flag | `modules/effects/fs.nix` | leverage 3 · volatility 1 · opacity 3 · blast 4 | The "I added a folder but forgot to wire backup" class — likely if user-data shape changes |
+| `test-secrets` | For each `sops.secrets.<n>`: rendered file exists at expected path, mode/owner/group matches declaration, sops can decrypt with current key | sops integration | leverage 2 · volatility 1 · opacity 3 · blast 4 | Next sops key rotation, or any "service can't read secret" deploy break |
+| `test-firewall` | Declared tailnet-only ports actually bound to tailscale0 (not 0.0.0.0); declared LAN-public ports actually open | implicit in service modules + `nori.lanRoutes` | leverage 3 · volatility 1 · opacity 4 · blast 4 | After any change that adds a new exposed port; the silent-exposure class |
+| `test-network` | DNS: blocky resolves every `*.nori.lan`, Tailscale MagicDNS resolves tailnet hostnames, subnet routes advertised correctly | `modules/effects/hosts.nix` + tailscale | leverage 3 · volatility 1 · opacity 2 · blast 3 | DNS failure mostly loud; ship only after a subnet-route or DNS subtlety bites |
+| `test-systemd` | Generic safety net — no failed units, all timers scheduled, no `bad-setting` states | cross-cutting | leverage 1 · volatility 4 · opacity 1 · blast 1 | (skip — `systemctl --failed` is already loud) |
+
+**Pattern for shipping new tests:** when an incident occurs in an effect's area, the post-mortem question is "which test would have caught this?" If the answer maps to one of these unshipped recipes, that recipe becomes worth the ~50 lines of bash. Otherwise the framework's ratings predicted correctly that the recipe wasn't yet earning its keep.
+
+## The evaluation axis (the four levers, reprised)
+
+Restated so the criteria for future test decisions are explicit and reusable, not just embedded in the table at the top:
+
+1. **Leverage** — how many downstream effects does one declaration produce? Multi-effect declarations have N seams where desync can hide; single-effect declarations have one (and are usually loud).
+2. **Volatility** — how often does the registry change in practice? A high-volatility registry compounds risk per touch; a stable one earns tests reactively after the first surprise.
+3. **Opacity** — how silent is a partial desync? Snapshot freshness, OIDC client presence, scrape-target health all silently degrade. Failed systemd units, DNS dropouts, missing volumes are loud.
+4. **Blast radius** — what's the cost when undetected? Data loss (backups) and authentication bypass (routes) dominate; cosmetic configs don't.
+
+Compose multiplicatively. One lever maxed makes a test nice-to-have. Two maxed = ship it now. Three+ = required.
+
+A test that fails any one lever (e.g., low blast radius, even with high leverage) doesn't earn its bash. A test that maxes all four (`test-backups`) catches incidents nothing else does.
+
 ## Where introspection tests do NOT pay off
 
 - **Already-loud-failing things.** Failed systemd units, network unreachability — the OS yells already; a test adds noise.
