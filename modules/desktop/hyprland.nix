@@ -7,16 +7,12 @@
   programs.hyprland = {
     enable = true;
     # UWSM (Universal Wayland Session Manager) wraps the Hyprland start
-    # so systemd-user services that depend on graphical-session.target
-    # activate cleanly — waybar, mako, hypridle, etc. all start
-    # automatically on session start instead of needing a manual
-    # `systemctl --user restart` dance. Hyprland upstream now strongly
-    # recommends UWSM and warns at session start if it isn't used.
-    #
-    # Setting this true exposes a `hyprland-uwsm.desktop` session entry
-    # that greetd's tuigreet can launch via:
-    #   uwsm start hyprland-uwsm.desktop
-    # See modules/desktop/greetd.nix for the greetd-side wiring.
+    # so systemd-user services depending on graphical-session.target
+    # (waybar, mako, hypridle, hyprsunset) activate cleanly on login
+    # instead of needing a manual `systemctl --user restart` dance.
+    # Hyprland upstream warns at session start if UWSM isn't used.
+    # Exposes `hyprland-uwsm.desktop` — see modules/desktop/greetd.nix
+    # for the greetd-side wiring.
     withUWSM = true;
   };
 
@@ -27,19 +23,14 @@
     extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
   };
 
-  # Wayland session env vars.
-  #
-  # Driver 595 + explicit-sync removes most historical NVIDIA-Wayland pain
-  # (see TOPOLOGY.md § GPU access); we keep the set deliberately minimal and add
-  # hints only when something actually breaks.
-  #
-  #   NIXOS_OZONE_WL=1                 — NixOS-specific shim that flips
-  #                                       Electron/Chromium to native Wayland
-  #   __GLX_VENDOR_LIBRARY_NAME=nvidia — disambiguate libglvnd vendor under
-  #                                       XWayland on hybrid setups (single-
-  #                                       GPU here but harmless + future-proof)
+  # Wayland session env vars. Driver 595 + explicit-sync removes most
+  # historical NVIDIA-Wayland pain (see TOPOLOGY.md § GPU access); keep
+  # the set minimal and add hints only when something actually breaks.
   environment.sessionVariables = {
+    # NixOS-specific shim — flips Electron/Chromium to native Wayland.
     NIXOS_OZONE_WL = "1";
+    # Disambiguate libglvnd vendor under XWayland on hybrid setups
+    # (single-GPU here but harmless + future-proof).
     __GLX_VENDOR_LIBRARY_NAME = "nvidia";
     # Hardware video decode/encode (NVENC/NVDEC) for VA-API consumers
     # — Jellyfin transcodes, ffmpeg, browser hardware decode. Without
