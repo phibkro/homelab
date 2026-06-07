@@ -4,10 +4,8 @@
 }:
 
 {
-  # aarch64. Required: workstation builds Pi closures via aarch64
-  # binfmt emulation (boot.binfmt.emulatedSystems = [ "aarch64-linux" ]
-  # in modules/common/base.nix or similar — needs adding when station
-  # starts building Pi closures regularly).
+  # aarch64. Workstation builds Pi closures via aarch64 binfmt
+  # emulation (boot.binfmt.emulatedSystems in workstation/hardware.nix).
   nixpkgs.hostPlatform = "aarch64-linux";
 
   # Pi 4 boot, kernel, firmware, etc. all come from

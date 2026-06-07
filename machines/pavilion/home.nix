@@ -13,13 +13,8 @@
 #     pavilion only runs sandboxed agents (pi)
 #   * No nixpkgs-master overlays, no zen-browser, no themes
 #
-# `pi` + `box` (and pagu-box itself) come via system PATH from
-# home/claude-code/default.nix on the PCs — but pavilion doesn't
-# import that module. Wire what we need directly here.
-
 {
-  # Shared operator CLI baseline (starship, git, direnv, just, ripgrep,
-  # comma, tmux, sops/age, devenv, nixd, nil). `just` here is
+  # core.nix is the cross-host operator baseline. `just` from there is
   # load-bearing for `just remote pavilion rebuild` from workstation.
   imports = [ ../../home/core.nix ];
 

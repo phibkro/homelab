@@ -31,11 +31,9 @@
     inputs.pagu-box.homeManagerModules.default
   ];
 
-  # Sandboxed launcher for any CLI process (claude, aider, opencode, …).
-  # See https://github.com/phibkro/pagu-box. Use `pagu-box --profile=NAME
-  # <cmd>` — defaults to the `default` profile (allow-by-default, secret
-  # deny-list, network allowed) which is the equivalent of the
-  # workstation's `claude-box` shape.
+  # Sandboxed launcher for CLI agents (claude, aider, opencode, …).
+  # `pagu-box --profile=default` is the Mac equivalent of workstation's
+  # `claude-box`. https://github.com/phibkro/pagu-box.
   programs.pagu-box.enable = true;
 
   home.username = "nori";
@@ -46,12 +44,6 @@
   home.stateVersion = "26.05";
 
   home.packages = with pkgs; [
-    # CLI tooling Mac-specific to this host. Cross-platform tooling
-    # for every operator-PC (claude-code + happy-coder) lives in
-    # home/pc.nix → home/claude-code/. Cross-machine including
-    # pi (starship, programs.git, comma, sops CLI, etc.) lives in
-    # home/core.nix.
-
     gh
 
     # JS/TS runtime + tooling

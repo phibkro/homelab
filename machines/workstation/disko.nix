@@ -20,25 +20,15 @@ _: {
     };
   };
 
-  # Declarative partition layout for workstation's NVMe root.
-  # Applied at install time:
+  # Declarative partition layout for workstation's NVMe root. Applied
+  # at install time:
   #   nix run github:nix-community/disko/latest -- \
   #     --mode disko machines/workstation/disko.nix
   #
-  # Layout (per docs/STORAGE.md § "Workstation root"):
-  #   p1  ESP, 1 GiB, vfat, label BOOT
-  #   p2  rest, btrfs, label nixos, seven subvolumes:
-  #     @            -> /
-  #     @home        -> /home
-  #     @nix         -> /nix
-  #     @var-lib     -> /var/lib       (service state, separate snapshot cadence)
-  #     @srv-share   -> /srv/share     (Samba-shared dumping ground / storage)
-  #     @srv-nori    -> /srv/nori      (operator's personal networked working dir)
-  #     @snapshots   -> /.snapshots    (snapshot target)
-  #
-  # All btrfs subvolumes mount with compress=zstd:3,noatime. Disko emits
-  # the corresponding fileSystems entries automatically; hosts/<host>/
-  # hardware.nix must NOT also define them.
+  # See docs/STORAGE.md § "Workstation root" for the subvol → mount
+  # table. All btrfs subvolumes mount compress=zstd:3,noatime; disko
+  # emits the corresponding fileSystems entries automatically — hosts/
+  # <host>/hardware.nix must NOT also define them.
   #
   # Disk identity is pinned by-id (model + serial) — the WD Black SN750.
   # /dev enumeration is unstable: at install time this drive showed as

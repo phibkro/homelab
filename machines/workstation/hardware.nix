@@ -7,10 +7,9 @@
 
 {
   imports = [
-    # AMD Ryzen 5600X (Zen 3) tweaks and general SSD profile.
-    # common-cpu-amd-pstate intentionally omitted for first install — it
-    # tweaks scaling driver options and isn't required for boot. Add
-    # later once workstation is up and we want the tuning.
+    # AMD Ryzen 5600X (Zen 3) tweaks + SSD profile. The sibling
+    # common-cpu-amd-pstate (scaling-driver tuning) is not pulled
+    # in — add when the tuning becomes a measured win.
     inputs.nixos-hardware.nixosModules.common-cpu-amd
     inputs.nixos-hardware.nixosModules.common-pc-ssd
   ];
