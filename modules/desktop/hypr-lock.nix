@@ -62,7 +62,14 @@ _: {
       settings = {
         general = {
           # Wrapped to prevent multiple lock instances stacking up.
-          lock_cmd = "pidof hyprlock || hyprlock";
+          # 1s sleep before exec guards against the home-manager
+          # activation race where hyprlock briefly isn't on PATH
+          # while user-profile symlinks swap — caught 2026-06-07 when
+          # a `just rebuild` immediately triggered the lock and
+          # hyprlock failed to spawn (Hyprland's "no lock app"
+          # fallback engaged + monitors stayed lit). The sleep is
+          # imperceptible at lock time; only matters during rebuilds.
+          lock_cmd = "pidof hyprlock || (sleep 1 && hyprlock)";
           # before_sleep_cmd left unset — desktop doesn't sleep.
           after_sleep_cmd = ''hyprctl dispatch 'hl.dsp.dpms("on")' '';
         };
