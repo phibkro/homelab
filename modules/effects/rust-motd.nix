@@ -1,14 +1,11 @@
 { config, lib, pkgs, ... }:
 
-# rust-motd renders the system-stats body (uptime, load, memory,
-# filesystems, services, last-login) into /var/lib/rust-motd/motd.
-# It does NOT render the codename banner anymore — banner rendering
-# moved into the `motd` wrapper below so it can be customised per
-# invocation (font, filter, colour, randomised, in-place animated).
-#
-# sshd PrintMotd shows the cached file at login, so login banner is
-# now just the stats body — the toilet codename only renders when you
-# run `motd` interactively. Tradeoff accepted.
+# rust-motd renders the stats body (uptime/load/memory/fs/services/
+# last-login) into /var/lib/rust-motd/motd. The codename banner is
+# rendered by the `motd` wrapper below instead, so it can be
+# customised per invocation (font/filter/colour/random/animated).
+# Consequence: sshd PrintMotd shows the cached body only; the toilet
+# codename renders only when `motd` is run interactively.
 
 let
   self = config.nori.hosts.${config.networking.hostName} or null;

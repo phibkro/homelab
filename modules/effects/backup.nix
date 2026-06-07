@@ -49,15 +49,10 @@ in
   #   * Pattern B (built-in dump)     → include lists the dump dir
   #   * Pattern C2 (external dump)    → include + prepareCommand
   #
-  # ── DynamicUser symlink gotcha ──────────────────────────────────
-  # Services declared with `DynamicUser = true` (open-webui,
-  # jellyseerr, prowlarr, ntfy-sh, beszel-hub, gatus, glance, ollama)
-  # have their state at /var/lib/private/<name> with a SYMLINK at
-  # /var/lib/<name>. restic stores symlinks AS symlinks; pointing
-  # backups at /var/lib/<name> produces a 0-byte snapshot of just
-  # the symlink record, not the data. For these services, declare
-  # `include` against /var/lib/private/<name> directly. See
-  # .claude/skills/gotcha-dynamicuser-statedirectory-symlink/
+  # DynamicUser services: point `include` at /var/lib/private/<n>,
+  # not /var/lib/<n> (which is a symlink restic would store as a
+  # symlink → 0-byte snapshot). Enforced by the `badPaths` assertion
+  # below; see .claude/skills/gotcha-dynamicuser-statedirectory-symlink/
 
   options.nori.backupTargets = mkOption {
     default = { };
@@ -219,23 +214,12 @@ in
               ];
               default = "service";
               description = ''
-                Value tier — drives the default `pruneOpts` retention
-                curve. Mirrors the docs/STORAGE.md "Value tiers" framing. Per-service repos default to `service`; the
-                cross-cutting `user-data` and `media-irreplaceable`
-                repos override.
-
-                * `service`       — short retention (7d / 4w / 12m).
-                                    Service state is mostly re-buildable
-                                    if the latest snapshot is healthy.
-                * `user`          — medium retention (14d / 4w / 12m).
-                                    User-touched data is harder to
-                                    re-derive than service state.
-                * `irreplaceable` — long retention (14d / 8w / 12m / 5y).
-                                    Photos / home-videos / projects —
-                                    the data the lab exists for.
-
-                Override `pruneOpts` directly to deviate from the
-                tier's default curve.
+                Value tier per docs/STORAGE.md "Value tiers" — drives
+                the default `pruneOpts` retention curve (see
+                `pruneOpts` defaultText below). Per-service repos
+                default to `service`; cross-cutting `user-data` and
+                `media-irreplaceable` repos override. Override
+                `pruneOpts` directly to deviate.
               '';
             };
             pruneOpts = mkOption {
@@ -336,21 +320,12 @@ in
         ) config.nori.backups
       );
 
-      # Host-aware placement check. Reads the role tag from the
-      # nori.hosts registry (modules/effects/hosts.nix). Appliance hosts
-      # have anti-write storage (no swap, volatile journald, flash-
-      # only — see machines/pi/hardware.nix) so daily restic to local
-      # disk contradicts the storage philosophy. The structural answer
-      # (push backups to a real disk that lives on the appliance) is
-      # planned but deferred — see modules/server/backup/restic.nix
-      # L28 "pi (local fast restore, when the SSD lands)". Until
-      # then, every nori.backups.<n> on an appliance host MUST use
-      # `skip = "..."`.
+      # Host-aware placement check — appliance and agent both reject
+      # path-based backups, for different reasons (anti-write storage
+      # vs intentional impermanence; see role enum in hosts.nix). The
+      # structural fix for appliance is the planned local SSD — see
+      # modules/server/backup/restic.nix L28.
       myRole = config.nori.hosts.${config.networking.hostName}.role or null;
-      # Both appliance and agent hosts reject path-based backups, for
-      # different reasons (anti-write storage vs intentional impermanence
-      # — see role enum docs in hosts.nix). Reuse the same path filter
-      # for both assertions.
       backupPaths = lib.filter (cfg: cfg.include != null) (lib.attrValues config.nori.backups);
 
       # Validate that every per-job `targets` references a real

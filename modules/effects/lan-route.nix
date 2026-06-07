@@ -13,17 +13,17 @@ in
 {
   # nori.lanRoutes — single source of truth for services exposed
   # under *.nori.lan. Each entry generates ALL of:
-  #   * Caddy vhost: reverse proxy from <name>.nori.lan to the
-  #     declared backend port
-  #   * Blocky customDNS mapping: <name>.nori.lan → tailnet IP
-  #   * Gatus monitor (if `monitor` is non-null)
-  #   * Tailnet firewall opening (if `exposeOnTailnet`)
-  #   * sops secret + env-file template (if `oidc` is non-null) — the
-  #     consuming Authelia client list assembly lives in
-  #     modules/server/authelia.nix, which reads back from
-  #     config.nori.lanRoutes here.
+  #   * Caddy vhost reverse-proxying <name>.nori.lan → backend port
+  #   * Blocky customDNS mapping <name>.nori.lan → config.nori.lanIp
+  #   * Gatus monitor          (if `monitor` is non-null)
+  #   * Tailnet firewall hole  (if `exposeOnTailnet`)
+  #   * sops raw + hash secrets + env-file template (if `oidc` is set)
+  #     — Authelia client list assembly lives in modules/server/
+  #     authelia.nix, reading back config.nori.lanRoutes from here.
+  #     Hash material stays in sops; the authelia config-filter
+  #     injects it at runtime.
   #
-  # Service modules just declare their own routing inline:
+  # Service modules declare routing inline alongside their config:
   #
   #   nori.lanRoutes.chat = {
   #     port = 8080;
@@ -32,28 +32,6 @@ in
   #       redirectPath = "/oauth/oidc/callback";
   #     };
   #   };
-  #
-  # Hash material lives only in sops; see authelia.nix for how the
-  # template config-filter injects it at runtime.
-  #
-  # No more Caddy + Blocky + Authelia + sops template edits per
-  # service. Adding a new service later: one block in the module
-  # that owns the service.
-  #
-  # ── OIDC env-file naming convention ─────────────────────────────
-  # When `oidc` is non-null, lan-route generates a sops template
-  # rendered to /run/secrets/rendered/oidc-<name>-env containing
-  # `<secretEnvName>=<raw secret>`. Consuming service modules wire
-  # this as an EnvironmentFile on their systemd unit:
-  #
-  #   systemd.services.<svc>.serviceConfig = {
-  #     EnvironmentFile = config.sops.templates."oidc-<name>-env".path;
-  #     SupplementaryGroups = [ "keys" ];
-  #   };
-  #
-  # Plus the non-secret OIDC env vars (provider URL, client_id, etc.)
-  # in `services.<svc>.environment` directly, since those vary per
-  # service and aren't worth abstracting.
 
   options.nori.lanIp = mkOption {
     type = types.str;
@@ -450,9 +428,6 @@ in
         && lib.any (i: i.enable) (lib.attrValues config.services.authelia.instances);
     in
     {
-      # Hard constraints — eval fails if any of these are violated.
-      # Cheaper than the corresponding documentation; the constraint
-      # itself is the documentation.
       assertions = [
         {
           assertion = lib.length ports == lib.length (lib.unique ports);
@@ -508,10 +483,8 @@ in
         nameValuePair "${name}.nori.lan" {
           extraConfig =
             let
-              # Collect optional header rewrites; emit a single
-              # `reverse_proxy { ... }` block when any are set, so
-              # Host + Origin (and any future additions) compose
-              # cleanly inside one directive.
+              # One `reverse_proxy { ... }` block so Host + Origin
+              # (and future header rewrites) compose inside one directive.
               headerLines = lib.concatStringsSep "\n                  " (
                 lib.optional (cfg.upstreamHostHeader != null)
                   "header_up Host ${cfg.upstreamHostHeader}"
