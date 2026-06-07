@@ -123,19 +123,24 @@ Both Blocky instances forward to a public resolver (1.1.1.1 / Quad9) for non-blo
 
 ## Tailscale
 
-Pi advertises:
-- Subnet route for the home LAN (`--advertise-routes=192.168.1.0/24`)
-- Exit node (`--advertise-exit-node`), opt-in per device
+| Host | Tailscale role | Advertises |
+|---|---|---|
+| pi | router | `--advertise-routes=192.168.1.0/24` (subnet) + `--advertise-exit-node` (opt-in) |
+| workstation | regular node | — |
+| pavilion / aurora | regular node | — |
+| macbook | regular node | — |
 
-Both require approval in the Tailscale admin console (one-time).
+Subnet route + exit node require one-time approval in the Tailscale admin console. MagicDNS gives every host a stable `<host>.saola-matrix.ts.net` name.
 
-Workstation runs Tailscale as a regular node, not a router. MagicDNS gives both hosts stable hostnames on the tailnet.
+**SSH ACL: `action: accept`** (since 2026-06-07). Eliminates the periodic browser reauth dance for cross-host SSH automation. Tailnet membership IS the gate. Edited in admin UI JSON, not in this repo. See [[just-remote-tailnet-hostnames]].
+
+**SPOF mitigation for pi:** heartbeat to healthchecks.io every 60s via `modules/services/heartbeat.nix`. Pi dies → hc.io alerts off-host. Pre-fix, pi outage would have taken its own alert delivery (ntfy server) with it.
 
 ## Access summary
 
 | Path | SSH (user) | SSH (root) | Samba | Snapshot |
 |---|---|---|---|---|
-| `/home/philip` | Yes | Yes | No | Hourly |
+| `/home/nori` | Yes | Yes | No | Hourly |
 | `/srv/share` | Yes | Yes | Yes (auth) | Daily |
 | `/mnt/media/streaming` | Yes | Yes | Yes (auth, RW) | Weekly |
 | `/mnt/media/photos` | Yes | Yes | No | Daily |

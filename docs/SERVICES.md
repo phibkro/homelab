@@ -42,18 +42,31 @@ Verified on `nixos-26.05`.
 | Blocky (forwarder) | `services.blocky` (`nori.blocky.role = "forwarder"`) | pi | LAN via tailnet DNS push |
 | Blocky (self-hosted) | `services.blocky` (`nori.blocky.role = "self-hosted"`) | workstation | LAN fallback |
 | Beszel hub | `services.beszel.hub` | pi | `metrics.nori.lan` (operator); cross-host reverse-proxied via station Caddy |
-| Beszel agent | `services.beszel.agent` | both | Tailnet; hub pulls over tailnet |
-| Gatus | `services.gatus` | both | `status.nori.lan` (public); mutual probes — Pi watches station, station watches Pi |
-| ntfy server | `services.ntfy-sh` | pi | `alert.nori.lan` (operator); cross-host reverse-proxied |
-| ntfy `notify@` template | systemd unit | both | Each host's units POST directly, hostname-aware via `config.networking.hostName` |
+| Beszel agent | `services.beszel.agent` | workstation + pi | Hub pulls over tailnet |
+| Gatus | `services.gatus` | workstation + pi | `status.nori.lan` (public); mutual probes — Pi watches station, station watches Pi |
+| **VictoriaMetrics** | `services.victoriametrics` | pi | TSDB scraping gatus + node-exporter + process-exporter; Grafana datasource. Two-week retention |
+| **VictoriaLogs** | `services.victorialogs` | pi | `logs.nori.lan` (operator); journald aggregator; 14d retention |
+| **Vector** | `modules/common/vector.nix` | every host | Ships journald → VictoriaLogs over tailnet; structured parsing |
+| **Grafana** | `services.grafana` | workstation | `ops.nori.lan` (operator); VM + VL datasources |
+| **node-exporter** | `services.prometheus.exporters.node` | workstation + pavilion + aurora | Port 9100 (tailnet); scraped from pi VM |
+| **process-exporter** | `services.prometheus.exporters.process` | workstation + pavilion + aurora | Port 9256 (tailnet); CAP_SYS_PTRACE granted; per-`comm` RSS |
+| **ntfy server** (pi-local) | `services.ntfy-sh` | pi | `alert.nori.lan` (operator); reserved for future internal-only alerts. **Production alerts go to ntfy.sh public** (off-pi, surviving pi outage) |
+| **ntfy `notify@` template** | systemd unit | every host | POSTs to ntfy.sh public; hostname-aware via `config.networking.hostName` |
+| **heartbeat** | `modules/services/heartbeat.nix` | pi | Dead-man-switch; ping healthchecks.io every 60s. SPOF mitigation |
+| **Agents** | | | |
+| Hermes Agent | `modules/services/hermes.nix` (route) + `home/hermes/` (CLI) | workstation (today) | `hermes.nori.lan` (operator); dashboard 9119 |
+| **ML offload** | | | |
+| immich-machine-learning | `modules/services/immich-ml.nix` (aurora) | **aurora** | RPC only (3003); `IMMICH_MACHINE_LEARNING_URL` on workstation |
 | **Tailnet** | | | |
-| Tailscale | `services.tailscale` | both | N/A |
+| Tailscale | `services.tailscale` | every host | N/A |
 | **Backup** | | | |
-| restic jobs | `services.restic.backups.<n>` | workstation | N/A (outbound to Pi + Hetzner) |
-| btrbk | `services.btrbk.instances.<n>` | workstation | N/A (local snapshot) |
+| restic jobs | `services.restic.backups.<n>` | workstation | Dual-target → `/mnt/backup/` (OneTouch) + `/mnt/backup-local/` (Ironwolf); Hetzner deferred |
+| btrbk | `services.btrbk.instances.<n>` | workstation | Local snapshot |
 | postgresqlBackup | `services.postgresqlBackup` | workstation (non-Immich PG) | N/A |
+| restore-drill (services tier) | `modules/services/backup/verify.nix` | workstation | Monthly; 17 service repos restored to `/var/restore-test/` |
+| restore-drill (user-data tier) | same | workstation | Quarterly; user-data tier (~99 GiB) |
 | **Desktop** | | | |
-| Thunar | `programs.thunar` | workstation | Local desktop only |
+| Thunar | `programs.thunar` + tumbler + xarchiver | workstation | Local desktop only |
 
 Cross-host services use the split-module pattern (TOPOLOGY.md § cross-host services).
 
@@ -75,31 +88,30 @@ Three flavors depending on service type. All use `services.restic.backups.<n>`; 
 ### Pattern A — filesystem-only
 
 ```nix
-services.restic.backups.home = {
-  paths = [ "/home" "/srv/share" ];
-  repository = "sftp:pi:/mnt/backup/home";
-  passwordFile = config.sops.secrets.restic-password.path;
-  timerConfig.OnCalendar = "daily";
-  pruneOpts = [ "--keep-daily 14" "--keep-weekly 4" "--keep-monthly 12" ];
+nori.backups.user-data = {
+  include = [ "/home" "/srv/share" "/srv/nori" ];
+  tier = "user";  # drives default retention curve
 };
+# Generates `restic-backups-user-data-onetouch.service` (→ /mnt/backup/user-data)
+# AND `restic-backups-user-data-ironwolf.service` (→ /mnt/backup-local/user-data)
 ```
+
+Don't write `services.restic.backups.<n>` directly — `nori.backups.<n>` is the homelab abstraction; generators expand it into both restic units + the `every-service-has-backup-intent` flake check coverage.
 
 ### Pattern B — built-in dump (Immich)
 
 The directory is included in `/var/lib`; restic of `/var/lib/immich` plus the upload directories is sufficient *if and only if* Immich's internal backup is enabled and the timer beat the restic timer.
 
 ```nix
-services.restic.backups.immich = {
-  paths = [
-    "/var/lib/immich/backups"     # SQL dumps (consistent point-in-time)
-    "/var/lib/immich/upload"       # User uploads
-    "/var/lib/immich/library"      # Imported library
-    "/var/lib/immich/profile"      # User profiles
+nori.backups.immich = {
+  include = [
+    "/var/lib/immich/backups"   # SQL dumps (consistent point-in-time)
+    "/var/lib/immich/upload"    # user uploads
+    "/var/lib/immich/library"   # imported library
+    "/var/lib/immich/profile"   # user profiles
   ];
-  repository = "sftp:pi:/mnt/backup/immich";
-  passwordFile = config.sops.secrets.restic-password.path;
-  timerConfig.OnCalendar = "*-*-* 04:00:00";  # After Immich's nightly dump
-  pruneOpts = [ "--keep-daily 7" "--keep-weekly 4" "--keep-monthly 6" ];
+  tier = "irreplaceable";
+  timer = "*-*-* 04:00:00";  # after Immich's nightly dump beats restic's
 };
 ```
 
@@ -116,26 +128,40 @@ services.postgresqlBackup = {
 # Then restic backs up /var/backup/postgresql alongside other paths.
 ```
 
-### Pattern C2 — `backupPrepareCommand` (SQLite)
+### Pattern C2 — `prepareCommand` with VACUUM INTO + flock (SQLite)
+
+⚠ Two traps caught in production:
+
+| Trap | Fix | Memory entry |
+|---|---|---|
+| sqlite3 CLI's `.backup` ignores `busy_timeout` (hard-coded ~2.5s retry) → "database is locked" on the first concurrent writer | Use `VACUUM INTO` + `PRAGMA busy_timeout` (regular SQL, honours the pragma) | [[sqlite-backup-vacuum-into]] |
+| `-onetouch` + `-ironwolf` restic units fire same minute → both run `prepareCommand` → race on `.tmp` → "table … already exists" | Wrap rm/sqlite/mv in `flock` (file-descriptor form, subshell-scoped) | [[pattern-c2-sqlite-race-flock]] |
+
+Canonical impl — `modules/services/navidrome.nix`:
 
 ```nix
-services.restic.backups.openwebui = {
-  paths = [
-    "/var/lib/open-webui"
-    "/var/backup/open-webui"  # where the dump lands
-  ];
-  repository = "sftp:pi:/mnt/backup/openwebui";
-  passwordFile = config.sops.secrets.restic-password.path;
-  backupPrepareCommand = ''
-    mkdir -p /var/backup/open-webui
-    ${pkgs.sqlite}/bin/sqlite3 /var/lib/open-webui/webui.db \
-      ".backup '/var/backup/open-webui/webui.db'"
+nori.backups.navidrome = {
+  include = [ "/var/lib/navidrome" "/var/backup/navidrome" ];
+  prepareCommand = ''
+    if [ -f /var/lib/navidrome/navidrome.db ]; then
+      mkdir -p /var/backup/navidrome
+      (
+        ${pkgs.util-linux}/bin/flock -x 9
+        rm -f /var/backup/navidrome/navidrome.db.tmp
+        ${pkgs.sqlite}/bin/sqlite3 /var/lib/navidrome/navidrome.db \
+          "PRAGMA busy_timeout = 30000;" \
+          "VACUUM INTO '/var/backup/navidrome/navidrome.db.tmp';"
+        mv /var/backup/navidrome/navidrome.db.tmp /var/backup/navidrome/navidrome.db
+      ) 9>/var/backup/navidrome/.prep.lock
+    fi
   '';
-  timerConfig.OnCalendar = "daily";
+  timer = "*-*-* 04:45:00";
 };
 ```
 
-`backupPrepareCommand` runs as `ExecStartPre` on the generated `restic-backups-<name>.service`. SQLite's `.backup` API produces a consistent snapshot even on a live database; raw `cp` does not.
+`prepareCommand` runs as `ExecStartPre` on BOTH `restic-backups-<n>-onetouch.service` AND `-ironwolf.service`. flock serialises them; second caller does a redundant (cheap) dump on already-fresh state. `VACUUM INTO` requires destination absent — that's why `rm -f` precedes it.
+
+Runtime check: `just test-backups` asserts per-target snapshot ≤25h.
 
 ### Pattern selection cheat sheet
 
@@ -144,19 +170,54 @@ services.restic.backups.openwebui = {
 | Jellyfin | A | Library DB is SQLite but rebuilds from media; non-critical |
 | Immich | B | Built-in dump mechanism |
 | Open WebUI | C2 | SQLite, no internal dump |
+| Vaultwarden | C2 | SQLite (diesel migrations); race fix applied |
+| Navidrome | C2 | SQLite (goose migrations); canonical impl reference |
 | Ollama | A | Models are re-downloadable |
 | Tailscale | A | State files |
-| `/home`, `/srv/share` | A | No databases |
+| `/home`, `/srv/share`, `/srv/nori` | A (via `nori.backups.user-data`) | No databases |
 
-New services pick a pattern at onboarding (`/add-service`).
+New services pick a pattern at onboarding (`/add-service`). Pattern C2 services MUST use the flock-wrapped canonical impl — failure mode = silent half-failure (ironwolf succeeds, onetouch fails to race, ntfy fires).
 
 ## Observability and alerting
 
-| Plane | Tool | Why |
-|---|---|---|
-| Metrics | **Beszel** (hub on Pi, agents on both hosts) | When workstation hangs, the hub on Pi keeps recording its metrics up to the last poll — forensics use case |
-| Synthetic checks | **Gatus** (mutual probes — Pi watches station, station watches Pi) | Pure declarative — endpoints, conditions, alert routing all live in the Nix attrset that renders to gatus's YAML. Replaced an earlier Uptime Kuma plan once code-as-config friction surfaced |
-| Alert delivery | **ntfy** (self-hosted server on Pi; per-host `notify@` template POSTs directly) | High-priority topic for urgent (sound, bypass DND); normal priority for warnings. Pi hosts the server so an unreachable workstation still surfaces alerts |
+```mermaid
+flowchart TB
+  subgraph workhorse[workhorse hosts]
+    WS[workstation]
+    AU[aurora]
+    PV[pavilion]
+  end
+  subgraph appliance[pi - appliance tier]
+    VM[VictoriaMetrics<br/>:8428]
+    VL[VictoriaLogs<br/>:9428]
+    GA[Gatus]
+    BES[Beszel hub]
+  end
+  WS -- node-exporter:9100<br/>process-exporter:9256 --> VM
+  AU -- same --> VM
+  PV -- same --> VM
+  WS -- journald via vector --> VL
+  AU -- same --> VL
+  PV -- same --> VL
+  GA -- mutual probe --> WS
+  WS -. Grafana queries .-> VM
+  WS -. Grafana queries .-> VL
+  Pi[heartbeat] --> HC[healthchecks.io]
+  GA -- alert --> Public[ntfy.sh public]
+  notify[notify@ template<br/>per-host] --> Public
+```
+
+| Plane | Tool | Where | Why |
+|---|---|---|---|
+| **Metrics (system)** | Beszel hub + agent | pi (hub); workhorse hosts (agent) | Forensics: when workstation hangs, Pi's hub keeps recording up to last poll |
+| **Metrics (TSDB)** | VictoriaMetrics | pi | Scrapes gatus + node-exporter + process-exporter; 14d retention |
+| **Logs (TSDB)** | VictoriaLogs | pi | Aggregates journald via vector shipper; 14d retention. `just query-logs <LogsQL>` |
+| **Per-process RSS** | process-exporter | workstation + pavilion + aurora | Leak hunter; pi VM scrapes. See [[workstation-leak-hunting]] |
+| **Synthetic checks** | Gatus | workstation + pi | Mutual probes; declarative attrset → YAML. Replaced Uptime Kuma |
+| **Dashboards** | Grafana | workstation | VM + VL as datasources; per-host system + gatus dashboards |
+| **Alert delivery** | ntfy.sh **public** | every host | `notify@<unit>.service` POSTs directly; channel-secret in sops. Pi-local ntfy server reserved for future internal alerts |
+| **Dead-man-switch** | healthchecks.io | pi → external | 60s ping; alerts off-host if pi dies. SPOF mitigation |
+| **Runtime test** | `just test-observability` | operator-triggered | Asserts VM targets up + per-host series + heartbeat <90s + zero failing probes. See `docs/TESTING.md` |
 
 ### Monitored conditions
 
