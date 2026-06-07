@@ -80,3 +80,5 @@ Recurring procedures live as skills under `.claude/skills/` so the body loads on
 - No hedging in commits or docs. Lead with the answer, justify after.
 - Match the existing tone — terse, technical, no fluff. The operator (Philip) reads fast and pushes back on weak decisions.
 - Function-named subdomains, agnostic over branded: `status.nori.lan` not `gatus.nori.lan` unless the brand IS the identity.
+- **Lists of things dependent on code → derive from the code, never duplicate in prose.** A list of services, hosts, subvolumes, skills, lanRoutes, modules etc. drifts the second code changes. Either generate it (`nix eval`-driven docs, the Batch C item in `ROADMAP.md`) or link to the live registry (`nix flake show`, `just --list`, `ls .claude/skills/`, etc.). If a doc is purely derivative information, **eliminate the doc** — the canonical source is the code.
+- What stays in docs: WHY (decisions, ADRs, `RATIONALES.md`), HOW (procedures, runbooks), mental models, frameworks, constraints. Code can't carry those.

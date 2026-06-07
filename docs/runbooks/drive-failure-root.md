@@ -78,26 +78,29 @@ The first path is preferred. Add the SSH host key to your "irreplaceable" backup
 
 ### 7. Restore state from restic
 
-The new install has empty `/var/lib`, empty `/home`, etc. Restore from whichever restic repository is closest:
+The new install has empty `/var/lib`, empty `/home`, etc. Restore from whichever restic repository is closest. **Two local targets, both alive in a single-SSD-failure scenario** — OneTouch + Ironwolf are independent USB drives.
+
+Restore path (substitute `<repo>` with any service whose state you need):
 
 ```bash
-# Local fast restore (OneTouch, attached at /mnt/backup):
-sudo restic -r /mnt/backup/user-data \
-  --password-file /run/secrets/restic-password \
-  restore latest --target /
-
-sudo restic -r /mnt/backup/media-irreplaceable \
-  --password-file /run/secrets/restic-password \
-  restore latest --target /
-
-sudo restic -r /mnt/backup/open-webui \
-  --password-file /run/secrets/restic-password \
-  restore latest --target /
+sudo RESTIC_PASSWORD_FILE=/run/secrets/restic-password \
+  restic -r /mnt/backup/<repo> restore latest --target /        # OneTouch (ext4)
+# Same restore via Ironwolf if OneTouch is offline:
+sudo RESTIC_PASSWORD_FILE=/run/secrets/restic-password \
+  restic -r /mnt/backup-local/<repo> restore latest --target /  # Ironwolf (btrfs)
 ```
 
-If `/mnt/backup` (OneTouch) also failed, fall back to:
-- `pi:/mnt/backup/...` (when the Pi exists)
-- `sftp:u123@u123.your-storagebox.de:<name>` (Hetzner off-site, when configured)
+Pick by what you need first:
+
+| Repo | Why early |
+|---|---|
+| `user-data` | `/home/nori`, `/srv/share`, `/srv/nori`, hermes state, secrets/age |
+| `media-irreplaceable` | Pre-roll for `@photos`, `@home-videos`, `@projects` |
+| `vaultwarden`, `immich`, etc. | Service state (run `just test-backups` to confirm freshness post-restore) |
+
+If both local targets are offline:
+- `sftp:u123@u123.your-storagebox.de:<n>` (Hetzner off-site, when configured — deferred per ROADMAP)
+- Out-of-band: restic snapshots are content-addressed, so even a partially-readable local repo can yield restorable data via `restic recover`
 
 ### 8. Re-import IronWolf media
 
@@ -107,11 +110,11 @@ The IronWolf is on a different drive — its data survives an SN750 failure. Aft
 
 ```bash
 sudo systemctl list-timers 'restic-*' 'btrbk-*'
-sudo restic -r /mnt/backup/user-data --password-file /run/secrets/restic-password snapshots
+just test-backups   # asserts both targets have fresh snapshots per repo
 sudo systemctl start restic-check-weekly.service
 ```
 
-All green = recovery complete.
+All green + `just test-backups` PASS = recovery complete.
 
 ## Don't forget
 
