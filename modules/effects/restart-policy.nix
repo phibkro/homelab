@@ -1,58 +1,30 @@
 { config, lib, ... }:
 
-# Default restart policy for every systemd service on every host.
+# System-wide systemd restart policy.
 #
-# ── Why this exists ─────────────────────────────────────────────────
-# Stock systemd lets a broken service tight-loop: ExecStart fails,
-# RestartSec elapses (default 100ms!), restart, fail, repeat — burning
-# CPU and spamming the journal. Worse, it never gives up, and nothing
-# tells the operator the unit is wedged.
+# Stock systemd tight-loops a broken unit at RestartSec=100ms forever
+# and never tells anyone. This module imposes three invariants:
 #
-# This module imposes three system-wide invariants:
+# 1. Exponential backoff. 1s → ~2 → ~4 → ~8 → ~15 → ~30 → ~1min →
+#    ~2min → ~5min, then sits at the 5-min ceiling. Transient hiccups
+#    self-heal in seconds; real faults stop burning CPU within minutes.
+#    Requires systemd ≥254 (NixOS 25.05+).
+# 2. Give up eventually. StartLimitIntervalSec=1h + StartLimitBurst=15:
+#    ramp the ladder, sit at 5min for a few attempts, then stop.
+# 3. Alert on failure. OnFailure → notify@%n.service for any service
+#    that doesn't declare its own (template: modules/server/ntfy/).
 #
-# 1. **Exponential backoff.** Starts at 1s and ramps to a 5-min ceiling
-#    over 9 steps. Sequence: 1s, ~2s, ~4s, ~8s, ~15s, ~30s, ~1min,
-#    ~2min, ~5min, ~5min … . A transient bind/dependency hiccup
-#    self-heals in seconds; a real fault stops eating CPU within
-#    minutes. Requires systemd ≥254 (NixOS 25.05+).
-#
-# 2. **Give up eventually.** `StartLimitIntervalSec=1h` +
-#    `StartLimitBurst=15` means after 15 restarts in an hour systemd
-#    enters a rate-limit state and stops trying. Combined with the
-#    backoff above, that's "ramp through the ladder and then sit at
-#    5min for a few attempts; if it's still failing, you're done."
-#
-# 3. **Alert the operator.** OnFailure → notify@%n.service for every
-#    service that doesn't already declare its own OnFailure. The
-#    template lives in modules/server/ntfy/notify.nix and posts to
-#    ntfy.sh with the unit name + hostname so the mobile app surfaces
-#    it. Per-service explicit OnFailure (e.g. backup jobs that want a
-#    richer alert) still wins via mkDefault.
-#
-# ── How it's wired ──────────────────────────────────────────────────
-# We extend the *type* of `systemd.services` so the merged submodule
-# applies the defaults inside every service instance. The naïve
-# `config.systemd.services = mapAttrs … config.systemd.services` trick
-# infinite-recurses (read-back of the value we're writing); this
-# type-level shape is the canonical NixOS pattern for "settings that
-# apply to every X in an attrsOf submodule option."
-#
-# ── Per-service override ────────────────────────────────────────────
-# Everything here is mkDefault, so a service that genuinely needs
-# different semantics (a oneshot that intentionally exits non-zero, a
-# socket-activated unit that shouldn't restart, etc.) just declares
-# its own `serviceConfig.Restart`, `unitConfig.OnFailure = lib.mkForce
-# [ ]`, etc., and the explicit setting wins.
-#
-# ── Exclusions ──────────────────────────────────────────────────────
-# The `notify@` template itself is excluded — if it failed, sending a
-# notify@notify@%i.service alert would just fail again, forever.
+# Wired by extending the *type* of `systemd.services` so the defaults
+# apply inside every submodule instance. The naïve
+# `config.systemd.services = mapAttrs … config.systemd.services` form
+# infinite-recurses (read-back of the value being written) — this
+# type-level shape is the canonical NixOS pattern for "apply to every
+# X in an attrsOf submodule."
 
 let
-  # The notify@ template is defined in modules/server/ntfy/notify.nix.
-  # Hosts that don't import it (pavilion — agent-quarantine host has
-  # no notify infrastructure) shouldn't get OnFailure pointed at a
-  # unit that doesn't exist. Check once at module-eval time.
+  # notify@ template lives in modules/server/ntfy/notify.nix. Hosts
+  # that don't import it (pavilion — agent-quarantine, no notify
+  # infrastructure) shouldn't get OnFailure pointed at a missing unit.
   hasNotifyTemplate = config.systemd.services ? "notify@";
 in
 {
@@ -61,16 +33,16 @@ in
       lib.types.submodule (
         { name, config, ... }:
         let
-          # A service is "trying to stay up" when it has any Restart=
-          # value other than "no" (or has none, which systemd treats as
-          # "no" by default). Backoff settings are inert for non-restart
-          # services so they apply universally without harm. OnFailure
-          # only applies when restart is enabled — for oneshots and
-          # one-time activation jobs, exit≠0 isn't necessarily a fault,
-          # and a blanket ntfy would be noisy.
+          # A unit is "trying to stay up" iff Restart= is anything but
+          # "no". OnFailure only fires when restart is enabled — for
+          # oneshots, exit≠0 isn't necessarily a fault and blanket ntfy
+          # would be noisy. Backoff settings are inert for non-restart
+          # units so they apply universally without harm.
           restartEnabled = (config.serviceConfig.Restart or "no") != "no";
         in
         {
+          # notify@ is excluded — if it failed, sending
+          # notify@notify@%i.service would just fail again, forever.
           config = lib.mkIf (name != "notify@") {
             serviceConfig = {
               RestartSec = lib.mkDefault "1s";
@@ -79,24 +51,15 @@ in
             };
             # StartLimitIntervalSec + StartLimitBurst are [Unit] section
             # directives, NOT [Service]. Putting them in serviceConfig
-            # makes systemd ignore them silently with
-            #   /etc/systemd/system/foo.service:N: Unknown key
-            #   'StartLimitIntervalSec' in section [Service], ignoring
-            # — which meant the "give up after 15 restarts in 1h" cap
-            # never actually applied. Moved here. Caught on
-            # restic-backups-*-ironwolf failure 2026-06-06.
+            # makes systemd silently ignore them with
+            #   Unknown key 'StartLimitIntervalSec' in section [Service]
+            # — so the "give up after 15 restarts/h" cap never applied.
+            # Caught on restic-backups-*-ironwolf failure 2026-06-06.
             unitConfig.StartLimitIntervalSec = lib.mkDefault "1h";
             unitConfig.StartLimitBurst = lib.mkDefault 15;
-            # Apply OnFailure default only when the notify@ template
-            # is actually defined on this host (modules/server/ntfy/
-            # notify.nix). Hosts that don't import it — pavilion
-            # being the canonical case — would otherwise spam the
-            # journal with "Failed to enqueue OnFailure job, ignoring:
-            # Unit notify@<X>.service not found" on every restart.
-            #
-            # Literal `${name}.service` instead of `%n` — %n expands
-            # to the full name with .service, so notify@%n.service
-            # renders as notify@caddy.service.service.
+            # Literal `${name}.service` instead of systemd's %n — %n
+            # already includes .service, so notify@%n.service renders
+            # as notify@caddy.service.service.
             unitConfig.OnFailure = lib.mkIf (restartEnabled && hasNotifyTemplate) (
               lib.mkDefault [ "notify@${name}.service" ]
             );

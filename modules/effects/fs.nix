@@ -4,46 +4,13 @@ let
   inherit (lib) mkOption types;
 in
 {
-  # nori.fs — single source of truth for named filesystem locations
-  # services consume by name + value-tier metadata that drives backup
-  # and snapshot policy.
+  # nori.fs — named filesystem locations + value-tier metadata.
   #
-  # ── Why this exists ─────────────────────────────────────────────────
-  # Subvolume mount paths used to be magic strings scattered across:
-  #   * arr/{sonarr,radarr,lidarr,bazarr,qbittorrent}.nix     binds
-  #   * arr/shared.nix                                         tmpfiles
-  #   * jellyfin.nix / immich.nix / calibre-web.nix / komga.nix
-  #   * backup/restic.nix      media-irreplaceable.include
-  #   * backup/btrbk.nix       per-instance subvolume lists
-  #
-  # Plus the value-tier categorization from docs/STORAGE.md (re-derivable
-  # / user / irreplaceable) lived only in prose. Adding a new media
-  # subvolume meant editing ~5 places + remembering which restic repo
-  # picks it up.
-  #
-  # nori.fs collapses both: hosts (alongside their disko config) declare
-  # named filesystem locations + tier; services read by name; backup
-  # generators filter by tier.
-  #
-  # Reader-shaped effect: hosts produce, services consume.
-  # Plus Writer-shaped consequence: backup/btrbk generators in
-  # modules/server/backup/ interpret the collected tier metadata.
-  #
-  # ── Tier semantics ──────────────────────────────────────────────────
-  #   re-derivable  Auto-grabbed / re-downloadable. Not in any restic
-  #                 repo. Snapshot weekly (cheap insurance against
-  #                 accidental deletion mid-grab).
-  #   user          /home, /srv/share — user-touched files. Goes in
-  #                 the `user-data` restic repo. Daily snapshot.
-  #   irreplaceable Photos / home-videos / projects / curated media
-  #                 (books, comics). Goes in the `media-irreplaceable`
-  #                 restic repo. Daily snapshot, long retention.
-  #
-  # ── Cross-host portability ──────────────────────────────────────────
-  # Service modules read `config.nori.fs.<n>.path`, never literals.
-  # A future second workhorse with media on a different mount becomes
-  # a `nori.fs.downloads.path = "..."` change in *its* host config; no
-  # service module changes.
+  # Collapses subvolume paths that used to be magic strings across arr
+  # binds, jellyfin/immich/komga consumers, and the restic+btrbk
+  # generators. Reader-shaped effect: hosts declare (alongside disko),
+  # services consume by name; backup generators in modules/server/backup/
+  # filter by tier (the Writer-shaped consequence).
 
   options.nori.fs = mkOption {
     default = { };
@@ -90,8 +57,7 @@ in
     );
   };
 
-  # No config block here — nori.fs is pure Reader. The Writer-shaped
-  # consequences (filtering by tier into backup repo paths, btrbk
-  # subvolume lists) live in modules/server/backup/ where the consumers
-  # are. Keeps the effect schema separable from the consumer wiring.
+  # No config block: nori.fs is pure Reader. Tier-driven filtering and
+  # btrbk subvolume lists live in modules/server/backup/ next to their
+  # consumers.
 }
