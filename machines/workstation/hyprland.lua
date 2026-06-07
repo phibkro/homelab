@@ -156,3 +156,61 @@ hl.window_rule({
     size  = "1010 220",
     move  = "1180 1150",
 })
+
+----------------------------------------------------------------------
+-- Tag-style named workspaces (handrolled, no plugin).
+--
+-- Six named special workspaces toggleable via SUPER+ALT+1..6. Each
+-- preserves its own window stack; toggling an overlay shows/hides it
+-- without disturbing other workspaces.
+--
+-- Limitation acknowledged: Hyprland's core renders only ONE special
+-- workspace overlay at a time (issue hyprwm/Hyprland#2233); toggling a
+-- second hides the first. This is the no-dependency 90% — the
+-- multiple-visible-simultaneously semantic of DWM tags requires either
+-- a Hyprland plugin (hyprtags, security risk) or a userspace daemon
+-- (real engineering project).
+--
+-- Conflicts with existing wiring:
+--   * `term` is also used by popup-term (SUPER+RETURN). SUPER+ALT+2
+--     toggles the SAME special workspace — fine, just two ways into
+--     the same overlay. SUPER+RETURN lazy-spawns ghostty if empty,
+--     SUPER+ALT+2 just toggles visibility (no spawn).
+--
+-- Cheatsheet integration:
+--   These binds are NOT yet in the SUPER+H cheatsheet (sourced from
+--   keyBinds in machines/workstation/home.nix). Add there if these
+--   stick after a week of use.
+----------------------------------------------------------------------
+
+local tags = {
+    { key = "1", name = "browser" },
+    { key = "2", name = "term"    },  -- shares overlay with popup-term
+    { key = "3", name = "music"   },
+    { key = "4", name = "notes"   },
+    { key = "5", name = "comms"   },
+    { key = "6", name = "files"   },
+}
+
+for _, t in ipairs(tags) do
+    -- Toggle tag visibility (SUPER+ALT+N)
+    hl.bind(mod .. " + ALT + " .. t.key,
+            hl.dsp.workspace.toggle_special({ name = t.name }))
+    -- Move active window into the tag silently (SUPER+ALT+SHIFT+N)
+    hl.bind(mod .. " + ALT + SHIFT + " .. t.key,
+            hl.dsp.window.move({ workspace = "special:" .. t.name, silent = true }))
+end
+
+-- Auto-route common app classes into their tag on launch. Tag stays
+-- hidden until toggled; window lands in the right overlay without
+-- the operator placing it. Add classes here as patterns emerge.
+hl.window_rule({
+    name      = "tag-browser-zen",
+    match     = { class = "^zen$" },
+    workspace = "special:browser silent",
+})
+hl.window_rule({
+    name      = "tag-files-thunar",
+    match     = { class = "^thunar$" },
+    workspace = "special:files silent",
+})

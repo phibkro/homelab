@@ -85,6 +85,70 @@ default: rebuild
 @preview *args:
     nh os test . -H $(hostname) {{args}}
 
+# Smoke-test the Hyprland config we just deployed. Three tiers, each
+# catching a different class of regression:
+#
+#   1. Syntax — `hyprctl reload` exit code (catches parse errors).
+#   2. Dispatcher — each toggle_special invocation returns "ok"
+#      (catches Hyprland-version-bump renames + lua-mode CLI traps
+#      like the one that silently broke popup-term 2026-06-07).
+#   3. Keypress — wtype synthesises SUPER+ALT+1, checks state
+#      changed (catches bind-routing breakage between keystroke
+#      and dispatcher — what tier 2 alone can't see).
+#
+# Each toggle test runs PAIRED (toggle on, toggle off) so the
+# operator's session is left exactly as found — tests are
+# non-destructive by construction.
+#
+# Run after `just preview` to validate before `just rebuild`. Or
+# anytime, against the live Hyprland. Adds wtype via `nix shell`
+# (not installed system-wide).
+@test-hypr:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    fail=0
+
+    check() {
+      local label="$1" expr="$2"
+      out=$(hyprctl dispatch "$expr" 2>&1) || { echo "  ✗ $label (hyprctl errored)"; fail=1; return; }
+      [[ "$out" == "ok" ]] || { echo "  ✗ $label — got: $out"; fail=1; return; }
+      echo "  ✓ $label"
+    }
+
+    echo "=== Tier 1 — config parse ==="
+    out=$(hyprctl reload 2>&1) && [[ "$out" == "ok" ]] && echo "  ✓ reload" || { echo "  ✗ reload: $out"; fail=1; }
+
+    echo "=== Tier 2 — dispatcher smoke (paired toggles, net effect: zero) ==="
+    for tag in browser term music notes comms files; do
+      check "toggle special:$tag (on)"  "hl.dsp.workspace.toggle_special({ name = \"$tag\" })"
+      check "toggle special:$tag (off)" "hl.dsp.workspace.toggle_special({ name = \"$tag\" })"
+    done
+
+    # Tier 3 — keypress → state via wtype.
+    #
+    # TODO: Tier 3 ships disabled. First attempt (2026-06-07) sent keys
+    # via wtype but Hyprland didn't fire the bind. Likely Norwegian
+    # keymap × wtype's US-keysym assumption — `wtype -k 1` sends
+    # something the layout doesn't route to `key 1`. Or virtual
+    # keyboard binding ordering / activation race.
+    #
+    # Resolution paths to try when picking this back up:
+    #   * `nix shell nixpkgs#wtype -c wtype --xkb-layout us -k 1 ...`
+    #   * `ydotool` instead of wtype (different protocol — uinput)
+    #   * `hyprctl dispatch sendshortcut SUPER+ALT,1,,` — Hyprland's
+    #     own keypress synthesiser; bypasses virtual-keyboard entirely
+    #
+    # The hyprctl-side smoke is the bigger value; defer keypress test
+    # rather than ship something flaky.
+
+    echo
+    if [[ "$fail" -eq 0 ]]; then
+      echo "=== ALL PASS ==="
+    else
+      echo "=== FAIL ==="
+      exit 1
+    fi
+
 # Set a NixOS option to a value via AST edit, no regex. Wraps
 # snowfallorg/nix-editor (-i: in-place, -f: format after). Preserves
 # comments + style. Doesn't activate — pair with `just preview` to

@@ -145,11 +145,18 @@ let
   # the default-ghostty float rule doesn't catch it) on first press if it
   # isn't already running, then toggle show/hide. Lazy beats an exec-once
   # pre-spawn: survives `hyprctl reload`, needs no relogin, no startup race.
+  # Hyprland lua-mode (`configType = "lua"` below) changed the
+  # `hyprctl dispatch` CLI: it now wraps args in `return hl.dispatch(...)`,
+  # so the old hyprlang-style `dispatch togglespecialworkspace term`
+  # syntax silently fails with "')' expected near 'term'". Same for
+  # `dispatch exec`. Fix: pass a lua dispatcher builder as the arg.
+  # Caught 2026-06-07 — popup-term had been broken since the lua
+  # migration but the failure mode is silent (exit 0).
   popupTerm = pkgs.writeShellScriptBin "popup-term" ''
     if ! hyprctl clients | grep -q "com.mitchellh.ghostty.scratch"; then
-      hyprctl dispatch exec "[workspace special:term silent] ghostty --class=com.mitchellh.ghostty.scratch"
+      hyprctl dispatch 'hl.dsp.exec_cmd("ghostty --class=com.mitchellh.ghostty.scratch", { workspace = "special:term silent" })'
     fi
-    hyprctl dispatch togglespecialworkspace term
+    hyprctl dispatch 'hl.dsp.workspace.toggle_special({ name = "term" })'
   '';
 in
 # Pure home-manager module — workstation user content. The
