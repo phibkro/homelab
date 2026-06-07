@@ -20,18 +20,19 @@ System config is covered by the Git mirror to GitHub, not a backup target. See `
 
 ## Workstation root (SN750, btrfs)
 
-Subvolume layout, applied by disko during install:
+Subvolume layout, applied by disko at install. Mount options: `compress=zstd:3,noatime`.
 
 | Subvolume | Mount | Snapshot | Purpose |
 |---|---|---|---|
-| `@` | `/` | Before each rebuild (btrbk) | System root |
+| `@` | `/` | Before each rebuild (btrbk) | System root + `/swapfile` (NoCoW, 8 GiB disk swap overflow tier) |
 | `@home` | `/home` | Hourly + daily | User data |
 | `@nix` | `/nix` | Never | Re-derivable from flake |
 | `@var-lib` | `/var/lib` | Daily | Service state |
 | `@srv-share` | `/srv/share` | Daily | Family-shared docs, Samba-accessible |
+| `@srv-nori` | `/srv/nori` | Daily | Operator's networked working dir (Documents/Videos/Photos/Downloads/Desktop/Projects symlinked from `~`) |
 | `@snapshots` | `/.snapshots` | N/A | Snapshot target |
 
-`@var-lib` separation lets service-state churn snapshot on its own cadence without polluting `@` snapshots. `@srv-share` is the explicit shared path referenced in the access matrix.
+`@var-lib` separation snapshots service-state churn on its own cadence without polluting `@`. `@srv-share` is the family-shared path; `@srv-nori` is operator-only with `home.file` out-of-store symlinks from `~/{Documents,…}`. `/swapfile` on `@` is excluded from btrbk by virtue of not being inside any tracked subvolume.
 
 ## Workstation media (IronWolf Pro, btrfs)
 
@@ -51,7 +52,20 @@ Disko-managed. Reformatted from exfat in Phase 2 (executed during Phase 5).
 
 ## Pi storage
 
-`@` on USB SSD (root). USB HDD mounted at `/mnt/backup` holds the restic repository for workstation's irreplaceable data and service state. Restic encrypts client-side, so the HDD's filesystem doesn't matter for security; ext4 is the boring default.
+USB-boot from Samsung FIT 128 GB. Anti-write posture (no swap, volatile journald). Pi does **not** host backup repos — those live on workstation USB drives (see Backup destinations below). Pi-as-backup-target is deferred until a real disk replaces the FIT.
+
+## Workstation backup drives (dual-target)
+
+Two USB-attached drives, mounted on workstation, each hosting one restic repo per service.
+
+| Target | Mount | Drive | FS | Repo path | Trigger time |
+|---|---|---|---|---|---|
+| `onetouch` | `/mnt/backup` (autofs) | Seagate OneTouch | ext4 | `/mnt/backup/<svc>` | per-service timer (e.g. 04:30) |
+| `ironwolf` | `/mnt/backup-local` | Seagate IronWolf Pro | btrfs | `/mnt/backup-local/<svc>` | same timer minute |
+
+Both restic units race on the prepareCommand `.tmp` file → wrapped in `flock` since 2026-06-07. See [[pattern-c2-sqlite-race-flock]].
+
+Restic encrypts client-side, so the on-disk FS doesn't matter for security — ext4 (onetouch) + btrfs (ironwolf) chosen for their respective drive shapes.
 
 ## Database-on-btrfs CoW interaction
 
@@ -79,14 +93,14 @@ Both `restic-backups-*` and `btrbk-*` units get `OnFailure = [ "notify@%n.servic
 
 ## Backup destinations + retention
 
-Two restic repositories per service, three retention policies.
+Dual local targets (`onetouch` + `ironwolf` — both on workstation), Hetzner off-site planned (ROADMAP). Each service backed up to all configured targets simultaneously.
 
-| Path / service | Pi (local fast restore) | Hetzner (off-site disaster) |
+| Path / service | OneTouch + Ironwolf (local) | Hetzner (off-site, planned) |
 |---|---|---|
 | `/home` | Daily · keep 14d + 4w | Weekly · keep 4w + 12m |
 | `/srv/share` | Daily · keep 14d + 4w | Weekly · keep 4w + 12m |
 | Immich (dumps + uploads) | Daily · keep 7d + 4w | Daily · keep 7d + 4w + 12m |
-| Open WebUI dump | Daily · keep 7d + 4w | Weekly · keep 4w + 12m |
+| Open WebUI dump | Daily · keep 7d + 4w (paused — see ROADMAP) | Weekly · keep 4w + 12m |
 | Other service state | Daily · keep 7d | Not backed up (re-derivable) |
 | `@streaming` | Not backed up | Not backed up |
 | `@photos`, `@home-videos`, `@projects` | Daily · keep 14d + 4w | Daily · keep 4w + 12m + yearly indefinite |
@@ -99,13 +113,18 @@ Initial sizing: start at BX11 (1TB) if irreplaceable data is <500GB. Re-evaluate
 
 ## Backup verification
 
-| Cadence | Action |
-|---|---|
-| Weekly | `restic check` (metadata only) |
-| Monthly | `restic check --read-data-subset=10%` (rolling sample; full repo covered every ~10 months) |
-| Quarterly | **Restore drill** — restore one subvolume's recent snapshot to `/var/restore-test/`, diff against live, document time |
+Three-cadence ladder + the live test recipe.
 
-Failure of any of these alerts via ntfy. Quarterly drill is the **real RTO measurement**, not the unit-test green light.
+| Cadence | What | Action |
+|---|---|---|
+| Weekly | `restic check` | Metadata-only integrity scan |
+| Monthly | `restic check --read-data-subset=10%` | Rolling sample; full repo covered ~every 10 months |
+| Monthly | `restore-drill-services.service` | 17 service repos restored to `/var/restore-test/<svc>-<ts>/`, sha256-sample 20 files per repo. ~5 min wall |
+| Quarterly | `restore-drill-user-data.service` | user-data tier restored (~99 GiB). ~30 min wall |
+| Manual | `restore-drill-all.service` | All repos incl. `media-irreplaceable`. Multi-hour |
+| Per-deploy | `just test-backups` | Runtime introspection: every unit's last snapshot ≤25h per target (see `docs/TESTING.md`) |
+
+All failures alert via ntfy. The drill is the **real RTO measurement**, not the static check green light. Drill split into per-tier services 2026-06-07 so a user-data failure no longer masks 17 GREEN service-tier results.
 
 ## Backup intent abstraction (`nori.backups`)
 
@@ -115,4 +134,4 @@ Failure of any of these alerts via ntfy. Quarterly drill is the **real RTO measu
 
 The DynamicUser `StateDirectory` symlink-trap assertion derives from `config.systemd.services` introspection — self-maintaining. See `.claude/skills/gotcha-dynamicuser-statedirectory-symlink/`.
 
-Schema in `modules/effects/backup.nix`. Cross-cutting infra (sops password, check timers) is in `modules/services/backup/restic.nix`. Restic repos live at `/mnt/backup/<job>` (OneTouch ext4); Hetzner Storage Box is still on the roadmap as the second per-job repo.
+Schema in `modules/effects/backup.nix`. Cross-cutting infra (sops password, check timers) in `modules/services/backup/restic.nix`. Each repo writes to **both** `/mnt/backup/<job>` (OneTouch ext4) **and** `/mnt/backup-local/<job>` (Ironwolf btrfs). Hetzner Storage Box deferred (ROADMAP).

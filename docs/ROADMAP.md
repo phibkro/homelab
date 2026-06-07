@@ -10,11 +10,32 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 ## Outstanding (actionable)
 
-- **Mac is on x86_64-darwin EOL clock.** Mac home-manager landed (`homeConfigurations.macbook` in `flake.nix`, content at `machines/macbook/home.nix`). Switch via `nix run home-manager/master -- switch --flake ~/Documents/nix-migration#macbook`. Nix installed via **Determinate Nix installer v3.12.2** (released 2025-11-05) — the last Determinate release with an `x86_64-darwin` binary; v3.12.3 (2025-11-10) dropped Intel Mac support. Future Intel-Mac installs need to pin v3.12.2 specifically or use upstream installer. **Nixpkgs 26.05 is the LAST release supporting x86_64-darwin** (surfaces in eval warnings). Decision needed when next stable ships: pin Mac to 26.05 indefinitely, migrate Mac off Nix, or replace hardware. Already adapted: prefer ad-hoc `nix shell` over `home.packages` for heavy compiles (Hydra cache is thin on x86_64-darwin); ghostty + utm stay on brew. Caddy local CA wired into Node clients via `home.sessionVariables.NODE_EXTRA_CA_CERTS` in `machines/macbook/home.nix`.
+- **Mac is on x86_64-darwin EOL clock.**
+
+  | Layer | Status |
+  |---|---|
+  | HM config | `homeConfigurations.macbook` in `flake.nix`; content `machines/macbook/home.nix` |
+  | Switch cmd | `nix run home-manager/master -- switch --flake ~/Documents/nix-migration#macbook` |
+  | Nix installer | Determinate v3.12.2 (2025-11-05) — **last release with x86_64-darwin**; v3.12.3 dropped Intel. Pin v3.12.2 or use upstream for new installs |
+  | Nixpkgs lifeline | 26.05 = **last release supporting x86_64-darwin** (eval warnings surface this) |
+  | Already adapted | `nix shell` over `home.packages` for heavy compiles (Hydra cache thin); ghostty + utm stay on brew; Caddy local CA → Node via `NODE_EXTRA_CA_CERTS` in `machines/macbook/home.nix` |
+
+  **Decision needed** when next stable ships: pin Mac to 26.05 indefinitely / migrate Mac off Nix / replace hardware.
 
 - **Jellyfin NVENC web UI toggle.** `https://media.nori.lan` → Dashboard → Playback → Hardware acceleration → Nvidia NVENC + tick codec boxes (h264/hevc/mpeg4/vp9/av1) → Save. OS-level GPU access is already live; this flips `<HardwareAccelerationType>` from `none` to `nvenc` in `/var/lib/jellyfin/config/encoding.xml`.
 
-- **Sunshine remote-desktop pairing.** `modules/desktop/sunshine.nix` is deployed; service builds (NVENC confirmed: `h264/hevc/av1_nvenc` found). Outstanding: the one-time Moonlight pairing. The `sunshine` user unit binds `graphical-session.target`, so it only autostarts on a *fresh* Hyprland login (lock/unlock won't trigger); a stray manually-started instance currently holds the ports — `kill` it or reboot so systemd owns it. Then on the MacBook: `brew install --cask moonlight`, browse `https://workstation:47990` over tailnet, set admin creds, PIN-pair, launch "Desktop", verify video + audio. Fallback if NVIDIA KMS capture black-screens: set `capSysAdmin = false` (wlr capture — Hyprland is wlroots-based) and rebuild. Design + plan: `docs/superpowers/specs/2026-05-22-sunshine-remote-host-design.md`, `docs/superpowers/plans/2026-05-22-sunshine-remote-host.md`.
+- **Sunshine remote-desktop pairing.** Deployed (`modules/desktop/sunshine.nix`); NVENC builds confirmed (`h264/hevc/av1_nvenc`). Outstanding: one-time Moonlight pairing.
+
+  Pairing steps:
+
+  1. **Clear stray instance** — `sunshine` user unit binds `graphical-session.target`, only autostarts on *fresh* Hyprland login (lock/unlock won't trigger). If a manually-started copy holds the ports: `kill` it or reboot so systemd owns it
+  2. **MacBook side** — `brew install --cask moonlight`
+  3. **Pair** — browse `https://workstation:47990` over tailnet, set admin creds, PIN-pair, launch "Desktop"
+  4. **Verify** video + audio
+
+  **Fallback** if NVIDIA KMS capture black-screens: `capSysAdmin = false` (wlr capture — Hyprland is wlroots-based) + rebuild.
+
+  Design + plan: `docs/superpowers/specs/2026-05-22-sunshine-remote-host-design.md`, `docs/superpowers/plans/2026-05-22-sunshine-remote-host.md`.
 
 - **MemoryHigh caps on heavy services** — process-exporter now publishes `namedprocess_namegroup_memory_bytes{memtype="resident",groupname=…,host=…}` to pi VM for all three workhorse hosts (workstation, pavilion, aurora). Wait ≥7 days of data, identify the slowest-growing services per host, cap each via `systemd.services.<n>.serviceConfig.MemoryHigh = "…G"`. Premature to cap blindly. Sample query: `topk(10, max_over_time(namedprocess_namegroup_memory_bytes{memtype="resident"}[7d]) - min_over_time(namedprocess_namegroup_memory_bytes{memtype="resident"}[7d])) / 1024 / 1024`. Special interest: aurora `gunicorn` (immich-ml — PyTorch, known leak shape).
 
@@ -34,12 +55,15 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 ## Promotion register (from INVARIANTS.md)
 
-The `[prose: unchecked]` claims worth mechanizing. Detail in INVARIANTS.md § promotion work-list:
+`[prose: unchecked]` claims worth mechanizing — detail in `INVARIANTS.md § promotion work-list`:
 
-- `disko-uses-by-id` — flake check grepping disko files for `/dev/nvme[0-9]` / `/dev/sda[0-9]?`.
-- `function-named-subdomains` — flake check grepping route declarations against a brand denylist.
-- `workhorse-vs-appliance-placement` — module assertion cross-checking service placement against host role.
-- `systemd-execstart-resolves` — flake check resolving each `ExecStart` first-token to a closure path (the 2026-06-03 incident class).
+| Check | Promotes to | Catches |
+|---|---|---|
+| `disko-uses-by-id` | `[law]` — flake check, grep disko files | `/dev/nvme[0-9]` or `/dev/sda[0-9]?` leakage (NVMe enum drift wipes wrong disk) |
+| `function-named-subdomains` | `[law]` — flake check, brand denylist | service-name leakage in `nori.lanRoutes` |
+| `workhorse-vs-appliance-placement` | `[law]` — module assertion | service placement matches host role |
+| `systemd-execstart-resolves` | `[law]` — flake check | ExecStart's first token resolves to closure path (incident 2026-06-03 class) |
+| `effects-have-tests` *(added 2026-06-07)* | `[law]` — meta-check | every `modules/effects/<X>.nix` with Reader+Writer shape has matching `just test-<X>` recipe in `Justfile`. See `docs/TESTING.md` |
 
 ## Idea backlog (no commitment)
 

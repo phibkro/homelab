@@ -6,19 +6,41 @@ summary: Hosts, hardware, roles, the topology registry, GPU access, resource
 
 # Topology
 
-Two persistent hosts on a single residential network, plus a Mac that
-home-manager-administers locally. Roles are typed; placement assertions enforce
-them; cross-host references go through the registry, never IP literals.
+Four persistent NixOS hosts on a single residential network plus a Mac on standalone home-manager. Roles are typed; placement assertions enforce them; cross-host refs go through `nori.hosts` registry — never IP literals.
 
 ## Hosts at a glance
 
-| Host | Role | OS | Arch | Hardware | Primary job |
-|---|---|---|---|---|---|
-| **workstation** | `workhorse` | NixOS 26.05 | x86_64 | Ryzen 5600X · 32GB DDR4 · RTX 5060 Ti 16GB (Blackwell) | HTTP entry plane (Caddy + Authelia), GPU-bound services, state-heavy services, daily-driver desktop |
-| **pi** | `appliance` | NixOS 26.05 | aarch64 | Raspberry Pi 4 8GB · USB-boot from Samsung FIT 128GB | Observability hub, alert plane, DNS forwarder, Tailscale subnet router + exit node |
-| **macbook** | (no role) | macOS · standalone home-manager | x86_64-darwin | Intel Mac | Daily-driver laptop; Nix-managed CLI baseline + brew for Mac-only packages |
+| Host | Codename | Role | OS | Arch | Hardware | Primary job |
+|---|---|---|---|---|---|---|
+| **workstation** | emperor | `workhorse` | NixOS 26.05 | x86_64 | Ryzen 5600X · 32 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) | HTTP entry plane (Caddy + Authelia), GPU services, state-heavy services, daily-driver desktop |
+| **pi** | fairy | `appliance` | NixOS 26.05 | aarch64 | Raspberry Pi 4 8 GB · USB-boot from Samsung FIT 128 GB | Observability hub, alert plane, DNS forwarder, Tailscale subnet router + exit node |
+| **pavilion** | pavilion | `agent` | NixOS 26.05 + impermanence | x86_64 | HP Pavilion g6 · AMD Athlon II · BIOS+GRUB · btrfs-rollback root | Agent quarantine — hermes / nixpkgs-agent / sandboxed claude work, headless |
+| **aurora** | aurora | `workhorse` (offload) | NixOS 26.05 | x86_64 | Asus N552V · Intel Skylake-H · NVIDIA GTX 950M (legacy_535) | immich-machine-learning offload (PyTorch) — keeps workstation's GPU free for other ML |
+| **macbook** | adelie | (no role) | macOS · standalone home-manager | x86_64-darwin | Intel Mac (EOL clock — see ROADMAP) | Daily-driver laptop; Nix-managed CLI + brew for Mac-only |
 
-Failure domain independence: workstation and pi share no storage, no PSU, no critical dependency in the boot path. Either host's failure does not block the other's.
+```mermaid
+graph TB
+  subgraph "workhorse tier"
+    W[workstation<br/>HTTP + GPU + state]
+    A[aurora<br/>immich-ml offload]
+  end
+  subgraph "appliance tier"
+    P[pi<br/>observability + alert + DNS]
+  end
+  subgraph "agent tier"
+    V[pavilion<br/>quarantined agents]
+  end
+  M[macbook<br/>daily-driver]
+  W -- immich-ml RPC --> A
+  W -- scraped by --> P
+  A -- scraped by --> P
+  V -- scraped by --> P
+  P -- ntfy.sh public<br/>heartbeat to hc.io --> Internet[Internet]
+  M -. SSH .-> W
+  M -. SSH .-> P
+```
+
+Failure domain independence: each host shares no storage, no PSU, no critical boot-path dependency with the others. Any single failure does not block the rest.
 
 ## Workstation drives
 
@@ -76,21 +98,34 @@ The `forbidden-patterns` flake check fails the build on a stray `100.x.y.z` lite
 
 | Cluster | Where | Why |
 |---|---|---|
-| HTTP entry plane (Caddy + Authelia) | workstation | Workhorse owns user-facing surface; tailnet routes through here |
-| GPU-bound (Ollama, Jellyfin NVENC, Immich CUDA ML) | workstation | Only host with the GPU |
+| HTTP entry plane (Caddy + Authelia) | workstation | Workhorse owns user-facing surface; tailnet routes here |
+| GPU-bound (Ollama, Jellyfin NVENC, Immich CUDA NVENC + thumbnails) | workstation | RTX 5060 Ti — primary GPU |
+| ML inference offload (Immich machine-learning / PyTorch) | aurora | Keeps workstation GPU free; GTX 950M is sufficient for inference; `IMMICH_MACHINE_LEARNING_URL = http://aurora:3003` |
 | State-heavy (Vaultwarden, Radicale, *arr stack, Immich, file shares) | workstation | Fate-sharing: when workstation is down they're useless either way |
-| Observability + alert plane (Beszel hub, Gatus, ntfy server) | pi | Must survive workstation outage — that's *when* they fire |
-| DNS (Blocky forwarder) | pi (primary) | Pushed to tailnet devices via Tailscale global-nameserver |
+| Observability + alert plane (Beszel hub, Gatus, VictoriaMetrics, VictoriaLogs, ntfy server) | pi | Must survive workstation outage — that's *when* they fire |
+| Heartbeat / dead-man-switch (healthchecks.io ping) | pi | SPOF mitigation — see `modules/services/heartbeat.nix` |
+| DNS (Blocky forwarder) | pi (primary) | Pushed to tailnet via Tailscale global-nameserver |
 | DNS (Blocky self-hosted) | workstation (secondary) | Auto-generates `*.nori.lan` map; survives Pi outage |
 | Network plumbing (subnet router + exit node) | pi | Appliance role; opt-in per device for exit node |
+| Agent quarantine (hermes-agent CLI + dashboard) | pavilion | Sandboxed; pavilion's impermanence root makes pollution self-healing |
+| Process metrics (`node-exporter` + `process-exporter`) | workstation + pavilion + aurora | Pi VM scrapes each; per-process RSS for leak hunts |
 
-The placement test is **fate-sharing breaks the function**, not "feels lightweight." See `docs/CONCEPTS.md` § fate-sharing.
+Placement test = **fate-sharing breaks the function** (not "feels lightweight"). See `docs/CONCEPTS.md § fate-sharing`.
 
-## Cross-host services
+## Cross-host services (split-module pattern)
 
-Live: Beszel hub (`metrics.nori.lan`), ntfy server (`alert.nori.lan`). Both follow the **split-module pattern** — daemon module on the host that runs it, client/proxy module on every host. The cross-host Caddy lanRoute is gated `lib.mkIf config.services.caddy.enable` so the daemon-host's Blocky stays in pure forwarder mode.
+Daemon on one host, client/proxy on every consumer. Cross-host Caddy lanRoute gated `lib.mkIf config.services.caddy.enable` so daemon-host's Blocky stays pure-forwarder.
 
-Add another via `/relocate-to-pi`. Precedents: `modules/services/beszel/{hub,agent}.nix`, `modules/services/ntfy/{server,notify}.nix`.
+| Service | Daemon | Routed at | Client module |
+|---|---|---|---|
+| Beszel | pi | `metrics.nori.lan` | `modules/services/beszel/agent.nix` everywhere |
+| ntfy | pi | `alert.nori.lan` | `modules/services/ntfy/notify.nix` everywhere |
+| VictoriaLogs | pi | `logs.nori.lan` | `modules/common/vector.nix` ships journald |
+| VictoriaMetrics | pi | `metrics.nori.lan` (Grafana datasource) | `modules/services/node-exporter.nix` scraped from pi |
+| immich-ml | aurora | n/a (RPC only) | `modules/services/immich.nix` (workstation) — `IMMICH_MACHINE_LEARNING_URL` |
+| hermes-agent | pavilion (planned) → currently workstation | `hermes.nori.lan` | `home/hermes/default.nix` (PCs) |
+
+Add another via `/relocate-to-pi`. Precedents above.
 
 ## GPU access pattern
 
@@ -108,9 +143,11 @@ Services that need the GPU set `accelerationDevices` (or systemd `DeviceAllow`) 
 
 | Service / system | Cap | Reason |
 |---|---|---|
-| `immich-machine-learning.serviceConfig` | `CPUQuota=600%`, `MemoryMax=16G` | Guards the userspace-CPU-starvation pattern that wedged the host 2026-04-28 (rtkit canary thread starved 4+ minutes; commit `c0a557d`) |
+| `immich-machine-learning.serviceConfig` (aurora) | (moved to aurora; cap deprecated on workstation) | Original cap guarded the userspace-CPU-starvation pattern that wedged workstation 2026-04-28 (rtkit canary starved 4+ minutes; commit `c0a557d`). Aurora-offload removed the host-wedge risk |
 | `zramSwap` on workstation | 16 GiB compressed | Required for nvcc/CUDA builds; previously OOM'd + hard-hung the host |
+| `swapDevices` on workstation | 8 GiB disk swapfile (`/swapfile` on `@` btrfs subvol, NoCoW) | Overflow tier behind zram — landed 2026-06-06 after the memory-pressure freeze. Priority -2 (zram is 5) |
 | `swapDevices` on pi | `[ ]` (no swap) | Anti-write posture for flash storage |
+| `MemoryHigh` per heavy service | (deferred — ROADMAP) | Waiting on 7+ days of `process-exporter` data before sizing caps |
 
 ## Operator facts
 

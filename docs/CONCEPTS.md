@@ -8,17 +8,18 @@ summary: Glossary of the coined vocabulary (roles, `nori.<X>` effect family,
 
 # Concepts
 
-The coined nouns/verbs this repo uses, plus the mental models that frame how
-it's reasoned about. One line per term, pointing at the source-of-truth doc.
-Read this to stop learning the vocabulary by osmosis; read the linked source
-for the full shape.
+Coined nouns/verbs + mental models that frame the lab. One line per term →
+source-of-truth doc. Read here to skip vocabulary-by-osmosis; read the linked
+source for the full shape.
 
-A mental model is a *descriptive* internal representation of how something
-behaves — a framework for reasoning / prediction, not a rule of action. Rules
-and heuristics (rule of three, iterate-to-stable, declarative over imperative,
-composable abstractions, tailnet-as-perimeter, workhorse-by-default) live in
-CLAUDE.md § "What's the bias"; they're prescriptive. The models below are what
-make those rules make sense.
+**Model vs heuristic** (the type distinction):
+
+| Type | Role | Where |
+|---|---|---|
+| **Mental model** | Descriptive — how something behaves; predict + explain | this doc |
+| **Heuristic / rule** | Prescriptive — what to do (rule of three, iterate-to-stable, declarative over imperative, tailnet-as-perimeter, workhorse-by-default) | `CLAUDE.md § What's the bias` |
+
+Models make the heuristics make sense.
 
 ## Glossary — coined nouns + verbs
 
@@ -52,23 +53,35 @@ first principles. These aren't rules; they're what makes the rules make sense.
 
 ## Effect interface deep-dive
 
-The `nori.<X>` family in `modules/effects/` is a structural Reader + collected-Writer effect interface. The NixOS module system handles both flavors via the same option-merge fixed-point semantics, which is why one folder holds them together; the distinction is in *who produces*:
+`nori.<X>` = structural Reader + collected-Writer over NixOS module fixed-point. Same merge semantics → one folder. Distinction = *who produces*.
 
-| Shape | Examples | Producer | Consumer |
-|---|---|---|---|
-| Reader (host-scoped context) | `nori.hosts`, `nori.gpu`, `nori.fs` | hosts only — set in `flake.nix` `identityFor`, `hardware.nix`, `disko*.nix` | services |
-| Collected Writer (assembled across modules, then interpreted) | `nori.lanRoutes`, `nori.backups`, `nori.harden` | services contribute | generators in `modules/effects/<x>.nix` and downstream handlers (`modules/services/backup/`, …) interpret |
+```mermaid
+flowchart LR
+  Hosts -- "set in flake.nix / hardware.nix / disko*.nix" --> R["Reader<br/>nori.hosts<br/>nori.gpu<br/>nori.fs"]
+  R -- read --> Services
+  Services -- "contribute" --> W["Writer<br/>nori.lanRoutes<br/>nori.backups<br/>nori.harden"]
+  W -- "interpreted by" --> G["modules/effects/&lt;x&gt;.nix<br/>+ downstream handlers"]
+```
 
-Each `modules/effects/<x>.nix` is one effect's full surface:
+Each `modules/effects/<x>.nix` carries one effect's full surface:
 
-- **type signature** — the `mkOption` schema with type constraints
-- **contracts** — assertions (port uniqueness, DNS-safe names, host-aware appliance gating, …)
-- **interpretation** — the `config = mkIf ... { ... }` block that turns the collected attrset into systemd services / Caddy vhosts / restic jobs / …
+| Layer | What | Mechanism |
+|---|---|---|
+| **type signature** | option schema, type constraints | `mkOption` |
+| **contracts** | port uniqueness, DNS-safe names, appliance-role gating | `assertions` |
+| **interpretation** | collected attrset → systemd / Caddy / restic | `config = mkIf …` |
 
-The convention is informal in the sense that nothing prevents a service from setting `nori.hosts` or a host from declaring `nori.lanRoutes` — those would be Reader/Writer violations. Today these are conventions, enforced via:
+Convention-not-rule (Reader/Writer split isn't structurally prevented). Enforced via:
 
-- **Type system** for shape constraints inside one option (port range, DNS-safe name regex)
-- **Module assertions** for cross-attribute invariants (paths-XOR-skip, port uniqueness, appliance role can't use `paths`)
-- **`forbidden-patterns` flake check** for textual violations (no `100.x.y.z` literals outside `flake.nix`'s `identityFor` — cross-host refs go through `config.nori.hosts.<name>.tailnetIp`)
+| Mechanism | Catches |
+|---|---|
+| Type system | shape inside one option (port range, DNS regex) |
+| Module assertions | cross-attribute invariants (paths-XOR-skip, port uniqueness, appliance ≠ `paths`) |
+| `forbidden-patterns` flake check | textual: no `100.x.y.z` literals outside `flake.nix:identityFor` — cross-host refs via `config.nori.hosts.<n>.tailnetIp` |
 
-**Adding an effect**: create `modules/effects/<n>.nix`, define the option schema + assertions + (if Writer-shaped) the consumer/handler logic. Import in `modules/common/default.nix`. Document the producer/consumer split in the file's header comment so future readers see the Reader/Writer shape at a glance.
+**Adding an effect:**
+
+1. `modules/effects/<n>.nix` — option schema + assertions + (Writer-shaped: consumer logic)
+2. Import in `modules/common/default.nix`
+3. Header comment names the producer/consumer split (Reader/Writer at a glance)
+4. **Ship its test** — adding an effect = committing to `just test-<n>` (see `docs/TESTING.md`)
