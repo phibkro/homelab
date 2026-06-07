@@ -31,7 +31,23 @@ in
     enabledCollectors = [
       "processes"
       "systemd"
+      # RAPL — CPU + DRAM energy counters via /sys/class/powercap/
+      # intel-rapl/. Despite the name, registers AMD energy counters
+      # too (Zen+; verified on workstation 2026-06-07). pavilion's
+      # Phenom II era CPU has no RAPL; collector reports no metrics
+      # there, no harm. Power = rate(node_rapl_*_joules_total[5m]).
+      "rapl"
     ];
+  };
+
+  # The RAPL sysfs entries are mode 0400 root:root on modern kernels
+  # (CVE-2020-8694 / Platypus side-channel mitigation). node-exporter
+  # runs as DynamicUser and can't read them by default → collector
+  # produces zero metrics. CAP_DAC_READ_SEARCH lets the exporter
+  # bypass the read-permission check without granting full root.
+  systemd.services.prometheus-node-exporter.serviceConfig = {
+    CapabilityBoundingSet = [ "CAP_DAC_READ_SEARCH" ];
+    AmbientCapabilities = [ "CAP_DAC_READ_SEARCH" ];
   };
 
   services.prometheus.exporters.process = {

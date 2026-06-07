@@ -50,6 +50,7 @@ _: {
     ./miniflux.nix
     ./navidrome.nix
     ./node-exporter.nix
+    ./nvidia-gpu-exporter.nix
     ./ntfy/notify.nix
     ./ollama.nix
     ./open-webui.nix

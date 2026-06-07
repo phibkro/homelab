@@ -86,6 +86,24 @@
             }
           ];
         }
+        # GPU power + utilisation from nvidia-gpu-exporter (modules/
+        # services/nvidia-gpu-exporter.nix). Only hosts with NVIDIA
+        # devices run the exporter; pavilion + pi silently absent.
+        {
+          job_name = "nvidia-gpu";
+          metrics_path = "/metrics";
+          scheme = "http";
+          static_configs = [
+            {
+              targets = [ "${config.nori.hosts.workstation.tailnetIp}:9835" ];
+              labels.host = "workstation";
+            }
+            {
+              targets = [ "${config.nori.hosts.aurora.tailnetIp}:9835" ];
+              labels.host = "aurora";
+            }
+          ];
+        }
       ];
     };
     extraOptions = [
