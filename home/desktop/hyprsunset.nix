@@ -16,7 +16,7 @@ _: {
   #   night  3500K  warm — easier on the eyes for late work
   # Drop night to 3000K if 3500K still feels cold late at night;
   # raise day to 7000K if the daytime feels yellowish.
-  home-manager.users.nori.services.hyprsunset = {
+  services.hyprsunset = {
     enable = true;
     settings = {
       max-gamma = 100;

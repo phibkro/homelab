@@ -5,7 +5,7 @@ _: {
   #
   # Defaults are sensible; the only knob set is corner radius matching
   # Hyprland's `decoration.rounding = 4` for visual consistency.
-  home-manager.users.nori.services.mako = {
+  services.mako = {
     enable = true;
     settings = {
       default-timeout = 5000; # 5s

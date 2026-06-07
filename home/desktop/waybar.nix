@@ -22,7 +22,7 @@ in
   #   left   — workspaces (Hyprland), focused-window title
   #   center — wall clock
   #   right  — sunset toggle, pulseaudio (click → pwvucontrol), network, tray
-  home-manager.users.nori.programs.waybar = {
+  programs.waybar = {
     enable = true;
     systemd.enable = true;
     settings = {

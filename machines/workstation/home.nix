@@ -157,7 +157,10 @@ in
 # machines/<n>/home.nix. The home-manager-as-NixOS-module wrapper
 # lives in the sibling default.nix so this file is portable.
 {
-  imports = [ ../../home/pc.nix ];
+  imports = [
+    ../../home/pc.nix
+    ../../home/desktop
+  ];
 
   home.stateVersion = "26.05"; # match host's system.stateVersion
   programs.home-manager.enable = true;

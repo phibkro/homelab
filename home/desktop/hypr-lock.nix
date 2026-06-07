@@ -10,8 +10,7 @@ _: {
   #
   # No suspend listener — desktop, always-on, persistent services
   # (Caddy / Authelia / etc.) shouldn't be paused.
-  home-manager.users.nori = {
-    programs.hyprlock = {
+  programs.hyprlock = {
       enable = true;
       settings = {
         general = {
@@ -99,5 +98,4 @@ _: {
         ];
       };
     };
-  };
 }
