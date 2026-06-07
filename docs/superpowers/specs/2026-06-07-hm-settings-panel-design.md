@@ -65,17 +65,19 @@ libadwaita `Adw.PreferencesWindow` shape. Cards for:
 
 Out of scope for slice 1: keybinds, panel layout, services, networking.
 
-## Open decisions (for next session)
+## Decisions locked 2026-06-07
 
-- **Name.** Polar/penguin theme. Slots open: `snowy`, `gentoo`, `king`,
-  `chinstrap`, `macaroni`. (Used: emperor → workstation, fairy → pi,
-  adelie → macbook, aurora → aurora, pavilion → pavilion.)
-- **Repo location.** Sibling to homelab (`/srv/share/projects/<name>/`),
-  separate flake. Keeps homelab repo focused; tool repo gets its own
-  CI / iteration cadence.
-- **First commit target.** `cargo new` + libadwaita-rs hello-world that
-  themes correctly under current Stylix — confidence spike, before any
-  config-reading code.
+- **Name:** `snowy`. Polar/penguin theme; ❄️ as visual mark.
+- **Repo location:** `/srv/share/projects/snowy/`, sibling to homelab,
+  separate flake. Keeps homelab focused; snowy gets its own iteration
+  cadence.
+- **Slice 1 scope:** four cards — Icon Theme, Cursor, Font, Colour
+  Scheme (base16 swatch grid driving `stylix.base16Scheme`).
+- **First commit:** `cargo new snowy` + libadwaita-rs hello-world that
+  renders an `Adw.PreferencesWindow`, themes correctly under current
+  Stylix — confidence spike before any config-reading code.
+
+Implementation plan: see sibling `2026-06-07-snowy-implementation-plan.md`.
 
 ## What this is NOT
 
