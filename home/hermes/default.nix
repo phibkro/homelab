@@ -8,80 +8,52 @@
 
 let
   isLinux = pkgs.stdenv.hostPlatform.isLinux;
-  # `messaging` output pre-bundles discord.py + python-telegram-bot +
-  # slack-sdk. Without this we'd be on `.default`, which tries to
-  # lazy-pip-install these into the runtime env on first use — that
-  # writes to a path inside the (read-only) /nix/store and loops
-  # forever (filling agent.log with a steady stream of "Lazy-installing
-  # discord.py" every 10s, ~/.hermes/logs/agent.log evidence on this
-  # machine). The upstream flake's packages.nix calls this out
-  # explicitly: "lazy-install can't write to the read-only /nix/store".
-  # Swap to `.full` if external memory providers (Honcho, Mem0,
+  # `.messaging` pre-bundles discord.py + python-telegram-bot + slack-sdk.
+  # `.default` would lazy-pip-install these at runtime → writes into the
+  # read-only /nix/store → infinite "Lazy-installing discord.py" loop in
+  # ~/.hermes/logs/agent.log every 10s. Upstream's packages.nix names the
+  # constraint. Swap to `.full` if external memory (Honcho/Mem0/
   # Hindsight) or voice/edge-tts become wanted.
   hermes = inputs.hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.messaging;
   dashboardPort = 9119; # hermes dashboard default — matches modules/services/hermes.nix
 in
 
 # Hermes Agent — NousResearch's open-source coding agent with persistent
-# memory (SQLite session DB + MEMORY.md + pluggable provider plugins).
+# memory (SQLite session DB + MEMORY.md + pluggable providers).
 #
-# Why its own module (not lumped into home/claude-code/)
-# --------------------------------------------------------
-# Claude Code and Hermes are parallel agents, not variants of each other.
-# They have distinct config dirs (~/.claude vs ~/.hermes), distinct
-# upstream release cadences, distinct security postures (Claude Code is
-# the operator's trusted hands; Hermes is a sandboxed agent with NO
-# GitHub credentials), and will have distinct egress policies once Claw
+# Separate from home/claude-code/ because Claude Code and Hermes are
+# parallel agents with distinct config dirs, release cadences, and
+# security postures — and will have distinct egress policies once Claw
 # Patrol is wired (Hermes through CP; Claude Code unconstrained).
-# Keeping them separate lets each evolve without cross-module churn.
 #
-# Posture (load-bearing)
-# ----------------------
-# 1. **No GitHub credential** plumbed in. Hermes' Skills Hub stays
-#    disabled (it expects GITHUB_TOKEN). Operator-driven claude-code
-#    remains the only path to commit/push.
-# 2. **Box-sandbox-ready** — `box --hermes` (pagu-box preset) binds
-#    `~/.hermes` RW, hides everything else under $HOME. Inside the
-#    homelab tree the `box` wrapper auto-injects --pwd-ro.
-# 3. **State backed up** via the existing user-data restic repo + btrbk
-#    snapshots (see nori.backups.hermes declaration below).
-# 4. **Egress via Claw Patrol** (planned — task #28) — Hermes will get
-#    HTTPS_PROXY pointed at the local CP gateway so it never sees raw
-#    API keys and egress is hostname-allowlist.
+# Posture (load-bearing):
+# 1. **No GitHub credential** plumbed in. Skills Hub stays disabled (it
+#    expects GITHUB_TOKEN). Operator-driven claude-code is the only
+#    commit/push path.
+# 2. **Box-sandbox-ready** — `box --hermes` binds ~/.hermes RW, hides
+#    the rest of $HOME. Inside the homelab tree `box` auto-injects
+#    --pwd-ro.
+# 3. **State backed up** via the user-data restic repo + btrbk snapshots
+#    on the root subvol.
+# 4. **Egress via Claw Patrol** (planned — task #28): HTTPS_PROXY → local
+#    CP gateway, hostname-allowlist, no raw API keys to Hermes.
 
 {
-  # Linux only — the upstream flake doesn't expose an x86_64-darwin
-  # output (aarch64-darwin only, and we don't ship hermes on the Intel
-  # Mac yet). Skip cleanly on the Mac side so this module is safe to
-  # import from pc.nix unconditionally.
+  # Linux-only: upstream doesn't ship x86_64-darwin (aarch64-darwin
+  # only, not wired here). Safe to import from pc.nix unconditionally.
   #
-  # python313 lands on the user PATH so hermes's `terminal` tool can
-  # exec `python` directly without `nix shell nixpkgs#python3 -c …`
-  # boilerplate. NO pip binary on PATH — global pip installs would
-  # pollute ~/.local/lib/python3.13/site-packages and accrete
-  # untracked state. If hermes needs a non-stdlib package:
-  #   * Ephemeral: `nix shell nixpkgs#python313Packages.<pkg> -c …`
-  #   * Persistent: declare it here in a `python313.withPackages`
-  #     override and rebuild
-  # The `PIP_REQUIRE_VIRTUALENV` env on the dashboard service blocks
-  # the ensurepip fallback (`python -m pip install …`) from writing
-  # anywhere outside an explicit venv, so even that escape hatch is
-  # gated.
+  # python313 on PATH so hermes's `terminal` tool can exec `python`
+  # directly. NO pip binary — global pip installs would pollute
+  # ~/.local site-packages with untracked state. For non-stdlib needs,
+  # use `python313.withPackages` here and rebuild.
   home.packages = lib.optional isLinux hermes
     ++ lib.optional isLinux pkgs.python313;
 
-  # Persistent dashboard — `hermes dashboard` binds 127.0.0.1:9119 by
-  # default. We DELIBERATELY keep the default localhost bind (NOT the
-  # `--insecure` flag) because the dashboard exposes API keys; instead,
-  # Caddy reverse-proxies hermes.nori.lan → 127.0.0.1:9119 with TLS via
-  # the internal CA and the `operator` audience (tailnet membership IS
-  # the auth perimeter). See ./route.nix on the NixOS side.
-  #
-  # `--skip-build` serves the pre-built dist that the nix derivation
-  # already produced — npm isn't on the runtime PATH and we don't want
-  # the service to rebuild on every start.
-  #
-  # `--no-open` suppresses xdg-open since this is a background daemon.
+  # Persistent dashboard. Deliberately localhost-bound — the dashboard
+  # exposes API keys, so tailnet exposure goes through Caddy at
+  # hermes.nori.lan with `operator` audience (tailnet IS the auth
+  # perimeter). NOT `--insecure`. `--skip-build` serves the nix-built
+  # dist (no npm on PATH); `--no-open` suppresses xdg-open for a daemon.
   systemd.user.services.hermes-dashboard = lib.mkIf isLinux {
     Unit = {
       Description = "Hermes Agent dashboard (web UI)";
@@ -91,33 +63,20 @@ in
     Service = {
       ExecStart = "${hermes}/bin/hermes dashboard --port ${toString dashboardPort} --host 127.0.0.1 --no-open --skip-build";
       Restart = "on-failure";
-      # Exponential backoff (systemd >=254): start at RestartSec, ramp
-      # over RestartSteps to RestartMaxDelaySec. Avoids the tight
-      # fail/restart/fail spin we'd otherwise hit if a transient
-      # condition keeps the bind from succeeding (e.g. port held by a
-      # stale `hermes dashboard` from an interactive run). Sequence:
-      # 1s, ~2s, ~4s, ~8s, ~15s, ~30s, ~1min, ~2min, ~5min, ~5min…
+      # modules/effects/restart-policy.nix covers systemd.services but
+      # NOT systemd.user.services — backoff is declared here so a stale
+      # `hermes dashboard` holding the port doesn't trigger a tight spin.
       RestartSec = "1s";
       RestartSteps = 9;
       RestartMaxDelaySec = "5min";
-      # Belt for the suspender of "no pip on PATH": when hermes' agent
-      # spawns a child python and invokes the ensurepip-backed module,
-      # this env var makes pip refuse to install outside an active
-      # virtualenv. Together they block both `pip install` and
-      # `python -m pip install` from polluting ~/.local site-packages
-      # without a deliberate venv activation step.
+      # Belt-and-suspenders with "no pip on PATH": blocks `python -m pip
+      # install` from polluting ~/.local outside an active venv.
       Environment = [ "PIP_REQUIRE_VIRTUALENV=true" ];
-      # Hermes reads ~/.hermes/{config.yaml,.env,sessions/,...} — the
-      # user service already runs as $USER with $HOME set correctly,
-      # nothing extra needed here.
     };
     Install.WantedBy = [ "default.target" ];
   };
 
-  # Backup coverage: ~/.hermes lives under /home/nori, already inside
-  # the user-data restic repo (offsite, encrypted) + the root btrbk
-  # subvolume's daily snapshots. .env (API keys) and sessions/ (the
-  # persistent memory SQLite DB) are inside the restic-encrypted blob,
-  # so plain-text exposure isn't a concern. No explicit `nori.backups.*`
-  # declaration here — that guard is scoped to modules/server/ only.
+  # No explicit `nori.backups.*` here — that guard is scoped to
+  # modules/server/. ~/.hermes is covered by the user-data restic repo
+  # (encrypts .env + sessions/) + root btrbk snapshots.
 }
