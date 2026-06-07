@@ -7,7 +7,7 @@ _:
   # Removes the "ask Philip via SMS to add this show" loop.
   #
   # First-run setup:
-  #   1. just oidc-key requests
+  #   1. just generate-oidc-key requests
   #      → outputs raw + PBKDF2 hash; copy both
   #   2. sops secrets/secrets.yaml → paste:
   #        oidc-requests-client-secret: '<raw>'

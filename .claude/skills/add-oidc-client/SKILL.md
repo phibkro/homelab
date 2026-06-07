@@ -14,7 +14,7 @@ OIDC clients are auto-generated from `nori.lanRoutes.<n>.oidc`. The abstraction 
 ### 1. Generate raw + hash
 
 ```sh
-just oidc-key <name>
+just generate-oidc-key <name>
 ```
 
 Output is sensitive — lands in your terminal, not in any file or shell history. Two values to copy.
@@ -105,7 +105,7 @@ For services that configure OAuth in their own admin UI rather than via env vars
 
 | Manual step | Why |
 |---|---|
-| PBKDF2 hash generation | Authelia's hash uses random salt; re-running on the same raw produces a different hash. Not amenable to declarative regeneration. `just oidc-key` collapses the two CLI invocations into one |
+| PBKDF2 hash generation | Authelia's hash uses random salt; re-running on the same raw produces a different hash. Not amenable to declarative regeneration. `just generate-oidc-key` collapses the two CLI invocations into one |
 | Per-service systemd unit name + env-var convention | The abstraction can't divine `chat` → `open-webui`, and OIDC env-var naming is too varied across services to abstract (`OAUTH_*`, `OPENID_*`, `SSO_*`, custom). Both stay in the service module where they're discoverable |
 
 ## Caddy's local CA

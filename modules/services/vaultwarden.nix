@@ -12,7 +12,7 @@
   # metrics).
   #
   # === Bootstrap ===
-  #   1. just oidc-key vault   → outputs raw + PBKDF2 hash
+  #   1. just generate-oidc-key vault   → outputs raw + PBKDF2 hash
   #   2. sops secrets/secrets.yaml → add as block-scalar:
   #        oidc-vault-client-secret: '<raw>'
   #        oidc-vault-client-secret-hash: '<paste-hash-from-just-oidc-key>'

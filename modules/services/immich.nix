@@ -130,7 +130,7 @@
   # into the admin UI on first run.
   #
   # First-run setup:
-  #   1. just oidc-key photos
+  #   1. just generate-oidc-key photos
   #   2. sops secrets/secrets.yaml — paste the two values
   #   3. just rebuild
   #   4. https://photos.nori.lan → admin login (master account from

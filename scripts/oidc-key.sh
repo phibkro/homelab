@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Generate raw + PBKDF2 hash for a new lan-route OIDC client and
 # print the two paste-ready sops lines. Designed to be piped to a
-# remote bash -s via the `just oidc-key <name>` recipe; expects
+# remote bash -s via the `just generate-oidc-key <name>` recipe; expects
 # `openssl` and `authelia` on PATH (entered via `nix shell` by the
 # caller).
 #

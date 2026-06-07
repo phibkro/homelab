@@ -4,11 +4,11 @@
 # Recipes default to running LOCALLY — on whichever host you invoke
 # them from. Cross-host execution composes via the `remote` recipe:
 #
-#   just rebuild                       # build the host you're sitting on
-#   just remote workstation rebuild   # rsync working tree to workstation
-#                                      # + run `just rebuild` there
-#   just remote workstation status    # ssh + run `just status` there
-#   just remote workstation logs sshd # forwarded args work
+#   just rebuild                            # build the host you're sitting on
+#   just remote workstation rebuild         # rsync working tree to workstation
+#                                            # + run `just rebuild` there
+#   just remote workstation show-status     # ssh + run `just show-status` there
+#   just remote workstation show-logs sshd  # forwarded args work
 #
 # Implications:
 #   - On macOS / Mac dev box: most recipes don't make sense locally
@@ -18,6 +18,26 @@
 #
 # Install: `brew install just` on macOS; `pkgs.just` (already in
 # common/base.nix systemPackages) on NixOS hosts.
+#
+# ── Recipe-authoring conventions ──────────────────────────────────
+#
+# 1. **Naming: verb-object.** A recipe name carries both a VERB and
+#    an OBJECT (`list-ports`, `show-logs`, `generate-oidc-key`,
+#    `test-hypr`). Single-verb names (`rebuild`, `preview`, `boot`,
+#    `deploy`) are OK only when the object is "this host's current
+#    config" — implicit + universal. Pure nouns (`pending`, `status`,
+#    `ports`) are wrong: no verb means unclear what the recipe does.
+#
+# 2. **The LAST `#` comment line above a recipe is its `just --list`
+#    description.** `just --list` shows only that line; multi-line
+#    doc-blocks lose all but the last. Write the last line as a
+#    self-contained one-liner. Multi-line elaboration goes ABOVE that
+#    one-liner, not below.
+#
+# 3. **Cluster naming.** Test recipes are `test-<thing>`; build flow
+#    is `build/preview/rebuild/boot/rollback`; observation is `show-X`,
+#    `list-X`, `query-X`; generation is `generate-X`. Match the cluster
+#    when adding a new recipe so `just --list | grep ^<verb>-` finds it.
 
 default_host := "workstation"
 user         := "nori"
@@ -77,37 +97,20 @@ default: rebuild
 @build *args:
     nh os build . -H $(hostname) {{args}}
 
-# Activate this rebuild for the current session only — no boot entry.
-# Reboot reverts to the last `just rebuild`/`switch` generation. Ideal
-# for iterating on visual / UX changes (icon themes, Hyprland binds,
-# fonts) without polluting the boot menu with throwaway generations.
-# Once happy: `just rebuild` to persist as the new default.
+# Ideal for iterating on visual / UX changes (icon themes, Hyprland
+# binds, fonts) without polluting the boot menu with throwaway
+# generations. Once happy: `just rebuild` to persist as the new default.
+#
+# Activate the rebuild for the current session only — reverts on reboot.
 @preview *args:
     nh os test . -H $(hostname) {{args}}
 
-# Smoke-test the Hyprland config we just deployed. Three tiers, each
-# catching a different class of regression:
+# Catches the silent class where "metrics exist somewhere but not
+# from where we expect." Every host we expect data from is scraped
+# (`up=1`), process-exporter is publishing series, pi heartbeat is
+# firing, gatus has zero failing probes.
 #
-#   1. Syntax — `hyprctl reload` exit code (catches parse errors).
-#   2. Dispatcher — each toggle_special invocation returns "ok"
-#      (catches Hyprland-version-bump renames + lua-mode CLI traps
-#      like the one that silently broke popup-term 2026-06-07).
-#   3. Keypress — wtype synthesises SUPER+ALT+1, checks state
-#      changed (catches bind-routing breakage between keystroke
-#      and dispatcher — what tier 2 alone can't see).
-#
-# Each toggle test runs PAIRED (toggle on, toggle off) so the
-# operator's session is left exactly as found — tests are
-# non-destructive by construction.
-#
-# Run after `just preview` to validate before `just rebuild`. Or
-# anytime, against the live Hyprland. Adds wtype via `nix shell`
-# (not installed system-wide).
-# Runtime introspection test for the observability stack: every host
-# we expect data from is scraped (`up=1`), process-exporter is
-# publishing series, pi heartbeat is firing, gatus has zero failing
-# probes. Catches the silent class where "metrics exist somewhere but
-# not from where we expect."
+# Runtime-introspection test: VM scrape coverage + exporter series + pi heartbeat + gatus probes.
 @test-observability:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -172,19 +175,21 @@ default: rebuild
     echo
     [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
 
-# Composite — runs all introspection tests. ~3 min wall, one signal.
 # Use after a multi-effect deploy (anything touching modules/effects/
 # or home/) to verify declared intent landed at every runtime layer.
+#
+# Composite runtime-introspection: runs all `test-*` recipes. ~3 min wall, one signal.
 @test:
     just test-hypr
     just test-backups
     just test-routes
     just test-observability
 
-# Runtime introspection test for `nori.lanRoutes.<name>`. Each entry
-# is a Reader-Writer effect: a single declaration emits Caddy route +
-# Gatus monitor + DNS record + (optional) Authelia OIDC client. Test
-# checks each layer for desync from the declaration.
+# Each `nori.lanRoutes.<X>` is a Reader-Writer effect: one declaration
+# emits Caddy route + Gatus monitor + DNS record + (optional) Authelia
+# OIDC client. The test walks each layer for desync from the declaration.
+#
+# Runtime-introspection test: `nori.lanRoutes.<X>` → Caddy + Gatus + DNS + OIDC, per layer.
 @test-routes:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -235,18 +240,15 @@ default: rebuild
     echo
     [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
 
-# Runtime introspection test for `nori.backups.<name>` — verifies
-# every declared backup actually exists at the systemd + restic
-# layers. Catches:
-#   * timer/service generation drift after a Pattern C2 change
-#   * the prepareCommand race we hit 2026-06-07 (dual-target +
-#     no flock) by surfacing a non-zero ExecMainStatus
-#   * missing OnFailure → notify@ wiring (silent alerting gap)
+# Verifies every declared backup actually exists at the systemd +
+# restic layers. Tier 1 = unit existence (declared → systemd registry).
+# Tier 2 = last run was successful (declared → ran cleanly). Tier 3 =
+# per-repo most-recent snapshot is fresh (declared → restic actually
+# wrote data). Catches timer/service generation drift after Pattern C2
+# changes, the prepareCommand race we hit 2026-06-07 (dual-target + no
+# flock), and missing OnFailure → notify@ wiring (silent alerting gap).
 #
-# Tier 1: unit existence (declared → systemd registry).
-# Tier 2: last run was successful (declared → ran cleanly).
-# Tier 3: per-repo most-recent snapshot is fresh (declared → restic
-#         actually wrote data).
+# Runtime-introspection test: every `nori.backups.<X>` has a fresh snapshot on every declared target.
 @test-backups:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -309,6 +311,22 @@ default: rebuild
     echo
     [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
 
+# Smoke-test the Hyprland config we just deployed. Three tiers, each
+# catching a different class of regression:
+#
+#   1. Syntax — `hyprctl reload` exit code (catches parse errors).
+#   2. Dispatcher — each toggle_special invocation returns "ok"
+#      (catches Hyprland-version-bump renames + lua-mode CLI traps
+#      like the one that silently broke popup-term 2026-06-07).
+#   3. Bind registry — `hyprctl binds -j` introspection: every
+#      declared mod+key combo is registered (catches keymap drift
+#      that tier 2 alone can't see).
+#
+# Each toggle test runs PAIRED (toggle on, toggle off) so the
+# operator's session is left exactly as found — tests are
+# non-destructive by construction.
+#
+# Runtime-introspection test: Hyprland syntax + dispatcher + bind registry.
 @test-hypr:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -375,23 +393,22 @@ default: rebuild
       exit 1
     fi
 
-# Set a NixOS option to a value via AST edit, no regex. Wraps
-# snowfallorg/nix-editor (-i: in-place, -f: format after). Preserves
-# comments + style. Doesn't activate — pair with `just preview` to
-# test, `just rebuild` to commit, or `git checkout` to revert.
+# Wraps snowfallorg/nix-editor (-i: in-place). Preserves comments +
+# style. Doesn't activate — pair with `just preview` to test, `just
+# rebuild` to commit, or `git checkout` to revert.
 #
 # The repo is module-graph not single-file, so the operator picks
-# the file (nix-editor is honest about its scope: it won't infer
-# where in the import tree a brand-new attribute belongs).
+# the file — nix-editor is honest about its scope: it won't infer
+# where in the import tree a brand-new attribute belongs.
+#
+# Quoting: shell-quote the whole value-expression so Nix-level quotes
+# (for strings) survive. For complex exprs / attrsets, edit by hand.
 #
 # Usage:
 #   just set modules/desktop/stylix.nix stylix.image '"${pkgs.nixos-artwork.wallpapers.dracula}/share/.../image.png"'
 #   just set modules/services/blocky.nix services.blocky.enable false
 #
-# Quoting matters: shell-quote the whole value-expression so that
-# Nix-level quotes (for strings) survive. For complex expressions or
-# attribute set values, edit by hand — nix-editor's sweet spot is
-# scalar assignments.
+# AST-splice a scalar into a `.nix` file, then run nixfmt. Complex exprs: edit by hand.
 @set file attr value:
     # nix-editor's -f flag uses nixpkgs-fmt; project uses nixfmt (see
     # flake.nix `formatter.${system} = pkgs.nixfmt;`). Skip -f and run
@@ -402,15 +419,16 @@ default: rebuild
     @git --no-pager diff -- '{{file}}' | head -30
     @echo "--- next: just preview (try) → just rebuild (commit) — or git checkout '{{file}}' to revert ---"
 
-# Inspect a NixOS option from THIS flake's evaluated config — type,
-# default, current value, description. The in-terminal version of
-# search.nixos.org/options scoped to your actual config, not generic
-# nixpkgs. Usage:
-#   just option services.tailscale.enable
-#   just option stylix.iconTheme.package
-# Pass the dotted attribute path; trailing `.*` for everything under
-# a prefix.
-@option path:
+# In-terminal search.nixos.org/options scoped to THIS flake's eval,
+# not generic nixpkgs. Pass the dotted attribute path; trailing `.*`
+# for everything under a prefix.
+#
+# Usage:
+#   just show-option services.tailscale.enable
+#   just show-option stylix.iconTheme.package
+#
+# Show a NixOS option from THIS flake's eval — type, default, current value, description.
+@show-option path:
     @echo "=== type ===" && \
     nix eval --raw .#nixosConfigurations.$(hostname).options.{{path}}.type.description 2>/dev/null || echo "(unknown — wrong path?)"; \
     echo "=== default ===" && \
@@ -433,12 +451,12 @@ default: rebuild
 @deploy:
     nh os switch github:phibkro/homelab -H $(hostname)
 
-# Show what's queued for push — full diff and commit subjects between
-# local `main` and `origin/main`. This is the operator's review surface
-# for the push gate (CLAUDE.md § How to operate). Agents must run this
-# (or the raw `git log -p origin/main..HEAD`) before any `git push` and
-# get explicit OK.
-@pending:
+# The operator's review surface for the push gate (CLAUDE.md § How to
+# operate). Agents must run this (or `git log -p origin/main..HEAD`)
+# before any `git push` and get explicit OK.
+#
+# Show local commits queued for push — full diff + subjects between `main` and `origin/main`.
+@show-pending-diff:
     #!/usr/bin/env bash
     set -euo pipefail
     if ! git log --oneline --no-decorate origin/main..HEAD | grep -q .; then
@@ -465,25 +483,26 @@ default: rebuild
     nix-shell -p nixfmt-rfc-style --command "find . -name '*.nix' -not -path './result*' -exec nixfmt {} +"
 
 # Update flake.lock (re-pin inputs). Re-pinning unstable should be deliberate.
-@update:
+@update-flake:
     nix --extra-experimental-features "nix-command flakes" flake update
 
 # === observe (local) ===
 
-# Show the *.nori.lan port allocation table sorted by port. Useful before
-# adding a new service — confirms what's taken so the eval-time port-
-# uniqueness assertion in modules/effects/lan-route.nix doesn't bite, and
-# avoids the cascade-rebind dance when an upstream module's default
-# happens to collide. Eval-only; safe to run from any cloned tree.
-# Defaults to workstation because that's where lanRoutes are declared
-# (Pi's lanRoutes are gated on Caddy presence and so always empty).
-@ports host=default_host:
+# Useful before adding a new service — confirms what's taken so the
+# eval-time port-uniqueness assertion in modules/effects/lan-route.nix
+# doesn't bite, and avoids the cascade-rebind dance when an upstream
+# module's default happens to collide. Eval-only; safe from any tree.
+# Defaults to workstation (where lanRoutes are declared; Pi's lanRoutes
+# are gated on Caddy presence and so always empty).
+#
+# List ports claimed by `nori.lanRoutes` on a host, sorted by port. Eval-only.
+@list-ports host=default_host:
     nix --extra-experimental-features "nix-command flakes" eval --raw \
         .#nixosConfigurations.{{host}}.config.nori.lanRoutes \
         --apply 'lr: let pairs = builtins.attrValues (builtins.mapAttrs (n: v: { name = n; port = v.port; }) lr); sorted = builtins.sort (a: b: a.port < b.port) pairs; in (builtins.concatStringsSep "\n" (map (e: "  ${toString e.port}\t${e.name}") sorted)) + "\n"'
 
 # Quick health summary: failed units, disk usage, restic + btrbk timer state.
-@status:
+@show-status:
     echo "=== failed units ==="
     systemctl --failed --no-pager
     echo
@@ -493,19 +512,22 @@ default: rebuild
     echo "=== timers (restic + btrbk) ==="
     systemctl list-timers "restic-*" "btrbk-*" --no-pager 2>/dev/null || true
 
-# Tail recent journal lines for a unit. Usage: just logs <unit>
-@logs unit:
+# Tail recent journal lines for a unit. Usage: just show-logs <unit>
+@show-logs unit:
     sudo journalctl -u {{unit}} -n 50 --no-pager
 
 # Live-tail a unit. Usage: just follow <unit>
 @follow unit:
     sudo journalctl -u {{unit}} -f
 
-# Query the central VictoriaLogs index via LogsQL. Usage:
+# Pi tailnet IP is hardcoded — stable, avoids an extra nix-eval per
+# invocation. See .claude/skills/query-logs/SKILL.md for syntax.
+#
+# Usage:
 #   just query-logs 'unit:ollama.service priority:<=3 | head 20'
 #   just query-logs 'level:error | _time:1h | stats by (unit) count()'
-# Pi tailnet IP is hardcoded — it's stable and avoids an extra nix-eval
-# per invocation. See .claude/skills/query-logs/SKILL.md for syntax.
+#
+# Query the central VictoriaLogs index via LogsQL. Cross-host, fan-out included.
 @query-logs query:
     curl -sG "http://100.100.71.3:9428/select/logsql/query" \
         --data-urlencode 'query={{query}}' \
@@ -513,33 +535,37 @@ default: rebuild
 
 # === backup ===
 
-# Trigger an immediate backup. Usage: just backup <repo>
 # Repos: user-data | media-irreplaceable | open-webui | etc.
+# Usage: just backup <repo>
+#
+# Trigger an immediate backup of a repo (out-of-cycle from the scheduled timer).
 @backup repo:
     sudo systemctl start restic-backups-{{repo}}.service && journalctl -u restic-backups-{{repo}}.service -f
 
 # Trigger restic check now (weekly cadence is automatic via systemd timer).
-@restic-check:
+@check-restic:
     sudo systemctl start restic-check-weekly.service && journalctl -u restic-check-weekly.service -f
 
-# Trigger a restore drill — verifies backups are *restorable*, not just
-# *recorded*. Three tiers split by cost + cadence; `services` is cheap and
-# fast, `user-data` is the heavy one, `all` includes media-irreplaceable
+# Three tiers split by cost + cadence; `services` is cheap and fast,
+# `user-data` is the heavy one, `all` includes media-irreplaceable
 # (multi-hour). Usage: just restore-drill [services|user-data|all]
+#
+# Verify backups are *restorable* (not just *recorded*) by replaying the latest snapshot.
 @restore-drill tier="services":
     sudo systemctl start restore-drill-{{tier}}.service && journalctl -u restore-drill-{{tier}}.service -f
 
-# List restic snapshots for a repo. Usage: just snapshots <repo>
-@snapshots repo:
+# List restic snapshots for a repo. Usage: just list-snapshots <repo>
+@list-snapshots repo:
     sudo /run/current-system/sw/bin/restic -r /mnt/backup/{{repo}} --password-file /run/secrets/restic-password snapshots
 
 # === auth ===
 
-# Generate raw + PBKDF2 hash for a new lan-route OIDC client and print
-# two paste-ready YAML lines for sops. Output is sensitive — copy both
-# lines, paste into `sops secrets/secrets.yaml`, then `just rebuild`.
-# Usage: just oidc-key <name>
-@oidc-key name:
+# Output is sensitive — copy both YAML lines, paste into
+# `sops secrets/secrets.yaml`, then `just rebuild`.
+# Usage: just generate-oidc-key <name>
+#
+# Generate raw + PBKDF2 hash for a new lan-route OIDC client; print two paste-ready sops YAML lines.
+@generate-oidc-key name:
     nix shell nixpkgs#openssl nixpkgs#authelia --command bash scripts/oidc-key.sh {{name}}
 
 # === ssh — explicit cross-host shell ===
@@ -550,32 +576,36 @@ default: rebuild
 
 # === doc quality ===
 
-# Show a doc's section headings — T2 entry point into the T3 contents.
-# Reading the whole doc to find the right section is wasteful when the
-# `## ` headings already index it. Pair with the editor / Read tool to
-# load only the relevant section.
-# Usage: just toc gotchas | just toc architecture | just toc CONVENTIONS
-@toc doc:
+# Reading the whole doc to find the right section is wasteful when
+# the `## ` headings already index it. Pair with the editor / Read
+# tool to load only the relevant section.
+# Usage: just generate-toc gotchas | just generate-toc architecture
+#
+# Generate a table-of-contents from a doc's `## ` section headings — entry-point into long docs.
+@generate-toc doc:
     grep '^## ' docs/{{doc}}.md | sed 's/^## /  /'
 
-# Build + publish a self-deployed app's static artifact (or refresh a
-# running one). Each app's modules/services/<name>.nix declares a
-# `<name>-build.service` oneshot — this recipe just kicks it. Operator
-# triggers explicitly so nixos-rebuild stays fast (no npm-install on
-# every rebuild). Logs stream live, exit code matches the unit's.
+# Each app's modules/services/<name>.nix declares a `<name>-build.
+# service` oneshot — this recipe just kicks it. Operator triggers
+# explicitly so nixos-rebuild stays fast (no npm-install on every
+# rebuild). Logs stream live, exit code matches the unit's.
 # Usage: just deploy-app filmder
+#
+# Build + publish a personal app's static artifact via its `<name>-build.service` oneshot.
 deploy-app name:
     sudo systemctl start --wait {{name}}-build.service
     @echo ""
     @echo "[deploy-app {{name}}] Last 20 log lines:"
     @journalctl -u {{name}}-build.service --no-pager -n 20
 
-# Print the prompt for dispatching a fresh agent through the onboarding test.
-# The test (docs/agent-onboarding-test.md) measures whether session wrap-ups
-# left enough context for a fresh agent to perform — closes the otherwise-open
-# loop on the "On every structural change" / "On session end" rubrics.
+# Measures whether session wrap-ups left enough context for a fresh
+# agent to perform — closes the otherwise-open loop on the "On every
+# structural change" / "On session end" rubrics. See
+# docs/agent-onboarding-test.md.
 # Run after major refactors or when the user pushes back on doc clarity.
-@agent-onboarding-test:
+#
+# Test a fresh agent's onboarding: print the prompt to dispatch through the orientation drill.
+@test-agent-onboarding:
     @echo "Onboarding test — dispatch a fresh subagent (or fresh Claude session) with:"
     @echo ""
     @echo "  You are a fresh agent with zero prior context on this homelab project."

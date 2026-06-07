@@ -68,7 +68,7 @@ in
   #
   # First-run setup (resumes the paused-mid-flow setup tracked in
   # CLAUDE.md Outstanding):
-  #   1. just oidc-key metrics                          (regenerate)
+  #   1. just generate-oidc-key metrics                          (regenerate)
   #   2. sops secrets/secrets.yaml — paste both values
   #   3. just rebuild
   #   4. https://metrics.nori.lan → log in as admin → Collections (DB

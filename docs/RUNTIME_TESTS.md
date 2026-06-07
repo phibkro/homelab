@@ -126,5 +126,5 @@ That asymmetry is the case for keeping these recipes load-bearing.
   that motivated `test-hypr`)
 - Pattern C2 race: `[[pattern-c2-sqlite-race-flock]]` documents the
   navidrome-class bug `test-backups` catches
-- `[[iteration-trio-workflow]]` for the `just option / set / preview /
+- `[[iteration-trio-workflow]]` for the `just show-option / set / preview /
   rebuild` companion CLI

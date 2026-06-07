@@ -13,7 +13,7 @@ For the user's request, work out:
 1. **Is it loose or part of an existing cluster?** Loose → `modules/services/<service>.nix`. Cluster (arr / backup / beszel / ntfy) → `modules/services/<cluster>/<service>.nix`. Folders signal coupling, not categorization.
 2. **What FS access does it need?** None (90% of services), writable subtree (e.g. *arr writes /mnt/media/streaming), read-only subtree (e.g. Jellyfin streams /mnt/media), or upstream-opinionated ProtectHome (Syncthing).
 3. **Is it HTTP-exposed via Caddy?** If yes → `nori.lanRoutes.<short-name>`. Pick a function-named subdomain (`media` not `jellyfin`).
-4. **Does it need SSO?** If yes → run `just oidc-key <short-name>`, paste into sops, add `oidc = { ... }` to the lanRoute, wire EnvironmentFile.
+4. **Does it need SSO?** If yes → run `just generate-oidc-key <short-name>`, paste into sops, add `oidc = { ... }` to the lanRoute, wire EnvironmentFile.
 5. **Does it need GPU?** If yes → `accelerationDevices = config.nori.gpu.nvidiaDevices` (or the systemd `DeviceAllow` equivalent).
 6. **Backup pattern?** A (filesystem-only), B (built-in dump path), or C2 (prepareCommand). Or `skip = "<reason>"` if stateless / re-derivable / covered elsewhere.
 7. **DynamicUser?** `/var/lib/<n>` is a SYMLINK; back up `/var/lib/private/<n>` instead. The symlink-trap assertion in `modules/effects/backup.nix` lists known DynamicUser services and catches mistakes at eval.
@@ -73,7 +73,7 @@ nori.lanRoutes.<short-name> = {
 };
 ```
 
-Run `just ports` first to see allocated ports. Pick a port that doesn't collide; the eval-time uniqueness assertion catches mistakes.
+Run `just list-ports` first to see allocated ports. Pick a port that doesn't collide; the eval-time uniqueness assertion catches mistakes.
 
 Naming: function over brand (`chat` not `open-webui`, `media` not `jellyfin`, `ai` not `ollama`). Brand only when the brand IS the identity (`auth` for Authelia).
 
@@ -90,7 +90,7 @@ A rebuild that doesn't change pi Blocky's *config hash* (common when only the wo
 ### 5. SSO (if needed)
 
 ```bash
-just oidc-key <short-name>
+just generate-oidc-key <short-name>
 # outputs raw + PBKDF2 hash; copy both
 sops secrets/secrets.yaml
 # paste:

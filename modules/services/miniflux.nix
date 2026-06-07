@@ -11,10 +11,10 @@
   # Authelia and gets their own auto-provisioned account.
   #
   # === Bootstrap ===
-  #   1. just oidc-key news       → raw + PBKDF2 hash
+  #   1. just generate-oidc-key news       → raw + PBKDF2 hash
   #   2. sops secrets/secrets.yaml — paste three secrets:
-  #        oidc-news-client-secret:      '<raw from just oidc-key>'
-  #        oidc-news-client-secret-hash: '<hash from just oidc-key>'
+  #        oidc-news-client-secret:      '<raw from just generate-oidc-key>'
+  #        oidc-news-client-secret-hash: '<hash from just generate-oidc-key>'
   #        miniflux-admin-password:      '<10+ chars; first-login fallback>'
   #   3. just rebuild
   #   4. https://news.nori.lan → click "Continue with Authelia". OIDC

@@ -82,7 +82,7 @@ Authelia provides OIDC. Services that opt in get a one-click login flow (visit s
 
 Hash material lives **only in sops** — Authelia's `template` config-filter reads the PBKDF2 hash from `/run/secrets/...` at startup. Zero hash material in committed Nix; the `forbidden-patterns` flake check fails if a `$pbkdf2-` string lands.
 
-Bootstrap a new OIDC client via `/add-oidc-client`. The skill walks the secret generation + sops paste + route-block declaration + systemd wiring. Bootstrap script: `just oidc-key <name>`.
+Bootstrap a new OIDC client via `/add-oidc-client`. The skill walks the secret generation + sops paste + route-block declaration + systemd wiring. Bootstrap script: `just generate-oidc-key <name>`.
 
 ## Default-deny firewall
 

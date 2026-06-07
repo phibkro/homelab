@@ -88,7 +88,7 @@
   environment.systemPackages = with pkgs; [
     bat
     curl
-    delta # syntax-highlighted git diff pager — used by `just pending`
+    delta # syntax-highlighted git diff pager — used by `just show-pending-diff`
     dig
     fd
     git # nh + Nix flake operations need git on system PATH

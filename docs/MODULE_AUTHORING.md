@@ -146,7 +146,7 @@ A service module owns *everything* about its service in one file. No fan-out.
 ```
 just preview      → activate without boot entry
 just test         → runs all introspection tests (test-hypr / -backups / -routes / -observability)
-just pending      → review diff before push
+just show-pending-diff      → review diff before push
 just rebuild      → persist
 ```
 
@@ -292,13 +292,13 @@ Reachable from downstream project flakes via `self.lib.mkDevShell`. Live fragmen
 ```sh
 just                          # default: rebuild via rsync + nh os switch
 just <recipe> [<host>]        # all recipes accept optional host arg
-just status                   # failed units + disk + restic/btrbk timer summary
-just logs <unit>              # last 50 journal lines
+just show-status                   # failed units + disk + restic/btrbk timer summary
+just show-logs <unit>              # last 50 journal lines
 just check                    # nix flake check
 just deploy                   # git push + nh os switch from origin (no rsync)
 just rollback                 # previous generation
 just backup <repo>            # immediately run restic-backups-<repo>
-just snapshots <repo>         # list restic snapshots
+just list-snapshots <repo>         # list restic snapshots
 just --list                   # all recipes
 ```
 

@@ -24,7 +24,7 @@
   # update.
   #
   # ── First-run setup ────────────────────────────────────────────
-  #   1. just oidc-key audio
+  #   1. just generate-oidc-key audio
   #   2. sops secrets/secrets.yaml — paste raw + hash:
   #        oidc-audio-client-secret: '<raw>'
   #        oidc-audio-client-secret-hash: '<hash>'

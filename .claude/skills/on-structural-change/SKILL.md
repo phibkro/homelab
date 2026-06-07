@@ -24,7 +24,7 @@ If the answer is "nothing — it's self-documenting via flake check + module hea
 | New convention agents should follow (rule, not example) | Add the shape to `docs/MODULE_AUTHORING.md`; add the rule + its rung to `docs/ENFORCEMENT.md`. Ideally backed by a flake check or module assertion. Rules in prose drift; rules in code don't. |
 | Hard-won mistake worth surfacing (subtle gotcha, footgun) | New `.claude/skills/gotcha-<name>/SKILL.md` with USE-WHEN trigger. Each gotcha is an inoculation. |
 | Cross-session fact (preferences, project state, host topology) | Update auto-memory in `~/.claude/projects/.../memory/`. Don't duplicate what's in CLAUDE.md. |
-| Stale enumeration / count that mirrors code cardinality | Replace with a category description + live oracle (`nix flake show .#checks`, `just ports`, `ls modules/effects/`). Per `feedback/stratify_by_leverage` memory. |
+| Stale enumeration / count that mirrors code cardinality | Replace with a category description + live oracle (`nix flake show .#checks`, `just list-ports`, `ls modules/effects/`). Per `feedback/stratify_by_leverage` memory. |
 
 ## Specific patterns this session has seen
 

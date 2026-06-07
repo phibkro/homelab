@@ -39,7 +39,7 @@ in
   #
   # First sync after rebuild:
   #   sudo systemctl start recyclarr-sync.service
-  #   just logs recyclarr-sync
+  #   just show-logs recyclarr-sync
   #
   # In Sonarr/Radarr, then set each tracked series/movie to one of the
   # newly-created profiles (`WEB-1080p`, `WEB-2160p`, `HD-Bluray-Web`,

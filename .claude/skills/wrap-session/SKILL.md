@@ -52,7 +52,7 @@ Quick spot-check that nothing's mid-migration:
 
 ```bash
 git status                        # should be clean (no in-flight changes)
-just status                       # failed units empty, disks healthy, timers green
+just show-status                       # failed units empty, disks healthy, timers green
 systemctl is-active <key services for the work this session touched>
 ```
 

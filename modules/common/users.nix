@@ -25,7 +25,7 @@
       # host name; key material is the same.
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEgBC1J2CYrhdwFerwCa9GZD15I03vqS07bFtiYRl2FU nori-station@github"
       # Phone (Termius) — added 2026-06-07. Mobile review of git diffs
-      # via `just pending` over the tailnet.
+      # via `just show-pending-diff` over the tailnet.
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOfkUP/F7MJUOL97azKmG2IQXQ+9iQggrpXJUk6LI/UA phone-termius"
     ];
   };
