@@ -19,22 +19,15 @@ let
 in
 {
 
-  # Ollama: local LLM inference server.
+  # Ollama: local LLM inference server. NVIDIA driver lives in
+  # machines/workstation/hardware.nix; CUDA runtime is pulled in by the
+  # `package` override below.
   #
-  # CUDA acceleration via the host's RTX 5060 Ti (Blackwell). NixOS
-  # module pulls in CUDA runtime when acceleration = "cuda"; the nvidia
-  # driver itself is already configured in machines/workstation/hardware.nix.
-  #
-  # Models live at /var/lib/ollama/models (the module's default), owned
-  # by the ollama service user. Restore the previous library from the
-  # Ubuntu One Touch backup (~34 GB) by rsync'ing
+  # Restore previous model library from the Ubuntu One Touch backup
+  # (~34 GB) by rsync'ing
   #   nori-backup-20260424T223707Z/ollama-share/models/
-  # → /var/lib/ollama/models/ AFTER the service has started once
-  # (so the directory exists with correct ownership).
-  #
-  # Exposed on the tailnet at port 11434. No backup — DESIGN tier table
-  # treats models as re-derivable; the One Touch holds a snapshot for
-  # convenience but isn't load-bearing.
+  # → /var/lib/ollama/models/ AFTER the service has started once (so
+  # the directory exists with correct ownership).
 
   services.ollama = {
     enable = enabled;
@@ -97,8 +90,7 @@ in
   # string definition collisions with the upstream module's setting.
   nori.harden.ollama = { };
 
-  # Exposed at https://ai.nori.lan via Caddy. Monitored by Gatus
-  # against /api/tags (Ollama returns 200 with the model list).
+  # /api/tags returns 200 with the model list — Gatus monitor target.
   nori.lanRoutes = lib.mkIf enabled {
     ai = {
       port = 11434;
@@ -106,9 +98,6 @@ in
     };
   };
 
-  # Re-derivable — Ollama's state is ~32GB of LLM weights pulled
-  # via `ollama pull`, all upstream-available. Chat history lives
-  # in Open WebUI's DB (covered by the open-webui repo).
   nori.backups.ollama.skip =
     if enabled then
       "Re-downloadable LLM weights (~32GB). Chat history is in Open WebUI's repo."

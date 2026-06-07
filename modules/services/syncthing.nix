@@ -6,9 +6,7 @@
   # too." Each device runs its own Syncthing; folders are negotiated
   # via web UI; sync happens directly between peers (no central server).
   #
-  # Runs as user `nori` here so synced folders live in /home/nori (or
-  # wherever the user points each shared folder). Per-user state at
-  # /home/nori/.config/syncthing.
+  # Runs as `nori` so synced folders land under /home/nori.
   #
   # Ports:
   #   8384  WebUI (localhost-only by default; Caddy proxies via
@@ -87,9 +85,5 @@
     };
   };
 
-  # Syncthing's pairing state + folder config + index DB live at
-  # /home/nori/.config/syncthing — already captured by the
-  # `user-data` repo (which backs up /home). No separate
-  # nori.backups.syncthing repo needed.
   nori.backups.syncthing.skip = "Config + index at /home/nori/.config/syncthing — already covered by the user-data repo (/home).";
 }
