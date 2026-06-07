@@ -1,8 +1,7 @@
 _: {
   # libvirtd + virt-manager — general VM use (testing NixOS configs,
   # ephemeral environments, isolated sandboxes, occasional Windows VMs
-  # without PCIe passthrough). Equivalent of UTM on the Mac, native to
-  # Linux. Phase 7 item 10.
+  # without PCIe passthrough). Equivalent of UTM on the Mac.
   #
   # No PCIe passthrough (VFIO) setup here — separate decision tied to
   # a concrete use case. The MP510 read-only mount in

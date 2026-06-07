@@ -5,9 +5,8 @@
   environment.systemPackages = [
     # Terminal — same as the laptop, cross-machine consistency.
     pkgs.ghostty
-    # Launcher — Wayland-native, fast (~5ms cold start).
+    # Launcher — ~5ms cold start.
     pkgs.fuzzel
-    # Wallpaper daemon — Hyprland's own; lightweight, IPC-driven.
     pkgs.hyprpaper
 
     # Browser — community flake (zen isn't in nixpkgs).
@@ -26,7 +25,6 @@
     # `pkgs.zed-editor` once nixos-unstable catches up.
     inputs.nixpkgs-master.legacyPackages.${pkgs.stdenv.hostPlatform.system}.zed-editor
 
-    # Audio editor — multi-track recording + editing.
     pkgs.audacity
 
     # Remote desktop client + server (RustDesk). When the gaming laptop
@@ -49,19 +47,15 @@
     # package via overrideAttrs.cudaPackages or upgrade the driver.
     pkgs.davinci-resolve
 
-    # Media player — VLC. Plays effectively any codec/container without
-    # transcoding (HEVC/H.265 phone footage included), so it's the quick
-    # "does this file actually play / how does it sound" check that sits
-    # outside the editor.
+    # VLC — codec-agnostic "does this file actually play" check outside
+    # the editor (HEVC/H.265 phone footage included).
     pkgs.vlc
 
     # resolve-remux — batch-transcode camera clips (HEVC/H.264, often
-    # VFR) into DNxHR .mov the free Resolve on Linux can edit. ffmpeg is
-    # bundled via runtimeInputs, so it runs without `nix-shell -p ffmpeg`.
+    # VFR) into DNxHR .mov the free Resolve on Linux can edit.
     #   resolve-remux <input-dir> [fps]   (fps default 29.97)
-    # Writes to a sibling remux/ dir, auto-picks DNxHR HQ/HQX by source
-    # bit depth, maps audio only when present. Script body in the sibling
-    # resolve-remux.sh (kept out of Nix to avoid ''${} escaping).
+    # Script body in the sibling resolve-remux.sh (kept out of Nix to
+    # avoid ''${} escaping).
     (pkgs.writeShellApplication {
       name = "resolve-remux";
       runtimeInputs = [ pkgs.ffmpeg ];
@@ -89,9 +83,9 @@
     # Wayland layer shell; no GTK/Electron). Upstream flake; binds and
     # daemon autostart live in machines/workstation/hyprland.lua.
     inputs.snappy-switcher.packages.${pkgs.stdenv.hostPlatform.system}.default
-    pkgs.ags # Aylur's GTK Shell — TSX/JSX over GTK widgets via Astal/GJS.
-    # Declarative widget framework for status bars, OSDs, popups, panels.
-    # Material You styling lands via CSS + the Stylix-fed GTK theme.
+    # ags — declarative widget framework (status bars, OSDs, popups);
+    # Material You styling via CSS + the Stylix-fed GTK theme.
+    pkgs.ags
 
     # Voice + text chat. Slack lives in the browser; Discord's desktop
     # client is the better fit for voice quality + push-to-talk.

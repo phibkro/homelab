@@ -1,32 +1,11 @@
 _:
 
 {
-  # Gaming-related programs + system tweaks for workstation's desktop
-  # session. Lives in modules/desktop/ because each is meaningless on a
-  # headless host — pi never wants Steam.
-  #
-  # Components:
-  #   programs.steam            Steam runtime, udev rules for
-  #                             controllers, multi-arch (32-bit) for
-  #                             Wine/Proton-based Windows games.
-  #   programs.gamescope        Gamescope compositor (used by Steam's
-  #                             Big Picture / SteamOS-like sessions).
-  #                             enabling makes the binary available;
-  #                             gamescopeSession.enable would also
-  #                             register a session entry — left off so
-  #                             Hyprland stays the default session.
-  #   programs.gamemode         CPU/GPU governor + scheduler tweaks
-  #                             during games. opt-in per game via
-  #                             `gamemoderun %command%` in Steam launch
-  #                             options; harmless if never used.
-  #   hardware.graphics.enable32Bit  32-bit GL libs for Wine/Proton
-  #                                  (most Windows games are 32-bit
-  #                                  even when run on 64-bit Wine).
-  #
-  # NVIDIA-specific: hardware.nvidia.modesetting + open kernel module
-  # are already on (hardware.nix). Proton on NVIDIA Wayland works in
-  # current driver 595; minor games with anti-cheat may need explicit
-  # `WINE_FULLSCREEN_FSR=1` or similar (per-game launch option).
+  # Steam + Proton stack for workstation's desktop session — placed in
+  # modules/desktop/ because each is meaningless headless (pi never wants
+  # Steam). NVIDIA modesetting + open kernel module live in hardware.nix;
+  # anti-cheat games may need `WINE_FULLSCREEN_FSR=1` or similar per-game
+  # launch options.
 
   programs.steam = {
     enable = true;
@@ -34,8 +13,8 @@ _:
     # firewall closed keeps the default-deny posture. Flip true if/when
     # SteamLink from another tailnet device is wanted.
     remotePlay.openFirewall = false;
-    # Bundled gamescope wrapper available; full Big Picture session
-    # gated separately if/when wanted.
+    # Off so Hyprland stays the default session; the gamescope wrapper
+    # is still available via programs.gamescope below.
     gamescopeSession.enable = false;
   };
 
