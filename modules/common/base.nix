@@ -107,27 +107,19 @@
     VISUAL = "vim";
   };
 
-  # nh — Yet Another Nix Helper. Wraps `nixos-rebuild` with a nicer
-  # diff display, internal sudo elevation (don't prefix nh with sudo),
-  # and built-in `--target-host` support for SSH-based remote
-  # deployment. Replaces the rsync-then-nixos-rebuild dance with:
-  #   nh os switch /tmp/nix-migration -H workstation            # local
-  #   nh os switch github:phibkro/homelab -H workstation        # git
-  #   nh os switch . -H workstation --target-host <ip>          # remote
+  # nh wraps `nixos-rebuild` with internal sudo elevation (don't prefix
+  # `nh` with sudo) and `--target-host` for SSH-based remote deployment.
+  # The Justfile + `just remote` wrap the common invocations.
   programs.nh.enable = true;
 
-  # nix-ld — runtime loader shim for non-NixOS-built Linux binaries.
-  # NixOS lacks /lib64/ld-linux-x86-64.so.2, so prebuilt binaries from
-  # other distros fail with "no such file". nix-ld provides the loader
-  # plus a curated LD_LIBRARY_PATH so the binary can resolve its deps.
+  # nix-ld provides the dynamic loader + a curated LD_LIBRARY_PATH for
+  # prebuilt non-NixOS Linux binaries. Required for Zed's remote-server
+  # (auto-installed under ~/.zed-server/ when Zed connects via SSH) and
+  # other dev tools that ship Linux binaries.
   #
-  # Required for Zed's remote-server (precompiled Rust binary auto-
-  # installed under ~/.zed-server/ when Zed connects via SSH). Also
-  # covers other agentic / dev tools that ship Linux binaries.
-  #
-  # Library set is iterative: start with the common Rust/glibc deps,
-  # extend if a binary errors with "error while loading shared
-  # libraries: <name>". Find the missing lib via `nix-locate <name>`.
+  # Library set is iterative: extend when a binary errors with
+  # "error while loading shared libraries: <name>" — find it via
+  # `nix-locate <name>`.
   programs.nix-ld = {
     enable = true;
     libraries = with pkgs; [
@@ -178,16 +170,18 @@
   # to rust-motd for live battery/cpu/memory/service data; this
   # static banner is the fallback for hosts that don't (pi,
   # workstation).
-  environment.etc.motd = let
-    self = config.nori.hosts.${config.networking.hostName} or null;
-    useRust = config.programs.rust-motd.enable or false;
-  in lib.mkIf (self != null && !useRust) {
-    text = ''
+  environment.etc.motd =
+    let
+      self = config.nori.hosts.${config.networking.hostName} or null;
+      useRust = config.programs.rust-motd.enable or false;
+    in
+    lib.mkIf (self != null && !useRust) {
+      text = ''
 
         ${self.codename or config.networking.hostName} (${config.networking.hostName}) — ${self.role}
 
-    '';
-  };
+      '';
+    };
 
   services.openssh.settings.PrintMotd = lib.mkDefault true;
 }

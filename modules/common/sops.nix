@@ -11,12 +11,10 @@
   # re-encrypted (`sops updatekeys secrets/secrets.yaml`) before the
   # host can decrypt anything.
   #
-  # No secrets are declared here yet. Add `sops.secrets.<name> = {};`
-  # in the consuming service module, then reference
-  # `config.sops.secrets.<name>.path` from its *File option. Each
-  # `sops.secrets` declaration needs `sopsFile = ../../secrets/secrets.yaml`
-  # until a project-wide `sops.defaultSopsFile` is set (left out for
-  # now so the module is a no-op until secrets exist).
+  # Add secrets in the consuming service module:
+  #   sops.secrets.<name> = {};
+  # then reference `config.sops.secrets.<name>.path` from its *File option.
+  # `defaultSopsFile` below means the consumer doesn't restate `sopsFile`.
 
   imports = [ inputs.sops-nix.nixosModules.sops ];
 
