@@ -441,15 +441,18 @@ default: rebuild
 @pending:
     #!/usr/bin/env bash
     set -euo pipefail
-    echo "=== commits queued for push ==="
-    if git log --oneline --no-decorate origin/main..HEAD | grep -q .; then
-      git log --oneline --no-decorate origin/main..HEAD
-      echo
-      echo "=== full diff ==="
-      git log -p --reverse origin/main..HEAD
-    else
+    if ! git log --oneline --no-decorate origin/main..HEAD | grep -q .; then
       echo "(none — local is at origin/main)"
+      exit 0
     fi
+    echo "=== commits queued for push ==="
+    git log --oneline --no-decorate origin/main..HEAD
+    echo
+    echo "=== diff (via delta) ==="
+    # delta = syntax-highlighted pager. Auto-narrows on mobile/SSH,
+    # side-by-side on wide terminals. --paging=always forces the
+    # pager even when piped (so operator can scroll on phone).
+    git log -p --reverse origin/main..HEAD | delta --paging=always
 
 # === validate ===
 
