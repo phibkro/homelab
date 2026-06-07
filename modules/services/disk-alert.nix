@@ -93,7 +93,6 @@ in
     };
   };
 
-  # Stateless — no on-disk state to back up.
   nori.backups.disk-alert.skip = "Stateless — reads df and POSTs to ntfy.sh on threshold breach.";
 
   # df on /mnt/media/library needs the mountpoint visible inside the

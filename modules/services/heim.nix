@@ -5,12 +5,9 @@
 }:
 
 # heim — operator's portfolio site. Astro static site, markdown-
-# authored content, no DB. Tailnet-public at https://heim.nori.lan.
-#
-# Peer of filmder.nix and finnbydel.nix in shape: bun-build oneshot,
-# atomic dist publish, darkhttpd serves the static output. Build is
-# manually triggered via `just deploy-app heim`; not in `wantedBy` so
-# nixos-rebuild stays fast.
+# authored content, no DB. Same deploy-app shape as filmder.nix:
+# manual `just deploy-app heim` triggers the oneshot, kept out of
+# `wantedBy` so nixos-rebuild stays fast.
 #
 # ── Migration history ────────────────────────────────────────────
 # Earlier attempt was Next.js + Payload CMS + Postgres + Turborepo;
