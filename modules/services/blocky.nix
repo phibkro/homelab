@@ -8,25 +8,14 @@ let
   cfg = config.nori.blocky;
 in
 {
-  # Blocky: ad-blocking DNS resolver, LAN-facing.
+  # Blocky: ad-blocking DNS resolver, LAN-facing. Two roles via
+  # `nori.blocky.role` — see the option below for self-hosted vs
+  # forwarder semantics.
   #
-  # Two roles per `nori.blocky.role`:
-  #   * self-hosted: full resolver + auto-generated *.nori.lan map
-  #     from nori.lanRoutes (the workstation case). Customers query
-  #     this Blocky for everything: ads filtered, *.nori.lan resolved
-  #     locally, everything else upstreamed.
-  #   * forwarder:   ads filtered + non-nori.lan resolved upstream;
-  #     *.nori.lan queries conditionally forwarded to workstation's
-  #     Blocky (pi case). Pi doesn't need to know what services
-  #     exist on station; it just delegates the suffix.
-  #
-  # Tailscale DNS push order (set in admin console): primary = whichever
-  # role-self-hosted-or-forwarder host you trust to be up most. With Pi
-  # running, Pi becomes primary (appliance, lower failure surface);
-  # station's Blocky is secondary fallback.
-  #
-  # Listens on 0.0.0.0:53. Upstreams to Cloudflare + Quad9 with
-  # parallel_best (whichever responds first wins).
+  # Tailscale DNS push order (set in admin console): primary =
+  # whichever Blocky host you trust to be up most. With Pi running,
+  # Pi is primary (appliance, lower failure surface); station is
+  # secondary fallback.
   #
   # The host itself keeps using Tailscale MagicDNS (100.100.100.100)
   # for its own queries — Blocky serves downstream clients, not the
@@ -108,10 +97,8 @@ in
       # stays empty; conditional.mapping does the work instead.
       customDNS.customTTL = "1h";
 
-      # Conditional forwarding: applies to the `forwarder` role.
-      # *.nori.lan queries get sent to the canonical service host's
-      # Blocky (which has the actual map). Other queries flow through
-      # the upstream resolver chain unaffected.
+      # Forwarder role: delegate *.nori.lan to the host that has the
+      # actual map.
       conditional.mapping = lib.mkIf (cfg.role == "forwarder") {
         "nori.lan" = cfg.forwardTarget;
       };
@@ -129,8 +116,6 @@ in
   config.networking.firewall.allowedTCPPorts = [ 53 ];
   config.networking.firewall.allowedUDPPorts = [ 53 ];
 
-  # Default-deny filesystem access — Blocky only needs its config
-  # (in /nix/store via the module) and network. No host paths.
   config.nori.harden.blocky = { };
 
   # Stateless — Blocky's runtime state is just the in-memory cache

@@ -5,19 +5,14 @@
 }:
 
 let
-  # OIDC clients are generated from `config.nori.lanRoutes.<n>.oidc`
-  # — see modules/effects/lan-route.nix for the schema. This module is
-  # the single owner of the Authelia clients list because NixOS
+  # OIDC clients assembled here (not at call sites) because NixOS
   # module merging on freeform-typed lists conflicts rather than
-  # concatenates; centralized assembly avoids `lib.mkMerge` ceremony
-  # at every call site.
+  # concatenates — centralized assembly avoids mkMerge ceremony per
+  # client. Schema lives in modules/effects/lan-route.nix.
   #
-  # `client_secret` uses Authelia's template config-filter (enabled
-  # below via X_AUTHELIA_CONFIG_FILTERS=template) to read the PBKDF2
-  # hash from a sops-decrypted file at startup. The hash never lands
-  # in committed Nix — only in sops. The filter pre-processes the
-  # YAML config as text before YAML parsing, substituting
-  # `{{ secret "/path" }}` with the file contents.
+  # `client_secret` uses the template config-filter (enabled below)
+  # to read the PBKDF2 hash from sops at startup — hash never lands
+  # in committed Nix. See .claude/skills/gotcha-authelia-template-filter/.
   generatedClients = lib.mapAttrsToList (name: route: {
     client_id = name;
     client_name = route.oidc.clientName;
@@ -46,32 +41,14 @@ let
   }) (lib.filterAttrs (_: cfg: cfg.oidc != null) config.nori.lanRoutes);
 in
 {
-  # Authelia — single sign-on portal. Per DESIGN's "Open items":
-  # Authelia chosen over self-hosted SSO alternatives (Authentik,
-  # Keycloak) for declarative-first design, lightweight footprint
-  # (~50MB RAM), file-based config, and good NixOS module support.
+  # Authelia — SSO portal. Chosen over Authentik / Keycloak for
+  # declarative-first design + ~50MB footprint + good NixOS module.
   #
-  # PHASE A (landed): Authelia service running, file-based user
-  # database with one admin user, password login works at port 9091.
-  #
-  # PHASE B (in progress): per-service OIDC client setup, generated
-  # from the lan-route abstraction. Add a client by declaring
-  # `nori.lanRoutes.<name>.oidc = { ... }` in the consuming service
-  # module — see open-webui.nix and beszel.nix for examples.
-  #
-  # Connect to: https://auth.nori.lan
-  # Initial login: user = nori, password = whatever you hashed during
-  # secrets bootstrap.
-  #
-  # Sops secrets needed (Phase A):
-  #   authelia-jwt-secret              random hex (>=32 bytes)
-  #   authelia-session-secret          random hex (>=32 bytes)
-  #   authelia-storage-encryption-key  random hex (>=32 bytes)
-  #   authelia-users-database          YAML block with users/groups
-  #
-  # OIDC secrets (Phase B) live at `oidc-<name>-client-secret`,
-  # auto-declared by modules/effects/lan-route.nix when `oidc` is set on
-  # a route.
+  # Connect: https://auth.nori.lan — user = nori, password from
+  # secrets bootstrap. Add an OIDC client by declaring
+  # `nori.lanRoutes.<name>.oidc = { ... }` in the consuming module
+  # (see open-webui.nix / beszel.nix). OIDC client secrets are
+  # auto-declared by modules/effects/lan-route.nix.
 
   sops.secrets = {
     authelia-jwt-secret = {
@@ -97,9 +74,6 @@ in
       # manual `systemctl restart authelia-main` step needed.
       restartUnits = [ "authelia-main.service" ];
     };
-    # OIDC: required when identity_providers.oidc is enabled.
-    # hmac-secret: HMAC for OIDC tokens (random hex)
-    # issuer-private-key: RSA-2048 PEM, used to sign JWT id-tokens
     authelia-oidc-hmac-secret = {
       mode = "0400";
       owner = "authelia-main";
@@ -170,20 +144,18 @@ in
     };
   };
 
-  # Enable the template config-filter so per-OIDC-client `client_secret`
-  # values rendered by `generatedClients` (above) can read their hash
-  # from `/run/secrets/oidc-<n>-client-secret-hash` at Authelia startup.
-  # The filter runs before YAML parsing and supports list entries,
-  # which the legacy `_FILE`/`expand-env` paths do not.
+  # Template config-filter — read PBKDF2 hashes from sops at startup
+  # for `generatedClients` above. See
+  # .claude/skills/gotcha-authelia-template-filter/ for why `_FILE`
+  # doesn't work on list-typed sections.
   systemd.services.authelia-main.environment = {
     X_AUTHELIA_CONFIG_FILTERS = "template";
   };
 
   nori.harden.authelia-main = { };
 
-  # Exposed at https://auth.nori.lan via Caddy. Auto-monitored.
-  # The SSO portal itself — public by definition (anyone with tailnet
-  # trust hits this to get an Authelia session for the family-tier
+  # The SSO portal itself — `public` audience by definition (anyone
+  # with tailnet trust hits this to get a session for the family-tier
   # services that consume OIDC).
   nori.lanRoutes.auth = {
     port = 9091;

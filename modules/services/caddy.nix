@@ -1,33 +1,25 @@
 _:
 
 {
-  # Caddy reverse proxy — gives every service a clean subdomain name
-  # under *.nori.lan, terminates HTTPS via Caddy's internal CA.
+  # Caddy reverse proxy — clean *.nori.lan subdomain per service,
+  # HTTPS via Caddy's internal CA.
   #
-  # The internal CA is auto-generated on first run at
-  #   /var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt
-  # Install that root cert on each device once (one-time per device):
+  # Per-device root cert install (one-time, auto-generated at
+  # /var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt):
   #
-  #   # Mac — copy to your machine, then:
+  #   # Mac:
   #   sudo security add-trusted-cert -d -r trustRoot \
   #     -k /Library/Keychains/System.keychain root.crt
   #
-  #   # iOS — AirDrop the cert, install via Settings → Profile,
-  #   # then Settings → General → About → Certificate Trust Settings →
-  #   # toggle on for "Caddy Local Authority"
+  #   # iOS: AirDrop the cert → Settings → Profile install → Settings
+  #   # → General → About → Certificate Trust Settings → toggle on
+  #   # for "Caddy Local Authority"
   #
-  # After that, every *.nori.lan service works without browser warnings.
-  #
-  # DNS resolution:
-  #   Blocky's customDNS (modules/server/blocky.nix) maps each
-  #   *.nori.lan name to workstation's LAN IP (192.168.1.181). LAN
-  #   clients hit Caddy directly with no tailnet hop. Off-LAN tailnet
-  #   clients reach the same address via Pi's subnet route
-  #   advertisement (192.168.1.0/24); requires --accept-routes on
-  #   the client side.
-  #
-  # Adding a new service later: append a vhost below + a Blocky
-  # customDNS entry. That's it.
+  # DNS path: Blocky's customDNS (modules/services/blocky.nix) maps
+  # each *.nori.lan to workstation's LAN IP. LAN clients hit Caddy
+  # directly; off-LAN tailnet clients reach the same address via
+  # Pi's subnet route advertisement (192.168.1.0/24, needs
+  # --accept-routes on the client).
 
   services.caddy = {
     enable = true;
@@ -55,13 +47,10 @@ _:
 
   nori.harden.caddy = { };
 
-  # Caddy listens on 80 (plaintext-redirect) + 443 (HTTPS). Open
-  # globally, not per-interface: with `*.nori.lan` resolving to the
-  # workhorse LAN IP (see modules/effects/lan-route.nix nori.lanIp),
-  # request traffic arrives on the LAN interface for LAN clients
-  # and on tailscale0 for off-LAN tailnet clients via Pi's subnet
-  # route. Same precedent as Blocky's :53 (modules/server/blocky.nix);
-  # the router doesn't forward :80/:443 inbound from WAN, so the host
+  # Open globally, not per-interface: traffic arrives on the LAN
+  # interface for LAN clients and on tailscale0 for off-LAN tailnet
+  # clients via Pi's subnet route — same precedent as Blocky's :53.
+  # The router doesn't forward :80/:443 inbound from WAN, so the host
   # firewall is just the second layer.
   networking.firewall.allowedTCPPorts = [
     80
