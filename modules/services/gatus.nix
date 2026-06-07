@@ -30,9 +30,6 @@
   # exposure via Caddy is opt-in via `nori.gatus.exposeViaCaddy`
   # (default true; Pi sets false because it has no Caddy).
   #
-  # Storage = memory (no persistence; recent results are in RAM only,
-  # which is fine — alerts go to ntfy.sh, history isn't load-bearing).
-  #
   # Channel name for ntfy.sh comes from a sops env-file at runtime —
   # gatus's YAML uses ${NTFY_CHANNEL} which it substitutes from env.
   # The secret is in env-file format because gatus's `environmentFile`
@@ -56,15 +53,9 @@
     enable = true;
     environmentFile = config.sops.secrets.gatus-env.path;
     settings = {
-      # Exposes /metrics in Prometheus format (NOT /api/v1/metrics —
-      # Gatus puts its API surface under /api/v1/ but the Prometheus
-      # endpoint sits at the top level, per standard Prom convention).
-      # Scraped by the VictoriaMetrics instance on Pi (modules/server/
-      # victoriametrics.nix)
-      # and surfaced in Grafana via the VictoriaMetrics datasource so
-      # Gatus state lives alongside logs in the ops.nori.lan dashboard.
-      # Gatus's own UI at status.nori.lan still exists for drill-down —
-      # Grafana is the unified pane, not the only pane.
+      # Exposes /metrics at the top level (NOT /api/v1/metrics — Gatus's
+      # API sits under /api/v1/ but Prom endpoint follows standard
+      # convention). Scraped by Pi's VictoriaMetrics.
       metrics = true;
       storage.type = "memory";
 
@@ -110,7 +101,5 @@
     };
   };
 
-  # Memory-only storage (settings.storage.type = "memory") — no
-  # on-disk state to preserve. DynamicUser as well.
   config.nori.backups.gatus.skip = "Memory-only storage; no on-disk state.";
 }

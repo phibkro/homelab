@@ -17,9 +17,6 @@ _:
   # tailnet host can publish/subscribe). Multi-user later: flip to
   # "deny" + per-topic publish tokens in sops + Authorization headers.
   #
-  # State (auth db, attachments) at /var/lib/private/ntfy-sh on Pi.
-  # Tiny (~150K). DynamicUser via the upstream module.
-
   services.ntfy-sh = {
     enable = true;
     settings = {
@@ -32,15 +29,9 @@ _:
 
   nori.harden.ntfy-sh = { };
 
-  # Tailnet exposure for the cross-host Caddy reverse-proxy backend.
-  # Caddy on station hits Pi's tailnet IP on :8081 (resolved via the
-  # nori.hosts registry — see ../../effects/hosts.nix); clients reach
-  # it via https://alert.nori.lan (terminated by station's Caddy).
+  # https://alert.nori.lan vhost is declared in ./notify.nix on hosts
+  # with Caddy. Open the backend port on the tailnet so they can reach it.
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8081 ];
 
-  # Same anti-write rationale as beszel-hub: Pi's flash storage
-  # philosophy + non-load-bearing state (auth db is unused under
-  # auth-default-access=read-write; cache.db is ephemeral). Defer until
-  # Pi gains the planned local fast-restore disk repo.
   nori.backups.ntfy.skip = "Hub on appliance host (pi). Pi flash anti-write posture; auth db effectively unused (read-write default), cache rebuilds on restart.";
 }

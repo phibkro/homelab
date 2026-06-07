@@ -25,18 +25,11 @@ in
 
   services.beszel.agent = {
     enable = true;
-    # Default port 45876, listening on all interfaces. Hub-host
-    # connects over tailnet — needs the port open on tailscale0
-    # (handled below) since cross-host this isn't localhost anymore.
     environmentFile = config.sops.secrets.${secretName}.path;
   };
 
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 45876 ];
 
-  # Agent FS hardening on top of upstream's substantial systemd
-  # profile (PrivateUsers, ProtectKernel*, ProtectSystem=strict,
-  # SystemCallFilter). Default-deny FS namespace is the project-wide
-  # baseline (nori.harden, modules/effects/harden.nix).
   nori.harden.beszel-agent = { };
 
   # PrivateDevices override: upstream sets it true (when smartmon is
@@ -50,17 +43,10 @@ in
     config.nori.gpu.nvidiaDevices != [ ]
   ) (lib.mkForce false);
 
-  # Cross-host metrics URL: this host's Caddy (if running) reverse-
-  # proxies https://metrics.nori.lan to the Pi-hosted hub at port 8090.
-  # Gated on Caddy presence so that hosts running the agent without
-  # Caddy (the Pi itself) don't pollute their lanRoutes registry — Pi's
-  # Blocky stays in pure forwarder mode and the canonical service host
-  # owns the *.nori.lan map.
+  # Caddy-gated so hosts running the agent without Caddy (Pi itself)
+  # don't pollute their lanRoutes — Pi's Blocky stays in pure
+  # forwarder mode and the canonical service host owns *.nori.lan.
   #
-  # The hub-host coupling lives in the nori.hosts registry (single
-  # source of truth — see modules/effects/hosts.nix). If the hub ever
-  # relocates, update flake.nix `identityFor` instead of editing
-  # this file.
   # Web-UI-managed OIDC (PocketBase per-collection OAuth2 — moved out
   # of system-wide settings in PocketBase 0.36+). The lanRoute generates
   # the Authelia client + sops secret; the operator pastes the raw
@@ -103,6 +89,5 @@ in
     };
   };
 
-  # No on-disk state. SSH key from sops, metrics streamed to hub.
   nori.backups.beszel-agent.skip = "Stateless — SSH key from sops, metrics streamed to hub (no local persistence).";
 }

@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 # Off-host dead-man-switch for the pi appliance.
 #
@@ -28,8 +33,6 @@
 #     pings, finds pi fine; rare enough to live with).
 
 {
-  # Sops-rendered secret: the bare URL, file mode 0440 root:keys so
-  # only privileged readers can fetch the token.
   sops.secrets.heartbeat-pi-url = {
     mode = "0440";
     group = "keys";
@@ -37,13 +40,10 @@
 
   systemd.services.heartbeat = {
     description = "Ping healthchecks.io to prove pi is alive";
-    # The whole point is off-host alerting, so we don't need any
-    # OnFailure handler — silence at hc.io IS the alert.
+    # No OnFailure handler — silence at hc.io IS the alert.
     serviceConfig = {
       Type = "oneshot";
-      # Allow the curl to read the sops-rendered URL file.
       SupplementaryGroups = [ "keys" ];
-      # Hardening — process needs nothing beyond network egress.
       DynamicUser = true;
       PrivateTmp = true;
       ProtectSystem = "strict";
@@ -57,7 +57,10 @@
       RestrictRealtime = true;
       MemoryDenyWriteExecute = true;
       SystemCallArchitectures = "native";
-      SystemCallFilter = [ "@system-service" "~@privileged" ];
+      SystemCallFilter = [
+        "@system-service"
+        "~@privileged"
+      ];
     };
     script = ''
       url=$(cat ${config.sops.secrets.heartbeat-pi-url.path})
