@@ -10,32 +10,27 @@
   #   media → /mnt/media   (whole IronWolf btrfs root; subvolumes visible
   #                          as subdirs: streaming, photos, home-videos,
   #                          projects)
-  #   share → /srv/share   (the @srv-share subvolume on root; family-
-  #                          shared dumping ground / storage per DESIGN matrix)
-  #   nori  → /srv/nori    (the @srv-nori subvolume; operator's personal
-  #                          networked working dir — separate subvolume so it
-  #                          gets its own snapshot/backup tier, NOT mixed into
-  #                          the storage share; recursive dotfile veto so
-  #                          nested secrets — a project's .env, .git-
-  #                          credentials, an .npmrc token — can't be read
-  #                          across the tailnet)
+  #   share → /srv/share   (@srv-share subvolume — family-shared storage)
+  #   nori  → /srv/nori    (@srv-nori subvolume — operator's personal
+  #                          networked working dir, own snapshot/backup
+  #                          tier, recursive dotfile veto; see inline)
   #
   # Auth: smbpasswd-managed, separate from system passwords. After
   # first rebuild, on the host:
   #   sudo smbpasswd -a nori
-  # The Samba password is independent of the Linux login password.
   #
   # Exposure: openFirewall = false. The firewall opens SMB only on
   # tailscale0 (per NETWORK.md § zones). `hosts allow`/`hosts deny`
   # adds defense-in-depth at the smbd layer.
   #
-  # Single-user assumption: nori is the only valid user on both shares.
+  # Single-user assumption: nori is the only valid user on all shares.
   # Force user/group means writes always land as nori:users regardless
   # of which client created them — keeps perms consistent for any
   # service that later reads the same path (Jellyfin, Immich, etc.).
   #
-  # See learned_gotchas.md re: Immich vs Samba separation on /mnt/media/
-  # photos — intentional, not a sync issue.
+  # Immich vs Samba separation on /mnt/media/photos is intentional, not
+  # a sync issue — Immich owns the immich library subdir; Samba exposes
+  # the rest for direct file access.
 
   services.samba = {
     enable = true;

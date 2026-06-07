@@ -5,11 +5,6 @@ _:
   # Contacts dependency for the household. Phones (iOS Calendar,
   # Android DAVx5) sync to https://calendar.nori.lan/ over the tailnet.
   #
-  # Default port 5232. Backed by plain filesystem (one .ics / .vcf per
-  # event/contact under /var/lib/radicale/collections) — restic Pattern
-  # A backup picks it up via the existing user-data job once that path
-  # is added (TODO).
-  #
   # First-run setup:
   #   1. Create the htpasswd file (one-time, on the host):
   #        sudo nix run nixpkgs#apacheHttpd -- htpasswd -B -c \
@@ -23,9 +18,6 @@ _:
   #      Same shape for CardDAV.
   #   4. On Android: install DAVx5 (F-Droid), add account with the
   #      base URL https://calendar.nori.lan and creds.
-  #
-  # Multi-user: htpasswd file holds entries per user. Each user gets a
-  # collections dir under /var/lib/radicale/collections/<user>/.
   services.radicale = {
     enable = true;
     settings = {
@@ -39,9 +31,8 @@ _:
     };
   };
 
-  # Bootstrap an empty htpasswd file so the service starts on first run.
-  # Adding a user is `sudo htpasswd -B /var/lib/radicale/users <name>`
-  # (see header comment).
+  # Bootstrap an empty htpasswd file so the service starts on first run
+  # (operator runs `htpasswd -B -c` to seed the real entry — see header).
   systemd.tmpfiles.rules = [
     "f /var/lib/radicale/users 0640 radicale radicale - "
   ];
@@ -60,8 +51,7 @@ _:
     };
   };
 
-  # Pattern A — calendars (CalDAV) and contacts (CardDAV) are
-  # irreplaceable user data. Tiny (~8K) so daily restic is free.
-  # Static `radicale` user, real /var/lib/radicale dir.
+  # Pattern A — file-snapshot consistency is fine, radicale writes one
+  # .ics / .vcf per event and the whole tree is tiny (~8K).
   nori.backups.radicale.include = [ "/var/lib/radicale" ];
 }

@@ -25,12 +25,11 @@
 # so the client points at https://stremio.nori.lan as its streaming
 # server URL and the handshake succeeds.
 #
-# ── State + secrets ──────────────────────────────────────────────
+# ── State + env ──────────────────────────────────────────────────
 # APP_PATH=/var/lib/stremio holds the per-server cert + identifier
-# that clients pair with on first connect. Losing it just forces
-# re-pairing — small inconvenience, not a data loss event — but
-# tiny enough to back up anyway. NO_CORS disables the CORS check
-# since Caddy's reverse-proxy origin differs from the client origin.
+# that clients pair with on first connect. NO_CORS disables the CORS
+# check since Caddy's reverse-proxy origin differs from the client
+# origin.
 
 let
   version = "4.20.12";
@@ -91,9 +90,8 @@ in
     binds = [ "/var/lib/stremio" ];
   };
 
-  # The state dir is small (server cert + identifier + per-stream cache).
-  # Cache is re-derivable; the cert/identifier costs a re-pair if lost.
-  # Worth backing up at the service tier — minimal storage cost.
+  # Service tier — losing the cert/identifier just forces a re-pair, but
+  # the dir is tiny so it's free to back up.
   nori.backups.stremio = {
     include = [ "/var/lib/stremio" ];
     tier = "service";
