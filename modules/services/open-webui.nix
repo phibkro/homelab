@@ -127,11 +127,16 @@ in
             # scheduler-worker polls every 10s + chat completions
             # write constantly, so the lock is held more often than
             # for navidrome — but the same fix applies.
-            rm -f /var/backup/open-webui/webui.db.tmp
-            ${pkgs.sqlite}/bin/sqlite3 /var/lib/open-webui/data/webui.db \
-              "PRAGMA busy_timeout = 30000;" \
-              "VACUUM INTO '/var/backup/open-webui/webui.db.tmp';"
-            mv /var/backup/open-webui/webui.db.tmp /var/backup/open-webui/webui.db
+            # Serialize concurrent prep — onetouch + ironwolf race fix.
+            # See navidrome.nix for the long form.
+            (
+              ${pkgs.util-linux}/bin/flock -x 9
+              rm -f /var/backup/open-webui/webui.db.tmp
+              ${pkgs.sqlite}/bin/sqlite3 /var/lib/open-webui/data/webui.db \
+                "PRAGMA busy_timeout = 30000;" \
+                "VACUUM INTO '/var/backup/open-webui/webui.db.tmp';"
+              mv /var/backup/open-webui/webui.db.tmp /var/backup/open-webui/webui.db
+            ) 9>/var/backup/open-webui/.prep.lock
           fi
         '';
         timer = "*-*-* 04:00:00";

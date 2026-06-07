@@ -138,11 +138,19 @@
         # atomic rename so a torn write never leaves a half-finished
         # target. Caught 2026-06-06; same pattern applies to
         # open-webui.nix + vaultwarden.nix.
-        rm -f /var/backup/navidrome/navidrome.db.tmp
-        ${pkgs.sqlite}/bin/sqlite3 /var/lib/navidrome/navidrome.db \
-          "PRAGMA busy_timeout = 30000;" \
-          "VACUUM INTO '/var/backup/navidrome/navidrome.db.tmp';"
-        mv /var/backup/navidrome/navidrome.db.tmp /var/backup/navidrome/navidrome.db
+        # Serialize concurrent prep — both `-onetouch` and `-ironwolf`
+        # restic targets fire at the same minute and race on .tmp.
+        # Loser sees winner's partial VACUUM INTO write and bombs with
+        # "table goose_db_version already exists". flock makes them
+        # take turns; second caller just re-dumps the now-fresh state.
+        (
+          ${pkgs.util-linux}/bin/flock -x 9
+          rm -f /var/backup/navidrome/navidrome.db.tmp
+          ${pkgs.sqlite}/bin/sqlite3 /var/lib/navidrome/navidrome.db \
+            "PRAGMA busy_timeout = 30000;" \
+            "VACUUM INTO '/var/backup/navidrome/navidrome.db.tmp';"
+          mv /var/backup/navidrome/navidrome.db.tmp /var/backup/navidrome/navidrome.db
+        ) 9>/var/backup/navidrome/.prep.lock
       fi
     '';
     timer = "*-*-* 04:45:00"; # stagger off vaultwarden (04:30) + open-webui (04:00)
