@@ -566,7 +566,7 @@ default: rebuild
 #
 # Generate raw + PBKDF2 hash for a new lan-route OIDC client; print two paste-ready sops YAML lines.
 @generate-oidc-key name:
-    nix shell nixpkgs#openssl nixpkgs#authelia --command bash scripts/oidc-key.sh {{name}}
+    nix shell nixpkgs#openssl nixpkgs#authelia --command bash scripts/generate-oidc-key.sh {{name}}
 
 # === ssh — explicit cross-host shell ===
 

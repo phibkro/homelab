@@ -1,5 +1,5 @@
 ---
-description: Add a new NixOS host to this homelab flake — wires the host folder, identity registry, role tag (workhorse vs appliance), concerns picked from `modules/{common,server,desktop}`, sops recipient onboarding, and first-boot install path. Eval fails if the folder + registry entry don't both land.
+description: USE WHEN adding a new physical/virtual machine to the flake — "add a new host", "set up nori-X", "another machine", "I'm getting a new <Pi/server/laptop>". Wires the host folder, identity registry, role tag (workhorse/appliance/agent), concerns picked from `modules/{common,server,desktop}`, sops recipient onboarding, and first-boot install path. Eval fails if the folder + registry entry don't both land.
 when_to_use: User mentions adding a new physical or virtual machine to the flake — phrases like "add a new host", "set up nori-X", "another machine", "new device for the homelab", "bring under the flake", "I'm getting a new <Pi/server/laptop>".
 ---
 

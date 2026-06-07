@@ -1,5 +1,5 @@
 ---
-description: Decide which doc tier (or skill, or memory) needs updating after a structural change just landed in the homelab — a new abstraction, pattern, convention, flake check, host, or cross-cutting decision that fresh agents would need to know about. Drift compounds, so this runs immediately after the change, not at session end.
+description: USE WHEN a structural change just landed — a new abstraction, pattern, convention, flake check, host, or cross-cutting decision fresh agents would need to know about. Triggers: "we just landed X", "what doc tier needs updating?", "after this commit, anything else?". Also auto-invoke after committing a new file in `modules/effects/`, a new flake check, or a new host folder. Decides which doc tier (or skill, or memory) needs updating. Runs IMMEDIATELY after the change, not at session end — drift compounds.
 when_to_use: A structural change just landed (or is about to) — phrases like "we just landed <abstraction>", "after this commit, anything else?", "what doc tier needs updating?", "I just merged X, what's the followup?". Also auto-invoke after committing a new file in `modules/effects/`, a new flake check, a new convention-codifying assertion, or a new host folder.
 ---
 

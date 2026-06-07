@@ -1,5 +1,5 @@
 ---
-description: Migrate a service from workstation to pi using the cross-host split-module pattern. Daemon module on Pi, client/proxy module on every host that talks to it; cross-host references via the `nori.hosts` registry; lanRoute gated on Caddy presence so Pi's Blocky stays in pure forwarder mode. Established by beszel-hub and ntfy-server migrations.
+description: USE WHEN moving a service from workstation to pi, or hearing "X should survive station outages", "appliance-side X", or any service fitting the appliance role (observability, alerting, DNS, network plumbing). Applies the cross-host split-module pattern: daemon module on pi, client/proxy module on every host that talks to it, cross-host refs via `nori.hosts`, lanRoute gated on Caddy presence so Pi's Blocky stays in pure forwarder mode. Established by beszel-hub and ntfy-server migrations.
 when_to_use: User wants a service to survive station outages or fits the appliance role (observability, alerting, DNS, network plumbing) — phrases like "move <service> to Pi", "relocate <service>", "Pi should run <service>", "<service> should survive station going down", "appliance-side <service>".
 ---
 

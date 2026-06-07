@@ -1,5 +1,5 @@
 ---
-description: Add a new self-hosted service to this homelab NixOS flake — wires the upstream module enable, FS hardening (`nori.harden`), Caddy + DNS exposure (`nori.lanRoutes`), backup intent (`nori.backups`), GPU access (`nori.gpu`), OIDC SSO, and import plumbing in the right order with the right decisions.
+description: USE WHEN adding a new self-hosted service to the flake — "add <service>", "set up <X>", "I want <Y> running", "deploy", "install <Z>", or creating a new file under `modules/services/`. Wires the upstream module enable + FS hardening (`nori.harden`) + Caddy/DNS exposure (`nori.lanRoutes`) + backup intent (`nori.backups`) + GPU access (`nori.gpu`) + OIDC SSO + import plumbing in the right order with the right decisions.
 when_to_use: The user asks to install, deploy, set up, or run a new service on the homelab — phrases like "add <service>", "let's set up <X>", "I want <Y> running", "deploy a new service", "install <service>", "bring up <something> on the homelab". Also when a new file is being created under `modules/services/`.
 ---
 

@@ -1,5 +1,5 @@
 ---
-description: Homelab-specific supplement to the user-level /analyse-system skill. Adds NixOS-flake-specific reading order (flake.nix → modules/effects → modules/services sample → hosts → Justfile → docs → CLAUDE.md last), and points at the lab's actual leverage map in CLAUDE.md § Leverage map. The framework + 12 leverage points + dimension-choice guidance + generic per-tier examples live in the user-level skill at ~/.claude/skills/analyse-system/SKILL.md (managed declaratively from home/claude-code/skills/analyse-system/SKILL.md and symlinked via home-manager).
+description: USE WHEN orienting in this homelab repo from cold context — "explore the codebase", "analyse the system", "orient yourself", "get up to speed". Homelab-specific supplement to the user-level /analyse-system skill — adds the NixOS-flake-specific reading order (flake.nix → modules/effects → modules/services sample → hosts → Justfile → docs → CLAUDE.md last) and points at the lab's leverage map. The framework + 12 leverage points live in the user-level skill at ~/.claude/skills/analyse-system/SKILL.md.
 when_to_use: Same as user-level /analyse-system — fresh-context session, structural understanding wanted. The user-level skill carries the framework; this one adds the lab-specific reading order and points at the per-project tier placements.
 ---
 

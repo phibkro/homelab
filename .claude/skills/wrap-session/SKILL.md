@@ -1,5 +1,5 @@
 ---
-description: Run the homelab end-of-session wrap-up — push pending commits, refresh CLAUDE.md if reality shifted, archive resolved memory items, verify clean state, end with a tight summary that lets the next agent (likely you with zero context) land cleanly.
+description: USE WHEN the user signals session end — "wrap up", "ending session", "that's it for now", "we're done", "done for today", "anything else before we end?". Runs the homelab end-of-session wrap-up — pushes pending commits (with operator OK per the push gate), refreshes CLAUDE.md if reality shifted, archives resolved memory items, verifies clean state, ends with the handoff summary for the next zero-context agent.
 when_to_use: User signals the session is wrapping up — phrases like "wrap up", "ending session", "that's it for now", "we're done", "session end", "done for today", "let's wrap up", "anything else before we end?".
 ---
 
