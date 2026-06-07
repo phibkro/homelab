@@ -41,20 +41,17 @@
     zen-browser.url = "github:0xc000022070/zen-browser-flake";
     zen-browser.inputs.nixpkgs.follows = "nixpkgs";
 
-    # snappy-switcher — Hyprland-native alt-tab overlay (pure C, Wayland
-    # layer shell, no GTK/Electron). Not in nixpkgs; upstream ships a
-    # flake. ALT+Tab (MRU global) + SUPER+Tab (workspace-local) bound
-    # in machines/workstation/hyprland.lua; daemon autostarted there too.
+    # snappy-switcher — Hyprland alt-tab overlay. Not in nixpkgs;
+    # upstream ships a flake. Bindings + daemon autostart live in
+    # machines/workstation/hyprland.lua (ALT+Tab MRU global, SUPER+Tab
+    # workspace-local).
     snappy-switcher.url = "github:OpalAayan/snappy-switcher";
     snappy-switcher.inputs.nixpkgs.follows = "nixpkgs";
 
-    # hermes-agent — NousResearch's open-source self-improving coding agent
-    # with persistent memory (SQLite session DB + MEMORY.md + pluggable
-    # provider plugins). Not in nixpkgs; upstream ships an official flake
-    # using uv2nix. We consume `packages.default` (bare CLI) for
-    # interactive use inside `box`. The `messaging` / `full` variants are
-    # available if we ever want Discord/Telegram or external memory
-    # providers like Honcho/Mem0.
+    # hermes-agent — NousResearch's coding agent (uv2nix flake). We
+    # consume `packages.default` (bare CLI) for interactive use inside
+    # `box`; `messaging` / `full` variants available if we ever wire
+    # Discord/Telegram or external memory providers.
     #
     # No GitHub credential is plumbed into hermes by design — see the
     # security note in home/claude-code/default.nix; operator-driven
@@ -70,12 +67,10 @@
     # modules/services/ollama.nix when the channel catches up.
     nixpkgs-ollama.url = "github:NixOS/nixpkgs/release-26.05";
 
-    # Stylix — single-input system-wide theming. One wallpaper +
-    # polarity (light/dark) generates a Material You-flavored base16
-    # palette and applies it to GTK, Qt, Hyprland, Kitty, btop, etc.
-    # Same Reader+collected-Writer shape as the rest of the lab's
-    # effect family — fits cleanly. Workstation imports the NixOS
-    # module via modules/desktop/stylix.nix.
+    # Stylix — single-input system-wide theming. Same
+    # Reader+collected-Writer shape as the lab's `nori.<X>` effect
+    # family — fits cleanly. Workstation imports the NixOS module
+    # via modules/desktop/stylix.nix.
     stylix.url = "github:danth/stylix/release-26.05";
     stylix.inputs.nixpkgs.follows = "nixpkgs";
 
@@ -103,13 +98,10 @@
     obsidian-skills.flake = false;
 
     # nix-community/impermanence — "erase your darlings" mechanism.
-    # Consumed by machines/pavilion (the agent quarantine host) so
-    # every boot starts from a clean state and only declared paths
-    # under /persist survive. Pavilion uses btrfs-rollback rather
-    # than tmpfs root (3.6 GB RAM ceiling) — the impermanence module
-    # is FS-agnostic; the rollback service in pavilion's default.nix
-    # is what provides the clean state on disk. Workstation, pi, and
-    # macbook all keep mutable roots; impermanence is opt-in per host.
+    # Opt-in per host. Consumed by machines/pavilion (agent quarantine):
+    # pavilion uses btrfs-rollback rather than tmpfs root (3.6 GB RAM
+    # ceiling) — the impermanence module is FS-agnostic; the rollback
+    # service in pavilion's default.nix provides the clean state on disk.
     impermanence.url = "github:nix-community/impermanence";
 
     # pagu-box — cross-platform sandboxed launcher for any process.
@@ -289,14 +281,10 @@
       };
 
       # Standalone home-manager configurations for non-NixOS machines.
-      # Activated on the target machine via:
-      #   nix run home-manager/master -- switch --flake .#<name>
-      # or, once home-manager is installed into the user profile:
-      #   home-manager switch --flake .#<name>
-      #
       # NixOS machines embed home-manager as a NixOS module inside their
       # own machines/<n>/default.nix; these standalone entries are only
-      # for machines where the host OS isn't NixOS (Mac).
+      # for machines where the host OS isn't NixOS (Mac). Activate with
+      # `home-manager switch --flake .#<name>`.
       homeConfigurations.macbook = home-manager.lib.homeManagerConfiguration {
         # Mac pkgs with allowUnfree so claude-code (unfree license)
         # resolves. Same pattern as `pkgsUnfree` above for the dev shell.
@@ -314,14 +302,8 @@
 
       formatter.${system} = pkgs.nixfmt;
 
-      # Quality gates. Run `nix flake check` to validate everything:
-      #   - host configs evaluate (catches type errors, missing
-      #     options, and any module assertion violations)
-      #   - statix flags Nix anti-patterns
-      #   - deadnix flags unused bindings
-      #   - format-check fails on unformatted .nix files
-      #   - forbidden-patterns catches grepable repo-conventions
-      #     (no inline OIDC hashes, no direct caddy/blocky bypass)
+      # Quality gates. `nix flake check` validates host evals + the
+      # checks below; `nix flake show .#checks` is the live index.
       checks.${system} =
         let
           # Files under modules/services/ that aren't user-facing services —
