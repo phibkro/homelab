@@ -58,6 +58,7 @@ NixOS flake managing three machines:
   From Mac the `.ts.net` hostnames don't resolve through normal DNS — use LAN IPs for rsync/ssh. After Pi reboots its host key may regenerate; clear with `ssh-keygen -R <ip>` or `-o StrictHostKeyChecking=accept-new`.
 
 - **Justfile is local-by-default**: `just rebuild` builds whichever host you're sitting on. From Mac (not a NixOS host): `just remote workstation rebuild` rsyncs to `/tmp/nix-migration/` + runs `just rebuild` there. Same pattern wraps any recipe.
+- **Iteration trio**: for non-load-bearing changes (themes, fonts, scalar tweaks) reach for `just option <path>` (inspect type + default + current + description, scoped to THIS flake's eval) → `just set <file> <attr> <value>` (AST splice via nix-editor + project nixfmt, preserves style) → `just preview` (`nh os test`, no boot entry; reboot reverts) → `just rebuild` (persist) or `git checkout` (revert). Closes the System-Prefs-style "try then commit" loop without inventing a settings UI.
 - Push to `origin/main` is the deploy boundary; any host can `git pull && just rebuild` (or `just deploy` to build from origin).
 - Long jobs go in the background — never block. Use `run_in_background: true`.
 
