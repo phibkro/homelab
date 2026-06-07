@@ -70,7 +70,7 @@
     # Icon theme. Default GTK icons are low-res (24px raster).
     # Papirus is the standard pick — scalable SVG, vast mime coverage,
     # Material-aligned. Light/dark variants get picked from polarity.
-    iconTheme = {
+    icons = {
       enable = true;
       package = pkgs.papirus-icon-theme;
       dark = "Papirus-Dark";
