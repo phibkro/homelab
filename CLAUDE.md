@@ -8,33 +8,50 @@ NixOS flake managing three machines:
 
 ## Docs map
 
-Filenames encode the topic. The `USE WHEN` column matches the skill/
-memory convention — grep for the trigger phrase that fits your intent.
-Sequencing matters only for early-orient docs (1-3); the rest is reached
-on demand.
+Three read modes. The first set is mandatory at session start — the
+rest is reached on demand. Filenames encode the topic; the `USE WHEN`
+column matches the skill/memory trigger convention.
 
-| # | Doc | USE WHEN |
-|---|---|---|
-| 1 | `docs/GLOSSARY.md` | first session in this repo, OR you hit jargon (`nori.<X>` effect family, audience, fate-sharing, split-module, value tiers) and need the canonical definition |
-| 2 | `docs/INVARIANTS.md` | a claim sounds load-bearing and you want its enforcement rung, OR before writing prose that asserts "X is always Y" |
-| 3 | `docs/SKILL_INDEX.md` | looking for a `/<skill-name>` that matches your current intent — recurring procedures live as skills, not prose |
-| 4 | `docs/ROADMAP.md` | considering deferring work, checking what's queued, or wondering whether something is already planned |
-| 5 | `docs/TOPOLOGY.md` | placing a service across hosts, sizing GPU/RAM caps, or reasoning about workhorse/appliance/agent roles |
-| 6 | `docs/STORAGE.md` | touching btrfs subvolumes, `nori.fs.<X>`, snapshot/backup policy, or value-tier classifications |
-| 7 | `docs/NETWORK.md` | adding a `nori.lanRoutes` entry, picking an audience, or working with Caddy + Authelia + DNS |
-| 8 | `docs/SERVICES.md` | adding a service module, picking a backup pattern (A/B/C), or wiring observability for it |
-| 9 | `docs/MODULE_AUTHORING.md` | writing a new module — the template, sops conventions, packages-by-scope, dev workflow |
-| 9.5 | `docs/DOCUMENTATION_WRITING.md` | writing/auditing comments + prose — earns-rent taxonomy, anti-patterns, the agent-imitation loop |
-| 10 | `docs/ENFORCEMENT.md` | promoting a claim from prose → comment → test → type, or deciding the right rung for a new rule |
-| 11 | `docs/RECOVERY.md` | something is broken or you're planning recovery — RTO targets, runbook index, permanent constraints |
-| 11.5 | `docs/RUNTIME_TESTS.md` | adding a `just test-<X>` lever or auditing whether an effect family ships with one |
-| 12 | `docs/RATIONALES.md` | wondering "why was X chosen?" before re-litigating a design decision |
-| 13 | `docs/decisions/0001-agentic-homelab-practices.md` | the meta-ADR that sets the *why* behind everything; read once, refer back when in doubt |
-| 14 | `.claude/skills/gotcha-*/` | auto-load on trigger; manually `/<skill-name>` if it fits a known landmine |
-| 15 | `git log --oneline` | a recent change isn't yet reflected in docs, or a comment references "2026-MM-DD incident" without enough context |
+`docs/README.md` mirrors these tables for agents that land in `docs/`
+without this file's context.
 
-`docs/README.md` mirrors this table for agents that land in `docs/`
-without CLAUDE.md context.
+### Read on session start (mandatory)
+
+| Doc | USE WHEN |
+|---|---|
+| `docs/GLOSSARY.md` | always, first — establishes vocabulary (`nori.<X>` effect family, audience, fate-sharing, value tiers, split-module). Every other doc reads as undefined jargon without it. |
+| `docs/INVARIANTS.md` | always, second — the drift register: load-bearing claims tagged by enforcement rung. Without it, the agent doesn't know which claims it must not silently break. |
+
+### Topic-triggered reference
+
+| Doc | USE WHEN |
+|---|---|
+| `docs/SKILL_INDEX.md` | looking for a `/<skill-name>` that matches your intent — recurring procedures live as skills, not prose |
+| `docs/ROADMAP.md` | considering deferring work, checking what's queued, or wondering whether something is already planned |
+| `docs/TOPOLOGY.md` | placing a service across hosts, sizing GPU/RAM caps, or reasoning about workhorse/appliance/agent roles |
+| `docs/STORAGE.md` | touching btrfs subvolumes, `nori.fs.<X>`, snapshot/backup policy, or value-tier classifications |
+| `docs/NETWORK.md` | adding a `nori.lanRoutes` entry, picking an audience, or working with Caddy + Authelia + DNS |
+| `docs/SERVICES.md` | adding a service module, picking a backup pattern (A/B/C), or wiring observability |
+| `docs/MODULE_AUTHORING.md` | writing a new module — template, sops conventions, packages-by-scope, dev workflow |
+| `docs/DOCUMENTATION_WRITING.md` | writing/auditing comments + prose — earns-rent taxonomy, anti-patterns, agent-imitation loop |
+| `docs/ENFORCEMENT.md` | promoting a claim from prose → comment → test → type, or picking the rung for a new rule |
+| `docs/RECOVERY.md` | something is broken or you're planning recovery — RTO targets, runbook index, permanent constraints |
+| `docs/RUNTIME_TESTS.md` | adding a `just test-<X>` lever or auditing whether an effect family ships with one |
+| `docs/RATIONALES.md` | wondering "why was X chosen?" before re-litigating a design decision |
+| `docs/PROJECTS.md` | orchestrating work across the several projects on this machine (homelab, occupational-health, pagu, bang-lang, …) |
+| `docs/capacity-baseline.md` | sizing a new service against current RAM/disk/CPU baselines per host |
+
+### Drill-down (pulled in only when a parent doc cross-refs it)
+
+| Path | USE WHEN |
+|---|---|
+| `docs/decisions/` | per-ADR for each hard-to-revisit choice. `0001-agentic-homelab-practices.md` is the meta-ADR — read when philosophy comes up |
+| `docs/runbooks/` | per-incident recovery procedures (drive failure, USB enumeration, network split) |
+| `docs/baremetal-install.md` | bringing up a fresh NixOS host via nixos-anywhere |
+| `docs/vm-install.md` | bringing up a NixOS VM (testing, throwaway environments) |
+| `docs/agent-onboarding-test.md` | validating a new agent's orientation against a small fixed task |
+| `.claude/skills/gotcha-*/` | auto-loaded on trigger; manually `/<skill-name>` if it fits a known landmine |
+| `git log --oneline` | a recent change isn't yet reflected in docs, or a comment references "2026-MM-DD incident" without enough context |
 
 ## Hard rules
 
