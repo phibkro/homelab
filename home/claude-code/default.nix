@@ -154,7 +154,12 @@ let
         i=$((i + 1))
       done
 
-      extra=()
+      # box-launched agents always get read-only journal access. Debugging the
+      # host (services, boot history, OOMs) is the common case for box invocations
+      # and the alternative is the operator pasting !-prefixed journalctl into
+      # the agent's session. Risk model: logs may contain accidentally-logged
+      # tokens — mitigation lives at the source (don't log them), not here.
+      extra=( --journal )
       case "$PWD" in
         "$homelab_prefix"|"$homelab_prefix"/*)
           if [ "$profile" = "strict" ]; then
