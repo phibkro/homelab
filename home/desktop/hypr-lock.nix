@@ -6,10 +6,18 @@ _: {
   # Idle ladder (desktop, no battery — skip dim-via-brightnessctl):
   #   10 min  → hyprlock directly  (see on-timeout note below)
   #   15 min  → hyprctl dispatch dpms off (monitor sleep)
+  #   30 min  → systemctl suspend (s2idle — pauses the user@1000 leak)
   #   on-resume → dpms on (re-wake monitor)
   #
-  # No suspend listener — desktop, always-on, persistent services
-  # (Caddy / Authelia / etc.) shouldn't be paused.
+  # Why suspend on a desktop: workstation has a known committed-RAM leak
+  # in user@1000 (see machines/workstation/default.nix MemoryHigh cap +
+  # ROADMAP #45). Suspending after 30 min idle freezes the leak — all
+  # userspace, including the offending process, stops accruing memory
+  # until wake. System services (Caddy, blocky, tailscaled) freeze too
+  # and resume from where they were on wake; from outside, the host is
+  # unreachable during suspend (this matches pi's gatus probes alerting
+  # — that's working as intended, see channel-splitting plan). Wake by
+  # power button or USB input.
   programs.hyprlock = {
       enable = true;
       settings = {
@@ -69,8 +77,19 @@ _: {
           # fallback engaged + monitors stayed lit). The sleep is
           # imperceptible at lock time; only matters during rebuilds.
           lock_cmd = "pidof hyprlock || (sleep 1 && hyprlock)";
-          # before_sleep_cmd left unset — desktop doesn't sleep.
+          # Lock before suspending so wake lands on the lock screen.
+          before_sleep_cmd = "loginctl lock-session";
           after_sleep_cmd = ''hyprctl dispatch 'hl.dsp.dpms("on")' '';
+          # Don't honor browser-tab ScreenSaver inhibits. Caught
+          # 2026-06-08: Zen browser held a "Playing video" inhibit
+          # overnight (backgrounded autoplay tab) while a user@1000
+          # leak climbed to 26.2G RSS + 21.5G swap peak and global-
+          # OOM'd at 01:53. Without sleep firing, the leak had
+          # unbounded runway. Browser autoplay shouldn't be able to
+          # keep the machine awake; if a real long-running task needs
+          # to run, use `systemd-inhibit` explicitly (logind path —
+          # not affected by this flag).
+          ignore_dbus_inhibit = true;
         };
         listener = [
           {
@@ -94,6 +113,10 @@ _: {
             # migration). Use the `hl.dsp.*` builder form.
             on-timeout = ''hyprctl dispatch 'hl.dsp.dpms("off")' '';
             on-resume = ''hyprctl dispatch 'hl.dsp.dpms("on")' '';
+          }
+          {
+            timeout = 1800; # 30 min → suspend (freezes the user@1000 leak)
+            on-timeout = "systemctl suspend";
           }
         ];
       };

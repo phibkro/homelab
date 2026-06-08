@@ -54,6 +54,29 @@
   # scope here rather than common/users.nix (which Pi also reads).
   users.users.nori.extraGroups = [ "media" ];
 
+  # Defensive cap on user@1000.service. Calibrated against the
+  # 2026-06-08 global-OOM event: a leak inside the user session climbed
+  # to 26.2 GiB RSS + 21.5 GiB swap peak in 3h, exhausted total memory
+  # (32 GiB RAM + 16 GiB zram + 8 GiB disk swap), and the kernel OOM
+  # killer fired with CONSTRAINT_NONE — killing lua-language-server
+  # inside the Hyprland session and cascading user@1000 to deactivate,
+  # taking down the entire desktop.
+  #
+  # MemoryHigh = soft cap, throttles via swap pressure when reached.
+  # MemoryMax  = hard cap, OOM-kills inside the unit instead of system-
+  #              wide. With the cap, a runaway desktop kills itself and
+  #              system services (sshd, caddy, blocky, tailscaled) stay
+  #              alive — recoverable from a TTY or remote SSH.
+  #
+  # Numbers leave ≥4 GiB physical + 8 GiB swap headroom for kernel,
+  # system slice, and a brief grace for terminating processes. Track
+  # the actual session footprint in process-exporter (ROADMAP #45) and
+  # tighten if normal heavy use stays well under.
+  systemd.services."user@".serviceConfig = {
+    MemoryHigh = "24G";
+    MemoryMax = "28G";
+  };
+
   # Station-side Gatus probes for non-HTTP services. HTTP services
   # behind Caddy are auto-probed via nori.lanRoutes.<n>.monitor.
   #
