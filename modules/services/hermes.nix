@@ -1,4 +1,4 @@
-{ ... }:
+_:
 
 # Hermes Agent dashboard — Caddy lanRoute on the workstation.
 #

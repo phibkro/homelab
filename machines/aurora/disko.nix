@@ -1,4 +1,4 @@
-{ ... }:
+_:
 
 # Aurora disk layout — 119 GB LiteOn SSD only. The 932 GB Toshiba HDD
 # (sdb) is intentionally left alone for now; future capacity for an
@@ -41,19 +41,32 @@
             size = "100%";
             content = {
               type = "btrfs";
-              extraArgs = [ "-f" "-L" "aurora-root" ];
+              extraArgs = [
+                "-f"
+                "-L"
+                "aurora-root"
+              ];
               subvolumes = {
                 "/@root" = {
                   mountpoint = "/";
-                  mountOptions = [ "compress=zstd:1" "noatime" ];
+                  mountOptions = [
+                    "compress=zstd:1"
+                    "noatime"
+                  ];
                 };
                 "/@home" = {
                   mountpoint = "/home";
-                  mountOptions = [ "compress=zstd:1" "noatime" ];
+                  mountOptions = [
+                    "compress=zstd:1"
+                    "noatime"
+                  ];
                 };
                 "/@nix" = {
                   mountpoint = "/nix";
-                  mountOptions = [ "compress=zstd:3" "noatime" ];
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
                 };
               };
             };

@@ -189,8 +189,7 @@
   # Console-fallback password — same TEMP placeholder pattern as
   # pavilion. Operator rotates via `mkpasswd -m yescrypt`, paste,
   # redeploy. Or sops-encrypt + hashedPasswordFile.
-  users.users.nori.hashedPassword =
-    "$y$j9T$tpPHfhX/.CWM6TKcQThdq/$cfEGxBsEhlBcv3ulkVxNsHNyjrpHsYDPdTeTsOu/Vb7";
+  users.users.nori.hashedPassword = "$y$j9T$tpPHfhX/.CWM6TKcQThdq/$cfEGxBsEhlBcv3ulkVxNsHNyjrpHsYDPdTeTsOu/Vb7";
 
   # ── Posture assertions ────────────────────────────────────────────
   assertions = [

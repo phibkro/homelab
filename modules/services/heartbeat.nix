@@ -33,6 +33,9 @@
 #     pings, finds pi fine; rare enough to live with).
 
 {
+  nori.backups.heartbeat.skip = "Stateless oneshot ping; URL from sops, no on-disk state.";
+  nori.harden.heartbeat = { };
+
   sops.secrets.heartbeat-pi-url = {
     mode = "0440";
     group = "keys";

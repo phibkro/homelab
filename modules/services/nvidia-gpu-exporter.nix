@@ -21,6 +21,9 @@ let
   hasNvidia = config.nori.gpu.nvidiaDevices != [ ];
 in
 {
+  nori.backups.nvidia-gpu-exporter.skip = "Stateless scrape exporter; shells out to nvidia-smi, no on-disk state.";
+  nori.harden.nvidia-gpu-exporter = lib.mkIf hasNvidia { };
+
   systemd.services.nvidia-gpu-exporter = lib.mkIf hasNvidia {
     description = "NVIDIA GPU metrics exporter (nvidia-smi → Prometheus)";
     after = [ "network.target" ];

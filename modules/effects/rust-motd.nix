@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 # rust-motd renders the stats body (uptime/load/memory/fs/services/
 # last-login) into /var/lib/rust-motd/motd. The codename banner is
@@ -9,7 +14,8 @@
 
 let
   self = config.nori.hosts.${config.networking.hostName} or null;
-  codename = if self != null then (self.codename or config.networking.hostName) else config.networking.hostName;
+  codename =
+    if self != null then (self.codename or config.networking.hostName) else config.networking.hostName;
   role = if self != null then (self.role or "?") else "?";
   hostname = config.networking.hostName;
 
@@ -63,7 +69,11 @@ in
   environment.systemPackages = [
     (pkgs.writeShellApplication {
       name = "motd";
-      runtimeInputs = with pkgs; [ toilet coreutils ncurses ];
+      runtimeInputs = with pkgs; [
+        toilet
+        coreutils
+        ncurses
+      ];
       text = ''
         FONT=""
         FILTER=""

@@ -1,4 +1,4 @@
-{ ... }:
+_:
 
 # Pavilion's disk layout — single 640 GB SATA rotational HDD,
 # BIOS-firmware boot (no UEFI).
@@ -61,11 +61,18 @@
             size = "100%";
             content = {
               type = "btrfs";
-              extraArgs = [ "-f" "-L" "pavilion-root" ];
+              extraArgs = [
+                "-f"
+                "-L"
+                "pavilion-root"
+              ];
               subvolumes = {
                 "/@root" = {
                   mountpoint = "/";
-                  mountOptions = [ "compress=zstd:1" "noatime" ];
+                  mountOptions = [
+                    "compress=zstd:1"
+                    "noatime"
+                  ];
                 };
                 # Template snapshot — created empty after install,
                 # then snapshotted onto @root on every boot by the
@@ -73,17 +80,26 @@
                 "/@root-blank" = { };
                 "/@home" = {
                   mountpoint = "/home";
-                  mountOptions = [ "compress=zstd:1" "noatime" ];
+                  mountOptions = [
+                    "compress=zstd:1"
+                    "noatime"
+                  ];
                 };
                 "/@nix" = {
                   mountpoint = "/nix";
                   # /nix is huge and read-mostly; aggressive
                   # compression to reduce the spinning-disk hit.
-                  mountOptions = [ "compress=zstd:3" "noatime" ];
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
                 };
                 "/@persist" = {
                   mountpoint = "/persist";
-                  mountOptions = [ "compress=zstd:1" "noatime" ];
+                  mountOptions = [
+                    "compress=zstd:1"
+                    "noatime"
+                  ];
                 };
               };
             };

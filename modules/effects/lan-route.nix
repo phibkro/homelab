@@ -486,10 +486,8 @@ in
               # One `reverse_proxy { ... }` block so Host + Origin
               # (and future header rewrites) compose inside one directive.
               headerLines = lib.concatStringsSep "\n                  " (
-                lib.optional (cfg.upstreamHostHeader != null)
-                  "header_up Host ${cfg.upstreamHostHeader}"
-                ++ lib.optional (cfg.upstreamOriginHeader != null)
-                  "header_up Origin ${cfg.upstreamOriginHeader}"
+                lib.optional (cfg.upstreamHostHeader != null) "header_up Host ${cfg.upstreamHostHeader}"
+                ++ lib.optional (cfg.upstreamOriginHeader != null) "header_up Origin ${cfg.upstreamOriginHeader}"
               );
               headerBlock = lib.optionalString (headerLines != "") ''
                  {

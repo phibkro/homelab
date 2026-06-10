@@ -318,6 +318,11 @@
             "modules/services/backup/restic.nix"
             "modules/services/backup/verify.nix"
             "modules/services/backup/btrbk.nix"
+            # Route-only — declares nori.lanRoutes for the hermes
+            # daemon, which itself is a home-manager user service
+            # under home/hermes/. No NixOS-scope service, state, or
+            # hardening surface.
+            "modules/services/hermes.nix"
           ];
           # Generate a `case` glob from a list of patterns, joined with
           # `|`. Used at the head of each scanner loop to skip framework

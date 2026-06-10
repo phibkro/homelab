@@ -21,6 +21,10 @@ let
   tailnetIp = config.nori.hosts.${config.networking.hostName}.tailnetIp;
 in
 {
+  nori.backups.node-exporter.skip = "Stateless scrape exporters (node + process); no on-disk state.";
+  nori.harden.prometheus-node-exporter = { };
+  nori.harden.prometheus-process-exporter = { };
+
   services.prometheus.exporters.node = {
     enable = true;
     listenAddress = tailnetIp;

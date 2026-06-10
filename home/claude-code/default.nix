@@ -228,28 +228,31 @@ let
   };
 in
 {
-  home.packages =
-    [
-      pkgs.claude-code # Anthropic CLI; pulls Node closure (~300 MB)
-      pkgs.agent-browser # Persistent browser automation for AI agents
-      # MCP servers — direct binaries from nixpkgs (no npx-fetch latency,
-      # version pinned by flake.lock). Wired into Claude Code via the
-      # project-level .mcp.json at the repo root + enabledMcpjsonServers
-      # in settings below.
-      pkgs.mcp-server-fetch # `fetch` — URL → markdown tool
-      pkgs.context7-mcp # `context7` — library docs lookup
-    ]
-    # opencode lacks x86_64-darwin support in nixpkgs 26.05 (aarch64-darwin
-    # only). Skip on Intel Mac.
-    ++ lib.optional (pkgs.stdenv.hostPlatform.system != "x86_64-darwin") pkgs.opencode
-    # pagu-box + the `box` alias both on PATH so nixpkgs-agent's solve.sh
-    # can exec the launcher directly.
-    ++ [ pagu-box box piAgent ]
-    # claude-box / opencode-box are bwrap-based; Linux-only.
-    ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
-      claudeBox
-      opencodeBox
-    ];
+  home.packages = [
+    pkgs.claude-code # Anthropic CLI; pulls Node closure (~300 MB)
+    pkgs.agent-browser # Persistent browser automation for AI agents
+    # MCP servers — direct binaries from nixpkgs (no npx-fetch latency,
+    # version pinned by flake.lock). Wired into Claude Code via the
+    # project-level .mcp.json at the repo root + enabledMcpjsonServers
+    # in settings below.
+    pkgs.mcp-server-fetch # `fetch` — URL → markdown tool
+    pkgs.context7-mcp # `context7` — library docs lookup
+  ]
+  # opencode lacks x86_64-darwin support in nixpkgs 26.05 (aarch64-darwin
+  # only). Skip on Intel Mac.
+  ++ lib.optional (pkgs.stdenv.hostPlatform.system != "x86_64-darwin") pkgs.opencode
+  # pagu-box + the `box` alias both on PATH so nixpkgs-agent's solve.sh
+  # can exec the launcher directly.
+  ++ [
+    pagu-box
+    box
+    piAgent
+  ]
+  # claude-box / opencode-box are bwrap-based; Linux-only.
+  ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
+    claudeBox
+    opencodeBox
+  ];
 
   # Claude Code skill discovery is shallow (~/.claude/skills/<name>/
   # SKILL.md, not nested), so external collections get flattened one-

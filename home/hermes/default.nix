@@ -46,8 +46,7 @@ in
   # directly. NO pip binary — global pip installs would pollute
   # ~/.local site-packages with untracked state. For non-stdlib needs,
   # use `python313.withPackages` here and rebuild.
-  home.packages = lib.optional isLinux hermes
-    ++ lib.optional isLinux pkgs.python313;
+  home.packages = lib.optional isLinux hermes ++ lib.optional isLinux pkgs.python313;
 
   # Persistent dashboard. Deliberately localhost-bound — the dashboard
   # exposes API keys, so tailnet exposure goes through Caddy at

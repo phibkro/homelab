@@ -137,5 +137,6 @@
     };
   };
 
+  nori.harden.victoriametrics = { };
   nori.backups.victoriametrics.skip = "Event-history scratch on Pi flash; same anti-write posture as VictoriaLogs.";
 }
