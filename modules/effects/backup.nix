@@ -57,11 +57,13 @@ in
   options.nori.backupTargets = mkOption {
     default = { };
     description = ''
-      Available restic backup destinations on this host. Each target
-      provides a `repoBase` directory under which the per-job repos
-      will live; the generated repo path for a job named `vaultwarden`
-      and a target named `onetouch` with repoBase `/mnt/backup` is
-      `/mnt/backup/vaultwarden`.
+      Available restic backup destinations. Each target provides a
+      `repository` URL or path prefix under which per-job repos will
+      live; the generated repo for a job named `vaultwarden` against
+      a target with `repository = "/mnt/backup"` is
+      `/mnt/backup/vaultwarden`. Remote URLs concatenate identically:
+      `repository = "sftp:restic@aurora.saola-matrix.ts.net:/mnt/backup"`
+      yields `sftp:restic@aurora.saola-matrix.ts.net:/mnt/backup/vaultwarden`.
 
       Targets are independent — every backup job fans out to every
       target it lists by default, and each (job, target) pair gets its
@@ -69,36 +71,88 @@ in
       doesn't block other targets.
 
       Declared once at host scope (typically in
-      modules/server/backup/restic.nix).
+      modules/services/backup/restic.nix).
     '';
     example = lib.literalExpression ''
       {
         onetouch = {
-          repoBase = "/mnt/backup";
+          repository = "/mnt/backup";
           description = "USB OneTouch external HDD (lazy-mounted via autofs)";
         };
-        ironwolf = {
-          repoBase = "/mnt/backup-local";
-          description = "Always-mounted btrfs subvolume on the media drive";
+        onetouch-remote = {
+          repository = "sftp:restic@aurora.saola-matrix.ts.net:/mnt/backup";
+          description = "Same OneTouch HDD relocated to aurora; off-host vault";
+          extraOptions = [
+            "sftp.command='ssh -i /run/secrets/restic-ssh-key restic@aurora.saola-matrix.ts.net -s sftp'"
+          ];
+        };
+        hetzner = {
+          repository = "sftp:u123456@u123456.your-storagebox.de:23/restic";
+          description = "Hetzner Storage Box, off-site";
+          extraOptions = [
+            "sftp.command='ssh -i /run/secrets/restic-hetzner-key -p 23 u123456@u123456.your-storagebox.de -s sftp'"
+          ];
         };
       }
     '';
     type = types.attrsOf (
       types.submodule {
         options = {
-          repoBase = mkOption {
+          repository = mkOption {
             type = types.str;
+            example = "sftp:restic@aurora.saola-matrix.ts.net:/mnt/backup";
             description = ''
-              Directory under which per-job repos are created. Repo
-              paths derive as `<repoBase>/<jobName>`. The path must
-              exist (or be mountable) at backup time; restic's
-              `initialize = true` will create the per-job subdirectory
-              and init the repo on first run.
+              Restic repository spec. Per-job repos derive as
+              `<repository>/<jobName>` — slash-concat works
+              identically for local paths and remote URLs. Any
+              restic-supported backend is valid:
+
+                local path  `/mnt/backup`
+                SFTP        `sftp:user@host:/abs/path`
+                REST        `rest:https://server:port/`
+                S3          `s3:s3.amazonaws.com/bucket`
+                B2          `b2:bucketname:path`
+
+              For backends that need transport config (SSH identity,
+              alternate known_hosts) use `extraOptions`. For backends
+              that need ambient credentials (AWS_ACCESS_KEY_ID,
+              B2_ACCOUNT_ID, …) use `environmentFile`.
+
+              Local paths must exist (or be mountable) at backup
+              time; restic's `initialize = true` will create the
+              per-job subdirectory and init the repo on first run.
+              Remote repositories must already be reachable — restic
+              will not create the remote root.
             '';
           };
           description = mkOption {
             type = types.str;
             description = "One-line human-readable description; surfaces in commit messages and runbooks.";
+          };
+          extraOptions = mkOption {
+            type = types.listOf types.str;
+            default = [ ];
+            example = [
+              "sftp.command='ssh -i /run/secrets/restic-ssh-key -o UserKnownHostsFile=/run/secrets/restic-known-hosts restic@aurora.saola-matrix.ts.net -s sftp'"
+            ];
+            description = ''
+              Extra `-o <opt>` flags passed to every restic invocation
+              against this target. Most commonly used for SFTP to
+              point at a non-default SSH identity file or known_hosts.
+            '';
+          };
+          environmentFile = mkOption {
+            type = types.nullOr types.path;
+            default = null;
+            example = "/run/secrets/restic-hetzner-env";
+            description = ''
+              Path to an env file (typically sops-decrypted under
+              /run/secrets/) holding credentials like
+              AWS_ACCESS_KEY_ID, B2_ACCOUNT_ID, etc. Sourced into the
+              restic unit's environment at startup. Null for local
+              paths and for SFTP-by-key (key path goes in
+              `extraOptions`).
+            '';
           };
         };
       }
@@ -430,8 +484,8 @@ in
             Declared targets: ${lib.concatStringsSep ", " (lib.attrNames config.nori.backupTargets)}
 
             Either declare the missing target (top-level
-            `nori.backupTargets.<name> = { repoBase = ...; }`) or fix
-            the typo on the offending job.
+            `nori.backupTargets.<name> = { repository = ...; description = ...; }`)
+            or fix the typo on the offending job.
           '';
         }
         {
@@ -456,10 +510,13 @@ in
             cfg,
             target,
           }:
+          let
+            tgt = config.nori.backupTargets.${target};
+          in
           lib.nameValuePair "${jobName}-${target}" {
             paths = cfg.include;
             inherit (cfg) exclude;
-            repository = "${config.nori.backupTargets.${target}.repoBase}/${jobName}";
+            repository = "${tgt.repository}/${jobName}";
             passwordFile = config.sops.secrets.restic-password.path;
             initialize = true;
             backupPrepareCommand = cfg.prepareCommand;
@@ -468,6 +525,7 @@ in
               Persistent = true;
             };
             inherit (cfg) pruneOpts;
+            inherit (tgt) extraOptions environmentFile;
           }
         ) activePairs
       );

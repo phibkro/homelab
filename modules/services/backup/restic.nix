@@ -18,7 +18,7 @@ let
         let
           targets = if cfg.targets == null then lib.attrNames config.nori.backupTargets else cfg.targets;
         in
-        map (t: "${jobName} ${t} ${config.nori.backupTargets.${t}.repoBase}/${jobName}") targets
+        map (t: "${jobName} ${t} ${config.nori.backupTargets.${t}.repository}/${jobName}") targets
       ) activeJobs
     )
   );
@@ -75,11 +75,11 @@ in
   # Backup target registry — schema in modules/effects/backup.nix.
   nori.backupTargets = {
     onetouch = {
-      repoBase = "/mnt/backup";
+      repository = "/mnt/backup";
       description = "USB OneTouch external HDD — autofs lazy-mount; can survive workstation reboot.";
     };
     ironwolf = {
-      repoBase = "/mnt/backup-local";
+      repository = "/mnt/backup-local";
       description = "Always-mounted btrfs subvolume on the IronWolf media drive (@restic-local).";
     };
   };
