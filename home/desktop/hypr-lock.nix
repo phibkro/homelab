@@ -6,119 +6,104 @@ _: {
   # Idle ladder (desktop, no battery — skip dim-via-brightnessctl):
   #   10 min  → hyprlock directly  (see on-timeout note below)
   #   15 min  → hyprctl dispatch dpms off (monitor sleep)
-  #   30 min  → systemctl suspend (s2idle — pauses the user@1000 leak)
   #   on-resume → dpms on (re-wake monitor)
-  #
-  # Why suspend on a desktop: workstation has a known committed-RAM leak
-  # in user@1000 (see machines/workstation/default.nix MemoryHigh cap +
-  # ROADMAP #45). Suspending after 30 min idle freezes the leak — all
-  # userspace, including the offending process, stops accruing memory
-  # until wake. System services (Caddy, blocky, tailscaled) freeze too
-  # and resume from where they were on wake; from outside, the host is
-  # unreachable during suspend (this matches pi's gatus probes alerting
-  # — that's working as intended, see channel-splitting plan). Wake by
-  # power button or USB input.
   programs.hyprlock = {
-      enable = true;
-      settings = {
-        general = {
-          hide_cursor = true;
-          grace = 2; # ignore input for 2s after wake to avoid accidental unlock
-          ignore_empty_input = true;
-        };
-
-        background = [
-          {
-            path = "screenshot";
-            blur_passes = 3;
-            blur_size = 8;
-          }
-        ];
-
-        label = [
-          {
-            text = "$TIME";
-            color = "rgba(220, 220, 220, 1.0)";
-            font_size = 96;
-            font_family = "JetBrainsMono Nerd Font";
-            position = "0, 220";
-            halign = "center";
-            valign = "center";
-          }
-        ];
-
-        input-field = [
-          {
-            size = "320, 56";
-            position = "0, -120";
-            halign = "center";
-            valign = "center";
-            outline_thickness = 2;
-            dots_size = 0.3;
-            dots_spacing = 0.3;
-            fade_on_empty = true;
-            placeholder_text = "Password";
-            check_color = "rgba(204, 153, 255, 1.0)";
-          }
-        ];
+    enable = true;
+    settings = {
+      general = {
+        hide_cursor = true;
+        grace = 2; # ignore input for 2s after wake to avoid accidental unlock
+        ignore_empty_input = true;
       };
-    };
 
-    services.hypridle = {
-      enable = true;
-      settings = {
-        general = {
-          # Wrapped to prevent multiple lock instances stacking up.
-          # 1s sleep before exec guards against the home-manager
-          # activation race where hyprlock briefly isn't on PATH
-          # while user-profile symlinks swap — caught 2026-06-07 when
-          # a `just rebuild` immediately triggered the lock and
-          # hyprlock failed to spawn (Hyprland's "no lock app"
-          # fallback engaged + monitors stayed lit). The sleep is
-          # imperceptible at lock time; only matters during rebuilds.
-          lock_cmd = "pidof hyprlock || (sleep 1 && hyprlock)";
-          # Lock before suspending so wake lands on the lock screen.
-          before_sleep_cmd = "loginctl lock-session";
-          after_sleep_cmd = ''hyprctl dispatch 'hl.dsp.dpms("on")' '';
-          # Don't honor browser-tab ScreenSaver inhibits. Caught
-          # 2026-06-08: Zen browser held a "Playing video" inhibit
-          # overnight (backgrounded autoplay tab) while a user@1000
-          # leak climbed to 26.2G RSS + 21.5G swap peak and global-
-          # OOM'd at 01:53. Without sleep firing, the leak had
-          # unbounded runway. Browser autoplay shouldn't be able to
-          # keep the machine awake; if a real long-running task needs
-          # to run, use `systemd-inhibit` explicitly (logind path —
-          # not affected by this flag).
-          ignore_dbus_inhibit = true;
-        };
-        listener = [
-          {
-            timeout = 600; # 10 min → lock
-            # Invoke hyprlock directly rather than via `loginctl
-            # lock-session`: hypridle runs under the systemd user manager
-            # (user@1000), not pinned to the graphical logind session, so
-            # with multiple live sessions the Lock signal didn't reach
-            # hyprlock. `pidof` guard prevents stacking lock instances.
-            on-timeout = "pidof hyprlock || hyprlock";
-          }
-          {
-            timeout = 900; # 15 min → DPMS off (monitors enter standby)
-            # Lua-mode dispatcher syntax (configType="lua" in workstation/
-            # home.nix). The hyprlang-style `hyprctl dispatch dpms off`
-            # parses as `return hl.dispatch(dpms off)` in lua and fails
-            # silently with "')' expected near 'off'" — so the DPMS off
-            # call NEVER FIRED post-lua-migration; monitors stayed on at
-            # the lock screen drawing ~30-60W each. Caught 2026-06-07.
-            # Same shape as the popup-term breakage (gotcha-hyprland-lua-
-            # migration). Use the `hl.dsp.*` builder form.
-            on-timeout = ''hyprctl dispatch 'hl.dsp.dpms("off")' '';
-            on-resume = ''hyprctl dispatch 'hl.dsp.dpms("on")' '';
-          }
-          {
-            timeout = 1800; # 30 min → suspend (freezes the user@1000 leak)
-            on-timeout = "systemctl suspend";
-          }
-        ];
-      };
+      background = [
+        {
+          path = "screenshot";
+          blur_passes = 3;
+          blur_size = 8;
+        }
+      ];
+
+      label = [
+        {
+          text = "$TIME";
+          color = "rgba(220, 220, 220, 1.0)";
+          font_size = 96;
+          font_family = "JetBrainsMono Nerd Font";
+          position = "0, 220";
+          halign = "center";
+          valign = "center";
+        }
+      ];
+
+      input-field = [
+        {
+          size = "320, 56";
+          position = "0, -120";
+          halign = "center";
+          valign = "center";
+          outline_thickness = 2;
+          dots_size = 0.3;
+          dots_spacing = 0.3;
+          fade_on_empty = true;
+          placeholder_text = "Password";
+          check_color = "rgba(204, 153, 255, 1.0)";
+        }
+      ];
     };
+  };
+
+  services.hypridle = {
+    enable = true;
+    settings = {
+      general = {
+        # Wrapped to prevent multiple lock instances stacking up.
+        # 1s sleep before exec guards against the home-manager
+        # activation race where hyprlock briefly isn't on PATH
+        # while user-profile symlinks swap — caught 2026-06-07 when
+        # a `just rebuild` immediately triggered the lock and
+        # hyprlock failed to spawn (Hyprland's "no lock app"
+        # fallback engaged + monitors stayed lit). The sleep is
+        # imperceptible at lock time; only matters during rebuilds.
+        lock_cmd = "pidof hyprlock || (sleep 1 && hyprlock)";
+        # Lock before suspending so wake lands on the lock screen.
+        before_sleep_cmd = "loginctl lock-session";
+        after_sleep_cmd = ''hyprctl dispatch 'hl.dsp.dpms("on")' '';
+        # Don't honor browser-tab ScreenSaver inhibits. Caught
+        # 2026-06-08: Zen browser held a "Playing video" inhibit
+        # overnight (backgrounded autoplay tab) while a user@1000
+        # leak climbed to 26.2G RSS + 21.5G swap peak and global-
+        # OOM'd at 01:53. Without sleep firing, the leak had
+        # unbounded runway. Browser autoplay shouldn't be able to
+        # keep the machine awake; if a real long-running task needs
+        # to run, use `systemd-inhibit` explicitly (logind path —
+        # not affected by this flag).
+        ignore_dbus_inhibit = true;
+      };
+      listener = [
+        {
+          timeout = 600; # 10 min → lock
+          # Invoke hyprlock directly rather than via `loginctl
+          # lock-session`: hypridle runs under the systemd user manager
+          # (user@1000), not pinned to the graphical logind session, so
+          # with multiple live sessions the Lock signal didn't reach
+          # hyprlock. `pidof` guard prevents stacking lock instances.
+          on-timeout = "pidof hyprlock || hyprlock";
+        }
+        {
+          timeout = 900; # 15 min → DPMS off (monitors enter standby)
+          # Lua-mode dispatcher syntax (configType="lua" in workstation/
+          # home.nix). The hyprlang-style `hyprctl dispatch dpms off`
+          # parses as `return hl.dispatch(dpms off)` in lua and fails
+          # silently with "')' expected near 'off'" — so the DPMS off
+          # call NEVER FIRED post-lua-migration; monitors stayed on at
+          # the lock screen drawing ~30-60W each. Caught 2026-06-07.
+          # Same shape as the popup-term breakage (gotcha-hyprland-lua-
+          # migration). Use the `hl.dsp.*` builder form.
+          on-timeout = ''hyprctl dispatch 'hl.dsp.dpms("off")' '';
+          on-resume = ''hyprctl dispatch 'hl.dsp.dpms("on")' '';
+        }
+      ];
+    };
+  };
 }
