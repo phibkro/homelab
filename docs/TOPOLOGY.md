@@ -48,8 +48,8 @@ Failure domain independence: each host shares no storage, no PSU, no critical bo
 | Drive | OS / use | Notes |
 |---|---|---|
 | WD Black SN750 1TB NVMe | NixOS root | btrfs, six subvolumes, label `nixos`, disko-managed |
-| Corsair Force MP510 960GB NVMe | Backup + family replica | btrfs, label `mp510-backup`, disko-managed. `@backup-local` mounted at `/mnt/backup-local` (workstation's restic-local target, formerly the IronWolf `@restic-local` subvol — migrated 2026-06-11 P14); `@family-replica-*` for the nightly btrfs send/receive from aurora's `/mnt/family/*` (P15). Wiped from Windows on 2026-06-11 after operator extracted personal residue |
-| Seagate IronWolf Pro 4TB (USB) | Media storage | btrfs, four subvolumes after P14 (`@downloads`, `@photos`, `@home-videos`, `@projects`, `@library`, `@archive`, `@snapshots`), label `ironwolf-storage`, disko-managed. Hosts the irreplaceable tier until P10 rsync moves it to aurora's family-vault HDD; afterward only `@downloads` + `@streaming` remain workstation-resident |
+| Corsair Force MP510 960GB NVMe | Backup + family replica | btrfs, label `mp510-backup`, disko-managed. `@backup-local` mounted at `/mnt/backup-local` (workstation's restic-local target); `@family-replica-*` are the receive endpoints for aurora's `/mnt/family/*` send/receive. |
+| Seagate IronWolf Pro 4TB (USB) | Media storage | btrfs, label `ironwolf-storage`, disko-managed. Six subvolumes: `@downloads`, `@photos`, `@home-videos`, `@projects`, `@library`, `@archive`, `@snapshots`. |
 
 **NVMe enumeration is unstable across reboots.** `nvme0n1` was NixOS root at install time; post-reboot the drives swapped. Disko configs target `/dev/disk/by-id/...` paths for this reason. See `.claude/skills/gotcha-nvme-enumeration/`.
 

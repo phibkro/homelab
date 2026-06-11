@@ -100,7 +100,7 @@ Services pinned by GPU or bulk storage stay. Family-tier + photo/book/music read
 | Target | Current shape | Destination shape |
 |---|---|---|
 | `onetouch` | workstation: `repository = "/mnt/backup"` (local ext4) | aurora: `repository = "/mnt/backup"` (local ext4, same drive moved physically); workstation: `repository = "sftp:restic@aurora.saola-matrix.ts.net:/mnt/backup"` (remote SFTP) |
-| `ironwolf` | workstation: `repository = "/mnt/backup-local"` (IronWolf @restic-local subvol) | **Renamed to `local-fast`**; workstation: `repository = "/mnt/backup-local"` (MP510 btrfs); aurora may declare its own `local-fast` on the HDD if local-restic-mirror tier wanted there too |
+| `ironwolf` | workstation: `repository = "/mnt/backup-local"` (IronWolf @restic-local subvol) | **Renamed to `mp510`**; workstation: `repository = "/mnt/backup-local"` (MP510 btrfs `@backup-local` subvol; data rsynced over from the IronWolf @restic-local subvol then the source dropped — see P14 ✓ landed below) |
 | `hetzner` | n/a (ROADMAP item) | Future: workstation + aurora both declare `repository = "sftp:uXXXXX@uXXXXX.your-storagebox.de:23/restic"` |
 
 ---

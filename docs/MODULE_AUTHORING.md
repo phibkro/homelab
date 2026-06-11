@@ -41,7 +41,7 @@ docs/
   decisions/                     # ADRs — hard-to-reverse decisions, dated
   runbooks/                      # per-failure recovery
   superpowers/                   # per-feature specs + plans
-  TESTING.md                     # runtime introspection framework + recipes
+  RUNTIME_TESTS.md               # runtime introspection framework + recipes
   <REFERENCE>.md                 # tier-2 reference docs (see CLAUDE.md routing)
 .claude/
   skills/                        # procedure skills (load on demand)
