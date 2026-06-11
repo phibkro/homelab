@@ -67,15 +67,44 @@
     users.nori.imports = [ ./home.nix ];
   };
 
-  # Service-placement registry (aurora migration P3). Reproduces today's
-  # aurora activation set — node-exporter + nvidia-gpu-exporter (the
-  # immich-ml leak watch from the start), plus the restic-target SFTP
-  # user landed during P13. Family-tier services arrive at P12 cutover.
+  # Service-placement registry. Pre-existing aurora services + the
+  # ADR-0002 P8 family-tier services standing up empty. Per the
+  # ADR-0003 addendum, runsOn (per route) stays at "workstation" until
+  # state is migrated and the backend is bound for cross-host proxy.
+  # Aurora's family-tier services initialize empty databases here; the
+  # operator runs the state migration (dump on workstation, sftp,
+  # restore on aurora) before flipping runsOn + Tailscale split-DNS.
   nori.services = {
     node-exporter.enable = true;
     nvidia-gpu-exporter.enable = true;
     restic-target.enable = true;
+
+    # P8 bellwether: smallest stateful family-tier service. Initializes
+    # an empty SQLite DB; operator-driven state migration replaces it
+    # with workstation's dump before P12 cutover. Runs loopback-only
+    # on aurora today — testable via `ssh aurora curl`; reachable via
+    # vault.home.phibkro.org only after runsOn flip + bind change.
+    vaultwarden.enable = true;
   };
+
+  # Backup infrastructure for aurora's family-tier services. The cross-
+  # cutting `modules/services/backup/restic.nix` is gated workstation-
+  # only by data ownership; aurora declares its own target here. The
+  # OneTouch HDD physically lives on aurora (post-P13), so aurora's
+  # own backups land LOCAL at /mnt/backup — bypassing SFTP. Remote
+  # clients (workstation, pi) keep using the SFTP target declared in
+  # modules/services/backup/restic-target.nix.
+  sops.secrets.restic-password = {
+    owner = "root";
+    mode = "0400";
+  };
+  nori.backupTargets.onetouch = {
+    repository = "/mnt/backup";
+    description = "Aurora-local OneTouch HDD (P13 dest). Aurora's own restic backups write here directly; remote hosts reach the same drive via SFTP per restic-target.nix.";
+  };
+  # Pattern C2 prepareCommands (e.g. vaultwarden's sqlite VACUUM INTO)
+  # need a writable staging dir.
+  systemd.tmpfiles.rules = [ "d /var/backup 0755 root root -" ];
 
   # ── Boot ───────────────────────────────────────────────────────────
   # 2016 laptop with UEFI — assume systemd-boot. If first boot reveals
