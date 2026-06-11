@@ -79,12 +79,7 @@
     nvidia-gpu-exporter.enable = true;
     restic-target.enable = true;
     ntfy-notify.enable = true; # OnFailure → notify@ alerts for aurora-side units
-    # beszel-agent — pending. Each host needs its own
-    # `beszel-agent-key-<hostname>` sops secret (minted via the Beszel
-    # hub admin UI). Operator: visit https://metrics.${nori.domain},
-    # System → Add → name `aurora` → copy key → paste as
-    # `beszel-agent-key-aurora` into `sops secrets/secrets.yaml`,
-    # then flip this line to `true` and rebuild.
+    beszel-agent.enable = true; # high-level metrics → pi's Beszel hub
 
     # P8 family-tier — small, sqlite-only services standing up empty.
     # State migration + cutover are operator-driven per service; see
@@ -139,6 +134,7 @@
     "d /mnt/family/library            02775 root  media -"
     "d /mnt/family/library/books      02775 root  media -"
     "d /mnt/family/library/comics     02775 root  media -"
+    "d /mnt/family/library/music      02775 root  media -"
   ];
 
   # `media` group needs to exist for the tmpfiles + calibre-web/komga
