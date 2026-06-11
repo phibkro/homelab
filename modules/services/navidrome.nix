@@ -107,10 +107,10 @@ lib.mkMerge [
     systemd.services.navidrome.environment = {
       ND_AUTH_OIDC_ENABLED = "true";
       ND_AUTH_OIDC_PROVIDERNAME = "Authelia";
-      ND_AUTH_OIDC_DISCOVERYURL = "https://auth.nori.lan/.well-known/openid-configuration";
+      ND_AUTH_OIDC_DISCOVERYURL = "https://auth.${config.nori.domain}/.well-known/openid-configuration";
       ND_AUTH_OIDC_CLIENTID = "audio";
       # ND_AUTH_OIDC_CLIENTSECRET injected via EnvironmentFile above.
-      ND_AUTH_OIDC_REDIRECTURL = "https://audio.nori.lan/auth/callback";
+      ND_AUTH_OIDC_REDIRECTURL = "https://audio.${config.nori.domain}/auth/callback";
       ND_AUTH_OIDC_USERNAMECLAIM = "preferred_username";
     };
 

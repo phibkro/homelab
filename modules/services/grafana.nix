@@ -67,10 +67,10 @@ lib.mkMerge [
         server = {
           http_addr = "127.0.0.1";
           http_port = 3000;
-          # Caddy terminates TLS at ops.nori.lan and proxies here; tell
-          # Grafana the public URL so its self-generated links don't
-          # point at 127.0.0.1.
-          root_url = "https://ops.nori.lan/";
+          # Caddy terminates TLS at ops.<nori.domain> and proxies here;
+          # tell Grafana the public URL so its self-generated links
+          # don't point at 127.0.0.1.
+          root_url = "https://ops.${config.nori.domain}/";
           enforce_domain = false;
         };
 

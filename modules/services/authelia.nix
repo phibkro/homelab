@@ -129,15 +129,15 @@ lib.mkMerge [
         };
 
         session = {
-          # Authelia served via Caddy reverse proxy at https://auth.nori.lan
-          # — Caddy terminates TLS via its internal CA, proxies to
-          # Authelia's local HTTP on port 9091. Cookie domain matches
-          # the parent name so sessions can carry across other
-          # *.nori.lan subdomains for SSO scope (Phase B).
+          # Authelia served via Caddy reverse proxy at
+          # https://auth.<nori.domain> — Caddy terminates TLS,
+          # proxies to Authelia's local HTTP on port 9091. Cookie
+          # domain matches the parent name so sessions can carry
+          # across the other *.<nori.domain> subdomains for SSO scope.
           cookies = [
             {
-              domain = "nori.lan";
-              authelia_url = "https://auth.nori.lan";
+              domain = config.nori.domain;
+              authelia_url = "https://auth.${config.nori.domain}";
               name = "authelia_session";
             }
           ];

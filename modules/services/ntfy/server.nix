@@ -28,7 +28,7 @@ lib.mkMerge [
     services.ntfy-sh = {
       enable = true;
       settings = {
-        base-url = "https://alert.nori.lan";
+        base-url = "https://alert.${config.nori.domain}";
         listen-http = ":8081";
         auth-default-access = "read-write";
         behind-proxy = false;

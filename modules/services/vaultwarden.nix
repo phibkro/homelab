@@ -75,12 +75,12 @@ lib.mkMerge [
       enable = true;
       dbBackend = "sqlite"; # default; explicit. Postgres adds infra without value at single-user.
       config = {
-        # Network — Caddy at vault.nori.lan reverse-proxies to localhost.
-        # The upstream default ROCKET_ADDRESS is `::1` (IPv6 localhost);
-        # we switch to IPv4 so Caddy's reverse_proxy hits the same
-        # family the lan-route abstraction expects (host = "127.0.0.1"
-        # by default).
-        DOMAIN = "https://vault.nori.lan";
+        # Network — Caddy at vault.<nori.domain> reverse-proxies to
+        # localhost. The upstream default ROCKET_ADDRESS is `::1` (IPv6
+        # localhost); we switch to IPv4 so Caddy's reverse_proxy hits
+        # the same family the lan-route abstraction expects
+        # (host = "127.0.0.1" by default).
+        DOMAIN = "https://vault.${config.nori.domain}";
         ROCKET_ADDRESS = "127.0.0.1";
         ROCKET_PORT = 8222;
 
@@ -104,7 +104,7 @@ lib.mkMerge [
         # takes down Authelia would also take down Vaultwarden, but the
         # asymmetric case (Authelia broken, Vaultwarden fine) is real.
         SSO_ENABLED = true;
-        SSO_AUTHORITY = "https://auth.nori.lan";
+        SSO_AUTHORITY = "https://auth.${config.nori.domain}";
         SSO_CLIENT_ID = "vault";
         # SSO_CLIENT_SECRET injected via EnvironmentFile (sops template);
         # see systemd.services.vaultwarden.serviceConfig below.

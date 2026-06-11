@@ -71,7 +71,7 @@ lib.mkMerge [
         DEFAULT_MODELS = "";
         # OAUTH_CLIENT_SECRET is injected via EnvironmentFile below
         # (sops template auto-declared by `nori.lanRoutes.chat.oidc`).
-        OPENID_PROVIDER_URL = "https://auth.nori.lan/.well-known/openid-configuration";
+        OPENID_PROVIDER_URL = "https://auth.${config.nori.domain}/.well-known/openid-configuration";
         OAUTH_CLIENT_ID = "chat";
         OAUTH_PROVIDER_NAME = "Authelia";
         ENABLE_OAUTH_SIGNUP = "True";

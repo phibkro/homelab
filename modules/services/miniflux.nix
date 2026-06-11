@@ -57,19 +57,19 @@ lib.mkMerge [
       createDatabaseLocally = true;
 
       config = {
-        # Caddy at news.nori.lan reverse-proxies to localhost:8087.
+        # Caddy at news.<nori.domain> reverse-proxies to localhost:8087.
         # 8087 is the next free port in the lanRoutes table (between
         # 8086 `home` and 8090 `metrics`).
         LISTEN_ADDR = "127.0.0.1:8087";
-        BASE_URL = "https://news.nori.lan";
+        BASE_URL = "https://news.${config.nori.domain}";
 
         # OIDC via Authelia. Non-secret OIDC vars live here; the secret
         # itself is injected via the EnvironmentFile (sops template)
         # below alongside the admin credentials.
         OAUTH2_PROVIDER = "oidc";
         OAUTH2_CLIENT_ID = "news";
-        OAUTH2_REDIRECT_URL = "https://news.nori.lan/oauth2/oidc/callback";
-        OAUTH2_OIDC_DISCOVERY_ENDPOINT = "https://auth.nori.lan";
+        OAUTH2_REDIRECT_URL = "https://news.${config.nori.domain}/oauth2/oidc/callback";
+        OAUTH2_OIDC_DISCOVERY_ENDPOINT = "https://auth.${config.nori.domain}";
         # Auto-create miniflux user on first SSO. With this off, the
         # admin would have to pre-create every family member's account
         # manually — the whole point of OIDC integration is to skip

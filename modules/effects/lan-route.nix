@@ -33,6 +33,35 @@ in
   #     };
   #   };
 
+  options.nori.domain = mkOption {
+    type = types.str;
+    default = "home.phibkro.org";
+    description = ''
+      Parent DNS domain for the homelab's `*.<domain>` services. Every
+      service module that previously hardcoded a `nori.lan` URL reads
+      `config.nori.domain` instead — vhost names, Authelia cookie domain,
+      Authelia issuer URL, OIDC redirect URIs, Caddy ACME wildcard, etc.
+
+      Split-horizon DNS: Blocky is authoritative for `*.<domain>` on the
+      LAN/tailnet (resolves to `nori.lanIp`); public DNS for the same
+      names has no A records, so the homelab is reachable only on the
+      LAN/tailnet. Caddy obtains real Let's Encrypt certs via DNS-01
+      using the existing Cloudflare token in sops, so family devices
+      see a green lock with no per-device CA install.
+
+      Renaming requires:
+        - Family/operator bookmark updates from old to new domain.
+        - Authelia OIDC client redirect URI re-trust (each client
+          declared via `nori.lanRoutes.<X>.oidc` re-emits its
+          authorized URIs from `''${name}.''${domain}` automatically).
+        - Tailscale DNS-search-domain push to include the new domain
+          so unqualified hostnames keep resolving on tailnet clients.
+
+      See ADR-0004 for the rationale (pre-existing phibkro.org +
+      Cloudflare-hosted DNS made the LE path cheaper than internal CA).
+    '';
+  };
+
   options.nori.lanIp = mkOption {
     type = types.str;
     default =
@@ -520,14 +549,24 @@ in
         }
       ];
 
-      services.caddy.virtualHosts = mapAttrs' (
-        name: cfg:
-        nameValuePair "${name}.nori.lan" {
-          extraConfig =
+      # Single wildcard vhost matching `*.<nori.domain>`. Inside, per-
+      # route `@host` matchers + `handle` blocks route each subdomain
+      # to its backend. Why one block instead of per-route vhosts:
+      # Caddy issues one cert per vhost name by default, so 30 vhosts
+      # = 30 separate ACME flows = thousands of CF API calls every
+      # renewal cycle. A single wildcard cert (`*.<nori.domain>`)
+      # covers every subdomain in ONE issuance and ONE renewal — the
+      # ACME volume drops by 30× and rate-limit risk effectively
+      # disappears. Wildcards require DNS-01 (which we already use).
+      services.caddy.virtualHosts."*.${config.nori.domain}".extraConfig =
+        let
+          routes = config.nori.lanRoutes;
+          # Per-route handle block: `@<name> host <name>.<domain>` + handle.
+          # forwardAuth is per-route, so its block lives inside the handle.
+          routeBlock =
+            name: cfg:
             let
-              # One `reverse_proxy { ... }` block so Host + Origin
-              # (and future header rewrites) compose inside one directive.
-              headerLines = lib.concatStringsSep "\n                  " (
+              headerLines = lib.concatStringsSep "\n          " (
                 lib.optional (cfg.upstreamHostHeader != null) "header_up Host ${cfg.upstreamHostHeader}"
                 ++ lib.optional (cfg.upstreamOriginHeader != null) "header_up Origin ${cfg.upstreamOriginHeader}"
               );
@@ -536,30 +575,28 @@ in
                   ${headerLines}
                 }'';
               backend = "reverse_proxy ${cfg.scheme}://${routeHost cfg}:${toString cfg.port}${headerBlock}";
-              # Forward-auth block: Caddy hits Authelia's /api/verify
-              # for every request matching @authNeeded (everything not
-              # in exemptPaths). copy_headers propagates the Authelia
-              # response headers to the upstream so the app could read
-              # Remote-User / Remote-Email if it ever wanted to —
-              # currently no app does, but harmless to forward.
               faBlock = lib.optionalString (cfg.forwardAuth != null) ''
-                @authNeeded {
+                @${name}AuthNeeded {
+                  host ${name}.${config.nori.domain}
                   not path ${lib.concatStringsSep " " cfg.forwardAuth.exemptPaths}
                 }
-                forward_auth @authNeeded http://127.0.0.1:9091 {
-                  uri /api/verify?rd=https://auth.nori.lan
+                forward_auth @${name}AuthNeeded http://127.0.0.1:9091 {
+                  uri /api/verify?rd=https://auth.${config.nori.domain}
                   copy_headers Remote-User Remote-Email Remote-Name Remote-Groups
                 }
               '';
             in
             ''
-              ${faBlock}${backend}
+              @${name} host ${name}.${config.nori.domain}
+              handle @${name} {
+                ${faBlock}${backend}
+              }
             '';
-        }
-      ) config.nori.lanRoutes;
+        in
+        lib.concatStringsSep "\n" (lib.mapAttrsToList routeBlock routes);
 
       services.blocky.settings.customDNS.mapping = mapAttrs' (
-        name: _: nameValuePair "${name}.nori.lan" config.nori.lanIp
+        name: _: nameValuePair "${name}.${config.nori.domain}" config.nori.lanIp
       ) config.nori.lanRoutes;
 
       # Tailnet firewall: open backend ports for opt-in routes only.
