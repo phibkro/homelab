@@ -24,84 +24,87 @@ let
   # dropped — only the critical alert fires now.
   critPct = 95;
 in
-{
-  # disk-alert — periodic free-space watchdog. Fires an ntfy
-  # notification when any monitored filesystem crosses the critical
-  # threshold.
-  #
-  # WHY: btrbk retention works in the steady state (proven by the
-  # 2026-05-14 incident's btrbk-media run pruning correctly once we'd
-  # freed space), but cannot make progress at 100% full — even
-  # subvolume delete needs metadata reserve. Combined with
-  # qBittorrent's deliberate incomplete-on-NVMe / complete-on-HDD
-  # split (qbittorrent.nix), a full @downloads silently wedges
-  # partials onto the SN750 until both drives are wedged.
-  #
-  # This module is the early-warning that catches that class of
-  # problem before services break.
-  #
-  # Why a separate posting script rather than reusing notify@: the
-  # template's message format is fixed to "Unit X failed on host"
-  # which is wrong for a disk-usage event. The curl-to-ntfy.sh
-  # pattern itself is shared with notify.nix.
+lib.mkMerge [
+  { nori.services.disk-alert.tags = [ "observability" ]; }
+  (lib.mkIf config.nori.services.disk-alert.enabled {
+    # disk-alert — periodic free-space watchdog. Fires an ntfy
+    # notification when any monitored filesystem crosses the critical
+    # threshold.
+    #
+    # WHY: btrbk retention works in the steady state (proven by the
+    # 2026-05-14 incident's btrbk-media run pruning correctly once we'd
+    # freed space), but cannot make progress at 100% full — even
+    # subvolume delete needs metadata reserve. Combined with
+    # qBittorrent's deliberate incomplete-on-NVMe / complete-on-HDD
+    # split (qbittorrent.nix), a full @downloads silently wedges
+    # partials onto the SN750 until both drives are wedged.
+    #
+    # This module is the early-warning that catches that class of
+    # problem before services break.
+    #
+    # Why a separate posting script rather than reusing notify@: the
+    # template's message format is fixed to "Unit X failed on host"
+    # which is wrong for a disk-usage event. The curl-to-ntfy.sh
+    # pattern itself is shared with notify.nix.
 
-  systemd.services.disk-alert = {
-    description = "Check disk free space and alert via ntfy if low";
-    serviceConfig = {
-      Type = "oneshot";
-      User = "root"; # reads /run/secrets/ntfy-channel (mode 0444)
+    systemd.services.disk-alert = {
+      description = "Check disk free space and alert via ntfy if low";
+      serviceConfig = {
+        Type = "oneshot";
+        User = "root"; # reads /run/secrets/ntfy-channel (mode 0444)
+      };
+      unitConfig.OnFailure = [ "notify@disk-alert.service" ];
+      path = [
+        pkgs.coreutils
+        pkgs.curl
+      ];
+      script = ''
+        set -eu
+        CHANNEL=$(cat ${config.sops.secrets.ntfy-channel.path})
+
+        df --output=target,pcent ${lib.concatStringsSep " " mountpoints} \
+          | tail -n +2 \
+          | while read -r mount pct_raw; do
+              pct=''${pct_raw%\%}
+              if [ "$pct" -ge ${toString critPct} ]; then
+                level=critical
+                prio=urgent
+                tags="rotating_light,sos"
+              else
+                continue
+              fi
+              curl -fsS \
+                -H "Title: ${config.networking.hostName}: disk $level ($mount $pct%)" \
+                -H "Priority: $prio" \
+                -H "Tags: $tags" \
+                -d "Filesystem $mount on ${config.networking.hostName} is $pct% used. See docs/runbooks/storage-full.md." \
+                "https://ntfy.sh/$CHANNEL" || true
+            done
+      '';
     };
-    unitConfig.OnFailure = [ "notify@disk-alert.service" ];
-    path = [
-      pkgs.coreutils
-      pkgs.curl
-    ];
-    script = ''
-      set -eu
-      CHANNEL=$(cat ${config.sops.secrets.ntfy-channel.path})
 
-      df --output=target,pcent ${lib.concatStringsSep " " mountpoints} \
-        | tail -n +2 \
-        | while read -r mount pct_raw; do
-            pct=''${pct_raw%\%}
-            if [ "$pct" -ge ${toString critPct} ]; then
-              level=critical
-              prio=urgent
-              tags="rotating_light,sos"
-            else
-              continue
-            fi
-            curl -fsS \
-              -H "Title: ${config.networking.hostName}: disk $level ($mount $pct%)" \
-              -H "Priority: $prio" \
-              -H "Tags: $tags" \
-              -d "Filesystem $mount on ${config.networking.hostName} is $pct% used. See docs/runbooks/storage-full.md." \
-              "https://ntfy.sh/$CHANNEL" || true
-          done
-    '';
-  };
-
-  systemd.timers.disk-alert = {
-    description = "Periodic disk-alert check";
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      # 5 min after boot, then every 30 min. Cheap; df is one syscall.
-      OnBootSec = "5min";
-      OnUnitActiveSec = "30min";
-      # If we miss runs (suspended laptop, etc.) don't fire a stampede.
-      AccuracySec = "1min";
+    systemd.timers.disk-alert = {
+      description = "Periodic disk-alert check";
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        # 5 min after boot, then every 30 min. Cheap; df is one syscall.
+        OnBootSec = "5min";
+        OnUnitActiveSec = "30min";
+        # If we miss runs (suspended laptop, etc.) don't fire a stampede.
+        AccuracySec = "1min";
+      };
     };
-  };
 
-  nori.backups.disk-alert.skip = "Stateless — reads df and POSTs to ntfy.sh on threshold breach.";
+    nori.backups.disk-alert.skip = "Stateless — reads df and POSTs to ntfy.sh on threshold breach.";
 
-  # df on /mnt/media/library needs the mountpoint visible inside the
-  # namespace; the baseline `/mnt:ro` tmpfs would otherwise mask it.
-  # statfs() through a read-only bind reports the underlying btrfs
-  # usage correctly. Root mount (`/`) is unaffected by the baseline.
-  # ntfy-channel under /run/secrets stays reachable — /run isn't
-  # restricted by ProtectHome.
-  nori.harden.disk-alert = {
-    readOnlyBinds = [ "/mnt/media/library" ];
-  };
-}
+    # df on /mnt/media/library needs the mountpoint visible inside the
+    # namespace; the baseline `/mnt:ro` tmpfs would otherwise mask it.
+    # statfs() through a read-only bind reports the underlying btrfs
+    # usage correctly. Root mount (`/`) is unaffected by the baseline.
+    # ntfy-channel under /run/secrets stays reachable — /run isn't
+    # restricted by ProtectHome.
+    nori.harden.disk-alert = {
+      readOnlyBinds = [ "/mnt/media/library" ];
+    };
+  })
+]

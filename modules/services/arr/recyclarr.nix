@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   pkgs,
   ...
@@ -23,67 +24,70 @@ let
   ];
   configFlags = lib.concatMapStringsSep " " (f: "--config ${f}") configs;
 in
-{
-  # Recyclarr — syncs TRaSH-guide quality profiles + custom formats into
-  # Sonarr and Radarr on a weekly cadence. No UI; pure batch job.
-  #
-  # ── Bootstrap ────────────────────────────────────────────────────────
-  # API keys live in /etc/recyclarr.env (gitignored-.env pattern, NOT
-  # sops): mode 0400 root:root, two lines —
-  #   SONARR_API_KEY=...
-  #   RADARR_API_KEY=...
-  # Each *arr's API key is at Settings → General → API Key in their UI,
-  # or directly in /var/lib/{sonarr,radarr}/config.xml under <ApiKey>.
-  # Sops would be cleaner if we ever rotate often; until then the env
-  # file is one-shot operator setup.
-  #
-  # First sync after rebuild:
-  #   sudo systemctl start recyclarr-sync.service
-  #   just show-logs recyclarr-sync
-  #
-  # In Sonarr/Radarr, then set each tracked series/movie to one of the
-  # newly-created profiles (`WEB-1080p`, `WEB-2160p`, `HD-Bluray-Web`,
-  # `UHD-Bluray-Web`). Recyclarr only creates the profiles + custom
-  # formats; assignment per-item stays operator-controlled.
-  #
-  # ── Cadence ──────────────────────────────────────────────────────────
-  # Wednesday 04:30 + ~30min jitter. TRaSH guides update slowly (days-
-  # weeks); weekly is plenty. Persistent=true catches missed runs after
-  # downtime.
+lib.mkMerge [
+  { nori.services.recyclarr.tags = [ "media-server" ]; }
+  (lib.mkIf config.nori.services.recyclarr.enabled {
+    # Recyclarr — syncs TRaSH-guide quality profiles + custom formats into
+    # Sonarr and Radarr on a weekly cadence. No UI; pure batch job.
+    #
+    # ── Bootstrap ────────────────────────────────────────────────────────
+    # API keys live in /etc/recyclarr.env (gitignored-.env pattern, NOT
+    # sops): mode 0400 root:root, two lines —
+    #   SONARR_API_KEY=...
+    #   RADARR_API_KEY=...
+    # Each *arr's API key is at Settings → General → API Key in their UI,
+    # or directly in /var/lib/{sonarr,radarr}/config.xml under <ApiKey>.
+    # Sops would be cleaner if we ever rotate often; until then the env
+    # file is one-shot operator setup.
+    #
+    # First sync after rebuild:
+    #   sudo systemctl start recyclarr-sync.service
+    #   just show-logs recyclarr-sync
+    #
+    # In Sonarr/Radarr, then set each tracked series/movie to one of the
+    # newly-created profiles (`WEB-1080p`, `WEB-2160p`, `HD-Bluray-Web`,
+    # `UHD-Bluray-Web`). Recyclarr only creates the profiles + custom
+    # formats; assignment per-item stays operator-controlled.
+    #
+    # ── Cadence ──────────────────────────────────────────────────────────
+    # Wednesday 04:30 + ~30min jitter. TRaSH guides update slowly (days-
+    # weeks); weekly is plenty. Persistent=true catches missed runs after
+    # downtime.
 
-  systemd.services.recyclarr-sync = {
-    description = "Sync TRaSH-guide profiles + custom formats into Sonarr/Radarr";
-    after = [
-      "network-online.target"
-      "sonarr.service"
-      "radarr.service"
-    ];
-    wants = [ "network-online.target" ];
+    systemd.services.recyclarr-sync = {
+      description = "Sync TRaSH-guide profiles + custom formats into Sonarr/Radarr";
+      after = [
+        "network-online.target"
+        "sonarr.service"
+        "radarr.service"
+      ];
+      wants = [ "network-online.target" ];
 
-    environment = {
-      RECYCLARR_CONFIG_DIR = "/var/lib/recyclarr";
+      environment = {
+        RECYCLARR_CONFIG_DIR = "/var/lib/recyclarr";
+      };
+
+      serviceConfig = {
+        Type = "oneshot";
+        DynamicUser = true;
+        StateDirectory = "recyclarr";
+        EnvironmentFile = "/etc/recyclarr.env";
+        ExecStart = "${pkgs.recyclarr}/bin/recyclarr sync ${configFlags}";
+      };
     };
 
-    serviceConfig = {
-      Type = "oneshot";
-      DynamicUser = true;
-      StateDirectory = "recyclarr";
-      EnvironmentFile = "/etc/recyclarr.env";
-      ExecStart = "${pkgs.recyclarr}/bin/recyclarr sync ${configFlags}";
+    systemd.timers.recyclarr-sync = {
+      description = "Weekly Recyclarr sync";
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnCalendar = "Wed 04:30";
+        Persistent = true;
+        RandomizedDelaySec = "30m";
+      };
     };
-  };
 
-  systemd.timers.recyclarr-sync = {
-    description = "Weekly Recyclarr sync";
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnCalendar = "Wed 04:30";
-      Persistent = true;
-      RandomizedDelaySec = "30m";
-    };
-  };
+    nori.harden.recyclarr-sync = { };
 
-  nori.harden.recyclarr-sync = { };
-
-  nori.backups.recyclarr.skip = "stateless — config in store, cache re-derivable, profile state lives in sonarr/radarr backups";
-}
+    nori.backups.recyclarr.skip = "stateless — config in store, cache re-derivable, profile state lives in sonarr/radarr backups";
+  })
+]

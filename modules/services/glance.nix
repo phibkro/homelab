@@ -31,152 +31,160 @@ let
 
   inGroup = g: lib.filterAttrs (_: r: r.dashboard.group == g) dashed;
 in
-{
-  # Glance — family-facing landing page at home.nori.lan.
-  #
-  # Three-column layout (small | full | small) — desktop side-by-side,
-  # phone stacks as scrollable sections.
-  #
-  #   Status   (col 1, small)  observational — calendar, weather, host stats
-  #   Apps     (col 2, full)   navigation — grouped bookmarks for *.nori.lan
-  #   Read     (col 3, small)  consumption — Twitch live-state, RSS
-  #
-  # Cross-host stats (Pi) and service uptime monitoring intentionally
-  # NOT inline — Beszel (Pi-hosted) is the canonical stats plane (it
-  # survives station outages which a station-hosted widget cannot);
-  # Gatus is the canonical uptime monitor. Both reachable from the
-  # Admin bookmark group.
-  #
-  # Default port 8080 collides with Open WebUI; remapped to 8086.
-  #
-  # Icon prefixes (declared per-service): si:<slug> (Simple Icons) or
-  # sh:<slug> (selfh.st icons — has homelab brands Simple Icons doesn't).
-  #
-  # Glance docs: https://github.com/glanceapp/glance
-  services.glance = {
-    enable = true;
-    openFirewall = false;
-    settings = {
-      server = {
-        host = "127.0.0.1";
-        port = 8086;
+lib.mkMerge [
+  {
+    nori.services.glance.tags = [
+      "family-tier"
+      "stateless"
+    ];
+  }
+  (lib.mkIf config.nori.services.glance.enabled {
+    # Glance — family-facing landing page at home.nori.lan.
+    #
+    # Three-column layout (small | full | small) — desktop side-by-side,
+    # phone stacks as scrollable sections.
+    #
+    #   Status   (col 1, small)  observational — calendar, weather, host stats
+    #   Apps     (col 2, full)   navigation — grouped bookmarks for *.nori.lan
+    #   Read     (col 3, small)  consumption — Twitch live-state, RSS
+    #
+    # Cross-host stats (Pi) and service uptime monitoring intentionally
+    # NOT inline — Beszel (Pi-hosted) is the canonical stats plane (it
+    # survives station outages which a station-hosted widget cannot);
+    # Gatus is the canonical uptime monitor. Both reachable from the
+    # Admin bookmark group.
+    #
+    # Default port 8080 collides with Open WebUI; remapped to 8086.
+    #
+    # Icon prefixes (declared per-service): si:<slug> (Simple Icons) or
+    # sh:<slug> (selfh.st icons — has homelab brands Simple Icons doesn't).
+    #
+    # Glance docs: https://github.com/glanceapp/glance
+    services.glance = {
+      enable = true;
+      openFirewall = false;
+      settings = {
+        server = {
+          host = "127.0.0.1";
+          port = 8086;
+        };
+        pages = [
+          {
+            name = "Home";
+            hide-desktop-navigation = true;
+            columns = [
+              # ============== Col 1 — Status ==============
+              {
+                size = "small";
+                widgets = [
+                  {
+                    type = "calendar";
+                    first-day-of-week = "monday";
+                  }
+                  {
+                    type = "weather";
+                    location = "Oslo, Norway";
+                    units = "metric";
+                    hour-format = "24h";
+                  }
+                  # Workstation host stats — complements Pi-hosted Beszel.
+                  {
+                    type = "server-stats";
+                    servers = [
+                      {
+                        type = "local";
+                        name = "workstation";
+                      }
+                    ];
+                  }
+                ];
+              }
+
+              # ============== Col 2 — Apps / Services ==============
+              # Bookmarks-only — service uptime status was previously
+              # rendered here as a `monitor` widget but is duplicated by
+              # the dedicated Gatus instance (linked from the Admin
+              # bookmark group). Removing the inline widget de-clutters
+              # the family-facing landing page.
+              {
+                size = "full";
+                widgets = [
+                  {
+                    type = "bookmarks";
+                    groups = map (g: {
+                      title = g;
+                      links = lib.mapAttrsToList toBookmarkLink (inGroup g);
+                    }) groupOrder;
+                  }
+                ];
+              }
+
+              # ============== Col 3 — Read ==============
+              {
+                size = "small";
+                widgets = [
+                  # Twitch live-state — surfaces a thumbnail + viewer
+                  # count when channels are streaming, "offline" line
+                  # otherwise. Time-sensitive (state changes per stream
+                  # session), so this lives ABOVE the RSS feeds where
+                  # the eye lands first.
+                  {
+                    type = "twitch-channels";
+                    channels = [
+                      "clintstevens"
+                      "jerma985"
+                    ];
+                  }
+                  {
+                    type = "group";
+                    widgets = [
+                      {
+                        type = "rss";
+                        title = "Papers";
+                        limit = 10;
+                        cache = "12h";
+                        feeds = [
+                          {
+                            url = "https://api.episciences.org/api/feed/rss/compositionality";
+                            title = "Compositionality Journal";
+                          }
+                        ];
+                      }
+                      {
+                        type = "rss";
+                        title = "Dev";
+                        limit = 10;
+                        cache = "12h";
+                        feeds = [
+                          {
+                            url = "https://ziglang.org/news/index.xml";
+                            title = "Zig Lang";
+                          }
+                          {
+                            url = "https://effect.website/blog/rss.xml";
+                            title = "Effect TS";
+                          }
+                        ];
+                      }
+                    ];
+                  }
+                ];
+              }
+            ];
+          }
+        ];
       };
-      pages = [
-        {
-          name = "Home";
-          hide-desktop-navigation = true;
-          columns = [
-            # ============== Col 1 — Status ==============
-            {
-              size = "small";
-              widgets = [
-                {
-                  type = "calendar";
-                  first-day-of-week = "monday";
-                }
-                {
-                  type = "weather";
-                  location = "Oslo, Norway";
-                  units = "metric";
-                  hour-format = "24h";
-                }
-                # Workstation host stats — complements Pi-hosted Beszel.
-                {
-                  type = "server-stats";
-                  servers = [
-                    {
-                      type = "local";
-                      name = "workstation";
-                    }
-                  ];
-                }
-              ];
-            }
-
-            # ============== Col 2 — Apps / Services ==============
-            # Bookmarks-only — service uptime status was previously
-            # rendered here as a `monitor` widget but is duplicated by
-            # the dedicated Gatus instance (linked from the Admin
-            # bookmark group). Removing the inline widget de-clutters
-            # the family-facing landing page.
-            {
-              size = "full";
-              widgets = [
-                {
-                  type = "bookmarks";
-                  groups = map (g: {
-                    title = g;
-                    links = lib.mapAttrsToList toBookmarkLink (inGroup g);
-                  }) groupOrder;
-                }
-              ];
-            }
-
-            # ============== Col 3 — Read ==============
-            {
-              size = "small";
-              widgets = [
-                # Twitch live-state — surfaces a thumbnail + viewer
-                # count when channels are streaming, "offline" line
-                # otherwise. Time-sensitive (state changes per stream
-                # session), so this lives ABOVE the RSS feeds where
-                # the eye lands first.
-                {
-                  type = "twitch-channels";
-                  channels = [
-                    "clintstevens"
-                    "jerma985"
-                  ];
-                }
-                {
-                  type = "group";
-                  widgets = [
-                    {
-                      type = "rss";
-                      title = "Papers";
-                      limit = 10;
-                      cache = "12h";
-                      feeds = [
-                        {
-                          url = "https://api.episciences.org/api/feed/rss/compositionality";
-                          title = "Compositionality Journal";
-                        }
-                      ];
-                    }
-                    {
-                      type = "rss";
-                      title = "Dev";
-                      limit = 10;
-                      cache = "12h";
-                      feeds = [
-                        {
-                          url = "https://ziglang.org/news/index.xml";
-                          title = "Zig Lang";
-                        }
-                        {
-                          url = "https://effect.website/blog/rss.xml";
-                          title = "Effect TS";
-                        }
-                      ];
-                    }
-                  ];
-                }
-              ];
-            }
-          ];
-        }
-      ];
     };
-  };
 
-  nori.harden.glance = { };
+    nori.harden.glance = { };
 
-  nori.lanRoutes.home = {
-    port = 8086;
-    monitor = { };
-    audience = "public";
-    # No `dashboard` block — Glance shouldn't link to itself.
-  };
+    nori.lanRoutes.home = {
+      port = 8086;
+      monitor = { };
+      audience = "public";
+      # No `dashboard` block — Glance shouldn't link to itself.
+    };
 
-  nori.backups.glance.skip = "Stateless — dashboard config rendered from Nix (this module + each service's lanRoute.dashboard).";
-}
+    nori.backups.glance.skip = "Stateless — dashboard config rendered from Nix (this module + each service's lanRoute.dashboard).";
+  })
+]

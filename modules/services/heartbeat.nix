@@ -32,57 +32,60 @@
 #   - hc.io itself being unreachable from pi (false positive — operator
 #     pings, finds pi fine; rare enough to live with).
 
-{
-  nori.backups.heartbeat.skip = "Stateless oneshot ping; URL from sops, no on-disk state.";
-  nori.harden.heartbeat = { };
+lib.mkMerge [
+  { nori.services.heartbeat.tags = [ "observability" ]; }
+  (lib.mkIf config.nori.services.heartbeat.enabled {
+    nori.backups.heartbeat.skip = "Stateless oneshot ping; URL from sops, no on-disk state.";
+    nori.harden.heartbeat = { };
 
-  sops.secrets.heartbeat-pi-url = {
-    mode = "0440";
-    group = "keys";
-  };
-
-  systemd.services.heartbeat = {
-    description = "Ping healthchecks.io to prove pi is alive";
-    # No OnFailure handler — silence at hc.io IS the alert.
-    serviceConfig = {
-      Type = "oneshot";
-      # Allow the curl to read the sops-rendered URL file.
-      SupplementaryGroups = [ "keys" ];
-      # Hardening — process needs nothing beyond network egress.
-      DynamicUser = true;
-      PrivateTmp = true;
-      ProtectSystem = "strict";
-      ProtectHome = true;
-      ProtectKernelTunables = true;
-      ProtectKernelModules = true;
-      ProtectControlGroups = true;
-      NoNewPrivileges = true;
-      LockPersonality = true;
-      RestrictNamespaces = true;
-      RestrictRealtime = true;
-      MemoryDenyWriteExecute = true;
-      SystemCallArchitectures = "native";
-      SystemCallFilter = [
-        "@system-service"
-        "~@privileged"
-      ];
+    sops.secrets.heartbeat-pi-url = {
+      mode = "0440";
+      group = "keys";
     };
-    script = ''
-      url=$(cat ${config.sops.secrets.heartbeat-pi-url.path})
-      ${pkgs.curl}/bin/curl -fsS --max-time 10 --retry 2 --retry-delay 5 "$url" >/dev/null
-    '';
-  };
 
-  systemd.timers.heartbeat = {
-    description = "Dead-man-switch heartbeat to healthchecks.io";
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      # Ping every 60s; hc.io is configured with period=60s + grace=2min,
-      # so 3 missing pings (~3 min silence) trigger the off-host alert.
-      OnBootSec = "30s";
-      OnUnitActiveSec = "60s";
-      AccuracySec = "5s";
-      Unit = "heartbeat.service";
+    systemd.services.heartbeat = {
+      description = "Ping healthchecks.io to prove pi is alive";
+      # No OnFailure handler — silence at hc.io IS the alert.
+      serviceConfig = {
+        Type = "oneshot";
+        # Allow the curl to read the sops-rendered URL file.
+        SupplementaryGroups = [ "keys" ];
+        # Hardening — process needs nothing beyond network egress.
+        DynamicUser = true;
+        PrivateTmp = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        ProtectKernelTunables = true;
+        ProtectKernelModules = true;
+        ProtectControlGroups = true;
+        NoNewPrivileges = true;
+        LockPersonality = true;
+        RestrictNamespaces = true;
+        RestrictRealtime = true;
+        MemoryDenyWriteExecute = true;
+        SystemCallArchitectures = "native";
+        SystemCallFilter = [
+          "@system-service"
+          "~@privileged"
+        ];
+      };
+      script = ''
+        url=$(cat ${config.sops.secrets.heartbeat-pi-url.path})
+        ${pkgs.curl}/bin/curl -fsS --max-time 10 --retry 2 --retry-delay 5 "$url" >/dev/null
+      '';
     };
-  };
-}
+
+    systemd.timers.heartbeat = {
+      description = "Dead-man-switch heartbeat to healthchecks.io";
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        # Ping every 60s; hc.io is configured with period=60s + grace=2min,
+        # so 3 missing pings (~3 min silence) trigger the off-host alert.
+        OnBootSec = "30s";
+        OnUnitActiveSec = "60s";
+        AccuracySec = "5s";
+        Unit = "heartbeat.service";
+      };
+    };
+  })
+]

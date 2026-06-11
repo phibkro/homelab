@@ -45,61 +45,66 @@
     '';
   };
 
-  config.sops.secrets.gatus-env = {
-    mode = "0440";
-  };
-
-  config.services.gatus = {
-    enable = true;
-    environmentFile = config.sops.secrets.gatus-env.path;
-    settings = {
-      # Exposes /metrics at the top level (NOT /api/v1/metrics — Gatus's
-      # API sits under /api/v1/ but Prom endpoint follows standard
-      # convention). Scraped by Pi's VictoriaMetrics.
-      metrics = true;
-      storage.type = "memory";
-
-      web = {
-        address = "0.0.0.0";
-        port = 8082;
+  config = lib.mkMerge [
+    { nori.services.gatus.tags = [ "observability" ]; }
+    (lib.mkIf config.nori.services.gatus.enabled {
+      sops.secrets.gatus-env = {
+        mode = "0440";
       };
 
-      alerting.ntfy = {
-        # Gatus's ntfy provider takes url and topic as SEPARATE fields
-        # — putting the topic in the URL silently disables alerting
-        # ("topic not set" warning at startup, no failures emitted).
-        url = "https://ntfy.sh";
-        topic = "\${NTFY_CHANNEL}";
-        priority = 4;
+      services.gatus = {
+        enable = true;
+        environmentFile = config.sops.secrets.gatus-env.path;
+        settings = {
+          # Exposes /metrics at the top level (NOT /api/v1/metrics — Gatus's
+          # API sits under /api/v1/ but Prom endpoint follows standard
+          # convention). Scraped by Pi's VictoriaMetrics.
+          metrics = true;
+          storage.type = "memory";
+
+          web = {
+            address = "0.0.0.0";
+            port = 8082;
+          };
+
+          alerting.ntfy = {
+            # Gatus's ntfy provider takes url and topic as SEPARATE fields
+            # — putting the topic in the URL silently disables alerting
+            # ("topic not set" warning at startup, no failures emitted).
+            url = "https://ntfy.sh";
+            topic = "\${NTFY_CHANNEL}";
+            priority = 4;
+          };
+
+          # `endpoints` is the open list. lib/lan-route.nix appends
+          # auto-generated entries from `nori.lanRoutes.<n>.monitor`;
+          # host config files append manual TCP/HTTP probes for
+          # non-lanRoute services (blocky on :53, samba on :445, the
+          # other host's services for mutual observation). See
+          # hosts/<host>/default.nix.
+          endpoints = [ ];
+        };
       };
 
-      # `endpoints` is the open list. lib/lan-route.nix appends
-      # auto-generated entries from `nori.lanRoutes.<n>.monitor`;
-      # host config files append manual TCP/HTTP probes for
-      # non-lanRoute services (blocky on :53, samba on :445, the
-      # other host's services for mutual observation). See
-      # hosts/<host>/default.nix.
-      endpoints = [ ];
-    };
-  };
+      nori.harden.gatus = { };
 
-  config.nori.harden.gatus = { };
-
-  # Caddy vhost at https://status.nori.lan — only on hosts that run
-  # Caddy. No self-monitor (Gatus can't usefully probe itself —
-  # would always pass while alive and silently disappear when dead).
-  config.nori.lanRoutes = lib.mkIf config.nori.gatus.exposeViaCaddy {
-    status = {
-      port = 8082;
-      audience = "public";
-      dashboard = {
-        title = "Gatus";
-        icon = "sh:gatus";
-        group = "Admin";
-        description = "Service uptime + alerts";
+      # Caddy vhost at https://status.nori.lan — only on hosts that run
+      # Caddy. No self-monitor (Gatus can't usefully probe itself —
+      # would always pass while alive and silently disappear when dead).
+      nori.lanRoutes = lib.mkIf config.nori.gatus.exposeViaCaddy {
+        status = {
+          port = 8082;
+          audience = "public";
+          dashboard = {
+            title = "Gatus";
+            icon = "sh:gatus";
+            group = "Admin";
+            description = "Service uptime + alerts";
+          };
+        };
       };
-    };
-  };
 
-  config.nori.backups.gatus.skip = "Memory-only storage; no on-disk state.";
+      nori.backups.gatus.skip = "Memory-only storage; no on-disk state.";
+    })
+  ];
 }
