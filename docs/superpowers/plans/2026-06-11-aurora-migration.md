@@ -158,7 +158,7 @@ Each phase ends in a working system. Validation gate at the end of each must pas
 | **P2** | Service module sweep: wrap each `modules/services/*.nix` in the gated-activation shape; assign `tags` per module; default `enable = false`; the wrap is mechanical | `nix-diff` per host = empty (semantic-equivalence) |
 | **P3** | Host opt-in: `machines/<host>/default.nix` declares its current activation set via `nori.services.*.enable = true` or `enableByTag = [...]`. Workstation reproduces today's set exactly. | `nix-diff` per host = empty |
 | **P4** | `nori.fs.<X>.samba` block + generator emitting Samba shares from per-fs declarations | `just test-samba` (new lever) passes on workstation with current shares |
-| **P5** | Replication-consistency-verifier + cross-host restore drill modules | Both invokable but no replica targets defined yet; smoke-test passes by detecting "no replica configured" cleanly |
+| **P5** ✓ landed 2026-06-11 | `modules/effects/replication.nix` (`nori.replicas.<n>` registry + per-replica freshness verifier oneshot on the target host) + `just test-replicas` lever (composite-included). Empty registry smoke-passes (no units emitted, lever reports "no replicas declared"). Cross-host restic restore drill deferred to P11: workstation's `verify.nix` stays in place; the gate ungates per-service when state moves to aurora and aurora starts emitting its own restic units. | `nix flake check` green; `just test-replicas` exits 0 on empty registry ✓ |
 
 ### Stage 2 — Aurora bootstrap (no impact on workstation)
 

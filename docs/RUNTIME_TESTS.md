@@ -32,6 +32,7 @@ One lever maxed = nice-to-have. Two = ship it. Three+ = required.
 | `just test-backups` | `nori.backups.<n>` → restic units exist + per-target snapshots ≤25h | `modules/effects/backup.nix` |
 | `just test-routes` | `nori.lanRoutes.<n>` → Caddy route + DNS + HTTPS reachable | `modules/effects/lan-route.nix` |
 | `just test-observability` | VM scrape targets up + process-exporter publishing + pi heartbeat <90s + zero failing gatus probes | `modules/effects/gatus-probe.nix` + `modules/services/victoriametrics.nix` |
+| `just test-replicas` | `nori.replicas.<n>` → per-replica verifier oneshot succeeded within freshness budget on the target host (smoke-passes on empty registry) | `modules/effects/replication.nix` |
 | `just test` | All of the above | composite |
 
 ## The architectural correlation worth knowing
@@ -43,6 +44,7 @@ One lever maxed = nice-to-have. Two = ship it. Three+ = required.
 | `backup.nix` | ✓ `nori.backups` | `test-backups` | ★★★★★ |
 | `lan-route.nix` | ✓ `nori.lanRoutes` | `test-routes` | ★★★★★ |
 | `gatus-probe.nix` | ✓ embedded + standalone | `test-observability` | ★★★★★ |
+| `replication.nix` | ✓ `nori.replicas` | `test-replicas` | ★★★★ (silent-stale class, blast = data divergence) |
 | `harden.nix` | ✓ `nori.harden` | — | ★★ (flake check is primary defence) |
 | `fs.nix` | ✓ `nori.fs` | — | ★★ |
 | `hosts.nix` | ✓ Reader-only | — | ★ (used transitively) |

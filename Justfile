@@ -184,6 +184,7 @@ default: rebuild
     just test-backups
     just test-routes
     just test-observability
+    just test-replicas
 
 # Each `nori.lanRoutes.<X>` is a Reader-Writer effect: one declaration
 # emits Caddy route + Gatus monitor + DNS record + (optional) Authelia
@@ -306,6 +307,53 @@ default: rebuild
           echo "  ✗ $repo/$target: ${age_h}h (>25h)"; fail=1
         fi
       done
+    done
+
+    echo
+    [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
+
+# Each `nori.replicas.<X>` declares a cross-host dataset replica with
+# a freshness budget. The verifier (modules/effects/replication.nix)
+# emits a per-replica oneshot on the target host; this test reads the
+# registry, finds entries targeting THIS host, and asserts each
+# verifier unit completed cleanly within the freshness budget.
+#
+# Smoke gate: zero replicas declared (current state until P15 lands the
+# btrfs send/receive timer) exits 0 with "no replicas declared". When
+# P15 wires aurora → workstation MP510, this lever starts catching
+# stalled receives without waiting for the next ntfy alert.
+#
+# Runtime-introspection test: `nori.replicas.<X>` → fresh snapshot on the target host.
+@test-replicas:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    fail=0
+
+    host=$(hostname)
+    declared=$(nix eval --json ".#nixosConfigurations.${host}.config.nori.replicas" \
+                 --apply 'r: builtins.attrNames (builtins.intersectAttrs r r)' 2>/dev/null \
+               | nix shell nixpkgs#jq -c jq -r '.[]' 2>/dev/null || true)
+
+    if [[ -z "$declared" ]]; then
+      echo "=== test-replicas: no replicas declared (skipped) ==="
+      exit 0
+    fi
+
+    echo "=== Replica freshness — entries targeting $host ==="
+    for name in $declared; do
+      target_host=$(nix eval --raw ".#nixosConfigurations.${host}.config.nori.replicas.${name}.target.host" 2>/dev/null)
+      if [[ "$target_host" != "$host" ]]; then
+        continue
+      fi
+      unit="replication-verifier-${name}.service"
+      result=$(systemctl show -p Result --value "$unit" 2>/dev/null || echo "absent")
+      if [[ "$result" == "success" ]]; then
+        echo "  ✓ $name: verifier OK"
+      elif [[ "$result" == "absent" ]]; then
+        echo "  ✗ $name: verifier unit missing"; fail=1
+      else
+        echo "  ✗ $name: verifier Result=$result"; fail=1
+      fi
     done
 
     echo
