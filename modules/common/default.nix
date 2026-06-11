@@ -20,6 +20,7 @@ _: {
     ../effects/hosts.nix
     ../effects/fs.nix
     ../effects/lan-route.nix
+    ../effects/service-placement.nix
     ../effects/backup.nix
     ../effects/gpu.nix
     ../effects/harden.nix
