@@ -147,7 +147,7 @@ lib.mkMerge [
           # rationale in navidrome.nix. The sqlite3 CLI's `.backup`
           # ignores busy_timeout, so the previous `.timeout 30000` was
           # a no-op. Vaultwarden writes on every sync/login.
-          # Serialize concurrent prep — onetouch + ironwolf race fix.
+          # Serialize concurrent prep — onetouch + mp510 race fix.
           # See navidrome.nix for the long form.
           (
             ${pkgs.util-linux}/bin/flock -x 9

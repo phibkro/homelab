@@ -142,7 +142,7 @@ lib.mkMerge [
               # scheduler-worker polls every 10s + chat completions
               # write constantly, so the lock is held more often than
               # for navidrome — but the same fix applies.
-              # Serialize concurrent prep — onetouch + ironwolf race fix.
+              # Serialize concurrent prep — onetouch + mp510 race fix.
               # See navidrome.nix for the long form.
               (
                 ${pkgs.util-linux}/bin/flock -x 9

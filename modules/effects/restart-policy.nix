@@ -54,7 +54,9 @@ in
             # makes systemd silently ignore them with
             #   Unknown key 'StartLimitIntervalSec' in section [Service]
             # — so the "give up after 15 restarts/h" cap never applied.
-            # Caught on restic-backups-*-ironwolf failure 2026-06-06.
+            # Caught on restic-backups-*-mp510 failure 2026-06-06
+            # (target was named `ironwolf` then; renamed in P14
+            # when the data moved off the IronWolf to the MP510).
             unitConfig.StartLimitIntervalSec = lib.mkDefault "1h";
             unitConfig.StartLimitBurst = lib.mkDefault 15;
             # Literal `${name}.service` instead of systemd's %n — %n

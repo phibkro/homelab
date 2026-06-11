@@ -142,7 +142,7 @@ lib.mkMerge [
           # atomic rename so a torn write never leaves a half-finished
           # target. Caught 2026-06-06; same pattern applies to
           # open-webui.nix + vaultwarden.nix.
-          # Serialize concurrent prep — both `-onetouch` and `-ironwolf`
+          # Serialize concurrent prep — both `-onetouch` and `-mp510`
           # restic targets fire at the same minute and race on .tmp.
           # Loser sees winner's partial VACUUM INTO write and bombs with
           # "table goose_db_version already exists". flock makes them

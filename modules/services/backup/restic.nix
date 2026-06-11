@@ -58,11 +58,13 @@ lib.mkIf (config.networking.hostName == "workstation") {
   #               restic-target.nix). Full failure-domain
   #               independence from workstation now: separate
   #               chassis, PSU, and USB controller.
-  #   ironwolf  — Always-mounted @restic-local btrfs subvolume on the
-  #               IronWolf media drive (see disko-media.nix). Catches
-  #               aurora-unreachable failure mode; doesn't protect
-  #               against a full IronWolf drive failure (the source
-  #               irreplaceable data lives there too).
+  #   mp510     — Always-mounted @backup-local btrfs subvolume on the
+  #               MP510 NVMe (see disko-mp510.nix). Catches aurora-
+  #               unreachable failure mode; doesn't protect against a
+  #               workstation drive failure (`mp510` lives in the same
+  #               chassis as the source irreplaceable data on the
+  #               IronWolf). That's the onetouch (and future Hetzner)
+  #               target's job.
   #
   # Roadmap targets:
   #   hetzner   — Off-site Hetzner Storage Box via SFTP (true
@@ -88,9 +90,9 @@ lib.mkIf (config.networking.hostName == "workstation") {
         "sftp.command='${pkgs.openssh}/bin/ssh -o BatchMode=yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/etc/ssh/aurora_known_hosts -i /run/secrets/restic-ssh-key restic@aurora.saola-matrix.ts.net -s sftp'"
       ];
     };
-    ironwolf = {
+    mp510 = {
       repository = "/mnt/backup-local";
-      description = "Always-mounted btrfs subvolume on the IronWolf media drive (@restic-local).";
+      description = "Always-mounted btrfs subvolume on the MP510 NVMe (@backup-local). Drive-based name matching the `onetouch` convention. Replaced the prior `ironwolf` target (data was on the IronWolf @restic-local subvol) in P14 2026-06-11; see machines/workstation/disko-mp510.nix.";
     };
   };
 
@@ -219,16 +221,16 @@ lib.mkIf (config.networking.hostName == "workstation") {
   # restore plan (per SERVICES.md Pattern B). Not in nori.fs because it's
   # NixOS service state, not a structural FS location.
   #
-  # `targets = [ "onetouch" ]` — opted out of the ironwolf target because
-  # the source data IS the irreplaceable subvolumes on the IronWolf
-  # itself (@photos/@home-videos/@projects/@library/@archive). Backing
-  # those up to a sibling subvolume on the same drive would (a) come
-  # close to doubling drive usage (3.0T used of 3.7T already as of
-  # 2026-06-04 — wouldn't fit) and (b) provide zero protection against
-  # the failure mode same-drive-backup can't catch (full IronWolf
-  # drive failure). Until Hetzner off-site lands, this tier rides
-  # the OneTouch alone. Service-tier and user-tier still dual-write —
-  # those are small and benefit from the OneTouch-glitch resilience.
+  # `targets = [ "onetouch" ]` — opted out of the mp510 target because
+  # the source data is ~334 GiB of irreplaceable subvolumes on the
+  # IronWolf (@photos/@home-videos/@projects/@library/@archive); the
+  # mp510 subvol on a different drive in the same chassis could fit
+  # it (894 GiB total), but writing the same bytes twice on the same
+  # machine doesn't add an independent failure domain. Until Hetzner
+  # off-site lands, this tier rides the OneTouch (now on aurora over
+  # SFTP, separate chassis) alone. Service-tier and user-tier still
+  # dual-write — those are small and benefit from the OneTouch-glitch
+  # resilience.
   nori.backups.media-irreplaceable = {
     include =
       lib.mapAttrsToList (_: f: f.path) (lib.filterAttrs (_: f: f.tier == "irreplaceable") config.nori.fs)

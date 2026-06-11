@@ -60,12 +60,12 @@ Two USB-attached drives, mounted on workstation, each hosting one restic repo pe
 
 | Target | Mount | Drive | FS | Repo path | Trigger time |
 |---|---|---|---|---|---|
-| `onetouch` | `/mnt/backup` (autofs) | Seagate OneTouch | ext4 | `/mnt/backup/<svc>` | per-service timer (e.g. 04:30) |
-| `ironwolf` | `/mnt/backup-local` | Seagate IronWolf Pro | btrfs | `/mnt/backup-local/<svc>` | same timer minute |
+| `onetouch` | `/mnt/backup` | Seagate OneTouch (physically on aurora; workstation reaches via SFTP) | ext4 | `/mnt/backup/<svc>` | per-service timer (e.g. 04:30) |
+| `mp510` | `/mnt/backup-local` | Corsair Force MP510 (workstation NVMe @backup-local) | btrfs | `/mnt/backup-local/<svc>` | same timer minute |
 
 Both restic units race on the prepareCommand `.tmp` file → wrapped in `flock` since 2026-06-07. See [[pattern-c2-sqlite-race-flock]].
 
-Restic encrypts client-side, so the on-disk FS doesn't matter for security — ext4 (onetouch) + btrfs (ironwolf) chosen for their respective drive shapes.
+Restic encrypts client-side, so the on-disk FS doesn't matter for security — ext4 (onetouch) + btrfs (mp510) chosen for their respective drive shapes.
 
 ## Database-on-btrfs CoW interaction
 
@@ -93,7 +93,7 @@ Both `restic-backups-*` and `btrbk-*` units get `OnFailure = [ "notify@%n.servic
 
 ## Backup destinations + retention
 
-Dual local targets (`onetouch` + `ironwolf` — both on workstation), Hetzner off-site planned (ROADMAP). Each service backed up to all configured targets simultaneously.
+Dual targets: `onetouch` (SFTP to aurora, off-chassis) + `mp510` (workstation NVMe). Hetzner off-site planned (ROADMAP). Each service backed up to all configured targets simultaneously.
 
 | Path / service | OneTouch + Ironwolf (local) | Hetzner (off-site, planned) |
 |---|---|---|

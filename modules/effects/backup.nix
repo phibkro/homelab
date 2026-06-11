@@ -25,7 +25,7 @@ in
   # `restic-backups-<job>-<target>.service` systemd unit with its own
   # OnFailure → notify@ wiring. That's deliberate — independent units
   # mean independent failure modes. A wedged OneTouch USB controller
-  # (2026-06-04 incident) doesn't take down the ironwolf-local backups,
+  # (2026-06-04 incident) doesn't take down the mp510-local backups,
   # and ntfy alerts disambiguate which target failed.
   #
   # Service modules look like:

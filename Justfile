@@ -261,7 +261,7 @@ default: rebuild
     # `include != null` but a single systemd query is cheaper).
     repos=$(systemctl list-units 'restic-backups-*.service' --all --no-pager 2>&1 \
             | grep -oE 'restic-backups-[a-z-]+\.service' \
-            | sed 's/restic-backups-//; s/-onetouch.service//; s/-ironwolf.service//' \
+            | sed 's/restic-backups-//; s/-onetouch.service//; s/-mp510.service//' \
             | sort -u)
 
     echo "=== Tier 1 — restic units exist in the registry ==="
@@ -278,8 +278,8 @@ default: rebuild
     # end-to-end successfully — pre, main, post, all of it.
     #
     # Restic repo mountpoints by target:
-    #   onetouch → /mnt/backup/<repo>       (USB OneTouch, ext4)
-    #   ironwolf → /mnt/backup-local/<repo> (USB Ironwolf, btrfs)
+    #   onetouch → /mnt/backup/<repo>       (OneTouch, ext4, SFTP on aurora)
+    #   mp510    → /mnt/backup-local/<repo> (MP510 NVMe @backup-local, btrfs)
     snapshot_age() {
       local repo="$1" mount="$2"
       # `--latest 1` returns ONE PER PATH-SET, not per repo (caught
@@ -292,10 +292,10 @@ default: rebuild
     }
 
     for repo in $repos; do
-      for target in onetouch ironwolf; do
+      for target in onetouch mp510; do
         echo "$units" | grep -q "restic-backups-${repo}-${target}.service" || continue
         mount="/mnt/backup"
-        [[ "$target" == "ironwolf" ]] && mount="/mnt/backup-local"
+        [[ "$target" == "mp510" ]] && mount="/mnt/backup-local"
         latest=$(snapshot_age "$repo" "$mount")
         if [[ -z "$latest" ]]; then
           echo "  · $repo/$target: no snapshots yet"; continue

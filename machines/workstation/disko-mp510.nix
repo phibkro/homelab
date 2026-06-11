@@ -12,14 +12,12 @@ _: {
   # land in any restic repo (aurora's restic covers the source data;
   # backing up a replica too would just double-spend backup budget).
   nori.fs = {
-    # Temporary path until P14: the IronWolf `@restic-local` subvol
-    # currently holds workstation's ~57 GiB of restic snapshots at
-    # /mnt/backup-local. P14 migrates that data onto MP510 and swaps
-    # the IronWolf subvol off; this subvol then becomes the canonical
-    # /mnt/backup-local. For now it stays out of the way at
-    # /mnt/mp510-backup-local with no consumers.
-    mp510-backup-local = {
-      path = "/mnt/mp510-backup-local";
+    # Workstation-side restic-local target — `nori.backupTargets.mp510`.
+    # Holds the ~57 GiB of workstation restic snapshots that used to
+    # live on the IronWolf `@restic-local` subvol; migrated in P14
+    # (2026-06-11) and the IronWolf @restic-local subvol dropped.
+    backup-local = {
+      path = "/mnt/backup-local";
       tier = "re-derivable";
     };
     family-replica-photos = {
@@ -59,11 +57,13 @@ _: {
   #
   # Single btrfs filesystem across the full disk (894 GB). Subvol map:
   #
-  #   @backup-local              /mnt/mp510-backup-local (temp)
-  #     P14 destination for workstation's restic-local target —
-  #     replaces the IronWolf @restic-local subvol. Stays at the
-  #     mp510-prefixed path until P14 migrates the existing ~57 GiB
-  #     of restic snapshots off the IronWolf and swaps the mount.
+  #   @backup-local              /mnt/backup-local
+  #     workstation-side restic-local target —
+  #     `nori.backupTargets.mp510` (drive-based name matching
+  #     the `onetouch` convention). Replaced the IronWolf
+  #     `@restic-local` subvol in P14 (2026-06-11); ~57 GiB
+  #     of restic snapshots rsync'd over and the prior subvol
+  #     dropped via `btrfs subvolume delete`.
   #
   #   @family-replica-photos     /mnt/family-replica/photos
   #   @family-replica-home-videos /mnt/family-replica/home-videos
@@ -99,7 +99,7 @@ _: {
 
               subvolumes = {
                 "@backup-local" = {
-                  mountpoint = "/mnt/mp510-backup-local";
+                  mountpoint = "/mnt/backup-local";
                   mountOptions = [
                     "compress=zstd:3"
                     "noatime"

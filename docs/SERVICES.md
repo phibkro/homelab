@@ -93,7 +93,7 @@ nori.backups.user-data = {
   tier = "user";  # drives default retention curve
 };
 # Generates `restic-backups-user-data-onetouch.service` (→ /mnt/backup/user-data)
-# AND `restic-backups-user-data-ironwolf.service` (→ /mnt/backup-local/user-data)
+# AND `restic-backups-user-data-mp510.service` (→ /mnt/backup-local/user-data)
 ```
 
 Don't write `services.restic.backups.<n>` directly — `nori.backups.<n>` is the homelab abstraction; generators expand it into both restic units + the `every-service-has-backup-intent` flake check coverage.
@@ -135,7 +135,7 @@ services.postgresqlBackup = {
 | Trap | Fix | Memory entry |
 |---|---|---|
 | sqlite3 CLI's `.backup` ignores `busy_timeout` (hard-coded ~2.5s retry) → "database is locked" on the first concurrent writer | Use `VACUUM INTO` + `PRAGMA busy_timeout` (regular SQL, honours the pragma) | [[sqlite-backup-vacuum-into]] |
-| `-onetouch` + `-ironwolf` restic units fire same minute → both run `prepareCommand` → race on `.tmp` → "table … already exists" | Wrap rm/sqlite/mv in `flock` (file-descriptor form, subshell-scoped) | [[pattern-c2-sqlite-race-flock]] |
+| `-onetouch` + `-mp510` restic units fire same minute → both run `prepareCommand` → race on `.tmp` → "table … already exists" | Wrap rm/sqlite/mv in `flock` (file-descriptor form, subshell-scoped) | [[pattern-c2-sqlite-race-flock]] |
 
 Canonical impl — `modules/services/navidrome.nix`:
 
@@ -159,7 +159,7 @@ nori.backups.navidrome = {
 };
 ```
 
-`prepareCommand` runs as `ExecStartPre` on BOTH `restic-backups-<n>-onetouch.service` AND `-ironwolf.service`. flock serialises them; second caller does a redundant (cheap) dump on already-fresh state. `VACUUM INTO` requires destination absent — that's why `rm -f` precedes it.
+`prepareCommand` runs as `ExecStartPre` on BOTH `restic-backups-<n>-onetouch.service` AND `-mp510.service`. flock serialises them; second caller does a redundant (cheap) dump on already-fresh state. `VACUUM INTO` requires destination absent — that's why `rm -f` precedes it.
 
 Runtime check: `just test-backups` asserts per-target snapshot ≤25h.
 
@@ -176,7 +176,7 @@ Runtime check: `just test-backups` asserts per-target snapshot ≤25h.
 | Tailscale | A | State files |
 | `/home`, `/srv/share`, `/srv/nori` | A (via `nori.backups.user-data`) | No databases |
 
-New services pick a pattern at onboarding (`/add-service`). Pattern C2 services MUST use the flock-wrapped canonical impl — failure mode = silent half-failure (ironwolf succeeds, onetouch fails to race, ntfy fires).
+New services pick a pattern at onboarding (`/add-service`). Pattern C2 services MUST use the flock-wrapped canonical impl — failure mode = silent half-failure (mp510 succeeds, onetouch fails to race, ntfy fires).
 
 ## Observability and alerting
 
