@@ -10,6 +10,8 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 ## Outstanding (actionable)
 
+- **Aurora migration — workstation-as-compute / aurora-as-family-vault.** Reorganises hosts to let workstation sleep when no GPU/transcode/bulk-storage workload is active and to give irreplaceable media a 3-copy replication posture. Full delta table, phase ordering, validation gates, and reversibility ladder in `docs/superpowers/plans/2026-06-11-aurora-migration.md`. Foundation phases (Nix-only schema + sweep + opt-in) are autonomous-tractable; data-move phases need operator hands.
+
 - **Mac is on x86_64-darwin EOL clock.**
 
   | Layer | Status |
@@ -40,8 +42,6 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 - **MemoryHigh caps on heavy services** — process-exporter now publishes `namedprocess_namegroup_memory_bytes{memtype="resident",groupname=…,host=…}` to pi VM for all three workhorse hosts (workstation, pavilion, aurora). Wait ≥7 days of data, identify the slowest-growing services per host, cap each via `systemd.services.<n>.serviceConfig.MemoryHigh = "…G"`. Premature to cap blindly. Sample query: `topk(10, max_over_time(namedprocess_namegroup_memory_bytes{memtype="resident"}[7d]) - min_over_time(namedprocess_namegroup_memory_bytes{memtype="resident"}[7d])) / 1024 / 1024`. Special interest: aurora `gunicorn` (immich-ml — PyTorch, known leak shape).
 
 ## Deferred (tracked, not currently worked)
-
-- **Hetzner off-site restic** — second `services.restic.backups.<n>` repository per service (alongside the OneTouch `/mnt/backup` repo) targeting Hetzner Storage Box via SFTP. Per `STORAGE.md` § backup destinations — irreplaceable tier (`/home`, `/srv/share`, `@photos`, `@library`, Immich, Vaultwarden) gets off-site; less-critical state stays local-only. Bootstrap: provision Storage Box, sops secret for SSH key, mirror restic repos, verify monthly integrity check works remotely (prune cost matters more off-site).
 
 - **Remaining stabilisation (personal apps).** Phases 1-3 + 6-prep landed 2026-05-08 (CI + Renovate on all 4 app repos; zod validation on drinks-api; finnbydel → Astro + Hono; stateful apps → Drizzle + bun:sqlite; @sentry SDKs wired, no-op without DSN). Remaining: phase 4 (static sites → Cloudflare Pages, removes 3 attack surfaces from workstation), phase 5 (microvm.nix for drinks + finnbydel, kernel-level isolation for stateful apps that stay on workstation). Sentry activation when operator provisions projects: add 6 sops secrets `sentry-dsn-{heim,drinks-app,drinks-server,filmder,finnbydel-app,finnbydel-server}` to `secrets/apps.yaml`; update each module's environment block.
 
