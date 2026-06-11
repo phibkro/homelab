@@ -165,7 +165,7 @@ Each phase ends in a working system. Validation gate at the end of each must pas
 | Phase | What | Validation gate |
 |---|---|---|
 | **P6a** ✓ landed 2026-06-11 (Nix only) | Aurora HDD disko entry; `nori.fs` entries declaring `/mnt/family/*` paths on aurora | Aurora rebuilds; mount-units present but inert (`nofail`) until disko-apply |
-| **P6b** *(operator-triggered destructive step)* | Format Toshiba HDD via `nix run github:nix-community/disko/latest -- --mode disko machines/aurora/disko-family.nix` | Subvols mounted at `/mnt/family/{photos,…}`; empty |
+| **P6b** ✓ 2026-06-11 | Format Toshiba HDD via `nix run github:nix-community/disko/latest -- --mode disko machines/aurora/disko-family.nix` | 932 GB family-vault btrfs; 6 subvols mounted at `/mnt/family/{photos,home-videos,projects,library,archive,.snapshots}`; 6.0M used (just FS overhead); empty + ready |
 | **P7** | Aurora gains Caddy + Authelia + Blocky-authoritative-#1 (shadow mode — workstation still primary, aurora returns the same map but Tailscale DNS push hasn't been updated yet) | `dig @aurora <X>.nori.lan` returns workstation IP for all known routes; `https://*.nori.lan` still served by workstation |
 | **P8** | Aurora gains family-tier service declarations with `enable = true` but pointing at empty `/var/lib/<svc>` and `/mnt/family/<X>` (services start, DBs initialize empty) | Services up; UIs reachable directly via aurora's tailnet IP on internal ports; no data |
 
