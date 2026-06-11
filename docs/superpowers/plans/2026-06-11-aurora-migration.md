@@ -152,7 +152,9 @@ Each phase ends in a working system. Validation gate at the end of each must pas
 
 | Phase | What | Validation gate |
 |---|---|---|
-| **P1** | `service-placement.nix` effect module + lan-route port aggregator + `upstreams` schema | `nix flake check` green; `nix-diff` between `system.build.toplevel` before/after = empty per host |
+| **P1** ✓ landed 2026-06-11 (`eceee10`) | `service-placement.nix` effect module — `nori.services.<svc>.{enable,tags,enabled}` + `nori.enableServicesByTag`. Schema only; no consumers yet. | `nix flake check` green; workstation `system.build.toplevel.drvPath` identical before/after |
+| **P1b** *(deferred to P12)* | `nori.lanRoutes.<X>.upstreams` host-pool field + Caddy generator change | Lands with P12 cutover where it's actually consumed |
+| **P1c** *(deferred — not blocking)* | lan-route port auto-assignment (sequential aggregator) | Defer until a route actually needs auto-port (today every route pins explicitly) |
 | **P2** | Service module sweep: wrap each `modules/services/*.nix` in the gated-activation shape; assign `tags` per module; default `enable = false`; the wrap is mechanical | `nix-diff` per host = empty (semantic-equivalence) |
 | **P3** | Host opt-in: `machines/<host>/default.nix` declares its current activation set via `nori.services.*.enable = true` or `enableByTag = [...]`. Workstation reproduces today's set exactly. | `nix-diff` per host = empty |
 | **P4** | `nori.fs.<X>.samba` block + generator emitting Samba shares from per-fs declarations | `just test-samba` (new lever) passes on workstation with current shares |
