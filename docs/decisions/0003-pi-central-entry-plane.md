@@ -105,6 +105,20 @@ Rent a domain, point DNS at aurora's tailscale-funnel or LAN, run Caddy with ACM
 
 Reverse course, accept idle 250 W and family SPOF on workstation. Rejected — defeats the original aurora migration's two motivating problems (power + SPOF).
 
+## Addendum: backends must be tailnet-reachable (2026-06-11 cutover learning)
+
+P7 pi standup succeeded as a parallel-running entry plane. The first attempt to flip DNS to pi surfaced a real constraint that ADR-0003 had glossed over: **the proxy host (pi) needs to actually reach the backends across the tailnet**, but most workstation services bind `127.0.0.1` only (Vaultwarden's `ROCKET_ADDRESS`, Immich's `IMMICH_HOST`, Gatus, Miniflux, Calibre-web, Komga, Navidrome — all loopback). Authelia happens to bind `*` so SSO worked end-to-end through pi; everything else returned 502.
+
+The pi-central architecture demands one of these per backend:
+
+1. **Bind on tailnet (`0.0.0.0` + tailnet firewall port open).** Caddy on pi proxies tailscale0:port. Suitable for services with their own auth (Vaultwarden's master password, Immich's account model) — tailnet ACL is the gate.
+2. **Caddy-forward-auth services rebound carefully.** The `*arr` stack relies on Caddy's `forward_auth` for the SSO gate. Direct tailnet exposure bypasses it. Either: keep these on the same host as their proxying Caddy (workstation today, future-pi if pi gains the *arr stack), or accept that forward-auth is moot on tailnet (any tailnet client can hit the backend).
+3. **Stay co-located with the proxying Caddy.** Workstation-only services (Ollama, Jellyfin's NVENC, the bulk-download stack) stay where Caddy locally serves them; cross-host proxying doesn't apply.
+
+**Practical sequence**, captured here so future P8/P12 work inherits the pattern: each family-tier service that migrates to aurora gets its bind config + tailnet firewall + `runsOn` flip as one atomic change. Once a critical mass of family-tier routes points at aurora, pi's `nori.lanIp` override + the Tailscale split-DNS flip become the cutover trigger. Doing the rebinding service-by-service during the migration is cleaner than a separate "rebind everything" sweep.
+
+**Reverted state (2026-06-11 `acad85e`)**: pi's `nori.lanIp` override removed; Tailscale split-DNS back at workstation. Pi continues running its entry-plane trio standby; the proven LE cert state survives the revert.
+
 ## See also
 
 - ADR-0002 — original aurora-entry-plane choice; the family-vault + workstation-as-compute portions of that ADR remain in force. The HTTP entry plane is what this ADR overrides.

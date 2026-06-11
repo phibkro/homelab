@@ -497,6 +497,13 @@ in
       autheliaEnabled =
         config.services.authelia.instances != { }
         && lib.any (i: i.enable) (lib.attrValues config.services.authelia.instances);
+      # Caddy on this host actually consumes the forwardAuth blocks. If
+      # Caddy isn't enabled, the routes are just data — no proxying
+      # happens, so the Authelia dependency doesn't bite. Hosts that
+      # only import the bundle for the route registry (e.g. aurora
+      # pre-P8, declared so routes pre-exist for the upcoming pi-side
+      # proxy + the eventual P12 cutover) shouldn't trip the assertion.
+      caddyEnabledHere = config.services.caddy.enable;
     in
     {
       assertions = [
@@ -525,7 +532,7 @@ in
           '';
         }
         {
-          assertion = forwardAuthRoutes == { } || autheliaEnabled;
+          assertion = !caddyEnabledHere || forwardAuthRoutes == { } || autheliaEnabled;
           message = ''
             nori.lanRoutes with `forwardAuth` set require Authelia to be
             running on the same host (Caddy hits 127.0.0.1:9091 for the
@@ -651,6 +658,11 @@ in
         let
           routesWithOidc = filterAttrs (_: cfg: cfg.oidc != null) config.nori.lanRoutes;
         in
+        # Raw client secrets: emitted on any host that has routes
+        # declared, since service modules read them on the host where
+        # the BACKEND runs (via `EnvironmentFile` from the sops template
+        # below). Owned by the `keys` group; consuming services join
+        # that group via `SupplementaryGroups`.
         (mapAttrs' (
           name: _:
           nameValuePair "oidc-${name}-client-secret" {
@@ -658,13 +670,18 @@ in
             group = "keys";
           }
         ) routesWithOidc)
-        // (mapAttrs' (
-          name: _:
-          nameValuePair "oidc-${name}-client-secret-hash" {
-            mode = "0400";
-            owner = "authelia-main";
-          }
-        ) routesWithOidc);
+        # PBKDF2 hashes: only emit on hosts that run Authelia (the user
+        # `authelia-main` only exists there). Other hosts importing the
+        # bundle for the route registry don't need the hash material.
+        // (lib.optionalAttrs autheliaEnabled (
+          mapAttrs' (
+            name: _:
+            nameValuePair "oidc-${name}-client-secret-hash" {
+              mode = "0400";
+              owner = "authelia-main";
+            }
+          ) routesWithOidc
+        ));
 
       sops.templates = mapAttrs' (
         name: cfg:

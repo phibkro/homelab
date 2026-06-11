@@ -36,21 +36,22 @@
 
     ../../modules/common
 
-    # Per-process RSS + system metrics → pi VictoriaMetrics. Imported
-    # file-by-file (not the whole services/ bundle) since aurora runs
-    # only immich-machine-learning. PyTorch RSS is the known leak shape.
-    ../../modules/services/node-exporter.nix
-    ../../modules/services/nvidia-gpu-exporter.nix
+    # Full services bundle. P2 wrap + P1b route lift mean importing
+    # does NOT activate services — each module's body is gated on
+    # `nori.services.<X>.enabled`. Routes are declared unconditionally,
+    # so post-P8/P12 enabling vaultwarden / immich / etc. on aurora is
+    # a one-line config edit per service. Today only the pre-existing
+    # exporters are enabled (see nori.services below).
+    ../../modules/services
 
-    # Restic backup target: chrooted SFTP-only user for remote
-    # restic clients pushing to /mnt/backup. Pairs with the
+    # Aurora-only specialty: chrooted SFTP backup target. Sits outside
+    # the bundle because it's not a user-facing service. Pairs with the
     # disko-onetouch entry below; both arrived 2026-06-11 when the
     # OneTouch HDD physically moved from workstation. See
     # docs/superpowers/plans/2026-06-11-aurora-migration.md § P13.
     ../../modules/services/backup/restic-target.nix
 
     # Notably absent:
-    #   modules/services/default.nix — no LAN service stack
     #   modules/desktop/default.nix — headless
 
     ./hardware.nix
