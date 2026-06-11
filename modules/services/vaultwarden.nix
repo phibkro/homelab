@@ -23,7 +23,7 @@ lib.mkMerge [
     # `/alive` returns "1" on healthy (Vaultwarden's health endpoint).
     nori.lanRoutes.vault = {
       port = 8222;
-      runsOn = "workstation";
+      runsOn = "aurora";
       monitor = {
         path = "/alive";
       };
@@ -76,12 +76,13 @@ lib.mkMerge [
       dbBackend = "sqlite"; # default; explicit. Postgres adds infra without value at single-user.
       config = {
         # Network — Caddy at vault.<nori.domain> reverse-proxies to
-        # localhost. The upstream default ROCKET_ADDRESS is `::1` (IPv6
-        # localhost); we switch to IPv4 so Caddy's reverse_proxy hits
-        # the same family the lan-route abstraction expects
-        # (host = "127.0.0.1" by default).
+        # the runsOn host. Bind 0.0.0.0 so the proxy host (the one
+        # running Caddy) can reach this backend over the tailnet when
+        # runsOn ≠ proxy host. The tailnet firewall (machines/aurora/
+        # default.nix) is the actual gate — vaultwarden's port is
+        # opened only on tailscale0, not the LAN interface.
         DOMAIN = "https://vault.${config.nori.domain}";
-        ROCKET_ADDRESS = "127.0.0.1";
+        ROCKET_ADDRESS = "0.0.0.0";
         ROCKET_PORT = 8222;
 
         # SIGNUPS_ALLOWED is closed in steady state — single-user

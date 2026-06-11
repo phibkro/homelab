@@ -92,7 +92,7 @@
     samba.enable = true;
     stremio.enable = true;
     syncthing.enable = true;
-    vaultwarden.enable = true;
+    vaultwarden.enable = false;
     # GPU-bound
     ollama.enable = true;
     # Observability + alerting
