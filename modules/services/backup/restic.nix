@@ -23,7 +23,14 @@ let
     )
   );
 in
-{
+# The cross-cutting infrastructure here — backup targets registry,
+# user-data + media-irreplaceable jobs, weekly/monthly check timers —
+# is workstation-specific by data ownership: only workstation holds
+# the IronWolf media + /srv/share + Immich's dump dir. Pi imports this
+# transitively via the services bundle (post-P7) but doesn't need any
+# of it; gate on hostname so pi gets a clean no-op. When aurora hosts
+# the family-tier surface post-P12, this gate moves to that host.
+lib.mkIf (config.networking.hostName == "workstation") {
   # Cross-cutting restic infrastructure: the shared password secret,
   # the /var/backup tmpfiles rule that Pattern C2 prepareCommands
   # write into, the backup target declarations, and the weekly +

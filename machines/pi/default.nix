@@ -3,6 +3,7 @@
   lib,
   modulesPath,
   inputs,
+  pkgs,
   ...
 }:
 
@@ -23,38 +24,20 @@
 
     ../../modules/common
 
-    ../../modules/services/blocky.nix
-    ../../modules/services/gatus.nix
+    # Full service bundle. Post P2/P3 wrap + P1b route lift, importing
+    # the bundle does NOT activate services — each module's body is
+    # gated on `nori.services.<X>.enabled`. Routes are declared at
+    # import time so pi's Caddy (when enabled below) gets the complete
+    # `*.${nori.domain}` map without per-route stubs.
+    ../../modules/services
 
-    # Beszel: Pi runs both the hub (collects metrics) and an agent
-    # (reports its own metrics). Station only imports agent.nix. The
-    # hub-host is intentionally the appliance side so it survives
-    # station outages (forensics use case).
+    # Appliance-specialty modules that live outside the bundle (the
+    # bundle covers what workstation runs; these are pi-side service
+    # halves of the workhorse/appliance splits, plus pi's heartbeat).
     ../../modules/services/beszel/hub.nix
-    ../../modules/services/beszel/agent.nix
-
-    # ntfy: Pi runs the local server (for future internal-only alerts);
-    # both hosts import notify.nix for the OnFailure → ntfy.sh template.
-    # Same workhorse/appliance split as beszel — alert plane lives on
-    # the appliance so it survives station outages.
     ../../modules/services/ntfy/server.nix
-    ../../modules/services/ntfy/notify.nix
-
-    # VictoriaLogs: Pi runs the daemon (log database + web UI). Station
-    # imports the lanRoute via modules/services/victorialogs/default.nix.
-    # Third cross-host service split — same workhorse/appliance shape
-    # as beszel and ntfy. No log producer yet; daemon stands up empty.
     ../../modules/services/victorialogs/server.nix
-
-    # VictoriaMetrics — sibling TSDB for Gatus + future node_exporter
-    # scrape. Same fate-sharing rationale as VictoriaLogs. Surfaces in
-    # Grafana on workstation as the second datasource (logs + metrics
-    # = unified pane).
     ../../modules/services/victoriametrics.nix
-
-    # Dead-man-switch: pings healthchecks.io every 60s so the operator
-    # gets notified off-host if pi dies. Mitigates pi's role as SPOF
-    # for the alert plane (ntfy server lives here too).
     ../../modules/services/heartbeat.nix
 
     ./hardware.nix
@@ -72,12 +55,14 @@
     users.nori.imports = [ ./home.nix ];
   };
 
-  # Service-placement registry (aurora migration P3). Reproduces today's
-  # pi activation set exactly — each modules/services/*.nix that wraps
-  # itself in `mkIf config.nori.services.<name>.enabled` gets enabled
-  # here. Net effect under P2 wrap is zero behavior change.
+  # Service-placement registry. Pre-existing services (network appliance
+  # + observability) plus the ADR-0003 entry-plane trio (Caddy +
+  # Authelia + Blocky-authoritative now on pi). Workstation continues
+  # to serve LAN traffic until the Tailscale DNS push order swap
+  # (operator action) — both Caddys + Authelias run in parallel until
+  # then, each holding their own LE wildcard cert for `*.${nori.domain}`.
   nori.services = {
-    blocky.enable = true;
+    # Pre-existing pi services
     gatus.enable = true;
     beszel-hub.enable = true;
     beszel-agent.enable = true;
@@ -86,7 +71,50 @@
     victorialogs-server.enable = true;
     victoriametrics.enable = true;
     heartbeat.enable = true;
+    # ADR-0003 entry plane standup (P7). Blocky stays enabled below;
+    # its role flips from "forwarder" to "self-hosted" so pi serves
+    # the customDNS map directly (matches workstation's). Authelia
+    # loads the same sops material as workstation's instance — both
+    # accept logins for the same users + OIDC clients during parallel.
+    blocky.enable = true;
+    caddy.enable = true;
+    authelia.enable = true;
   };
+
+  # Blocky role: pre-P7 pi was a forwarder (delegated `*.${nori.domain}`
+  # queries to workstation). Post-P7 pi is self-hosted (authoritative
+  # for the customDNS map auto-generated from `nori.lanRoutes`).
+  nori.blocky.role = "self-hosted";
+
+  # Pi-side backup target — the OneTouch on aurora via SFTP, same
+  # repository as workstation reaches. The cross-cutting infrastructure
+  # in modules/services/backup/restic.nix is gated workstation-only by
+  # design (workstation holds the data those jobs back up); pi's
+  # Caddy/Authelia state declares its own backups that target this
+  # SFTP-to-aurora repo. Anti-write posture preserved: restic reads
+  # local state, streams over SFTP to aurora.
+  sops.secrets.restic-password = {
+    owner = "root";
+    mode = "0400";
+  };
+  sops.secrets.restic-ssh-key = {
+    owner = "root";
+    mode = "0400";
+  };
+  environment.etc."ssh/aurora_known_hosts".text = ''
+    aurora.saola-matrix.ts.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKnfMYRv1a3CGvnL0e82w/Z1RK7aOqS3k8JvMYbD8NET
+  '';
+  nori.backupTargets.onetouch = {
+    repository = "sftp:restic@aurora.saola-matrix.ts.net:";
+    description = "Pi → OneTouch via aurora SFTP. Same repo workstation pushes to; restic snapshots are content-addressed so per-host repos don't collide (each job writes to /<jobname>).";
+    extraOptions = [
+      "sftp.command='${pkgs.openssh}/bin/ssh -o BatchMode=yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/etc/ssh/aurora_known_hosts -i /run/secrets/restic-ssh-key restic@aurora.saola-matrix.ts.net -s sftp'"
+    ];
+  };
+
+  # /var/backup tmpfiles for any Pattern C2 prepareCommand to write
+  # into (e.g. authelia's sqlite VACUUM INTO target).
+  systemd.tmpfiles.rules = [ "d /var/backup 0755 root root -" ];
 
   # networking.hostName injected from the registry key in flake.nix.
   networking.useDHCP = lib.mkDefault true;
@@ -122,14 +150,6 @@
   # emulation on workstation). With this: garnix cache hit, build
   # finishes in ~15 min total.
   boot.initrd.allowMissingModules = true;
-
-  # ── Blocky: forwarder mode ───────────────────────────────────────
-  # Pi serves DNS + ad blocking to LAN clients. *.nori.lan queries
-  # get conditional-forwarded to workstation's Blocky (which has
-  # the actual map auto-generated from nori.lanRoutes). This means
-  # adding a new service on station doesn't require any Pi-side
-  # change — Pi just delegates the suffix.
-  nori.blocky.role = "forwarder";
 
   # ── Gatus: mutual-observability probes ───────────────────────────
   # Pi runs its own Gatus instance probing workstation's services.

@@ -391,9 +391,13 @@
 
                 # Caddy vhost declarations must come from
                 # modules/effects/lan-route.nix only — nori.lanRoutes is the
-                # single source of truth for *.nori.lan exposure.
+                # single source of truth for *.<nori.domain> exposure.
+                # modules/services/caddy.nix is exempt because it carries
+                # the transitional `*.nori.lan` → `*.<nori.domain>` 301
+                # redirect vhost from ADR-0004 (drop the exemption when
+                # that redirect goes away).
                 if grep -rln 'services\.caddy\.virtualHosts' modules/ \
-                   | grep -v '^modules/effects/lan-route\.nix$' ; then
+                   | grep -vE '^modules/effects/lan-route\.nix$|^modules/services/caddy\.nix$' ; then
                   echo
                   echo "✗ Direct services.caddy.virtualHosts found above. Use"
                   echo "  nori.lanRoutes.<name> = { port = N; }; instead — the"

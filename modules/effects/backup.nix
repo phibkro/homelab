@@ -427,24 +427,62 @@ in
           '';
         }
         {
-          assertion = myRole != "appliance" || backupPaths == [ ];
+          # Appliance hosts have anti-write storage — local restic
+          # targets violate the posture. Remote targets (SFTP, REST,
+          # S3, B2, Azure) don't write to local disk; restic reads
+          # the source paths and streams to the remote. Anti-write
+          # holds. So the appliance-include-allowed condition is "all
+          # targets are remote" — local targets remain rejected.
+          assertion =
+            let
+              isRemoteRepo =
+                repo:
+                lib.any (p: lib.hasPrefix p repo) [
+                  "sftp:"
+                  "rest:"
+                  "s3:"
+                  "b2:"
+                  "azure:"
+                ];
+              jobIsRemoteOnly =
+                cfg: lib.all (t: isRemoteRepo config.nori.backupTargets.${t}.repository) (effectiveTargets cfg);
+            in
+            myRole != "appliance" || lib.all jobIsRemoteOnly backupPaths;
           message = ''
-            Host ${config.networking.hostName} has nori.hosts.<self>.role = "appliance".
-            Appliance hosts have anti-write storage (no swap, volatile
-            journald, flash-only — see hosts/${config.networking.hostName}/hardware.nix)
-            and no local restic target. All nori.backups.<n> declarations
-            on appliance hosts must use `skip = "<reason>"`, not `include`.
+            Host ${config.networking.hostName} has nori.hosts.<self>.role = "appliance"
+            with nori.backups.<n> jobs that target a LOCAL restic
+            repository. Appliance hosts have anti-write storage (no
+            swap, volatile journald, flash-only — see hosts/${config.networking.hostName}/hardware.nix);
+            local restic targets contradict the posture. Use a remote
+            target instead (sftp:, rest:, s3:, b2:, azure:) — restic
+            reads source paths locally and streams to the remote, so
+            anti-write is preserved.
 
-            Offending: ${
-              lib.concatStringsSep ", " (
-                lib.attrNames (lib.filterAttrs (_: cfg: cfg.include != null) config.nori.backups)
-              )
+            Offending jobs:${
+              let
+                isRemoteRepo =
+                  repo:
+                  lib.any (p: lib.hasPrefix p repo) [
+                    "sftp:"
+                    "rest:"
+                    "s3:"
+                    "b2:"
+                    "azure:"
+                  ];
+                badPairs = lib.flatten (
+                  lib.mapAttrsToList (
+                    jobName: cfg:
+                    if cfg.include == null then
+                      [ ]
+                    else
+                      map (t: "${jobName} → ${t}") (
+                        lib.filter (t: !(isRemoteRepo config.nori.backupTargets.${t}.repository)) (effectiveTargets cfg)
+                      )
+                  ) config.nori.backups
+                );
+              in
+              "\n              " + (lib.concatStringsSep "\n              " badPairs)
             }
-
-            If you need to back up data that legitimately lives on this
-            host, the structural fix is the planned local-fast-restore
-            disk (see modules/server/backup/restic.nix L28). Until that
-            lands, declare `skip = "..."` and document the rationale.
           '';
         }
         {
