@@ -111,8 +111,11 @@ lib.mkMerge [
 
     systemd.services.caddy.serviceConfig.EnvironmentFile = config.sops.templates."caddy-acme-env".path;
 
-    # Skip Caddy's "install root cert into system trust" step — LE
-    # roots ship in the system trust store; the install would no-op.
+    # The transitional `*.nori.lan` vhost above uses `tls internal`,
+    # which makes Caddy's local PKI issuer active. By default Caddy
+    # would try to install that local CA root into the system trust
+    # store on startup — needs CAP_DAC_OVERRIDE which our hardening
+    # strips. Setting CADDY_AUTO_TRUST=0 skips the install attempt.
     systemd.services.caddy.environment.CADDY_AUTO_TRUST = "0";
 
     nori.harden.caddy = { };
