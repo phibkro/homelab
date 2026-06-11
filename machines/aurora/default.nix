@@ -92,6 +92,8 @@
     heim.enable = true; # operator portfolio (stateless serve, github build)
     immich.enable = true; # photos (postgres + redis + ML co-located)
     miniflux.enable = true; # RSS reader (postgres — shares immich's instance)
+    filmder.enable = true; # personal-app (stateless serve, github build)
+    grafana.enable = true; # observability frontend (sessions ephemeral; pi VM/logs over tailnet)
     # navidrome — defer: hardcoded to read nori.fs.downloads (Lidarr's
     # arr-tier path on workstation); doesn't fit aurora's "irreplaceable
     # tier only" fs shape. Re-evaluate when the music library path is
@@ -195,10 +197,12 @@
     22 # SSH
     2283 # immich-server (post-P8; tailnet-bound for cross-host proxy)
     3003 # immich-machine-learning
+    3000 # grafana
     5232 # radicale (CalDAV/CardDAV)
     8086 # glance
     8087 # miniflux
     8222 # vaultwarden — cross-host Caddy proxy from workstation/pi
+    9092 # filmder
     9094 # heim
   ];
 

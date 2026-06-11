@@ -14,7 +14,7 @@ lib.mkMerge [
 
     nori.lanRoutes.ops = {
       port = 3000;
-      runsOn = "workstation";
+      runsOn = "aurora";
       audience = "operator";
       monitor.path = "/api/health";
       dashboard = {
@@ -65,7 +65,7 @@ lib.mkMerge [
       enable = true;
       settings = {
         server = {
-          http_addr = "127.0.0.1";
+          http_addr = "0.0.0.0";
           http_port = 3000;
           # Caddy terminates TLS at ops.<nori.domain> and proxies here;
           # tell Grafana the public URL so its self-generated links

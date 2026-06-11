@@ -52,7 +52,7 @@ lib.mkMerge [
     # which would re-add `nori.funnelRoutes.filmder` — see header.
     nori.lanRoutes.filmder = {
       port = servePort;
-      runsOn = "workstation";
+      runsOn = "aurora";
       audience = "public";
       monitor = { };
       dashboard = {
@@ -163,7 +163,7 @@ lib.mkMerge [
         ExecStart = lib.concatStringsSep " " [
           "${pkgs.darkhttpd}/bin/darkhttpd"
           "/var/lib/filmder/dist"
-          "--addr 127.0.0.1"
+          "--addr 0.0.0.0"
           "--port ${toString servePort}"
           "--no-listing"
         ];

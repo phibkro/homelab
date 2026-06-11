@@ -79,7 +79,7 @@
     blocky.enable = true;
     caddy.enable = true;
     calibre-web.enable = true;
-    filmder.enable = true;
+    filmder.enable = false;
     glance.enable = false;
     heim.enable = false;
     immich.enable = true;
@@ -99,7 +99,7 @@
     beszel-agent.enable = true;
     disk-alert.enable = true;
     gatus.enable = true;
-    grafana.enable = true;
+    grafana.enable = false;
     node-exporter.enable = true;
     nvidia-gpu-exporter.enable = true;
     ntfy-notify.enable = true;
