@@ -15,7 +15,7 @@ lib.mkMerge [
 
     nori.lanRoutes.books = {
       port = 8084;
-      runsOn = "workstation";
+      runsOn = "aurora";
       monitor = { };
       audience = "family";
       # Forward-auth via Authelia. /opds/* + /kobo/* exempt so KOReader,
@@ -75,7 +75,7 @@ lib.mkMerge [
       user = "calibre-web";
       group = "calibre-web";
       listen = {
-        ip = "127.0.0.1";
+        ip = "0.0.0.0";
         port = 8084;
       };
       openFirewall = false;

@@ -78,13 +78,13 @@
     authelia.enable = true;
     blocky.enable = true;
     caddy.enable = true;
-    calibre-web.enable = true;
+    calibre-web.enable = false;
     filmder.enable = false;
     glance.enable = false;
     heim.enable = false;
     immich.enable = true;
     jellyfin.enable = true;
-    komga.enable = true;
+    komga.enable = false;
     miniflux.enable = false;
     navidrome.enable = true;
     open-webui.enable = true;
