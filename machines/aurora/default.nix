@@ -55,6 +55,7 @@
 
     ./hardware.nix
     ./disko-onetouch.nix
+    ./disko-family.nix
   ];
 
   home-manager = {
