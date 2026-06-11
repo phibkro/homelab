@@ -12,6 +12,8 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 - **Aurora migration — workstation-as-compute / aurora-as-family-vault.** Reorganises hosts to let workstation sleep when no GPU/transcode/bulk-storage workload is active and to give irreplaceable media a 3-copy replication posture. Full delta table, phase ordering, validation gates, and reversibility ladder in `docs/superpowers/plans/2026-06-11-aurora-migration.md`. Foundation phases (Nix-only schema + sweep + opt-in) are autonomous-tractable; data-move phases need operator hands.
 
+- **Docs-shape review (post-aurora-migration).** Make filesystem depth encode tier (root = L0/L1, `docs/` = L2, `docs/<sub>/` = L3) so progressive-disclosure read-cost matches structural depth. Main pass at aurora-migration Phase 17, quick second pass at Phase 20. Decisions made + target shape + migration phasing captured in `docs/superpowers/plans/2026-06-11-docs-shape-review.md` so the future-me starting Phase 17 inherits the design rather than re-deriving it.
+
 - **Mac is on x86_64-darwin EOL clock.**
 
   | Layer | Status |
