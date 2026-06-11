@@ -79,12 +79,22 @@
     nvidia-gpu-exporter.enable = true;
     restic-target.enable = true;
 
-    # P8 bellwether: smallest stateful family-tier service. Initializes
-    # an empty SQLite DB; operator-driven state migration replaces it
-    # with workstation's dump before P12 cutover. Runs loopback-only
-    # on aurora today — testable via `ssh aurora curl`; reachable via
-    # vault.home.phibkro.org only after runsOn flip + bind change.
-    vaultwarden.enable = true;
+    # P8 family-tier — small, sqlite-only services standing up empty.
+    # State migration + cutover are operator-driven per service; see
+    # the runbook in the P8 bellwether commit (e76907b). Postgres-
+    # backed services (immich, miniflux) are deferred — each is its
+    # own data + bootstrap exercise.
+    vaultwarden.enable = true; # bellwether
+    radicale.enable = true; # CalDAV / CardDAV (sqlite)
+    calibre-web.enable = true; # books (sqlite + library/books read)
+    komga.enable = true; # comics (sqlite + library/comics read)
+    glance.enable = true; # dashboard (stateless, reads lanRoutes)
+    heim.enable = true; # operator portfolio (stateless serve, github build)
+    # navidrome — defer: hardcoded to read nori.fs.downloads (Lidarr's
+    # arr-tier path on workstation); doesn't fit aurora's "irreplaceable
+    # tier only" fs shape. Re-evaluate when the music library path is
+    # split from the *arr download tree per the plan's library-tier
+    # intent.
   };
 
   # Backup infrastructure for aurora's family-tier services. The cross-
@@ -102,9 +112,27 @@
     repository = "/mnt/backup";
     description = "Aurora-local OneTouch HDD (P13 dest). Aurora's own restic backups write here directly; remote hosts reach the same drive via SFTP per restic-target.nix.";
   };
-  # Pattern C2 prepareCommands (e.g. vaultwarden's sqlite VACUUM INTO)
-  # need a writable staging dir.
-  systemd.tmpfiles.rules = [ "d /var/backup 0755 root root -" ];
+  # Aurora-side tmpfiles:
+  #  - /var/backup for Pattern C2 prepareCommands (vaultwarden's sqlite
+  #    VACUUM INTO, etc.).
+  #  - /mnt/family/library/{books,comics} owned by `media` group so
+  #    calibre-web + komga can write their initial empty-library state
+  #    (each runs as its own user, both join `media`). The library
+  #    subvol root is created root:root by disko; without these the
+  #    services restart-loop with "Invalid Calibre library" because
+  #    their pre-start can't `mkdir -p` inside it. Mirrors the pattern
+  #    arr/shared.nix uses on workstation for /mnt/media/library/*.
+  systemd.tmpfiles.rules = [
+    "d /var/backup                    0755  root  root  -"
+    "d /mnt/family/library            02775 root  media -"
+    "d /mnt/family/library/books      02775 root  media -"
+    "d /mnt/family/library/comics     02775 root  media -"
+  ];
+
+  # `media` group needs to exist for the tmpfiles + calibre-web/komga
+  # group membership. arr/shared.nix declares it on workstation; aurora
+  # declares its own here (the group is per-host).
+  users.groups.media = { };
 
   # ── Boot ───────────────────────────────────────────────────────────
   # 2016 laptop with UEFI — assume systemd-boot. If first boot reveals
