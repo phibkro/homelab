@@ -90,6 +90,7 @@
     komga.enable = true; # comics (sqlite + library/comics read)
     glance.enable = true; # dashboard (stateless, reads lanRoutes)
     heim.enable = true; # operator portfolio (stateless serve, github build)
+    immich.enable = true; # photos (postgres + redis + ML co-located)
     # miniflux — deferred. createDatabaseLocally=true starts Postgres,
     # but aurora's existing `services.immich.enable = true` (with
     # database.enable = false; workstation holds the canonical DB)
@@ -195,11 +196,12 @@
 
   services.tailscale.useRoutingFeatures = lib.mkForce "none";
 
-  # Tailnet firewall — operator SSH inbound only by default. immich-ml
-  # listens on 3003; opened to tailnet here for workstation's
-  # immich-server to reach.
+  # Tailnet firewall — operator SSH inbound + immich-ml port for
+  # workstation's immich-server scrape (pre-P8) + immich-server port
+  # for pi's Caddy proxy (post-P8 cutover).
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [
     22 # SSH
+    2283 # immich-server (post-P8; tailnet-bound for cross-host proxy)
     3003 # immich-machine-learning
   ];
 
@@ -221,35 +223,32 @@
   # runtime with CUDA execution provider when this is in place.
   nixpkgs.config.cudaSupport = true;
 
-  # ── immich machine-learning (the actual reason this host exists) ──
-  # The upstream services.immich module gates everything on
-  # services.immich.enable. To run *only* ML on aurora we enable the
-  # umbrella but turn off the local DB + redis (immich-server can't
-  # work without them; we don't need server-side here anyway) and
-  # force-disable the server + microservices units which would
-  # otherwise crash-loop trying to connect to a missing postgres.
+  # ── immich (post-P8: full server + ML + database co-located) ─────
+  # Aurora hosts the canonical immich now. Pre-P8 aurora was ML-only;
+  # workstation held the server + DB and reached aurora's ML over
+  # tailnet at port 3003. Post-P8 the server, microservices, database,
+  # and redis all live here too — workstation's immich is disabled
+  # once state migrates and runsOn flips.
   #
-  # IMMICH_HOST = "0.0.0.0" rebinds the ML listener from localhost so
-  # workstation's immich-server can reach it over tailnet at
-  # http://aurora.saola-matrix.ts.net:3003 (firewall rule above
-  # already opens this port).
-  services.immich = {
-    enable = true;
-    database.enable = false; # workstation hosts the canonical DB
-    redis.enable = false; # ditto
-    machine-learning = {
-      enable = true;
-      environment = {
-        IMMICH_HOST = lib.mkForce "0.0.0.0";
-      };
-    };
-    accelerationDevices = config.nori.gpu.nvidiaDevices;
+  # The shared immich.nix module assumes server-only on the importing
+  # host (with ML offloaded elsewhere), so it sets
+  # machine-learning.enable = false. Override on aurora — aurora IS the
+  # ML host. mkForce beats the module's default; mkForce + mkForce
+  # would conflict, so the module uses default priority on
+  # machine-learning.enable and aurora's mkForce wins.
+  services.immich.machine-learning = {
+    enable = lib.mkForce true;
+    environment.IMMICH_HOST = lib.mkForce "0.0.0.0";
   };
-
-  # Aurora is ML-only — kill the server + microservices units so they
-  # don't restart-loop trying to reach a postgres that isn't there.
-  systemd.services.immich-server.enable = lib.mkForce false;
-  systemd.services.immich-microservices.enable = lib.mkForce false;
+  # Server binds tailnet — pi's Caddy reaches over tailnet0 post-cutover.
+  systemd.services.immich-server.environment.IMMICH_HOST = lib.mkForce "0.0.0.0";
+  # Module sets IMMICH_MACHINE_LEARNING_URL with mkForce to aurora's
+  # tailnetIp:3003 (correct for cross-host from workstation). On
+  # aurora itself the tailnet IP routes back through tailnet0 — works
+  # but loops over a network stack. mkOverride 49 beats the module's
+  # mkForce (50) and points at loopback directly.
+  systemd.services.immich-server.environment.IMMICH_MACHINE_LEARNING_URL =
+    lib.mkOverride 49 "http://127.0.0.1:3003";
 
   # ── SSH ───────────────────────────────────────────────────────────
   services.openssh = {
