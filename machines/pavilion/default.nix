@@ -67,6 +67,7 @@
   # pavilion activation set — node-exporter only. Pavilion is the
   # agent quarantine; LAN services intentionally don't run here.
   nori.services.node-exporter.enable = true;
+  nori.services.beszel-agent.enable = true; # high-level metrics → pi's Beszel hub
 
   # ── home-manager-as-NixOS-module ──────────────────────────────────
   home-manager = {
