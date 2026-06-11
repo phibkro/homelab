@@ -15,7 +15,7 @@ lib.mkMerge [
 
     nori.lanRoutes.audio = {
       port = 4533;
-      runsOn = "workstation";
+      runsOn = "aurora";
       monitor = { };
       audience = "family";
       oidc = {
@@ -37,12 +37,14 @@ lib.mkMerge [
     # (Symfonium, DSub, play:Sub, Substreamer, Sonixd) connect to the
     # same URL.
     #
-    # Reads music from /mnt/media/downloads/music (Lidarr's auto-grabbed
-    # library) read-only — Navidrome scans + indexes into its own SQLite
-    # but never writes to the source tree. State (user accounts,
-    # playlists, scrobble history, transcoding cache) at
-    # /var/lib/navidrome (DynamicUser symlink → /var/lib/private/navidrome;
-    # backup paths target the private dir per the symlink-trap assertion).
+    # Reads music from `${nori.fs.library.path}/music` read-only —
+    # Navidrome scans + indexes into its own SQLite but never writes
+    # to the source tree. Curated tier (irreplaceable); Lidarr writes
+    # acquisitions to library/music alongside calibre's books + komga's
+    # comics. State (user accounts, playlists, scrobble history,
+    # transcoding cache) at /var/lib/navidrome (DynamicUser symlink →
+    # /var/lib/private/navidrome; backup paths target the private dir
+    # per the symlink-trap assertion).
     #
     # `music` is taken by Lidarr (acquire-tier); Navidrome uses `audio`.
     #
@@ -83,9 +85,9 @@ lib.mkMerge [
       enable = true;
       openFirewall = false;
       settings = {
-        Address = "127.0.0.1";
+        Address = "0.0.0.0";
         Port = 4533;
-        MusicFolder = "${config.nori.fs.downloads.path}/music";
+        MusicFolder = "${config.nori.fs.library.path}/music";
         EnableTranscodingConfig = true;
       };
     };
@@ -114,9 +116,9 @@ lib.mkMerge [
       ND_AUTH_OIDC_USERNAMECLAIM = "preferred_username";
     };
 
-    # Read-only access to Lidarr's music library; navidrome's own state
-    # at /var/lib/private/navidrome rides upstream's StateDirectory.
-    nori.harden.navidrome.readOnlyBinds = [ config.nori.fs.downloads.path ];
+    # Read-only access to the music tier; navidrome's own state at
+    # /var/lib/private/navidrome rides upstream's StateDirectory.
+    nori.harden.navidrome.readOnlyBinds = [ "${config.nori.fs.library.path}/music" ];
 
     # Pattern C2 — sqlite3 .backup before restic. DynamicUser's symlink
     # at /var/lib/navidrome → /var/lib/private/navidrome means restic

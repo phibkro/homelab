@@ -86,7 +86,7 @@
     jellyfin.enable = true;
     komga.enable = false;
     miniflux.enable = false;
-    navidrome.enable = true;
+    navidrome.enable = false;
     open-webui.enable = true;
     radicale.enable = false;
     samba.enable = true;

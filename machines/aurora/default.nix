@@ -96,11 +96,7 @@
     filmder.enable = true; # personal-app (stateless serve, github build)
     grafana.enable = true; # observability frontend (sessions ephemeral; pi VM/logs over tailnet)
     samba.enable = true; # /mnt/family/* shares for family bookmarks
-    # navidrome — defer: hardcoded to read nori.fs.downloads (Lidarr's
-    # arr-tier path on workstation); doesn't fit aurora's "irreplaceable
-    # tier only" fs shape. Re-evaluate when the music library path is
-    # split from the *arr download tree per the plan's library-tier
-    # intent.
+    navidrome.enable = true; # music (sqlite + library/music read)
   };
 
   # Backup infrastructure for aurora's family-tier services. The
@@ -201,6 +197,7 @@
     3003 # immich-machine-learning
     445 # samba (family /mnt/family/* shares)
     3000 # grafana
+    4533 # navidrome
     5232 # radicale (CalDAV/CardDAV)
     8084 # calibre-web
     8085 # komga
