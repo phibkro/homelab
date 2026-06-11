@@ -37,10 +37,10 @@ in
     type = types.str;
     default = "home.phibkro.org";
     description = ''
-      Parent DNS domain for the homelab's `*.<domain>` services. Every
-      service module that previously hardcoded a `nori.lan` URL reads
-      `config.nori.domain` instead — vhost names, Authelia cookie domain,
-      Authelia issuer URL, OIDC redirect URIs, Caddy ACME wildcard, etc.
+      Parent DNS domain for the homelab's `*.<domain>` services.
+      Single source of truth: vhost names, Authelia cookie domain,
+      Authelia issuer URL, OIDC redirect URIs, Caddy ACME wildcard all
+      read this rather than hardcoding the literal.
 
       Split-horizon DNS: Blocky is authoritative for `*.<domain>` on the
       LAN/tailnet (resolves to `nori.lanIp`); public DNS for the same
@@ -500,9 +500,8 @@ in
       # Caddy on this host actually consumes the forwardAuth blocks. If
       # Caddy isn't enabled, the routes are just data — no proxying
       # happens, so the Authelia dependency doesn't bite. Hosts that
-      # only import the bundle for the route registry (e.g. aurora
-      # pre-P8, declared so routes pre-exist for the upcoming pi-side
-      # proxy + the eventual P12 cutover) shouldn't trip the assertion.
+      # only import the bundle for the route registry shouldn't trip
+      # the assertion.
       caddyEnabledHere = config.services.caddy.enable;
     in
     {

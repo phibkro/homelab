@@ -55,14 +55,12 @@
     users.nori.imports = [ ./home.nix ];
   };
 
-  # Service-placement registry. Pre-existing services (network appliance
-  # + observability) plus the ADR-0003 entry-plane trio (Caddy +
-  # Authelia + Blocky-authoritative now on pi). Workstation continues
-  # to serve LAN traffic until the Tailscale DNS push order swap
-  # (operator action) — both Caddys + Authelias run in parallel until
-  # then, each holding their own LE wildcard cert for `*.${nori.domain}`.
+  # Pi runs the network-appliance + observability set AND the HTTP
+  # entry-plane trio (Caddy + Authelia + Blocky-authoritative) per
+  # ADR-0003. Pi's Caddy holds an LE wildcard cert for `*.${nori.domain}`
+  # — same as workstation's. Which Caddy clients actually hit is
+  # decided by `nori.lanIp` (today: workstation; post-cutover: pi).
   nori.services = {
-    # Pre-existing pi services
     gatus.enable = true;
     beszel-hub.enable = true;
     beszel-agent.enable = true;
@@ -71,36 +69,20 @@
     victorialogs-server.enable = true;
     victoriametrics.enable = true;
     heartbeat.enable = true;
-    # ADR-0003 entry plane standup (P7). Blocky stays enabled below;
-    # its role flips from "forwarder" to "self-hosted" so pi serves
-    # the customDNS map directly (matches workstation's). Authelia
-    # loads the same sops material as workstation's instance — both
-    # accept logins for the same users + OIDC clients during parallel.
     blocky.enable = true;
     caddy.enable = true;
     authelia.enable = true;
   };
 
-  # Blocky role: pre-P7 pi was a forwarder (delegated `*.${nori.domain}`
-  # queries to workstation). Post-P7 pi is self-hosted (authoritative
-  # for the customDNS map auto-generated from `nori.lanRoutes`).
-  #
-  # Pi's blocky still returns workstation's LAN IP (the default derived
-  # `nori.lanIp`), so clients land on workstation's Caddy. Pi's Caddy
-  # is standing by but receives no production traffic — backends bound
-  # to 127.0.0.1 on workstation can't be proxied across the tailnet.
-  # The lanIp override (and the matching Tailscale split-DNS flip to
-  # pi) lands per-service as workstation services migrate to aurora /
-  # rebind to 0.0.0.0 during P8/P12.
+  # Blocky authoritative on pi: serves the customDNS map derived from
+  # `nori.lanRoutes` directly, rather than forwarding to workstation.
   nori.blocky.role = "self-hosted";
 
-  # Pi-side backup target — the OneTouch on aurora via SFTP, same
-  # repository as workstation reaches. The cross-cutting infrastructure
-  # in modules/services/backup/restic.nix is gated workstation-only by
-  # design (workstation holds the data those jobs back up); pi's
-  # Caddy/Authelia state declares its own backups that target this
-  # SFTP-to-aurora repo. Anti-write posture preserved: restic reads
-  # local state, streams over SFTP to aurora.
+  # Pi → OneTouch via aurora SFTP. Restic reads pi's local state
+  # (Caddy + Authelia DB) and streams over SFTP — preserves pi's
+  # anti-write posture (the SD card stays read-mostly).
+  # `modules/services/backup/restic.nix` is workstation-only by data
+  # ownership; pi declares its own target + per-service backups here.
   sops.secrets.restic-password = {
     owner = "root";
     mode = "0400";

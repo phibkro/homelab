@@ -109,11 +109,10 @@ lib.mkMerge [
               }
 
               # ============== Col 2 — Apps / Services ==============
-              # Bookmarks-only — service uptime status was previously
-              # rendered here as a `monitor` widget but is duplicated by
-              # the dedicated Gatus instance (linked from the Admin
-              # bookmark group). Removing the inline widget de-clutters
-              # the family-facing landing page.
+              # Bookmarks-only — uptime status is owned by the dedicated
+              # Gatus instance (linked from the Admin bookmark group),
+              # not duplicated as an inline widget. Keeps the family-
+              # facing landing page uncluttered.
               {
                 size = "full";
                 widgets = [

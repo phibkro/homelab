@@ -1,16 +1,14 @@
 _: {
   # ── nori.fs declarations ───────────────────────────────────────────
-  # MP510 dual-role: workstation-side restic-local target
-  # (/mnt/backup-local — replaces the IronWolf @restic-local subvol so
-  # the IronWolf can be slimmed down post-P14) plus cold-replica
-  # endpoints for aurora's /mnt/family/* via nightly btrfs send/receive
-  # (/mnt/family-replica/*, declared in P15).
+  # MP510 dual-role: workstation-side restic-local target at
+  # /mnt/backup-local, plus cold-replica endpoints for aurora's
+  # /mnt/family/* via btrfs send/receive (/mnt/family-replica/*).
   #
   # `re-derivable` tier on the family-replica entries because the
-  # source of truth lives on aurora — if MP510 fails, restoring is
-  # re-running the btrfs receive timeline from aurora. They don't
-  # land in any restic repo (aurora's restic covers the source data;
-  # backing up a replica too would just double-spend backup budget).
+  # source of truth lives on aurora — if MP510 fails, the recovery
+  # path is replaying the btrfs receive timeline from aurora. They
+  # don't land in any restic repo (aurora's restic covers the source
+  # data; backing up a replica too would double-spend backup budget).
   nori.fs = {
     # Workstation-side restic-local target — `nori.backupTargets.mp510`.
     # Holds the ~57 GiB of workstation restic snapshots that used to
@@ -42,9 +40,8 @@ _: {
     };
   };
 
-  # Declarative partition layout for workstation's Corsair Force MP510
-  # NVMe — formerly the Windows boot drive (ADR-0002 wiped 2026-06-11
-  # after operator extracted the personal residue under /Users/piplu).
+  # Declarative partition layout for workstation's Corsair Force
+  # MP510 NVMe.
   #
   # Applied with:
   #

@@ -112,9 +112,10 @@ in
           # Latest snapshot mtime under target.path. btrfs receive
           # lands subvols as direct children (snapshot dir convention
           # is `<n>-YYYYMMDD-HHMMSS` per btrbk); take the newest by
-          # mtime. Falls back loud if path missing — failure = alert,
-          # which is the correct behavior pre-P15 if the registry
-          # claims a replica but nothing's been received yet.
+          # mtime. Failure = alert, which is the right behavior
+          # whenever the registry claims a replica but nothing's
+          # actually been received yet (the verifier's whole job is
+          # to catch silent receive-stalls).
           script = ''
             set -uo pipefail
             target=${r.target.path}

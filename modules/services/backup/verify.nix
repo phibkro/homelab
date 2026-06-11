@@ -11,9 +11,9 @@ let
   # red mask 17 GREEN service drills in the alert payload.
   #
   # Workstation-only by data ownership — same gate as the sibling
-  # backup/restic.nix. Other hosts importing the bundle (pi post-P7,
-  # aurora post-P8) don't have the source data being restored here
-  # OR the restic-password sops secret this script consumes.
+  # backup/restic.nix. Other hosts importing the bundle (pi, aurora)
+  # don't have the source data being restored here OR the
+  # restic-password sops secret this script consumes.
   #
   # - `serviceRepos`  — the 17 service-state repos. Cheap (~few min
   #                     total). Monthly drill cadence.

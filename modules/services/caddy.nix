@@ -77,32 +77,21 @@ lib.mkMerge [
       # (the service module), not here.
     };
 
-    # Transitional `*.nori.lan` redirect vhost. Family devices still
-    # holding bookmarks to the old domain hit Caddy here — Caddy serves
-    # an internal-CA cert (the same root that's already installed on
-    # those devices from before ADR-0004), then 301s to the same path
-    # under `home.phibkro.org`. Devices without the internal CA installed
-    # still get the redirect at the HTTP layer; only the TLS handshake
-    # itself depends on the old trust chain.
-    #
-    # Drop this block (and the parallel transitional entries in
-    # modules/effects/lan-route.nix § blocky customDNS) once family
-    # bookmarks have all migrated. Internal CA still lives at
-    # /var/lib/caddy/.local/share/caddy/pki/authorities/local/ so the
-    # cert keeps issuing without operator intervention until then.
+    # `*.nori.lan` 301-redirects to the same path under `nori.domain`.
+    # `tls internal` (Caddy's local CA) for the handshake — devices
+    # that trust the local CA get a clean redirect; the rest get the
+    # 301 after a cert warning. The HTTP-layer redirect is the load-
+    # bearing behavior; the TLS chain only smooths it.
     services.caddy.virtualHosts."*.nori.lan".extraConfig = ''
       tls internal
       @sub header_regexp Host ^([^.]+)\.nori\.lan$
       redir @sub https://{re.sub.1}.${config.nori.domain}{uri} 301
     '';
 
-    # Dedicated Cloudflare API token for ACME DNS-01. Separate from the
-    # operator's existing `cloudflare_api_token` (cfut_-prefix, a
-    # wrangler-issued user OAuth token used for app-deploy flows) which
-    # Caddy's cloudflare-dns plugin rejects on format. This one is a
-    # proper Account API Token (40-char alphanumeric, no prefix) scoped
-    # to DNS:Edit on the phibkro.org zone — the minimal grant needed to
-    # write/remove `_acme-challenge.*` TXT records.
+    # Cloudflare Account API Token (40-char alphanumeric, no prefix),
+    # scoped DNS:Edit on the phibkro.org zone — the minimal grant
+    # Caddy's cloudflare-dns plugin needs to write/remove
+    # `_acme-challenge.*` TXT records for ACME DNS-01.
     sops.secrets.cloudflare-acme-token = {
       sopsFile = ../../secrets/apps.yaml;
       key = "cloudflare_acme_token";
@@ -122,10 +111,8 @@ lib.mkMerge [
 
     systemd.services.caddy.serviceConfig.EnvironmentFile = config.sops.templates."caddy-acme-env".path;
 
-    # Skip the system trust install attempt — LE roots are already in
-    # the system trust store, no install needed. (Variable retained
-    # from the previous internal-CA setup; harmless when ACME is in
-    # use, removed at the next sweep.)
+    # Skip Caddy's "install root cert into system trust" step — LE
+    # roots ship in the system trust store; the install would no-op.
     systemd.services.caddy.environment.CADDY_AUTO_TRUST = "0";
 
     nori.harden.caddy = { };

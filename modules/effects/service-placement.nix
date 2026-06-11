@@ -117,5 +117,5 @@ in
   # No `config` block — service-placement is a pure Reader at this
   # layer. The `enabled` derivation lives in the submodule default
   # above so service modules read it through the per-service path.
-  # Consumers: every modules/services/<name>.nix (post-P2 sweep).
+  # Consumers: every modules/services/<name>.nix.
 }

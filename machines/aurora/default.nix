@@ -36,12 +36,11 @@
 
     ../../modules/common
 
-    # Full services bundle. P2 wrap + P1b route lift mean importing
-    # does NOT activate services — each module's body is gated on
-    # `nori.services.<X>.enabled`. Routes are declared unconditionally,
-    # so post-P8/P12 enabling vaultwarden / immich / etc. on aurora is
-    # a one-line config edit per service. Today only the pre-existing
-    # exporters are enabled (see nori.services below).
+    # Full services bundle. Importing does NOT activate services —
+    # each module's body is gated on `nori.services.<X>.enabled`,
+    # while routes are declared unconditionally. Enabling a service
+    # on aurora is a one-line edit per service (see `nori.services`
+    # below).
     ../../modules/services
 
     # Aurora-only specialty: chrooted SFTP backup target. Sits outside
@@ -96,7 +95,7 @@
     miniflux.enable = true; # RSS reader (postgres — shares immich's instance)
     filmder.enable = true; # personal-app (stateless serve, github build)
     grafana.enable = true; # observability frontend (sessions ephemeral; pi VM/logs over tailnet)
-    samba.enable = true; # /mnt/family/* shares for post-P12 family bookmark migration
+    samba.enable = true; # /mnt/family/* shares for family bookmarks
     # navidrome — defer: hardcoded to read nori.fs.downloads (Lidarr's
     # arr-tier path on workstation); doesn't fit aurora's "irreplaceable
     # tier only" fs shape. Re-evaluate when the music library path is
@@ -104,13 +103,13 @@
     # intent.
   };
 
-  # Backup infrastructure for aurora's family-tier services. The cross-
-  # cutting `modules/services/backup/restic.nix` is gated workstation-
-  # only by data ownership; aurora declares its own target here. The
-  # OneTouch HDD physically lives on aurora (post-P13), so aurora's
-  # own backups land LOCAL at /mnt/backup — bypassing SFTP. Remote
-  # clients (workstation, pi) keep using the SFTP target declared in
-  # modules/services/backup/restic-target.nix.
+  # Backup infrastructure for aurora's family-tier services. The
+  # cross-cutting `modules/services/backup/restic.nix` is gated
+  # workstation-only by data ownership; aurora declares its own
+  # target here. The OneTouch HDD lives on aurora, so aurora's own
+  # backups land LOCAL at /mnt/backup — bypassing SFTP. Remote
+  # clients (workstation, pi) reach the same drive via the SFTP
+  # target declared in modules/services/backup/restic-target.nix.
   sops.secrets.restic-password = {
     owner = "root";
     mode = "0400";
@@ -194,12 +193,11 @@
 
   services.tailscale.useRoutingFeatures = lib.mkForce "none";
 
-  # Tailnet firewall — operator SSH inbound + immich-ml port for
-  # workstation's immich-server scrape (pre-P8) + immich-server port
-  # for pi's Caddy proxy (post-P8 cutover).
+  # Tailnet firewall. Each port serves a specific cross-host backend
+  # reached by the entry-plane Caddy (workstation or pi).
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [
     22 # SSH
-    2283 # immich-server (post-P8; tailnet-bound for cross-host proxy)
+    2283 # immich-server (cross-host Caddy proxy)
     3003 # immich-machine-learning
     445 # samba (family /mnt/family/* shares)
     3000 # grafana
@@ -231,12 +229,10 @@
   # runtime with CUDA execution provider when this is in place.
   nixpkgs.config.cudaSupport = true;
 
-  # ── immich (post-P8: full server + ML + database co-located) ─────
-  # Aurora hosts the canonical immich now. Pre-P8 aurora was ML-only;
-  # workstation held the server + DB and reached aurora's ML over
-  # tailnet at port 3003. Post-P8 the server, microservices, database,
-  # and redis all live here too — workstation's immich is disabled
-  # once state migrates and runsOn flips.
+  # ── immich (full server + ML + database co-located) ──────────────
+  # Aurora hosts the canonical immich: server + microservices +
+  # postgres + redis + machine-learning all live here, the ML
+  # reachable over tailnet at port 3003.
   #
   # The shared immich.nix module assumes server-only on the importing
   # host (with ML offloaded elsewhere), so it sets

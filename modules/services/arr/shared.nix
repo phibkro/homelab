@@ -9,10 +9,9 @@ lib.mkIf ((config.nori.fs ? downloads) && (config.nori.fs ? library)) {
   # group + the shared library/download tmpfiles.
   #
   # Gated on `nori.fs.{downloads,library}` being declared, so hosts
-  # that import the services bundle for its route declarations (e.g.
-  # pi post-P7) don't pull in tmpfiles for paths that don't exist.
-  # Workstation declares both via disko-media.nix; aurora doesn't,
-  # and stays unaffected.
+  # that import the services bundle for its route declarations only
+  # (pi, aurora) don't pull in tmpfiles for paths that don't exist.
+  # Workstation declares both via disko-media.nix.
   #
   # Why a dedicated `media` group: qBittorrent → *arr import is a
   # hardlink (saves disk + atomic move), and btrfs hardlinks don't
