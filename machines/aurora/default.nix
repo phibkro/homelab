@@ -90,6 +90,15 @@
     komga.enable = true; # comics (sqlite + library/comics read)
     glance.enable = true; # dashboard (stateless, reads lanRoutes)
     heim.enable = true; # operator portfolio (stateless serve, github build)
+    # miniflux — deferred. createDatabaseLocally=true starts Postgres,
+    # but aurora's existing `services.immich.enable = true` (with
+    # database.enable = false; workstation holds the canonical DB)
+    # injects an ALTER DATABASE immich into postgresql-setup which
+    # fails because the immich DB was never created. Resolve as part
+    # of the immich-on-aurora work — either enable immich's local DB
+    # or bring miniflux's Postgres up in a way that bypasses the
+    # immich script. Today aurora's miniflux stays off so postgres
+    # doesn't fire at all.
     # navidrome — defer: hardcoded to read nori.fs.downloads (Lidarr's
     # arr-tier path on workstation); doesn't fit aurora's "irreplaceable
     # tier only" fs shape. Re-evaluate when the music library path is
