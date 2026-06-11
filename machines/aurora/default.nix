@@ -42,11 +42,19 @@
     ../../modules/services/node-exporter.nix
     ../../modules/services/nvidia-gpu-exporter.nix
 
+    # Restic backup target: chrooted SFTP-only user for remote
+    # restic clients pushing to /mnt/backup. Pairs with the
+    # disko-onetouch entry below; both arrived 2026-06-11 when the
+    # OneTouch HDD physically moved from workstation. See
+    # docs/superpowers/plans/2026-06-11-aurora-migration.md § P13.
+    ../../modules/services/backup/restic-target.nix
+
     # Notably absent:
     #   modules/services/default.nix — no LAN service stack
     #   modules/desktop/default.nix — headless
 
     ./hardware.nix
+    ./disko-onetouch.nix
   ];
 
   home-manager = {

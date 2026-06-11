@@ -44,16 +44,16 @@ in
   # independent failure mode + OnFailure → notify@.
   #
   # Current targets:
-  #   onetouch  — USB OneTouch ext4 mount at /mnt/backup (formatted via
-  #               machines/workstation/disko-onetouch.nix). Different
-  #               physical drive from IronWolf data + SN750 root,
-  #               same chassis + PSU + USB hub. Failure-domain
-  #               independence is partial: drives apart, but USB-side
-  #               glitches affect this one specifically (2026-06-04
-  #               wedged-controller incident).
+  #   onetouch  — Seagate OneTouch HDD relocated to aurora on
+  #               2026-06-11; reached over SFTP via the chrooted
+  #               `restic` user on aurora (machines/aurora/
+  #               disko-onetouch.nix + modules/services/backup/
+  #               restic-target.nix). Full failure-domain
+  #               independence from workstation now: separate
+  #               chassis, PSU, and USB controller.
   #   ironwolf  — Always-mounted @restic-local btrfs subvolume on the
   #               IronWolf media drive (see disko-media.nix). Catches
-  #               OneTouch-offline failure mode; doesn't protect
+  #               aurora-unreachable failure mode; doesn't protect
   #               against a full IronWolf drive failure (the source
   #               irreplaceable data lives there too).
   #
@@ -75,14 +75,36 @@ in
   # Backup target registry — schema in modules/effects/backup.nix.
   nori.backupTargets = {
     onetouch = {
-      repository = "/mnt/backup";
-      description = "USB OneTouch external HDD — autofs lazy-mount; can survive workstation reboot.";
+      repository = "sftp:restic@aurora.saola-matrix.ts.net:";
+      description = "OneTouch HDD relocated to aurora 2026-06-11; reached over SFTP via the chrooted `restic` user on aurora (see machines/aurora/disko-onetouch.nix + modules/services/backup/restic-target.nix).";
+      extraOptions = [
+        "sftp.command='${pkgs.openssh}/bin/ssh -o BatchMode=yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/etc/ssh/aurora_known_hosts -i /run/secrets/restic-ssh-key restic@aurora.saola-matrix.ts.net -s sftp'"
+      ];
     };
     ironwolf = {
       repository = "/mnt/backup-local";
       description = "Always-mounted btrfs subvolume on the IronWolf media drive (@restic-local).";
     };
   };
+
+  # SSH identity for the chrooted `restic` user on aurora. Private
+  # half lives in sops; public half lives in
+  # modules/services/backup/restic-target.nix (authorized_keys).
+  # `owner = root` because restic backup units run as root.
+  sops.secrets.restic-ssh-key = {
+    owner = "root";
+    mode = "0400";
+  };
+
+  # Pinned aurora host pubkey for SSH host verification. Not a
+  # secret — committed in-tree because it lets `BatchMode=yes` ssh
+  # invocations verify aurora's identity without a TOFU prompt. If
+  # aurora's host key rotates (rare; only on full re-install), grab
+  # the new line from `ssh-keyscan -t ed25519
+  # aurora.saola-matrix.ts.net` and replace below.
+  environment.etc."ssh/aurora_known_hosts".text = ''
+    aurora.saola-matrix.ts.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKnfMYRv1a3CGvnL0e82w/Z1RK7aOqS3k8JvMYbD8NET
+  '';
 
   # ---------------------------------------------------------------------
   # Backup verification cadence (STORAGE.md § "Backup verification").
