@@ -14,6 +14,8 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 - **Docs-shape review (post-aurora-migration).** Make filesystem depth encode tier (root = L0/L1, `docs/` = L2, `docs/<sub>/` = L3) so progressive-disclosure read-cost matches structural depth. Main pass at aurora-migration Phase 17, quick second pass at Phase 20. Decisions made + target shape + migration phasing captured in `docs/superpowers/plans/2026-06-11-docs-shape-review.md` so the future-me starting Phase 17 inherits the design rather than re-deriving it.
 
+- **Full documentation deep-scan (post-aurora-migration).** Today's session caught targeted drift in 9 memory entries + 3 repo docs while the rsync was running; the spot-checks covered the blast radius of today's commits but were not exhaustive. Once P10/P11/P12 settle, do a full pass across `docs/`, `.claude/skills/` (~35 gotcha skills), and the `~/.claude/projects/-srv-share-projects/memory/` set. Look for: stale paths (e.g. `modules/server` → `modules/services`), stale URLs (`*.nori.lan` examples that should be `*.${nori.domain}` post-ADR-0004), references to deleted/renamed artifacts (`@restic-local`, the `ironwolf` backup target name, the `caddy-local-ca.crt` file), historical narration in code-adjacent docs that violates the comment-hygiene principle from PR #10. `git log --since="2026-06-11"` is the changeset to verify against.
+
 - **Mac is on x86_64-darwin EOL clock.**
 
   | Layer | Status |
