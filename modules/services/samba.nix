@@ -9,14 +9,17 @@ lib.mkMerge [
   (lib.mkIf config.nori.services.samba.enabled {
     # Samba server, tailnet-only.
     #
-    # Three shares:
+    # Shares — one declared here (whole-drive `media`), two derived
+    # from nori.fs entries via modules/effects/fs.nix:
     #   media → /mnt/media   (whole IronWolf btrfs root; subvolumes visible
     #                          as subdirs: streaming, photos, home-videos,
-    #                          projects)
-    #   share → /srv/share   (@srv-share subvolume — family-shared storage)
-    #   nori  → /srv/nori    (@srv-nori subvolume — operator's personal
-    #                          networked working dir, own snapshot/backup
-    #                          tier, recursive dotfile veto; see inline)
+    #                          projects). Hardcoded here because the share
+    #                          covers the btrfs root, which isn't a single
+    #                          nori.fs subvol entry.
+    #   share → /srv/share   (emitted by nori.fs.share.samba — declared
+    #                          alongside disko at machines/workstation/disko.nix)
+    #   nori  → /srv/nori    (emitted by nori.fs.nori.samba — recursive
+    #                          dotfile veto declared alongside disko)
     #
     # Auth: smbpasswd-managed, separate from system passwords. After
     # first rebuild, on the host:
@@ -83,64 +86,26 @@ lib.mkMerge [
           "directory mask" = "0775";
         };
 
-        "share" = {
-          inherit (config.nori.fs.share) path;
-          browseable = "yes";
-          "read only" = "no";
-          "valid users" = "nori";
-          "force user" = "nori";
-          "force group" = "users";
-          "create mask" = "0664";
-          "directory mask" = "0775";
-        };
-
-        # Operator's personal networked working dir. Same tailnet-only,
-        # single-user posture as the others, PLUS a recursive dotfile veto:
-        # `veto files = /.*/` denies SMB access to any dot-prefixed entry at
-        # EVERY depth (not just the top level) — the backstop that keeps a
-        # nested secret (a repo's .env, .git-credentials, .npmrc token, a
-        # stray ~/.ssh layout) off the tailnet. `delete veto files = yes` so
-        # a directory can still be removed despite vetoed dotfiles inside.
-        #
-        # Limits (by design, not a guarantee): the veto only catches
-        # dot-prefixed NAMES — non-dot secret files (credentials.json,
-        # kubeconfig, *.key) are NOT hidden, so don't store those here. And
-        # it hides .git/.envrc over SMB, which is fine for the local-work +
-        # remote-access pattern (you work on workstation; SMB is for reading
-        # files from other tailnet devices). Real secrets stay in $HOME
-        # (local-only), never relocated here.
-        "nori" = {
-          inherit (config.nori.fs.nori) path;
-          browseable = "yes";
-          "read only" = "no";
-          "valid users" = "nori";
-          "force user" = "nori";
-          "force group" = "users";
-          "create mask" = "0664";
-          "directory mask" = "0775";
-          "veto files" = "/.*/";
-          "delete veto files" = "yes";
-        };
+        # `share` and `nori` shares emitted by modules/effects/fs.nix
+        # from the per-fs `samba = { … }` blocks declared next to disko.
       };
     };
 
     # Open SMB only on the tailnet interface.
     networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 445 ];
 
-    # btrfs subvolumes created by disko are root:root by default. The
-    # Samba shares need nori to be able to write at the subvolume root,
-    # not just inside an existing nori-owned subdir. systemd-tmpfiles
-    # asserts ownership on activation so this stays correct across
-    # rebuilds and (defensively) any future disko re-run.
+    # Ownership tmpfiles for the subvols accessed via the `media` SMB
+    # share. These aren't per-share — they cover the btrfs subvolumes
+    # under /mnt/media that get exposed transitively when family clients
+    # browse the media share. fs.nix emits ownership rules for the
+    # nori.fs entries that DO have their own samba blocks (share + nori);
+    # the four below are the ones the whole-drive media share needs.
     #
     # Enumerated, not auto-derived: @library and @archive are also under
     # /mnt/media but are owned root:media by arr/shared.nix tmpfiles
     # (mode 02775), so a tmpfiles rule here with `nori users` would
-    # conflict. Adding a new Samba-writable subvolume = add it here +
-    # to nori.fs.
+    # conflict.
     systemd.tmpfiles.rules = [
-      "d ${config.nori.fs.share.path}       0775 nori users -"
-      "d ${config.nori.fs.nori.path}        0775 nori users -"
       "d ${config.nori.fs.downloads.path}   0775 nori users -"
       "d ${config.nori.fs.photos.path}      0775 nori users -"
       "d ${config.nori.fs.home-videos.path} 0775 nori users -"

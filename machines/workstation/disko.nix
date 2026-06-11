@@ -13,10 +13,23 @@ _: {
     share = {
       path = "/srv/share";
       tier = "user";
+      # Family-shared storage over SMB. Generic defaults; the fs.nix
+      # samba generator emits the share, modules/services/samba.nix
+      # owns the globals + firewall rule.
+      samba = { };
     };
     nori = {
       path = "/srv/nori";
       tier = "user";
+      # Operator's personal networked working dir. Recursive dotfile
+      # veto — see modules/effects/fs.nix § vetoFiles for the limits
+      # (matches names, not paths; non-dot secrets still need to stay
+      # out). `delete veto files = yes` lets folders be removed despite
+      # vetoed dotfiles inside.
+      samba = {
+        vetoFiles = "/.*/";
+        deleteVetoFiles = true;
+      };
     };
   };
 
