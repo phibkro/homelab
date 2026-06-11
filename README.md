@@ -17,7 +17,7 @@ Single-user NixOS homelab flake. Two live hosts: `workstation` (workhorse — Ca
 
 ## Active services
 
-All HTTP services live behind Caddy at `https://<name>.nori.lan`. Resolution: Blocky returns workstation's LAN IP (`192.168.1.181`), so LAN clients hit Caddy directly with no tailnet hop. Off-LAN tailnet clients reach the same address via pi's subnet route advertisement (`192.168.1.0/24`); needs `--accept-routes` on the client. DNS is served by pi's Blocky (Tailscale admin console → DNS → custom nameserver = `100.100.71.3`); LAN-only devices need their DNS pointed at pi's LAN IP (`192.168.1.225`). Caddy uses an internal CA — install `modules/services/caddy-local-ca.crt` once per device.
+All HTTP services live behind Caddy at `https://<name>.home.phibkro.org` (LE-signed via ACME DNS-01 against Cloudflare; trusted by every modern device with no per-device CA install). Legacy `*.nori.lan` URLs 301-redirect transitionally. Resolution: Blocky on pi is authoritative for `*.home.phibkro.org` on the LAN/tailnet (resolves to `nori.lanIp`); public DNS for the same names has no A records, so the homelab is unreachable from the internet. LAN clients hit Caddy directly with no tailnet hop. Off-LAN tailnet clients reach the same address via pi's subnet route advertisement (`192.168.1.0/24`); needs `--accept-routes` on the client. DNS is served by pi's Blocky (Tailscale admin console → DNS → custom nameserver = `100.100.71.3`); LAN-only devices need their DNS pointed at pi's LAN IP (`192.168.1.225`).
 
 The live inventory is the `nori.lanRoutes` attrset in `config`. Static lists drift; query the source of truth instead:
 

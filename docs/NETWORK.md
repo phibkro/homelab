@@ -64,17 +64,13 @@ Full rationale in the `audience` option description in `modules/effects/lan-rout
 
 ## Caddy + TLS + naming
 
-Caddy terminates TLS for every `<name>.nori.lan` using its **internal CA** (auto-generated). The root cert is committed at `modules/services/caddy-local-ca.crt` and added to system trust via `security.pki.certificateFiles` so `curl` / Go / OpenSSL trust it transparently.
+Caddy terminates TLS for every `<name>.home.phibkro.org` with a **Let's Encrypt** wildcard cert (`*.home.phibkro.org`) obtained via ACME DNS-01 against Cloudflare. The wildcard avoids per-vhost issuance + the LE rate-limit storm that would follow. ISRG roots ship pre-trusted on every modern device — no per-device CA install, no Mac keychain dance, no Node `NODE_EXTRA_CA_CERTS` env var. See ADR-0004 for the rationale.
 
-**Python services** need explicit `SSL_CERT_FILE = "/etc/ssl/certs/ca-bundle.crt"` — `certifi` doesn't read system trust. See `.claude/skills/gotcha-python-certifi-bypass-system-trust/`.
+The Cloudflare API token lives in sops (`cloudflare_acme_token`); Caddy's `withPlugins` bakes in `caddy-dns/cloudflare`. The `nori.domain` option (`modules/effects/lan-route.nix`) is the single source of truth — every vhost name, Authelia cookie domain + issuer URL, and OIDC redirect URI reads from it.
 
-**Devices** accessing the homelab need the Caddy root CA installed once:
+Transitional `*.nori.lan` redirect: pi's Caddy still serves `*.nori.lan` (Caddy internal CA) and 301-redirects to the same path under `home.phibkro.org`. Drop this block from `modules/services/caddy.nix` + the parallel entries in `modules/effects/lan-route.nix § blocky customDNS` once family bookmarks have migrated.
 
-| Device | Command / path |
-|---|---|
-| macOS system | `sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain modules/services/caddy-local-ca.crt` |
-| Firefox / Zen | Settings → Privacy → Certificates → Import (browsers don't read macOS keychain) |
-| iOS | AirDrop the cert → install via Settings → Profile → enable in Cert Trust Settings |
+**Python services** with `certifi`-based clients (open-webui's `httpx`/`requests`/`urllib3`) historically needed `SSL_CERT_FILE = "/etc/ssl/certs/ca-bundle.crt"` to see the local CA. With LE, certifi's Mozilla bundle already includes ISRG roots — the override is no longer load-bearing but harmless.
 
 ## Authelia OIDC (overview)
 

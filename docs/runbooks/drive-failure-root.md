@@ -118,5 +118,5 @@ All green + `just test-backups` PASS = recovery complete.
 
 ## Don't forget
 
-- The Caddy CA cert is committed at `modules/services/caddy-local-ca.crt`. After install, downstream devices that trusted the OLD CA (Mac keychain, Firefox cert store, etc.) **will reject the new CA** until you re-import. Plan for this — it'll feel like "the homelab broke" after a recovery.
 - Tailscale state is in `/var/lib/tailscale`. Restored from restic. If that doesn't work, run `sudo tailscale up` on the new host and approve in the admin console.
+- TLS for `*.home.phibkro.org` is Let's Encrypt via ACME DNS-01 against Cloudflare (ADR-0004). Caddy reissues automatically on first start; the Cloudflare API token lives in sops (`cloudflare_acme_token`). Recovery doesn't require any per-device CA install — modern devices trust ISRG roots natively. If ACME 429s during recovery (rate limit), the issued certs persist in `/var/lib/caddy/.local/share/caddy/certificates/` and survive restic restore of `/var/lib/caddy`.

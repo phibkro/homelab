@@ -22,7 +22,7 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
   | Switch cmd | `nix run home-manager/master -- switch --flake ~/Documents/nix-migration#macbook` |
   | Nix installer | Determinate v3.12.2 (2025-11-05) — **last release with x86_64-darwin**; v3.12.3 dropped Intel. Pin v3.12.2 or use upstream for new installs |
   | Nixpkgs lifeline | 26.05 = **last release supporting x86_64-darwin** (eval warnings surface this) |
-  | Already adapted | `nix shell` over `home.packages` for heavy compiles (Hydra cache thin); ghostty + utm stay on brew; Caddy local CA → Node via `NODE_EXTRA_CA_CERTS` in `machines/macbook/home.nix` |
+  | Already adapted | `nix shell` over `home.packages` for heavy compiles (Hydra cache thin); ghostty + utm stay on brew |
 
   **Decision needed** when next stable ships: pin Mac to 26.05 indefinitely / migrate Mac off Nix / replace hardware.
 

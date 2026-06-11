@@ -85,10 +85,9 @@ lib.mkMerge [
         # already during the proton-vs-gmail mismatch).
         OAUTH_MERGE_ACCOUNTS_BY_EMAIL = "True";
         # Python's httpx/requests/urllib3 use certifi's bundled trust
-        # store by default — they don't see /etc/ssl/certs and so don't
-        # trust Caddy's local CA. SSL_CERT_FILE overrides certifi to use
-        # the system bundle (which has the local CA via
-        # security.pki.certificateFiles in modules/server/caddy.nix).
+        # store; LE roots ship with Mozilla's bundle so certifi trusts
+        # `*.home.phibkro.org` natively. Pointing at the system bundle
+        # is harmless and survives any future internal-CA reintroduction.
         SSL_CERT_FILE = "/etc/ssl/certs/ca-bundle.crt";
         REQUESTS_CA_BUNDLE = "/etc/ssl/certs/ca-bundle.crt";
       };
