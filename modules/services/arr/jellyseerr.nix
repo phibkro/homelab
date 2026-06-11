@@ -10,6 +10,27 @@ lib.mkMerge [
       "media-server"
       "family-tier"
     ];
+
+    # Web-UI-managed OIDC (like Beszel/PocketBase) — Jellyseerr doesn't
+    # accept OIDC config via env vars, so EnvironmentFile is deliberately
+    # NOT wired and the operator pastes the secret into the admin UI on
+    # first run (see header).
+    nori.lanRoutes.requests = {
+      port = 5055;
+      runsOn = "workstation";
+      monitor = { };
+      audience = "family";
+      oidc = {
+        clientName = "Jellyseerr";
+        redirectPath = "/login/oidc-callback";
+      };
+      dashboard = {
+        title = "Jellyseerr";
+        icon = "sh:jellyseerr";
+        group = "Acquire";
+        description = "Request shows / movies (family-facing)";
+      };
+    };
   }
   (lib.mkIf config.nori.services.jellyseerr.enabled {
     # Jellyseerr — request UI for users. Family members log in (via
@@ -55,26 +76,6 @@ lib.mkMerge [
     };
 
     nori.harden.seerr = { };
-
-    # Web-UI-managed OIDC (like Beszel/PocketBase) — Jellyseerr doesn't
-    # accept OIDC config via env vars, so EnvironmentFile is deliberately
-    # NOT wired and the operator pastes the secret into the admin UI on
-    # first run (see header).
-    nori.lanRoutes.requests = {
-      port = 5055;
-      monitor = { };
-      audience = "family";
-      oidc = {
-        clientName = "Jellyseerr";
-        redirectPath = "/login/oidc-callback";
-      };
-      dashboard = {
-        title = "Jellyseerr";
-        icon = "sh:jellyseerr";
-        group = "Acquire";
-        description = "Request shows / movies (family-facing)";
-      };
-    };
 
     # DynamicUser — /var/lib/jellyseerr is a symlink; restic stores the
     # link not the target, so back up the real path.

@@ -6,6 +6,19 @@ lib.mkMerge [
       "family-tier"
       "stateful"
     ];
+
+    nori.lanRoutes.calendar = {
+      port = 5232;
+      runsOn = "workstation";
+      monitor.path = "/.web/";
+      audience = "family";
+      dashboard = {
+        title = "Radicale";
+        icon = "sh:radicale";
+        group = "Personal";
+        description = "CalDAV / CardDAV — phone calendar + contacts";
+      };
+    };
   }
   (lib.mkIf config.nori.services.radicale.enabled {
     # Radicale — CalDAV + CardDAV server. Replaces Google Calendar /
@@ -45,18 +58,6 @@ lib.mkMerge [
     ];
 
     nori.harden.radicale = { };
-
-    nori.lanRoutes.calendar = {
-      port = 5232;
-      monitor.path = "/.web/";
-      audience = "family";
-      dashboard = {
-        title = "Radicale";
-        icon = "sh:radicale";
-        group = "Personal";
-        description = "CalDAV / CardDAV — phone calendar + contacts";
-      };
-    };
 
     # Pattern A — file-snapshot consistency is fine, radicale writes one
     # .ics / .vcf per event and the whole tree is tiny (~8K).

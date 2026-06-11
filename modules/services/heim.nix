@@ -40,6 +40,19 @@ lib.mkMerge [
       "personal-app"
       "stateless"
     ];
+
+    nori.lanRoutes.heim = {
+      port = servePort;
+      runsOn = "workstation";
+      audience = "public";
+      monitor = { };
+      dashboard = {
+        title = "Heim";
+        icon = "si:astro";
+        group = "Projects";
+        description = "Operator's portfolio (Astro, markdown-authored)";
+      };
+    };
   }
   (lib.mkIf config.nori.services.heim.enabled {
     users.users.heim = {
@@ -139,18 +152,6 @@ lib.mkMerge [
         ];
         Restart = "on-failure";
         RestartSec = 5;
-      };
-    };
-
-    nori.lanRoutes.heim = {
-      port = servePort;
-      audience = "public";
-      monitor = { };
-      dashboard = {
-        title = "Heim";
-        icon = "si:astro";
-        group = "Projects";
-        description = "Operator's portfolio (Astro, markdown-authored)";
       };
     };
 

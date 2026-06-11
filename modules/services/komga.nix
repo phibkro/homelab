@@ -11,6 +11,24 @@ lib.mkMerge [
       "media-reader"
       "stateful"
     ];
+
+    nori.lanRoutes.comics = {
+      port = 8085;
+      runsOn = "workstation";
+      monitor = { };
+      audience = "family";
+      # Forward-auth via Authelia. /api/* exempt so OPDS readers
+      # (Tachiyomi, Paperback, Komelia) and the e-reader catalog at
+      # /api/v1/opds/v2 keep working — they authenticate with HTTP
+      # Basic against Komga's own user, not via browser cookies.
+      forwardAuth.exemptPaths = [ "/api/*" ];
+      dashboard = {
+        title = "Komga";
+        icon = "sh:komga";
+        group = "Consume";
+        description = "Comics + manga + OPDS";
+      };
+    };
   }
   (lib.mkIf config.nori.services.komga.enabled {
     # Komga — comics/manga server. Scans a directory tree for CBZ/CBR/
@@ -44,23 +62,6 @@ lib.mkMerge [
     users.users.komga.extraGroups = [ "media" ];
 
     nori.harden.komga.binds = [ config.nori.fs.library.path ];
-
-    nori.lanRoutes.comics = {
-      port = 8085;
-      monitor = { };
-      audience = "family";
-      # Forward-auth via Authelia. /api/* exempt so OPDS readers
-      # (Tachiyomi, Paperback, Komelia) and the e-reader catalog at
-      # /api/v1/opds/v2 keep working — they authenticate with HTTP
-      # Basic against Komga's own user, not via browser cookies.
-      forwardAuth.exemptPaths = [ "/api/*" ];
-      dashboard = {
-        title = "Komga";
-        icon = "sh:komga";
-        group = "Consume";
-        description = "Comics + manga + OPDS";
-      };
-    };
 
     # Pattern A — Komga's user/library/read-progress DB. Comic files
     # themselves live at /mnt/media/library/comics (already in

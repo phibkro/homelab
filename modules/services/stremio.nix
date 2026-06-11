@@ -40,7 +40,22 @@ let
   servePort = 11470;
 in
 lib.mkMerge [
-  { nori.services.stremio.tags = [ "media-server" ]; }
+  {
+    nori.services.stremio.tags = [ "media-server" ];
+
+    nori.lanRoutes.stremio = {
+      port = servePort;
+      runsOn = "workstation";
+      audience = "operator";
+      monitor = { };
+      dashboard = {
+        title = "Stremio";
+        icon = "si:stremio";
+        group = "Consume";
+        description = "Streaming backend (pair via web.stremio.com)";
+      };
+    };
+  }
   (lib.mkIf config.nori.services.stremio.enabled {
     users.users.stremio = {
       isSystemUser = true;
@@ -73,18 +88,6 @@ lib.mkMerge [
         ExecStart = "${pkgs.nodejs}/bin/node ${serverJs}";
         Restart = "on-failure";
         RestartSec = 5;
-      };
-    };
-
-    nori.lanRoutes.stremio = {
-      port = servePort;
-      audience = "operator";
-      monitor = { };
-      dashboard = {
-        title = "Stremio";
-        icon = "si:stremio";
-        group = "Consume";
-        description = "Streaming backend (pair via web.stremio.com)";
       };
     };
 

@@ -25,6 +25,25 @@ lib.mkMerge [
       "family-tier"
       "stateful"
     ];
+
+    nori.lanRoutes = lib.mkIf enabled {
+      chat = {
+        port = 8080;
+        runsOn = "workstation";
+        monitor = { };
+        audience = "family";
+        oidc = {
+          clientName = "Open WebUI";
+          redirectPath = "/oauth/oidc/callback";
+        };
+        dashboard = {
+          title = "Open WebUI";
+          icon = "sh:open-webui";
+          group = "Consume";
+          description = "Local LLM chat (Ollama-backed)";
+        };
+      };
+    };
   }
   (lib.mkIf config.nori.services.open-webui.enabled {
     # Open WebUI: chat front-end on top of local Ollama. First registered
@@ -143,22 +162,5 @@ lib.mkMerge [
           skip = "Service disabled — see `enabled` at top of file. Existing snapshots in /mnt/backup/open-webui retained.";
         };
 
-    nori.lanRoutes = lib.mkIf enabled {
-      chat = {
-        port = 8080;
-        monitor = { };
-        audience = "family";
-        oidc = {
-          clientName = "Open WebUI";
-          redirectPath = "/oauth/oidc/callback";
-        };
-        dashboard = {
-          title = "Open WebUI";
-          icon = "sh:open-webui";
-          group = "Consume";
-          description = "Local LLM chat (Ollama-backed)";
-        };
-      };
-    };
   })
 ]

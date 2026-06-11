@@ -5,7 +5,22 @@
 }:
 
 lib.mkMerge [
-  { nori.services.prowlarr.tags = [ "media-server" ]; }
+  {
+    nori.services.prowlarr.tags = [ "media-server" ];
+
+    nori.lanRoutes.indexers = {
+      port = 9696;
+      runsOn = "workstation";
+      monitor = { };
+      audience = "operator";
+      dashboard = {
+        title = "Prowlarr";
+        icon = "sh:prowlarr";
+        group = "Acquire";
+        description = "Indexer aggregator";
+      };
+    };
+  }
   (lib.mkIf config.nori.services.prowlarr.enabled {
     # Prowlarr — indexer aggregator for the *arr stack. Holds the list of
     # torrent trackers / Usenet indexers in one place; Sonarr + Radarr
@@ -41,18 +56,6 @@ lib.mkMerge [
     # changes, override via serviceConfig.SupplementaryGroups.
 
     nori.harden.prowlarr = { };
-
-    nori.lanRoutes.indexers = {
-      port = 9696;
-      monitor = { };
-      audience = "operator";
-      dashboard = {
-        title = "Prowlarr";
-        icon = "sh:prowlarr";
-        group = "Acquire";
-        description = "Indexer aggregator";
-      };
-    };
 
     # DynamicUser — /var/lib/prowlarr is a symlink; restic stores the link
     # not the target, so back up the real path.

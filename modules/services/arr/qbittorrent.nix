@@ -6,7 +6,24 @@
 }:
 
 lib.mkMerge [
-  { nori.services.qbittorrent.tags = [ "media-server" ]; }
+  {
+    nori.services.qbittorrent.tags = [ "media-server" ];
+
+    # Gatus reads qBittorrent's 401-without-auth at / as service-up, which
+    # is the intent here — we just want to know the process answers.
+    nori.lanRoutes.downloads = {
+      port = 8083;
+      runsOn = "workstation";
+      monitor = { };
+      audience = "operator";
+      dashboard = {
+        title = "qBittorrent";
+        icon = "si:qbittorrent";
+        group = "Acquire";
+        description = "Download client";
+      };
+    };
+  }
   (lib.mkIf config.nori.services.qbittorrent.enabled {
     # qBittorrent — torrent download client for the *arr stack. WebUI only
     # (no desktop GUI per the homelab's server/client separation).
@@ -142,20 +159,6 @@ lib.mkMerge [
     users.users.qbittorrent.extraGroups = [ "media" ];
 
     nori.harden.qbittorrent.binds = [ config.nori.fs.downloads.path ];
-
-    # Gatus reads qBittorrent's 401-without-auth at / as service-up, which
-    # is the intent here — we just want to know the process answers.
-    nori.lanRoutes.downloads = {
-      port = 8083;
-      monitor = { };
-      audience = "operator";
-      dashboard = {
-        title = "qBittorrent";
-        icon = "si:qbittorrent";
-        group = "Acquire";
-        description = "Download client";
-      };
-    };
 
     # Exclude `incomplete/` — re-derivable (peers re-send chunks) and
     # historically ballooned the backup repo to 560+ GiB of dead chunks

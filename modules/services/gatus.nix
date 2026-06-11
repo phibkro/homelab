@@ -46,7 +46,26 @@
   };
 
   config = lib.mkMerge [
-    { nori.services.gatus.tags = [ "observability" ]; }
+    {
+      nori.services.gatus.tags = [ "observability" ];
+
+      # Caddy vhost at https://status.nori.lan — only on hosts that run
+      # Caddy. No self-monitor (Gatus can't usefully probe itself —
+      # would always pass while alive and silently disappear when dead).
+      nori.lanRoutes = lib.mkIf config.nori.gatus.exposeViaCaddy {
+        status = {
+          port = 8082;
+          runsOn = "workstation";
+          audience = "public";
+          dashboard = {
+            title = "Gatus";
+            icon = "sh:gatus";
+            group = "Admin";
+            description = "Service uptime + alerts";
+          };
+        };
+      };
+    }
     (lib.mkIf config.nori.services.gatus.enabled {
       sops.secrets.gatus-env = {
         mode = "0440";
@@ -87,22 +106,6 @@
       };
 
       nori.harden.gatus = { };
-
-      # Caddy vhost at https://status.nori.lan — only on hosts that run
-      # Caddy. No self-monitor (Gatus can't usefully probe itself —
-      # would always pass while alive and silently disappear when dead).
-      nori.lanRoutes = lib.mkIf config.nori.gatus.exposeViaCaddy {
-        status = {
-          port = 8082;
-          audience = "public";
-          dashboard = {
-            title = "Gatus";
-            icon = "sh:gatus";
-            group = "Admin";
-            description = "Service uptime + alerts";
-          };
-        };
-      };
 
       nori.backups.gatus.skip = "Memory-only storage; no on-disk state.";
     })

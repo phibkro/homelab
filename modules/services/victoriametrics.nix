@@ -12,6 +12,24 @@ lib.mkMerge [
       "observability"
       "stateful"
     ];
+
+    # Caddy lanRoute on workstation: metrics.nori.lan is taken by
+    # Beszel's hub. Park the VM query UI under a function-name that
+    # signals "TSDB" rather than competing with Beszel's branding.
+    # Operator-only audience (tailnet auth perimeter) — the VM web UI
+    # is admin tooling, never a family-tier surface.
+    nori.lanRoutes.tsdb = {
+      port = 8428;
+      runsOn = "pi";
+      monitor.path = "/health";
+      audience = "operator";
+      dashboard = {
+        title = "VictoriaMetrics";
+        icon = "si:victoriametrics";
+        group = "Admin";
+        description = "TSDB query UI — backs the unified Grafana dashboard.";
+      };
+    };
   }
   (lib.mkIf config.nori.services.victoriametrics.enabled {
     services.victoriametrics = {
@@ -125,24 +143,6 @@ lib.mkMerge [
     networking.firewall.interfaces."tailscale0".allowedTCPPorts = [
       8428
     ];
-
-    # Caddy lanRoute on workstation: metrics.nori.lan is taken by
-    # Beszel's hub. Park the VM query UI under a function-name that
-    # signals "TSDB" rather than competing with Beszel's branding.
-    # Operator-only audience (tailnet auth perimeter) — the VM web UI
-    # is admin tooling, never a family-tier surface.
-    nori.lanRoutes.tsdb = {
-      port = 8428;
-      host = config.nori.hosts.pi.tailnetIp;
-      monitor.path = "/health";
-      audience = "operator";
-      dashboard = {
-        title = "VictoriaMetrics";
-        icon = "si:victoriametrics";
-        group = "Admin";
-        description = "TSDB query UI — backs the unified Grafana dashboard.";
-      };
-    };
 
     nori.harden.victoriametrics = { };
     nori.backups.victoriametrics.skip = "Event-history scratch on Pi flash; same anti-write posture as VictoriaLogs.";

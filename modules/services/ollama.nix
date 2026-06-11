@@ -24,6 +24,15 @@ lib.mkMerge [
       "gpu-bound"
       "stateful"
     ];
+
+    # /api/tags returns 200 with the model list — Gatus monitor target.
+    nori.lanRoutes = lib.mkIf enabled {
+      ai = {
+        port = 11434;
+        runsOn = "workstation";
+        monitor.path = "/api/tags";
+      };
+    };
   }
   (lib.mkIf config.nori.services.ollama.enabled {
 
@@ -97,14 +106,6 @@ lib.mkMerge [
     # mkForce on ProtectHome avoids Nix complaining about boolean-vs-
     # string definition collisions with the upstream module's setting.
     nori.harden.ollama = { };
-
-    # /api/tags returns 200 with the model list — Gatus monitor target.
-    nori.lanRoutes = lib.mkIf enabled {
-      ai = {
-        port = 11434;
-        monitor.path = "/api/tags";
-      };
-    };
 
     nori.backups.ollama.skip =
       if enabled then

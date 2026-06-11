@@ -101,7 +101,34 @@ in
           host = mkOption {
             type = types.str;
             default = "127.0.0.1";
-            description = "Backend host for Caddy to proxy to.";
+            description = ''
+              Backend host for Caddy to proxy to. Legacy / fallback —
+              prefer `runsOn` for cross-host placement. Generators use
+              `runsOn`-derived host if set, this field otherwise.
+            '';
+          };
+          runsOn = mkOption {
+            type = types.nullOr types.str;
+            default = null;
+            example = "aurora";
+            description = ''
+              Name of the homelab host that runs this route's backend
+              service (matches a `nori.hosts.<name>` registry key).
+              Generators resolve to:
+                * `127.0.0.1` when `runsOn` matches the host evaluating
+                  the route (Caddy proxies to the local loopback)
+                * `config.nori.hosts.<runsOn>.tailnetIp` otherwise
+                  (Caddy proxies cross-host over tailnet)
+              Falls back to the legacy `host` field when null.
+
+              This is the mechanism that lets route declarations live
+              outside the `mkIf cfg.enabled` gate in each service module
+              — every host that imports the module sees the route in
+              `nori.lanRoutes`, but the backend resolves to the right
+              address per host. Enables a clean pi-central / aurora-
+              entry-plane architecture where the proxy host doesn't
+              co-locate with every service.
+            '';
           };
           scheme = mkOption {
             type = types.enum [
@@ -423,6 +450,21 @@ in
       names = lib.attrNames routes;
       oidcRoutes = filterAttrs (_: r: r.oidc != null) routes;
       forwardAuthRoutes = filterAttrs (_: r: r.forwardAuth != null) routes;
+
+      # Resolve a route's backend host. `runsOn` (the placement field)
+      # wins when set: 127.0.0.1 if the route runs on the evaluating
+      # host, the runsOn host's tailnet IP otherwise. Falls back to the
+      # legacy `host` field (default 127.0.0.1) when runsOn is null —
+      # routes that haven't migrated to the lift refactor see no change.
+      myHost = config.networking.hostName;
+      routeHost =
+        cfg:
+        if cfg.runsOn == null then
+          cfg.host
+        else if cfg.runsOn == myHost then
+          "127.0.0.1"
+        else
+          config.nori.hosts.${cfg.runsOn}.tailnetIp;
       autheliaEnabled =
         config.services.authelia.instances != { }
         && lib.any (i: i.enable) (lib.attrValues config.services.authelia.instances);
@@ -493,7 +535,7 @@ in
                  {
                   ${headerLines}
                 }'';
-              backend = "reverse_proxy ${cfg.scheme}://${cfg.host}:${toString cfg.port}${headerBlock}";
+              backend = "reverse_proxy ${cfg.scheme}://${routeHost cfg}:${toString cfg.port}${headerBlock}";
               # Forward-auth block: Caddy hits Authelia's /api/verify
               # for every request matching @authNeeded (everything not
               # in exemptPaths). copy_headers propagates the Authelia
@@ -533,7 +575,7 @@ in
       services.gatus.settings.endpoints = lib.mkAfter (
         lib.mapAttrsToList (name: cfg: {
           inherit name;
-          url = "${cfg.scheme}://${cfg.host}:${toString cfg.port}${cfg.monitor.path}";
+          url = "${cfg.scheme}://${routeHost cfg}:${toString cfg.port}${cfg.monitor.path}";
           inherit (cfg.monitor) interval conditions;
           alerts = [
             {

@@ -12,6 +12,19 @@ lib.mkMerge [
       "gpu-bound"
       "stateful"
     ];
+
+    nori.lanRoutes.media = {
+      port = 8096;
+      runsOn = "workstation";
+      monitor = { };
+      audience = "family";
+      dashboard = {
+        title = "Jellyfin";
+        icon = "si:jellyfin";
+        group = "Consume";
+        description = "Movies, shows, music — server-rendered";
+      };
+    };
   }
   (lib.mkIf config.nori.services.jellyfin.enabled {
     # Jellyfin — media streaming server. Library paths configured via
@@ -54,18 +67,6 @@ lib.mkMerge [
       "/mnt/media"
       config.nori.fs.share.path
     ];
-
-    nori.lanRoutes.media = {
-      port = 8096;
-      monitor = { };
-      audience = "family";
-      dashboard = {
-        title = "Jellyfin";
-        icon = "si:jellyfin";
-        group = "Consume";
-        description = "Movies, shows, music — server-rendered";
-      };
-    };
 
     # Pattern A — library scan, watch progress, user accounts. The
     # library can be re-derived from media files on disk, but watch

@@ -11,6 +11,18 @@ lib.mkMerge [
       "observability"
       "alerting"
     ];
+
+    # Caddy-gated so the Pi (no Caddy, runs the ntfy server itself)
+    # doesn't register a route pointing at its own backend. Host coupling
+    # lives in nori.hosts (see modules/effects/hosts.nix).
+    nori.lanRoutes = lib.mkIf config.services.caddy.enable {
+      alert = {
+        port = 8081;
+        runsOn = "pi";
+        monitor.path = "/v1/health";
+        audience = "operator";
+      };
+    };
   }
   (lib.mkIf config.nori.services.ntfy-notify.enabled {
     # notify@ — OnFailure handler used by any unit that should alert on
@@ -77,18 +89,6 @@ lib.mkMerge [
         # The 120s sleep MUST run uninterrupted — generous timeout so
         # systemd doesn't kill the alert before it fires.
         TimeoutStartSec = "180s";
-      };
-    };
-
-    # Caddy-gated so the Pi (no Caddy, runs the ntfy server itself)
-    # doesn't register a route pointing at its own backend. Host coupling
-    # lives in nori.hosts (see modules/effects/hosts.nix).
-    nori.lanRoutes = lib.mkIf config.services.caddy.enable {
-      alert = {
-        port = 8081;
-        host = config.nori.hosts.pi.tailnetIp;
-        monitor.path = "/v1/health";
-        audience = "operator";
       };
     };
 

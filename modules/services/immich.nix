@@ -12,6 +12,45 @@ lib.mkMerge [
       "media-reader"
       "stateful"
     ];
+
+    # Web-UI-managed OIDC (like Jellyseerr/Beszel). Immich stores its
+    # OAuth config in postgres (system_config table); env-var override
+    # support shifted in 1.100+ and isn't reliable for the OAuth
+    # subtree, so the operator pastes the raw secret + callback URI
+    # into the admin UI on first run.
+    #
+    # First-run setup:
+    #   1. just generate-oidc-key photos
+    #   2. sops secrets/secrets.yaml — paste the two values
+    #   3. just rebuild
+    #   4. https://photos.nori.lan → admin login (master account from
+    #      initial Immich setup) → Administration → Settings → OAuth:
+    #        Issuer URL:    https://auth.nori.lan
+    #        Client ID:     photos
+    #        Client Secret: cat /run/secrets/oidc-photos-client-secret
+    #                        (sudo on workstation)
+    #        Scope:         openid email profile
+    #        Auto Register: on
+    #        Auto Launch:   off
+    #      Save. The redirect URI in Authelia (auto-set by lan-route via
+    #      `oidc.redirectPath`) is https://photos.nori.lan/auth/login —
+    #      that's what Immich's frontend handles.
+    nori.lanRoutes.photos = {
+      port = 2283;
+      runsOn = "workstation";
+      monitor = { };
+      audience = "family";
+      oidc = {
+        clientName = "Immich";
+        redirectPath = "/auth/login";
+      };
+      dashboard = {
+        title = "Immich";
+        icon = "si:immich";
+        group = "Consume";
+        description = "Photo library + face recognition";
+      };
+    };
   }
   (lib.mkIf config.nori.services.immich.enabled {
     # Immich — self-hosted photo management. Phone → server auto-upload,
@@ -89,44 +128,6 @@ lib.mkMerge [
     ];
 
     nori.harden.immich-server.binds = [ config.nori.fs.photos.path ];
-
-    # Web-UI-managed OIDC (like Jellyseerr/Beszel). Immich stores its
-    # OAuth config in postgres (system_config table); env-var override
-    # support shifted in 1.100+ and isn't reliable for the OAuth
-    # subtree, so the operator pastes the raw secret + callback URI
-    # into the admin UI on first run.
-    #
-    # First-run setup:
-    #   1. just generate-oidc-key photos
-    #   2. sops secrets/secrets.yaml — paste the two values
-    #   3. just rebuild
-    #   4. https://photos.nori.lan → admin login (master account from
-    #      initial Immich setup) → Administration → Settings → OAuth:
-    #        Issuer URL:    https://auth.nori.lan
-    #        Client ID:     photos
-    #        Client Secret: cat /run/secrets/oidc-photos-client-secret
-    #                        (sudo on workstation)
-    #        Scope:         openid email profile
-    #        Auto Register: on
-    #        Auto Launch:   off
-    #      Save. The redirect URI in Authelia (auto-set by lan-route via
-    #      `oidc.redirectPath`) is https://photos.nori.lan/auth/login —
-    #      that's what Immich's frontend handles.
-    nori.lanRoutes.photos = {
-      port = 2283;
-      monitor = { };
-      audience = "family";
-      oidc = {
-        clientName = "Immich";
-        redirectPath = "/auth/login";
-      };
-      dashboard = {
-        title = "Immich";
-        icon = "si:immich";
-        group = "Consume";
-        description = "Photo library + face recognition";
-      };
-    };
 
     nori.backups.immich.skip = "Photos covered by media-irreplaceable (@photos); DB dumps via Pattern B at /var/lib/immich/backups also in media-irreplaceable.";
   })

@@ -6,6 +6,22 @@ lib.mkMerge [
       "family-tier"
       "stateful"
     ];
+
+    nori.lanRoutes.sync = {
+      port = 8384;
+      runsOn = "workstation";
+      monitor = { };
+      audience = "operator";
+      dashboard = {
+        title = "Syncthing";
+        icon = "si:syncthing";
+        group = "Personal";
+        description = "Cross-device file sync";
+        # Caddy's internal CA isn't always accepted by Glance's HTTP
+        # client when probing Syncthing's WebUI redirect path.
+        allowInsecure = true;
+      };
+    };
   }
   (lib.mkIf config.nori.services.syncthing.enabled {
     # Syncthing — peer-to-peer file sync over tailnet. Replaces "manually
@@ -75,21 +91,6 @@ lib.mkMerge [
         config.nori.fs.downloads.path
         config.nori.fs.library.path
       ];
-    };
-
-    nori.lanRoutes.sync = {
-      port = 8384;
-      monitor = { };
-      audience = "operator";
-      dashboard = {
-        title = "Syncthing";
-        icon = "si:syncthing";
-        group = "Personal";
-        description = "Cross-device file sync";
-        # Caddy's internal CA isn't always accepted by Glance's HTTP
-        # client when probing Syncthing's WebUI redirect path.
-        allowInsecure = true;
-      };
     };
 
     nori.backups.syncthing.skip = "Config + index at /home/nori/.config/syncthing — already covered by the user-data repo (/home).";

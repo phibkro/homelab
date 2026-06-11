@@ -10,6 +10,23 @@ lib.mkMerge [
       "family-tier"
       "stateful"
     ];
+
+    # `/healthcheck` returns 200 on a healthy daemon. The lan-route-
+    # generated `oidc-news-env` template is unused (env file in use is
+    # the combined `miniflux-env` above) — see `adminCredentialsFile`.
+    nori.lanRoutes.news = {
+      port = 8087;
+      runsOn = "workstation";
+      monitor = {
+        path = "/healthcheck";
+      };
+      audience = "family";
+      oidc = {
+        clientName = "Miniflux";
+        redirectPath = "/oauth2/oidc/callback";
+        secretEnvName = "OAUTH2_CLIENT_SECRET";
+      };
+    };
   }
   (lib.mkIf config.nori.services.miniflux.enabled {
     # Miniflux — minimal RSS / feed reader (Go binary + Postgres). All
@@ -105,22 +122,6 @@ lib.mkMerge [
     nori.backups.miniflux = {
       include = [ "/var/backup/postgresql/miniflux.sql.gz" ];
       timer = "*-*-* 04:30:00";
-    };
-
-    # `/healthcheck` returns 200 on a healthy daemon. The lan-route-
-    # generated `oidc-news-env` template is unused (env file in use is
-    # the combined `miniflux-env` above) — see `adminCredentialsFile`.
-    nori.lanRoutes.news = {
-      port = 8087;
-      monitor = {
-        path = "/healthcheck";
-      };
-      audience = "family";
-      oidc = {
-        clientName = "Miniflux";
-        redirectPath = "/oauth2/oidc/callback";
-        secretEnvName = "OAUTH2_CLIENT_SECRET";
-      };
     };
   })
 ]

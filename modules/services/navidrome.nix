@@ -12,6 +12,24 @@ lib.mkMerge [
       "media-reader"
       "stateful"
     ];
+
+    nori.lanRoutes.audio = {
+      port = 4533;
+      runsOn = "workstation";
+      monitor = { };
+      audience = "family";
+      oidc = {
+        clientName = "Navidrome";
+        redirectPath = "/auth/callback";
+        secretEnvName = "ND_AUTH_OIDC_CLIENTSECRET";
+      };
+      dashboard = {
+        title = "Navidrome";
+        icon = "sh:navidrome";
+        group = "Consume";
+        description = "Subsonic-protocol music streaming";
+      };
+    };
   }
   (lib.mkIf config.nori.services.navidrome.enabled {
     # Navidrome — Subsonic-protocol music server. Family-facing playback;
@@ -99,23 +117,6 @@ lib.mkMerge [
     # Read-only access to Lidarr's music library; navidrome's own state
     # at /var/lib/private/navidrome rides upstream's StateDirectory.
     nori.harden.navidrome.readOnlyBinds = [ config.nori.fs.downloads.path ];
-
-    nori.lanRoutes.audio = {
-      port = 4533;
-      monitor = { };
-      audience = "family";
-      oidc = {
-        clientName = "Navidrome";
-        redirectPath = "/auth/callback";
-        secretEnvName = "ND_AUTH_OIDC_CLIENTSECRET";
-      };
-      dashboard = {
-        title = "Navidrome";
-        icon = "sh:navidrome";
-        group = "Consume";
-        description = "Subsonic-protocol music streaming";
-      };
-    };
 
     # Pattern C2 — sqlite3 .backup before restic. DynamicUser's symlink
     # at /var/lib/navidrome → /var/lib/private/navidrome means restic

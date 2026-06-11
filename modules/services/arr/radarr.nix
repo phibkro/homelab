@@ -5,7 +5,22 @@
 }:
 
 lib.mkMerge [
-  { nori.services.radarr.tags = [ "media-server" ]; }
+  {
+    nori.services.radarr.tags = [ "media-server" ];
+
+    nori.lanRoutes.movies = {
+      port = 7878;
+      runsOn = "workstation";
+      monitor = { };
+      audience = "operator";
+      dashboard = {
+        title = "Radarr";
+        icon = "si:radarr";
+        group = "Acquire";
+        description = "Movie automation";
+      };
+    };
+  }
   (lib.mkIf config.nori.services.radarr.enabled {
     # Radarr — movie management. Same role as Sonarr but for films:
     # watches Prowlarr for releases, hands grabs to qBittorrent, hardlinks
@@ -43,18 +58,6 @@ lib.mkMerge [
     users.users.radarr.extraGroups = [ "media" ];
 
     nori.harden.radarr.binds = [ config.nori.fs.downloads.path ];
-
-    nori.lanRoutes.movies = {
-      port = 7878;
-      monitor = { };
-      audience = "operator";
-      dashboard = {
-        title = "Radarr";
-        icon = "si:radarr";
-        group = "Acquire";
-        description = "Movie automation";
-      };
-    };
 
     nori.backups.radarr.include = [ "/var/lib/radarr" ];
   })

@@ -17,7 +17,7 @@
   nori.lanRoutes = lib.mkIf config.services.caddy.enable {
     logs = {
       port = 9428;
-      host = config.nori.hosts.pi.tailnetIp;
+      runsOn = "pi";
       monitor.path = "/health";
       audience = "operator";
     };

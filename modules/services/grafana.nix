@@ -11,6 +11,19 @@ lib.mkMerge [
       "observability"
       "stateful"
     ];
+
+    nori.lanRoutes.ops = {
+      port = 3000;
+      runsOn = "workstation";
+      audience = "operator";
+      monitor.path = "/api/health";
+      dashboard = {
+        title = "Ops";
+        icon = "si:grafana";
+        group = "Admin";
+        description = "Cross-source dashboards over logs + metrics.";
+      };
+    };
   }
   (lib.mkIf config.nori.services.grafana.enabled {
     # Grafana's settings file is rendered into /run from Nix at activation
@@ -145,18 +158,6 @@ lib.mkMerge [
             foldersFromFilesStructure = true;
           }
         ];
-      };
-    };
-
-    nori.lanRoutes.ops = {
-      port = 3000;
-      audience = "operator";
-      monitor.path = "/api/health";
-      dashboard = {
-        title = "Ops";
-        icon = "si:grafana";
-        group = "Admin";
-        description = "Cross-source dashboards over logs + metrics.";
       };
     };
 

@@ -46,6 +46,22 @@ lib.mkMerge [
       "personal-app"
       "stateless"
     ];
+
+    # `audience = "public"` here means tailnet-public (any tailnet device
+    # reaches it without an auth prompt). Distinct from internet-public,
+    # which would re-add `nori.funnelRoutes.filmder` — see header.
+    nori.lanRoutes.filmder = {
+      port = servePort;
+      runsOn = "workstation";
+      audience = "public";
+      monitor = { };
+      dashboard = {
+        title = "Filmder";
+        icon = "si:themoviedatabase";
+        group = "Projects";
+        description = "TMDB-backed movie browser (uni project, 2023)";
+      };
+    };
   }
   (lib.mkIf config.nori.services.filmder.enabled {
     sops.secrets.tmdb-token = {
@@ -153,21 +169,6 @@ lib.mkMerge [
         ];
         Restart = "on-failure";
         RestartSec = 5;
-      };
-    };
-
-    # `audience = "public"` here means tailnet-public (any tailnet device
-    # reaches it without an auth prompt). Distinct from internet-public,
-    # which would re-add `nori.funnelRoutes.filmder` — see header.
-    nori.lanRoutes.filmder = {
-      port = servePort;
-      audience = "public";
-      monitor = { };
-      dashboard = {
-        title = "Filmder";
-        icon = "si:themoviedatabase";
-        group = "Projects";
-        description = "TMDB-backed movie browser (uni project, 2023)";
       };
     };
 

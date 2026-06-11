@@ -46,6 +46,22 @@ lib.mkMerge [
       "network-appliance"
       "stateful"
     ];
+
+    # The SSO portal itself — `public` audience by definition (anyone
+    # with tailnet trust hits this to get a session for the family-tier
+    # services that consume OIDC).
+    nori.lanRoutes.auth = {
+      port = 9091;
+      runsOn = "workstation";
+      monitor = { };
+      audience = "public";
+      dashboard = {
+        title = "Authelia";
+        icon = "sh:authelia";
+        group = "Admin";
+        description = "OIDC SSO issuer";
+      };
+    };
   }
   (lib.mkIf config.nori.services.authelia.enabled {
     # Authelia — SSO portal. Chosen over Authentik / Keycloak for
@@ -160,21 +176,6 @@ lib.mkMerge [
     };
 
     nori.harden.authelia-main = { };
-
-    # The SSO portal itself — `public` audience by definition (anyone
-    # with tailnet trust hits this to get a session for the family-tier
-    # services that consume OIDC).
-    nori.lanRoutes.auth = {
-      port = 9091;
-      monitor = { };
-      audience = "public";
-      dashboard = {
-        title = "Authelia";
-        icon = "sh:authelia";
-        group = "Admin";
-        description = "OIDC SSO issuer";
-      };
-    };
 
     # Pattern A — Authelia state: sqlite session store, OIDC issuer
     # state, rate-limiting counters. Without it, every OIDC client

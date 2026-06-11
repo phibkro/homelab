@@ -12,6 +12,29 @@ lib.mkMerge [
       "media-reader"
       "stateful"
     ];
+
+    nori.lanRoutes.books = {
+      port = 8084;
+      runsOn = "workstation";
+      monitor = { };
+      audience = "family";
+      # Forward-auth via Authelia. /opds/* + /kobo/* exempt so KOReader,
+      # Moon+ Reader, Marvin, and Kobo Sync clients can hit the OPDS
+      # catalog with HTTP Basic auth (calibre-web's own user) — they
+      # don't follow OAuth redirects. /api/* exempt for completeness.
+      # Browser users go through Authelia.
+      forwardAuth.exemptPaths = [
+        "/opds/*"
+        "/kobo/*"
+        "/api/*"
+      ];
+      dashboard = {
+        title = "calibre-web";
+        icon = "sh:calibre-web";
+        group = "Consume";
+        description = "Ebook reader + OPDS";
+      };
+    };
   }
   (lib.mkIf config.nori.services.calibre-web.enabled {
     # calibre-web — community-maintained web UI for an ebook library.
@@ -82,28 +105,6 @@ lib.mkMerge [
       '';
 
     nori.harden.calibre-web.binds = [ config.nori.fs.library.path ];
-
-    nori.lanRoutes.books = {
-      port = 8084;
-      monitor = { };
-      audience = "family";
-      # Forward-auth via Authelia. /opds/* + /kobo/* exempt so KOReader,
-      # Moon+ Reader, Marvin, and Kobo Sync clients can hit the OPDS
-      # catalog with HTTP Basic auth (calibre-web's own user) — they
-      # don't follow OAuth redirects. /api/* exempt for completeness.
-      # Browser users go through Authelia.
-      forwardAuth.exemptPaths = [
-        "/opds/*"
-        "/kobo/*"
-        "/api/*"
-      ];
-      dashboard = {
-        title = "calibre-web";
-        icon = "sh:calibre-web";
-        group = "Consume";
-        description = "Ebook reader + OPDS";
-      };
-    };
 
     # Pattern A — calibre-web's user/session DB. The book library
     # itself lives at /mnt/media/library/books (already in

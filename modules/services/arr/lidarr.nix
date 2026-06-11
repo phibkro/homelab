@@ -5,7 +5,22 @@
 }:
 
 lib.mkMerge [
-  { nori.services.lidarr.tags = [ "media-server" ]; }
+  {
+    nori.services.lidarr.tags = [ "media-server" ];
+
+    nori.lanRoutes.music = {
+      port = 8686;
+      runsOn = "workstation";
+      monitor = { };
+      audience = "operator";
+      dashboard = {
+        title = "Lidarr";
+        icon = "sh:lidarr";
+        group = "Acquire";
+        description = "Music automation";
+      };
+    };
+  }
   (lib.mkIf config.nori.services.lidarr.enabled {
     # Lidarr — music management. Same role as Sonarr/Radarr but for music:
     # watches Prowlarr for releases, hands grabs to qBittorrent, hardlinks
@@ -52,18 +67,6 @@ lib.mkMerge [
     users.users.lidarr.extraGroups = [ "media" ];
 
     nori.harden.lidarr.binds = [ config.nori.fs.downloads.path ];
-
-    nori.lanRoutes.music = {
-      port = 8686;
-      monitor = { };
-      audience = "operator";
-      dashboard = {
-        title = "Lidarr";
-        icon = "sh:lidarr";
-        group = "Acquire";
-        description = "Music automation";
-      };
-    };
 
     nori.backups.lidarr.include = [ "/var/lib/lidarr" ];
   })

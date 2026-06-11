@@ -5,7 +5,22 @@
 }:
 
 lib.mkMerge [
-  { nori.services.sonarr.tags = [ "media-server" ]; }
+  {
+    nori.services.sonarr.tags = [ "media-server" ];
+
+    nori.lanRoutes.tv = {
+      port = 8989;
+      runsOn = "workstation";
+      monitor = { };
+      audience = "operator";
+      dashboard = {
+        title = "Sonarr";
+        icon = "si:sonarr";
+        group = "Acquire";
+        description = "TV show automation";
+      };
+    };
+  }
   (lib.mkIf config.nori.services.sonarr.enabled {
     # Sonarr — TV show management. Watches Prowlarr for new episode
     # availability, hands matches to qBittorrent, scans the download
@@ -51,18 +66,6 @@ lib.mkMerge [
     users.users.sonarr.extraGroups = [ "media" ];
 
     nori.harden.sonarr.binds = [ config.nori.fs.downloads.path ];
-
-    nori.lanRoutes.tv = {
-      port = 8989;
-      monitor = { };
-      audience = "operator";
-      dashboard = {
-        title = "Sonarr";
-        icon = "si:sonarr";
-        group = "Acquire";
-        description = "TV show automation";
-      };
-    };
 
     # Pattern A — file-snapshot consistency is fine, sonarr writes
     # infrequently and btrbk hourly snapshots are the safety net.

@@ -37,6 +37,14 @@ lib.mkMerge [
       "family-tier"
       "stateless"
     ];
+
+    nori.lanRoutes.home = {
+      port = 8086;
+      runsOn = "workstation";
+      monitor = { };
+      audience = "public";
+      # No `dashboard` block — Glance shouldn't link to itself.
+    };
   }
   (lib.mkIf config.nori.services.glance.enabled {
     # Glance — family-facing landing page at home.nori.lan.
@@ -177,13 +185,6 @@ lib.mkMerge [
     };
 
     nori.harden.glance = { };
-
-    nori.lanRoutes.home = {
-      port = 8086;
-      monitor = { };
-      audience = "public";
-      # No `dashboard` block — Glance shouldn't link to itself.
-    };
 
     nori.backups.glance.skip = "Stateless — dashboard config rendered from Nix (this module + each service's lanRoute.dashboard).";
   })

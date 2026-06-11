@@ -5,7 +5,22 @@
 }:
 
 lib.mkMerge [
-  { nori.services.bazarr.tags = [ "media-server" ]; }
+  {
+    nori.services.bazarr.tags = [ "media-server" ];
+
+    nori.lanRoutes.subtitles = {
+      port = 6767;
+      runsOn = "workstation";
+      monitor = { };
+      audience = "operator";
+      dashboard = {
+        title = "Bazarr";
+        icon = "sh:bazarr";
+        group = "Acquire";
+        description = "Subtitle automation";
+      };
+    };
+  }
   (lib.mkIf config.nori.services.bazarr.enabled {
     # Bazarr — subtitle automation. Reads Sonarr's + Radarr's libraries,
     # finds missing subtitles per the user's language preferences, fetches
@@ -34,18 +49,6 @@ lib.mkMerge [
     users.users.bazarr.extraGroups = [ "media" ];
 
     nori.harden.bazarr.binds = [ config.nori.fs.downloads.path ];
-
-    nori.lanRoutes.subtitles = {
-      port = 6767;
-      monitor = { };
-      audience = "operator";
-      dashboard = {
-        title = "Bazarr";
-        icon = "sh:bazarr";
-        group = "Acquire";
-        description = "Subtitle automation";
-      };
-    };
 
     nori.backups.bazarr.include = [ "/var/lib/bazarr" ];
   })
