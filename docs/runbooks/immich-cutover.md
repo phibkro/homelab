@@ -63,42 +63,30 @@ sudo rsync -aHAX --info=stats2 --info=progress2 \
   /mnt/media/photos/ nori@aurora.saola-matrix.ts.net:/mnt/family/photos/
 ```
 
-### 3. Restore the DB on aurora
+### 3. Restore the DB on aurora (with the ownership fix baked in)
+
+The `restore-pg-with-owner-fix` skill — invoke `/restore-pg-with-owner-fix`
+or run its `restore.sh` directly — handles drop + recreate +
+gunzip|psql restore + the ALTER OWNER sweep in one shot. The
+ownership trap from [[postgres-ownership-after-dump-restore]] is
+silent under load, and rediscovering it on immich (14+ tables,
+vectorchord-managed extensions, minutes of restore) is exactly the
+class of debugging the skill exists to avoid.
 
 ```sh
 ssh nori@aurora.saola-matrix.ts.net
 # pick the freshest dump
 LATEST=$(sudo ls -t /mnt/family/photos/_immich-managed/backups/immich-db-backup-*.sql.gz | head -1)
 sudo systemctl stop immich-server immich-machine-learning
-sudo -u postgres dropdb immich
-sudo -u postgres createdb -O immich immich
-sudo -u postgres bash -c "gunzip -c '$LATEST' | psql immich" 2>&1 | tail
+sudo bash /srv/share/projects/homelab/.claude/skills/restore-pg-with-owner-fix/restore.sh \
+  immich immich "$LATEST"
 ```
 
-### 4. **Reassign ownership** (the trap from [[postgres-ownership-after-dump-restore]])
+The script drops + recreates the immich DB owned by the immich role,
+restores from the dump, then `ALTER ... OWNER TO immich`s every table
++ sequence + the public schema.
 
-`services.postgresqlBackup` defaults to `--no-owner`, and immich's
-self-dump runs as the immich role but `psql … < dump` as postgres
-restores tables postgres-owned. immich can't read its own
-schema-migration sentinel; restart-loops with "relation already exists".
-
-```sh
-sudo -u postgres psql immich <<EOF
-DO \$\$
-DECLARE r record;
-BEGIN
-  FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' LOOP
-    EXECUTE 'ALTER TABLE ' || quote_ident(r.tablename) || ' OWNER TO immich';
-  END LOOP;
-  FOR r IN SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = 'public' LOOP
-    EXECUTE 'ALTER SEQUENCE ' || quote_ident(r.sequence_name) || ' OWNER TO immich';
-  END LOOP;
-END\$\$;
-ALTER SCHEMA public OWNER TO immich;
-EOF
-```
-
-### 5. Sanity-check aurora restore
+### 4. Sanity-check aurora restore
 
 ```sh
 sudo -u postgres psql immich -c "SELECT count(*) FROM assets; SELECT count(*) FROM users;"
@@ -108,7 +96,7 @@ sudo -u postgres psql immich -c "SELECT count(*) FROM assets; SELECT count(*) FR
 #     -c 'SELECT count(*) FROM assets; SELECT count(*) FROM users;'
 ```
 
-### 6. Nix flip (one commit)
+### 5. Nix flip (one commit)
 
 Edit `modules/services/immich.nix`:
 - `nori.lanRoutes.photos.runsOn = "aurora";`
@@ -123,7 +111,7 @@ Edit `machines/workstation/default.nix`:
 Edit `machines/aurora/default.nix` — verify `immich.enable = true;` is
 still in the family-tier block (it should be from P8).
 
-### 7. Rebuild
+### 6. Rebuild
 
 ```sh
 just remote aurora rebuild   # binding flips to 0.0.0.0, immich
@@ -141,7 +129,7 @@ curl -sk https://photos.home.phibkro.org/api/server/ping
 # {"res":"pong"} via workstation Caddy → aurora tailnet IP
 ```
 
-### 8. End-to-end verify
+### 7. End-to-end verify
 
 - Phone clients (Immich app) should re-prompt for login (sessions
   invalidated by the role-key change). Login succeeds, asset count

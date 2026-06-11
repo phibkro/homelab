@@ -18,6 +18,7 @@ The non-deterministic recurring procedures — analysing the system, adding a se
 | End-of-session wrap-up | `/wrap-session` | "wrap up", "ending session", "that's it for now" |
 | Doc-tier decision after a structural change | `/on-structural-change` | "we just landed <X>", "what doc tier needs updating?" |
 | Audit code comments + names + structural shape | `/audit-documentation` | "audit comments in <X>", "clean up <Y>", "the names feel off", "review staleness" |
+| Restore a pg dump cross-host without the ownership trap | `/restore-pg-with-owner-fix` | "restore the immich/miniflux postgres dump on aurora", "migrate <svc>'s postgres database between hosts" |
 
 **Auto-loaded gotcha skills** (35+ of them as of 2026-06-07): each `.claude/skills/gotcha-<short-name>/` has a USE-WHEN trigger in its frontmatter. Claude auto-loads them when relevant; you don't invoke by name. List: `ls .claude/skills/gotcha-*`. They cover incident-derived landmines (PR-mortems converted into skill form).
 
