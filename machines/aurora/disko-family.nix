@@ -12,25 +12,39 @@ _: {
   # they migrate; declaring the entries up front means a service move
   # is just a `nori.services.<svc>.enable = true` on aurora.
   nori.fs = {
+    # `samba = { }` blocks emit per-fs SMB shares via the generator in
+    # modules/effects/fs.nix. Family clients hit smb://aurora/<share>
+    # over the tailnet (default-deny LAN; samba.nix opens 445 only on
+    # tailscale0). Shares match the workstation-side naming so the
+    # post-P12 family bookmark migration is a one-line URL swap
+    # (workstation → aurora). `ownerTmpfilesRule = false` on library +
+    # archive because aurora's tmpfiles already pin them root:media at
+    # 02775 (machines/aurora/default.nix) for calibre-web + komga; a
+    # second `nori users` rule would race.
     photos = {
       path = "/mnt/family/photos";
       tier = "irreplaceable";
+      samba = { };
     };
     home-videos = {
       path = "/mnt/family/home-videos";
       tier = "irreplaceable";
+      samba = { };
     };
     projects = {
       path = "/mnt/family/projects";
       tier = "irreplaceable";
+      samba = { };
     };
     library = {
       path = "/mnt/family/library";
       tier = "irreplaceable";
+      samba.ownerTmpfilesRule = false;
     };
     archive = {
       path = "/mnt/family/archive";
       tier = "irreplaceable";
+      samba.ownerTmpfilesRule = false;
     };
   };
 

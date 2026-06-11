@@ -94,6 +94,7 @@
     miniflux.enable = true; # RSS reader (postgres — shares immich's instance)
     filmder.enable = true; # personal-app (stateless serve, github build)
     grafana.enable = true; # observability frontend (sessions ephemeral; pi VM/logs over tailnet)
+    samba.enable = true; # /mnt/family/* shares for post-P12 family bookmark migration
     # navidrome — defer: hardcoded to read nori.fs.downloads (Lidarr's
     # arr-tier path on workstation); doesn't fit aurora's "irreplaceable
     # tier only" fs shape. Re-evaluate when the music library path is
@@ -198,6 +199,7 @@
     2283 # immich-server (post-P8; tailnet-bound for cross-host proxy)
     3003 # immich-machine-learning
     3000 # grafana
+    445 # samba (family /mnt/family/* shares)
     5232 # radicale (CalDAV/CardDAV)
     8086 # glance
     8087 # miniflux

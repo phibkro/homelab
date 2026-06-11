@@ -48,64 +48,75 @@ lib.mkMerge [
       nmbd.enable = false;
       winbindd.enable = false;
 
-      settings = {
-        global = {
-          "workgroup" = "WORKGROUP";
-          "server string" = "workstation";
-          "security" = "user";
-          "map to guest" = "Never";
-          "guest account" = "nobody";
+      settings = lib.mkMerge [
+        {
+          global = {
+            "workgroup" = "WORKGROUP";
+            "server string" = config.networking.hostName;
+            "security" = "user";
+            "map to guest" = "Never";
+            "guest account" = "nobody";
 
-          # Defense-in-depth: only Tailscale-range IPs may connect even
-          # if the firewall ever opens 445 elsewhere by accident.
-          # 100.64.0.0/10 is the CGNAT range Tailscale assigns from.
-          "hosts allow" = "100.64.0.0/10 127.0.0.1 ::1 fd7a:115c:a1e0::/48";
-          "hosts deny" = "0.0.0.0/0";
+            # Defense-in-depth: only Tailscale-range IPs may connect even
+            # if the firewall ever opens 445 elsewhere by accident.
+            # 100.64.0.0/10 is the CGNAT range Tailscale assigns from.
+            "hosts allow" = "100.64.0.0/10 127.0.0.1 ::1 fd7a:115c:a1e0::/48";
+            "hosts deny" = "0.0.0.0/0";
 
-          # macOS interop (Finder thumbnails, .DS_Store handling, resource
-          # forks). Without these the Mac client works but spams unwanted
-          # AppleDouble files (._*) all over the share.
-          "vfs objects" = "catia fruit streams_xattr";
-          "fruit:metadata" = "stream";
-          "fruit:model" = "MacSamba";
-          "fruit:posix_rename" = "yes";
-          "fruit:veto_appledouble" = "no";
-          "fruit:nfs_aces" = "no";
-          "fruit:wipe_intentionally_left_blank_rfork" = "yes";
-          "fruit:delete_empty_adfiles" = "yes";
-        };
+            # macOS interop (Finder thumbnails, .DS_Store handling, resource
+            # forks). Without these the Mac client works but spams unwanted
+            # AppleDouble files (._*) all over the share.
+            "vfs objects" = "catia fruit streams_xattr";
+            "fruit:metadata" = "stream";
+            "fruit:model" = "MacSamba";
+            "fruit:posix_rename" = "yes";
+            "fruit:veto_appledouble" = "no";
+            "fruit:nfs_aces" = "no";
+            "fruit:wipe_intentionally_left_blank_rfork" = "yes";
+            "fruit:delete_empty_adfiles" = "yes";
+          };
 
-        "media" = {
-          path = "/mnt/media";
-          browseable = "yes";
-          "read only" = "no";
-          "valid users" = "nori";
-          "force user" = "nori";
-          "force group" = "users";
-          "create mask" = "0664";
-          "directory mask" = "0775";
-        };
+          # `share`/`nori`/family-tier shares emitted by
+          # modules/effects/fs.nix from the per-fs `samba = { … }`
+          # blocks declared next to disko on each host.
+        }
 
-        # `share` and `nori` shares emitted by modules/effects/fs.nix
-        # from the per-fs `samba = { … }` blocks declared next to disko.
-      };
+        # Workstation-only `media` share — covers the IronWolf btrfs
+        # ROOT (not a single nori.fs subvol), so it lives here as a
+        # one-off rather than going through the per-fs generator. Gate
+        # on the workstation-shape nori.fs entries so aurora (which has
+        # no `downloads`/`photos@/mnt/media/...`) doesn't try to expose
+        # a path that doesn't exist.
+        (lib.mkIf (config.nori.fs ? downloads) {
+          "media" = {
+            path = "/mnt/media";
+            browseable = "yes";
+            "read only" = "no";
+            "valid users" = "nori";
+            "force user" = "nori";
+            "force group" = "users";
+            "create mask" = "0664";
+            "directory mask" = "0775";
+          };
+        })
+      ];
     };
 
     # Open SMB only on the tailnet interface.
     networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 445 ];
 
-    # Ownership tmpfiles for the subvols accessed via the `media` SMB
-    # share. These aren't per-share — they cover the btrfs subvolumes
-    # under /mnt/media that get exposed transitively when family clients
-    # browse the media share. fs.nix emits ownership rules for the
-    # nori.fs entries that DO have their own samba blocks (share + nori);
-    # the four below are the ones the whole-drive media share needs.
+    # Ownership tmpfiles for the subvols accessed via the workstation
+    # `media` SMB share. Per-fs `samba = { … }` blocks emit their own
+    # tmpfiles via modules/effects/fs.nix; the four below cover the
+    # subvols exposed transitively by the whole-drive media share.
     #
-    # Enumerated, not auto-derived: @library and @archive are also under
-    # /mnt/media but are owned root:media by arr/shared.nix tmpfiles
-    # (mode 02775), so a tmpfiles rule here with `nori users` would
-    # conflict.
-    systemd.tmpfiles.rules = [
+    # Enumerated, not auto-derived: @library and @archive are also
+    # under /mnt/media but are owned root:media by arr/shared.nix
+    # tmpfiles (mode 02775), so a tmpfiles rule here with `nori users`
+    # would conflict.
+    #
+    # Same workstation-only gate as the `media` share above.
+    systemd.tmpfiles.rules = lib.optionals (config.nori.fs ? downloads) [
       "d ${config.nori.fs.downloads.path}   0775 nori users -"
       "d ${config.nori.fs.photos.path}      0775 nori users -"
       "d ${config.nori.fs.home-videos.path} 0775 nori users -"
