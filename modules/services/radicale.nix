@@ -9,7 +9,7 @@ lib.mkMerge [
 
     nori.lanRoutes.calendar = {
       port = 5232;
-      runsOn = "workstation";
+      runsOn = "aurora";
       monitor.path = "/.web/";
       audience = "family";
       dashboard = {
@@ -41,7 +41,7 @@ lib.mkMerge [
     services.radicale = {
       enable = true;
       settings = {
-        server.hosts = [ "127.0.0.1:5232" ];
+        server.hosts = [ "0.0.0.0:5232" ];
         auth = {
           type = "htpasswd";
           htpasswd_filename = "/var/lib/radicale/users";

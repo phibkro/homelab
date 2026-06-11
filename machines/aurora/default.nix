@@ -195,7 +195,10 @@
     22 # SSH
     2283 # immich-server (post-P8; tailnet-bound for cross-host proxy)
     3003 # immich-machine-learning
+    5232 # radicale (CalDAV/CardDAV)
+    8086 # glance
     8222 # vaultwarden — cross-host Caddy proxy from workstation/pi
+    9094 # heim
   ];
 
   # ── NVIDIA (GTX 950M, Maxwell) ────────────────────────────────────

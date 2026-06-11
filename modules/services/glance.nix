@@ -40,7 +40,7 @@ lib.mkMerge [
 
     nori.lanRoutes.home = {
       port = 8086;
-      runsOn = "workstation";
+      runsOn = "aurora";
       monitor = { };
       audience = "public";
       # No `dashboard` block — Glance shouldn't link to itself.
@@ -73,7 +73,7 @@ lib.mkMerge [
       openFirewall = false;
       settings = {
         server = {
-          host = "127.0.0.1";
+          host = "0.0.0.0";
           port = 8086;
         };
         pages = [

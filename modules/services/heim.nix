@@ -43,7 +43,7 @@ lib.mkMerge [
 
     nori.lanRoutes.heim = {
       port = servePort;
-      runsOn = "workstation";
+      runsOn = "aurora";
       audience = "public";
       monitor = { };
       dashboard = {
@@ -146,7 +146,7 @@ lib.mkMerge [
         ExecStart = lib.concatStringsSep " " [
           "${pkgs.darkhttpd}/bin/darkhttpd"
           "/var/lib/heim/dist"
-          "--addr 127.0.0.1"
+          "--addr 0.0.0.0"
           "--port ${toString servePort}"
           "--no-listing"
         ];
