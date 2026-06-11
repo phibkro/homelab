@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 
 {
   # Restic backup target — chrooted SFTP-only user.
@@ -42,7 +42,14 @@
   };
   users.groups.restic = { };
 
-  services.openssh.extraConfig = ''
+  # `lib.mkAfter` is load-bearing: OpenSSH Match blocks extend to the
+  # next Match or EOF, swallowing any directive after them. Without
+  # mkAfter, programs.rust-motd's trailing `PrintLastLog no` (default
+  # order) lands inside this Match block — and PrintLastLog isn't
+  # allowed in Match scope, so `sshd -t` rejects the config and the
+  # system.checks.check-sshd-config build fails. mkAfter pushes this
+  # block to order 1500 so PrintLastLog stays in global scope above.
+  services.openssh.extraConfig = lib.mkAfter ''
     Match User restic
       ChrootDirectory /mnt/backup
       ForceCommand internal-sftp -d /
