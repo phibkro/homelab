@@ -84,6 +84,14 @@
   # Blocky role: pre-P7 pi was a forwarder (delegated `*.${nori.domain}`
   # queries to workstation). Post-P7 pi is self-hosted (authoritative
   # for the customDNS map auto-generated from `nori.lanRoutes`).
+  #
+  # Pi's blocky still returns workstation's LAN IP (the default derived
+  # `nori.lanIp`), so clients land on workstation's Caddy. Pi's Caddy
+  # is standing by but receives no production traffic — backends bound
+  # to 127.0.0.1 on workstation can't be proxied across the tailnet.
+  # The lanIp override (and the matching Tailscale split-DNS flip to
+  # pi) lands per-service as workstation services migrate to aurora /
+  # rebind to 0.0.0.0 during P8/P12.
   nori.blocky.role = "self-hosted";
 
   # Pi-side backup target — the OneTouch on aurora via SFTP, same
