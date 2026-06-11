@@ -12,32 +12,33 @@ Four persistent NixOS hosts on a single residential network plus a Mac on standa
 
 | Host | Codename | Role | OS | Arch | Hardware | Primary job |
 |---|---|---|---|---|---|---|
-| **workstation** | emperor | `workhorse` | NixOS 26.05 | x86_64 | Ryzen 5600X · 32 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) | HTTP entry plane (Caddy + Authelia), GPU services, state-heavy services, daily-driver desktop |
-| **pi** | fairy | `appliance` | NixOS 26.05 | aarch64 | Raspberry Pi 4 8 GB · USB-boot from Samsung FIT 128 GB | Observability hub, alert plane, DNS forwarder, Tailscale subnet router + exit node |
+| **workstation** | emperor | `workhorse` | NixOS 26.05 | x86_64 | Ryzen 5600X · 32 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) | HTTP entry plane (Caddy + Authelia until P12), GPU services (Ollama / Jellyfin NVENC / *arr stack), workstation-tier file storage (downloads/streaming), daily-driver desktop |
+| **pi** | fairy | `appliance` | NixOS 26.05 | aarch64 | Raspberry Pi 4 8 GB · USB-boot from Samsung FIT 128 GB | Observability hub, alert plane, DNS authoritative (Blocky self-hosted, post-ADR-0003), Tailscale subnet router + exit node, HTTP entry-plane standby (Caddy + Authelia + LE wildcard for `*.${nori.domain}`) |
 | **pavilion** | pavilion | `agent` | NixOS 26.05 + impermanence | x86_64 | HP Pavilion g6 · AMD Athlon II · BIOS+GRUB · btrfs-rollback root | Agent quarantine — hermes / nixpkgs-agent / sandboxed claude work, headless |
-| **aurora** | aurora | `workhorse` (offload) | NixOS 26.05 | x86_64 | Asus N552V · Intel Skylake-H · NVIDIA GTX 950M (legacy_535) | immich-machine-learning offload (PyTorch) — keeps workstation's GPU free for other ML |
+| **aurora** | aurora | `workhorse` (always-on family vault) | NixOS 26.05 | x86_64 | Asus N552V · Intel Skylake-H · NVIDIA GTX 950M (legacy_535) | Family-tier service backends post-P8 (Vaultwarden, Radicale, Miniflux, Immich full stack + ML, Calibre-web, Komga, Glance, Heim, Filmder, Grafana). Family-tier file storage (`/mnt/family/{photos,home-videos,projects,library,archive}` on the Toshiba HDD). Samba shares for the same. Always-on so it survives workstation's sleep / outage. |
 | **macbook** | adelie | (no role) | macOS · standalone home-manager | x86_64-darwin | Intel Mac (EOL clock — see ROADMAP) | Daily-driver laptop; Nix-managed CLI + brew for Mac-only |
 
 ```mermaid
 graph TB
   subgraph "workhorse tier"
-    W[workstation<br/>HTTP + GPU + state]
-    A[aurora<br/>immich-ml offload]
+    W[workstation<br/>GPU + arr stack + entry-plane until P12]
+    A[aurora<br/>family vault + family-tier services]
   end
   subgraph "appliance tier"
-    P[pi<br/>observability + alert + DNS]
+    P[pi<br/>observability + alert + DNS + entry-plane standby]
   end
   subgraph "agent tier"
     V[pavilion<br/>quarantined agents]
   end
   M[macbook<br/>daily-driver]
-  W -- immich-ml RPC --> A
+  W -- *.${nori.domain} proxy --> A
   W -- scraped by --> P
   A -- scraped by --> P
   V -- scraped by --> P
   P -- ntfy.sh public<br/>heartbeat to hc.io --> Internet[Internet]
   M -. SSH .-> W
   M -. SSH .-> P
+  M -. SSH .-> A
 ```
 
 Failure domain independence: each host shares no storage, no PSU, no critical boot-path dependency with the others. Any single failure does not block the rest.
@@ -47,8 +48,8 @@ Failure domain independence: each host shares no storage, no PSU, no critical bo
 | Drive | OS / use | Notes |
 |---|---|---|
 | WD Black SN750 1TB NVMe | NixOS root | btrfs, six subvolumes, label `nixos`, disko-managed |
-| Corsair Force MP510 960GB NVMe | **Windows — never touch** | Preserved untouched; multi-boot via UEFI. `nvme-Force_MP510_2031826300012953207B` is the by-id |
-| Seagate IronWolf Pro 4TB (USB) | Media storage | btrfs, five subvolumes, label `ironwolf-storage`, disko-managed |
+| Corsair Force MP510 960GB NVMe | Backup + family replica | btrfs, label `mp510-backup`, disko-managed. `@backup-local` mounted at `/mnt/backup-local` (workstation's restic-local target, formerly the IronWolf `@restic-local` subvol — migrated 2026-06-11 P14); `@family-replica-*` for the nightly btrfs send/receive from aurora's `/mnt/family/*` (P15). Wiped from Windows on 2026-06-11 after operator extracted personal residue |
+| Seagate IronWolf Pro 4TB (USB) | Media storage | btrfs, four subvolumes after P14 (`@downloads`, `@photos`, `@home-videos`, `@projects`, `@library`, `@archive`, `@snapshots`), label `ironwolf-storage`, disko-managed. Hosts the irreplaceable tier until P10 rsync moves it to aurora's family-vault HDD; afterward only `@downloads` + `@streaming` remain workstation-resident |
 
 **NVMe enumeration is unstable across reboots.** `nvme0n1` was NixOS root at install time; post-reboot the drives swapped. Disko configs target `/dev/disk/by-id/...` paths for this reason. See `.claude/skills/gotcha-nvme-enumeration/`.
 
@@ -98,17 +99,21 @@ The `forbidden-patterns` flake check fails the build on a stray `100.x.y.z` lite
 
 | Cluster | Where | Why |
 |---|---|---|
-| HTTP entry plane (Caddy + Authelia) | workstation | Workhorse owns user-facing surface; tailnet routes here |
-| GPU-bound (Ollama, Jellyfin NVENC, Immich CUDA NVENC + thumbnails) | workstation | RTX 5060 Ti — primary GPU |
-| ML inference offload (Immich machine-learning / PyTorch) | aurora | Keeps workstation GPU free; GTX 950M is sufficient for inference; `IMMICH_MACHINE_LEARNING_URL = http://aurora:3003` |
-| State-heavy (Vaultwarden, Radicale, *arr stack, Immich, file shares) | workstation | Fate-sharing: when workstation is down they're useless either way |
+| HTTP entry plane (Caddy + Authelia) | workstation today, pi post-P12 (ADR-0003) | Workhorse owned the user-facing surface; ADR-0003 moves the entry plane to pi so workstation can sleep. Pi's Caddy + Authelia + LE wildcard standing by; Tailscale DNS push order flips when critical mass of family-tier services have migrated to aurora and rebound to tailnet |
+| GPU-bound (Ollama, Jellyfin NVENC, `*arr` stack, qBittorrent, Open WebUI) | workstation | RTX 5060 Ti — primary GPU |
+| ML inference (Immich machine-learning / PyTorch) | aurora | Co-located with immich-server post-P8; GTX 950M is sufficient. `IMMICH_MACHINE_LEARNING_URL` resolves to aurora's tailnet IP whether immich-server runs on workstation (today, pre-P10) or aurora (post-state-migration) |
+| Family-tier services (Vaultwarden, Radicale, Miniflux, Immich, Calibre-web, Komga, Glance, Heim, Filmder, Grafana) | aurora post-P8 | Always-on so they survive workstation sleep / outage; ADR-0002 |
+| Family-tier file storage (`/mnt/family/{photos,home-videos,projects,library,archive}`) | aurora | Family vault — Toshiba HDD, btrfs label `family-vault` |
+| Family Samba shares | aurora (post-P12 cutover, pre-positioned 2026-06-11) | Follows the drive — per-fs `samba = { }` blocks in `machines/aurora/disko-family.nix` |
+| Workstation Samba shares (`media`, `share`, `nori`) | workstation | Whole-drive `media` share scoped to `/mnt/media` (IronWolf root) stays workstation-only; per-fs `share` + `nori` shares stay workstation-only via the gated workstation-shape check in `samba.nix` |
 | Observability + alert plane (Beszel hub, Gatus, VictoriaMetrics, VictoriaLogs, ntfy server) | pi | Must survive workstation outage — that's *when* they fire |
 | Heartbeat / dead-man-switch (healthchecks.io ping) | pi | SPOF mitigation — see `modules/services/heartbeat.nix` |
-| DNS (Blocky forwarder) | pi (primary) | Pushed to tailnet via Tailscale global-nameserver |
-| DNS (Blocky self-hosted) | workstation (secondary) | Auto-generates `*.nori.lan` map; survives Pi outage |
+| DNS authoritative for `*.${nori.domain}` (Blocky self-hosted) | pi | Post-ADR-0003. Workstation's Blocky stays as secondary forwarder until the entry-plane cutover; the self-hosted role on pi was the prerequisite for the LE wildcard issuance (ADR-0004) |
 | Network plumbing (subnet router + exit node) | pi | Appliance role; opt-in per device for exit node |
 | Agent quarantine (hermes-agent CLI + dashboard) | pavilion | Sandboxed; pavilion's impermanence root makes pollution self-healing |
 | Process metrics (`node-exporter` + `process-exporter`) | workstation + pavilion + aurora | Pi VM scrapes each; per-process RSS for leak hunts |
+| Host-level high-level metrics (`beszel-agent`) | workstation + pavilion + aurora | Pi's Beszel hub aggregates per-host. Aurora added 2026-06-11 alongside its family-tier service standup |
+| OnFailure → ntfy notifier (`ntfy-notify`) | workstation + pi + aurora | Per-host so the alert source is unambiguous and aurora-side unit failures (restic, btrbk, postgres dumps) page the operator without depending on workstation being awake |
 
 Placement test = **fate-sharing breaks the function** (not "feels lightweight"). See `docs/GLOSSARY.md § fate-sharing`.
 

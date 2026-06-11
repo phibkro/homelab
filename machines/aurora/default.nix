@@ -78,6 +78,13 @@
     node-exporter.enable = true;
     nvidia-gpu-exporter.enable = true;
     restic-target.enable = true;
+    ntfy-notify.enable = true; # OnFailure → notify@ alerts for aurora-side units
+    # beszel-agent — pending. Each host needs its own
+    # `beszel-agent-key-<hostname>` sops secret (minted via the Beszel
+    # hub admin UI). Operator: visit https://metrics.${nori.domain},
+    # System → Add → name `aurora` → copy key → paste as
+    # `beszel-agent-key-aurora` into `sops secrets/secrets.yaml`,
+    # then flip this line to `true` and rebuild.
 
     # P8 family-tier — small, sqlite-only services standing up empty.
     # State migration + cutover are operator-driven per service; see

@@ -140,5 +140,7 @@
     samba-smb.url = "tcp://127.0.0.1:445";
     pi-blocky-dns.url = "tcp://${config.nori.hosts.pi.tailnetIp}:53";
     pi-ssh.url = "tcp://${config.nori.hosts.pi.tailnetIp}:22";
+    aurora-ssh.url = "tcp://${config.nori.hosts.aurora.tailnetIp}:22";
+    aurora-samba.url = "tcp://${config.nori.hosts.aurora.tailnetIp}:445";
   };
 }
