@@ -7,6 +7,7 @@
 _: {
   imports = [
     ./btrbk.nix
+    ./btrbk-replication.nix
     ./restic.nix
     ./verify.nix
   ];
