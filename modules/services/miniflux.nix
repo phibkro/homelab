@@ -16,7 +16,7 @@ lib.mkMerge [
     # the combined `miniflux-env` above) — see `adminCredentialsFile`.
     nori.lanRoutes.news = {
       port = 8087;
-      runsOn = "workstation";
+      runsOn = "aurora";
       monitor = {
         path = "/healthcheck";
       };
@@ -60,7 +60,7 @@ lib.mkMerge [
         # Caddy at news.<nori.domain> reverse-proxies to localhost:8087.
         # 8087 is the next free port in the lanRoutes table (between
         # 8086 `home` and 8090 `metrics`).
-        LISTEN_ADDR = "127.0.0.1:8087";
+        LISTEN_ADDR = "0.0.0.0:8087";
         BASE_URL = "https://news.${config.nori.domain}";
 
         # OIDC via Authelia. Non-secret OIDC vars live here; the secret

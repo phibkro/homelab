@@ -197,6 +197,7 @@
     3003 # immich-machine-learning
     5232 # radicale (CalDAV/CardDAV)
     8086 # glance
+    8087 # miniflux
     8222 # vaultwarden — cross-host Caddy proxy from workstation/pi
     9094 # heim
   ];

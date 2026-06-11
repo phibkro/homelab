@@ -85,7 +85,7 @@
     immich.enable = true;
     jellyfin.enable = true;
     komga.enable = true;
-    miniflux.enable = true;
+    miniflux.enable = false;
     navidrome.enable = true;
     open-webui.enable = true;
     radicale.enable = false;
