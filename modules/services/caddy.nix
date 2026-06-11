@@ -77,6 +77,25 @@ lib.mkMerge [
       # (the service module), not here.
     };
 
+    # Transitional `*.nori.lan` redirect vhost. Family devices still
+    # holding bookmarks to the old domain hit Caddy here — Caddy serves
+    # an internal-CA cert (the same root that's already installed on
+    # those devices from before ADR-0004), then 301s to the same path
+    # under `home.phibkro.org`. Devices without the internal CA installed
+    # still get the redirect at the HTTP layer; only the TLS handshake
+    # itself depends on the old trust chain.
+    #
+    # Drop this block (and the parallel transitional entries in
+    # modules/effects/lan-route.nix § blocky customDNS) once family
+    # bookmarks have all migrated. Internal CA still lives at
+    # /var/lib/caddy/.local/share/caddy/pki/authorities/local/ so the
+    # cert keeps issuing without operator intervention until then.
+    services.caddy.virtualHosts."*.nori.lan".extraConfig = ''
+      tls internal
+      @sub header_regexp Host ^([^.]+)\.nori\.lan$
+      redir @sub https://{re.sub.1}.${config.nori.domain}{uri} 301
+    '';
+
     # Dedicated Cloudflare API token for ACME DNS-01. Separate from the
     # operator's existing `cloudflare_api_token` (cfut_-prefix, a
     # wrangler-issued user OAuth token used for app-deploy flows) which

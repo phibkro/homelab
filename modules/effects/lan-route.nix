@@ -595,9 +595,17 @@ in
         in
         lib.concatStringsSep "\n" (lib.mapAttrsToList routeBlock routes);
 
-      services.blocky.settings.customDNS.mapping = mapAttrs' (
-        name: _: nameValuePair "${name}.${config.nori.domain}" config.nori.lanIp
-      ) config.nori.lanRoutes;
+      services.blocky.settings.customDNS.mapping =
+        # Primary mapping — every route name under the new domain.
+        (mapAttrs' (
+          name: _: nameValuePair "${name}.${config.nori.domain}" config.nori.lanIp
+        ) config.nori.lanRoutes)
+        # Transitional mapping — keep `*.nori.lan` resolving so old
+        # bookmarks land at Caddy's redirect vhost (in caddy.nix), which
+        # 301s them to the new domain. Drop this block when family
+        # devices have all migrated bookmarks. Until then, every route
+        # gets a parallel `<name>.nori.lan` entry pointing at the same IP.
+        // (mapAttrs' (name: _: nameValuePair "${name}.nori.lan" config.nori.lanIp) config.nori.lanRoutes);
 
       # Tailnet firewall: open backend ports for opt-in routes only.
       # Default-deny aligns with the rest of the network policy
