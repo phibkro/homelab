@@ -48,5 +48,6 @@ lib.mkIf ((config.nori.fs ? downloads) && (config.nori.fs ? library)) {
       "d ${library}                         02775 root media -"
       "d ${library}/books                   02775 root media -"
       "d ${library}/comics                  02775 root media -"
+      "d ${library}/music                   02775 root media -"
     ];
 }
