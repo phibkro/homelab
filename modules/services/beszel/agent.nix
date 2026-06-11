@@ -4,9 +4,6 @@
   ...
 }:
 
-let
-  secretName = "beszel-agent-key-${config.networking.hostName}";
-in
 lib.mkMerge [
   {
     nori.services.beszel-agent.tags = [ "observability" ];
@@ -61,12 +58,14 @@ lib.mkMerge [
     # beszel-agent — per-host metrics collector. Hub on pi pulls
     # over tailnet (cross-host: hub-host opens an outbound TCP connection
     # to each agent's port 45876). Stateless from this host's perspective:
-    # SSH key from sops, metrics streamed in-memory.
+    # the hub's SSH public key from sops, metrics streamed in-memory.
     #
-    # Every host that imports this module needs a matching
-    # `beszel-agent-key-<hostname>` entry in secrets/secrets.yaml.
+    # Single shared `beszel-hub-pubkey` sops secret — Beszel uses a
+    # symmetric trust model where every agent installs the hub's public
+    # key as KEY. Operator mints the hub keypair via the Beszel admin UI;
+    # the same pubkey lands on every agent.
 
-    sops.secrets.${secretName} = {
+    sops.secrets.beszel-hub-pubkey = {
       mode = "0400";
       # No `group` set: systemd reads EnvironmentFile as PID 1 and injects
       # KEY into the DynamicUser process — beszel-agent never reads the
@@ -75,7 +74,7 @@ lib.mkMerge [
 
     services.beszel.agent = {
       enable = true;
-      environmentFile = config.sops.secrets.${secretName}.path;
+      environmentFile = config.sops.secrets.beszel-hub-pubkey.path;
     };
 
     networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 45876 ];
