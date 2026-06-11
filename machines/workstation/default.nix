@@ -53,6 +53,58 @@
   # scope here rather than common/users.nix (which Pi also reads).
   users.users.nori.extraGroups = [ "media" ];
 
+  # Service-placement registry (aurora migration P3). Reproduces today's
+  # workstation activation set exactly — each modules/services/*.nix
+  # that wraps itself in `mkIf config.nori.services.<name>.enabled`
+  # gets explicitly enabled here. Net effect under P2 wrap + this
+  # opt-in is zero behavior change. Future moves between hosts:
+  # flip `enable` on the destination, unset here.
+  #
+  # Workstation is the workhorse — it currently runs everything in
+  # the modules/services/ bundle (modules/services/default.nix). The
+  # P12 cutover moves the family-tier services to aurora by flipping
+  # `enable` on aurora and unsetting here.
+  nori.services = {
+    # arr stack + qBit (media-server)
+    bazarr.enable = true;
+    jellyseerr.enable = true;
+    lidarr.enable = true;
+    prowlarr.enable = true;
+    qbittorrent.enable = true;
+    radarr.enable = true;
+    recyclarr.enable = true;
+    sonarr.enable = true;
+    # Family-tier + network appliance + media-reader
+    authelia.enable = true;
+    blocky.enable = true;
+    caddy.enable = true;
+    calibre-web.enable = true;
+    filmder.enable = true;
+    glance.enable = true;
+    heim.enable = true;
+    immich.enable = true;
+    jellyfin.enable = true;
+    komga.enable = true;
+    miniflux.enable = true;
+    navidrome.enable = true;
+    open-webui.enable = true;
+    radicale.enable = true;
+    samba.enable = true;
+    stremio.enable = true;
+    syncthing.enable = true;
+    vaultwarden.enable = true;
+    # GPU-bound
+    ollama.enable = true;
+    # Observability + alerting
+    beszel-agent.enable = true;
+    disk-alert.enable = true;
+    gatus.enable = true;
+    grafana.enable = true;
+    node-exporter.enable = true;
+    nvidia-gpu-exporter.enable = true;
+    ntfy-notify.enable = true;
+  };
+
   # Defensive cap on user@1000.service. Calibrated against the
   # 2026-06-08 global-OOM event: a leak inside the user session climbed
   # to 26.2 GiB RSS + 21.5 GiB swap peak in 3h, exhausted total memory

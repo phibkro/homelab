@@ -66,6 +66,16 @@
     users.nori.imports = [ ./home.nix ];
   };
 
+  # Service-placement registry (aurora migration P3). Reproduces today's
+  # aurora activation set — node-exporter + nvidia-gpu-exporter (the
+  # immich-ml leak watch from the start), plus the restic-target SFTP
+  # user landed during P13. Family-tier services arrive at P12 cutover.
+  nori.services = {
+    node-exporter.enable = true;
+    nvidia-gpu-exporter.enable = true;
+    restic-target.enable = true;
+  };
+
   # ── Boot ───────────────────────────────────────────────────────────
   # 2016 laptop with UEFI — assume systemd-boot. If first boot reveals
   # legacy BIOS, flip to GRUB (see machines/pavilion/default.nix for

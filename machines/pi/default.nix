@@ -72,6 +72,22 @@
     users.nori.imports = [ ./home.nix ];
   };
 
+  # Service-placement registry (aurora migration P3). Reproduces today's
+  # pi activation set exactly — each modules/services/*.nix that wraps
+  # itself in `mkIf config.nori.services.<name>.enabled` gets enabled
+  # here. Net effect under P2 wrap is zero behavior change.
+  nori.services = {
+    blocky.enable = true;
+    gatus.enable = true;
+    beszel-hub.enable = true;
+    beszel-agent.enable = true;
+    ntfy-server.enable = true;
+    ntfy-notify.enable = true;
+    victorialogs-server.enable = true;
+    victoriametrics.enable = true;
+    heartbeat.enable = true;
+  };
+
   # networking.hostName injected from the registry key in flake.nix.
   networking.useDHCP = lib.mkDefault true;
 
