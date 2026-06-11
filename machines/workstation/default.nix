@@ -21,7 +21,7 @@
     ./hardware.nix
     ./disko.nix
     ./disko-media.nix
-    ./windows-mount.nix
+    ./disko-mp510.nix
   ];
 
   # home-manager-as-NixOS-module wrapper. Activates the user's home
