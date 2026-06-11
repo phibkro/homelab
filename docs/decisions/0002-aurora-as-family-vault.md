@@ -28,6 +28,38 @@ Hardware constraints:
 
 Reorganise hosts so storage matches its consumers and so the family-tier surface lives on always-on hardware that isn't workstation.
 
+```
+BEFORE                                       AFTER
+─────────────────────────────────────        ─────────────────────────────────────
+┌─ workstation ─────────────────────┐        ┌─ workstation ─────────────────────┐
+│ Everything except observability.  │        │ Sleep-friendly compute.           │
+│ HTTP entry plane.                 │        │ GPU (Ollama, Jellyfin), bulk      │
+│ Family-tier surface.              │        │ downloads, *arr stack, desktop.   │
+│ All irreplaceable data            │        │ Cold replica of /mnt/family/*     │
+│ (single failure domain).          │        │ on MP510. Wakes via WoL.          │
+│ Idle ~250W, 24/7.                 │        │ ~250W when on, 0W asleep.         │
+└───────────────────────────────────┘        └───────────────────────────────────┘
+
+┌─ aurora ──────────────────────────┐        ┌─ aurora ──────────────────────────┐
+│ Single-role immich-ml offload.    │        │ Always-on family vault.           │
+│ ~25W.                             │        │ Caddy + Authelia + Blocky-#1.     │
+│                                   │        │ Family-tier services + photo/     │
+│                                   │        │ book/music readers.               │
+│                                   │        │ /mnt/family (live) + OneTouch     │
+│                                   │        │ (restic vault). ~25-30W.          │
+└───────────────────────────────────┘        └───────────────────────────────────┘
+
+┌─ pi ──────────────────────────────┐        ┌─ pi ──────────────────────────────┐
+│ Network appliance: DNS, obs,      │        │ Unchanged. + Blocky-#2 secondary  │
+│ alert, Tailscale.                 │        │ when route-data extraction lands. │
+└───────────────────────────────────┘        └───────────────────────────────────┘
+
+┌─ pavilion ────────────────────────┐        ┌─ pavilion ────────────────────────┐
+│ Agent quarantine only.            │        │ Agent quarantine + weekly         │
+│                                   │        │ tertiary replica of family/*.     │
+└───────────────────────────────────┘        └───────────────────────────────────┘
+```
+
 ### Per-host role
 
 - **Aurora** — always-on family/data vault.
@@ -50,16 +82,32 @@ Reorganise hosts so storage matches its consumers and so the family-tier surface
 ### Replication topology for irreplaceable data
 
 ```
-Immich/Calibre/etc. write to →  AURORA HDD (live, hot)
-                                       │
-                ┌──────────────────────┼──────────────────────┐
-                ↓ nightly              ↓ daily                ↓ weekly
-        WORKSTATION MP510       ONETOUCH (on aurora)   PAVILION subvol
-        (btrfs send/receive)    (restic encrypted)     (btrfs send/receive)
-        cold replica             snapshot vault         tertiary replica
+                  Immich / Calibre / Komga / Navidrome
+                                │
+                                ▼
+        ┌──────────────────────────┐       ┌──────────────────────────┐
+        │ AURORA HDD               │       │ WORKSTATION MP510        │
+        │ Live, hot                │──────▶│ Cold replica             │
+        │ btrfs subvols            │ nightly│ btrfs receive            │
+        │ Toshiba 932 GB           │       │ Force NVMe 894 GB        │
+        │ ─ FAILURE DOMAIN 1 ─     │       │ ─ FAILURE DOMAIN 2 ─     │
+        └────────────┬─────────────┘       └──────────────────────────┘
+                     │
+              ┌──────┴──────┐
+              ▼             ▼
+        daily         weekly
+              │             │
+        ┌─────▼──────────┐  ┌▼─────────────────────┐
+        │ ONETOUCH (USB) │  │ PAVILION HDD subvol  │
+        │ Encrypted      │  │ Tertiary replica     │
+        │ snapshot vault │  │ btrfs receive        │
+        │ (restic)       │  │ WD 640 GB            │
+        │ Seagate 5 TB   │  │                      │
+        │ ─ DOMAIN 3 ─   │  │ ─ DOMAIN 4 ─         │
+        └────────────────┘  └──────────────────────┘
 ```
 
-Four copies across four host-level failure domains, in a single apartment.
+Four copies across four host-level failure domains. Residual risk: total-apartment loss (fire, flood, theft of all hardware). Operator-accepted.
 
 ### Cloud off-site (Hetzner): rejected
 
@@ -114,11 +162,22 @@ This path is what we'd choose if power were the only concern. The replication an
 
 ### C. Move `/mnt/media` (IronWolf + downloads) to aurora; full media migration
 
-The architecturally cleanest answer — every media service lives near its data. Rejected because:
+The architecturally cleanest answer — every media service lives near its data. The binding constraint is GPU capability:
 
-- Aurora's GTX 950M is Maxwell; NVENC supports H.264 only, no HEVC/AV1 encode. Modern phone-captured video + the bulk of curated content would software-fall-back, hammering the i7-6700HQ Skylake-H.
-- Jellyfin direct-play works for some clients/codecs but not as a general policy; the operator does watch transcoded streams from family devices.
-- Migration cost balloons: 3 TB physical move (vs. ~334 GB), restic repo path migration touches every service, Samba bookmark churn on every client.
+| Workload | Required hardware | Workstation | Aurora |
+|---|---|---|---|
+| Ollama LLM inference | Modern 14+ GiB VRAM | RTX 5060 Ti 16 GB Blackwell ✓ | GTX 950M Maxwell 2 GB ✗ |
+| Jellyfin HEVC/AV1 NVENC encode | Pascal+ NVENC | ✓ | Maxwell — H.264 only ✗ |
+| Immich ML inference | Modest CUDA | ✓ | ✓ (already runs here) |
+| `@downloads` bulk storage | 3+ TB drive | IronWolf ✓ | (no drive of that size) ✗ |
+| Family-tier always-on | Low-power 24/7 | (idle 250W, wasteful) | (laptop ~25W) ✓ |
+
+Aurora can do Immich ML and family-tier services well; it can't do Ollama or modern Jellyfin transcoding. Software fallback on the i7-6700HQ Skylake-H is not acceptable for the operator's actual viewing patterns.
+
+Secondary rejection reasons:
+
+- Migration cost balloons: 3 TB physical move (vs ~334 GB), restic repo path migration touches every service, Samba bookmark churn on every client.
+- Jellyfin direct-play works for some clients/codecs but not as a general policy.
 
 Revisit conditions: aurora gains a modern GPU (Quadro P400, Arc A310, used GTX 1650+ — any Pascal+ NVENC). At that point this ADR can be superseded.
 
