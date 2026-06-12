@@ -47,7 +47,7 @@ tailnet      := "saola-matrix.ts.net"
 # Every NixOS host in the homelab. Macbook is intentionally NOT here —
 # it's a standalone home-manager target, not part of the NixOS flake.
 # Used by `rebuild-homelab` to fan rebuild across the set.
-homelab_hosts := "workstation pi"
+homelab_hosts := "workstation pi aurora pavilion"
 
 # rsync flags — BSD openrsync compatible (Mac default rsync is openrsync;
 # some GNU flags like --info=stats2 fail silently). See docs/gotchas.md.
@@ -190,51 +190,72 @@ default: rebuild
 # emits Caddy route + Gatus monitor + DNS record + (optional) Authelia
 # OIDC client. The test walks each layer for desync from the declaration.
 #
+# Post-ADR-0003 the Caddy + Blocky entry plane lives on pi — DNS for
+# `*.${nori.domain}` resolves to pi's LAN IP regardless of which host
+# runs the backend (`runsOn`). The Caddy admin probe SSHes to pi; the
+# DNS + HTTPS probes run from wherever you invoke `just test-routes`.
+#
 # Runtime-introspection test: `nori.lanRoutes.<X>` → Caddy + Gatus + DNS + OIDC, per layer.
 @test-routes:
     #!/usr/bin/env bash
     set -euo pipefail
     fail=0
 
-    declared=$(nix eval --json '.#nixosConfigurations.workstation.config.nori.lanRoutes' \
+    host_self=$(hostname)
+    flake_ref=".#nixosConfigurations.${host_self}.config"
+    declared=$(nix eval --json "${flake_ref}.nori.lanRoutes" \
                  --apply 'r: builtins.attrNames r' 2>/dev/null \
                | nix shell nixpkgs#jq -c jq -r '.[]')
-    caddy_hosts=$(curl -s http://127.0.0.1:2019/config/apps/http/servers/srv0/routes/ \
-                  | nix shell nixpkgs#jq -c jq -r '.[] | .match[]?.host[]?' 2>/dev/null \
-                  | sort -u)
-    lan_ip=$(nix eval --raw '.#nixosConfigurations.workstation.config.nori.hosts.workstation.lanIp' 2>/dev/null)
+    domain=$(nix eval --raw "${flake_ref}.nori.domain" 2>/dev/null)
+    # nori.lanIp is overridden to pi's lanIp in modules/common — every
+    # declared route's customDNS entry resolves here regardless of
+    # `runsOn`, because pi runs the entry-plane Caddy.
+    expected_ip=$(nix eval --raw "${flake_ref}.nori.lanIp" 2>/dev/null)
+    pi_tailnet=$(nix eval --raw "${flake_ref}.nori.hosts.pi.tailnetIp" 2>/dev/null)
 
-    echo "=== Tier 1 — Caddy registry contains every declared route ==="
+    # Caddy admin is 127.0.0.1:2019 on pi. Whether we're on pi or any
+    # other host, route the call through pi locally so the admin
+    # endpoint stays loopback-only.
+    if [[ "$host_self" == "pi" ]]; then
+      caddy_json=$(curl -s http://127.0.0.1:2019/config/apps/http/servers/srv0/routes/ 2>/dev/null || true)
+    else
+      caddy_json=$(ssh -o ConnectTimeout=3 "nori@${pi_tailnet}" \
+                     'curl -s http://127.0.0.1:2019/config/apps/http/servers/srv0/routes/' 2>/dev/null || true)
+    fi
+    caddy_hosts=$(echo "$caddy_json" \
+                  | nix shell nixpkgs#jq -c jq -r '.[] | .match[]?.host[]?' 2>/dev/null \
+                  | sort -u || true)
+
+    echo "=== Tier 1 — Caddy registry contains every declared route (via pi) ==="
     for route in $declared; do
-      host="${route}.nori.lan"
-      if echo "$caddy_hosts" | grep -qx "$host"; then
-        echo "  ✓ $host"
+      vhost="${route}.${domain}"
+      if echo "$caddy_hosts" | grep -qx "$vhost"; then
+        echo "  ✓ $vhost"
       else
-        echo "  ✗ $host NOT in Caddy registry"; fail=1
+        echo "  ✗ $vhost NOT in Caddy registry"; fail=1
       fi
     done
 
-    echo "=== Tier 2 — DNS resolves each declared route (via blocky) ==="
+    echo "=== Tier 2 — DNS resolves each declared route (via blocky on pi) ==="
     for route in $declared; do
-      host="${route}.nori.lan"
-      ip=$(nix shell nixpkgs#dig -c dig +short +time=2 +tries=1 "$host" @100.100.71.3 2>/dev/null | head -1)
-      if [[ "$ip" == "$lan_ip" ]]; then
-        echo "  ✓ $host → $ip"
+      vhost="${route}.${domain}"
+      ip=$(nix shell nixpkgs#dig -c dig +short +time=2 +tries=1 "$vhost" @${pi_tailnet} 2>/dev/null | head -1)
+      if [[ "$ip" == "$expected_ip" ]]; then
+        echo "  ✓ $vhost → $ip"
       else
-        echo "  ✗ $host resolved to '$ip' (expected '$lan_ip')"; fail=1
+        echo "  ✗ $vhost resolved to '$ip' (expected '$expected_ip')"; fail=1
       fi
     done
 
     echo "=== Tier 3 — HTTPS responsive (TLS + service alive) ==="
     for route in $declared; do
-      host="${route}.nori.lan"
-      # -kf to ignore self-signed (internal CA), -m short timeout.
+      vhost="${route}.${domain}"
       # Accept any non-5xx — auth gates may 401/302 which is healthy.
-      status=$(curl -sk -m 4 -o /dev/null -w '%{http_code}' "https://$host/" 2>/dev/null || echo "000")
-      if [[ "$status" =~ ^[2345][0-9][0-9]$ ]] && [[ "$status" != 5* ]]; then
-        echo "  ✓ $host (HTTP $status)"
+      status=$(curl -s -m 4 -o /dev/null -w '%{http_code}' "https://$vhost/" 2>/dev/null || echo "000")
+      if [[ "$status" =~ ^[234][0-9][0-9]$ ]]; then
+        echo "  ✓ $vhost (HTTP $status)"
       else
-        echo "  ✗ $host unreachable (status=$status)"; fail=1
+        echo "  ✗ $vhost unreachable (status=$status)"; fail=1
       fi
     done
 
