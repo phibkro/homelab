@@ -117,7 +117,19 @@ The pi-central architecture demands one of these per backend:
 
 **Practical sequence**, captured here so future P8/P12 work inherits the pattern: each family-tier service that migrates to aurora gets its bind config + tailnet firewall + `runsOn` flip as one atomic change. Once a critical mass of family-tier routes points at aurora, pi's `nori.lanIp` override + the Tailscale split-DNS flip become the cutover trigger. Doing the rebinding service-by-service during the migration is cleaner than a separate "rebind everything" sweep.
 
-**Reverted state (2026-06-11 `acad85e`)**: pi's `nori.lanIp` override removed; Tailscale split-DNS back at workstation. Pi continues running its entry-plane trio standby; the proven LE cert state survives the revert.
+## Addendum: cutover landed (2026-06-12 `0629326`)
+
+The constraints called out in the prior addendum were addressed and the entry-plane flip landed. State at time of cutover:
+
+- Every family-tier service moved to aurora during P11 (vaultwarden, glance, heim, radicale, miniflux, filmder, grafana, calibre-web, komga, navidrome, immich) with `0.0.0.0` binds + tailnet firewall opens.
+- Every workstation-resident route (the arr stack, jellyfin, ollama, syncthing, stremio, gatus, hermes) marked `exposeOnTailnet = true`, opening the tailnet firewall hole so pi's Caddy can reverse-proxy them too.
+- Hermes refused non-loopback binds; landed via `--insecure` (operator-tier; tailnet ACL is the actual gate). Caddy still rewrites Host/Origin to `127.0.0.1:9119` so the GHSA-ppp5-vxwm-4cf7 mitigation against browser-DNS-rebinding stays in effect.
+- syncthing UI re-bound via `services.syncthing.guiAddress` (the XML `settings.gui.address` path doesn't propagate — the systemd ExecStart hardcodes `--gui-address` and overrides it; saved as `[[syncthing-gui-address-cli-override]]` memory).
+- `nori.lanIp` derives from pi in `modules/common/default.nix`; `authelia.runsOn` flips to pi.
+- Workstation `caddy.enable = false` + `authelia.enable = false`; closure shrinks ~96 MB.
+- Tailscale admin UI DNS push order swapped (`home.phibkro.org` row: workstation 100.81.5.122 → pi 100.100.71.3).
+
+End-to-end verified from every tailnet host. The reverted state from the earlier attempt is **superseded** — this is the live configuration.
 
 ## See also
 

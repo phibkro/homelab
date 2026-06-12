@@ -23,9 +23,9 @@ Use Let's Encrypt for all `*.<nori.domain>` certs, served by Caddy on pi (post-A
 
 ```
                   ┌───────────────────┐
-                  │ Caddy (workstation │      ┌─────────────────────┐
-                  │  today, pi after   │─────▶│ acme-v02.api.let-   │
-                  │  ADR-0003 cutover)│      │ sencrypt.org        │
+                  │ Caddy on pi (post │      ┌─────────────────────┐
+                  │ ADR-0003 cutover, │─────▶│ acme-v02.api.let-   │
+                  │ landed 2026-06-12)│      │ sencrypt.org        │
                   └────────┬───────────┘      └─────────────────────┘
                            │ DNS-01 challenge
                            ▼
