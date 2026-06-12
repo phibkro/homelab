@@ -51,6 +51,28 @@
   # path for future hosts.
   swapDevices = [ { device = "/swapfile"; } ];
 
+  # --- Wake-on-LAN ------------------------------------------------------
+  # P19 prerequisite: aurora (always-on) sends a magic packet over LAN
+  # to wake workstation when family-tier traffic actually needs it
+  # (jellyfin stream start, *arr scrape, samba /mnt/media access).
+  # Realtek RTL8125 (enp42s0) supports MagicPacket per ethtool's
+  # `Supports Wake-on: pumbg`. The `networking.interfaces.<n>.wakeOnLan`
+  # NixOS option emits a systemd-networkd `.link` file, which scripted
+  # networking (workstation uses `networking.useDHCP = true`) doesn't
+  # process — the NIC stays at `Wake-on: d`. A boot oneshot that runs
+  # `ethtool -s wol g` is the path that actually sets the policy under
+  # scripted networking; same pattern as `ironwolf-spindown` below.
+  systemd.services.wake-on-lan-enp42s0 = {
+    description = "Enable MagicPacket WoL on enp42s0";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.ethtool}/bin/ethtool -s enp42s0 wol g";
+    };
+  };
+
   # --- IronWolf idle spindown -------------------------------------------
   # 4 TB Seagate IronWolf NAS HDD; ~5-7 W spinning at idle. Most media
   # access is bursty (jellyfin transcode start, immich library import,
