@@ -48,11 +48,17 @@ in
   # use `python313.withPackages` here and rebuild.
   home.packages = lib.optional isLinux hermes ++ lib.optional isLinux pkgs.python313;
 
-  # Persistent dashboard. Deliberately localhost-bound — the dashboard
-  # exposes API keys, so tailnet exposure goes through Caddy at
-  # hermes.nori.lan with `operator` audience (tailnet IS the auth
-  # perimeter). NOT `--insecure`. `--skip-build` serves the nix-built
-  # dist (no npm on PATH); `--no-open` suppresses xdg-open for a daemon.
+  # Persistent dashboard. Bound 0.0.0.0 so pi's Caddy can reverse-proxy
+  # via the tailnet (P12 entry plane). Hermes refuses non-loopback
+  # binds unless either an OAuth provider is registered OR `--insecure`
+  # is passed; the operator-tier audience makes tailnet membership the
+  # auth perimeter (same pattern as qBittorrent/Stremio/Grafana on this
+  # host), so `--insecure` is correct rather than "skipping security".
+  # The DNS-rebinding defence at the application layer (`Host`/`Origin`
+  # must match loopback) is preserved — `modules/services/hermes.nix`
+  # rewrites both headers to `127.0.0.1:9119` before Caddy forwards.
+  # `--skip-build` serves the nix-built dist (no npm on PATH);
+  # `--no-open` suppresses xdg-open for a daemon.
   systemd.user.services.hermes-dashboard = lib.mkIf isLinux {
     Unit = {
       Description = "Hermes Agent dashboard (web UI)";
@@ -60,7 +66,7 @@ in
       Wants = [ "network-online.target" ];
     };
     Service = {
-      ExecStart = "${hermes}/bin/hermes dashboard --port ${toString dashboardPort} --host 127.0.0.1 --no-open --skip-build";
+      ExecStart = "${hermes}/bin/hermes dashboard --port ${toString dashboardPort} --host 0.0.0.0 --no-open --skip-build --insecure";
       Restart = "on-failure";
       # modules/effects/restart-policy.nix covers systemd.services but
       # NOT systemd.user.services — backoff is declared here so a stale
