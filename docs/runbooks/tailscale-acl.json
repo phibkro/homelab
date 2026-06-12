@@ -1,0 +1,11 @@
+// docs/runbooks/tailscale-acl.json
+// Snapshot of the Tailscale tailnet ACL for disaster recovery.
+// Live source of truth lives in the admin UI at
+// https://login.tailscale.com/admin/acls/file — re-export here after
+// any change (see tailscale-acl.md for the export procedure + recovery
+// sequence).
+//
+// HuJSON: comments + trailing commas allowed.
+//
+// REPLACE the empty object below with the full admin-UI export.
+{}
