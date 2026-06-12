@@ -83,6 +83,13 @@
   # anti-write posture (the SD card stays read-mostly).
   # `modules/services/backup/restic.nix` is workstation-only by data
   # ownership; pi declares its own target + per-service backups here.
+  #
+  # Path prefix `/pi/` separates pi's snapshots from workstation's so
+  # the two hosts never contend on the same restic repo lock — caddy
+  # and authelia run on both, and a shared `:/<jobname>` namespace
+  # races on whoever takes the exclusive lock first. With `/pi/`
+  # prefix, pi writes to `/mnt/backup/pi/<jobname>` on aurora while
+  # workstation keeps writing to `/mnt/backup/<jobname>`.
   sops.secrets.restic-password = {
     owner = "root";
     mode = "0400";
@@ -95,8 +102,8 @@
     aurora.saola-matrix.ts.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKnfMYRv1a3CGvnL0e82w/Z1RK7aOqS3k8JvMYbD8NET
   '';
   nori.backupTargets.onetouch = {
-    repository = "sftp:restic@aurora.saola-matrix.ts.net:";
-    description = "Pi → OneTouch via aurora SFTP. Same repo workstation pushes to; restic snapshots are content-addressed so per-host repos don't collide (each job writes to /<jobname>).";
+    repository = "sftp:restic@aurora.saola-matrix.ts.net:/pi";
+    description = "Pi → OneTouch via aurora SFTP, scoped under /pi/ so pi's snapshots don't collide with workstation's on the shared chroot. Each job writes to /mnt/backup/pi/<jobname> on aurora.";
     extraOptions = [
       "sftp.command='${pkgs.openssh}/bin/ssh -o BatchMode=yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/etc/ssh/aurora_known_hosts -i /run/secrets/restic-ssh-key restic@aurora.saola-matrix.ts.net -s sftp'"
     ];
