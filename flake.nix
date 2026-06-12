@@ -465,6 +465,50 @@
                   fail=1
                 fi
 
+                # Literal `*.nori.lan` URIs are stale: ADR-0004 made
+                # `''${nori.domain}` (= home.phibkro.org) the canonical
+                # parent, with `*.nori.lan` kept only as a transitional
+                # 301-redirect target until family bookmarks migrate.
+                # Two systems care about the URI exactly:
+                #
+                #   1. Authelia OIDC `redirect_uris` — exact-string
+                #      matched at the IdP; embedding `.nori.lan` here
+                #      silently rejects every SSO redirect from the
+                #      canonical domain (caught 2026-06-12 in the
+                #      post-migration audit; fix at authelia.nix:22).
+                #   2. Service `root_url` / `BASE_URL` / cookie domain —
+                #      readers cache the value.
+                #
+                # Allowlist: caddy.nix carries the transitional 301
+                # redirect vhost; lan-route.nix's customDNS map emits
+                # both the transitional + canonical entries side by
+                # side. Both are temporary and named in their headers.
+                if grep -rEn '"https?://[a-z0-9.-]*\.nori\.lan' modules/ \
+                   | grep -vE '^modules/services/caddy\.nix:|^modules/effects/lan-route\.nix:' ; then
+                  echo
+                  echo "✗ Hard-coded https://*.nori.lan URI found above."
+                  echo "  Use \"https://\''${name}.\''${config.nori.domain}…\" — the"
+                  echo "  transitional alias is for the 301 redirect only,"
+                  echo "  not for IdP redirect_uris or service root URLs."
+                  fail=1
+                fi
+
+                # Migration-phase tokens (P\d+ prep|cutover|landing) decay
+                # the moment the phase lands. modules/ is for what the
+                # code does today, not what it's getting ready to do.
+                # Plans + reports + ADRs under docs/superpowers/ are the
+                # right home for phase narration; flag anywhere else.
+                if grep -rEn '\bP[0-9]+ (prep|cutover|landing|migration)\b' \
+                     modules/ hosts/ machines/ ; then
+                  echo
+                  echo "✗ Migration-phase token found above. Phase tokens"
+                  echo "  (P12 prep, P15 cutover, etc.) decay as soon as"
+                  echo "  the phase lands. Move the rationale into the"
+                  echo "  commit message; if it's load-bearing for future"
+                  echo "  context, put it in docs/superpowers/."
+                  fail=1
+                fi
+
                 if [ $fail -eq 0 ]; then
                   touch $out
                 else
