@@ -1,10 +1,16 @@
 # Project guide for Claude (and other agents)
 
-NixOS flake managing three machines:
+NixOS flake managing four NixOS hosts + a home-manager macbook:
 
-- **workstation** — workhorse, NixOS x86_64. Caddy + Authelia + GPU/state-heavy services.
-- **pi** — appliance, NixOS aarch64. Observability + alerting + DNS + tailnet plumbing that survives station outages.
-- **macbook** — Intel Mac, standalone home-manager. Daily-driver laptop.
+| Host | Role | Runs |
+|---|---|---|
+| **pi** | always-on appliance (aarch64) | HTTP entry plane (Caddy + Authelia + Blocky-authoritative), observability, alerting, Tailscale subnet+exit |
+| **aurora** | always-on family vault (x86_64) | `/mnt/family/*` irreplaceable data, family-tier service backends (vaultwarden, immich, calibre-web, komga, navidrome, …), OneTouch restic target |
+| **workstation** | sleep-friendly compute (x86_64) | Ollama, Jellyfin (NVENC), `*arr` stack + qBittorrent, `@downloads`, desktop. Cold replica of `/mnt/family/*` on MP510 |
+| **pavilion** | agent quarantine (x86_64) | hermes worktrees, weekly tertiary `/mnt/family/*` replica (planned) |
+| **macbook** | daily-driver laptop (intel x86_64) | standalone home-manager only — not under the flake's `nixosConfigurations` |
+
+Three of the four NixOS hosts (pi, aurora, workstation) import the full `modules/services` bundle and opt into individual services via `nori.services.<X>.enable`. Importing the bundle gives a host the route registry; activation is per-service. See `docs/MODULE_AUTHORING.md` for the convention.
 
 ## Docs map
 

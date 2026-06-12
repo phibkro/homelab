@@ -97,21 +97,18 @@ The only globally-open tailnet ports today are **80, 443** (Caddy) and **445** (
 ```mermaid
 flowchart LR
     device[tailnet device] -->|DNS query| ts[Tailscale stub 100.100.100.100]
-    ts -->|global-nameserver push| pi_blocky[Pi Blocky · forwarder]
-    pi_blocky -->|*.nori.lan| ws_blocky[workstation Blocky · self-hosted]
+    ts -->|global-nameserver push| pi_blocky[Pi Blocky · authoritative]
+    pi_blocky -->|"*.${nori.domain}"| host_map["*.${nori.domain} → pi LAN IP<br/>auto-generated from nori.lanRoutes"]
     pi_blocky -->|other| upstream[1.1.1.1 / 9.9.9.9]
-    ws_blocky -->|auto-generated from nori.lanRoutes| host_map[*.nori.lan → workstation LAN IP]
     classDef primary fill:#3a5,stroke:#2a4,color:#fff
-    classDef fallback fill:#553,stroke:#442,color:#fff
     class pi_blocky primary
-    class ws_blocky fallback
 ```
 
-**Current state:** Pi runs Blocky in **forwarder mode** (primary, served to all tailnet devices via Tailscale's global-nameserver push). Workstation runs Blocky in **self-hosted mode** (auto-generates the `*.nori.lan` map from `nori.lanRoutes`; serves as fallback secondary). LAN-only devices (smart TV, guest phones) are NOT covered — they keep using whatever the router pushes.
+**Current state (post-ADR-0003):** Pi runs Blocky in **self-hosted mode** — auto-generates the `*.${nori.domain}` customDNS map from `nori.lanRoutes` (every route name resolves to pi's LAN IP, since pi is the Caddy host). Tailscale's global-nameserver push points tailnet devices at pi. LAN-only devices (smart TV, guest phones) are NOT covered — they keep using whatever the router pushes. Workstation's Blocky is also self-hosted as a fallback secondary (resolves the same map; LAN-side resilience for if pi is down).
 
 **Why Tailscale push, not router DHCP:** the ISP-shipped Genexis EG400 locks DHCP DNS settings out of the user-facing admin UI. Router-side DNS replacement requires either (a) Altibox bridge-mode activation by phone request + a second router we control, or (b) double-NAT with a downstream router. Neither set up; Tailscale push is the zero-hardware-cost workaround.
 
-**Future state:** Pi primary + workstation secondary via router DHCP, after bridge-mode or a second router lands.
+**Future state:** Pi primary + workstation secondary via router DHCP, after bridge-mode or a second router lands. The transitional `*.nori.lan` aliases still resolve (auto-generated alongside `*.${nori.domain}`) until family devices have all migrated bookmarks.
 
 **Bootstrap loop hazard:** workstation's `/etc/resolv.conf` points at Tailscale's stub (`100.100.100.100`); Tailscale forwards back to workstation's Blocky; Blocky can't resolve its own outbound URLs (blocklist sources, DoH endpoints) before serving DNS. `services.blocky.settings.bootstrapDns` MUST be set to direct upstream IPs. Without it, blocklist downloads silently fail on every restart. Codified in `.claude/skills/gotcha-blocky-bootstrap-loop/`.
 

@@ -59,12 +59,20 @@ in
               Structural role driving placement assertions:
 
               * `workhorse` — heavy compute, state, GPU, large disks.
-                Caddy + Authelia + media + DBs. Backed up to local restic.
+                Backed up to local restic. Today this covers two
+                distinct shapes — workstation (GPU + desktop +
+                bulk media) and aurora (always-on family vault +
+                family-tier backends) — which still share the
+                "owns state, can take paths-based backups" properties
+                workhorse implies. **Rule of three**: if a third host
+                matches aurora's always-on-no-desktop shape, extract
+                a dedicated `vault` (or `compute`) role then.
 
               * `appliance` — observability + alerting + DNS + network
-                plumbing. Survives workhorse failure. Anti-write storage
-                (no swap, volatile journald, flash) → paths-based
-                backups are a build error (assertion in
+                plumbing + HTTP entry plane (Caddy + Authelia +
+                Blocky-authoritative). Survives workhorse failure.
+                Anti-write storage (no swap, volatile journald, flash)
+                → paths-based backups are a build error (assertion in
                 modules/effects/backup.nix).
 
               * `agent` — untrusted-compute quarantine. Stateless by

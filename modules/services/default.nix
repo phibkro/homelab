@@ -1,12 +1,18 @@
-# The "server" concern — every module a host needs to *serve*
-# things to other devices: HTTPS reverse proxy, DNS, SSO, monitoring,
-# media servers, password manager, alerts, *arr stack, backups, …
+# The "services" concern — every service module the homelab might
+# run on any host: HTTPS reverse proxy, DNS, SSO, monitoring, media
+# servers, password manager, alerts, *arr stack, backups, …
 #
-# Hosts compose by adding `../../modules/server` to their `imports`
-# alongside `../../modules/common` (universal) and optionally
-# `../../modules/desktop` (graphical session). A host that includes
-# this concern is a server; one that omits it isn't. Reading the
-# host file should answer "what kind of machine is this?" at a glance.
+# Importing this bundle gives the host the full route registry +
+# option schemas. Activation is per-service via
+# `nori.services.<X>.enable` (or `nori.enableServicesByTag = [ ... ]`)
+# — three of the four NixOS hosts (pi, aurora, workstation) import
+# the bundle today, each activating a different subset. Pavilion
+# flat-imports only what it needs (no LAN services).
+#
+# Routes live OUTSIDE the per-service activation gate (in the first
+# `mkMerge` block of each module), so every host that imports the
+# bundle sees the route in `nori.lanRoutes` and can serve it via its
+# Caddy. `runsOn` resolves the backend to the right host per route.
 #
 # Tightly-coupled stacks live under their own folders (each with a
 # `default.nix` that imports siblings):
@@ -19,13 +25,6 @@
 # Loose services that just happen to be in the same conceptual zone
 # stay flat at the top level (one file per service). Folders signal
 # coupling, not categorization.
-#
-# Every server host today imports this whole concern as one block
-# (only workstation serves at the moment). When a second server
-# arrives that runs a subset (e.g. pi → DNS + restic-target,
-# no Immich/*arr/Vaultwarden), this file gets refactored into
-# sub-concerns the host can pick from. Defer until the second host
-# actually exists.
 _: {
   imports = [
     # Coupled stacks (folder = coupling)

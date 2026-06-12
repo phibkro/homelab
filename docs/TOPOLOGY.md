@@ -12,33 +12,35 @@ Four persistent NixOS hosts on a single residential network plus a Mac on standa
 
 | Host | Codename | Role | OS | Arch | Hardware | Primary job |
 |---|---|---|---|---|---|---|
-| **workstation** | emperor | `workhorse` | NixOS 26.05 | x86_64 | Ryzen 5600X · 32 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) | HTTP entry plane (Caddy + Authelia until P12), GPU services (Ollama / Jellyfin NVENC / *arr stack), workstation-tier file storage (downloads/streaming), daily-driver desktop |
-| **pi** | fairy | `appliance` | NixOS 26.05 | aarch64 | Raspberry Pi 4 8 GB · USB-boot from Samsung FIT 128 GB | Observability hub, alert plane, DNS authoritative (Blocky self-hosted, post-ADR-0003), Tailscale subnet router + exit node, HTTP entry-plane standby (Caddy + Authelia + LE wildcard for `*.${nori.domain}`) |
-| **pavilion** | pavilion | `agent` | NixOS 26.05 + impermanence | x86_64 | HP Pavilion g6 · AMD Athlon II · BIOS+GRUB · btrfs-rollback root | Agent quarantine — hermes / nixpkgs-agent / sandboxed claude work, headless |
-| **aurora** | aurora | `workhorse` (always-on family vault) | NixOS 26.05 | x86_64 | Asus N552V · Intel Skylake-H · NVIDIA GTX 950M (legacy_535) | Family-tier service backends post-P8 (Vaultwarden, Radicale, Miniflux, Immich full stack + ML, Calibre-web, Komga, Glance, Heim, Filmder, Grafana). Family-tier file storage (`/mnt/family/{photos,home-videos,projects,library,archive}` on the Toshiba HDD). Samba shares for the same. Always-on so it survives workstation's sleep / outage. |
+| **pi** | fairy | `appliance` | NixOS 26.05 | aarch64 | Raspberry Pi 4 8 GB · USB-boot from Samsung FIT 128 GB | HTTP entry plane (Caddy + Authelia + Blocky-authoritative, LE wildcard cert on `*.${nori.domain}`), observability hub, alert plane, Tailscale subnet router + exit node |
+| **aurora** | aurora | `workhorse` (always-on family vault) | NixOS 26.05 | x86_64 | Asus N552V · Intel Skylake-H · NVIDIA GTX 950M (legacy_535) | Family vault: `/mnt/family/{photos,home-videos,projects,library,archive}` on the Toshiba HDD + family-tier service backends (Vaultwarden, Radicale, Miniflux, Immich full stack + ML, Calibre-web, Komga, Navidrome, Glance, Heim, Filmder, Grafana). Samba shares for `/mnt/family/*`. OneTouch restic vault. Always-on so it survives workstation's sleep / outage. |
+| **workstation** | emperor | `workhorse` (sleep-friendly compute) | NixOS 26.05 | x86_64 | Ryzen 5600X · 32 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) | GPU services (Ollama / Jellyfin NVENC), `*arr` stack + qBittorrent, `@downloads` + `@streaming` on the IronWolf, daily-driver desktop. Cold replica of `/mnt/family/*` on MP510 (btrbk receive endpoint). WoL-wake when media access happens. |
+| **pavilion** | pavilion | `agent` | NixOS 26.05 + impermanence | x86_64 | HP Pavilion g6 · AMD Athlon II · BIOS+GRUB · btrfs-rollback root | Agent quarantine — hermes / nixpkgs-agent / sandboxed claude work, headless. Planned weekly tertiary replica of `/mnt/family/*` (P16). |
 | **macbook** | adelie | (no role) | macOS · standalone home-manager | x86_64-darwin | Intel Mac (EOL clock — see ROADMAP) | Daily-driver laptop; Nix-managed CLI + brew for Mac-only |
 
 ```mermaid
 graph TB
-  subgraph "workhorse tier"
-    W[workstation<br/>GPU + arr stack + entry-plane until P12]
-    A[aurora<br/>family vault + family-tier services]
-  end
   subgraph "appliance tier"
-    P[pi<br/>observability + alert + DNS + entry-plane standby]
+    P[pi<br/>entry plane: Caddy + Authelia + Blocky<br/>+ observability + alert + Tailscale]
+  end
+  subgraph "workhorse tier"
+    A[aurora<br/>family vault + family-tier backends]
+    W[workstation<br/>GPU + arr stack + downloads<br/>+ cold replica of /mnt/family]
   end
   subgraph "agent tier"
     V[pavilion<br/>quarantined agents]
   end
   M[macbook<br/>daily-driver]
-  W -- *.${nori.domain} proxy --> A
-  W -- scraped by --> P
-  A -- scraped by --> P
-  V -- scraped by --> P
-  P -- ntfy.sh public<br/>heartbeat to hc.io --> Internet[Internet]
-  M -. SSH .-> W
-  M -. SSH .-> P
-  M -. SSH .-> A
+  P -- "*.${nori.domain} proxy" --> A
+  P -- "*.${nori.domain} proxy" --> W
+  W -- "nightly btrfs send/receive" --> W
+  A -- "scraped by" --> P
+  W -- "scraped by" --> P
+  V -- "scraped by" --> P
+  P -- "ntfy.sh public<br/>heartbeat to hc.io" --> Internet[Internet]
+  M -. "SSH" .-> P
+  M -. "SSH" .-> A
+  M -. "SSH" .-> W
 ```
 
 Failure domain independence: each host shares no storage, no PSU, no critical boot-path dependency with the others. Any single failure does not block the rest.
