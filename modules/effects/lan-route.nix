@@ -598,11 +598,17 @@ in
         # gets a parallel `<name>.nori.lan` entry pointing at the same IP.
         // (mapAttrs' (name: _: nameValuePair "${name}.nori.lan" config.nori.lanIp) config.nori.lanRoutes);
 
-      # Tailnet firewall: open backend ports for opt-in routes only.
-      # Default-deny aligns with the rest of the network policy
+      # Tailnet firewall: open backend ports for opt-in routes only,
+      # AND only on the host that actually runs the backend. Without
+      # the `runsOn == hostName` filter, every host that imports the
+      # bundle opens every exposed port — harmless when no listener
+      # responds, but a wider firewall surface than the topology calls
+      # for. Default-deny aligns with the rest of the network policy
       # (Caddy on :80 + :443 from caddy.nix is the canonical entry).
       networking.firewall.interfaces."tailscale0".allowedTCPPorts = lib.flatten (
-        lib.mapAttrsToList (_: cfg: lib.optional cfg.exposeOnTailnet cfg.port) config.nori.lanRoutes
+        lib.mapAttrsToList (_: cfg: lib.optional cfg.exposeOnTailnet cfg.port) (
+          lib.filterAttrs (_: cfg: cfg.runsOn == config.networking.hostName) config.nori.lanRoutes
+        )
       );
 
       # Auto-generated Gatus endpoints for routes that opt in via

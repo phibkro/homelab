@@ -16,6 +16,7 @@ lib.mkMerge [
     nori.lanRoutes.audio = {
       port = 4533;
       runsOn = "aurora";
+      exposeOnTailnet = true;
       monitor = { };
       audience = "family";
       oidc = {

@@ -16,6 +16,7 @@ lib.mkMerge [
     nori.lanRoutes.books = {
       port = 8084;
       runsOn = "aurora";
+      exposeOnTailnet = true;
       monitor = { };
       audience = "family";
       # Forward-auth via Authelia. /opds/* + /kobo/* exempt so KOReader,

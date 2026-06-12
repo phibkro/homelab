@@ -24,6 +24,7 @@ lib.mkMerge [
     nori.lanRoutes.vault = {
       port = 8222;
       runsOn = "aurora";
+      exposeOnTailnet = true;
       monitor = {
         path = "/alive";
       };
@@ -78,9 +79,8 @@ lib.mkMerge [
         # Network — Caddy at vault.<nori.domain> reverse-proxies to
         # the runsOn host. Bind 0.0.0.0 so the proxy host (the one
         # running Caddy) can reach this backend over the tailnet when
-        # runsOn ≠ proxy host. The tailnet firewall (machines/aurora/
-        # default.nix) is the actual gate — vaultwarden's port is
-        # opened only on tailscale0, not the LAN interface.
+        # runsOn ≠ proxy host. `exposeOnTailnet = true` on the route
+        # opens 8222 on tailscale0; LAN stays closed.
         DOMAIN = "https://vault.${config.nori.domain}";
         ROCKET_ADDRESS = "0.0.0.0";
         ROCKET_PORT = 8222;

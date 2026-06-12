@@ -190,26 +190,16 @@
 
   services.tailscale.useRoutingFeatures = lib.mkForce "none";
 
-  # Tailnet firewall. Each port serves a specific cross-host backend
-  # reached by the entry-plane Caddy (workstation or pi).
-  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [
-    22 # SSH
-    2283 # immich-server (cross-host Caddy proxy)
-    445 # samba (family /mnt/family/* shares)
-    3000 # grafana
-    4533 # navidrome
-    5232 # radicale (CalDAV/CardDAV)
-    8084 # calibre-web
-    8085 # komga
-    8086 # glance
-    8087 # miniflux
-    8222 # vaultwarden — cross-host Caddy proxy from workstation/pi
-    9092 # filmder
-    9094 # heim
-    # immich-machine-learning (3003) intentionally NOT opened — post-P11
-    # cutover, immich-server is co-located on aurora and reaches ML via
-    # 127.0.0.1:3003 (forced loopback below). No cross-host caller exists.
-  ];
+  # Tailnet firewall: backend ports are opened by the `exposeOnTailnet`
+  # field on each `nori.lanRoutes.<X>` entry — pi's Caddy reaches the
+  # backend over tailnet. The lan-route generator filters by runsOn,
+  # so only the host that owns the backend opens the port.
+  #
+  # SSH (22) is opened by services.openssh.openFirewall (global, default
+  # true). Samba (445) is opened by modules/services/samba.nix on the
+  # tailnet interface. immich-machine-learning (3003) stays loopback-
+  # only — post-P11 immich-server is co-located here and reaches ML
+  # via 127.0.0.1:3003 (forced below).
 
   # ── NVIDIA (GTX 950M, Maxwell) ────────────────────────────────────
   # Legacy 535-series driver is the last to support Maxwell. Wayland

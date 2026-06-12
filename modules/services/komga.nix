@@ -15,6 +15,7 @@ lib.mkMerge [
     nori.lanRoutes.comics = {
       port = 8085;
       runsOn = "aurora";
+      exposeOnTailnet = true;
       monitor = { };
       audience = "family";
       # Forward-auth via Authelia. /api/* exempt so OPDS readers

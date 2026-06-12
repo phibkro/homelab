@@ -10,6 +10,7 @@ lib.mkMerge [
     nori.lanRoutes.calendar = {
       port = 5232;
       runsOn = "aurora";
+      exposeOnTailnet = true;
       monitor.path = "/.web/";
       audience = "family";
       dashboard = {

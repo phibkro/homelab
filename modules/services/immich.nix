@@ -38,6 +38,7 @@ lib.mkMerge [
     nori.lanRoutes.photos = {
       port = 2283;
       runsOn = "aurora";
+      exposeOnTailnet = true;
       monitor = { };
       audience = "family";
       oidc = {
