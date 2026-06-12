@@ -10,8 +10,7 @@
 # Internet-public exposure was prototyped via Tailscale Funnel (Phase
 # A1) and reverted — the LAN-only shape keeps tailnet-IS-the-perimeter
 # uncomplicated. To re-enable, see
-# `memory/reference/tailscale_funnel_implementation.md` for the
-# `nori.funnelRoutes` effect to recreate.
+# `memory/reference/tailscale_funnel_implementation.md`.
 #
 # ── Build/deploy shape ─────────────────────────────────────────────
 # Build is an *activation-time systemd oneshot* rather than a Nix
@@ -48,8 +47,8 @@ lib.mkMerge [
     ];
 
     # `audience = "public"` here means tailnet-public (any tailnet device
-    # reaches it without an auth prompt). Distinct from internet-public,
-    # which would re-add `nori.funnelRoutes.filmder` — see header.
+    # reaches it without an auth prompt). Distinct from internet-public
+    # — see header for the Tailscale-Funnel path if that's ever needed.
     nori.lanRoutes.filmder = {
       port = servePort;
       runsOn = "aurora";

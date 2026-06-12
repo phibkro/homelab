@@ -26,44 +26,32 @@
   # lib/lan-route.nix on hosts that have lanRoutes) and host-side
   # additions (TCP probes for non-HTTP services).
   #
-  # Web UI at port 8082 (8080 collides with Open WebUI). Tailnet-only
-  # exposure via Caddy is opt-in via `nori.gatus.exposeViaCaddy`
-  # (default true; Pi sets false because it has no Caddy).
+  # Web UI at port 8082 (8080 collides with Open WebUI).
   #
   # Channel name for ntfy.sh comes from a sops env-file at runtime —
   # gatus's YAML uses ${NTFY_CHANNEL} which it substitutes from env.
   # The secret is in env-file format because gatus's `environmentFile`
   # systemd directive needs `KEY=VALUE` lines, not bare values.
 
-  options.nori.gatus.exposeViaCaddy = lib.mkOption {
-    type = lib.types.bool;
-    default = true;
-    description = ''
-      Whether to register the Gatus web UI in nori.lanRoutes (which
-      creates a Caddy vhost at status.nori.lan). Set false on hosts
-      that don't run Caddy (pi).
-    '';
-  };
-
   config = lib.mkMerge [
     {
       nori.services.gatus.tags = [ "observability" ];
 
-      # Caddy vhost at https://status.nori.lan — only on hosts that run
-      # Caddy. No self-monitor (Gatus can't usefully probe itself —
-      # would always pass while alive and silently disappear when dead).
-      nori.lanRoutes = lib.mkIf config.nori.gatus.exposeViaCaddy {
-        status = {
-          port = 8082;
-          runsOn = "workstation";
-          exposeOnTailnet = true; # pi's Caddy proxies cross-host over tailnet
-          audience = "public";
-          dashboard = {
-            title = "Gatus";
-            icon = "sh:gatus";
-            group = "Admin";
-            description = "Service uptime + alerts";
-          };
+      # Caddy vhost at https://status.${nori.domain} — `runsOn` points
+      # at the workstation instance (the canonical UI surface); pi's
+      # Caddy reverse-proxies cross-host over tailnet. No self-monitor
+      # (Gatus can't usefully probe itself — would always pass while
+      # alive and silently disappear when dead).
+      nori.lanRoutes.status = {
+        port = 8082;
+        runsOn = "workstation";
+        exposeOnTailnet = true;
+        audience = "public";
+        dashboard = {
+          title = "Gatus";
+          icon = "sh:gatus";
+          group = "Admin";
+          description = "Service uptime + alerts";
         };
       };
     }
