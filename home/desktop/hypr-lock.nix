@@ -4,9 +4,8 @@ _: {
   # the Hyprland project; they're designed to work together.
   #
   # Idle ladder (desktop, no battery — skip dim-via-brightnessctl):
-  #   10 min  → hyprlock directly  (see on-timeout note below)
-  #   15 min  → hyprctl dispatch dpms off (monitor sleep)
-  #   on-resume → dpms on (re-wake monitor)
+  #   10 min  → hyprlock + dpms off in one go (lock implies sleep monitor)
+  #   on-input → Hyprland auto-wakes monitor (no explicit on-resume needed)
   programs.hyprlock = {
     enable = true;
     settings = {
@@ -65,7 +64,12 @@ _: {
         # hyprlock failed to spawn (Hyprland's "no lock app"
         # fallback engaged + monitors stayed lit). The sleep is
         # imperceptible at lock time; only matters during rebuilds.
-        lock_cmd = "pidof hyprlock || (sleep 1 && hyprlock)";
+        #
+        # DPMS off is chained inline (background hyprlock, then
+        # dispatch dpms off after a 2s settle) so monitor sleep is
+        # tied to the lock event itself, not a separate idle timer
+        # that can fire mid-password-entry.
+        lock_cmd = ''(pidof hyprlock || (sleep 1 && hyprlock)) & sleep 2 && hyprctl dispatch 'hl.dsp.dpms("off")' '';
         # Lock before suspending so wake lands on the lock screen.
         before_sleep_cmd = "loginctl lock-session";
         after_sleep_cmd = ''hyprctl dispatch 'hl.dsp.dpms("on")' '';
@@ -82,26 +86,18 @@ _: {
       };
       listener = [
         {
-          timeout = 600; # 10 min → lock
+          timeout = 600; # 10 min → lock + dpms off
           # Invoke hyprlock directly rather than via `loginctl
           # lock-session`: hypridle runs under the systemd user manager
           # (user@1000), not pinned to the graphical logind session, so
           # with multiple live sessions the Lock signal didn't reach
           # hyprlock. `pidof` guard prevents stacking lock instances.
-          on-timeout = "pidof hyprlock || hyprlock";
-        }
-        {
-          timeout = 900; # 15 min → DPMS off (monitors enter standby)
-          # Lua-mode dispatcher syntax (configType="lua" in workstation/
-          # home.nix). The hyprlang-style `hyprctl dispatch dpms off`
-          # parses as `return hl.dispatch(dpms off)` in lua and fails
-          # silently with "')' expected near 'off'" — so the DPMS off
-          # call NEVER FIRED post-lua-migration; monitors stayed on at
-          # the lock screen drawing ~30-60W each. Caught 2026-06-07.
-          # Same shape as the popup-term breakage (gotcha-hyprland-lua-
-          # migration). Use the `hl.dsp.*` builder form.
-          on-timeout = ''hyprctl dispatch 'hl.dsp.dpms("off")' '';
-          on-resume = ''hyprctl dispatch 'hl.dsp.dpms("on")' '';
+          #
+          # DPMS off is chained inline (1s settle for the lock surface
+          # to render before the dispatch) rather than living in a
+          # separate later-timeout listener. Hyprland wakes the monitor
+          # automatically on input, so no on-resume hook is needed.
+          on-timeout = ''(pidof hyprlock || hyprlock) & sleep 1 && hyprctl dispatch 'hl.dsp.dpms("off")' '';
         }
       ];
     };
