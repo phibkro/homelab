@@ -70,7 +70,7 @@ The flake derives configurations from the directory structure:
 | Concern | What it adds | Imported by |
 |---|---|---|
 | `common/` | Universal infra: base, users, Tailscale, sops + the `effects/` interface options | every host |
-| `server/` | *This host serves things*: Caddy, Authelia, *arr, backups, media, monitoring | workstation (whole bundle); pi (flat-picks specific files) |
+| `services/` | *This host serves things*: Caddy, Authelia, *arr, backups, media, monitoring | pi (whole bundle for the entry plane); aurora (whole bundle for family-tier backends); workstation (whole bundle for compute-side services) |
 | `desktop/` | *This host has a graphical session*: Hyprland, greetd, audio | workstation; future `nori-laptop` |
 | `effects/` | Reader + Writer interface options | imported by `common/`; populated by hosts (Reader) and services (Writer) |
 

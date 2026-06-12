@@ -60,7 +60,7 @@ Verified on `nixos-26.05`.
 | **Tailnet** | | | |
 | Tailscale | `services.tailscale` | every host | N/A |
 | **Backup** | | | |
-| restic jobs | `services.restic.backups.<n>` | workstation | Dual-target → `/mnt/backup/` (OneTouch) + `/mnt/backup-local/` (Ironwolf); Hetzner deferred |
+| restic jobs | `services.restic.backups.<n>` | workstation | Dual-target → `/mnt/backup/` (OneTouch) + `/mnt/backup-local/` (mp510); Hetzner deferred |
 | btrbk | `services.btrbk.instances.<n>` | workstation | Local snapshot |
 | postgresqlBackup | `services.postgresqlBackup` | workstation (non-Immich PG) | N/A |
 | restore-drill (services tier) | `modules/services/backup/verify.nix` | workstation | Monthly; 17 service repos restored to `/var/restore-test/` |

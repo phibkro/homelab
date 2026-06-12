@@ -95,7 +95,7 @@ Both `restic-backups-*` and `btrbk-*` units get `OnFailure = [ "notify@%n.servic
 
 Dual targets: `onetouch` (SFTP to aurora, off-chassis) + `mp510` (workstation NVMe). Hetzner off-site planned (ROADMAP). Each service backed up to all configured targets simultaneously.
 
-| Path / service | OneTouch + Ironwolf (local) | Hetzner (off-site, planned) |
+| Path / service | OneTouch + mp510 (local) | Hetzner (off-site, planned) |
 |---|---|---|
 | `/home` | Daily · keep 14d + 4w | Weekly · keep 4w + 12m |
 | `/srv/share` | Daily · keep 14d + 4w | Weekly · keep 4w + 12m |
@@ -134,4 +134,4 @@ All failures alert via ntfy. The drill is the **real RTO measurement**, not the 
 
 The DynamicUser `StateDirectory` symlink-trap assertion derives from `config.systemd.services` introspection — self-maintaining. See `.claude/skills/gotcha-dynamicuser-statedirectory-symlink/`.
 
-Schema in `modules/effects/backup.nix`. Cross-cutting infra (sops password, check timers) in `modules/services/backup/restic.nix`. Each repo writes to **both** `/mnt/backup/<job>` (OneTouch ext4) **and** `/mnt/backup-local/<job>` (Ironwolf btrfs). Hetzner Storage Box deferred (ROADMAP).
+Schema in `modules/effects/backup.nix`. Cross-cutting infra (sops password, check timers) in `modules/services/backup/restic.nix`. Each repo writes to **both** `/mnt/backup/<job>` (OneTouch ext4) **and** `/mnt/backup-local/<job>` (mp510 btrfs). Hetzner Storage Box deferred (ROADMAP).
