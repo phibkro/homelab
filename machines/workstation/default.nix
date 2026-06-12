@@ -16,7 +16,6 @@
     ../../modules/common # base + users + sops + tailscale + lib options
     ../../modules/services # every server module (HTTP, *arr, backup, …)
     ../../modules/desktop # Hyprland + greetd + audio + bars + apps + gaming
-    ../../modules/services/hermes.nix # hermes.nori.lan → user dashboard on 127.0.0.1:9119
 
     ./hardware.nix
     ./disko.nix
@@ -75,9 +74,9 @@
     recyclarr.enable = true;
     sonarr.enable = true;
     # Family-tier + network appliance + media-reader
-    authelia.enable = true;
+    authelia.enable = false; # pi entry plane post-P12; pi's authelia is the SSO instance
     blocky.enable = true;
-    caddy.enable = true;
+    caddy.enable = false; # pi entry plane post-P12; pi's caddy fronts every route via runsOn
     calibre-web.enable = false;
     filmder.enable = false;
     glance.enable = false;

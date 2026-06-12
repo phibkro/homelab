@@ -44,6 +44,7 @@ _: {
     ./glance.nix
     ./grafana.nix
     ./heim.nix
+    ./hermes.nix
     ./immich.nix
     ./jellyfin.nix
     ./komga.nix

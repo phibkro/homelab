@@ -1,4 +1,4 @@
-_: {
+{ config, ... }: {
   # The "common" concern — every host needs this regardless of role.
   # base.nix/users.nix/tailscale.nix/sops.nix are universal infra; the
   # ../effects/*.nix modules expose `nori.<X>` options that form a
@@ -29,4 +29,11 @@ _: {
     ../effects/restart-policy.nix
     ../effects/rust-motd.nix # codename banner + live MOTD on login
   ];
+
+  # Pi-central entry plane (ADR-0003 + ADR-0004): family-tier traffic
+  # lands on pi's Caddy via wildcard `*.${nori.domain}` LE cert. The
+  # lan-route default would otherwise derive lanIp from the unique
+  # workhorse with a non-null lanIp (workstation) and route every
+  # client through workstation's now-retired Caddy.
+  nori.lanIp = config.nori.hosts.pi.lanIp;
 }

@@ -52,7 +52,7 @@ lib.mkMerge [
     # services that consume OIDC).
     nori.lanRoutes.auth = {
       port = 9091;
-      runsOn = "workstation";
+      runsOn = "pi";
       monitor = { };
       audience = "public";
       dashboard = {

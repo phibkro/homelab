@@ -154,12 +154,6 @@
   # so the alert path survives station-down events. This is the load-
   # bearing piece — when station's Gatus hangs (the 2026-04-28
   # incident pattern), Pi's Gatus catches and alerts.
-  #
-  # No Caddy on Pi — exposeViaCaddy=false skips the lanRoutes.status
-  # registration. If you ever need the web UI from elsewhere, reach
-  # the port directly via tailnet (firewall opened below for tailnet
-  # only).
-  nori.gatus.exposeViaCaddy = false;
 
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [
     8082 # Gatus web UI on tailnet only
