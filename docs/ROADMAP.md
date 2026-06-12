@@ -28,8 +28,6 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
   **Decision needed** when next stable ships: pin Mac to 26.05 indefinitely / migrate Mac off Nix / replace hardware.
 
-- **Jellyfin NVENC web UI toggle.** `https://media.nori.lan` → Dashboard → Playback → Hardware acceleration → Nvidia NVENC + tick codec boxes (h264/hevc/mpeg4/vp9/av1) → Save. OS-level GPU access is already live; this flips `<HardwareAccelerationType>` from `none` to `nvenc` in `/var/lib/jellyfin/config/encoding.xml`.
-
 - **Sunshine remote-desktop pairing.** Deployed (`modules/desktop/sunshine.nix`); NVENC builds confirmed (`h264/hevc/av1_nvenc`). Outstanding: one-time Moonlight pairing.
 
   Pairing steps:

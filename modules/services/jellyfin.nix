@@ -36,10 +36,21 @@ lib.mkMerge [
     # …walk through the wizard. Admin user is independent of the
     # system `nori` user.
     #
-    # NVENC on the RTX 5060 Ti works but requires opt-in via web UI
-    # (Dashboard → Playback → Hardware acceleration → Nvidia NVENC,
-    # then reload). The host-wide nvidia driver exposes the GPU
-    # automatically; no module-level switch.
+    # NVENC on the RTX 5060 Ti works but requires opt-in via the web
+    # UI (Dashboard → Playback → Transcoding) — Jellyfin stores it
+    # in /var/lib/jellyfin/config/encoding.xml, not a Nix option. The
+    # host-wide nvidia driver exposes the GPU automatically.
+    #
+    # Intended UI state — reapply if encoding.xml ever gets stomped:
+    #   Hardware acceleration: Nvidia NVENC
+    #   Decoding ticked:    H264, HEVC, MPEG2, MPEG4, VC1, VP9, AV1,
+    #                       HEVC 10bit, VP9 10bit
+    #   Decoding unticked:  VP8 (no real content), HEVC RExt 8/10/12bit
+    #                       (pro/medical, won't be in library)
+    #   Enhanced NVDEC decoder: on
+    #   Hardware encoding: on
+    #   Encoding formats allowed: HEVC + AV1 (H264 always-on by default)
+    #   Tone mapping: off (only matters for HDR→SDR on non-HDR clients)
 
     services.jellyfin = {
       enable = true;
