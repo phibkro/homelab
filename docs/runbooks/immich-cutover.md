@@ -53,10 +53,20 @@ window. The immich admin Settings → Database → Backup section has a
 (Alternative: `sudo -u postgres pg_dump immich | gzip
  > /mnt/media/photos/_immich-managed/backups/immich-db-backup-cutover-$(date +%s).sql.gz`)
 
-### 2. Stop workstation immich + final delta rsync
+### 2. Stop immich on BOTH sides + final delta rsync
+
+The `[[rsync-destination-service-ownership]]` trap bites here:
+destination-side immich will claim `_immich-managed/` mid-transfer if
+left running, breaking rsync with rc=23. Stop both sides; chown the
+destination's `_immich-managed/` to a writable user for the delta
+window; restore in step 4.
 
 ```sh
+# source side
 sudo systemctl stop immich-server immich-machine-learning
+# destination side
+ssh nori@aurora.saola-matrix.ts.net 'sudo systemctl stop immich-server immich-machine-learning'
+ssh nori@aurora.saola-matrix.ts.net 'sudo chown -R nori:users /mnt/family/photos/_immich-managed'
 # delta-sync any photos that landed between the P10 finish and now
 sudo rsync -aHAX --info=stats2 --info=progress2 \
   --rsh="ssh -i /home/nori/.ssh/id_ed25519" \

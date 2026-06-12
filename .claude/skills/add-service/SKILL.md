@@ -77,7 +77,7 @@ Run `just list-ports` first to see allocated ports. Pick a port that doesn't col
 
 Naming: function over brand (`chat` not `open-webui`, `media` not `jellyfin`, `ai` not `ollama`). Brand only when the brand IS the identity (`auth` for Authelia).
 
-**Both hosts need to rebuild.** Workstation gets the Caddy route + Authelia client + the service itself; pi gets the new entry baked into Blocky's customDNS. `just rebuild` only touches the host you're on — silent split-brain otherwise. Use `just rebuild-homelab`.
+**Both pi and the runsOn host need to rebuild.** Pi gets the Caddy route + Authelia client + the new entry baked into Blocky's customDNS; the host where `runsOn` points (aurora, workstation, or pi itself) gets the service itself. `just rebuild` only touches the host you're on — silent split-brain otherwise. Use `just rebuild-homelab`.
 
 **After the pi rebuild lands, flush pi Blocky's negative cache** (see `gotcha-blocky-stale-negative-on-new-lan-route`):
 
@@ -85,7 +85,7 @@ Naming: function over brand (`chat` not `open-webui`, `media` not `jellyfin`, `a
 ssh nori@pi.saola-matrix.ts.net 'sudo systemctl restart blocky.service'
 ```
 
-A rebuild that doesn't change pi Blocky's *config hash* (common when only the workstation-side service module changed) won't restart blocky.service on pi, so any negative-cache entry for the new name survives. Always restart pi Blocky explicitly when adding a new lan-route.
+A rebuild that doesn't change pi Blocky's *config hash* (common when only the service-side module changed) won't restart blocky.service on pi, so any negative-cache entry for the new name survives. Always restart pi Blocky explicitly when adding a new lan-route.
 
 ### 5. SSO (if needed)
 
