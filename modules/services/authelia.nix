@@ -19,7 +19,7 @@ let
     client_secret = ''{{ secret "/run/secrets/oidc-${name}-client-secret-hash" }}'';
     public = false;
     authorization_policy = route.oidc.authorizationPolicy;
-    redirect_uris = [ "https://${name}.nori.lan${route.oidc.redirectPath}" ];
+    redirect_uris = [ "https://${name}.${config.nori.domain}${route.oidc.redirectPath}" ];
     inherit (route.oidc) scopes;
 
     # Standard authorization-code flow. `refresh_token` grant is
@@ -74,36 +74,42 @@ lib.mkMerge [
     # auto-declared by modules/effects/lan-route.nix.
 
     sops.secrets = {
+      # All base secrets carry `restartUnits` so a sops edit + rebuild
+      # is sufficient — the live process picks up the new value without
+      # a manual `systemctl restart authelia-main`. Without this the
+      # in-memory copy survives the rebuild (caching users from the
+      # file backend; signing tokens with the previous jwt/session/
+      # storage/oidc-hmac/issuer-key) and silently runs on the stale
+      # secret until the next reboot or manual restart.
       authelia-jwt-secret = {
         mode = "0400";
         owner = "authelia-main";
+        restartUnits = [ "authelia-main.service" ];
       };
       authelia-session-secret = {
         mode = "0400";
         owner = "authelia-main";
+        restartUnits = [ "authelia-main.service" ];
       };
       authelia-storage-encryption-key = {
         mode = "0400";
         owner = "authelia-main";
+        restartUnits = [ "authelia-main.service" ];
       };
       authelia-users-database = {
         mode = "0400";
         owner = "authelia-main";
-        # Authelia loads the file-based auth backend at startup and
-        # caches users in memory; without an explicit restart the
-        # service keeps the old user list after a sops update. sops-nix
-        # restartUnits triggers the unit restart on content change so
-        # `just rebuild` after editing this secret is sufficient — no
-        # manual `systemctl restart authelia-main` step needed.
         restartUnits = [ "authelia-main.service" ];
       };
       authelia-oidc-hmac-secret = {
         mode = "0400";
         owner = "authelia-main";
+        restartUnits = [ "authelia-main.service" ];
       };
       authelia-oidc-issuer-private-key = {
         mode = "0400";
         owner = "authelia-main";
+        restartUnits = [ "authelia-main.service" ];
       };
     };
 
