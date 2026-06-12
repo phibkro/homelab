@@ -82,7 +82,7 @@
     filmder.enable = false;
     glance.enable = false;
     heim.enable = false;
-    immich.enable = true;
+    immich.enable = false;
     jellyfin.enable = true;
     komga.enable = false;
     miniflux.enable = false;

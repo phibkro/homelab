@@ -37,7 +37,7 @@ lib.mkMerge [
     #      that's what Immich's frontend handles.
     nori.lanRoutes.photos = {
       port = 2283;
-      runsOn = "workstation";
+      runsOn = "aurora";
       monitor = { };
       audience = "family";
       oidc = {
@@ -89,7 +89,7 @@ lib.mkMerge [
       enable = true;
       user = "immich";
       group = "immich";
-      host = "127.0.0.1";
+      host = "0.0.0.0";
       port = 2283;
       mediaLocation = "${config.nori.fs.photos.path}/_immich-managed";
 
