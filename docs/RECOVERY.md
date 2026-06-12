@@ -36,6 +36,14 @@ Each runbook is the step-by-step for one failure class. Initial outlines:
 | `pi-failure.md` | Pi unreachable / hardware dead | Swap to spare USB SSD with current flake → boot → verify Blocky + Tailscale come up → router DHCP unaffected (workstation is secondary DNS) |
 | `inspect-windows-drive.md` | Need to verify Windows partition state | MP510 read-only mount + verification |
 | `storage-full.md` | Disk pressure | Find what filled up; library is reflinked (not duplicated) — see `.claude/skills/gotcha-arr-reflinks-not-hardlinks/` |
+| `tailscale-acl.md` | Tailscale admin UI ACL recovery | Live ACL lives only in admin UI; this snapshots `tailscale-acl.json` for editor-regression + account-loss recovery |
+
+## Forward-direction runbooks (not recovery)
+
+| Runbook | Trigger | Path |
+|---|---|---|
+| `grafana-oidc-bootstrap.md` | Deciding to gate Grafana behind Authelia | Generate OIDC client → sops paste → Nix block at grafana.nix → rebuild aurora |
+| `ntfy-auth-bootstrap.md` | Tightening pi's ntfy hub from read-write to deny | sops publisher token → ntfy bootstrap user → wire gatus + notify@ headers |
 
 ## Permanent constraints (non-negotiable)
 
