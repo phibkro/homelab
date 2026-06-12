@@ -107,7 +107,16 @@
     open = true; # open kernel module (driver 575+ / Blackwell)
     modesetting.enable = true;
     nvidiaSettings = true; # nvidia-settings GUI for the desktop session
-    powerManagement.enable = false;
+    # powerManagement.enable installs nvidia-suspend.service +
+    # nvidia-resume.service which call nvidia-sleep.sh to save/restore
+    # VRAM state across suspend/resume cycles (sets
+    # NVreg_PreserveVideoMemoryAllocations=1 on the kernel module). The
+    # default off was the cause of the s2idle resume-hang documented in
+    # `e12d34d` — resume came back to a "default background, no input"
+    # state because the compositor couldn't render against an
+    # undefined-VRAM GPU. P18 prerequisite for re-enabling hypridle
+    # auto-suspend.
+    powerManagement.enable = true;
     package = config.boot.kernelPackages.nvidiaPackages.production;
   };
 
