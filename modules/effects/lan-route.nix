@@ -127,18 +127,8 @@ in
             type = types.port;
             description = "Backend TCP port (validated 0-65535 at eval time).";
           };
-          host = mkOption {
-            type = types.str;
-            default = "127.0.0.1";
-            description = ''
-              Backend host for Caddy to proxy to. Legacy / fallback —
-              prefer `runsOn` for cross-host placement. Generators use
-              `runsOn`-derived host if set, this field otherwise.
-            '';
-          };
           runsOn = mkOption {
-            type = types.nullOr types.str;
-            default = null;
+            type = types.str;
             example = "aurora";
             description = ''
               Name of the homelab host that runs this route's backend
@@ -148,7 +138,6 @@ in
                   the route (Caddy proxies to the local loopback)
                 * `config.nori.hosts.<runsOn>.tailnetIp` otherwise
                   (Caddy proxies cross-host over tailnet)
-              Falls back to the legacy `host` field when null.
 
               This is the mechanism that lets route declarations live
               outside the `mkIf cfg.enabled` gate in each service module
@@ -482,15 +471,11 @@ in
 
       # Resolve a route's backend host. `runsOn` (the placement field)
       # wins when set: 127.0.0.1 if the route runs on the evaluating
-      # host, the runsOn host's tailnet IP otherwise. Falls back to the
-      # legacy `host` field (default 127.0.0.1) when runsOn is null —
-      # routes that haven't migrated to the lift refactor see no change.
+      # host, the runsOn host's tailnet IP otherwise.
       myHost = config.networking.hostName;
       routeHost =
         cfg:
-        if cfg.runsOn == null then
-          cfg.host
-        else if cfg.runsOn == myHost then
+        if cfg.runsOn == myHost then
           "127.0.0.1"
         else
           config.nori.hosts.${cfg.runsOn}.tailnetIp;
