@@ -46,6 +46,7 @@ without this file's context.
 | Path | USE WHEN |
 |---|---|
 | `docs/decisions/` | per-ADR for each hard-to-revisit choice. `0001-agentic-homelab-practices.md` is the meta-ADR — read when philosophy comes up |
+| `docs/superpowers/reports/` | catching up on how a multi-week arc actually landed — commit-grouped narrative + before/after diagrams that don't fit in ADRs or commit messages. Backward-looking companion to a plan in `docs/superpowers/plans/` |
 | `docs/runbooks/` | per-incident recovery procedures (drive failure, USB enumeration, network split) |
 | `docs/baremetal-install.md` | bringing up a fresh NixOS host via nixos-anywhere |
 | `docs/vm-install.md` | bringing up a NixOS VM (testing, throwaway environments) |
