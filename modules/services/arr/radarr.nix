@@ -11,6 +11,7 @@ lib.mkMerge [
     nori.lanRoutes.movies = {
       port = 7878;
       runsOn = "workstation";
+      exposeOnTailnet = true; # pi's Caddy reverse-proxies via tailnet (P12 prep)
       monitor = { };
       audience = "operator";
       dashboard = {

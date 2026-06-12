@@ -56,6 +56,7 @@
         status = {
           port = 8082;
           runsOn = "workstation";
+          exposeOnTailnet = true; # pi's Caddy reverse-proxies via tailnet (P12 prep)
           audience = "public";
           dashboard = {
             title = "Gatus";

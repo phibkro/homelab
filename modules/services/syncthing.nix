@@ -10,6 +10,7 @@ lib.mkMerge [
     nori.lanRoutes.sync = {
       port = 8384;
       runsOn = "workstation";
+      exposeOnTailnet = true; # pi's Caddy reverse-proxies via tailnet (P12 prep)
       monitor = { };
       audience = "operator";
       dashboard = {
@@ -57,8 +58,14 @@ lib.mkMerge [
       openDefaultPorts = false; # we handle ports below explicitly
       overrideDevices = false; # let WebUI manage device list
       overrideFolders = false; # let WebUI manage folder list
+      # guiAddress feeds the --gui-address CLI flag and overrides
+      # settings.gui.address at runtime; nixpkgs' default 127.0.0.1
+      # would otherwise pin loopback regardless of XML config. 0.0.0.0
+      # so pi's Caddy can reverse-proxy via tailnet post-P12; the
+      # tailnet firewall hole + Caddy fronting are the actual access
+      # controls.
+      guiAddress = "0.0.0.0:8384";
       settings.gui = {
-        address = "127.0.0.1:8384";
         # No `user`/`password` set here — tailnet trust + Caddy is the
         # gate. Set them in the WebUI if you want a second factor.
       };

@@ -46,6 +46,7 @@ lib.mkMerge [
     nori.lanRoutes.stremio = {
       port = servePort;
       runsOn = "workstation";
+      exposeOnTailnet = true; # pi's Caddy reverse-proxies via tailnet (P12 prep)
       audience = "operator";
       monitor = { };
       dashboard = {

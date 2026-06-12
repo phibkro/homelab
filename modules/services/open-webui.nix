@@ -30,6 +30,7 @@ lib.mkMerge [
       chat = {
         port = 8080;
         runsOn = "workstation";
+        exposeOnTailnet = true; # pi's Caddy reverse-proxies via tailnet (P12 prep)
         monitor = { };
         audience = "family";
         oidc = {

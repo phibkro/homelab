@@ -30,6 +30,7 @@ lib.mkMerge [
       ai = {
         port = 11434;
         runsOn = "workstation";
+        exposeOnTailnet = true; # pi's Caddy reverse-proxies via tailnet (P12 prep)
         monitor.path = "/api/tags";
       };
     };
