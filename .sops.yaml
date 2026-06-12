@@ -28,6 +28,7 @@ keys:
   - &workstation-user age1lezvx39h43ua5r3zlk34fmfs0wqzz7g3ltfmkg9gm350fw7fq5jsrefr78
   - &pi age108jlf67tj7tcdmlrg8h0wpdyvg24pud3k7u4nfa4zyz9meqml5sskcdncr
   - &aurora age1kj8vklwnmm64p7zf3wkggnl53kvlxs8m4d342n4xhy5umrr6kc8srwagm6
+  - &pavilion age1cgnypmxekjemgjv03s9ssezwe5r7jnz5vp0dc90tk8g696l55azsp36t5t
 
 creation_rules:
   - path_regex: secrets/.*\.yaml$
@@ -38,3 +39,4 @@ creation_rules:
           - *workstation-user
           - *pi
           - *aurora
+          - *pavilion
