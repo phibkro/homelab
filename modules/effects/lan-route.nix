@@ -154,9 +154,9 @@ in
               outside the `mkIf cfg.enabled` gate in each service module
               — every host that imports the module sees the route in
               `nori.lanRoutes`, but the backend resolves to the right
-              address per host. Enables a clean pi-central / aurora-
-              entry-plane architecture where the proxy host doesn't
-              co-locate with every service.
+              address per host. Encodes the pi-central entry plane
+              shape: pi's Caddy serves every route; backends live on
+              whichever host fits (workhorse vs always-on vault).
             '';
           };
           scheme = mkOption {
