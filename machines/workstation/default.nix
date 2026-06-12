@@ -102,6 +102,8 @@
     node-exporter.enable = true;
     nvidia-gpu-exporter.enable = true;
     ntfy-notify.enable = true;
+    # Backup
+    btrbk-replica-target.enable = true; # P15 — receives btrfs send from aurora into MP510
   };
 
   # Defensive cap on user@1000.service. Calibrated against the

@@ -30,7 +30,19 @@ let
 
   # btrbk operates on subvol paths relative to a volume root. Strip
   # the `/mnt/family/` prefix to get the subvol names btrbk needs.
-  subvolNames = lib.mapAttrs' (n: f: lib.nameValuePair (lib.removePrefix "/mnt/family/" f.path) { }) irreplaceableFs;
+  # Each subvol gets its own `target` because workstation's MP510
+  # mounts `@family-replica-<X>` at separate `/mnt/family-replica/<X>`
+  # paths — there's no single parent btrfs filesystem btrbk could
+  # use as a shared receive directory.
+  subvolEntries = lib.mapAttrs' (
+    n: f:
+    let
+      name = lib.removePrefix "/mnt/family/" f.path;
+    in
+    lib.nameValuePair name {
+      target = "ssh://${config.nori.hosts.workstation.tailnetIp}${workstationReplicaRoot}/${name}";
+    }
+  ) irreplaceableFs;
 
   # ssh target: workstation's restic-receive user (separate from the
   # `restic` user on aurora that workstation pushes to — different
@@ -81,10 +93,7 @@ lib.mkMerge [
       ssh_user = "btrbk";
       ssh_identity = "/run/secrets/btrbk-replication-ssh-key";
 
-      volume."/mnt/family" = {
-        subvolume = subvolNames;
-        target = "ssh://${sshTarget}${workstationReplicaRoot}";
-      };
+      volume."/mnt/family".subvolume = subvolEntries;
     };
   };
 
@@ -104,7 +113,11 @@ lib.mkMerge [
   #   4. Re-encrypt sops: `cd secrets && sops updatekeys secrets.yaml`
   #   5. just remote aurora rebuild + just rebuild on workstation.
   sops.secrets.btrbk-replication-ssh-key = {
-    owner = "root";
+    # The upstream `services.btrbk` runs the unit as User=btrbk (uid
+    # set by NixOS' implicit-system-uid allocator); the key has to be
+    # readable by that uid, not just root.
+    owner = "btrbk";
+    group = "btrbk";
     mode = "0400";
   };
 

@@ -97,6 +97,7 @@
     grafana.enable = true; # observability frontend (sessions ephemeral; pi VM/logs over tailnet)
     samba.enable = true; # /mnt/family/* shares for family bookmarks
     navidrome.enable = true; # music (sqlite + library/music read)
+    btrbk-replication.enable = true; # P15 — nightly send to workstation MP510
   };
 
   # Backup infrastructure for aurora's family-tier services. The
