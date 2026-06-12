@@ -195,7 +195,6 @@
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [
     22 # SSH
     2283 # immich-server (cross-host Caddy proxy)
-    3003 # immich-machine-learning
     445 # samba (family /mnt/family/* shares)
     3000 # grafana
     4533 # navidrome
@@ -207,6 +206,9 @@
     8222 # vaultwarden — cross-host Caddy proxy from workstation/pi
     9092 # filmder
     9094 # heim
+    # immich-machine-learning (3003) intentionally NOT opened — post-P11
+    # cutover, immich-server is co-located on aurora and reaches ML via
+    # 127.0.0.1:3003 (forced loopback below). No cross-host caller exists.
   ];
 
   # ── NVIDIA (GTX 950M, Maxwell) ────────────────────────────────────
