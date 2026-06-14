@@ -166,6 +166,17 @@
   # receiving side.
   environment.systemPackages = [ pkgs.wakeonlan ];
 
+  # Tailnet appliance DNS interception — chromecast hardcodes 8.8.8.8
+  # at the app layer and ignores DHCP + Tailscale's DNS push. Pi is its
+  # exit node, so we DNAT outgoing :53 to Blocky here. MUST stay in sync
+  # with tag:appliance assignment in the Tailscale ACL — same trust
+  # boundary at two layers. See modules/effects/tailnet-appliance.nix
+  # for the architectural-compromise note.
+  nori.tailnet.appliances.chromecast = {
+    tailnetIp = "100.94.135.114";
+    interceptedAt = "pi";
+  };
+
   # station-blocky-dns is the most important probe — catches the
   # userspace-CPU-starvation pattern (kernel alive, NIC ACKs ping, DNS
   # dead). LAN-side because `*.nori.lan` resolves to LAN IPs.
