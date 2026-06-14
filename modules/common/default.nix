@@ -28,6 +28,7 @@
     ../effects/replication.nix
     ../effects/restart-policy.nix
     ../effects/rust-motd.nix # codename banner + live MOTD on login
+    ../effects/tailnet-appliance.nix
   ];
 
   # Pi-central entry plane (ADR-0003 + ADR-0004): family-tier traffic
