@@ -159,6 +159,13 @@
     8082 # Gatus web UI on tailnet only
   ];
 
+  # wakeonlan on PATH so the operator can WoL workstation from a phone
+  # SSH session into pi (Termius snippet `wakeonlan <mac>`). Sends a
+  # UDP magic packet (port 9), so no sudo or raw-socket cap needed.
+  # See machines/workstation/hardware.nix § Wake-on-LAN for the
+  # receiving side.
+  environment.systemPackages = [ pkgs.wakeonlan ];
+
   # station-blocky-dns is the most important probe — catches the
   # userspace-CPU-starvation pattern (kernel alive, NIC ACKs ping, DNS
   # dead). LAN-side because `*.nori.lan` resolves to LAN IPs.
