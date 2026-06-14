@@ -71,9 +71,9 @@ without this file's context.
 ## What's the bias
 
 - **Correctness > simplicity > thoroughness > speed.**
+- **Name the most-correct solution before any compromise.** Premature pragmatism assumes implicit constraints (dev cost, complexity, code volume) that often don't apply in an agentic workflow. State the right answer first, its real cost, what rules it out, then narrow. Each constraint the operator adds shrinks the solution space; re-research the most-correct within the narrowed space. Don't paint over the gap — when compromising, name the layer the policy *should* live at and what's given up to land where it does.
 - **Declarative over imperative.** When tools fight code-as-config, switch tools (we replaced Uptime Kuma with Gatus).
 - **Composable abstractions, not god modules.** One input → multiple generators (`nori.lanRoutes` produces Caddy + DNS + Gatus + dashboard + Authelia client + sops template from one entry). The `nori.<X>` family follows the Reader + collected-Writer effect shape.
-- **Rule of three for abstractions.** Extract only when three concrete uses exist. Two looks like a pattern; the third reveals the actual axis of variation.
 - **Iterate-to-stable, then codify.** Novel patterns live in Cynefin's Complex domain — ship the simplest version, let the next constraint surface, codify after the shape stabilizes.
 - **Workhorse-by-default, appliance-by-exception.** Services land on station unless they need to survive station's failure or are network appliance functions. The exception clause is "fate-sharing breaks the function," not "feels lightweight."
 - **Tailnet IS the auth perimeter; Authelia only for per-user identity.** Encoded as the `audience` enum on `nori.lanRoutes` — `operator` trusts tailnet, `family` needs OIDC, `public` is intentionally open.

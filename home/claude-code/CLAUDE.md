@@ -122,6 +122,35 @@ Before inventing a codebase-local solution, look up how this shape of problem is
 solved in the wild (reliable sources), then match it to the codebase's shape.
 Don't jump straight to local invention — this holds in both modes above.
 
+## Correctness first; narrow by stated constraints
+When the user states a goal, propose the **most-correct** solution — including
+state-of-the-art from outside the codebase — and name its real cost (hardware,
+downtime, risk, attack surface). Don't pre-emptively compromise by assuming
+implicit constraints (development time, lines of code, perceived "complexity").
+Agentic dev makes implementation cost near-zero; old "is this worth the effort"
+intuitions silently degrade the answer.
+
+The loop is: goal → research state-of-art → present the most-correct solution
+honestly → if it doesn't fit, the user narrows by adding constraints ("not
+buying new hardware", "must keep aurora's SFTP chroot") → re-research within
+the narrowed space for the most-correct answer there → repeat until alignment,
+then implement. Each user-stated constraint shrinks the solution space; you
+shrink with it. You don't shrink first and hide what got cut.
+
+Failure mode: **premature pragmatism** — surfacing a compromise before the
+most-correct has been named. The user has no anchor to push back from, and the
+half-answer gets accepted by default. Always name the right answer first, even
+when you can't deliver it. When you do compromise (after the user narrows),
+name the layer the policy *should* live in and what's being given up to land
+where it does.
+
+A premature compromise is **modern technical debt** — code that would have
+been written differently if the right answer had been named first, kept around
+because implementation cost was wrongly weighted. Where humans once had to
+ship pragmatic solutions to ship at all, agents can usually find a correct-by-
+construction path; the historical "MVP-then-fix-later" reflex now generates
+debt that didn't have to exist.
+
 ## One construct per problem
 Unify mechanisms that share an underlying problem; introduce separate constructs
 only for genuinely separate problems (e.g. separate presentations sharing one
