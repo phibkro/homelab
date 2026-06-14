@@ -75,3 +75,8 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 - **NVIDIA Wayland edge cases** (multi-monitor VRR, suspend/resume nuances). Not blocking; document fixes in `hardware.nix` as encountered.
 - **CUDA/Ollama drift.** Ollama bundles its own CUDA libs; verify at install and pin nixpkgs version if it doesn't.
 - **Home automation on the Pi.** No concrete use case currently.
+
+## Architectural debt (named compromises with a known correct shape)
+
+- **Network-layer DNS/egress policy.** The correct layer for "force all LAN egress through Blocky and block public-resolver fall-throughs" is a real router (OPNsense/OpenWRT/pfSense) behind a bridge-mode modem, with nftables PREROUTING REDIRECT on :53 and a DoH-IP blocklist on the WAN-facing side. Today the Genexis ISP modem doesn't bridge-mode and a real router isn't budgeted, so the same policy is enforced one layer lower at `modules/effects/tailnet-appliance.nix` (pi-as-tailnet-exit-node DNAT). Limits documented in that file's header: only catches devices routing through pi, can't help LAN-only hardcoded-DNS devices, and DoH egress to non-listed IPs slips through. When a real router lands, this effect goes away; the same `nori.tailnet.appliances` registry drives the router's nftables generator instead. **Trigger to revisit:** ISP allowing Genexis bridge mode *or* a competent router (~$200) enters the budget.
+

@@ -78,6 +78,7 @@ These wait for a real signal before being worked:
 | Trigger | What gets done |
 |---|---|
 | Future service needs to land public traffic on workstation | Tailscale Funnel — reference impl preserved in `memory/reference/tailscale_funnel_implementation.md` |
+| Genexis ISP modem allows bridge mode, OR ~$200 router enters budget | Stand up real LAN router (OPNsense/OpenWRT); migrate DNS/egress policy from `modules/effects/tailnet-appliance.nix` to the router. Then retire that effect — same `nori.tailnet.appliances` registry can drive a router-side generator. See `docs/ROADMAP.md § "Architectural debt"` for the rationale. |
 | ntfy alone proves noisy enough that summarization helps | Email digest reports |
 | IronWolf > 80% full *or* RAID1 redundancy becomes desired | Second media drive on workstation |
 | "Deployed broken config, lost remote access" incident | `deploy-rs` adoption |
