@@ -1,4 +1,4 @@
-{ config, lib, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   inherit (lib)
@@ -573,11 +573,34 @@ in
       # modules/server/backup/restic.nix; without it a silent backup
       # failure stays silent. Per-target means the ntfy message names
       # exactly which target failed.
+      #
+      # Also injects a stale-lock self-healing ExecStartPre before the
+      # upstream pre-start. Without it, a prior crashed restic run
+      # leaves an exclusive lock that wedges every subsequent run:
+      # upstream's `cat config || init` chain dies because cat-config
+      # needs a read lock (refused) and init errors on "config exists",
+      # so the unit's built-in `unlock` ExecStart (later in the chain)
+      # is never reached. mkBefore puts our unlock ahead of upstream's
+      # pre-start; default `restic unlock` only removes locks older
+      # than 30min (stale-detection), so an actively-running concurrent
+      # restic is unaffected. See memory restic-stale-lock-recovery
+      # for the recovery procedure if this isn't enough; upstream
+      # nixpkgs fix tracked separately.
       systemd.services = lib.listToAttrs (
         map (
           { jobName, target, ... }:
+          let
+            tgt = config.nori.backupTargets.${target};
+            resticOpts = lib.concatStringsSep " " (
+              map (o: "-o ${lib.escapeShellArg o}") tgt.extraOptions
+            );
+            preUnlockScript = pkgs.writeShellScript "restic-${jobName}-${target}-pre-unlock" ''
+              ${pkgs.restic}/bin/restic ${resticOpts} unlock 2>/dev/null || true
+            '';
+          in
           lib.nameValuePair "restic-backups-${jobName}-${target}" {
             unitConfig.OnFailure = [ "notify@restic-backups-${jobName}-${target}.service" ];
+            serviceConfig.ExecStartPre = lib.mkBefore [ "${preUnlockScript}" ];
           }
         ) activePairs
       );
