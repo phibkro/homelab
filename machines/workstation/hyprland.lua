@@ -89,7 +89,12 @@ hl.bind(mod .. " + SPACE",  hl.dsp.exec_cmd("fuzzel"))
 hl.bind(mod .. " + B",      hl.dsp.exec_cmd("zen-beta"))
 hl.bind(mod .. " + H",      hl.dsp.exec_cmd("hypr-cheatsheet"))
 hl.bind(mod .. " + L",      hl.dsp.exec_cmd("pidof hyprlock || hyprlock"))
-hl.bind(mod .. " + P",      hl.dsp.exec_cmd("cmd-menu"))
+-- Lock-then-suspend: spawns hyprlock in the background, gives it 1s to
+-- draw, then triggers s2idle via logind. Wake lands on the lock screen
+-- because hyprlock was already painted before the screen went off.
+-- Paired with the no-autosleep posture in home/desktop/hypr-lock.nix —
+-- operator triggers suspend manually instead of an idle timer.
+hl.bind(mod .. " + P",      hl.dsp.exec_cmd("(pidof hyprlock || hyprlock &) ; sleep 1 && systemctl suspend"))
 
 -- Window management
 hl.bind(mod .. " + Q",         hl.dsp.window.close())
