@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  pkgs,
   ...
 }:
 
@@ -97,6 +98,24 @@
       nori.harden.gatus = { };
 
       nori.backups.gatus.skip = "Memory-only storage; no on-disk state.";
+
+      # 60s warmup before probing resumes after a (re)start. Suppresses
+      # the false-positive alert window where Gatus comes up faster than
+      # the services it monitors — most commonly after a `just rebuild`
+      # restarts both Gatus AND its probe targets. Applies to crash
+      # recovery too; the 60s monitoring gap on unexpected restarts is
+      # the right trade vs. spurious alerts every rebuild.
+      #
+      # Was previously attempted in Justfile via `systemctl mask` around
+      # nh os switch — failed because NixOS-managed units live at
+      # /etc/systemd/system/<n>.service as nix-store symlinks and
+      # systemctl refuses to overwrite those. Encoding the warmup at
+      # the unit level avoids the wrapper coupling entirely. Cross-host
+      # gap (other hosts' Gatus probing the rebuilding one) tracked as
+      # G3 in docs/ROADMAP.md.
+      systemd.services.gatus.serviceConfig.ExecStartPre = [
+        "${pkgs.coreutils}/bin/sleep 60"
+      ];
     })
   ];
 }

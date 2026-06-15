@@ -73,18 +73,7 @@ default: rebuild
 # === build / deploy (local) ===
 
 # Build + activate this host's configuration from the working tree.
-rebuild *args:
-    #!/usr/bin/env bash
-    # Masks the local Gatus during the rebuild + 60s after, so its probes
-    # don't alert on services that are still (re)starting. Cross-host case
-    # (workstation's Gatus probing pi while pi rebuilds) isn't covered —
-    # tracked as G3 in docs/ROADMAP.md § "Architectural debt".
-    set -euo pipefail
-    if systemctl is-active gatus.service >/dev/null 2>&1; then
-      sudo systemctl mask gatus.service
-      sudo systemctl stop gatus.service
-      trap 'sudo systemctl unmask gatus.service; ( sleep 60 && sudo systemctl start gatus.service ) &' EXIT
-    fi
+@rebuild *args:
     nh os switch . -H $(hostname) {{args}}
 
 # Sequential rebuild: local first (catches typos fast), then each remote.
