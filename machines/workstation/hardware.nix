@@ -37,19 +37,37 @@
   # fileSystems here; disko's NixOS module produces them from the disko
   # config, and re-declaring would be a definition conflict.
 
-  # Disk-backed swap as overflow tier behind zram (16 GiB compressed,
-  # configured in modules/common/base.nix). zram absorbs most pressure
-  # in-memory; this swapfile catches what zram can't compress further
-  # — observed pre-freeze on 2026-06-06 (zram pegged at 16 GiB ceiling
-  # for ~3 weeks before the UI froze under sustained memory pressure).
+  # Disk-backed swap behind zram (16 GiB compressed, configured in
+  # modules/common/base.nix). Two roles:
+  #   1. Overflow tier — zram absorbs most pressure in-memory; this
+  #      catches what zram can't compress further. Observed pre-freeze
+  #      on 2026-06-06 (zram pegged at 16 GiB for ~3 weeks before the
+  #      UI froze under sustained memory pressure).
+  #   2. Hibernation target — the kernel writes a compressed image of
+  #      RAM here on `systemctl hibernate`. Sized at 32 GiB (= RAM) so
+  #      hibernation succeeds even under heavy load; smaller swap risks
+  #      "Cannot allocate memory" mid-hibernate. zram is RAM-backed and
+  #      not usable for hibernation, so this disk swap is the only
+  #      hibernation surface.
   #
   # Created out-of-band on @ subvol (not snapshotted by btrbk, which
   # only covers @home / @srv-share / @var-lib) via
-  #   sudo btrfs filesystem mkswapfile --size 8G /swapfile
+  #   sudo btrfs filesystem mkswapfile --size 32g /swapfile
   # — handles NoCoW + no-compression + block preallocation in one step
   # (btrfs-progs 6.1+). Disko config should bake this into the install
   # path for future hosts.
+  #
+  # boot.resumeDevice + resume_offset (in kernelParams below) point the
+  # kernel at this swapfile on cold boot so it finds + restores the
+  # hibernation image. Filesystem UUID is the @ btrfs (root) UUID;
+  # offset is in btrfs-block units (4KiB), obtained via
+  #   sudo btrfs inspect-internal map-swapfile -r /swapfile
+  # The value must be re-captured if the swapfile is ever recreated
+  # (different on-disk position → different offset). Last refresh:
+  # 2026-06-15 grow-to-32g.
   swapDevices = [ { device = "/swapfile"; } ];
+
+  boot.resumeDevice = "/dev/disk/by-uuid/c87e6351-3b15-43fc-b276-45494258dd50";
 
   # --- Wake-on-LAN ------------------------------------------------------
   # P19 prerequisite: aurora (always-on) sends a magic packet over LAN
@@ -120,15 +138,29 @@
     package = config.boot.kernelPackages.nvidiaPackages.production;
   };
 
-  # Force VRAM preservation across s2idle suspend. Without this, the
-  # GPU loses video memory contents during sleep and resume hangs the
+  # Two unrelated boot-time concerns:
+  #
+  # nvidia.NVreg_PreserveVideoMemoryAllocations=1 — Force VRAM
+  # preservation across s2idle suspend. Without this, the GPU loses
+  # video memory contents during sleep and resume hangs the
   # compositor (TTY1 paints background, mouse dead, eventual Hyprland
   # crash — reproduced 2026-06-15 testing super+P bind). NVIDIA's
   # production driver doesn't auto-set this under the open Blackwell
   # module; setting it on the kernel command line ensures the value
   # lands before first module init. State-of-art workaround per
   # NVIDIA developer forum thread #327297 (RTX 5070 Ti, same arch).
-  boot.kernelParams = [ "nvidia.NVreg_PreserveVideoMemoryAllocations=1" ];
+  #
+  # resume_offset — Physical byte offset of /swapfile within the @
+  # btrfs subvolume's underlying device. Paired with boot.resumeDevice
+  # above so the kernel can find the hibernation image written by
+  # `systemctl hibernate`. Re-capture via
+  # `sudo btrfs inspect-internal map-swapfile -r /swapfile` after any
+  # swapfile recreation; today's value is from the 2026-06-15
+  # grow-to-32g run.
+  boot.kernelParams = [
+    "nvidia.NVreg_PreserveVideoMemoryAllocations=1"
+    "resume_offset=42773523"
+  ];
 
   # Canonical GPU device list for services that opt in via
   # accelerationDevices / DeviceAllow. Default in modules/effects/gpu.nix
