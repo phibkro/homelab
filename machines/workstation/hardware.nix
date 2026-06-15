@@ -160,7 +160,22 @@
   boot.kernelParams = [
     "nvidia.NVreg_PreserveVideoMemoryAllocations=1"
     "resume_offset=42773523"
+    # Disable legacy 8250 serial port enumeration. /proc/tty/driver/serial
+    # shows COM1 (16550A) with zero traffic + three phantom ports at
+    # 02F8/03E8/02E8 with `uart:unknown` (port addresses BIOS-reserved,
+    # no chip behind them). systemd creates /dev/ttyS{0..3}.device units
+    # for all four and udev waits ~4s on each at boot — pure cost, no
+    # value, this host never uses serial for console or anything else.
+    "8250.nr_uarts=0"
   ];
+
+  # Don't block boot on DHCP lease acquisition. Default `any` waits for
+  # the first interface to fully lease, ~10s on this host. `if-carrier-up`
+  # considers dhcpcd done once carrier (ethernet link) is up, which is
+  # near-instant on a plugged-in NIC; the actual lease arrives in the
+  # background. network-online.target reaches active much sooner;
+  # services that need full network can still wait on their own targets.
+  networking.dhcpcd.wait = "if-carrier-up";
 
   # Canonical GPU device list for services that opt in via
   # accelerationDevices / DeviceAllow. Default in modules/effects/gpu.nix
