@@ -59,6 +59,16 @@ in
   #     as new resolvers are observed.
   #   * Fate-shares ad-blocking with tailnet membership. LAN-only devices
   #     that hardcode DNS get no protection.
+  #   * **YouTube on chromecast: not solvable by DNS.** YouTube uses
+  #     server-side ad insertion (SSAI) — ads stream from the same
+  #     `*.googlevideo.com` hosts as the video content; blocking that
+  #     domain breaks YouTube, allowing it lets ads through. There's
+  #     no DNS-layer wedge. Verified 2026-06-15: chromecast queries
+  #     reach Blocky (73 in 10min, 8 blocked: tpc.googlesyndication.com
+  #     etc.), but YouTube ads still play. Conventional ads ARE blocked
+  #     for everything except cast-app YouTube. Real fixes are
+  #     non-DNS: YouTube Premium, SmartTubeNext on the chromecast,
+  #     or casting from NewPipe on a phone.
   #
   # Tracked in docs/RECOVERY.md § "Reactive triggers" → "real router".
   # When that lands, this effect goes away; the same registry can drive
