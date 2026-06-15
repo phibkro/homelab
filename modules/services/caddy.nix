@@ -77,13 +77,17 @@ lib.mkMerge [
       # (the service module), not here.
     };
 
-    # `*.nori.lan` 301-redirects to the same path under `nori.domain`.
-    # `tls internal` (Caddy's local CA) for the handshake — devices
-    # that trust the local CA get a clean redirect; the rest get the
-    # 301 after a cert warning. The HTTP-layer redirect is the load-
-    # bearing behavior; the TLS chain only smooths it.
-    services.caddy.virtualHosts."*.nori.lan".extraConfig = ''
-      tls internal
+    # `*.nori.lan` 301-redirects to the same path under `nori.domain`,
+    # HTTP-only. Previously served `tls internal` (Caddy's local CA),
+    # but browsers reject the unknown CA and refuse to follow the 301
+    # — caught 2026-06-15 when auth.nori.lan typed in a browser showed
+    # "your connection is not private" instead of redirecting cleanly.
+    # HTTP-layer redirects from non-TLS sites are accepted by browsers
+    # without cert prompts, which is the standard deprecation path.
+    # https://*.nori.lan typing now gets a clean connection error
+    # (no TLS handshake offered) — forces bookmark updates rather than
+    # scary cert warnings.
+    services.caddy.virtualHosts."http://*.nori.lan".extraConfig = ''
       @sub header_regexp Host ^([^.]+)\.nori\.lan$
       redir @sub https://{re.sub.1}.${config.nori.domain}{uri} 301
     '';
@@ -110,13 +114,6 @@ lib.mkMerge [
     };
 
     systemd.services.caddy.serviceConfig.EnvironmentFile = config.sops.templates."caddy-acme-env".path;
-
-    # The transitional `*.nori.lan` vhost above uses `tls internal`,
-    # which makes Caddy's local PKI issuer active. By default Caddy
-    # would try to install that local CA root into the system trust
-    # store on startup — needs CAP_DAC_OVERRIDE which our hardening
-    # strips. Setting CADDY_AUTO_TRUST=0 skips the install attempt.
-    systemd.services.caddy.environment.CADDY_AUTO_TRUST = "0";
 
     nori.harden.caddy = { };
 
