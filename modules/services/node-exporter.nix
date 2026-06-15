@@ -56,6 +56,18 @@ lib.mkMerge [
       AmbientCapabilities = [ "CAP_DAC_READ_SEARCH" ];
     };
 
+    # Bind happens on the tailnet IP; the upstream unit's
+    # `After=network.target` reaches active before tailscaled has
+    # brought up tailscale0, so the first start attempt at boot fails
+    # to bind and exits 1. Systemd's Restart=on-failure retries 1s
+    # later and that succeeds — but the failure triggers OnFailure →
+    # notify@ which then sits in its 2-min recovery-window sleep
+    # (~120s of background "boot blame" per systemd-analyze).
+    # Declaring the actual dependency stops the spurious alert chain.
+    # Same shape for process-exporter (also tailnet-bound).
+    systemd.services.prometheus-node-exporter.after = [ "tailscaled.service" ];
+    systemd.services.prometheus-process-exporter.after = [ "tailscaled.service" ];
+
     services.prometheus.exporters.process = {
       enable = true;
       listenAddress = tailnetIp;
