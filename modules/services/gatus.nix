@@ -106,16 +106,32 @@
       # recovery too; the 60s monitoring gap on unexpected restarts is
       # the right trade vs. spurious alerts every rebuild.
       #
-      # Was previously attempted in Justfile via `systemctl mask` around
-      # nh os switch — failed because NixOS-managed units live at
-      # /etc/systemd/system/<n>.service as nix-store symlinks and
-      # systemctl refuses to overwrite those. Encoding the warmup at
-      # the unit level avoids the wrapper coupling entirely. Cross-host
-      # gap (other hosts' Gatus probing the rebuilding one) tracked as
-      # G3 in docs/ROADMAP.md.
-      systemd.services.gatus.serviceConfig.ExecStartPre = [
-        "${pkgs.coreutils}/bin/sleep 60"
-      ];
+      # First attempt (45feebc) used Justfile `systemctl mask` around
+      # nh os switch — failed because NixOS-managed units are nix-store
+      # symlinks systemctl can't overwrite. Second attempt (03f8e6f)
+      # used ExecStartPre = sleep 60 — worked, but baked a 60s gate
+      # into the boot critical path (gatus is WantedBy + Before
+      # multi-user.target, so multi-user waited for ExecStartPre to
+      # finish before reaching active). Cost: graphical.target shifted
+      # from ~15s to ~1m 15s on every boot — measured 2026-06-15.
+      #
+      # Third attempt (here): timer-driven activation. Boot completes
+      # without gatus; the timer fires 60s after boot AND 60s after
+      # any service-inactive transition, giving us the same warmup at
+      # start AND after restart, without blocking boot.
+      #
+      # Cross-host gap (other hosts' Gatus probing the rebuilding one)
+      # still tracked as G3 in docs/ROADMAP.md.
+      systemd.services.gatus.wantedBy = lib.mkForce [ ];
+
+      systemd.timers.gatus = {
+        wantedBy = [ "timers.target" ];
+        timerConfig = {
+          OnBootSec = "60s";
+          OnUnitInactiveSec = "60s";
+          Unit = "gatus.service";
+        };
+      };
     })
   ];
 }
