@@ -9,5 +9,6 @@ _: {
     ./hyprsunset.nix
     ./mako.nix
     ./waybar.nix
+    ./wayland-pipewire-idle-inhibit.nix
   ];
 }
