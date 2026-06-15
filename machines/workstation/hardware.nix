@@ -107,18 +107,28 @@
     open = true; # open kernel module (driver 575+ / Blackwell)
     modesetting.enable = true;
     nvidiaSettings = true; # nvidia-settings GUI for the desktop session
-    # powerManagement.enable installs nvidia-suspend.service +
-    # nvidia-resume.service which call nvidia-sleep.sh to save/restore
-    # VRAM state across suspend/resume cycles (sets
-    # NVreg_PreserveVideoMemoryAllocations=1 on the kernel module). The
-    # default off was the cause of the s2idle resume-hang documented in
-    # `e12d34d` — resume came back to a "default background, no input"
-    # state because the compositor couldn't render against an
-    # undefined-VRAM GPU. P18 prerequisite for re-enabling hypridle
-    # auto-suspend.
+    # powerManagement.enable is meant to install nvidia-suspend/-resume
+    # systemd units that toggle NVreg_PreserveVideoMemoryAllocations
+    # around sleep transitions. Verified 2026-06-15 that those units
+    # are NOT actually installed under hardware.nvidia.open = true with
+    # driver 595.x — `systemctl list-unit-files 'nvidia-suspend*'` is
+    # empty, /sys/module/nvidia/parameters/NVreg_PreserveVideoMemoryAllocations
+    # is unset. Belt-and-braces: pass the param at module load via
+    # boot.kernelParams below. Keep this option = true so future driver
+    # versions that DO ship the hooks pick them up automatically.
     powerManagement.enable = true;
     package = config.boot.kernelPackages.nvidiaPackages.production;
   };
+
+  # Force VRAM preservation across s2idle suspend. Without this, the
+  # GPU loses video memory contents during sleep and resume hangs the
+  # compositor (TTY1 paints background, mouse dead, eventual Hyprland
+  # crash — reproduced 2026-06-15 testing super+P bind). NVIDIA's
+  # production driver doesn't auto-set this under the open Blackwell
+  # module; setting it on the kernel command line ensures the value
+  # lands before first module init. State-of-art workaround per
+  # NVIDIA developer forum thread #327297 (RTX 5070 Ti, same arch).
+  boot.kernelParams = [ "nvidia.NVreg_PreserveVideoMemoryAllocations=1" ];
 
   # Canonical GPU device list for services that opt in via
   # accelerationDevices / DeviceAllow. Default in modules/effects/gpu.nix
