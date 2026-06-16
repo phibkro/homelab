@@ -1,74 +1,35 @@
 ---
-summary: Service catalog (what's deployed, on which host, via which module),
-  the three backup-correctness patterns (A/B/C), observability + alert plane,
-  monitored conditions and alert delivery. The "what's running" reference.
+summary: The "how to wire a service" reference — backup-correctness patterns
+  (A/B/C), observability + alert plane, monitored conditions and alert delivery.
+  The live catalog is derived from code, not enumerated here.
 ---
 
 # Services
 
-Native NixOS modules first, containers as fallback, no orchestration layer. The catalog below is what's deployed today; placement and naming follow the topology + audience models in `TOPOLOGY.md` + `NETWORK.md`.
+Native NixOS modules first, containers as fallback, no orchestration layer. Placement and naming follow the topology + audience models in `docs/reference/topology.md` + `docs/reference/network.md`.
 
 ## Catalog
 
-Verified on `nixos-26.05`.
+The live catalog is the `nori.services` + `nori.lanRoutes` registries across the modules bundle, not this doc. Enumerating in prose drifts the moment anything moves between hosts; query the source instead:
 
-| Service | Module | Host | Route / exposure |
-|---|---|---|---|
-| **Streaming & media** | | | |
-| Jellyfin | `services.jellyfin` | workstation | `media.nori.lan` (family) |
-| Samba | `services.samba` | workstation | Tailnet 445, scoped to `/mnt/media`, `/srv/share` |
-| Immich | `services.immich` (VectorChord, Postgres 17) | workstation | `photos.nori.lan` (family) |
-| **AI & chat** | | | |
-| Ollama | `services.ollama` (CUDA) | workstation | `ai.nori.lan` (operator) |
-| Open WebUI | `services.open-webui` | workstation | `chat.nori.lan` (family) |
-| **\*arr stack** | | | |
-| Sonarr / Radarr / Lidarr | `services.{sonarr,radarr,lidarr}` | workstation | `tv` / `movies` / `music` `.nori.lan` (operator) |
-| Prowlarr | `services.prowlarr` | workstation | `indexers.nori.lan` (operator) |
-| Bazarr | `services.bazarr` | workstation | `subtitles.nori.lan` (operator) |
-| Jellyseerr | `services.jellyseerr` | workstation | `requests.nori.lan` (family) |
-| qBittorrent | `services.qbittorrent` | workstation | `downloads.nori.lan` (operator); webuiPort=8083 (8080 collides with Open WebUI) |
-| **Books, comics, dashboard** | | | |
-| calibre-web | `services.calibre-web` | workstation | `books.nori.lan` (family); ebook + OPDS; port 8084 |
-| Komga | `services.komga` | workstation | `comics.nori.lan` (family); comics/manga + OPDS; port 8085 |
-| Miniflux | `services.miniflux` | workstation | `news.nori.lan` (family); RSS reader; port 8087; shares system Postgres |
-| Glance | `services.glance` | workstation | `home.nori.lan` (public); dashboard; port 8086 |
-| **PIM** | | | |
-| Radicale | `services.radicale` | workstation | `calendar.nori.lan` (family); CalDAV + CardDAV; htpasswd |
-| Syncthing | `services.syncthing` | workstation | `sync.nori.lan` (operator); peer port 22000 open on tailscale0 |
-| **Entry plane & SSO** | | | |
-| Caddy | `services.caddy` | workstation | Tailnet TLS terminator + reverse proxy |
-| Authelia | `services.authelia.instances.<name>` | workstation | `auth.nori.lan` (public); OIDC issuer for SSO |
-| **DNS, observability, alerting** | | | |
-| Blocky (forwarder) | `services.blocky` (`nori.blocky.role = "forwarder"`) | pi | LAN via tailnet DNS push |
-| Blocky (self-hosted) | `services.blocky` (`nori.blocky.role = "self-hosted"`) | workstation | LAN fallback |
-| Beszel hub | `services.beszel.hub` | pi | `metrics.nori.lan` (operator); cross-host reverse-proxied via station Caddy |
-| Beszel agent | `services.beszel.agent` | workstation + pi | Hub pulls over tailnet |
-| Gatus | `services.gatus` | workstation + pi | `status.nori.lan` (public); mutual probes — Pi watches station, station watches Pi |
-| **VictoriaMetrics** | `services.victoriametrics` | pi | TSDB scraping gatus + node-exporter + process-exporter; Grafana datasource. Two-week retention |
-| **VictoriaLogs** | `services.victorialogs` | pi | `logs.nori.lan` (operator); journald aggregator; 14d retention |
-| **Vector** | `modules/common/vector.nix` | every host | Ships journald → VictoriaLogs over tailnet; structured parsing |
-| **Grafana** | `services.grafana` | workstation | `ops.nori.lan` (operator); VM + VL datasources |
-| **node-exporter** | `services.prometheus.exporters.node` | workstation + pavilion + aurora | Port 9100 (tailnet); scraped from pi VM |
-| **process-exporter** | `services.prometheus.exporters.process` | workstation + pavilion + aurora | Port 9256 (tailnet); CAP_SYS_PTRACE granted; per-`comm` RSS |
-| **ntfy server** (pi-local) | `services.ntfy-sh` | pi | `alert.nori.lan` (operator); reserved for future internal-only alerts. **Production alerts go to ntfy.sh public** (off-pi, surviving pi outage) |
-| **ntfy `notify@` template** | systemd unit | every host | POSTs to ntfy.sh public; hostname-aware via `config.networking.hostName` |
-| **heartbeat** | `modules/services/heartbeat.nix` | pi | Dead-man-switch; ping healthchecks.io every 60s. SPOF mitigation |
-| **Agents** | | | |
-| Hermes Agent | `modules/services/hermes.nix` (route) + `home/hermes/` (CLI) | workstation (today) | `hermes.nori.lan` (operator); dashboard 9119 |
-| **ML offload** | | | |
-| immich-machine-learning | `modules/services/immich-ml.nix` (aurora) | **aurora** | RPC only (3003); `IMMICH_MACHINE_LEARNING_URL` on workstation |
-| **Tailnet** | | | |
-| Tailscale | `services.tailscale` | every host | N/A |
-| **Backup** | | | |
-| restic jobs | `services.restic.backups.<n>` | workstation | Dual-target → `/mnt/backup/` (OneTouch) + `/mnt/backup-local/` (mp510); Hetzner deferred |
-| btrbk | `services.btrbk.instances.<n>` | workstation | Local snapshot |
-| postgresqlBackup | `services.postgresqlBackup` | workstation (non-Immich PG) | N/A |
-| restore-drill (services tier) | `modules/services/backup/verify.nix` | workstation | Monthly; 17 service repos restored to `/var/restore-test/` |
-| restore-drill (user-data tier) | same | workstation | Quarterly; user-data tier (~99 GiB) |
-| **Desktop** | | | |
-| Thunar | `programs.thunar` + tumbler + xarchiver | workstation | Local desktop only |
+```bash
+# Per-host: what's enabled
+nix eval .#nixosConfigurations.<host>.config.nori.services \
+  --apply 'with builtins; attrNames (lib.filterAttrs (_: s: s.enabled) it)'
 
-Cross-host services use the split-module pattern (TOPOLOGY.md § cross-host services).
+# Module catalogue — every service module the bundle knows about:
+ls modules/services/
+
+# Where each route's backend runs (the placement decisions):
+nix eval .#nixosConfigurations.workstation.config.nori.lanRoutes \
+  --apply 'with builtins; mapAttrs (_: r: r.runsOn) it'
+
+# Per-route exposure summary (audience, port, monitor):
+nix eval .#nixosConfigurations.workstation.config.nori.lanRoutes \
+  --apply 'with builtins; mapAttrs (_: r: { inherit (r) runsOn port audience; }) it'
+```
+
+Cross-host services use the split-module pattern (`docs/reference/topology.md` § cross-host services).
 
 ### About Immich's Postgres
 
