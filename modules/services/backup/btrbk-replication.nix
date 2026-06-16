@@ -149,54 +149,6 @@ lib.mkMerge [
       # socket + a state file under /var/lib/btrbk. Mirror of the
       # receiver-side declaration in btrbk-replica-target.nix.
       nori.harden.btrbk-replication = { };
-
-      # ─────────────────────────────────────────────────────────────────
-      # ── Workstation-side configuration this module does NOT carry ───
-      # ─────────────────────────────────────────────────────────────────
-      #
-      # The workstation needs all of:
-      #
-      #   users.users.btrbk = {
-      #     isSystemUser = true;
-      #     group = "btrbk";
-      #     home = "/var/lib/btrbk";
-      #     createHome = true;
-      #     openssh.authorizedKeys.keys = [
-      #       "ssh-ed25519 AAAA… btrbk-replication"  # paste aurora's pubkey
-      #     ];
-      #     shell = pkgs.bashInteractive;
-      #   };
-      #   users.groups.btrbk = { };
-      #
-      #   security.sudo.extraRules = [{
-      #     users = [ "btrbk" ];
-      #     commands = [
-      #       { command = "${pkgs.btrbk}/bin/btrbk"; options = [ "NOPASSWD" ]; }
-      #       { command = "${pkgs.btrfs-progs}/bin/btrfs"; options = [ "NOPASSWD" ]; }
-      #     ];
-      #   }];
-      #
-      # And the MP510 `/mnt/family-replica/<X>` mountpoints must exist
-      # and be writable by btrbk via sudo — disko-mp510.nix already
-      # declares them (P9 commit `4acf8d2`), so the mounts are in place.
-      #
-      # NOT included in this module because the sender-side module
-      # shouldn't reach across hosts to declare receiver-side state.
-      # When wiring, add the workstation-side bits in a sibling module
-      # `modules/services/backup/btrbk-replica-target.nix` gated on
-      # `config.networking.hostName == "workstation"`, parallel to the
-      # existing `restic-target.nix` pattern.
-      #
-      # First-run smoke test, after both sides land:
-      #   1. On aurora: sudo systemctl start btrbk-family-replica.service
-      #   2. tail -f /var/log on aurora + workstation; first send is full,
-      #      subsequent runs are incremental.
-      #   3. After success: ls /mnt/family-replica/photos/.snapshots/ on
-      #      workstation should show the received snapshot.
-      #   4. P5 verifier auto-fires hourly; first 25h after wiring should
-      #      catch the freshness budget — if `restic-backups-…` style
-      #      notifications fire instead of snapshot success, check the
-      #      sudoers + key first.
     }
   )
 ]
