@@ -6,8 +6,8 @@ summary: Quarterly resource-utilization snapshot schema (disk/RAM/CPU/off-site u
 # Capacity baseline
 
 Snapshot of resource utilization, captured at quarterly cadence. Used to
-inform when storage tier changes are warranted (second drive, Hetzner
-upgrade, model-size reduction). The schema below is the long-term shape;
+inform when storage tier changes are warranted (second drive,
+model-size reduction). The schema below is the long-term shape;
 fill values at review time.
 
 ## Cadence
@@ -38,13 +38,11 @@ Trigger thresholds (per STORAGE.md):
 
 ## Backup repositories
 
-| Repo | Local size | Hetzner size | Snapshots | Latest check |
+| Repo | OneTouch size | mp510 size | Snapshots | Latest check |
 |---|---|---|---|---|
 | `user-data` | | | | |
 | `media-irreplaceable` | | | | |
 | `open-webui` | | | | |
-
-Hetzner deferred until budget allows; column kept for the day it lands.
 
 ## Compute
 

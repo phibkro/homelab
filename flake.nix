@@ -521,7 +521,7 @@
           # This is intentionally narrow — it requires the path
           # reference, not just the bare host name — so the word
           # "deferred" remains usable for legitimate non-host topics
-          # (Hetzner deferred, email digest deferred, etc.).
+          # (email digest deferred, etc.).
           doc-coherence =
             pkgs.runCommandLocal "doc-coherence"
               {

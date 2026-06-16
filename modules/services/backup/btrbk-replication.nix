@@ -8,8 +8,9 @@
 # P15 — btrfs send/receive replication for aurora's family-vault →
 # workstation's MP510 family-replica subvols. Closes the third copy
 # of the 3-copy posture (aurora primary + workstation replica +
-# OneTouch restic), leaving Hetzner off-site for a future ROADMAP
-# round if appetite reverses.
+# OneTouch restic). Cloud off-site explicitly rejected per ADR-0002 —
+# total-apartment loss is an accepted residual risk; `nori.backupTargets`
+# schema still supports remote SFTP if that tolerance reverses.
 #
 # Sender lives on aurora: snapshots `/mnt/family/<X>`, btrfs-sends
 # each snapshot over ssh to workstation. Receiver writes into

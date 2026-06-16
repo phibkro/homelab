@@ -99,8 +99,8 @@ Pick by what you need first:
 | `vaultwarden`, `immich`, etc. | Service state (run `just test-backups` to confirm freshness post-restore) |
 
 If both local targets are offline:
-- `sftp:u123@u123.your-storagebox.de:<n>` (Hetzner off-site, when configured — deferred per ROADMAP)
 - Out-of-band: restic snapshots are content-addressed, so even a partially-readable local repo can yield restorable data via `restic recover`
+- No cloud off-site by design — see `docs/decisions/0002-aurora-as-family-vault.md`. Total-apartment loss is an accepted residual risk.
 
 ### 8. Re-import IronWolf media
 

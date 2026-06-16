@@ -31,7 +31,7 @@ Each runbook is the step-by-step for one failure class. Initial outlines:
 | `bad-config.md` | NixOS activation failed or boot loops | Rollback via boot menu or `nixos-rebuild --rollback switch` |
 | `file-deletion.md` | User deleted something they wanted | Identify subvolume → find pre-deletion snapshot in `/.snapshots` → copy out |
 | `service-corruption.md` | Service refuses to start; data layer suspected | Stop service → restore subvolume snapshot to scratch → copy back → restart → verify. For databases: restore from latest restic snapshot of the dump dir, then `pg_restore` / SQLite import |
-| `drive-failure-root.md` | SN750 dies | Replace drive → boot installer → clone flake → run disko → `nixos-install` → restic restore service state from Pi (faster) or Hetzner (slower) |
+| `drive-failure-root.md` | SN750 dies | Replace drive → boot installer → clone flake → run disko → `nixos-install` → restic restore service state from OneTouch (off-chassis on aurora) or mp510 (local) |
 | `drive-failure-media.md` | IronWolf dies | Replace drive → `mkfs.btrfs` + subvolumes → restic restore irreplaceable subvolumes from Pi → re-download streaming media from sources |
 | `pi-failure.md` | Pi unreachable / hardware dead | Swap to spare USB SSD with current flake → boot → verify Blocky + Tailscale come up → router DHCP unaffected (workstation is secondary DNS) |
 | `inspect-windows-drive.md` | Need to verify Windows partition state | MP510 read-only mount + verification |
@@ -67,9 +67,9 @@ Recorded in `docs/reference/capacity-baseline.md` at Phase 4 completion. Values 
 - RAM at idle (no Ollama loaded)
 - RAM with one Ollama model loaded (32B Q4 baseline)
 - Average sustained CPU during evening peak
-- Hetzner Storage Box usage
+- OneTouch / mp510 restic repo size
 
-**Re-checked quarterly.** Growth trends inform when a second drive on workstation is warranted, when Hetzner tier needs upgrading, when Ollama model size needs to come down.
+**Re-checked quarterly.** Growth trends inform when a second drive on workstation is warranted, when Ollama model size needs to come down.
 
 ## Reactive triggers (no scheduled date)
 

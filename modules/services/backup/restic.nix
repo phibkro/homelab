@@ -62,12 +62,15 @@ lib.mkIf (config.networking.hostName == "workstation") {
   #               unreachable failure mode; doesn't protect against a
   #               workstation drive failure (`mp510` lives in the same
   #               chassis as the source irreplaceable data on the
-  #               IronWolf). That's the onetouch (and future Hetzner)
-  #               target's job.
+  #               IronWolf). That's the onetouch target's job (off-
+  #               chassis via aurora SFTP).
+  #
+  # No cloud off-site target — see docs/decisions/0002-aurora-as-
+  # family-vault.md. Total-apartment loss is an accepted residual risk;
+  # the schema (`nori.backupTargets`) supports remote SFTP if that
+  # tolerance ever reverses, but no target is wired today.
   #
   # Roadmap targets:
-  #   hetzner   — Off-site Hetzner Storage Box via SFTP (true
-  #               geographic resilience for irreplaceable tier).
   #   pi        — Local fast-restore on the appliance once a real
   #               disk replaces the FIT-USB (anti-write storage today).
 
@@ -225,11 +228,11 @@ lib.mkIf (config.networking.hostName == "workstation") {
   # IronWolf (@photos/@home-videos/@projects/@library/@archive); the
   # mp510 subvol on a different drive in the same chassis could fit
   # it (894 GiB total), but writing the same bytes twice on the same
-  # machine doesn't add an independent failure domain. Until Hetzner
-  # off-site lands, this tier rides the OneTouch (now on aurora over
-  # SFTP, separate chassis) alone. Service-tier and user-tier still
-  # dual-write — those are small and benefit from the OneTouch-glitch
-  # resilience.
+  # machine doesn't add an independent failure domain. This tier rides
+  # the OneTouch (now on aurora over SFTP, separate chassis) alone;
+  # cloud off-site explicitly rejected per ADR-0002. Service-tier and
+  # user-tier still dual-write — those are small and benefit from the
+  # OneTouch-glitch resilience.
   nori.backups.media-irreplaceable = {
     include =
       lib.mapAttrsToList (_: f: f.path) (lib.filterAttrs (_: f: f.tier == "irreplaceable") config.nori.fs)

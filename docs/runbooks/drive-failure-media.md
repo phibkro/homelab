@@ -12,7 +12,7 @@ The IronWolf Pro 4TB (`/mnt/media`) fails. Symptoms:
 
 ## What survives
 
-- Photos, home-videos, projects, archive subvolumes — backed up by restic to OneTouch (and Pi/Hetzner when those land). Recoverable.
+- Photos, home-videos, projects, archive subvolumes — backed up by restic to OneTouch (off-chassis on aurora) and mp510 (workstation NVMe). Recoverable.
 - Streaming media (movies, shows, music in `@streaming`) — **not backed up** per DESIGN tier policy. Re-derivable from sources.
 
 The split is intentional: irreplaceable data has redundant copies; re-derivable data has a single copy because re-deriving is cheaper than off-site storage.

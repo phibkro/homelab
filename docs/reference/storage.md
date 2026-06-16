@@ -10,11 +10,11 @@ Btrfs everywhere on Linux. Mount options: `compress=zstd:3,noatime`. Subvolumes 
 
 ## Value tiers (the protection decision tree)
 
-| Tier | Examples | Snapshot | Local backup (Pi) | Off-site (Hetzner) |
-|---|---|---|---|---|
-| **re-derivable** | Streaming media, Ollama models, Nix store, package caches | Weekly or none | No | No |
-| **service / user** | Jellyfin DB, Immich uploads, Open WebUI, Vaultwarden vaults | Daily | Yes | Selected (Immich uploads, Open WebUI, Vaultwarden) |
-| **irreplaceable** | Personal photos, home videos, finished projects, work in progress, flake repo | Hourly to daily | Yes | Yes |
+| Tier | Examples | Snapshot | Restic to OneTouch + mp510 |
+|---|---|---|---|
+| **re-derivable** | Streaming media, Ollama models, Nix store, package caches | Weekly or none | No |
+| **service / user** | Jellyfin DB, Immich uploads, Open WebUI, Vaultwarden vaults | Daily | Selected (Immich uploads, Open WebUI, Vaultwarden) |
+| **irreplaceable** | Personal photos, home videos, finished projects, work in progress, flake repo | Hourly to daily | Yes |
 
 System config is covered by the Git mirror to GitHub, not a backup target. See `docs/glossary.md` § value-tier protection tree.
 
@@ -93,23 +93,17 @@ Both `restic-backups-*` and `btrbk-*` units get `OnFailure = [ "notify@%n.servic
 
 ## Backup destinations + retention
 
-Dual targets: `onetouch` (SFTP to aurora, off-chassis) + `mp510` (workstation NVMe). Hetzner off-site planned (ROADMAP). Each service backed up to all configured targets simultaneously.
+Dual local targets: `onetouch` (SFTP to aurora, off-chassis) + `mp510` (workstation NVMe). Cloud off-site explicitly rejected per `docs/decisions/0002-aurora-as-family-vault.md` — total-apartment loss is an accepted residual risk; the `nori.backupTargets` schema supports remote SFTP if that risk tolerance ever changes. Each service backed up to all configured targets simultaneously.
 
-| Path / service | OneTouch + mp510 (local) | Hetzner (off-site, planned) |
-|---|---|---|
-| `/home` | Daily · keep 14d + 4w | Weekly · keep 4w + 12m |
-| `/srv/share` | Daily · keep 14d + 4w | Weekly · keep 4w + 12m |
-| Immich (dumps + uploads) | Daily · keep 7d + 4w | Daily · keep 7d + 4w + 12m |
-| Open WebUI dump | Daily · keep 7d + 4w (paused — see ROADMAP) | Weekly · keep 4w + 12m |
-| Other service state | Daily · keep 7d | Not backed up (re-derivable) |
-| `@streaming` | Not backed up | Not backed up |
-| `@photos`, `@home-videos`, `@projects` | Daily · keep 14d + 4w | Daily · keep 4w + 12m + yearly indefinite |
-
-## Hetzner Storage Box sizing
-
-Pricing (April 2026): BX11 (1TB) ~3.20 EUR/mo, BX21 (5TB) ~10.80 EUR/mo, BX31 (10TB) ~20.80 EUR/mo. Plans scale up/down without data migration; cancellation any time.
-
-Initial sizing: start at BX11 (1TB) if irreplaceable data is <500GB. Re-evaluate when home-videos archive grows past 700GB. Tracked in `docs/reference/capacity-baseline.md`, reviewed quarterly.
+| Path / service | OneTouch + mp510 (local) |
+|---|---|
+| `/home` | Daily · keep 14d + 4w |
+| `/srv/share` | Daily · keep 14d + 4w |
+| Immich (dumps + uploads) | Daily · keep 7d + 4w |
+| Open WebUI dump | Daily · keep 7d + 4w (paused — see roadmap) |
+| Other service state | Daily · keep 7d |
+| `@streaming` | Not backed up (re-derivable) |
+| `@photos`, `@home-videos`, `@projects` | Daily · keep 14d + 4w |
 
 ## Backup verification
 
@@ -134,4 +128,4 @@ All failures alert via ntfy. The drill is the **real RTO measurement**, not the 
 
 The DynamicUser `StateDirectory` symlink-trap assertion derives from `config.systemd.services` introspection — self-maintaining. See `.claude/skills/gotcha-dynamicuser-statedirectory-symlink/`.
 
-Schema in `modules/effects/backup.nix`. Cross-cutting infra (sops password, check timers) in `modules/services/backup/restic.nix`. Each repo writes to **both** `/mnt/backup/<job>` (OneTouch ext4) **and** `/mnt/backup-local/<job>` (mp510 btrfs). Hetzner Storage Box deferred (ROADMAP).
+Schema in `modules/effects/backup.nix`. Cross-cutting infra (sops password, check timers) in `modules/services/backup/restic.nix`. Each repo writes to **both** `/mnt/backup/<job>` (OneTouch ext4) **and** `/mnt/backup-local/<job>` (mp510 btrfs).
