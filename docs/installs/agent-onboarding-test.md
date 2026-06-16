@@ -41,14 +41,14 @@ All three are wrap-up failures; fix and re-run.
 
 **Expected (shape)**:
 - Beszel hub → pi (appliance survives workhorse outages — forensics use case)
-- ntfy server → pi (alert plane survives workhorse outages; Caddy on station reverse-proxies)
-- Blocky → both (station self-hosted, Pi forwarder; mutual DNS resilience)
-- Caddy → workstation (workhorse; internal CA bound here)
-- Authelia → workstation (SSO; cross-host token validation cost not worth it)
+- ntfy server → pi (alert plane survives workhorse outages)
+- Blocky → pi authoritative + workstation self-hosted secondary (LE wildcard issuance prerequisite + LAN-side fallback if pi is down)
+- Caddy → pi (entry plane; LE wildcard cert on `*.${nori.domain}` — ADR-0003 + ADR-0004)
+- Authelia → pi (SSO co-located with Caddy on the entry plane)
 - Jellyfin → workstation (media volume + GPU)
-- ntfy `notify@` template → both (each host posts to ntfy.sh with its own hostname)
+- ntfy `notify@` template → pi + workstation + aurora (each host posts to ntfy.sh with its own hostname so the alert source is unambiguous)
 
-**Source**: TOPOLOGY.md "Service placement" and SERVICES.md "Catalog".
+**Source**: `docs/reference/topology.md` "Service placement" and `docs/reference/services.md`.
 
 ---
 
@@ -81,7 +81,7 @@ All three are wrap-up failures; fix and re-run.
 - `nori.backups.widget = { paths = [...] | skip = "..."; };`
 - Append to `modules/services/default.nix` imports
 
-**Source**: PROCEDURES.md "How to add a new service".
+**Source**: `.claude/skills/add-service/` (procedure) + `docs/reference/module-authoring.md` (shape).
 
 ---
 
@@ -104,7 +104,7 @@ nori.lanRoutes.widget = {
 - Registry schema: `modules/effects/hosts.nix`; values: `flake.nix` `identityFor`
 - Topology coupling lives in the host name in the lookup, not in the IP
 
-**Source**: TOPOLOGY.md "Topology registry (`nori.hosts`)", `modules/effects/hosts.nix` header.
+**Source**: `docs/reference/topology.md` "Topology registry (`nori.hosts`)", `modules/effects/hosts.nix` header.
 
 ---
 
@@ -120,7 +120,7 @@ nori.lanRoutes.widget = {
 - `skip = "<reason>"` for explicit opt-out (covered elsewhere, stateless, intentionally re-derivable)
 - Appliance hosts (`role = "appliance"`) cannot use `paths` — host-aware assertion fails eval (anti-write storage posture)
 
-**Source**: `modules/effects/backup.nix` (schema + assertions), STORAGE.md "Backup intent abstraction".
+**Source**: `modules/effects/backup.nix` (schema + assertions), `docs/reference/storage.md` "Backup intent abstraction".
 
 ---
 
@@ -137,7 +137,7 @@ nori.lanRoutes.widget = {
 - Principle: default-deny FS namespace; compromised service can't browse host paths it doesn't need
 - Enforcement: `every-service-has-fs-hardening` flake check fails the build if any `modules/services/*.nix` (outside the excluded list) lacks a `nori.harden.<n>` declaration
 
-**Source**: docs/reference/module-authoring.md "Filesystem hardening", RATIONALES.md "Default-deny filesystem access", `modules/effects/harden.nix`.
+**Source**: `docs/reference/module-authoring.md` "Filesystem hardening", `docs/decisions/0000-rationales.md` "Default-deny filesystem access", `modules/effects/harden.nix`.
 
 ---
 
@@ -170,7 +170,7 @@ nori.lanRoutes.widget = {
 - Add host's age public key to `.sops.yaml`, run `sops updatekeys secrets/secrets.yaml`
 - First boot + `tailscale up`
 
-**Source**: PROCEDURES.md "How to add a new host".
+**Source**: `.claude/skills/add-host/` (procedure) + `docs/reference/topology.md` "Adding a host".
 
 ---
 
@@ -186,7 +186,7 @@ nori.lanRoutes.widget = {
 - Ignoring this risks wiping the wrong drive
 - Verify by-id mapping via `ls /dev/disk/by-id/` before any destructive command
 
-**Source**: CLAUDE.md "Hard rules", `.claude/skills/gotcha-nvme-enumeration/`, RECOVERY.md "Permanent constraints".
+**Source**: CLAUDE.md "Hard rules", `.claude/skills/gotcha-nvme-enumeration/`, `docs/reference/recovery.md` "Permanent constraints".
 
 ---
 
@@ -199,7 +199,7 @@ nori.lanRoutes.widget = {
 **Expected (shape)**:
 - Apply the "On every structural change" rubric — don't wait for session end
 - Stale active examples in CLAUDE.md / the tier-2 reference docs → fix immediately (highest-cost class)
-- Pattern used twice or more → codify as a procedure skill (PROCEDURES.md indexes them)
+- Pattern used twice or more → codify as a procedure skill (under `.claude/skills/`)
 - New convention agents should follow → docs/reference/module-authoring.md (shape) + docs/invariants.md (rule rung), ideally backed by a flake check / module assertion
 - Hard-won mistake → new `.claude/skills/gotcha-<name>/SKILL.md` with USE-WHEN trigger
 - Cross-session fact (preferences, project state, host topology) → memory

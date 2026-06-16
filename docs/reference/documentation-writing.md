@@ -1,8 +1,9 @@
 # Documentation writing — comments and prose
 
 Reference for *how* comments and docs are written in this repo. Pairs
-with `MODULES.md` (code shape) and `docs/invariants.md` (how to promote a
-claim from prose → comment → test → type).
+with `docs/reference/module-authoring.md` (code shape) and
+`docs/invariants.md` (how to promote a claim from prose → comment →
+test → type).
 
 For the deep, project-agnostic doc-writing framework, see the
 `userSettings:writing-docs` skill — this file is the homelab-specific
@@ -82,8 +83,8 @@ without examples drift; examples without rules don't generalise.
 - **Cross-reference, never duplicate.** Two copies drift; pick one home
   (usually the abstraction site) and link from call sites.
 - **Bind load-bearing claims to evidence.** "X is enforced" / "Y lives
-  at Z" names the test, path, or type that makes it true. `INVARIANTS.md`
-  tags each claim by enforcement rung.
+  at Z" names the test, path, or type that makes it true.
+  `docs/invariants.md` tags each claim by enforcement rung.
 - **Borderline → KEEP.** A comment whose value is unclear in 30 seconds
   of inspection probably encodes operator judgment that would be missed
   without it. Cost of keeping a borderline-redundant comment is one
@@ -122,9 +123,9 @@ without examples drift; examples without rules don't generalise.
 
 - `userSettings:writing-docs` — deep doc-writing framework: tiers,
   bind-claims-to-evidence, mermaid legends, doc-drift guards.
-- `MODULES.md` — code shape (this file is its prose-side companion).
-- `INVARIANTS.md` — load-bearing claims tagged by enforcement tier.
-- `docs/invariants.md` — the prose → comment → test → type ladder; when to
-  promote a claim a rung.
+- `docs/reference/module-authoring.md` — code shape (this file is its
+  prose-side companion).
+- `docs/invariants.md` — load-bearing claims tagged by enforcement tier
+  + the prose → comment → test → type ladder for promoting one a rung.
 - `git log --grep "chore(comments):"` — the audit-sweep commits;
   worked examples seeded throughout `modules/`, `home/`, `machines/`.
