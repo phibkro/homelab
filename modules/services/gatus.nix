@@ -39,13 +39,19 @@
       nori.services.gatus.tags = [ "observability" ];
 
       # Caddy vhost at https://status.${nori.domain} — `runsOn` points
-      # at the workstation instance (the canonical UI surface); pi's
-      # Caddy reverse-proxies cross-host over tailnet. No self-monitor
+      # at the pi instance (the canonical UI surface — survives
+      # workstation outages, the 2026-04-28 incident class). Workstation's
+      # gatus.enable = true stays for mutual monitoring: both daemons
+      # probe each other, both alert independently to ntfy.sh, so the
+      # workstation-Gatus catches pi outages via alert path even when its
+      # UI isn't publicly routed. Direct access to workstation's instance
+      # at http://workstation.saola-matrix.ts.net:8082 if the operator
+      # wants to browse its specific probe table. No self-monitor
       # (Gatus can't usefully probe itself — would always pass while
       # alive and silently disappear when dead).
       nori.lanRoutes.status = {
         port = 8082;
-        runsOn = "workstation";
+        runsOn = "pi";
         exposeOnTailnet = true;
         audience = "public";
         dashboard = {
