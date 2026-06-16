@@ -197,3 +197,23 @@ Updated as phases land.
 | Date | Phase | Outcome |
 |---|---|---|
 | 2026-06-16 | plan persisted | (this file) |
+| 2026-06-16 | 1 — inventory + drift catalog | `docs/reports/2026-06-16-docs-inventory.md` + `-mem.md` landed (Explore agent); 5 named drift sources + structural gaps surfaced |
+| 2026-06-16 | 3a.1 — restructure tree | `docs/<UPPER>.md` → `docs/{<lower>,reference/,decisions/,plans/,runbooks/,installs/,specs/,reports/}/`; src/ analogy; full inbound-ref sed sweep; CLAUDE.md + README.md routing tables updated |
+| 2026-06-16 | 3a.2 — INVARIANTS ↔ ENFORCEMENT merge | Combined catalog + ladder under `docs/invariants.md`; killed `docs/reference/enforcement.md`; cross-ref sweep |
+| 2026-06-16 | 3a.3 — kill SERVICES catalog | 50-row drift-prone catalog replaced with `nix eval` query block pointing at `nori.services` + `nori.lanRoutes` registries; doctrine (Backup A/B/C, observability, alert delivery) preserved |
+| 2026-06-16 | 3a.4 — RATIONALES → ADR-0000 | Reshape as ADR-shaped meta-index for small decisions; 22-row register preserved; in-table path refs updated |
+| 2026-06-16 | 3a.5 — routing-coherence flake check | New `routing-coherence` derivation enforces CLAUDE.md routing ↔ filesystem; surfaced + fixed a pre-existing every-service-has-fs-hardening miss on btrbk-replication.nix; nixfmt sweep on drifted files |
+| 2026-06-16 | 3b — content sweep | Hetzner-as-deferred drift; stale CONCEPTS/MODULES/PROCEDURES filename refs; `*.nori.lan` → `${nori.domain}` in current-state docs; README aurora-aware rewrite; topology.md present-tense; storage subvols (`@streaming` → `@downloads`) + roadmap P15-landed + deep-sweep entry replacement |
+| 2026-06-16 | 3c — flake.nix bash extraction | `scripts/checks/{forbidden-patterns,doc-coherence,routing-coherence}.sh` extracted from inline `runCommandLocal` bodies; flake.nix § checks dropped ~200 → ~15 lines of plumbing; two pre-existing latent violations surfaced + fixed |
+| 2026-06-16 | seeds | `docs/specs/2026-06-16-lint-rule-schema.md` (Phase 3d design) + `docs/specs/2026-06-16-agentic-development-workflow.md` (ADR-0005 research) persisted |
+| (queued) | 3d — `nori.lint` Reader/Writer | Per `docs/specs/2026-06-16-lint-rule-schema.md`; first guinea-pig for the agentic-workflow ceremonies decided in ADR-0005 |
+| (queued) | 4 — validation | Run `docs/installs/agent-onboarding-test.md` with a fresh sub-agent against the post-3d tree |
+
+## Sprint 2026-06-16 — known debt left in tree
+
+Surfaced during the PR review at sprint end; not actively blocking but
+named so a fresh agent finds them without re-discovery cost:
+
+- **`modules/services/backup/btrbk-replication.nix` tail comment block** narrates the receiver-side bootstrap (sudoers + ssh key + first-run smoke test) in present/future tense as if pre-deployment. The module is LIVE (P15 landed via commit `2877267` on 2026-06-15). The comment is historical narration — see `[[feedback-history-in-commits]]` memory entry; commit message is the right home, not code comments. Cleanup is a 5-min follow-up.
+- **`docs/reports/2026-06-16-docs-inventory.md` (793 lines) retention.** Load-bearing during this sweep; after Phase 4 validates it's a museum piece. Decide: keep as historical record, prune to a per-finding-counts summary, or `git rm` and rely on git log. Same call applies to `-mem.md` (272 lines).
+- **Phase 4 validation deferred.** Plan defines DoD as running `docs/installs/agent-onboarding-test.md` with a fresh sub-agent; not executed this session. Queued; reasonable to fold into the post-3d wrap rather than running twice.
