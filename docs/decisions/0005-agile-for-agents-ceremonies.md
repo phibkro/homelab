@@ -1,4 +1,4 @@
-# ADR-0005: Agile-for-agents ceremonies — per-PR preamble / execution / reporting / reflection
+# ADR-0005: Agile-for-agents ceremonies — per-PR prologue / execution / epilogue
 
 - Status: Accepted
 - Date: 2026-06-16
@@ -13,24 +13,29 @@ What ADR-0001 didn't decide: WITHIN the surviving set, what shape does each prac
 
 1. *"I become the product manager"* — operator role is persistent
 2. *"A session becomes a sprint with a PR per"* — corrected by `[[session-economics]]` memory: session and PR decoupled
-3. *"Per PR deserves its own preamble + execution + reporting + reflection"* — the ceremony shape
+3. *"Per PR deserves its own preamble + execution + reporting + reflection"* — the ceremony shape (refined this session to **prologue / execution / epilogue** — three phases matching the *define / solve / look-back* arc, with the Prologue picking up an explicit Goal / Constraints / Values problem-definition step + solution research + viability gate)
 4. *"Per session is also a new amnesiac software development team"* — the wrinkle
 5. *"CI/CD is still useful but the local/remote ratio inverts"* — heavy local, light remote backstop
 6. *"Standups are basically just subagent workflows"* — standup → topology mapping
 
 External practice (Spec-Driven Development's phase-boundary review, Scrum.org's AI-augmented retrospective writing, BMAD framework) independently converges on the same shape. Per-PR retrospective specifically is not well-documented in the wild — the framing is genuinely novel.
 
-The 2026-06-16 retro itself surfaced concrete misses (no preamble confirmation, no DoD up front, plan progress log empty, one missing commit trailer, no mid-sprint checkpoints) that the ceremony adoption is meant to prevent next sprint.
+The 2026-06-16 retro itself surfaced concrete misses (no Prologue confirmation, no DoD up front, plan progress log empty, one missing commit trailer, no mid-sprint checkpoints) that the ceremony adoption is meant to prevent next sprint.
 
 ## Decision
 
 **The unit of agentic-dev work is the PR** (one feature or in-depth improvement, not a fix). Sessions and PRs are decoupled — see [[session-economics]] memory.
 
-**Per-PR ceremony (four phases):**
+**Per-PR ceremony (three phases):**
 
 ```
-Preamble  →  Execution  →  Reporting  →  Reflection
+Prologue   →   Execution   →   Epilogue
+(problem +     (keyframes +    (reporting +
+ research)      inbetweens)     verification +
+                                retrospective)
 ```
+
+The three-phase shape matches the natural arc *define the problem, solve it, look back*. The Prologue picks up the explicit **problem definition** step that the seed-spec version glossed over: Goal (verifiable success), Constraints (hard invariants), Values (soft invariants / non-functional preferences). The Execution phase adopts the **keyframes-not-full-specs** model: spec the end goal + critical waypoints with verifiable DoDs, agent draws inbetweens. The Epilogue bundles Reporting + Verification + Retrospective.
 
 Detailed shape: `docs/reference/agentic-workflow.md`. The reference doc is the working how-to; this ADR is the decision record.
 
@@ -38,10 +43,10 @@ Detailed shape: `docs/reference/agentic-workflow.md`. The reference doc is the w
 
 | Scrum ceremony | Verdict | Maps to |
 |---|---|---|
-| Sprint planning | ADOPT | Preamble (Phase 1) |
+| Sprint planning | ADOPT | Prologue (Phase 1) |
 | Daily standup | SKIP (implicit via topology) | Subagent reports + agent self-tracking |
-| Sprint review | ADOPT | Reporting (Phase 3) |
-| Retrospective | ADOPT (per-PR, not per-session) | Reflection (Phase 4) |
+| Sprint review | ADOPT | Epilogue § Reporting (Phase 3) |
+| Retrospective | ADOPT (per-PR, not per-session) | Epilogue § Retrospective (Phase 3) |
 | Backlog refinement | ALREADY EXISTS | `docs/roadmap.md` |
 | Story sizing / estimation | SKIP | No meaningful velocity; session-economics handles "fits in budget" |
 | Mid-sprint course correction | ADOPT (always-available) | Operator can redirect any turn |
@@ -62,8 +67,9 @@ The originally-proposed `Co-Authored-By:` trailer check is dropped — it's data
 
 **Process changes:**
 
-- **Preamble becomes mandatory.** Agent surfaces goal + punch list + open questions + DoD before any tool call lands. Operator confirms or redirects. Skipping was the most-cited miss in the 2026-06-16 retro.
-- **Reflection becomes mandatory at PR-end** (not session-end). The four questions are: keeps / DoD / changes / amnesiac-handoff. Operator-driven; agent answers honestly.
+- **Prologue becomes mandatory.** Agent surfaces Goal / Constraints / Values + solution research + viability gate + DoD before any tool call lands. Operator confirms or redirects. Skipping was the most-cited miss in the 2026-06-16 retro.
+- **Execution adopts keyframes-not-full-specs.** Spec the end goal + critical waypoints with verifiable DoDs; agent draws the inbetweens. TDD where behavior is verifiable — tests encode keyframe DoDs executably. Avoids the over-constraint failure mode where full-spec mode loses project-fit.
+- **Epilogue becomes mandatory at PR-end** (not session-end). Three activities: Reporting (per-commit grade + cross-cutting), Verification (Prologue's Goal/Constraints/Values satisfied?), Retrospective (four-question form: keeps / DoD-grade / changes / amnesiac-handoff). Operator-driven; agent answers honestly.
 - **Plan files are maintained mid-sprint**, not at end. Progress-log entries land per sub-phase as a self-imposed standup-equivalent.
 - **Debt named in tree wherever a fresh agent will find it**: plan files' "known debt" sections, `docs/roadmap.md` "architectural debt", or tagged TODOs. Not just in conversation.
 
@@ -74,7 +80,7 @@ The originally-proposed `Co-Authored-By:` trailer check is dropped — it's data
 
 **Skill changes deferred:**
 
-- **No per-pr-preamble or per-pr-reflection skill yet.** Rule of three; the 2026-06-16 sprint is N=1. Skills get extracted after 2-3 more sprints validate the ceremony shape. For now operator + agent walk it conversationally.
+- **No per-pr-prologue or per-pr-epilogue skill yet.** Rule of three; the 2026-06-16 sprint is N=1 (with the rich Goal/Constraints/Values + keyframes framing applied retroactively to the worked example, not as the ceremony actually ran). Skills get extracted after 2-3 more sprints validate the three-phase shape. For now operator + agent walk it conversationally.
 - **Existing skills (`wrap-session`, `wrap-feature`, `brainstorming`, `dev-loop`) get reviewed against this ADR** in a follow-up; some overlap with the new ceremonies and need either refresh or retirement.
 
 **Spec lifecycle:**

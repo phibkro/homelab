@@ -43,7 +43,7 @@ without this file's context.
 | `docs/reference/recovery.md` | something is broken or you're planning recovery — RTO targets, runbook index, permanent constraints |
 | `docs/reference/runtime-tests.md` | adding a `just test-<X>` lever or auditing whether an effect family ships with one |
 | `docs/reference/capacity-baseline.md` | sizing a new service against current RAM/disk/CPU baselines per host |
-| `docs/reference/agentic-workflow.md` | starting a new PR (preamble), wrapping one (reflection), deciding session vs PR boundary, or designing per-sprint ceremonies — the per-PR four-phase ceremony lives here |
+| `docs/reference/agentic-workflow.md` | starting a new PR (prologue), wrapping one (epilogue), deciding session vs PR boundary, or designing per-sprint ceremonies — the per-PR three-phase ceremony lives here |
 
 ### Drill-down (pulled in only when a parent doc cross-refs it)
 
@@ -97,12 +97,11 @@ without this file's context.
 
 ## Agentic workflow
 
-Work is shaped per-PR (one feature or in-depth improvement, not a fix), not per-session. The four-phase ceremony is **Preamble → Execution → Reporting → Reflection**:
+Work is shaped per-PR (one feature or in-depth improvement, not a fix), not per-session. Three phases — **Prologue → Execution → Epilogue** — matching the natural arc of *define the problem, solve it, look back*:
 
-1. **Preamble** — surface goal + punch list + open questions + DoD; operator confirms before any tool call.
-2. **Execution** — atomic per-axis commits; CI green at each step; mid-sprint checkpoints (SOUL.md "Knob — checkpoint cadence").
-3. **Reporting** — PR-review-style rundown before push (per-commit grade + cross-cutting observations); the push gate is the formal boundary.
-4. **Reflection** — four questions: what worked / DoD self-grade / what to change / clean amnesiac handoff.
+1. **Prologue** — define the problem (Goal / Constraints / Values), research the solution space, gate on viability, propose a DoD. Operator confirms before any tool call. (`Goal` = verifiable success; `Constraints` = hard invariants / deal-breakers; `Values` = soft invariants / preferences.)
+2. **Execution** — *keyframes, then inbetweens*. Spec the end goal + critical waypoints with verifiable DoDs; agent draws the inbetweens for the project. Atomic per-axis commits, CI green at each step, TDD where behavior is verifiable.
+3. **Epilogue** — reporting + verification + retrospective. Per-commit grade + cross-cutting observations (Reporting); did execution actually solve the Prologue's problem (Verification); four-question retro for self-reinforcing improvement (Retrospective). The push gate is the formal boundary.
 
 Sessions are decoupled from PRs (per `[[session-economics]]` memory: round off at ~20% context or ~3 compactions). Deep impl + ceremony adoption matrix + branching stance + operator-hat naming all live at `docs/reference/agentic-workflow.md`. Decision record: `docs/decisions/0005-agile-for-agents-ceremonies.md`.
 

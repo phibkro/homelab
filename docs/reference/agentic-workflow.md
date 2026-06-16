@@ -1,9 +1,11 @@
 ---
 summary: How per-PR work is shaped, paced, and reviewed when one operator
-  drives a rotating cast of amnesiac agents. The four-phase per-PR ceremony
-  (preamble / execution / reporting / reflection), the operator-role hats,
-  session economics, the CI/CD inversion, and the branching stance. ADR-0005
-  is the decision record; this is the working reference.
+  drives a rotating cast of amnesiac agents. The three-phase per-PR ceremony
+  (prologue / execution / epilogue) — problem definition + solution research
+  up front; keyframe-then-inbetween execution; reporting + verification +
+  retrospective at end. Plus operator-role hats, session economics, the
+  CI/CD inversion, and the branching stance. ADR-0005 is the decision
+  record; this is the working reference.
 ---
 
 # Agentic workflow
@@ -32,71 +34,140 @@ context burns fast. PR and session are decoupled — see
 [[session-economics]] memory.
 ```
 
-## The per-PR ceremony (four phases)
+## The per-PR ceremony (three phases)
 
 ```
-Preamble  →  Execution  →  Reporting  →  Reflection
-(scope)      (commits)    (PR review)   (retro)
+Prologue            Execution             Epilogue
+(problem +    →     (keyframes +    →    (reporting +
+ research)           inbetweens)           retrospective)
 ```
 
-### Phase 1: Preamble — scope before tools
+The phases match the natural arc: define the problem, solve it, then look back. Each phase has internal structure but the boundary between them is the load-bearing surface — those are where the operator review gate fires.
 
-Before any tool call lands, surface:
+### Phase 1: Prologue — define the problem before solving it
 
-- **Goal** in one sentence. What does "done" look like?
-- **Punch list** the agent will execute. Enumerated, distinct items.
-- **Open questions** that need operator input before edits start.
-- **Definition of Done** — what makes this PR genuinely complete.
+Before any tool call lands, the agent surfaces a problem definition and a solution sketch for operator review.
 
-The operator confirms or redirects. **Skipping the preamble is the most-cited miss in the 2026-06-16 docs deep-sweep retro.** Spec-Driven Development calls this "phase-boundary review at spec time"; same pattern, different name.
+**Define the problem (3 axes):**
+
+| Axis | What | Analog |
+|---|---|---|
+| **Goal** | Verifiable success criterion. What does "done" look like, and how do we know? | Functional requirement; the acceptance test |
+| **Constraints** | Hard invariants — what must NOT happen. Deal-breakers. | Negative feedback; the guardrails |
+| **Values** | Soft invariants — preferences (e.g. UX, security, simplicity). Trade-offs handled here. | Non-functional requirements; the system qualities |
+
+The Goal is verifiable; the Constraints are categorical; the Values are negotiable but explicit. A problem definition that conflates the three produces an under-constrained solution (and the agent fills the gap with assumptions, often wrong).
+
+**Research the solution space:**
+
+- **Existing conventional solutions** — what does the field do? (e.g. for "lint commit subjects": commitlint is the de facto answer.)
+- **State of the art** — what's the most-correct framing, even if expensive?
+- **Adopt or inspire** — pick the existing solution, or extract the shape and re-implement against project constraints.
+
+SOUL.md "name the right answer first" applies: state the right answer *before* compromising. Premature pragmatism assumes constraints that don't apply.
+
+**Gate — is the solution satisfactory?**
 
 ```
-What the agent says, in this shape:
-
-"Goal: ship X. Punch list: a, b, c. Open: should we also y?
-DoD: a+b+c green CI + acceptance criterion Z. Proceed?"
+                ┌─────────────────┐
+                │ Solution viable?│
+                └────────┬────────┘
+                         │
+              ┌──────────┴──────────┐
+              │                     │
+             YES                    NO
+              │                     │
+              ▼                     ▼
+          Execution           Refine the problem:
+                              clarify Goal / Constraints
+                              / Values to narrow the space,
+                              then re-research.
+                              (Repeat until viable.)
 ```
 
-### Phase 2: Execution — atomic, themed commits
+**Output of the Prologue:** scope + DoD with Goal/Constraints/Values explicit, candidate solution named, open questions surfaced. Operator confirms or redirects.
+
+Skipping the Prologue is the most-cited miss in the 2026-06-16 docs deep-sweep retro. Spec-Driven Development calls the equivalent "phase-boundary review at spec time"; same pattern.
+
+### Phase 2: Execution — keyframes, then inbetweens
+
+The split between *control plane* (what the work is) and *data plane* (how it's implemented) shapes the execution model. Specs and tests are the control plane; commits are the data plane.
+
+**Keyframes-not-full-specs:**
+
+```
+Spec mode                            Keyframe mode
+─────────                            ─────────────
+Spec every line.                     Spec the end goal + critical
+Agent transcribes.                   waypoints. Agent draws the
+                                     inbetweens for the project.
+
+Over-constrains. Agent has no        Encodes WHAT (verifiable),
+freedom to find the project-fit      lets agent pick HOW. Inherits
+implementation. Brittle to spec      project-fit, more robust to
+drift.                               drift.
+```
+
+Think of a spec like keyframes in an animation: the end goal + critical waypoints have verifiable Definitions of Done; the inbetweens are the agent's craft. The operator reviews keyframes; the inbetweens are caught by tests + the Epilogue.
+
+**TDD as keyframe encoding:**
+
+Red-green TDD is unusually effective for agentic dev: tests encode behavior into the control plane *executably*. The keyframe's DoD is "this test passes"; the agent's freedom is "any code path that gets there." Reach for it whenever the behavior is verifiable but the implementation is open. See `docs/reference/runtime-tests.md` for the homelab's four-lever framework for choosing when a test earns its keep.
+
+**Practical execution discipline (the in-between craft):**
 
 - **One axis per commit.** Stale-rename sweep ≠ content rewrite ≠ refactor. Bundling collapses revertability.
-- **Conventional commits** with rich bodies. The body is where future-amnesiac agents recover context; treat it like a PR description that won't be lost.
+- **Conventional commits** with rich bodies — enforced by `.githooks/commit-msg` on the subject (hard constraint); body quality reviewed in the Epilogue (soft constraint).
 - **"Intentionally NOT touched"** lists in commit bodies when a sweep deliberately leaves things alone. Prevents future agents from "fixing" historical artifacts.
 - **CI green at each commit**, not just at the end. Pre-commit hook + `nix flake check` are the local gates.
 - **Mid-sprint checkpoint discipline.** Restate done/verified/left after significant steps (SOUL.md "Knob — checkpoint cadence"). Don't continue from a state you can't describe back.
 
-### Phase 3: Reporting — PR review as checkpoint
+### Phase 3: Epilogue — reporting + retrospective
 
-Before push, surface a structured rundown:
+Two activities, one mode: looking back. Both fire before the push gate.
 
-- **Per-commit grade** (🟢 / 🟡 / 🔴) with one-line justification.
-- **Cross-cutting observations.** Patterns across multiple commits, debt accumulated, decisions that may warrant ADRs.
-- **Things done right, named.** Not flattery — explicit "we should keep doing X" so the next-amnesiac agent inherits the practice.
-- **Recommendation** with action items.
+**Reporting — describe what changed:**
 
-The push gate (per CLAUDE.md § "Push gate") is the formal boundary. Reporting is what makes it a real review and not a rubber stamp.
+PR-review-style structured rundown:
 
-### Phase 4: Reflection — four questions
+- **Per-commit grade** (🟢 / 🟡 / 🔴) with one-line justification
+- **Cross-cutting observations** — patterns across commits, debt accumulated, decisions that may warrant ADRs
+- **Things done right, named** — not flattery; explicit "we should keep doing X" so the next-amnesiac agent inherits the practice
+- **Recommendation** with action items
 
-Operator-driven; agent answers honestly:
+**Verification — did we solve the Prologue's problem?**
+
+Against the Prologue's Goal, Constraints, Values:
+
+| Check | Pass criteria |
+|---|---|
+| **Goal hit?** | Acceptance test green; DoD items checked |
+| **Constraints respected?** | No hard invariants violated (none of the named deal-breakers happened) |
+| **Values honored?** | Trade-offs went the way the Values implied; if not, named explicitly |
+
+If the answer to any of these is "no" or "partially," the work isn't actually done — push gate doesn't open, scope re-opens.
+
+**Retrospective — self-reinforcing improvement:**
+
+Four questions, operator-driven, agent answers honestly:
 
 | Question | What it surfaces |
 |---|---|
 | **What worked, worth keeping?** | Practices to reinforce. Includes things the agent did unprompted that should become explicit. |
-| **What's our Definition of Done? Did we hit it?** | If no DoD was set up front (preamble miss), define post-hoc and self-grade. |
-| **What could we do better next sprint?** | Concrete misses; ideally with mechanization moves to prevent recurrence. |
-| **Did we leave the codebase clean for the next amnesiac team?** | Plan files updated? Debt named where it'll be found? Memory/specs/CLAUDE.md current? |
+| **Did we hit the DoD from the Prologue?** | Self-grade against what was set up front. If no DoD was set (Prologue miss), define post-hoc and grade — and capture the miss. |
+| **What could we do better next PR?** | Concrete misses; ideally with mechanization moves to prevent recurrence (promote prose → comment → test → law per `docs/invariants.md`). |
+| **Did we leave the codebase clean for the next amnesiac team?** | Plan files updated? Debt named where it'll be found? Memory / specs / CLAUDE.md current? |
 
-The 2026-06-16 retro caught: no preamble confirmation, no DoD up front, plan progress log empty, one commit missing trailer, no mid-sprint checkpoints. Each surfaced via this four-question form. None would have been caught by the operator's PR review alone.
+The 2026-06-16 retro caught: no Prologue confirmation, no DoD up front, plan progress log empty, one missing trailer, no mid-sprint checkpoints. Each surfaced via the four-question form. None would have been caught by the Reporting phase alone — Reporting describes; Retrospective questions.
 
 ## Ceremony adoption matrix
 
 | Scrum ceremony | Verdict | Agentic shape |
 |---|---|---|
-| Sprint planning | **ADOPT** as Preamble | Phase 1 above. Phase-boundary review before tools fire. |
+| Sprint planning | **ADOPT** as Prologue | Phase 1 above. Goal / Constraints / Values + solution research + viability gate, before any tool call. |
 | Daily standup | **SKIP** as ceremony, IMPLICIT via topology | Subagent reports + main-agent `TaskCreate` self-tracking. Reporting is in the agent collaboration topology, not a meeting. |
-| Sprint review | **ADOPT** as Reporting | Phase 3 above. Precedes the push gate. |
-| Retrospective | **ADOPT** as Reflection | Phase 4 above. Per-PR, not per-session (sessions decoupled from PRs per [[session-economics]]). |
+| Sprint review | **ADOPT** as Epilogue § Reporting | Phase 3 above. Precedes the push gate. |
+| Retrospective | **ADOPT** as Epilogue § Retrospective | Phase 3 above. Per-PR, not per-session (sessions decoupled from PRs per [[session-economics]]). |
 | Backlog refinement | **ALREADY EXISTS** | `docs/roadmap.md`. Edit in place; no recurring meeting. |
 | Story sizing / estimation | **SKIP** | Agents don't have meaningful velocity. The estimate analog is "does this fit in one session within budget?" — handled by session-economics. |
 | Mid-sprint course correction | **ADOPT** (always-available) | Operator can redirect any turn. No formal ceremony; just an invariant of the model. |
@@ -107,10 +178,10 @@ The operator wears four hats simultaneously. Naming them is informational — kn
 
 | Hat | Decides | When worn |
 |---|---|---|
-| **PM** | scope, acceptance criteria, scope creep | Preamble; mid-sprint redirects |
+| **PM** | scope, acceptance criteria, scope creep | Prologue; mid-sprint redirects |
 | **Tech lead** | architectural decisions (ADRs) | When a design call exceeds the agent's surface visibility |
-| **Scrum master** | ensures the ceremony actually happens | At phase boundaries; catches missed preambles / reflections |
-| **Reviewer** | merge / push approval | Phase 3 (reporting) + the push gate |
+| **Scrum master** | ensures the ceremony actually happens | At phase boundaries; catches missed prologues / retrospectives |
+| **Reviewer** | merge / push approval | Epilogue § Reporting + the push gate |
 
 Same person, four hats. The agent's job is to surface the decision so the operator can put the right hat on consciously.
 
@@ -128,7 +199,7 @@ hand off cleanly. A fresh session at full context + 30-second
 reorient beats a near-full session running on compaction summaries.
 
 Per-PR ceremonies fire regardless of session boundary. A PR that
-spans two sessions runs reflection at PR-end, not at first
+spans two sessions runs the Epilogue at PR-end, not at first
 session-end.
 ```
 
@@ -188,7 +259,7 @@ The amnesiac-team wrinkle (ADR-0001) makes docs primary, not secondary. Each PR'
 
 External references for the homelab's specific take:
 
-- **Spec-Driven Development (SDD)** — the phase-boundary review pattern (spec → plan → tasks → impl) maps onto Preamble. We adopt the pattern, not the full machine-readable-spec framing (most PRs are too small).
+- **Spec-Driven Development (SDD)** — the phase-boundary review pattern (spec → plan → tasks → impl) maps onto the Prologue. We adopt the pattern, not the full machine-readable-spec framing (most PRs are too small).
 - **BMAD framework** (Breakthrough Method of Agile AI-Driven Development) — confirms documentation-first as drift mitigation; assumes team-of-agents shape that doesn't fit our one-agent + one-operator model.
 - **Scrum.org "Sprint Retrospective with half-AI team"** — independently converges on "token burn rate as first retro agenda item" (our [[session-economics]] memory) and "data-driven debugging, not emotional reflection" (our four-question form).
 - **Anthropic Claude Cowork (2026-01-12)** — non-developer-focused; tangentially related.
@@ -201,5 +272,5 @@ External references for the homelab's specific take:
 - [[session-economics]] — when to start a fresh session
 - `home/claude-code/skills/wrap-session/SKILL.md` — existing end-of-session ceremony
 - `home/claude-code/skills/wrap-feature/SKILL.md` — existing per-feature ceremony (overlap with Phase 4 retro)
-- `home/claude-code/skills/brainstorming/SKILL.md` — existing preamble-shaped ceremony (overlap with Phase 1)
+- `home/claude-code/skills/brainstorming/SKILL.md` — existing prologue-shaped ceremony (overlap with Phase 1)
 - `home/claude-code/skills/dev-loop/SKILL.md` — workflow map; due for refresh against this doc
