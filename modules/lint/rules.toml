@@ -42,6 +42,50 @@ message = '''
 clientSecretHash field references found. The field was removed;
 hashes live in sops as oidc-<n>-client-secret-hash.'''
 
+# ── lanRoute naming convention ──────────────────────────────────
+
+[rules.functionNamedSubdomains]
+# CLAUDE.md § "Style for prose": "Function-named subdomains, agnostic
+# over branded: status.${nori.domain} not gatus.${nori.domain} unless
+# the brand IS the identity."
+#
+# Brands change (Uptime Kuma → Gatus → next-thing); functions don't.
+# Encoding the function in the URL means bookmarks survive tool
+# swaps, family-facing URLs don't need migration messaging when the
+# operator picks a different upstream, and naming reflects WHAT the
+# service does, not WHO ships it.
+#
+# Denylist: upstream NixOS service brand names that have clean
+# function-name equivalents. NOT a comprehensive brand list — only
+# the brands that currently ship in the homelab AND have an obvious
+# function-name alternative.
+#
+# Brand-IS-identity exceptions stay function-named in the actual
+# tree: auth (Authelia), samba (SMB). Operator's own apps (filmder,
+# heim, hermes) are branded BY the operator — the brand IS the
+# identity, not the upstream's choice.
+#
+# Promoted from prose 2026-06-16 — see docs/invariants.md §
+# "Promotion register" + audit on the current tree (no real
+# violations; rule guards against future drift).
+pattern = '\bnori\.lanRoutes\.(gatus|ntfy|jellyfin|immich|ollama|open-webui|beszel|navidrome|calibre-web|komga|vaultwarden|radicale|miniflux)\b'
+scope = ["modules/"]
+tags = ["naming", "lan-route"]
+message = '''
+Branded subdomain found above. Function-named subdomains beat brand-
+named (brands change — Uptime Kuma → Gatus; functions don't). Rename
+the lanRoute key:
+  gatus       → status         immich     → photos
+  ntfy        → alert          ollama     → ai
+  jellyfin    → media          open-webui → chat
+  beszel      → metrics        navidrome  → music
+  calibre-web → books          komga      → comics
+  vaultwarden → vault          radicale   → calendar
+  miniflux    → news
+Brand names earn their place ONLY when the brand IS the identity
+(auth for Authelia, samba for SMB, or operator-shipped apps like
+filmder/heim/hermes).'''
+
 # ── lanRoutes single-source-of-truth ────────────────────────────
 
 [rules.caddyVirtualHosts]

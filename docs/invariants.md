@@ -51,7 +51,7 @@ Strongest rung each claim has reached. `[prose: unchecked]` entries are promotio
 | **lanRoutes** | |
 | One `nori.lanRoutes` entry generates Caddy vhost + Blocky DNS + Gatus monitor consistently | `[structural]` (single schema → multiple generators in `modules/effects/lan-route.nix`) + `[runtime-introspection: just test-routes]` (Caddy + DNS + HTTPS all reachable per declared route) |
 | `audience: operator` routes get no Authelia overlay; `family` gets OIDC; `public` is intentionally open | `[structural]` (typed `audience` enum, generators branch on it) |
-| Service names function over brand (`status`, not `gatus`; `chat`, not `ollama`) unless brand IS identity | `[prose: unchecked]` — promote? brand-name grep against a known list |
+| Service names function over brand (`status`, not `gatus`; `chat`, not `ollama`) unless brand IS identity | `[law: lint.functionNamedSubdomains]` (promoted 2026-06-16; nori.lint TOML denylist of 13 upstream brands with clean function-name mappings) |
 | **systemd units** | |
 | Every `Restart=on-failure` unit's `ExecStart` is smoke-tested before landing (prevents restart-loop bombs that break the next `switch-to-configuration` — incident 2026-06-03 in `.claude/skills/gotcha-*/`) | `[prose: unchecked]` — promote? flake check resolving each `ExecStart` to a real nix-store binary path |
 | **Convention shapes** | |
@@ -169,11 +169,12 @@ The effect-interface family in `modules/effects/` is enforced by all five rungs 
 
 `[prose: unchecked]` claims in rough priority order for mechanization:
 
-1. **`function-named-subdomains`** — grep `nori.lanRoutes.*` declarations for brand names against a known list (`gatus`, `ntfy`, `jellyfin`, `immich`, `ollama`, `open-webui`, `beszel`, …). **Medium value**: noise prevention, not safety. **Implementation:** one `[rules.functionNamedSubdomains]` block in `modules/lint/rules.toml`.
-2. **`workhorse-vs-appliance-placement`** — derived check: for each service module, assert it's placed on a host whose role tag matches the service's declared role. Currently `nori.hosts` carries role tags; could be cross-referenced. **Medium value**: prevents accidental Pi-bloat. **Implementation:** needs eval-time module assertion, not nori.lint (semantic, not grep-shaped).
-3. **`systemd-execstart-resolves`** — scan all `systemd.services.*.serviceConfig.ExecStart` (and the user-services variant) and assert the first token resolves to a path inside the build closure. Won't catch invalid CLI flags (incident 2026-06-03) but catches the more common typo + uninstalled-tool failures that cause restart loops. **High value** given the incident class: a single mistake at ExecStart cascades into mass-service-outage on next rebuild because `switch-to-configuration`'s stop-timeout path doesn't run the start phase. **Implementation:** a check derivation iterating `config.systemd.services` and `config.home-manager.users.*.systemd.user.services` (eval-time, not nori.lint).
+1. **`workhorse-vs-appliance-placement`** — derived check: for each service module, assert it's placed on a host whose role tag matches the service's declared role. Currently `nori.hosts` carries role tags; could be cross-referenced. **Medium value**: prevents accidental Pi-bloat. **Implementation:** needs eval-time module assertion, not nori.lint (semantic, not grep-shaped).
+2. **`systemd-execstart-resolves`** — scan all `systemd.services.*.serviceConfig.ExecStart` (and the user-services variant) and assert the first token resolves to a path inside the build closure. Won't catch invalid CLI flags (incident 2026-06-03) but catches the more common typo + uninstalled-tool failures that cause restart loops. **High value** given the incident class: a single mistake at ExecStart cascades into mass-service-outage on next rebuild because `switch-to-configuration`'s stop-timeout path doesn't run the start phase. **Implementation:** a check derivation iterating `config.systemd.services` and `config.home-manager.users.*.systemd.user.services` (eval-time, not nori.lint).
 
-**Recently promoted:** `disko-uses-by-id` → `[law: lint.diskoUsesById]` (2026-06-16). Was item #1 in this register; tested the "add a rule = one TOML block" Goal that motivated the nori.lint refactor.
+**Recently promoted:**
+- `disko-uses-by-id` → `[law: lint.diskoUsesById]` (2026-06-16) — was register item #1; the rule that tested the "add a rule = one TOML block" Goal motivating the nori.lint refactor.
+- `function-named-subdomains` → `[law: lint.functionNamedSubdomains]` (2026-06-16) — TOML denylist of 13 upstream brand names with clean function-name mappings (gatus→status, ntfy→alert, …). Audited current tree: zero real violations (operator's branded apps `filmder`/`heim`/`hermes` legitimately have brand-as-identity).
 
 Others (the `[judgment]` ones) stay where they are — they're not staleness risks.
 
