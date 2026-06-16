@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   inherit (lib)
@@ -591,9 +596,7 @@ in
           { jobName, target, ... }:
           let
             tgt = config.nori.backupTargets.${target};
-            resticOpts = lib.concatStringsSep " " (
-              map (o: "-o ${lib.escapeShellArg o}") tgt.extraOptions
-            );
+            resticOpts = lib.concatStringsSep " " (map (o: "-o ${lib.escapeShellArg o}") tgt.extraOptions);
             preUnlockScript = pkgs.writeShellScript "restic-${jobName}-${target}-pre-unlock" ''
               ${pkgs.restic}/bin/restic ${resticOpts} unlock 2>/dev/null || true
             '';

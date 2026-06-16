@@ -474,11 +474,7 @@ in
       # host, the runsOn host's tailnet IP otherwise.
       myHost = config.networking.hostName;
       routeHost =
-        cfg:
-        if cfg.runsOn == myHost then
-          "127.0.0.1"
-        else
-          config.nori.hosts.${cfg.runsOn}.tailnetIp;
+        cfg: if cfg.runsOn == myHost then "127.0.0.1" else config.nori.hosts.${cfg.runsOn}.tailnetIp;
       autheliaEnabled =
         config.services.authelia.instances != { }
         && lib.any (i: i.enable) (lib.attrValues config.services.authelia.instances);

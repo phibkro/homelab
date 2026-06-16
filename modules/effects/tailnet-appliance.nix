@@ -140,11 +140,9 @@ in
           type nat hook prerouting priority dstnat; policy accept;
         ${concatMapStringsSep "\n" (
           a:
-          ''
-                ip saddr ${a.tailnetIp} udp dport 53 dnat to ${selfTailnetIp}:53''
+          "ip saddr ${a.tailnetIp} udp dport 53 dnat to ${selfTailnetIp}:53"
           + "\n"
-          + ''
-                ip saddr ${a.tailnetIp} tcp dport 53 dnat to ${selfTailnetIp}:53''
+          + "ip saddr ${a.tailnetIp} tcp dport 53 dnat to ${selfTailnetIp}:53"
         ) (attrValues localAppliances)}
         }
 

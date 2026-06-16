@@ -29,5 +29,6 @@ lib.mkMerge [
 
       nori.backups.btrbk-replica-target.skip = "Auth-only module; replica payload backup intent is on aurora-side btrbk-replication.";
       nori.harden.btrbk-replica-target = { };
-    })
+    }
+  )
 ]

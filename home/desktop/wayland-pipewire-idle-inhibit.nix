@@ -20,7 +20,10 @@
     Unit = {
       Description = "Inhibit Wayland idle while PipeWire streams are active";
       PartOf = [ "graphical-session.target" ];
-      After = [ "graphical-session.target" "pipewire.service" ];
+      After = [
+        "graphical-session.target"
+        "pipewire.service"
+      ];
     };
     Install.WantedBy = [ "graphical-session.target" ];
     Service = {
