@@ -320,6 +320,14 @@
           # `|`. Used at the head of each scanner loop to skip framework
           # / aggregator files.
           mkCasePattern = ps: lib.concatStringsSep "|" ps;
+
+          # nori.lint dispatcher — lowers the TOML rule registry to one
+          # `grep`-shaped flake-check derivation. See modules/lint/
+          # default.nix for the schema + the data-vs-control-plane
+          # rationale (rules are pure data in TOML; the dispatcher is
+          # the program that consumes them).
+          lintLib = import ./modules/lint { inherit lib pkgs; };
+          lintRules = (builtins.fromTOML (builtins.readFile ./modules/lint/rules.toml)).rules;
         in
         {
           # cd into the source so statix picks up `statix.toml` (looked up
@@ -344,28 +352,21 @@
             touch $out
           '';
 
-          # Repo-convention enforcement. Each rule is a hard constraint,
-          # not a suggestion: the convention is whatever the check
-          # enforces. Adding a deliberate exception means editing the
-          # script, not just bypassing it. Patterns are `grep -rn` and
-          # intentionally simple — anything that needs AST-aware checking
-          # should graduate to a tree-sitter-nix wrapper.
+          # Repo-convention enforcement (Reader+Writer applied to lint).
           #
-          # Body lives in scripts/checks/forbidden-patterns.sh so it can
-          # be run by hand (`bash scripts/checks/forbidden-patterns.sh .`)
-          # and shellcheck'd independently of the Nix wrapper.
-          forbidden-patterns =
-            pkgs.runCommandLocal "forbidden-patterns"
-              {
-                nativeBuildInputs = [
-                  pkgs.bash
-                  pkgs.gnugrep
-                ];
-              }
-              ''
-                bash ${./scripts/checks/forbidden-patterns.sh} ${./.}
-                touch $out
-              '';
+          # Rules live as data in modules/lint/rules.toml (the Reader);
+          # modules/lint/default.nix is the dispatcher that lowers the
+          # rule registry to a single bash check (the Writer). Adding a
+          # rule = one `[rules.<name>]` block in the TOML.
+          #
+          # Replaces the prior `forbidden-patterns` flake check that
+          # carried 9 rules in scripts/checks/forbidden-patterns.sh.
+          # Behavior parity verified: same patterns, same scopes, same
+          # allowlists.
+          lint = lintLib.makeLintCheck {
+            rules = lintRules;
+            sourceRoot = ./.;
+          };
 
           # Doc-code coherence. Body in scripts/checks/doc-coherence.sh.
           # Catches the drift class where a host (or other named module)

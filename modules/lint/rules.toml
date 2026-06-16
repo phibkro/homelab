@@ -1,0 +1,172 @@
+# nori.lint rules — repo-convention enforcement.
+#
+# Each rule is a hard constraint, not a suggestion: the convention is
+# whatever the check enforces. Adding a deliberate exception means
+# editing the rule, not just bypassing it.
+#
+# Schema documented at modules/lint/default.nix § "Rule schema".
+# Dispatcher emits one bash check block per rule; CI runs the
+# `lint` flake check on every push.
+#
+# Patterns use grep extended regex (`-rEn`); literal strings (single-
+# quoted) preserve backslashes verbatim — `'\$pbkdf2-'` is what grep
+# sees. Multiline messages use `'''...'''` (literal multiline).
+#
+# Editing a rule:
+#   1. Update fields here.
+#   2. `nix flake check` — the `lint` derivation re-evaluates.
+#   3. If introducing a new exception, document the why in the
+#      rule's message and/or docLink, not in a separate comment.
+
+# ── Security ─────────────────────────────────────────────────────
+
+[rules.pbkdf2]
+pattern = '\$pbkdf2-'
+scope = ["modules/"]
+tags = ["security"]
+docLink = ".claude/skills/add-oidc-client/"
+message = '''
+Inline pbkdf2 hashes found above. OIDC hashes belong in sops
+(key: oidc-<n>-client-secret-hash); Authelia reads them via the
+template config-filter (see modules/services/authelia.nix).'''
+
+# ── Stale references ────────────────────────────────────────────
+
+[rules.clientSecretHash]
+# Removed when the template-filter migration landed; any
+# reference today is stale.
+pattern = 'clientSecretHash'
+scope = ["modules/"]
+tags = ["stale-field"]
+message = '''
+clientSecretHash field references found. The field was removed;
+hashes live in sops as oidc-<n>-client-secret-hash.'''
+
+# ── lanRoutes single-source-of-truth ────────────────────────────
+
+[rules.caddyVirtualHosts]
+# Caddy vhost declarations must come from modules/effects/lan-
+# route.nix only — nori.lanRoutes is the single source of truth
+# for *.<nori.domain> exposure. caddy.nix is exempt because it
+# carries the transitional *.nori.lan → *.<nori.domain> 301
+# redirect vhost from ADR-0004; drop the exemption when that
+# redirect goes away.
+pattern = 'services\.caddy\.virtualHosts'
+scope = ["modules/"]
+excludeFiles = ["modules/effects/lan-route.nix", "modules/services/caddy.nix"]
+tags = ["architecture", "lan-route"]
+message = '''
+Direct services.caddy.virtualHosts found above. Use
+  nori.lanRoutes.<name> = { port = N; };
+instead — the abstraction generates Caddy + Blocky + Gatus together.'''
+
+[rules.blockyCustomDNS]
+pattern = 'services\.blocky\.settings\.customDNS'
+scope = ["modules/"]
+excludeFiles = ["modules/effects/lan-route.nix"]
+tags = ["architecture", "lan-route"]
+message = '''
+Direct services.blocky.settings.customDNS found above. Use
+nori.lanRoutes.<name> instead.'''
+
+# ── Known gotchas ───────────────────────────────────────────────
+
+[rules.caddyAcmeInternal]
+# Caddy's internal CA is enabled via globalConfig = "local_certs",
+# NOT via acmeCA = "internal" — Caddy will literally try to dial
+# `internal` as an ACME directory URL and fail.
+pattern = 'acmeCA = "internal"'
+scope = ["modules/"]
+tags = ["gotcha"]
+docLink = ".claude/skills/gotcha-caddy-acme-internal/"
+message = '''
+acmeCA = "internal" found above. Caddy interprets this as a literal
+ACME directory URL. Use:
+  services.caddy.globalConfig = "local_certs";'''
+
+[rules.gatusNtfyUrl]
+# Gatus's ntfy alerting provider takes `url` and `topic` as
+# SEPARATE fields. Embedding the topic in the URL silently
+# disables alerting (logs "Ignoring provider=ntfy due to
+# error=topic not set" once at startup, then nothing).
+pattern = 'url = "https://ntfy.sh/'
+scope = ["modules/"]
+tags = ["gotcha"]
+docLink = ".claude/skills/gotcha-gatus-ntfy-provider/"
+message = '''
+Gatus ntfy URL with embedded topic found above. Split into separate
+fields:
+  alerting.ntfy.url   = "https://ntfy.sh";
+  alerting.ntfy.topic = "${NTFY_CHANNEL}";'''
+
+# ── Registry-driven topology refs ───────────────────────────────
+
+[rules.tailnetIp]
+# CGNAT range (100.64.0.0/10). Cross-host references go through
+# the topology registry: config.nori.hosts.<host>.tailnetIp.
+# flake.nix is the only legitimate site for the host-specific
+# literal (via identityFor).
+#
+# Allowlist:
+#   * 100.100.100.100  Tailscale MagicDNS stub (well-known
+#                      constant, not a host)
+#   * 100.64.0.0/10    CGNAT range spec (network spec, not a
+#                      host — legitimate in firewall ACLs)
+#   * modules/effects/hosts.nix — the registry schema's own
+#                                 header comment narrates the
+#                                 refactor.
+pattern = '\b100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+\b'
+scope = ["modules/"]
+excludeFiles = ["modules/effects/hosts.nix"]
+excludePatterns = ['100\.100\.100\.100', '100\.64\.0\.0/10']
+tags = ["topology"]
+message = '''
+Tailnet IP literal (CGNAT range) found above. Use
+config.nori.hosts.<host>.tailnetIp from the topology registry.
+Schema: modules/effects/hosts.nix; values: flake.nix identityFor.'''
+
+# ── Migration drift ─────────────────────────────────────────────
+
+[rules.noriLan]
+# Literal *.nori.lan URIs are stale: ADR-0004 made
+# `${nori.domain}` (= home.phibkro.org) the canonical parent,
+# with `*.nori.lan` kept only as a transitional 301-redirect
+# target until family bookmarks migrate. Two systems care about
+# the URI exactly:
+#
+#   1. Authelia OIDC `redirect_uris` — exact-string matched at
+#      the IdP; embedding `.nori.lan` here silently rejects every
+#      SSO redirect from the canonical domain.
+#   2. Service `root_url` / `BASE_URL` / cookie domain — readers
+#      cache the value.
+#
+# Allowlist: caddy.nix carries the transitional 301 redirect
+# vhost; lan-route.nix's customDNS map emits both the transitional
+# and canonical entries side by side. Both are temporary and named
+# in their headers.
+pattern = '"https?://[a-z0-9.-]*\.nori\.lan'
+scope = ["modules/"]
+excludeFiles = ["modules/services/caddy.nix", "modules/effects/lan-route.nix"]
+tags = ["migration", "adr-0004"]
+message = '''
+Hard-coded https://*.nori.lan URI found above. Use
+  "https://${name}.${config.nori.domain}…"
+— the transitional alias is for the 301 redirect only, not for IdP
+redirect_uris or service root URLs.'''
+
+# ── Doc hygiene ─────────────────────────────────────────────────
+
+[rules.migrationPhase]
+# Migration-phase tokens (P<N> prep|cutover|landing|migration)
+# decay the moment the phase lands. modules/ + machines/ are for
+# what the code does today, not what it's getting ready to do.
+# Plans + reports + ADRs under docs/ are the right home for phase
+# narration; flag anywhere else.
+pattern = '\bP[0-9]+ (prep|cutover|landing|migration)\b'
+scope = ["modules/", "machines/"]
+tags = ["doc-hygiene"]
+message = '''
+Migration-phase token found above. Phase tokens (P12 prep, P15
+cutover, etc.) decay as soon as the phase lands. Move the rationale
+into the commit message; if it's load-bearing for future context,
+put it in docs/.'''
