@@ -101,16 +101,16 @@ The `forbidden-patterns` flake check fails the build on a stray `100.x.y.z` lite
 
 | Cluster | Where | Why |
 |---|---|---|
-| HTTP entry plane (Caddy + Authelia) | workstation today, pi post-P12 (ADR-0003) | Workhorse owned the user-facing surface; ADR-0003 moves the entry plane to pi so workstation can sleep. Pi's Caddy + Authelia + LE wildcard standing by; Tailscale DNS push order flips when critical mass of family-tier services have migrated to aurora and rebound to tailnet |
+| HTTP entry plane (Caddy + Authelia) | pi | ADR-0003 — entry plane on the always-on appliance so workstation can sleep. Pi's Caddy serves the LE wildcard cert on `*.${nori.domain}` (ADR-0004); Authelia provides OIDC; backends proxy to whatever host actually runs the service via the lan-route module's `runsOn` resolver |
 | GPU-bound (Ollama, Jellyfin NVENC, `*arr` stack, qBittorrent, Open WebUI) | workstation | RTX 5060 Ti — primary GPU |
-| ML inference (Immich machine-learning / PyTorch) | aurora | Co-located with immich-server post-P8; GTX 950M is sufficient. `IMMICH_MACHINE_LEARNING_URL` resolves to aurora's tailnet IP whether immich-server runs on workstation (today, pre-P10) or aurora (post-state-migration) |
-| Family-tier services (Vaultwarden, Radicale, Miniflux, Immich, Calibre-web, Komga, Glance, Heim, Filmder, Grafana) | aurora post-P8 | Always-on so they survive workstation sleep / outage; ADR-0002 |
+| ML inference (Immich machine-learning / PyTorch) | aurora | Co-located with immich-server; GTX 950M is sufficient. `IMMICH_MACHINE_LEARNING_URL` resolves to aurora's tailnet IP |
+| Family-tier services (Vaultwarden, Radicale, Miniflux, Immich, Calibre-web, Komga, Glance, Heim, Filmder, Grafana) | aurora | Always-on so they survive workstation sleep / outage; ADR-0002 |
 | Family-tier file storage (`/mnt/family/{photos,home-videos,projects,library,archive}`) | aurora | Family vault — Toshiba HDD, btrfs label `family-vault` |
-| Family Samba shares | aurora (post-P12 cutover, pre-positioned 2026-06-11) | Follows the drive — per-fs `samba = { }` blocks in `machines/aurora/disko-family.nix` |
+| Family Samba shares | aurora | Follows the drive — per-fs `samba = { }` blocks in `machines/aurora/disko-family.nix` |
 | Workstation Samba shares (`media`, `share`, `nori`) | workstation | Whole-drive `media` share scoped to `/mnt/media` (IronWolf root) stays workstation-only; per-fs `share` + `nori` shares stay workstation-only via the gated workstation-shape check in `samba.nix` |
 | Observability + alert plane (Beszel hub, Gatus, VictoriaMetrics, VictoriaLogs, ntfy server) | pi | Must survive workstation outage — that's *when* they fire |
 | Heartbeat / dead-man-switch (healthchecks.io ping) | pi | SPOF mitigation — see `modules/services/heartbeat.nix` |
-| DNS authoritative for `*.${nori.domain}` (Blocky self-hosted) | pi | Post-ADR-0003. Workstation's Blocky stays as secondary forwarder until the entry-plane cutover; the self-hosted role on pi was the prerequisite for the LE wildcard issuance (ADR-0004) |
+| DNS authoritative for `*.${nori.domain}` (Blocky self-hosted) | pi | ADR-0003 prerequisite for the LE wildcard issuance (ADR-0004). Workstation's Blocky stays as a secondary self-hosted forwarder for LAN-side resilience if pi is down |
 | Network plumbing (subnet router + exit node) | pi | Appliance role; opt-in per device for exit node |
 | Agent quarantine (hermes-agent CLI + dashboard) | pavilion | Sandboxed; pavilion's impermanence root makes pollution self-healing |
 | Process metrics (`node-exporter` + `process-exporter`) | workstation + pavilion + aurora | Pi VM scrapes each; per-process RSS for leak hunts |
