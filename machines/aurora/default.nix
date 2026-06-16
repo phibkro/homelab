@@ -98,7 +98,13 @@
     samba.enable = true; # /mnt/family/* shares for family bookmarks
     navidrome.enable = true; # music (sqlite + library/music read)
     btrbk-replication.enable = true; # P15 — nightly send to workstation MP510
+    syncthing.enable = true; # phone-to-library music sync (SpotiFlac path)
   };
+
+  # Aurora doesn't proxy syncthing through Caddy (the sync.* lanRoute
+  # is workstation-pinned). Expose the WebUI on tailnet directly for
+  # setup. Audience is operator only; access is gated by tailnet trust.
+  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8384 ];
 
   # Backup infrastructure for aurora's family-tier services. The
   # cross-cutting `modules/services/backup/restic.nix` is gated

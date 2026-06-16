@@ -88,16 +88,16 @@ lib.mkMerge [
     # (rather than forcing it false), preserving the upstream NixOS
     # module's value — explicit trade documented at modules/effects/harden.nix.
     #
-    # binds: explicit RW access to /mnt/media/{downloads,library} so
-    # Syncthing can write there (default harden baseline mounts /mnt:ro
-    # which would block writes). Both paths are owned root:media + nori
-    # is in the media group, so unit-side and FS-side perms align.
+    # binds: explicit RW access to whichever media subvols the running
+    # host actually has. Workstation has both downloads + library;
+    # aurora has library only (no downloads — re-derivable tier doesn't
+    # warrant cross-host replication). Both paths are owned root:media
+    # + nori is in the media group, so unit-side and FS-side perms align.
     nori.harden.syncthing = {
       protectHome = null;
-      binds = [
-        config.nori.fs.downloads.path
-        config.nori.fs.library.path
-      ];
+      binds =
+        lib.optional (config.nori.fs ? downloads) config.nori.fs.downloads.path
+        ++ lib.optional (config.nori.fs ? library) config.nori.fs.library.path;
     };
 
     nori.backups.syncthing.skip = "Config + index at /home/nori/.config/syncthing — already covered by the user-data repo (/home).";
