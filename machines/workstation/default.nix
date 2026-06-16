@@ -52,17 +52,15 @@
   # scope here rather than common/users.nix (which Pi also reads).
   users.users.nori.extraGroups = [ "media" ];
 
-  # Service-placement registry (aurora migration P3). Reproduces today's
-  # workstation activation set exactly — each modules/services/*.nix
-  # that wraps itself in `mkIf config.nori.services.<name>.enabled`
-  # gets explicitly enabled here. Net effect under P2 wrap + this
-  # opt-in is zero behavior change. Future moves between hosts:
+  # Service-placement registry. Each modules/services/*.nix that wraps
+  # itself in `mkIf config.nori.services.<name>.enabled` gets explicitly
+  # enabled here. Workstation is the workhorse — it runs the GPU /
+  # compute / acquisition layer (arr stack, qBittorrent, Jellyfin,
+  # Ollama, Open WebUI, Stremio, Syncthing, observability agents).
+  # Family-tier serving (Immich, Navidrome, Calibre-web, Komga,
+  # Vaultwarden, etc.) lives on aurora; the HTTP entry plane (Caddy,
+  # Authelia, Blocky-authoritative) lives on pi. Moves between hosts:
   # flip `enable` on the destination, unset here.
-  #
-  # Workstation is the workhorse — it currently runs everything in
-  # the modules/services/ bundle (modules/services/default.nix). The
-  # P12 cutover moves the family-tier services to aurora by flipping
-  # `enable` on aurora and unsetting here.
   nori.services = {
     # arr stack + qBit (media-server)
     bazarr.enable = true;

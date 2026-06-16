@@ -92,7 +92,7 @@ in
     example = lib.literalExpression ''
       {
         chromecast = {
-          tailnetIp     = "100.94.135.114";
+          tailnetIp     = "100.x.x.x"; # actual value declared at the call site
           interceptedAt = "pi";
         };
       }
