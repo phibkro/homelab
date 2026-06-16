@@ -174,10 +174,10 @@
   #   4. Intel iwlwifi `power_save=0` modprobe option (Aurora's NIC
   #      is the 7265 — Intel's default is power_save=1 which dropped
   #      the link on first fold test)
-  services.logind = {
-    lidSwitch = "ignore";
-    lidSwitchExternalPower = "ignore";
-    lidSwitchDocked = "ignore";
+  services.logind.settings.Login = {
+    HandleLidSwitch = "ignore";
+    HandleLidSwitchExternalPower = "ignore";
+    HandleLidSwitchDocked = "ignore";
   };
   systemd.targets.sleep.enable = false;
   systemd.targets.suspend.enable = false;

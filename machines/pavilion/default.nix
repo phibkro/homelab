@@ -138,10 +138,10 @@
   # 2. systemd sleep/suspend targets → masked (belt for layer 1).
   # 3. Wifi power_save off via udev rule (survives driver reload/
   #    replug). Cheap insurance against the BCM4313 dropping the link.
-  services.logind = {
-    lidSwitch = "ignore";
-    lidSwitchExternalPower = "ignore";
-    lidSwitchDocked = "ignore";
+  services.logind.settings.Login = {
+    HandleLidSwitch = "ignore";
+    HandleLidSwitchExternalPower = "ignore";
+    HandleLidSwitchDocked = "ignore";
   };
   systemd.targets.sleep.enable = false;
   systemd.targets.suspend.enable = false;
