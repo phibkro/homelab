@@ -41,7 +41,7 @@ Strongest rung each claim has reached. `[prose: unchecked]` entries are promotio
 | Every service has backup intent (`nori.backups.<svc>.paths` or `.skip = <reason>`) | `[law: every-service-has-backup-intent]` + `[runtime-introspection: just test-backups]` (fresh snapshot per target ≤25h) |
 | Default-deny firewall — only Caddy ports open by default | `[structural]` (modules/common firewall config) |
 | Tailnet is the auth perimeter; Authelia only for per-user identity | `[structural]` (the `audience` enum forces the choice at the type level) |
-| `disko*.nix` configs reference disks by `/dev/disk/by-id/*`, never `/dev/nvmeN` | `[prose: unchecked]` — promote? `forbidden-patterns` grep |
+| `disko*.nix` configs reference disks by `/dev/disk/by-id/*`, never `/dev/nvmeN` | `[law: lint.diskoUsesById]` (promoted 2026-06-16; nori.lint TOML registry) |
 | Sops-encrypted secrets stay in `secrets/secrets.yaml`; encryption itself is structural | `[structural]` (sops policy file `.sops.yaml`) |
 | Never bulk-rename keys in sops-encrypted yaml (AAD-bound ciphertext breaks) | `[prose: unchecked]` — can't really mechanize; lives in gotcha skill |
 | **Topology & roles** | |
@@ -95,22 +95,25 @@ Live examples in `modules/effects/lan-route.nix` (port uniqueness, name regex, r
 
 Derivations under `checks.${system}.<n>` in `flake.nix`. Arbitrary shell, runs grep / find / scripts over the source tree. Use for repo-wide rules that don't live inside the module system.
 
-```nix
-forbidden-patterns = pkgs.runCommandLocal "forbidden-patterns" {
-  nativeBuildInputs = [ pkgs.gnugrep ];
-} ''
-  cd ${./.}
-  if grep -rn 'pattern' modules/ ; then
-    echo "✗ explanation of what's wrong"
-    exit 1
-  fi
-  touch $out
-'';
+For grep-shaped rules, the canonical home is `nori.lint` — a Reader (rule registry as data) + Writer (lowering dispatcher) split, with rules declared in `modules/lint/rules.toml`:
+
+```toml
+[rules.<name>]
+pattern = '<extended-regex>'        # literal string: backslashes verbatim
+scope = ["modules/"]                # paths grep walks
+excludeFiles = ["allowlist.nix"]    # optional per-rule file exemptions
+excludePatterns = ['known-ok']      # optional per-rule substring exemptions
+tags = ["security", "topology"]     # optional, for future filtering
+docLink = ".claude/skills/<>/"      # optional pointer to the why
+message = '''
+Operator-facing explanation when the rule fires.'''
 ```
 
-Live examples: `forbidden-patterns` (no inline PBKDF2 hashes, no caddy/blocky bypass, no `100.x.y.z` IP literals outside `identityFor`), `every-service-has-fs-hardening`, `every-service-has-backup-intent`, `doc-coherence`. Use for "no X in path Y" style rules.
+Dispatcher lives at `modules/lint/default.nix`; wired in `flake.nix` via `lintLib.makeLintCheck { rules = builtins.fromTOML (builtins.readFile ./modules/lint/rules.toml).rules; ... }`. Adding a rule = one TOML block.
 
-If a rule needs AST awareness, graduate to a tree-sitter-nix wrapper. Not currently present; introduce only when grep stops being enough.
+Live examples in the `lint` check: `pbkdf2` (no inline OIDC hashes), `caddyVirtualHosts` + `blockyCustomDNS` (single-source via `nori.lanRoutes`), `caddyAcmeInternal` + `gatusNtfyUrl` (gotcha patterns), `tailnetIp` (no `100.x.y.z` literals outside `identityFor`), `noriLan` (legacy alias migration), `migrationPhase` (no decaying phase tokens), `diskoUsesById` (NVMe safety). Plus standalone derivations for non-grep rules: `every-service-has-fs-hardening`, `every-service-has-backup-intent`, `routing-coherence`, `doc-coherence`.
+
+If a rule needs AST awareness, graduate to a tree-sitter-nix wrapper. Not currently present; introduce only when grep stops being enough. The data/control plane split (TOML rules + Nix dispatcher) makes the Writer-swap cheap when that day comes.
 
 ### Runtime introspection
 
@@ -158,7 +161,7 @@ The effect-interface family in `modules/effects/` is enforced by all five rungs 
 |---|---|
 | Type | `port`, `audience`, `scheme`, name regex on `nori.lanRoutes.<n>` |
 | Assertion | port uniqueness; paths-XOR-skip on `nori.backups`; appliance role can't use `paths`; DynamicUser `StateDirectory` symlink-trap check |
-| Flake check | `every-service-has-fs-hardening`, `every-service-has-backup-intent`, `forbidden-patterns` |
+| Flake check | `every-service-has-fs-hardening`, `every-service-has-backup-intent`, `lint` (TOML rule registry; 10 rules covering security, topology, gotchas, migration drift, NVMe safety, doc hygiene) |
 | **Runtime introspection** | `just test-backups` (per-target snapshot ≤25h), `just test-routes` (Caddy + DNS + HTTPS per route), `just test-observability` (scrape targets up, per-host series, heartbeat <90s) |
 | CI gate | All of the above run on every push via `.github/workflows/check.yml` |
 
@@ -166,10 +169,11 @@ The effect-interface family in `modules/effects/` is enforced by all five rungs 
 
 `[prose: unchecked]` claims in rough priority order for mechanization:
 
-1. **`disko-uses-by-id`** — grep `modules/services/*.nix` + `machines/*/disko*.nix` for `/dev/nvme[0-9]` or `/dev/sda[0-9]?` (only `by-id/*` permitted). **High value**: NVMe enumeration is unstable (see the gotcha skill); a single mistake wipes the wrong disk. **Implementation**: a new derivation in `flake.nix` `checks` that runs `rg` over the matching files.
-2. **`function-named-subdomains`** — grep `nori.lanRoutes.*` declarations for brand names against a known list (`gatus`, `ntfy`, `jellyfin`, `immich`, `ollama`, `open-webui`, `beszel`, …). **Medium value**: noise prevention, not safety.
-3. **`workhorse-vs-appliance-placement`** — derived check: for each service module, assert it's placed on a host whose role tag matches the service's declared role. Currently `nori.hosts` carries role tags; could be cross-referenced. **Medium value**: prevents accidental Pi-bloat.
-4. **`systemd-execstart-resolves`** — scan all `systemd.services.*.serviceConfig.ExecStart` (and the user-services variant) and assert the first token resolves to a path inside the build closure. Won't catch invalid CLI flags (incident 2026-06-03) but catches the more common typo + uninstalled-tool failures that cause restart loops. **High value** given the incident class: a single mistake at ExecStart cascades into mass-service-outage on next rebuild because `switch-to-configuration`'s stop-timeout path doesn't run the start phase. Implementation: a check derivation iterating `config.systemd.services` and `config.home-manager.users.*.systemd.user.services`.
+1. **`function-named-subdomains`** — grep `nori.lanRoutes.*` declarations for brand names against a known list (`gatus`, `ntfy`, `jellyfin`, `immich`, `ollama`, `open-webui`, `beszel`, …). **Medium value**: noise prevention, not safety. **Implementation:** one `[rules.functionNamedSubdomains]` block in `modules/lint/rules.toml`.
+2. **`workhorse-vs-appliance-placement`** — derived check: for each service module, assert it's placed on a host whose role tag matches the service's declared role. Currently `nori.hosts` carries role tags; could be cross-referenced. **Medium value**: prevents accidental Pi-bloat. **Implementation:** needs eval-time module assertion, not nori.lint (semantic, not grep-shaped).
+3. **`systemd-execstart-resolves`** — scan all `systemd.services.*.serviceConfig.ExecStart` (and the user-services variant) and assert the first token resolves to a path inside the build closure. Won't catch invalid CLI flags (incident 2026-06-03) but catches the more common typo + uninstalled-tool failures that cause restart loops. **High value** given the incident class: a single mistake at ExecStart cascades into mass-service-outage on next rebuild because `switch-to-configuration`'s stop-timeout path doesn't run the start phase. **Implementation:** a check derivation iterating `config.systemd.services` and `config.home-manager.users.*.systemd.user.services` (eval-time, not nori.lint).
+
+**Recently promoted:** `disko-uses-by-id` → `[law: lint.diskoUsesById]` (2026-06-16). Was item #1 in this register; tested the "add a rule = one TOML block" Goal that motivated the nori.lint refactor.
 
 Others (the `[judgment]` ones) stay where they are — they're not staleness risks.
 

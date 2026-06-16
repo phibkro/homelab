@@ -154,6 +154,36 @@ Hard-coded https://*.nori.lan URI found above. Use
 — the transitional alias is for the 301 redirect only, not for IdP
 redirect_uris or service root URLs.'''
 
+# ── NVMe enumeration safety ─────────────────────────────────────
+
+[rules.diskoUsesById]
+# NVMe enumeration is unstable across reboots: `nvme0n1` was the
+# NixOS root at install time, became Windows after one reboot.
+# Disko configs MUST target `/dev/disk/by-id/...` paths; raw
+# `/dev/nvmeN`, `/dev/sda[0-9]?`, or `/dev/vda[0-9]?` references
+# as config VALUES risk wiping the wrong drive.
+#
+# Pattern is scoped to assignment context (`= "/dev/...`) so that
+# comments mentioning the convention (e.g. "use by-id, not /dev/sda")
+# don't trigger. Comments are prose; the rule guards config values.
+#
+# Scope: disko declarations live alongside each host. machines/
+# is the only legitimate site.
+#
+# Promoted from prose 2026-06-16 — see docs/invariants.md §
+# "Promotion register".
+pattern = '=\s*"/dev/(nvme[0-9]|sd[a-z][0-9]?|vd[a-z][0-9]?)'
+scope = ["machines/"]
+tags = ["safety", "disko"]
+docLink = ".claude/skills/gotcha-nvme-enumeration/"
+message = '''
+Raw block-device path assigned as a config value above. Disko configs
+must target /dev/disk/by-id/... paths (stable across reboots); the
+/dev/nvmeN + /dev/sda[0-9]? enumeration silently swaps and wipes the
+wrong drive. Look up the by-id mapping via:
+  ls -l /dev/disk/by-id/ | grep -E 'nvme|ata'
+and use the matching by-id path in disko config.'''
+
 # ── Doc hygiene ─────────────────────────────────────────────────
 
 [rules.migrationPhase]

@@ -1,9 +1,14 @@
 ---
-summary: Schema design for `nori.lint` — a Reader+collected-Writer effect that
-  unifies the homelab's lint rules into a single declarative registry dispatched
-  by one engine. Replaces the scripts/checks/forbidden-patterns.sh-style per-check
-  shell scripts with one rule attrset + a swappable dispatcher.
-status: drafted (Phase 3d) — awaiting execution
+summary: Schema design for `nori.lint` — a Reader+Writer dispatcher that unifies
+  the homelab's grep-shaped lint rules into a declarative TOML registry consumed
+  by a Nix dispatcher. Replaces scripts/checks/forbidden-patterns.sh. Graduated
+  to implementation 2026-06-16; this spec retained for the design-trail it
+  records.
+status: graduated to implementation (2026-06-16). Code at modules/lint/
+  (default.nix dispatcher + rules.toml registry); reference doc in
+  docs/invariants.md § "Custom flake checks". Spec preserved for the open-
+  questions trail + the data-vs-control-plane reasoning that informed the
+  TOML choice over the originally-proposed Nix attrset.
 trigger: Phase 3c (bash extraction) committed 2026-06-16; operator surfaced the
   N-walks-per-N-rules waste and proposed a single-pass Reader/Writer dispatcher
   the same shape as nori.lanRoutes.
@@ -11,8 +16,20 @@ trigger: Phase 3c (bash extraction) committed 2026-06-16; operator surfaced the
 
 # Spec — `nori.lint` rule schema (Phase 3d)
 
-> Captured 2026-06-16 mid-session. **No code yet** — this is the design pass.
-> Execution happens in a focused session per the deep-sweep plan.
+> **Graduated to implementation 2026-06-16.** The spec stays as the
+> design-trail record; live code is in `modules/lint/`. Two refinements vs
+> this spec landed during execution:
+>
+> 1. **Location** — operator pushed back on `modules/effects/lint.nix`;
+>    `effects/` is for Reader+Writer modules that affect SYSTEM state
+>    (filesystem, network, hardening). Lint is dev-time tooling, so it
+>    lives at `modules/lint/` as a new top-level category.
+> 2. **Config format** — operator surfaced that rules are pure data,
+>    not Nix code. Rules moved from the proposed `rules.nix` (Nix
+>    attrset) to `rules.toml` (TOML data), parsed via `builtins.fromTOML`.
+>    Clean data / control plane split; portable if dispatcher language
+>    ever changes. See `modules/lint/default.nix` header for the
+>    rationale.
 
 ## Goal
 

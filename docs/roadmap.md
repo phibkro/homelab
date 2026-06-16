@@ -59,10 +59,10 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 | Check | Promotes to | Catches |
 |---|---|---|
-| `disko-uses-by-id` | `[law]` — flake check, grep disko files | `/dev/nvme[0-9]` or `/dev/sda[0-9]?` leakage (NVMe enum drift wipes wrong disk) |
-| `function-named-subdomains` | `[law]` — flake check, brand denylist | service-name leakage in `nori.lanRoutes` |
-| `workhorse-vs-appliance-placement` | `[law]` — module assertion | service placement matches host role |
-| `systemd-execstart-resolves` | `[law]` — flake check | ExecStart's first token resolves to closure path (incident 2026-06-03 class) |
+| ~~`disko-uses-by-id`~~ | ✓ `[law: lint.diskoUsesById]` (landed 2026-06-16, nori.lint TOML registry) | `/dev/nvme[0-9]` or `/dev/sda[0-9]?` leakage (NVMe enum drift wipes wrong disk) |
+| `function-named-subdomains` | `[law]` — nori.lint TOML rule, brand denylist | service-name leakage in `nori.lanRoutes` |
+| `workhorse-vs-appliance-placement` | `[law]` — module assertion (eval-time, not grep) | service placement matches host role |
+| `systemd-execstart-resolves` | `[law]` — flake check (eval-time introspection) | ExecStart's first token resolves to closure path (incident 2026-06-03 class) |
 | `effects-have-tests` *(added 2026-06-07)* | `[law]` — meta-check | every `modules/effects/<X>.nix` with Reader+Writer shape has matching `just test-<X>` recipe in `Justfile`. See `docs/reference/runtime-tests.md` |
 
 ## Idea backlog (no commitment)
