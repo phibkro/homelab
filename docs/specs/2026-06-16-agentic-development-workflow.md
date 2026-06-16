@@ -1,11 +1,11 @@
 ---
-summary: Research seed for adapting agile/scrum ceremonies + artifacts to
-  agentic development. The wrinkle vs traditional agile is that each session
-  is a fresh amnesiac team — the human operator becomes the persistent
-  product manager + reviewer, while every "developer" is replaced between
-  sprints. Captures the seed observations; the actual research + decisions
-  land in a separate session after the docs deep-sweep wraps.
-status: research seed — no decisions yet
+summary: Research seed + worked-example appendix for the per-PR ceremony shape
+  in agentic dev. Graduated to ADR-0005 (`docs/decisions/0005-agile-for-agents-
+  ceremonies.md`) the same session it was captured. The worked-example appendix
+  (the 2026-06-16 docs deep-sweep retro) stays as durable data for future
+  revisits of the ADR.
+status: graduated to ADR-0005 (2026-06-16). Retained for the worked-example
+  appendix + the open-questions-research trail that informed the ADR.
 trigger: 2026-06-16 mid-session, after operator + agent discussion of lint
   rule schema (Phase 3d) surfaced the underlying pattern: declarative
   input + executor + operator-gated review unit. Same shape repeats at

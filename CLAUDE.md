@@ -43,6 +43,7 @@ without this file's context.
 | `docs/reference/recovery.md` | something is broken or you're planning recovery — RTO targets, runbook index, permanent constraints |
 | `docs/reference/runtime-tests.md` | adding a `just test-<X>` lever or auditing whether an effect family ships with one |
 | `docs/reference/capacity-baseline.md` | sizing a new service against current RAM/disk/CPU baselines per host |
+| `docs/reference/agentic-workflow.md` | starting a new PR (preamble), wrapping one (reflection), deciding session vs PR boundary, or designing per-sprint ceremonies — the per-PR four-phase ceremony lives here |
 
 ### Drill-down (pulled in only when a parent doc cross-refs it)
 
@@ -93,6 +94,17 @@ without this file's context.
 - Push to `origin/main` is the deploy boundary; any host can `git pull && just rebuild` (or `just deploy` to build from origin).
 - **Push gate (solo review).** Agents NEVER `git push` to `origin/main` without first running `git log -p origin/main..HEAD` (or `just show-pending-diff`), surfacing the full diff inline, and getting explicit operator approval. Commit to `main` locally as before — only the push is gated. Worktrees are reserved for non-routine refactors where out-of-tree review pays off; routine work stays on `main`.
 - Long jobs go in the background — never block. Use `run_in_background: true`.
+
+## Agentic workflow
+
+Work is shaped per-PR (one feature or in-depth improvement, not a fix), not per-session. The four-phase ceremony is **Preamble → Execution → Reporting → Reflection**:
+
+1. **Preamble** — surface goal + punch list + open questions + DoD; operator confirms before any tool call.
+2. **Execution** — atomic per-axis commits; CI green at each step; mid-sprint checkpoints (SOUL.md "Knob — checkpoint cadence").
+3. **Reporting** — PR-review-style rundown before push (per-commit grade + cross-cutting observations); the push gate is the formal boundary.
+4. **Reflection** — four questions: what worked / DoD self-grade / what to change / clean amnesiac handoff.
+
+Sessions are decoupled from PRs (per `[[session-economics]]` memory: round off at ~20% context or ~3 compactions). Deep impl + ceremony adoption matrix + branching stance + operator-hat naming all live at `docs/reference/agentic-workflow.md`. Decision record: `docs/decisions/0005-agile-for-agents-ceremonies.md`.
 
 ## Procedures
 
