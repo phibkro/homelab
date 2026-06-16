@@ -12,7 +12,7 @@
   # and matches what other Wayland-shell users have settled on.
   #
   # Defense against the OOM leak case still belongs at MemoryHigh caps
-  # on the browser (tracked in docs/ROADMAP.md § "MemoryHigh caps"), NOT
+  # on the browser (tracked in docs/roadmap.md § "MemoryHigh caps"), NOT
   # at the idle layer.
   home.packages = [ pkgs.wayland-pipewire-idle-inhibit ];
 

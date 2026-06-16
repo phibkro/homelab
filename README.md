@@ -66,7 +66,7 @@ The pre-commit hook (`.githooks/pre-commit`) runs `nix flake check` automaticall
 - **Pattern enforcement** — `every-service-has-<X>` derivations fail if any `modules/services/*.nix` omits a required declaration
 - **Anti-pattern grep guards** — `forbidden-patterns` fails if banned strings appear
 
-Adding a new rule: `docs/reference/enforcement.md` § decision tree.
+Adding a new rule: `docs/invariants.md` § decision tree.
 
 ## Repo shape
 

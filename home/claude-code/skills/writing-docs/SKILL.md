@@ -101,6 +101,6 @@ before writing a new doc-set:
 
 - `AGENTS.md` — the index + lean tier-0 entrypoint (a one-line role per doc).
 - `docs/WORKFLOW.md` — the doc-tier table + the enforcement ladder.
-- `docs/INVARIANTS.md` — an at-a-glance table of rung-tagged claims.
+- `docs/invariants.md` — an at-a-glance table of rung-tagged claims.
 - `docs/diagrams/` — mermaid with a "reading the diagram" legend.
 - `docs/CONCEPTS.md` §"Deep modules with progressive disclosure".

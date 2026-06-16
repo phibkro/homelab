@@ -27,7 +27,7 @@ without this file's context.
 | Doc | USE WHEN |
 |---|---|
 | `docs/glossary.md` | always, first — establishes vocabulary (`nori.<X>` effect family, audience, fate-sharing, value tiers, split-module). Every other doc reads as undefined jargon without it. |
-| `docs/invariants.md` | always, second — the drift register: load-bearing claims tagged by enforcement rung. Without it, the agent doesn't know which claims it must not silently break. |
+| `docs/invariants.md` | always, second — load-bearing claims catalog + the enforcement ladder that keeps each true. Drift register (`[prose: unchecked]` = promotion candidate). Read before changing anything structural; also the doc to reach for when adding a new rule (§ "Decision tree — when to add a rule"). |
 
 ### Topic-triggered reference
 
@@ -40,7 +40,6 @@ without this file's context.
 | `docs/reference/services.md` | adding a service module, picking a backup pattern (A/B/C), or wiring observability |
 | `docs/reference/module-authoring.md` | writing a new module — template, sops conventions, packages-by-scope, dev workflow |
 | `docs/reference/documentation-writing.md` | writing/auditing comments + prose — earns-rent taxonomy, anti-patterns, agent-imitation loop |
-| `docs/reference/enforcement.md` | promoting a claim from prose → comment → test → type, or picking the rung for a new rule |
 | `docs/reference/recovery.md` | something is broken or you're planning recovery — RTO targets, runbook index, permanent constraints |
 | `docs/reference/runtime-tests.md` | adding a `just test-<X>` lever or auditing whether an effect family ships with one |
 | `docs/reference/capacity-baseline.md` | sizing a new service against current RAM/disk/CPU baselines per host |
@@ -104,7 +103,7 @@ Recurring procedures live as skills under `.claude/skills/` so the body loads on
 - `nix flake check` — standard Nix lints + repo-specific guard derivations (`every-service-has-fs-hardening`, `every-service-has-backup-intent`, `forbidden-patterns`, …). `nix flake show .#checks` for the live list.
 - `nix fmt` — apply nixfmt.
 - Pre-commit hook in `.githooks/pre-commit` runs `nix flake check` on staged `.nix` changes; enable once per clone with `git config core.hooksPath .githooks`. Skips gracefully if nix isn't on PATH (Mac); CI catches the skipped commits.
-- Adding a new rule: see `docs/reference/enforcement.md` § decision tree.
+- Adding a new rule: see `docs/invariants.md` § decision tree.
 
 ## Style for prose
 

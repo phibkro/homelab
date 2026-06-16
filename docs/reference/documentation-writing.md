@@ -1,7 +1,7 @@
 # Documentation writing — comments and prose
 
 Reference for *how* comments and docs are written in this repo. Pairs
-with `MODULES.md` (code shape) and `ENFORCEMENT.md` (how to promote a
+with `MODULES.md` (code shape) and `docs/invariants.md` (how to promote a
 claim from prose → comment → test → type).
 
 For the deep, project-agnostic doc-writing framework, see the
@@ -124,7 +124,7 @@ without examples drift; examples without rules don't generalise.
   bind-claims-to-evidence, mermaid legends, doc-drift guards.
 - `MODULES.md` — code shape (this file is its prose-side companion).
 - `INVARIANTS.md` — load-bearing claims tagged by enforcement tier.
-- `ENFORCEMENT.md` — the prose → comment → test → type ladder; when to
+- `docs/invariants.md` — the prose → comment → test → type ladder; when to
   promote a claim a rung.
 - `git log --grep "chore(comments):"` — the audit-sweep commits;
   worked examples seeded throughout `modules/`, `home/`, `machines/`.

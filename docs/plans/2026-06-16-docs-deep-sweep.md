@@ -184,7 +184,7 @@ These will be settled in Phase 2 once Phase 1's catalog is in hand:
 - `docs/plans/2026-06-11-aurora-migration.md` — sibling plan; same methodology applied to architecture; canonical example of the "amnesiac-resumable plan" form
 - `docs/decisions/0001-agentic-homelab-practices.md` — meta-ADR; the "amnesiac team" model that makes progressive disclosure load-bearing
 - `docs/reference/documentation-writing.md` — the earns-rent taxonomy and anti-patterns; the lens for Phase 3 content edits
-- `docs/reference/enforcement.md` — the prose→comment→test→type ladder; many Phase 3 alignment edits will push claims down this ladder
+- `docs/invariants.md` — the prose→comment→test→type ladder; many Phase 3 alignment edits will push claims down this ladder
 - `home/claude-code/CLAUDE.md` (SOUL.md) — the axioms to align downstream docs against
 - `docs/installs/agent-onboarding-test.md` — Phase 4 validation harness
 

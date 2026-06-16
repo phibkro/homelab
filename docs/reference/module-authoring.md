@@ -1,12 +1,12 @@
 ---
 summary: Repository structure, service module template, FS hardening (`nori.harden`),
   sops patterns, packages-by-scope, dev shells, commit + code style. The "how the
-  code is shaped" reference. Rules ABOUT modules live in ENFORCEMENT.md.
+  code is shaped" reference. Rules ABOUT modules live in docs/invariants.md.
 ---
 
 # Module authoring
 
-Repository-wide patterns for *writing* modules. Rules and how they're checked live in `ENFORCEMENT.md`; this file is the shape of the code itself.
+Repository-wide patterns for *writing* modules. Rules and how they're checked live in `docs/invariants.md`; this file is the shape of the code itself.
 
 ## Repository structure
 

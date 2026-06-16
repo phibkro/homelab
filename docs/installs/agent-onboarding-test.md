@@ -137,7 +137,7 @@ nori.lanRoutes.widget = {
 - Principle: default-deny FS namespace; compromised service can't browse host paths it doesn't need
 - Enforcement: `every-service-has-fs-hardening` flake check fails the build if any `modules/services/*.nix` (outside the excluded list) lacks a `nori.harden.<n>` declaration
 
-**Source**: MODULES.md "Filesystem hardening", RATIONALES.md "Default-deny filesystem access", `modules/effects/harden.nix`.
+**Source**: docs/reference/module-authoring.md "Filesystem hardening", RATIONALES.md "Default-deny filesystem access", `modules/effects/harden.nix`.
 
 ---
 
@@ -200,7 +200,7 @@ nori.lanRoutes.widget = {
 - Apply the "On every structural change" rubric — don't wait for session end
 - Stale active examples in CLAUDE.md / the tier-2 reference docs → fix immediately (highest-cost class)
 - Pattern used twice or more → codify as a procedure skill (PROCEDURES.md indexes them)
-- New convention agents should follow → MODULES.md (shape) + ENFORCEMENT.md (rule rung), ideally backed by a flake check / module assertion
+- New convention agents should follow → docs/reference/module-authoring.md (shape) + docs/invariants.md (rule rung), ideally backed by a flake check / module assertion
 - Hard-won mistake → new `.claude/skills/gotcha-<name>/SKILL.md` with USE-WHEN trigger
 - Cross-session fact (preferences, project state, host topology) → memory
 

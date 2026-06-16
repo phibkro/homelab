@@ -35,7 +35,6 @@ topic so `ls` is enough to find the right one.
 | `SERVICES.md`             | adding a service module, picking a backup pattern (A/B/C), or wiring observability                                                   |
 | `MODULE_AUTHORING.md`     | writing a new module — template, sops conventions, packages-by-scope, dev workflow                                                   |
 | `DOCUMENTATION_WRITING.md`| writing/auditing comments + prose — earns-rent taxonomy, anti-patterns, the agent-imitation loop                                     |
-| `ENFORCEMENT.md`          | promoting a claim from prose → comment → test → type, or picking the rung for a new rule                                             |
 | `RECOVERY.md`             | something is broken or you're planning recovery — RTO targets, runbook index, permanent constraints                                  |
 | `RUNTIME_TESTS.md`        | adding a `just test-<X>` lever or auditing whether an effect family ships with one                                                   |
 | `RATIONALES.md`           | wondering "why was X chosen?" before re-litigating a design decision                                                                 |
