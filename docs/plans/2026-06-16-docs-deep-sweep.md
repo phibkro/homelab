@@ -209,11 +209,13 @@ Updated as phases land.
 | (queued) | 3d — `nori.lint` Reader/Writer | Per `docs/specs/2026-06-16-lint-rule-schema.md`; first guinea-pig for the agentic-workflow ceremonies decided in ADR-0005 |
 | (queued) | 4 — validation | Run `docs/installs/agent-onboarding-test.md` with a fresh sub-agent against the post-3d tree |
 
-## Sprint 2026-06-16 — known debt left in tree
+## Sprint 2026-06-16 — known debt (all closed by Sprint 4 wrap)
 
-Surfaced during the PR review at sprint end; not actively blocking but
-named so a fresh agent finds them without re-discovery cost:
+Surfaced during the PR review at the original sprint end; closed in
+follow-up sprints this session arc. Kept here for the archaeological
+record (was the named-debt list at the time of the deep-sweep
+Epilogue):
 
-- **`modules/services/backup/btrbk-replication.nix` tail comment block** narrates the receiver-side bootstrap (sudoers + ssh key + first-run smoke test) in present/future tense as if pre-deployment. The module is LIVE (P15 landed via commit `2877267` on 2026-06-15). The comment is historical narration — see `[[feedback-history-in-commits]]` memory entry; commit message is the right home, not code comments. Cleanup is a 5-min follow-up.
-- **`docs/reports/2026-06-16-docs-inventory.md` (793 lines) retention.** Load-bearing during this sweep; after Phase 4 validates it's a museum piece. Decide: keep as historical record, prune to a per-finding-counts summary, or `git rm` and rely on git log. Same call applies to `-mem.md` (272 lines).
-- **Phase 4 validation deferred.** Plan defines DoD as running `docs/installs/agent-onboarding-test.md` with a fresh sub-agent; not executed this session. Queued; reasonable to fold into the post-3d wrap rather than running twice.
+- ✓ **`modules/services/backup/btrbk-replication.nix` tail comment block** — 47 lines of historical narration (pre-deployment receiver-side bootstrap runbook) removed in commit `4e521c4`. Receiver state lives in `btrbk-replica-target.nix` (the right home); P15 has been live since 2026-06-15.
+- ✓ **`docs/reports/2026-06-16-docs-inventory.md` + `-mem.md` retention** — both deleted in commit (Sprint 4). Total 1065 lines moved to git log; the live tree carries active artifacts only. If a future sweep needs an inventory, generating fresh is cheap.
+- ✓ **Phase 4 validation** — ran in Sprint 3.5 via the operator's "C → A" sequence. Subagent task `aff1f2a7b44bc5218`; 9-10/10 correct; 2 rubric-drift items found and fixed in commit `e663557`. Goal (a) of the meta-Prologue now empirically verified, not just asserted.
