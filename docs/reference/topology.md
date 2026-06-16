@@ -125,12 +125,12 @@ Daemon on one host, client/proxy on every consumer. Cross-host Caddy lanRoute ga
 
 | Service | Daemon | Routed at | Client module |
 |---|---|---|---|
-| Beszel | pi | `metrics.nori.lan` | `modules/services/beszel/agent.nix` everywhere |
-| ntfy | pi | `alert.nori.lan` | `modules/services/ntfy/notify.nix` everywhere |
-| VictoriaLogs | pi | `logs.nori.lan` | `modules/common/vector.nix` ships journald |
-| VictoriaMetrics | pi | `metrics.nori.lan` (Grafana datasource) | `modules/services/node-exporter.nix` scraped from pi |
+| Beszel | pi | `metrics.${nori.domain}` | `modules/services/beszel/agent.nix` everywhere |
+| ntfy | pi | `alert.${nori.domain}` | `modules/services/ntfy/notify.nix` everywhere |
+| VictoriaLogs | pi | `logs.${nori.domain}` | `modules/common/vector.nix` ships journald |
+| VictoriaMetrics | pi | `tsdb.${nori.domain}` (Grafana datasource) | `modules/services/node-exporter.nix` scraped from pi |
 | immich-ml | aurora | n/a (RPC only) | `modules/services/immich.nix` (workstation) — `IMMICH_MACHINE_LEARNING_URL` |
-| hermes-agent | pavilion (planned) → currently workstation | `hermes.nori.lan` | `home/hermes/default.nix` (PCs) |
+| hermes-agent | pavilion (planned) → currently workstation | `hermes.${nori.domain}` | `home/hermes/default.nix` (PCs) |
 
 Add another via `/relocate-to-pi`. Precedents above.
 

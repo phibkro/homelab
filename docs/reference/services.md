@@ -209,4 +209,4 @@ Email digest deferred. When it lands: Gmail SMTP with app password (sufficient f
 
 Naming convention: agnostic (`tmdb-token`, not `filmder-tmdb-token`) when multiple projects could plausibly share the same key.
 
-Live worked example: `modules/services/filmder.nix` — sops decrypt → systemd build oneshot (manual trigger via `just deploy-app filmder`, sentinel-skip on idempotent rebuilds, `bun install + bun run build`) → atomic publish to `/var/lib/<n>/dist` → darkhttpd-on-port → `nori.lanRoutes` for `<n>.nori.lan`. Internet-public exposure prototyped via Tailscale Funnel and reverted; reference preserved in `memory/reference/tailscale_funnel_implementation.md`.
+Live worked example: `modules/services/filmder.nix` — sops decrypt → systemd build oneshot (manual trigger via `just deploy-app filmder`, sentinel-skip on idempotent rebuilds, `bun install + bun run build`) → atomic publish to `/var/lib/<n>/dist` → darkhttpd-on-port → `nori.lanRoutes` for `<n>.${nori.domain}`. Internet-public exposure prototyped via Tailscale Funnel and reverted; reference preserved in `memory/reference/tailscale_funnel_implementation.md`.

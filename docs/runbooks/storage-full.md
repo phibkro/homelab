@@ -95,7 +95,7 @@ Order matters — start qBittorrent **alone** first and remove the orphaned torr
 
 ```bash
 sudo systemctl start qbittorrent
-# webui at https://downloads.nori.lan — remove orphaned torrents
+# webui at https://downloads.home.phibkro.org — remove orphaned torrents
 sudo systemctl start sonarr radarr lidarr
 sudo systemctl start seerr
 df -h

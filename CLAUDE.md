@@ -109,5 +109,5 @@ Recurring procedures live as skills under `.claude/skills/` so the body loads on
 
 - No hedging in commits or docs. Lead with the answer, justify after.
 - Match the existing tone — terse, technical, no fluff. The operator (Philip) reads fast and pushes back on weak decisions.
-- Function-named subdomains, agnostic over branded: `status.nori.lan` not `gatus.nori.lan` unless the brand IS the identity.
+- Function-named subdomains, agnostic over branded: `status.${nori.domain}` not `gatus.${nori.domain}` unless the brand IS the identity.
 - Full rules for comments + docs (earns-rent taxonomy, hard rules on derived lists, anti-patterns) → `docs/reference/documentation-writing.md`.

@@ -1,7 +1,7 @@
 ---
 summary: Three network zones with default-deny posture, `nori.lanRoutes` as the
-  single source of truth for `*.nori.lan` services, the `audience` trust model,
-  Caddy TLS + naming, Blocky DNS architecture, Tailscale routing/exit-node.
+  single source of truth for `*.${nori.domain}` services, the `audience` trust
+  model, Caddy TLS + naming, Blocky DNS architecture, Tailscale routing/exit-node.
 ---
 
 # Network
@@ -13,7 +13,7 @@ Three zones, default-deny everywhere. Services opt into specific access; nothing
 | Zone | What's there | Default posture |
 |---|---|---|
 | **localhost** | Services bind here unless explicitly exposed | Closed to outside |
-| **tailnet** | Personal devices + family. SSH, Samba, `*.nori.lan` HTTPS, direct service ports | Closed by default; Caddy on 80+443 + Samba on 445 are the only globally-open tailnet ports |
+| **tailnet** | Personal devices + family. SSH, Samba, `*.${nori.domain}` HTTPS, direct service ports | Closed by default; Caddy on 80+443 + Samba on 445 are the only globally-open tailnet ports |
 | **public internet** | Personal apps that need public exposure live at Cloudflare edge (Pages for static, Workers + D1 for stateful) | **Homelab serves nothing publicly** by default. Tailscale Funnel is the prototyped path if a future service ever needs to land public traffic on workstation |
 
 The Cloudflare edge apps (phibkro.org apex, filmder, drinks-app, finnbydel-app, heim) live as `Pages` for static + `Workers + D1` for stateful. The homelab keeps tailnet-only copies of `filmder` + `heim` via `nori.lanRoutes` for fast internal access. A `cloudflared` Tunnel approach was decommissioned 2026-05-08.
@@ -22,8 +22,8 @@ The Cloudflare edge apps (phibkro.org apex, filmder, drinks-app, finnbydel-app, 
 
 One declaration → three things generated automatically:
 
-1. **Caddy vhost** at `<name>.nori.lan` reverse-proxying to the backend
-2. **Blocky DNS** mapping `<name>.nori.lan` → workhorse LAN IP
+1. **Caddy vhost** at `<name>.${nori.domain}` reverse-proxying to the backend
+2. **Blocky DNS** mapping `<name>.${nori.domain}` → pi LAN IP (Caddy host)
 3. **Gatus monitor** (if `monitor` is set) probing the backend, alerting via ntfy on failure
 
 ```nix
@@ -44,11 +44,11 @@ Schema + assertions in `modules/effects/lan-route.nix`. Adding a service is one 
 
 ### Naming: function over brand
 
-`chat.nori.lan` not `open-webui.nori.lan`. `media` not `jellyfin`. The brand changes (Uptime Kuma → Gatus); the function doesn't. Brand names only when the brand IS the identity (`auth` for Authelia, `samba`).
+`chat.${nori.domain}` not `open-webui.${nori.domain}`. `media` not `jellyfin`. The brand changes (Uptime Kuma → Gatus); the function doesn't. Brand names only when the brand IS the identity (`auth` for Authelia, `samba`).
 
 ### Dashboard enrollment
 
-`nori.lanRoutes.<n>.dashboard = { ... }` enrolls the route in the family-facing Glance dashboard at `home.nori.lan`. URL derives from the route name; metadata (title/icon/group/description) lives next to the rest of the service's route config. `glance.nix` is a pure transformer over `config.nori.lanRoutes`.
+`nori.lanRoutes.<n>.dashboard = { ... }` enrolls the route in the family-facing Glance dashboard at `home.${nori.domain}`. URL derives from the route name; metadata (title/icon/group/description) lives next to the rest of the service's route config. `glance.nix` is a pure transformer over `config.nori.lanRoutes`.
 
 ## Audience-driven trust model
 
@@ -74,7 +74,7 @@ Transitional `*.nori.lan` redirect: pi's Caddy still serves `*.nori.lan` (Caddy 
 
 ## Authelia OIDC (overview)
 
-Authelia provides OIDC. Services that opt in get a one-click login flow (visit service → redirect to `auth.nori.lan` → log in once → returned authenticated). Per-service setup is auto-generated from the `nori.lanRoutes.<n>.oidc` block in each service module.
+Authelia provides OIDC. Services that opt in get a one-click login flow (visit service → redirect to `auth.${nori.domain}` → log in once → returned authenticated). Per-service setup is auto-generated from the `nori.lanRoutes.<n>.oidc` block in each service module.
 
 Hash material lives **only in sops** — Authelia's `template` config-filter reads the PBKDF2 hash from `/run/secrets/...` at startup. Zero hash material in committed Nix; the `forbidden-patterns` flake check fails if a `$pbkdf2-` string lands.
 

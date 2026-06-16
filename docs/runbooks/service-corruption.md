@@ -27,7 +27,7 @@ sudo systemctl start jellyfin.service
 
 # 5. Verify (service-specific)
 sudo systemctl status jellyfin.service
-curl -k https://media.nori.lan/health
+curl https://media.home.phibkro.org/health
 ```
 
 ### Pattern B — service with built-in dump (Immich)
@@ -78,7 +78,7 @@ After every restore: hit a real endpoint, not just `systemctl status`. Status sa
 | Jellyfin | log in, browse a library |
 | Open WebUI | log in via OIDC, see chat history |
 | Authelia | OIDC redirect from a downstream service succeeds |
-| Beszel | open `https://metrics.nori.lan`, see live agent data |
+| Beszel | open `https://metrics.home.phibkro.org`, see live agent data |
 | Immich | open the timeline, see a recent photo's metadata |
 
 ## When to escalate
