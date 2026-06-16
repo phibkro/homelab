@@ -502,8 +502,8 @@
         ]
       },
       "locked": {
-        "lastModified": 1780908265,
-        "narHash": "sha256-QrJC7X3CMVyc+6vZ1KqO/z2J06TSLuWiFpzz6fSYf9E=",
+        "lastModified": 1780910773,
+        "narHash": "sha256-4IorN2aNkDJAX6xQcP40q6RtxBUxpq5ND7Da8T1nLno=",
         "path": "/srv/share/projects/pagu-box",
         "type": "path"
       },
