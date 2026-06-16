@@ -45,7 +45,7 @@ Strongest rung each claim has reached. "Promote?" notes mark `[prose: unchecked]
 | Every `Restart=on-failure` unit's `ExecStart` is smoke-tested before landing (prevents restart-loop bombs that break the next `switch-to-configuration` — incident 2026-06-03 in `.claude/skills/gotcha-*/`) | `[prose: unchecked]` — promote? flake check resolving each `ExecStart` to a real nix-store binary path |
 | **Convention shapes** | |
 | `nori.<X>` effects are one input → multiple generators (Reader + collected-Writer interface) | `[structural]` (the abstraction shape itself; documented in `CONCEPTS.md` § effect-interface deep-dive) |
-| Adding `modules/effects/<X>.nix` ships with a `just test-<X>` runtime introspection recipe | `[prose: unchecked]` — promote? meta-check that every Reader+Writer-shaped effect file has a matching test recipe in `Justfile`. See `docs/RUNTIME_TESTS.md` § "Next potential test targets" |
+| Adding `modules/effects/<X>.nix` ships with a `just test-<X>` runtime introspection recipe | `[prose: unchecked]` — promote? meta-check that every Reader+Writer-shaped effect file has a matching test recipe in `Justfile`. See `docs/reference/runtime-tests.md` § "Next potential test targets" |
 | A service module owns *everything* about its service in one file (no fan-out) | `[prose: unchecked]` — promote? per-service file boundary check |
 | Rule of three before extracting an abstraction | `[judgment]` |
 | Iterate-to-stable, then codify | `[judgment]` |
@@ -57,11 +57,11 @@ Strongest rung each claim has reached. "Promote?" notes mark `[prose: unchecked]
 |---|---|---|---|
 | `[law: <check>]` | `flake.nix` `checks.${system}` derivation; CI fails on divergence. Token must match real check (`nix flake show .#checks`) | yes — divergence = test fail | claim is fully expressible as code-vs-rule check |
 | `[structural]` | Bad state unrepresentable by construction (typed `audience` enum, required host folder + registry entry both fail eval) | yes (until refactor breaks the construction) | dangerous state can be locked out at the type/API surface |
-| `[runtime-introspection]` | `just test-<X>` recipe queries the live system's registry against the declared intent (`docs/RUNTIME_TESTS.md`) | yes when test is run — typically pre-push, post-deploy | the declaration ↔ runtime gap is silent and the registry is queryable |
+| `[runtime-introspection]` | `just test-<X>` recipe queries the live system's registry against the declared intent (`docs/reference/runtime-tests.md`) | yes when test is run — typically pre-push, post-deploy | the declaration ↔ runtime gap is silent and the registry is queryable |
 | `[prose: unchecked]` | No mechanical check; lives in docs/comments. The staleness risk | no — drift is invisible | nothing else fits yet; flag for promotion |
 | `[judgment]` | Irreducible human design choice; code is downstream | n/a — not tracking code | the thing is taste, not derivable from anything |
 
-**Promotion lattice:** `prose → [runtime-introspection | structural | law]` per claim's nature. Runtime introspection is the cheapest promotion when (a) declaration is a registry and (b) runtime exposes it queryable (the homelab's most common shape — see `docs/RUNTIME_TESTS.md` § "Four levers").
+**Promotion lattice:** `prose → [runtime-introspection | structural | law]` per claim's nature. Runtime introspection is the cheapest promotion when (a) declaration is a registry and (b) runtime exposes it queryable (the homelab's most common shape — see `docs/reference/runtime-tests.md` § "Four levers").
 
 ## Promotion work-list
 

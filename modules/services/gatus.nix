@@ -127,7 +127,7 @@
       # start AND after restart, without blocking boot.
       #
       # Cross-host gap (other hosts' Gatus probing the rebuilding one)
-      # still tracked as G3 in docs/ROADMAP.md.
+      # still tracked as G3 in docs/roadmap.md.
       systemd.services.gatus.wantedBy = lib.mkForce [ ];
 
       systemd.timers.gatus = {

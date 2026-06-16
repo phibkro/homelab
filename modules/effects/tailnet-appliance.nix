@@ -70,7 +70,7 @@ in
   #     non-DNS: YouTube Premium, SmartTubeNext on the chromecast,
   #     or casting from NewPipe on a phone.
   #
-  # Tracked in docs/RECOVERY.md § "Reactive triggers" → "real router".
+  # Tracked in docs/reference/recovery.md § "Reactive triggers" → "real router".
   # When that lands, this effect goes away; the same registry can drive
   # the router's nftables config via a different generator.
 

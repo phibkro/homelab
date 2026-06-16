@@ -35,7 +35,7 @@ in
   #     maxAgeHours  = 25;  # daily cadence + 1h slack
   #   };
   #
-  # See docs/superpowers/plans/2026-06-11-aurora-migration.md § P5/P15.
+  # See docs/plans/2026-06-11-aurora-migration.md § P5/P15.
 
   options.nori.replicas = mkOption {
     default = { };

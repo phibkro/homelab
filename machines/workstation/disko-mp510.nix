@@ -50,7 +50,7 @@ _: {
   #
   # **One-shot wipe** — operator's responsibility to extract anything
   # off the prior NTFS partition before running disko. See
-  # docs/superpowers/plans/2026-06-11-aurora-migration.md § P9.
+  # docs/plans/2026-06-11-aurora-migration.md § P9.
   #
   # Single btrfs filesystem across the full disk (894 GB). Subvol map:
   #

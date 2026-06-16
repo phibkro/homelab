@@ -117,7 +117,7 @@ The `forbidden-patterns` flake check fails the build on a stray `100.x.y.z` lite
 | Host-level high-level metrics (`beszel-agent`) | workstation + pavilion + aurora | Pi's Beszel hub aggregates per-host. Aurora added 2026-06-11 alongside its family-tier service standup |
 | OnFailure → ntfy notifier (`ntfy-notify`) | workstation + pi + aurora | Per-host so the alert source is unambiguous and aurora-side unit failures (restic, btrbk, postgres dumps) page the operator without depending on workstation being awake |
 
-Placement test = **fate-sharing breaks the function** (not "feels lightweight"). See `docs/GLOSSARY.md § fate-sharing`.
+Placement test = **fate-sharing breaks the function** (not "feels lightweight"). See `docs/glossary.md § fate-sharing`.
 
 ## Cross-host services (split-module pattern)
 

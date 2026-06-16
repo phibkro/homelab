@@ -217,7 +217,7 @@ flowchart TB
 | **Dashboards** | Grafana | workstation | VM + VL as datasources; per-host system + gatus dashboards |
 | **Alert delivery** | ntfy.sh **public** | every host | `notify@<unit>.service` POSTs directly; channel-secret in sops. Pi-local ntfy server reserved for future internal alerts |
 | **Dead-man-switch** | healthchecks.io | pi → external | 60s ping; alerts off-host if pi dies. SPOF mitigation |
-| **Runtime test** | `just test-observability` | operator-triggered | Asserts VM targets up + per-host series + heartbeat <90s + zero failing probes. See `docs/RUNTIME_TESTS.md` |
+| **Runtime test** | `just test-observability` | operator-triggered | Asserts VM targets up + per-host series + heartbeat <90s + zero failing probes. See `docs/reference/runtime-tests.md` |
 
 ### Monitored conditions
 

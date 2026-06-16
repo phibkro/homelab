@@ -33,10 +33,10 @@ This filter explains and justifies the existing shape of the homelab. It also gi
 
 **Practices that transfer (kept and codified):**
 
-- **Heavy docs as code-equivalent.** The tier-2 reference docs (`docs/TOPOLOGY.md`, `STORAGE.md`, `NETWORK.md`, `SERVICES.md`, `MODULES.md`, `ENFORCEMENT.md`, `RECOVERY.md`, `RATIONALES.md`), the tier-1 indexes (`docs/GLOSSARY.md`, `INVARIANTS.md`, `PROCEDURES.md`, `ROADMAP.md`), and the per-gotcha skills (`.claude/skills/gotcha-*/`) — one home per topic, no overlap. They're the onboarding artifact, not insurance.
+- **Heavy docs as code-equivalent.** The tier-2 reference docs (`docs/reference/topology.md`, `STORAGE.md`, `NETWORK.md`, `SERVICES.md`, `MODULES.md`, `ENFORCEMENT.md`, `RECOVERY.md`, `RATIONALES.md`), the tier-1 indexes (`docs/glossary.md`, `INVARIANTS.md`, `PROCEDURES.md`, `ROADMAP.md`), and the per-gotcha skills (`.claude/skills/gotcha-*/`) — one home per topic, no overlap. They're the onboarding artifact, not insurance.
 - **Conventional commits + structured messages.** Commits encode the *why* for future-you; the conventional-commit type makes intent grep-able. This ADR layer carries the heavier decisions commit messages can't fit.
 - **Skills for procedures, prose for facts.** Procedures (`add-service`, `add-host`, `relocate-to-pi`, `on-structural-change`, `wrap-session`, `wrap-feature`) live as skills under `home/claude-code/skills/`; they load on demand when their trigger fires, paying context only when relevant. Prose facts stay in `CLAUDE.md` and `docs/`.
-- **Flake checks as binding contracts.** `every-service-has-fs-hardening`, `every-service-has-backup-intent`, `forbidden-patterns` derivations bind doc claims to CI evidence. A claim with a check is self-defending; a claim without is staleness-prone — `docs/INVARIANTS.md` is the catalog of which is which.
+- **Flake checks as binding contracts.** `every-service-has-fs-hardening`, `every-service-has-backup-intent`, `forbidden-patterns` derivations bind doc claims to CI evidence. A claim with a check is self-defending; a claim without is staleness-prone — `docs/invariants.md` is the catalog of which is which.
 - **`nori.<X>` effect modules.** Each effect is one input → multiple generators (Reader + collected Writer). Single source for cross-cutting declarations: `nori.lanRoutes.<name>` generates Caddy + DNS + Gatus + dashboard from one entry. This *externalizes* the cross-cutting knowledge a human would otherwise have to remember.
 
 **Practices that do NOT transfer (deliberately skipped):**
@@ -44,7 +44,7 @@ This filter explains and justifies the existing shape of the homelab. It also gi
 - **Feature branches / GitFlow.** Solo-with-agents. Branches don't coordinate non-existent multiple humans. Commit directly to `main`.
 - **Code review as gate.** A fresh agent reviewing a fresh agent's diff is theater — neither has lived context to spot subtle drift. Replaced by structural enforcement (flake checks, types) where possible; operator review where structural is infeasible.
 - **Onboarding meetings / pairing.** No persistent humans to onboard. The docs *are* the meeting.
-- **Backlog grooming as recurring meeting.** `docs/ROADMAP.md` is the single home, edited in place.
+- **Backlog grooming as recurring meeting.** `docs/roadmap.md` is the single home, edited in place.
 
 **Implications for new practices:**
 
@@ -54,7 +54,7 @@ When proposing a new homelab rule or convention, apply the filter explicitly:
 - *Does it verify a claim?* → likely keep; reach for structural enforcement.
 - *Does it only coordinate humans across time?* → skip; it doesn't apply here.
 
-When a prose rule survives, ask "what's its enforcement tier?" (`docs/INVARIANTS.md`). Promote `prose → comment → test → type/lint/CI rule` wherever feasible. Pure prose is fragile in this setup.
+When a prose rule survives, ask "what's its enforcement tier?" (`docs/invariants.md`). Promote `prose → comment → test → type/lint/CI rule` wherever feasible. Pure prose is fragile in this setup.
 
 ## Alternatives considered
 
@@ -64,6 +64,6 @@ When a prose rule survives, ask "what's its enforcement tier?" (`docs/INVARIANTS
 
 ## Related
 
-- `docs/INVARIANTS.md` — catalog of load-bearing claims with current enforcement tier (some are `[prose: unchecked]` — explicit promotion candidates).
-- `docs/ENFORCEMENT.md` — the prose on the enforcement ladder; this ADR is the *why*.
+- `docs/invariants.md` — catalog of load-bearing claims with current enforcement tier (some are `[prose: unchecked]` — explicit promotion candidates).
+- `docs/reference/enforcement.md` — the prose on the enforcement ladder; this ADR is the *why*.
 - `home/claude-code/CLAUDE.md` — operator's global rules across all projects; many are downstream of this ADR's filter.

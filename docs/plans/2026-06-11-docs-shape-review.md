@@ -116,7 +116,7 @@ Phase 20 quick pass: re-walk the structure after a couple of steady-state weeks.
 
 - Per phase: `nix flake check` green (especially the new structure-vs-routing-table check from D2)
 - Per phase: at least one path that an agent would actually follow (e.g. "an agent that needs to add a service" → still reaches `add-service` skill via the right path)
-- Final: `docs/agent-onboarding-test.md` (already exists for validating agent orientation) passes with the new structure
+- Final: `docs/installs/agent-onboarding-test.md` (already exists for validating agent orientation) passes with the new structure
 - Operator subjective: "would a fresh agent landing on this find the right thing fast?"
 
 ---
@@ -132,5 +132,5 @@ Phase 20 quick pass: re-walk the structure after a couple of steady-state weeks.
 ## References
 
 - `docs/decisions/0001-agentic-homelab-practices.md` — meta-ADR; the "amnesiac team" model that makes progressive disclosure the right answer
-- `docs/DOCUMENTATION_WRITING.md` — earns-rent taxonomy; structural choices honour the same principle
-- `docs/superpowers/plans/2026-06-11-aurora-migration.md` — sibling plan; same methodology applied to architecture
+- `docs/reference/documentation-writing.md` — earns-rent taxonomy; structural choices honour the same principle
+- `docs/plans/2026-06-11-aurora-migration.md` — sibling plan; same methodology applied to architecture

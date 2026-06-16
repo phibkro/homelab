@@ -1,6 +1,6 @@
 ---
 summary: Post-execution report for the aurora migration arc. Companion
-  to the forward plan in `docs/superpowers/plans/2026-06-11-aurora-migration.md`
+  to the forward plan in `docs/plans/2026-06-11-aurora-migration.md`
   and ADRs 0002-0004. Captures HOW the phases actually landed —
   commit-grouped PR narrative, before/after architecture, memory
   entries added, operator follow-ups gated for later.
@@ -11,7 +11,7 @@ summary: Post-execution report for the aurora migration arc. Companion
 > **L3, historical.** Read this if you're catching up on how the
 > aurora migration actually landed, or want the "PR-shaped narrative"
 > behind the per-phase rows in the plan. Companion to the forward
-> plan (`docs/superpowers/plans/2026-06-11-aurora-migration.md`) and
+> plan (`docs/plans/2026-06-11-aurora-migration.md`) and
 > the three governing ADRs (`docs/decisions/000{2,3,4}-*.md`).
 
 The arc spanned ~2026-06-04 through 2026-06-12. This report covers
@@ -103,7 +103,7 @@ chronological order so the dependencies read top-to-bottom.
 | | |
 |---|---|
 | Commits | `2b3d7b7`, `e86920d` |
-| Files | `docs/TOPOLOGY.md`, `docs/MODULE_AUTHORING.md`, `docs/ROADMAP.md`, 9 entries under `~/.claude/projects/.../memory/` |
+| Files | `docs/reference/topology.md`, `docs/reference/module-authoring.md`, `docs/roadmap.md`, 9 entries under `~/.claude/projects/.../memory/` |
 | What | Path renames (`modules/server` → `modules/services`), drive-name corrections (`ironwolf` → `mp510`), URL updates (`*.nori.lan` → `*.home.phibkro.org`). ROADMAP gains a "do a full deep-scan post-migration" TODO. |
 
 ### PR 3 — Two standalone bug fixes
@@ -225,7 +225,7 @@ tailnet host (workstation, pi, aurora, pavilion).
 | | |
 |---|---|
 | Commits | `eff279a`, `3992544`, `b276da7`, `0ad8e3d` |
-| Files | `docs/superpowers/plans/2026-06-11-aurora-migration.md`, `docs/ROADMAP.md`, `docs/decisions/0003-pi-central-entry-plane.md`, `docs/decisions/0004-letsencrypt-on-home-phibkro-org.md`, `modules/services/jellyfin.nix` |
+| Files | `docs/plans/2026-06-11-aurora-migration.md`, `docs/roadmap.md`, `docs/decisions/0003-pi-central-entry-plane.md`, `docs/decisions/0004-letsencrypt-on-home-phibkro-org.md`, `modules/services/jellyfin.nix` |
 
 - ADR-0003 gets a second addendum recording the cutover landed; the earlier "reverted state" caveat is superseded
 - ADR-0004 diagram updated: Caddy on pi, not workstation
@@ -300,7 +300,7 @@ pre-change params.
 | | |
 |---|---|
 | Commit | `3ae2576` |
-| Files | `docs/superpowers/plans/2026-06-11-aurora-migration.md` |
+| Files | `docs/plans/2026-06-11-aurora-migration.md` |
 
 P15/P18/P19/P20 rows updated to carry explicit test plans + gating
 relationships so the next agent doesn't try them out of order.
@@ -352,7 +352,7 @@ the exact test commands.
 
 ## See also
 
-- `docs/superpowers/plans/2026-06-11-aurora-migration.md` — the forward plan with per-phase tables, validation gates, reversibility ladder. Tracks the "what" and the "when".
+- `docs/plans/2026-06-11-aurora-migration.md` — the forward plan with per-phase tables, validation gates, reversibility ladder. Tracks the "what" and the "when".
 - `docs/decisions/0002-aurora-as-family-vault.md` — ADR establishing the per-host roles + replication topology.
 - `docs/decisions/0003-pi-central-entry-plane.md` — ADR pivoting the HTTP entry plane from aurora to pi.
 - `docs/decisions/0004-letsencrypt-on-home-phibkro-org.md` — ADR moving from internal CA to LE wildcard on a real domain.

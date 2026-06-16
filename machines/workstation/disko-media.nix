@@ -40,7 +40,7 @@ _: {
   #   nix run github:nix-community/disko/latest -- \
   #     --mode disko machines/workstation/disko-media.nix
   #
-  # See docs/STORAGE.md § "Workstation media" for the subvol → tier
+  # See docs/reference/storage.md § "Workstation media" for the subvol → tier
   # table. Mountpoints stay under /mnt/media/ — the label describes the
   # drive, the mount path describes how it's served.
   #

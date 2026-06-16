@@ -7,13 +7,13 @@ Single-user NixOS homelab flake. Two live hosts: `workstation` (workhorse — Ca
 | If you're… | Read |
 |---|---|
 | New here, want the routing map | `CLAUDE.md` |
-| Wanting the vocabulary + mental models | `docs/GLOSSARY.md` |
-| Adding a service or making changes | `docs/MODULE_AUTHORING.md` + `docs/SERVICES.md` |
-| Wiring topology / placement | `docs/TOPOLOGY.md` |
-| Touching storage, backups, snapshots | `docs/STORAGE.md` |
-| Touching network, lanRoutes, Authelia, DNS | `docs/NETWORK.md` |
+| Wanting the vocabulary + mental models | `docs/glossary.md` |
+| Adding a service or making changes | `docs/reference/module-authoring.md` + `docs/reference/services.md` |
+| Wiring topology / placement | `docs/reference/topology.md` |
+| Touching storage, backups, snapshots | `docs/reference/storage.md` |
+| Touching network, lanRoutes, Authelia, DNS | `docs/reference/network.md` |
 | Debugging a known landmine (NVMe, Caddy CA, sops, DynamicUser, …) | `.claude/skills/gotcha-*/SKILL.md` (~35 individual auto-loaded skills) |
-| Resuming work, forward plan | `docs/ROADMAP.md` |
+| Resuming work, forward plan | `docs/roadmap.md` |
 
 ## Active services
 
@@ -66,7 +66,7 @@ The pre-commit hook (`.githooks/pre-commit`) runs `nix flake check` automaticall
 - **Pattern enforcement** — `every-service-has-<X>` derivations fail if any `modules/services/*.nix` omits a required declaration
 - **Anti-pattern grep guards** — `forbidden-patterns` fails if banned strings appear
 
-Adding a new rule: `docs/ENFORCEMENT.md` § decision tree.
+Adding a new rule: `docs/reference/enforcement.md` § decision tree.
 
 ## Repo shape
 
@@ -104,4 +104,4 @@ CLAUDE.md                    # tier-0 entrypoint — read order + hard rules + b
 
 ## Status
 
-Phases 0–7 done — backup + FS-hardening + LAN-route abstractions cover every service module with build-time enforcement, type-level constraints with module assertions, DynamicUser symlink trap caught, OIDC auto-gen with zero hash material in committed Nix, Immich CUDA ML + NVENC with resource caps, `pi` brought up as the appliance host with cross-host service split (Beszel hub + ntfy server). Channel pinned to stable `nixos-26.05` since 2026-06-03. Forward plan in `docs/ROADMAP.md`; durable rationales in `docs/RATIONALES.md`.
+Phases 0–7 done — backup + FS-hardening + LAN-route abstractions cover every service module with build-time enforcement, type-level constraints with module assertions, DynamicUser symlink trap caught, OIDC auto-gen with zero hash material in committed Nix, Immich CUDA ML + NVENC with resource caps, `pi` brought up as the appliance host with cross-host service split (Beszel hub + ntfy server). Channel pinned to stable `nixos-26.05` since 2026-06-03. Forward plan in `docs/roadmap.md`; durable rationales in `docs/decisions/0000-rationales.md`.

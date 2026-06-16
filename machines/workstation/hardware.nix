@@ -114,7 +114,7 @@
 
   # --- gpu (nvidia open, RTX 5060 Ti / Blackwell) -----------------------
   #
-  # Driver-package fallback ladder per docs/TOPOLOGY.md § "GPU access":
+  # Driver-package fallback ladder per docs/reference/topology.md § "GPU access":
   #   production  -> beta  -> latest  -> explicit mkDriver version
   # Known: 580.119.02 fails to build on kernel 6.19 (vm_area_struct API
   # change). 580.126.09 fixes it. If `production` resolves to .119 and

@@ -60,7 +60,7 @@ Every route declares an audience. The auth stack is layered selectively from the
 | **family** | per-user state (Jellyfin, Immich, Vaultwarden) | Native OIDC where the app supports it; forward-auth at Caddy where it doesn't (Komga, calibre-web). The auth layer carries identity *into* the app. |
 | **public** | intentionally open dashboards + the SSO portal itself | Home dashboard (Glance), status (Gatus), auth (Authelia portal) — meant to be the unauthenticated entry surface |
 
-Full rationale in the `audience` option description in `modules/effects/lan-route.nix`. The conceptual model: see `docs/GLOSSARY.md` § audience-driven trust topology.
+Full rationale in the `audience` option description in `modules/effects/lan-route.nix`. The conceptual model: see `docs/glossary.md` § audience-driven trust topology.
 
 ## Caddy + TLS + naming
 

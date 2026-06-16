@@ -13,7 +13,7 @@ Grafana's blast radius is higher:
 
 The trade is: Authelia adds defense-in-depth here, and uptime coupling matters less than for, e.g., qBittorrent because Grafana itself is non-critical (logs/metrics keep being collected even if the dashboard is gated).
 
-Document the principle update in `docs/NETWORK.md` § audience-driven trust model when this lands — note that `audience = "operator"` is the default trust posture, but defense-in-depth on observability/admin-join surfaces is an explicit per-service override.
+Document the principle update in `docs/reference/network.md` § audience-driven trust model when this lands — note that `audience = "operator"` is the default trust posture, but defense-in-depth on observability/admin-join surfaces is an explicit per-service override.
 
 ## Bootstrap
 

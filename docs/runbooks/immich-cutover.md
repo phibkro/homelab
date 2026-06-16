@@ -9,7 +9,7 @@ summary: Step-by-step for the immich workstation→aurora cutover. The
 # immich cutover (P11 final)
 
 This is the longest single-service step in
-`docs/superpowers/plans/2026-06-11-aurora-migration.md` § P11. Pattern
+`docs/plans/2026-06-11-aurora-migration.md` § P11. Pattern
 matches the smaller migrations done this session (vaultwarden,
 miniflux, …) but with three extra wrinkles:
 
@@ -169,7 +169,7 @@ same way (drop + create + gunzip | psql + ownership fix), restart.
 
 ## References
 
-- `docs/superpowers/plans/2026-06-11-aurora-migration.md` § P11
+- `docs/plans/2026-06-11-aurora-migration.md` § P11
 - `[[postgres-ownership-after-dump-restore]]` memory entry (the
   ALTER OWNER trap)
 - `modules/services/immich.nix`

@@ -12,7 +12,7 @@
 
 **Spec deviation (intentional):** the spec mentioned `nori.backups.sunshine.skip`. Dropped — the `every-service-has-{backup-intent,fs-hardening}` flake checks scan `modules/services/*.nix` only; Sunshine is a `modules/desktop/` user service with no homelab state, matching `gaming.nix`/`virt.nix` which carry neither declaration.
 
-**Reference:** design doc `docs/superpowers/specs/2026-05-22-sunshine-remote-host-design.md`.
+**Reference:** design doc `docs/specs/2026-05-22-sunshine-remote-host-design.md`.
 
 ---
 
@@ -34,7 +34,7 @@
   # Workstation-only by construction: imported via
   # modules/desktop/default.nix, which the darwin MacBook never imports
   # (it pulls only ../../home/pc.nix). Design + rationale:
-  # docs/superpowers/specs/2026-05-22-sunshine-remote-host-design.md.
+  # docs/specs/2026-05-22-sunshine-remote-host-design.md.
   services.sunshine = {
     enable = true;
 

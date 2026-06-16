@@ -4,7 +4,7 @@ description: USE WHEN auditing code comments, filenames, recipe/skill names, or 
 
 # Audit documentation
 
-The operational form of `docs/DOCUMENTATION_WRITING.md`. That doc carries
+The operational form of `docs/reference/documentation-writing.md`. That doc carries
 the principles; this skill carries the *process* — what to check, in
 what order, how to surface candidates, how to apply safely.
 
@@ -302,7 +302,7 @@ including:
 ## What this skill does NOT do
 
 * **Does not invent new conventions.** The conventions live in
-  `docs/DOCUMENTATION_WRITING.md`, `CLAUDE.md`, and this skill. If a
+  `docs/reference/documentation-writing.md`, `CLAUDE.md`, and this skill. If a
   proposed change isn't covered, surface it as a question rather than
   applying.
 
@@ -325,7 +325,7 @@ including:
 
 ## Reference
 
-* `docs/DOCUMENTATION_WRITING.md` — full taxonomy + anti-patterns +
+* `docs/reference/documentation-writing.md` — full taxonomy + anti-patterns +
   the amnesiac-imitation feedback loop
 * `git log --grep "chore(comments):"` — worked examples; 40+ files
   audited across `modules/effects/`, `home/`, `machines/`,

@@ -54,7 +54,7 @@ in
                 "irreplaceable"
               ];
               description = ''
-                Value tier per docs/STORAGE.md "Value tiers".
+                Value tier per docs/reference/storage.md "Value tiers".
                 Drives which restic repo (if any) the path lands in
                 and the snapshot retention class. Adding a tier:
                 extend the enum, document the contract, update the

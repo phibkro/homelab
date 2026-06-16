@@ -331,7 +331,7 @@ Disk layouts in `machines/<host>/disko*.nix` from day zero. First install:
 5. `nixos-install --flake /tmp/homelab#workstation`
 6. Reboot, set password on first login, push generated flake.lock
 
-Detailed step-by-step in `docs/baremetal-install.md`. `nixos-anywhere` is the fully-remote alternative.
+Detailed step-by-step in `docs/installs/baremetal.md`. `nixos-anywhere` is the fully-remote alternative.
 
 ## Commit + code style
 

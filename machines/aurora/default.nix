@@ -47,7 +47,7 @@
     # the bundle because it's not a user-facing service. Pairs with the
     # disko-onetouch entry below; both arrived 2026-06-11 when the
     # OneTouch HDD physically moved from workstation. See
-    # docs/superpowers/plans/2026-06-11-aurora-migration.md § P13.
+    # docs/plans/2026-06-11-aurora-migration.md § P13.
     ../../modules/services/backup/restic-target.nix
 
     # Notably absent:

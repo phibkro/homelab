@@ -43,7 +43,7 @@ in
   # By default every job writes to every declared target. Override
   # selectively via `targets = [ "onetouch" ];` per job.
   #
-  # Three pattern shapes from docs/SERVICES.md § "Backup-correctness
+  # Three pattern shapes from docs/reference/services.md § "Backup-correctness
   # patterns" fit this schema:
   #   * Pattern A (filesystem-only)   → include = [...];
   #   * Pattern B (built-in dump)     → include lists the dump dir
@@ -268,7 +268,7 @@ in
               ];
               default = "service";
               description = ''
-                Value tier per docs/STORAGE.md "Value tiers" — drives
+                Value tier per docs/reference/storage.md "Value tiers" — drives
                 the default `pruneOpts` retention curve (see
                 `pruneOpts` defaultText below). Per-service repos
                 default to `service`; cross-cutting `user-data` and

@@ -10,13 +10,14 @@ NixOS flake managing four NixOS hosts + a home-manager macbook:
 | **pavilion** | agent quarantine (x86_64) | hermes worktrees, weekly tertiary `/mnt/family/*` replica (planned) |
 | **macbook** | daily-driver laptop (intel x86_64) | standalone home-manager only — not under the flake's `nixosConfigurations` |
 
-Three of the four NixOS hosts (pi, aurora, workstation) import the full `modules/services` bundle and opt into individual services via `nori.services.<X>.enable`. Importing the bundle gives a host the route registry; activation is per-service. See `docs/MODULE_AUTHORING.md` for the convention.
+Three of the four NixOS hosts (pi, aurora, workstation) import the full `modules/services` bundle and opt into individual services via `nori.services.<X>.enable`. Importing the bundle gives a host the route registry; activation is per-service. See `docs/reference/module-authoring.md` for the convention.
 
 ## Docs map
 
-Three read modes. The first set is mandatory at session start — the
-rest is reached on demand. Filenames encode the topic; the `USE WHEN`
-column matches the skill/memory trigger convention.
+All documentation lives under `docs/`. Read order is tier-encoded by
+location: docs/ root for session-start essentials + roadmap,
+`docs/reference/` for topic-triggered reference, `docs/<category>/`
+for drill-down. Filenames encode the topic.
 
 `docs/README.md` mirrors these tables for agents that land in `docs/`
 without this file's context.
@@ -25,38 +26,35 @@ without this file's context.
 
 | Doc | USE WHEN |
 |---|---|
-| `docs/GLOSSARY.md` | always, first — establishes vocabulary (`nori.<X>` effect family, audience, fate-sharing, value tiers, split-module). Every other doc reads as undefined jargon without it. |
-| `docs/INVARIANTS.md` | always, second — the drift register: load-bearing claims tagged by enforcement rung. Without it, the agent doesn't know which claims it must not silently break. |
+| `docs/glossary.md` | always, first — establishes vocabulary (`nori.<X>` effect family, audience, fate-sharing, value tiers, split-module). Every other doc reads as undefined jargon without it. |
+| `docs/invariants.md` | always, second — the drift register: load-bearing claims tagged by enforcement rung. Without it, the agent doesn't know which claims it must not silently break. |
 
 ### Topic-triggered reference
 
 | Doc | USE WHEN |
 |---|---|
-| `docs/SKILL_INDEX.md` | looking for a `/<skill-name>` that matches your intent — recurring procedures live as skills, not prose |
-| `docs/ROADMAP.md` | considering deferring work, checking what's queued, or wondering whether something is already planned |
-| `docs/TOPOLOGY.md` | placing a service across hosts, sizing GPU/RAM caps, or reasoning about workhorse/appliance/agent roles |
-| `docs/STORAGE.md` | touching btrfs subvolumes, `nori.fs.<X>`, snapshot/backup policy, or value-tier classifications |
-| `docs/NETWORK.md` | adding a `nori.lanRoutes` entry, picking an audience, or working with Caddy + Authelia + DNS |
-| `docs/SERVICES.md` | adding a service module, picking a backup pattern (A/B/C), or wiring observability |
-| `docs/MODULE_AUTHORING.md` | writing a new module — template, sops conventions, packages-by-scope, dev workflow |
-| `docs/DOCUMENTATION_WRITING.md` | writing/auditing comments + prose — earns-rent taxonomy, anti-patterns, agent-imitation loop |
-| `docs/ENFORCEMENT.md` | promoting a claim from prose → comment → test → type, or picking the rung for a new rule |
-| `docs/RECOVERY.md` | something is broken or you're planning recovery — RTO targets, runbook index, permanent constraints |
-| `docs/RUNTIME_TESTS.md` | adding a `just test-<X>` lever or auditing whether an effect family ships with one |
-| `docs/RATIONALES.md` | wondering "why was X chosen?" before re-litigating a design decision |
-| `docs/PROJECTS.md` | orchestrating work across the several projects on this machine (homelab, occupational-health, pagu, bang-lang, …) |
-| `docs/capacity-baseline.md` | sizing a new service against current RAM/disk/CPU baselines per host |
+| `docs/roadmap.md` | considering deferring work, checking what's queued, or wondering whether something is already planned |
+| `docs/reference/topology.md` | placing a service across hosts, sizing GPU/RAM caps, or reasoning about workhorse/appliance/agent roles |
+| `docs/reference/storage.md` | touching btrfs subvolumes, `nori.fs.<X>`, snapshot/backup policy, or value-tier classifications |
+| `docs/reference/network.md` | adding a `nori.lanRoutes` entry, picking an audience, or working with Caddy + Authelia + DNS |
+| `docs/reference/services.md` | adding a service module, picking a backup pattern (A/B/C), or wiring observability |
+| `docs/reference/module-authoring.md` | writing a new module — template, sops conventions, packages-by-scope, dev workflow |
+| `docs/reference/documentation-writing.md` | writing/auditing comments + prose — earns-rent taxonomy, anti-patterns, agent-imitation loop |
+| `docs/reference/enforcement.md` | promoting a claim from prose → comment → test → type, or picking the rung for a new rule |
+| `docs/reference/recovery.md` | something is broken or you're planning recovery — RTO targets, runbook index, permanent constraints |
+| `docs/reference/runtime-tests.md` | adding a `just test-<X>` lever or auditing whether an effect family ships with one |
+| `docs/reference/capacity-baseline.md` | sizing a new service against current RAM/disk/CPU baselines per host |
 
 ### Drill-down (pulled in only when a parent doc cross-refs it)
 
 | Path | USE WHEN |
 |---|---|
-| `docs/decisions/` | per-ADR for each hard-to-revisit choice. `0001-agentic-homelab-practices.md` is the meta-ADR — read when philosophy comes up |
-| `docs/superpowers/reports/` | catching up on how a multi-week arc actually landed — commit-grouped narrative + before/after diagrams that don't fit in ADRs or commit messages. Backward-looking companion to a plan in `docs/superpowers/plans/` |
+| `docs/decisions/` | per-ADR for each hard-to-revisit choice. `0000-rationales.md` is the meta-index for smaller decisions; `0001-agentic-homelab-practices.md` is the philosophy meta-ADR |
 | `docs/runbooks/` | per-incident recovery procedures (drive failure, USB enumeration, network split) |
-| `docs/baremetal-install.md` | bringing up a fresh NixOS host via nixos-anywhere |
-| `docs/vm-install.md` | bringing up a NixOS VM (testing, throwaway environments) |
-| `docs/agent-onboarding-test.md` | validating a new agent's orientation against a small fixed task |
+| `docs/plans/` | multi-phase forward-looking work (aurora migration, docs deep-sweep, etc.) |
+| `docs/specs/` | design specs preceding implementation |
+| `docs/reports/` | after-action narratives — backward-looking companion to a plan in `docs/plans/` |
+| `docs/installs/` | bring-up procedures (`baremetal.md`, `vm.md`) + `agent-onboarding-test.md` for validating a new agent's orientation |
 | `.claude/skills/gotcha-*/` | auto-loaded on trigger; manually `/<skill-name>` if it fits a known landmine |
 | `git log --oneline` | a recent change isn't yet reflected in docs, or a comment references "2026-MM-DD incident" without enough context |
 
@@ -77,7 +75,7 @@ without this file's context.
 - **Iterate-to-stable, then codify.** Novel patterns live in Cynefin's Complex domain — ship the simplest version, let the next constraint surface, codify after the shape stabilizes.
 - **Workhorse-by-default, appliance-by-exception.** Services land on station unless they need to survive station's failure or are network appliance functions. The exception clause is "fate-sharing breaks the function," not "feels lightweight."
 - **Tailnet IS the auth perimeter; Authelia only for per-user identity.** Encoded as the `audience` enum on `nori.lanRoutes` — `operator` trusts tailnet, `family` needs OIDC, `public` is intentionally open.
-- **Code describes behavior; comments encode intent.** See `docs/DOCUMENTATION_WRITING.md` — the earns-rent vs cut taxonomy + the amnesiac-imitation loop that makes seeding rent-paying examples load-bearing in an agent-driven codebase.
+- **Code describes behavior; comments encode intent.** See `docs/reference/documentation-writing.md` — the earns-rent vs cut taxonomy + the amnesiac-imitation loop that makes seeding rent-paying examples load-bearing in an agent-driven codebase.
 
 ## How to operate
 
@@ -99,18 +97,18 @@ without this file's context.
 
 ## Procedures
 
-Recurring procedures live as skills under `.claude/skills/` so the body loads only when triggered. They auto-discover when the user's intent matches the trigger; manually invoke with `/<skill-name>`. The skill index lives in `docs/SKILL_INDEX.md`. The principle: **prose for facts (here + docs), skills for procedures (on demand)**; when a CLAUDE.md section grows into a procedure with non-deterministic branches, extract it.
+Recurring procedures live as skills under `.claude/skills/` so the body loads only when triggered. They auto-discover when the user's intent matches the trigger; manually invoke with `/<skill-name>`. The principle: **prose for facts (here + docs), skills for procedures (on demand)**; when a CLAUDE.md section grows into a procedure with non-deterministic branches, extract it.
 
 ## Quality gates
 
 - `nix flake check` — standard Nix lints + repo-specific guard derivations (`every-service-has-fs-hardening`, `every-service-has-backup-intent`, `forbidden-patterns`, …). `nix flake show .#checks` for the live list.
 - `nix fmt` — apply nixfmt.
 - Pre-commit hook in `.githooks/pre-commit` runs `nix flake check` on staged `.nix` changes; enable once per clone with `git config core.hooksPath .githooks`. Skips gracefully if nix isn't on PATH (Mac); CI catches the skipped commits.
-- Adding a new rule: see `docs/ENFORCEMENT.md` § decision tree.
+- Adding a new rule: see `docs/reference/enforcement.md` § decision tree.
 
 ## Style for prose
 
 - No hedging in commits or docs. Lead with the answer, justify after.
 - Match the existing tone — terse, technical, no fluff. The operator (Philip) reads fast and pushes back on weak decisions.
 - Function-named subdomains, agnostic over branded: `status.nori.lan` not `gatus.nori.lan` unless the brand IS the identity.
-- Full rules for comments + docs (earns-rent taxonomy, hard rules on derived lists, anti-patterns) → `docs/DOCUMENTATION_WRITING.md`.
+- Full rules for comments + docs (earns-rent taxonomy, hard rules on derived lists, anti-patterns) → `docs/reference/documentation-writing.md`.

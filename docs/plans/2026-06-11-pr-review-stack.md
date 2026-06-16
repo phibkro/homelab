@@ -42,10 +42,10 @@ Pure docs. **Read first.**
   hybrid-mirror, modest-scope) and *why* each was rejected.
 - `docs/decisions/0002-aurora-as-family-vault.md` § visuals — before/
   after topology mermaid diagrams, failure-domain map.
-- `docs/superpowers/plans/2026-06-11-aurora-migration.md` — the *how*.
+- `docs/plans/2026-06-11-aurora-migration.md` — the *how*.
   Phase-by-phase (P1 through P20). This is the source-of-truth that
   every subsequent commit checks against.
-- `docs/superpowers/plans/2026-06-11-docs-shape-review.md` — meta
+- `docs/plans/2026-06-11-docs-shape-review.md` — meta
   doc-shape review plan.
 
 **Risk:** none. Pure docs.
@@ -211,7 +211,7 @@ git show cp/07-mp510-p9 --stat
 - `1878e42` — **calibre-web + komga cutover** (P11 batch B). No data dependency — library was empty on workstation too. Same shape as cp/06's vault cutover.
 - `f4a1378` — **`/restore-pg-with-owner-fix` skill + shell script**. First skill in the repo to ship its own executable. Bakes the cp/06 miniflux trap fix into one command for the next pg migration (immich).
 - `88e945d` — plan doc P9 ✓ + P10/P11 in-flight markers.
-- `5cf10f3` — **P14: rename restic target `ironwolf` → `mp510`** + drop the IronWolf `@restic-local` subvol after rsync'ing its ~57 GiB to MP510 `@backup-local`. Drive-based name matches the `onetouch` convention; "kept ironwolf for historical continuity" was drift, not continuity. Updates: backup target description, comments in restart-policy.nix + open-webui.nix + vaultwarden.nix + navidrome.nix + Justfile (test-backups), docs/STORAGE.md + SERVICES.md.
+- `5cf10f3` — **P14: rename restic target `ironwolf` → `mp510`** + drop the IronWolf `@restic-local` subvol after rsync'ing its ~57 GiB to MP510 `@backup-local`. Drive-based name matches the `onetouch` convention; "kept ironwolf for historical continuity" was drift, not continuity. Updates: backup target description, comments in restart-policy.nix + open-webui.nix + vaultwarden.nix + navidrome.nix + Justfile (test-backups), docs/reference/storage.md + SERVICES.md.
 
 **Verify:**
 ```sh
@@ -234,7 +234,7 @@ Audit found drift in the blast radius. Patches:
 - `0082462` — **aurora observability gaps + TOPOLOGY.md sweep**.
   - `ntfy-notify.enable = true` on aurora (alerts route directly without depending on workstation).
   - `aurora-ssh` + `aurora-samba` gatus probes added to both workstation's and pi's `nori.gatusProbes` (mutual-observability pattern matching the workstation↔pi shape).
-  - `docs/TOPOLOGY.md` aurora row rewritten: was "immich-machine-learning offload"; now full family-vault role description. MP510 drives row updated. Mermaid diagram redrawn. Service-placement table reshuffled per ADR-0002/0003.
+  - `docs/reference/topology.md` aurora row rewritten: was "immich-machine-learning offload"; now full family-vault role description. MP510 drives row updated. Mermaid diagram redrawn. Service-placement table reshuffled per ADR-0002/0003.
 - `e333b8d` — **re-enable beszel-agent on aurora** (operator minted the per-host key + pasted into sops) + **pre-position `/mnt/family/library/music` dir** (operator's option A on the navidrome path-tier decision — music sits under library, sibling to books/comics).
 - `744504e` — **`${library}/music` tmpfile in `arr/shared.nix`**. Per option A, workstation's @library also holds music at /mnt/media/library/music post-Lidarr-reconfig. Tmpfile guarantees dir + perms survive future rebuilds.
 - `7f0d3a6` — **Lidarr BindPaths fix**. Hardened lidarr couldn't see /mnt/media/library/music in its root-folder picker (only /mnt/media/downloads was in BindPaths). Added `${library}/music` to `nori.harden.lidarr.binds`.
@@ -247,7 +247,7 @@ Audit found drift in the blast radius. Patches:
 
 ```sh
 # read this doc
-cat docs/superpowers/plans/2026-06-11-pr-review-stack.md
+cat docs/plans/2026-06-11-pr-review-stack.md
 
 # inspect any phase
 git diff --stat cp/0(N-1)..cp/0N

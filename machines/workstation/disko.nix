@@ -38,7 +38,7 @@ _: {
   #   nix run github:nix-community/disko/latest -- \
   #     --mode disko machines/workstation/disko.nix
   #
-  # See docs/STORAGE.md § "Workstation root" for the subvol → mount
+  # See docs/reference/storage.md § "Workstation root" for the subvol → mount
   # table. All btrfs subvolumes mount compress=zstd:3,noatime; disko
   # emits the corresponding fileSystems entries automatically — hosts/
   # <host>/hardware.nix must NOT also define them.

@@ -116,7 +116,7 @@ If the host has a `beszel-agent`, it'll need a per-host SSH key in sops as `besz
 
 ### 6. First boot
 
-**Workhorse-class x86** — see `docs/baremetal-install.md`. Disko at install, not deferred.
+**Workhorse-class x86** — see `docs/installs/baremetal.md`. Disko at install, not deferred.
 
 **Appliance-class aarch64** — sd-image build path:
 

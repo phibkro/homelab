@@ -488,7 +488,7 @@
                 # Migration-phase tokens (P\d+ prep|cutover|landing) decay
                 # the moment the phase lands. modules/ is for what the
                 # code does today, not what it's getting ready to do.
-                # Plans + reports + ADRs under docs/superpowers/ are the
+                # Plans + reports + ADRs under docs/ are the
                 # right home for phase narration; flag anywhere else.
                 if grep -rEn '\bP[0-9]+ (prep|cutover|landing|migration)\b' \
                      modules/ hosts/ machines/ ; then
@@ -497,7 +497,7 @@
                   echo "  (P12 prep, P15 cutover, etc.) decay as soon as"
                   echo "  the phase lands. Move the rationale into the"
                   echo "  commit message; if it's load-bearing for future"
-                  echo "  context, put it in docs/superpowers/."
+                  echo "  context, put it in docs/."
                   fail=1
                 fi
 

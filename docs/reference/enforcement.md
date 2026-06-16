@@ -92,7 +92,7 @@ When you write the words **"we should always..."** or **"don't ever..."** in pro
 | Forbidden text pattern in source files | **flake check (grep)** |
 | Forbidden semantic pattern (needs eval introspection) | **flake check** via `nix eval` over `config.…` |
 | AST-shape rule | **flake check** wrapping `tree-sitter-nix` (not yet present) |
-| Declaration matches a queryable runtime registry (`nori.backups` → restic snapshots; `nori.lanRoutes` → Caddy admin API; hyprland binds → `hyprctl binds -j`) | **runtime introspection** — new `just test-<X>` recipe per `docs/RUNTIME_TESTS.md` |
+| Declaration matches a queryable runtime registry (`nori.backups` → restic snapshots; `nori.lanRoutes` → Caddy admin API; hyprland binds → `hyprctl binds -j`) | **runtime introspection** — new `just test-<X>` recipe per `docs/reference/runtime-tests.md` |
 | None of the above | **judgment** — that's what review is for. Don't write it down; it'll rot |
 
 ## When NOT to add a rule

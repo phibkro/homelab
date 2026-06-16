@@ -146,7 +146,7 @@ Per-drive concerns (Samba shares, `nori.fs.<X>` declarations, the backup-target 
 
 ### Reversibility
 
-The migration plan (`docs/superpowers/plans/2026-06-11-aurora-migration.md`) calls out per-phase reversibility. The Nix-only phases (P1-P8) are `git revert`-able. The MP510 wipe (P9) and the IronWolf subvol deletes (P14) are one-way; both are gated on verified copies of the affected data being present elsewhere. The OneTouch physical move (P13) is reversible by re-plugging into workstation. Service state migrations (P11) are recoverable from the pre-migration restic snapshot.
+The migration plan (`docs/plans/2026-06-11-aurora-migration.md`) calls out per-phase reversibility. The Nix-only phases (P1-P8) are `git revert`-able. The MP510 wipe (P9) and the IronWolf subvol deletes (P14) are one-way; both are gated on verified copies of the affected data being present elsewhere. The OneTouch physical move (P13) is reversible by re-plugging into workstation. Service state migrations (P11) are recoverable from the pre-migration restic snapshot.
 
 ## Alternatives considered
 
@@ -204,9 +204,9 @@ Discussed under "Decision" above. The residual risk profile (total apartment los
 
 ## See also
 
-- Plan: `docs/superpowers/plans/2026-06-11-aurora-migration.md` (the *how*)
-- `docs/STORAGE.md` § value tiers — vocabulary used here
-- `docs/TOPOLOGY.md` § service placement — the fate-sharing test this ADR honours
+- Plan: `docs/plans/2026-06-11-aurora-migration.md` (the *how*)
+- `docs/reference/storage.md` § value tiers — vocabulary used here
+- `docs/reference/topology.md` § service placement — the fate-sharing test this ADR honours
 - ADR-0001 § "Code is the single source of truth" — the practice that makes the per-host opt-in registry the authoritative answer to "where does X run?"
 - `modules/effects/backup.nix` — `nori.backupTargets` (remote-URL support already landed)
 - `modules/effects/fs.nix` — `nori.fs` (the `samba` block extension is part of P4)

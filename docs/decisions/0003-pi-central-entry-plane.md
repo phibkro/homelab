@@ -134,8 +134,8 @@ End-to-end verified from every tailnet host. The reverted state from the earlier
 ## See also
 
 - ADR-0002 — original aurora-entry-plane choice; the family-vault + workstation-as-compute portions of that ADR remain in force. The HTTP entry plane is what this ADR overrides.
-- `docs/superpowers/plans/2026-06-11-aurora-migration.md` — migration plan; **P7 lands on pi** not aurora; P12 cutover swaps Tailscale DNS push order to pi primary.
+- `docs/plans/2026-06-11-aurora-migration.md` — migration plan; **P7 lands on pi** not aurora; P12 cutover swaps Tailscale DNS push order to pi primary.
 - `modules/effects/lan-route.nix` § `runsOn` (P1b)
 - `modules/effects/service-placement.nix` § `enabled` (P1)
 - `modules/effects/fs.nix` § `samba` (P4)
-- `docs/TOPOLOGY.md` — needs update to reflect pi-central post-migration role
+- `docs/reference/topology.md` — needs update to reflect pi-central post-migration role

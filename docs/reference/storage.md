@@ -16,7 +16,7 @@ Btrfs everywhere on Linux. Mount options: `compress=zstd:3,noatime`. Subvolumes 
 | **service / user** | Jellyfin DB, Immich uploads, Open WebUI, Vaultwarden vaults | Daily | Yes | Selected (Immich uploads, Open WebUI, Vaultwarden) |
 | **irreplaceable** | Personal photos, home videos, finished projects, work in progress, flake repo | Hourly to daily | Yes | Yes |
 
-System config is covered by the Git mirror to GitHub, not a backup target. See `docs/GLOSSARY.md` § value-tier protection tree.
+System config is covered by the Git mirror to GitHub, not a backup target. See `docs/glossary.md` § value-tier protection tree.
 
 ## Workstation root (SN750, btrfs)
 
@@ -109,7 +109,7 @@ Dual targets: `onetouch` (SFTP to aurora, off-chassis) + `mp510` (workstation NV
 
 Pricing (April 2026): BX11 (1TB) ~3.20 EUR/mo, BX21 (5TB) ~10.80 EUR/mo, BX31 (10TB) ~20.80 EUR/mo. Plans scale up/down without data migration; cancellation any time.
 
-Initial sizing: start at BX11 (1TB) if irreplaceable data is <500GB. Re-evaluate when home-videos archive grows past 700GB. Tracked in `docs/capacity-baseline.md`, reviewed quarterly.
+Initial sizing: start at BX11 (1TB) if irreplaceable data is <500GB. Re-evaluate when home-videos archive grows past 700GB. Tracked in `docs/reference/capacity-baseline.md`, reviewed quarterly.
 
 ## Backup verification
 
@@ -122,7 +122,7 @@ Three-cadence ladder + the live test recipe.
 | Monthly | `restore-drill-services.service` | 17 service repos restored to `/var/restore-test/<svc>-<ts>/`, sha256-sample 20 files per repo. ~5 min wall |
 | Quarterly | `restore-drill-user-data.service` | user-data tier restored (~99 GiB). ~30 min wall |
 | Manual | `restore-drill-all.service` | All repos incl. `media-irreplaceable`. Multi-hour |
-| Per-deploy | `just test-backups` | Runtime introspection: every unit's last snapshot ≤25h per target (see `docs/RUNTIME_TESTS.md`) |
+| Per-deploy | `just test-backups` | Runtime introspection: every unit's last snapshot ≤25h per target (see `docs/reference/runtime-tests.md`) |
 
 All failures alert via ntfy. The drill is the **real RTO measurement**, not the static check green light. Drill split into per-tier services 2026-06-07 so a user-data failure no longer masks 17 GREEN service-tier results.
 
