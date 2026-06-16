@@ -12,9 +12,9 @@ Btrfs everywhere on Linux. Mount options: `compress=zstd:3,noatime`. Subvolumes 
 
 | Tier | Examples | Snapshot | Restic to OneTouch + mp510 |
 |---|---|---|---|
-| **re-derivable** | Streaming media, Ollama models, Nix store, package caches | Weekly or none | No |
+| **re-derivable** | `@downloads` (*arr + qBittorrent acquisitions), Ollama models, Nix store, package caches | None | No |
 | **service / user** | Jellyfin DB, Immich uploads, Open WebUI, Vaultwarden vaults | Daily | Selected (Immich uploads, Open WebUI, Vaultwarden) |
-| **irreplaceable** | Personal photos, home videos, finished projects, work in progress, flake repo | Hourly to daily | Yes |
+| **irreplaceable** | Personal photos, home videos, finished projects, curated library (books/comics), flake repo | Hourly to daily | Yes |
 
 System config is covered by the Git mirror to GitHub, not a backup target. See `docs/glossary.md` § value-tier protection tree.
 
@@ -40,7 +40,7 @@ Disko-managed. Reformatted from exfat in Phase 2 (executed during Phase 5).
 
 | Subvolume | Mount | Snapshot | Local backup | Off-site |
 |---|---|---|---|---|
-| `@streaming` | `/mnt/media/streaming` | Weekly · keep 2 | No | No |
+| `@downloads` | `/mnt/media/downloads` | None | No | No |
 | `@photos` | `/mnt/media/photos` | Daily · keep 14 + monthly · keep 12 | Yes | Yes |
 | `@home-videos` | `/mnt/media/home-videos` | Weekly · keep 4 | Yes | Yes |
 | `@projects` | `/mnt/media/projects` | Weekly · keep 4 | Yes | Yes |
@@ -48,7 +48,7 @@ Disko-managed. Reformatted from exfat in Phase 2 (executed during Phase 5).
 | `@archive` | `/mnt/media/archive` | Weekly · keep 4 | Yes | No (legacy machine backups; not off-site-worthy) |
 | `@snapshots` | `/mnt/media/.snapshots` | N/A | N/A | N/A |
 
-`@streaming` holds re-derivable content (auto-grabbed by *arr + qBittorrent staging). `@library` holds curated content the operator assembled by hand (books, comics) — distinct content type from `@projects` (work products), same backup tier.
+`@downloads` holds re-derivable acquisitions (auto-grabbed by *arr + qBittorrent staging) — explicitly NOT snapshotted, so `rm` frees space immediately when the IronWolf fills. `@library` holds curated content the operator assembled by hand (books, comics, music) — distinct content type from `@projects` (work products), same backup tier.
 
 ## Pi storage
 
@@ -77,7 +77,7 @@ Database directories should have CoW disabled to avoid write amplification. For 
 
 ### Backup-consistency (logical dumps before backup)
 
-Filesystem snapshot of a running database produces inconsistent state. Backup correctness requires a logical dump (`pg_dump` / SQLite `.backup` API) before restic touches the data. See SERVICES.md § Backup patterns.
+Filesystem snapshot of a running database produces inconsistent state. Backup correctness requires a logical dump (`pg_dump` / SQLite `VACUUM INTO`) before restic touches the data. See `docs/reference/services.md` § Backup-correctness patterns.
 
 ## Filesystem context (`nori.fs`)
 
@@ -102,7 +102,7 @@ Dual local targets: `onetouch` (SFTP to aurora, off-chassis) + `mp510` (workstat
 | Immich (dumps + uploads) | Daily · keep 7d + 4w |
 | Open WebUI dump | Daily · keep 7d + 4w (paused — see roadmap) |
 | Other service state | Daily · keep 7d |
-| `@streaming` | Not backed up (re-derivable) |
+| `@downloads` | Not backed up (re-derivable) |
 | `@photos`, `@home-videos`, `@projects` | Daily · keep 14d + 4w |
 
 ## Backup verification

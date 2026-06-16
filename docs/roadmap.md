@@ -1,7 +1,7 @@
 ---
 summary: The forward plan — single home for outstanding work, deferred items, and
   the idea backlog. Routine done-work lives in `git log`; durable design lives in
-  the tier-2 reference docs (TOPOLOGY/STORAGE/NETWORK/SERVICES/MODULES/…).
+  the topic-triggered reference docs under `docs/reference/`.
 ---
 
 # Roadmap
@@ -10,11 +10,9 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 ## Outstanding (actionable)
 
-- **Aurora migration — workstation-as-compute / aurora-as-family-vault.** Reorganises hosts to let workstation sleep when no GPU/transcode/bulk-storage workload is active and to give irreplaceable media a 3-copy replication posture. Full delta table, phase ordering, validation gates, and reversibility ladder in `docs/plans/2026-06-11-aurora-migration.md`. **Progress (2026-06-15):** P1–P14 ✓ landed (foundation + aurora bootstrap + data move + service-state migration + the entry-plane flip itself); P18 diagnosed + fixed (b77b030 — `nvidia.NVreg_PreserveVideoMemoryAllocations=1` on kernel cmdline; was the s2idle resume hang); P19 sender side landed (3674d89 — `wakeonlan` on pi for phone-side WoL); P20 partially landed (PipeWire idle inhibit 6f887e4 + hibernate setup 5de4cab + hypridle removal 45d1899 — sleep posture functional, manual triggers only). **Outstanding:** P15 (replication — sender + receiver modules drafted `04629a6` + `ba38187`, awaits operator ssh-key bootstrap), P19 magic-packet test gated on operator reboot, P20 hypridle re-enable (gated on operator verifying suspend works post-reboot). P16 pavilion tertiary replica future-work; P17 Hetzner explicitly rejected per ADR-0002.
+- **Aurora migration — workstation-as-compute / aurora-as-family-vault.** Reorganises hosts to let workstation sleep when no GPU/transcode/bulk-storage workload is active and to give irreplaceable media a 3-copy replication posture. Full delta table, phase ordering, validation gates, and reversibility ladder in `docs/plans/2026-06-11-aurora-migration.md`. **Progress (2026-06-16):** P1–P15 ✓ landed (foundation + aurora bootstrap + data move + service-state migration + entry-plane flip + nightly btrbk replication aurora → workstation MP510 live since 2877267). P18 (s2idle resume hang) fixed b77b030; P19 sender side (pi `wakeonlan`) landed 3674d89; P20 partially landed (PipeWire idle inhibit + hibernate setup + hypridle removal — manual triggers only). **Outstanding:** P19 magic-packet test gated on operator reboot, P20 hypridle re-enable (gated on operator verifying suspend works post-reboot). P16 pavilion tertiary replica future-work; P17 Hetzner explicitly rejected per ADR-0002.
 
-- **Docs-shape review (post-aurora-migration).** Make filesystem depth encode tier (root = L0/L1, `docs/` = L2, `docs/<sub>/` = L3) so progressive-disclosure read-cost matches structural depth. Main pass at aurora-migration Phase 17, quick second pass at Phase 20. Decisions made + target shape + migration phasing captured in `docs/plans/2026-06-11-docs-shape-review.md` so the future-me starting Phase 17 inherits the design rather than re-deriving it.
-
-- **Full documentation deep-scan (post-aurora-migration).** Today's session caught targeted drift in 9 memory entries + 3 repo docs while the rsync was running; the spot-checks covered the blast radius of today's commits but were not exhaustive. Once P10/P11/P12 settle, do a full pass across `docs/`, `.claude/skills/` (~35 gotcha skills), and the `~/.claude/projects/-srv-share-projects/memory/` set. Look for: stale paths (e.g. `modules/server` → `modules/services`), stale URLs (`*.nori.lan` examples that should be `*.${nori.domain}` post-ADR-0004), references to deleted/renamed artifacts (`@restic-local`, the `ironwolf` backup target name, the `caddy-local-ca.crt` file), historical narration in code-adjacent docs that violates the comment-hygiene principle from PR #10. `git log --since="2026-06-11"` is the changeset to verify against.
+- **Docs deep-sweep (drift + restructure + alignment).** In progress per `docs/plans/2026-06-16-docs-deep-sweep.md`. Phase 3a (structural restructure into docs/{reference,decisions,plans,specs,reports,runbooks,installs}/) ✓ landed; Phase 3c (flake.nix bash extraction to scripts/checks/) ✓ landed; Phase 3b (content sweep — drift, filename-rename inbound links, `.nori.lan` → `${nori.domain}` in current-state docs, README rewrite) in progress this session; Phase 3d (`nori.lint` Reader/Writer dispatcher per `docs/specs/2026-06-16-lint-rule-schema.md`) queued. Phase 4 validation via `docs/installs/agent-onboarding-test.md` once 3b/3d settle.
 
 - **Sunshine remote-desktop pairing.** Deployed (`modules/desktop/sunshine.nix`); NVENC builds confirmed (`h264/hevc/av1_nvenc`). Outstanding: one-time Moonlight pairing.
 
@@ -53,11 +51,11 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 - **Lower-priority appliance candidates.** Glance + Radicale moved to aurora at P11 (family-vault posture). The original motivation was "failure independence from workstation"; that's now achieved on the aurora→pi failure-domain axis. A *further* split to pi (independence from aurora too) is theoretical — aurora is meant to be always-on family-vault, so aurora outages are the rare path. Reopen only if aurora's failure profile turns out worse than projected.
 
-- **Batch C: generated docs from live config.** Replace static "active services" + "host placement" + "snapshot policy" tables in `SERVICES.md` / `TOPOLOGY.md` / `STORAGE.md` with `nix eval`-driven output (`scripts/render-docs.sh` → `docs/auto/*.md`, gated by a `docs-fresh` flake check). Eliminates a class of doc drift entirely (executable docs don't decay). Roughly 1–2h to land.
+- **Batch C: generated docs from live config.** Replace static "active services" + "host placement" + "snapshot policy" tables in `docs/reference/{services,topology,storage}.md` with `nix eval`-driven output (`scripts/render-docs.sh` → `docs/auto/*.md`, gated by a `docs-fresh` flake check). Eliminates a class of doc drift entirely (executable docs don't decay). Roughly 1–2h to land.
 
-## Promotion register (from INVARIANTS.md)
+## Promotion register (from `docs/invariants.md`)
 
-`[prose: unchecked]` claims worth mechanizing — detail in `INVARIANTS.md § promotion work-list`:
+`[prose: unchecked]` claims worth mechanizing — detail in `docs/invariants.md § promotion work-list`:
 
 | Check | Promotes to | Catches |
 |---|---|---|
