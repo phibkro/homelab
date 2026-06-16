@@ -50,7 +50,13 @@ Detailed shape: `docs/reference/agentic-workflow.md`. The reference doc is the w
 
 **Branching:** commits-on-`main` stays the default; worktrees reserved for non-routine refactors (unchanged from ADR-0001 + existing CLAUDE.md). GitHub-style PRs not used — the PR-as-Reporting ceremony happens in-session before push.
 
-**CI/CD inversion** (recording the rationale, no change to current state): heavy local (`nix flake check` + pre-commit), light remote (GitHub Actions as backstop). One concrete addition: pre-commit checks `Co-Authored-By:` trailer presence on commits touching `.nix` files — caught as miss in the 2026-06-16 retro.
+**CI/CD inversion** (recording the rationale, no change to current state): heavy local (`nix flake check` + pre-commit), light remote (GitHub Actions as backstop).
+
+**Hard-constraint vs soft-constraint split:** static checks are reserved for invariants that must hold every turn (commit subject grammar, type system, schema validation). Soft constraints (commit body quality, prose tone, comment depth) are caught in PR review (Phase 3 above) + prompting — false positives + brittleness dominate any static check on prose. Same principle as `docs/invariants.md` § "When to add a rule" applied to commit hygiene.
+
+One concrete addition landing with this ADR: **`.githooks/commit-msg` enforces Conventional Commits v1.0.0** on the subject line. Hand-rolled bash (not commitlint) per ADR-0001 dep-preference (a reliable dep already in the tree beats hand-rolling — bash is in the closure; Node + Husky aren't). Pinned to spec v1.0.0; escalation path is `nix shell nixpkgs#commitlint-rs` if the regex outgrows itself. Allowed types: standard conventional set + homelab-specific `plan`, `spec`, `skill`. Scope chars match existing repo idioms including `+` for multi-scope. Bypass via `git commit --no-verify`.
+
+The originally-proposed `Co-Authored-By:` trailer check is dropped — it's data-harvest cosmetic for the upstream model provider, not an invariant the operator values for the codebase.
 
 ## Consequences
 
@@ -63,7 +69,7 @@ Detailed shape: `docs/reference/agentic-workflow.md`. The reference doc is the w
 
 **Tooling changes:**
 
-- **Pre-commit hook update:** trailer presence check on `.nix`-touching commits. (Item 5 of the 2026-06-16 sprint punch list; small mechanization that closes the retro miss.)
+- **`.githooks/commit-msg` lands with this ADR:** Conventional Commits v1.0.0 subject-line check on every commit. Hand-rolled bash, pinned to spec v1.0.0.
 - **CLAUDE.md gains a § Agentic workflow** overview block pointing at `docs/reference/agentic-workflow.md`. Interface-only summary; deep impl lives in the reference doc. Same shape as the existing CLAUDE.md routing tables.
 
 **Skill changes deferred:**

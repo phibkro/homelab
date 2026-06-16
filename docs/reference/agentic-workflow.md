@@ -140,14 +140,30 @@ Traditional dev: heavy remote CI, light local checks. Agentic dev inverts:
 
 | Layer | Traditional | Agentic |
 |---|---|---|
-| **Local** | lightweight (lint) | heavyweight (pre-commit `nix flake check`, all guard derivations, format check) |
-| **Remote** | heavyweight CI/CD | backstop only — catches what local skipped (commits from Mac without nix on PATH, `--no-verify` bypasses, agent-skipped hooks) |
+| **Local** | lightweight (lint) | heavyweight (pre-commit `nix flake check` + `commit-msg` Conventional Commits check, all guard derivations, format check) |
+| **Remote** | heavyweight CI/CD | backstop only — catches what local skipped (commits from a host without nix on PATH, `--no-verify` bypasses, agent-skipped hooks) |
 
-Why: agents run shell tools locally; "before push" is the cheap fail-fast loop. Catching it on push remote means a roundtrip per failure and noise in the PR thread.
+Why: agents run shell tools locally; "before push" is the cheap fail-fast loop. Catching it on push remote means a roundtrip per failure and noise.
 
-Concrete additions on top of the existing pre-commit + GitHub Actions backstop:
+### Hard constraints vs soft constraints
 
-- **Trailer-presence check** on commits touching `.nix` files. Caught as miss in the 2026-06-16 retro (commit `8a86d18` shipped without `Co-Authored-By:`). One-line shell check.
+Static checks are reserved for invariants that must hold every turn — commit subject grammar, port uniqueness, schema validation, file-path conventions. The retrospective + PR review (Phase 3) catches everything else.
+
+| Constraint kind | Enforcement | Examples |
+|---|---|---|
+| **Hard** (invariant) | Static check at commit / build time | Conventional Commits subject; `every-service-has-fs-hardening`; `forbidden-patterns`; `routing-coherence` |
+| **Soft** (preference) | PR review + prompting | Commit body quality; prose tone; comment depth; "is this comment earning rent?" |
+
+Static analysis on prose body would be brittle and false-positive-heavy. Soft constraints are caught by Phase 3 (Reporting) — when the operator runs through the per-commit grade, body quality + reasoning depth are surfaced and either accepted or pushed back on.
+
+Same principle as `docs/invariants.md` § "When to add a rule" applied to commit hygiene.
+
+### Local hooks today
+
+- **`.githooks/pre-commit`** — runs `nix flake check` on staged `.nix` changes; skips gracefully if `nix` isn't on PATH.
+- **`.githooks/commit-msg`** — enforces Conventional Commits v1.0.0 on the subject line. Hand-rolled bash; pinned to spec v1.0.0; escalation to `nix shell nixpkgs#commitlint-rs` if regex outgrows itself. Bypass with `--no-verify`.
+
+Enable once per clone: `git config core.hooksPath .githooks`.
 
 ## Branching + PRs
 

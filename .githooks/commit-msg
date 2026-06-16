@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# commit-msg hook: enforce Conventional Commits v1.0.0 on the subject line.
+#
+# Spec:  https://www.conventionalcommits.org/en/v1.0.0/
+# Pin:   v1.0.0 (stable since 2018; if v1.1+ lands, review pattern)
+#
+# Hard constraint, not a suggestion. The subject's grep-ability is the
+# load-bearing surface — tooling (`git log --grep`), PR review (Phase 3
+# of the per-PR ceremony per ADR-0005), and amnesiac-team archaeology
+# all depend on it. Soft constraints (body quality, depth, tone) are
+# NOT statically checked — those are caught in PR review + prompting.
+# See docs/invariants.md § "When to add a rule" + ADR-0005 § CI/CD
+# inversion.
+#
+# Why hand-rolled (not commitlint or commitlint-rs):
+# - bash is already in the closure; Node + Husky would add a new
+#   tooling stack to every clone
+# - the spec is a 20-line regex, not a parser
+# - extends the existing .githooks/pre-commit bash precedent (SOUL.md
+#   "one construct per problem")
+# - ADR-0001 dep-pref: a reliable dep already in the tree beats
+#   hand-rolling; bash IS the reliable dep, Node isn't
+# - escalation path: if v1.1 ships or the regex outgrows itself, swap
+#   in `nix shell nixpkgs#commitlint-rs -c commitlint`
+#
+# Grammar (per spec v1.0.0 § Summary):
+#   <type>[optional scope]: <description>
+#   - `!` between scope-or-type and `:` marks a breaking change
+#   - feat + fix are MANDATED; spec says "types other than feat and
+#     fix MAY be used" — we curate the recommended set (Angular)
+#     plus three homelab-specific types (plan, spec, skill)
+#
+# Bypass with `git commit --no-verify` for emergency commits — the
+# hook is a habit shaper, not a wall.
+#
+# Enabling this hook (one-time, per clone):
+#   git config core.hooksPath .githooks
+
+set -e
+
+msg_file="$1"
+
+# Subject = first non-empty, non-comment line. Git separates comments
+# (`#`) from real content in the file; we strip CR for cross-platform
+# safety (Windows operator edits via Mac mounts have hit this before).
+subject=$(grep -v '^#' "$msg_file" | grep -v '^$' | head -n1 | tr -d '\r')
+
+# Allow Git's auto-generated subject formats. These follow their own
+# conventions that Conventional Commits doesn't try to cover.
+case "$subject" in
+  "Merge "*|"Revert "*|"fixup! "*|"squash! "*|"amend! "*) exit 0 ;;
+esac
+
+# Conventional Commits v1.0.0: <type>(<scope>)?!?: <subject>
+#   types  — feat/fix (mandated) + Angular recommendation set
+#            + homelab additions: plan, spec, skill
+#   scope  — lowercase alnum, slash, dash, underscore, dot, comma, plus
+#            (matches existing repo conventions; `+` is the homelab
+#            multi-scope idiom — e.g. `docs(opener+diagrams+role):`.
+#            see `git log` history for the existing taxonomy)
+#   !      — breaking-change marker (optional)
+#   :⎵    — colon-space separator (REQUIRED per spec)
+#   .+     — non-empty subject
+pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|plan|spec|skill)(\([a-z0-9/,_.+-]+\))?!?: .+$'
+
+if ! [[ "$subject" =~ $pattern ]]; then
+  printf '\033[31m[commit-msg] subject does not match Conventional Commits v1.0.0.\033[0m\n' >&2
+  printf '  \033[31mGot:\033[0m      %s\n' "$subject" >&2
+  printf '  \033[33mShape:\033[0m    <type>(<scope>)?!?: <subject>\n' >&2
+  printf '  \033[33mTypes:\033[0m    feat fix docs style refactor perf test build ci chore revert plan spec skill\n' >&2
+  printf '  \033[33mExamples:\033[0m\n' >&2
+  printf '    feat(workflow): add per-PR retrospective ceremony\n' >&2
+  printf '    docs: Phase 3b — README aurora-aware rewrite\n' >&2
+  printf '    refactor(checks)!: drop legacy doc-coherence hook\n' >&2
+  printf '    skill(gotcha-foo): codify the landmine\n' >&2
+  printf '  \033[33mSpec:\033[0m     https://www.conventionalcommits.org/en/v1.0.0/\n' >&2
+  printf '  \033[33mBypass:\033[0m   git commit --no-verify\n' >&2
+  exit 1
+fi
