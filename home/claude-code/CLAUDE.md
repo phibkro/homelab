@@ -36,7 +36,7 @@ Problem solving can be viewed as optimising a Solution for a Goal given a set of
 Make the bad state unrepresentable, not detected. A runtime check on a property you could have made structural is a smell. Three boundaries, one move:
 
 ```
-code          → types make illegal states unrepresentable; runtime checks only for
+  code          → types make illegal states unrepresentable; runtime checks only for
                   what types can't express. pre-launch, prefer the correct model over
                   compat; change public shapes freely.
   verification  → observation makes false "done" unrepresentable.
@@ -50,6 +50,21 @@ code          → types make illegal states unrepresentable; runtime checks only
 - Config explicit at boundaries: caller declares intent, receiver guesses nothing. A surprising default is a latent bug. Value matter -> expose it. Doesn't -> delete it.
 - Tests encode WHYT, not WHAT. A test that can't fail when the business rule changes is wrong.
 - Fail loud: "done" with anything silently skipped is a lie. Surface uncertainty
+
+
+### Single source of truth
+Every fact has one authoritative home; everything else references it or is generated from it. Two copies of a fact is a representable illegal state, they can disagree (the DB "update anomaly"). Kill the disagreement by construction, not by remembering to sync.
+
+derivation-strength ladder (prefer the top rung you can reach):
+```
+  generate    derivation is a pure function of the root → drift UNREPRESENTABLE
+  test        a check fails when derivation ≠ root      → drift caught at CI
+  convention  you keep them in sync by hand             → hope; the anti-pattern
+```
+  
+- ad-hoc reference to the same thing → a link/ref, never a copy.
+- docs are a prose derivation of code (the root): generate them (types, doctests) or test them (runnable examples), don't hand-maintain a second copy of the truth.
+- you already run the top rung: ~/.claude is a generated derivation of the homelab nix source (see CONTEXT). same move, different domain.
 
 ### Name the right answer first
 Most-correct solution before any compromise, including state-of-art outside the

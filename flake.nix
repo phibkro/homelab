@@ -1,13 +1,5 @@
 {
   description = "nori infrastructure (NixOS) — workstation and future lab hosts";
-
-  # Pinned to stable nixos-26.05 (shipped 2026-06). Moved off unstable
-  # after a cascade of mismatched-version pain (Stylix moved ahead of
-  # home-manager → `configType` errors, hyprland 0.55 hyprlang
-  # deprecation, electron-39 EOL etc.). Trade-off accepted: no more
-  # 0-day packages, but Stylix/home-manager match by version label
-  # (warnings gone) and rebuilds follow predictable stable-line churn.
-  # Re-pin to a newer stable deliberately on `nix flake update`.
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
