@@ -144,6 +144,13 @@
   # declares its own here (the group is per-host).
   users.groups.media = { };
 
+  # nori in `media` so syncthing (runs as nori:users) can write to the
+  # /mnt/family/library/* tree, which is 02775 root:media per the
+  # tmpfiles above. Mirrors machines/workstation/default.nix:53. Without
+  # this, syncthing logs `mkdir /mnt/family/library/<X>/.stfolder:
+  # permission denied` and the folder fails initial scan.
+  users.users.nori.extraGroups = [ "media" ];
+
   # ── Boot ───────────────────────────────────────────────────────────
   # 2016 laptop with UEFI — assume systemd-boot. If first boot reveals
   # legacy BIOS, flip to GRUB (see machines/pavilion/default.nix for
