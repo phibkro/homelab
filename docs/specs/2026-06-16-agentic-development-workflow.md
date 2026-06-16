@@ -149,6 +149,73 @@ After `docs/plans/2026-06-16-docs-deep-sweep.md` wraps (phases 3a-3d + remaining
 - Produce a `docs/plans/` entry for implementation if any tooling needs to land
 - Update SKILL.md files (`wrap-session`, `wrap-feature`, etc.) to reflect chosen ceremonies
 
+## Worked example — 2026-06-16 docs deep-sweep sprint retro
+
+Captured because the spec predicted the reflection phase would surface
+real misses, and it did. Concrete data for the research session;
+N=1 but ceiling-of-confidence is higher than zero.
+
+### Sprint shape
+- **Scope:** Phase 3a + 3b + 3c of the docs deep-sweep plan
+- **Deliverable:** 15 commits, +2577 / -1047, all CI green
+- **Subagents used:** 1 (Phase 1 inventory Explore agent — the
+  closest analog to a standup, returning a structured report)
+- **Operator hat:** PM (scope) + reviewer (PR review at sprint end)
+- **Agent hat:** scrum master + tech lead (execution + atomic commits)
+
+### Ceremonies that organically happened
+- **Preamble** — short: operator said "finish the docs thing first
+  so content sweep", agent scoped 7 sub-sweeps from memory. Did NOT
+  surface the punch list for confirmation before editing — caught in
+  retro as a miss.
+- **Execution** — atomic commits per sub-sweep, each with descriptive
+  body listing "intentionally NOT touched" items.
+- **Reporting** — at operator request: PR-review-style rundown of all
+  15 commits, commit-by-commit grades, cross-cutting observations.
+  Surfaced two pre-existing debt items + one missing trailer.
+- **Reflection** — operator drove explicitly (this section). Four
+  questions: keeps / DoD / changes / amnesiac handoff.
+
+### Concrete misses surfaced by the retro
+1. **No Definition of Done up front.** Plan file's Phase 4 was the
+   plan-defined DoD; we shipped 3a/3b/3c but skipped Phase 4
+   validation. Self-graded 4/7 of a sensible post-hoc DoD.
+2. **Progress log table in the plan file was never updated mid-sprint.**
+   Fixed in DoD-closure commit; would have been better to update per
+   sub-phase as a self-imposed standup.
+3. **One commit missing the `Co-Authored-By:` trailer.** Pre-commit
+   hook doesn't catch trailers; either bake into hook or accept the
+   occasional drop.
+4. **TaskCreate not used despite 4 system reminders.** Self-imposed
+   visibility gap for a wide-sweep sprint. The "main agent IS the
+   scrum master" framing makes the agent-self-tracking the standup-
+   equivalent; declining it leaves the operator without per-step state.
+5. **No mid-sprint checkpoint discipline.** SOUL.md's "Knob — checkpoint
+   cadence" axiom (restate done/verified/left) was honored only at the
+   operator's explicit retro request.
+
+### Things that worked, worth keeping
+- **Plan persisted first** before any Phase 3 edit; Explore-agent
+  inventory was cheap insurance.
+- **Atomic per-axis commits** — bigger commits would have been faster
+  to land but per-commit revert is the value.
+- **"Intentionally NOT touched" lists** in commit bodies — prevents
+  the next agent from "fixing" historical artifacts.
+- **Catalog kills > catalog maintenance** — when the SoT axiom can be
+  applied, drift-source eliminated by construction beats keeping prose
+  in sync.
+- **Promote-to-CI when possible** — the routing-coherence flake check
+  (3a.5) is the prose → law promotion applied to docs structure itself.
+- **PR-review-as-checkpoint** before push caught items that would have
+  shipped silently.
+
+### Codification call
+Operator + agent agreed (this session): **defer skill codification**
+to after ADR-0005 lands. SOUL.md "iterate-to-stable, then codify";
+N=1 isn't stable; the research phase is exactly the iterate-to-stable
+step. This worked example becomes one data point for that research,
+not the answer to it.
+
 ## References
 
 - `docs/decisions/0001-agentic-homelab-practices.md` — the ADR this work would revise (or extend); explicitly rejected feature branches on the "no humans to coordinate" axis. The new argument changes the axis.
