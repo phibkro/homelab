@@ -112,13 +112,13 @@ nori.lanRoutes.widget = {
 
 **Tests**: backup contract + host-aware assertion.
 
-**Question**: What does `nori.backups.<n>` require, and when do you use `paths` vs `skip`? What's the constraint on appliance hosts?
+**Question**: What does `nori.backups.<n>` require, and when do you use `include` vs `skip`? What's the constraint on appliance hosts?
 
 **Expected (shape)**:
-- Exactly one of `paths` or `skip` (assertion enforces; never both, never neither)
-- `paths = [ ... ]` for content to back up
+- Exactly one of `include` or `skip` (assertion enforces; never both, never neither)
+- `include = [ ... ]` for content to back up (lowers internally to upstream `services.restic.backups.<n>.paths`)
 - `skip = "<reason>"` for explicit opt-out (covered elsewhere, stateless, intentionally re-derivable)
-- Appliance hosts (`role = "appliance"`) cannot use `paths` — host-aware assertion fails eval (anti-write storage posture)
+- Appliance hosts (`role = "appliance"`) cannot use `include` — host-aware assertion fails eval (anti-write storage posture)
 
 **Source**: `modules/effects/backup.nix` (schema + assertions), `docs/reference/storage.md` "Backup intent abstraction".
 
@@ -197,14 +197,14 @@ nori.lanRoutes.widget = {
 **Question**: You just landed a structural refactor (e.g., introduced a new abstraction or pattern). What do you do for a fresh agent's sake before moving on?
 
 **Expected (shape)**:
-- Apply the "On every structural change" rubric — don't wait for session end
-- Stale active examples in CLAUDE.md / the tier-2 reference docs → fix immediately (highest-cost class)
+- Invoke the `/on-structural-change` skill — don't wait for session end. Externalize the change so the next amnesiac agent lands productively (ADR-0001's filter: a practice transfers iff it externalizes knowledge or verifies a claim).
+- Stale active examples in CLAUDE.md / docs/reference/ → fix immediately (highest-cost drift class)
 - Pattern used twice or more → codify as a procedure skill (under `.claude/skills/`)
-- New convention agents should follow → docs/reference/module-authoring.md (shape) + docs/invariants.md (rule rung), ideally backed by a flake check / module assertion
+- New convention agents should follow → `docs/reference/module-authoring.md` (shape) + `docs/invariants.md` (which rung of the enforcement ladder), ideally backed by a flake check / module assertion
 - Hard-won mistake → new `.claude/skills/gotcha-<name>/SKILL.md` with USE-WHEN trigger
-- Cross-session fact (preferences, project state, host topology) → memory
+- Cross-session fact (preferences, project state, host topology) → memory entry
 
-**Source**: CLAUDE.md "On every structural change".
+**Source**: `.claude/skills/on-structural-change/SKILL.md` (the procedure) + `docs/invariants.md` § "Decision tree — when to add a rule" + `docs/decisions/0001-agentic-homelab-practices.md` (the why).
 
 ---
 
