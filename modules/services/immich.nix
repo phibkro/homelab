@@ -13,7 +13,7 @@ lib.mkMerge [
       "stateful"
     ];
 
-    /**
+    /*
       Web-UI-managed OIDC (like Jellyseerr/Beszel). Immich stores its
       OAuth config in postgres (system_config table); env-var override
       support shifted in 1.100+ and isn't reliable for the OAuth
@@ -56,7 +56,7 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.immich.enabled {
-    /**
+    /*
       Immich — self-hosted photo management. Phone → server auto-upload,
       face recognition, object detection, shared albums.
 

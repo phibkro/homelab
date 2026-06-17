@@ -23,7 +23,7 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.radarr.enabled {
-    /**
+    /*
       Radarr — movie management. Same role as Sonarr but for films:
       watches Prowlarr for releases, hands grabs to qBittorrent, hardlinks
       finished movies into the movies library.

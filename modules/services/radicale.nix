@@ -22,7 +22,7 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.radicale.enabled {
-    /**
+    /*
       Radicale — CalDAV + CardDAV server. Replaces Google Calendar /
       Contacts dependency for the household. Phones (iOS Calendar,
       Android DAVx5) sync to https://calendar.nori.lan/ over the tailnet.

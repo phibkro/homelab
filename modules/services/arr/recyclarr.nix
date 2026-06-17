@@ -6,7 +6,7 @@
 }:
 
 let
-  /**
+  /*
     TRaSH-guide-derived quality profiles + custom formats. One config
     file per *arr instance — recyclarr 8.x rejects "split instances"
     (multiple configs targeting the same base_url), so the WEB-1080p /
@@ -29,7 +29,7 @@ in
 lib.mkMerge [
   { nori.services.recyclarr.tags = [ "media-server" ]; }
   (lib.mkIf config.nori.services.recyclarr.enabled {
-    /**
+    /*
       Recyclarr — syncs TRaSH-guide quality profiles + custom formats into
       Sonarr and Radarr on a weekly cadence. No UI; pure batch job.
 

@@ -7,7 +7,7 @@
 lib.mkMerge [
   { nori.services.samba.tags = [ "network-appliance" ]; }
   (lib.mkIf config.nori.services.samba.enabled {
-    /**
+    /*
       Samba server, tailnet-only.
 
       Shares — one declared here (whole-drive `media`), two derived
@@ -84,7 +84,7 @@ lib.mkMerge [
             "fruit:delete_empty_adfiles" = "yes";
           };
 
-          /**
+          /*
             `share`/`nori`/family-tier shares emitted by
             modules/infra/storage/default.nix from the per-fs `samba = { … }`
             blocks declared next to disko on each host.
@@ -137,7 +137,7 @@ lib.mkMerge [
       "d ${config.nori.fs.projects.path}    0775 nori users -"
     ];
 
-    /**
+    /*
       Config declarative in Nix; the actual share data is /mnt/media
       (covered by media-irreplaceable) and /srv/share (covered by
       user-data). Samba's state at /var/lib/samba is just runtime

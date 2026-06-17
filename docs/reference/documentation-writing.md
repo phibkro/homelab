@@ -120,9 +120,29 @@ Format precedence (lifted from RFC 145):
 | `mkOption { ... }` declaration | `description = ''...''` |
 | Lib function in `modules/`, `flake.nix`, or `lint/default.nix` | `/** ... */` |
 | Let-binding with non-obvious purpose (e.g. our `lintLib`, `lintRules`, `baseNonServicePatterns`) | `/** ... */` |
-| Attribute set entry that's effectively a function or registry | `/** ... */` |
+| Attribute set entry that's effectively a function or registry (e.g. `nori.lanRoutes.<X>`, bundle headers under `modules/services/<group>/default.nix`) | `/** ... */` |
+| Rationale, runbook, or intent narrative (bootstrap procedures, "why we chose Pattern A", "reapply this UI state if X gets stomped", config-line trade-offs) | `/* ... */` |
 | Inline implementation detail not part of the public surface | standard `#` comment |
 | Cross-cutting prose (mental models, why-this-shape, multi-module rationale) | hand-written `docs/reference/<topic>.md` |
+
+The test that distinguishes `/** */` from `/* */`: **would I want this block surfaced in generated docs as code-API reference?** YES → `/** */`. NO → `/* */`. Operator runbooks, "click X then Y" steps, rationale for a specific config value, and service-behavior narrative all fail the test — they're operator-intent content, not consumer-facing API. The 2026-06-17 sweep reclassified 51 such blocks across `modules/services/` after the Stage 4 bulk migration over-promoted them; calibration examples land at `modules/services/{jellyfin,ollama,vaultwarden}.nix` head-comments.
+
+### Path-coherence skip annotations
+
+The `path-coherence` script (one-off via `just check-migration`) verifies that file-path strings in code comments and selected docs resolve to real files. Three scopes of skip:
+
+| Scope | Annotation | When |
+|---|---|---|
+| **Line** | `path-coherence: skip` anywhere on the line | One specific ref that is intentionally historical (e.g. a removed file the comment narrates) OR a relative-path import where the path-coherence regex captures a misleading substring. Most fine-grained — preserves coverage on every other line in the file. |
+| **Block** | `<!-- path-coherence: skip-block — <reason> -->` opens, `<!-- path-coherence: end-skip -->` closes | A fenced code block in markdown that shows illustrative SHAPE (relative imports from another file's perspective, "this is what your new host's default.nix should look like"). HTML-comment form so it disappears on render. |
+| **File** | `<!-- path-coherence: skip-file — <reason> -->` anywhere in the file | A whole file that is illustrative end-to-end (tutorial / skill SOP). The file's premise IS "these paths are shape, not refs." |
+
+Prefer the narrowest scope that fits. File-level skip on a file that has SOME real refs and SOME illustrative ones loses coverage on the real refs forever — use block-level around just the illustrative sections instead. The 2026-06-17 PR review caught a `skip-block` that papered over a wrong-by-the-spec example: skip-annotations are not a license to leave content stale.
+
+Annotation discipline:
+- Always include a `— <reason>` after the verb. "What is being skipped, and why" earns rent the same way other comments do; bare `path-coherence: skip` doesn't.
+- A `skip-file` whose body has any real (resolvable) path refs is a signal to demote to `skip-block`.
+- When you add a skip annotation, the path-coherence regex stops checking that ref forever. Add a future-you reminder if the file should eventually move out of skip — e.g. `skip-file — historical; delete this file when X lands`.
 
 ### What stays hand-written
 

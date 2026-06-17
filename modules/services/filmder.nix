@@ -5,7 +5,7 @@
   ...
 }:
 
-/**
+/*
   filmder — TMDB-backed movie browser. Static Vite + React build.
 
   Internet-public exposure was prototyped via Tailscale Funnel (Phase
@@ -48,7 +48,7 @@ lib.mkMerge [
       "stateless"
     ];
 
-    /**
+    /*
       `audience = "public"` here means tailnet-public (any tailnet device
       reaches it without an auth prompt). Distinct from internet-public
       — see header for the Tailscale-Funnel path if that's ever needed.

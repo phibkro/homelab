@@ -7,7 +7,7 @@
 }:
 
 let
-  /**
+  /*
     Paused 2026-05-16 — operator not using local LLM inference recently,
     the GPU + ~14 GiB VRAM at idle was not worth the cost. Flip to
     `true` to resume. State at /var/lib/ollama is preserved across the
@@ -77,7 +77,7 @@ lib.mkMerge [
       port = 11434;
       openFirewall = false;
 
-      /**
+      /*
         Unload models from VRAM as soon as a request completes. Default
         is 5m which means one chat reserves ~14 GiB VRAM for five minutes
         after the last token. With `0` the base Ollama process holds
@@ -89,7 +89,7 @@ lib.mkMerge [
       */
       environmentVariables.OLLAMA_KEEP_ALIVE = "0";
 
-      /**
+      /*
         loadModels intentionally unset.
 
         Pulls are now done manually first, then this list is filled in once a
@@ -111,7 +111,7 @@ lib.mkMerge [
       */
     };
 
-    /**
+    /*
       Default-deny filesystem access beyond what ollama needs (its
       StateDirectory at /var/lib/ollama, /dev/nvidia* for CUDA, the nix
       store for libs). No user-data paths required. nori.harden's

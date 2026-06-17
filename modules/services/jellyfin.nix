@@ -84,7 +84,7 @@ lib.mkMerge [
       config.nori.fs.share.path
     ];
 
-    /**
+    /*
       Pattern A — library scan, watch progress, user accounts. The
       library can be re-derived from media files on disk, but watch
       history is irreplaceable convenience data. Largest of the

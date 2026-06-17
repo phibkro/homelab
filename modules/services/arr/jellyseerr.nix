@@ -36,7 +36,7 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.jellyseerr.enabled {
-    /**
+    /*
       Jellyseerr — request UI for users. Family members log in (via
       Authelia OIDC, see below), search for a movie/show, click "Request",
       and Jellyseerr forwards the request to Sonarr/Radarr to grab.

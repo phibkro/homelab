@@ -6,7 +6,7 @@
 }:
 
 let
-  /**
+  /*
     Flip to `false` to pause the chat front-end without dropping its
     state at /var/lib/private/open-webui (DynamicUser symlink). The
     single boolean toggles:
@@ -49,7 +49,7 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.open-webui.enabled {
-    /**
+    /*
       Open WebUI: chat front-end on top of local Ollama. First registered
       user becomes admin and invites family from the UI.
 
@@ -102,7 +102,7 @@ lib.mkMerge [
       };
     };
 
-    /**
+    /*
       Default-deny filesystem access beyond Open WebUI's own state dir
       (DynamicUser StateDirectory at /var/lib/open-webui handles itself).
       User-uploaded files land inside that state dir; no need for /mnt
@@ -116,7 +116,7 @@ lib.mkMerge [
     */
     nori.harden = lib.mkIf enabled { open-webui = { }; };
 
-    /**
+    /*
       DynamicUser needs supplementary group `keys` to read the sops-
       rendered env file (mode 0440 root:keys). Wrapped in mkIf because
       when `enabled = false`, the lanRoute is unregistered → no OIDC
@@ -128,7 +128,7 @@ lib.mkMerge [
       EnvironmentFile = config.sops.templates."oidc-chat-env".path;
     };
 
-    /**
+    /*
       Pattern C2 backup — sqlite3 .backup before restic. The path
       /var/lib/open-webui is a symlink to /var/lib/private/open-webui
       (DynamicUser StateDirectory mechanism); restic stores symlinks AS

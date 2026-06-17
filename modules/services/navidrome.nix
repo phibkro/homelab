@@ -33,7 +33,7 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.navidrome.enabled {
-    /**
+    /*
       Navidrome — Subsonic-protocol music server. Family-facing playback;
       browser UI at https://audio.nori.lan, Subsonic-API clients
       (Symfonium, DSub, play:Sub, Substreamer, Sonixd) connect to the
@@ -95,7 +95,7 @@ lib.mkMerge [
       };
     };
 
-    /**
+    /*
       Client secret arrives via lan-route's generated env file (key
       `ND_AUTH_OIDC_CLIENTSECRET` per `secretEnvName` below). Non-secret
       OIDC knobs go in `environment` directly.
@@ -105,7 +105,7 @@ lib.mkMerge [
       SupplementaryGroups = [ "keys" ];
     };
 
-    /**
+    /*
       Transcoding requires ffmpeg on PATH; upstream NixOS module doesn't
       add it. Without this, EnableTranscodingConfig=true exposes the UI
       but every transcode silently fails at runtime. Pattern: keep FLAC on
@@ -129,7 +129,7 @@ lib.mkMerge [
     */
     nori.harden.navidrome.readOnlyBinds = [ "${config.nori.fs.library.path}/music" ];
 
-    /**
+    /*
       Pattern C2 — sqlite3 .backup before restic. DynamicUser's symlink
       at /var/lib/navidrome → /var/lib/private/navidrome means restic
       paths target the private dir directly (the symlink-trap assertion

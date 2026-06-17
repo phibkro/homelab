@@ -23,7 +23,7 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.bazarr.enabled {
-    /**
+    /*
       Bazarr — subtitle automation. Reads Sonarr's + Radarr's libraries,
       finds missing subtitles per the user's language preferences, fetches
       them from configured providers (OpenSubtitles, Subscene, etc.) and

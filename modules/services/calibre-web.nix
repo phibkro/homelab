@@ -19,7 +19,7 @@ lib.mkMerge [
       exposeOnTailnet = true;
       monitor = { };
       audience = "family";
-      /**
+      /*
         Forward-auth via Authelia. /opds/* + /kobo/* exempt so KOReader,
         Moon+ Reader, Marvin, and Kobo Sync clients can hit the OPDS
         catalog with HTTP Basic auth (calibre-web's own user) — they
@@ -40,7 +40,7 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.calibre-web.enabled {
-    /**
+    /*
       calibre-web — community-maintained web UI for an ebook library.
       Distinct from Calibre's own content server: nicer UI, OPDS at
       /opds for e-readers, on-the-fly Kindle/Kobo format conversion
@@ -113,7 +113,7 @@ lib.mkMerge [
 
     nori.harden.calibre-web.binds = [ config.nori.fs.library.path ];
 
-    /**
+    /*
       Pattern A — calibre-web's user/session DB. The book library
       itself lives at /mnt/media/library/books (already in
       media-irreplaceable). Static `calibre-web` user.

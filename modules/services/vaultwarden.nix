@@ -93,7 +93,7 @@ lib.mkMerge [
         ROCKET_ADDRESS = "0.0.0.0";
         ROCKET_PORT = 8222;
 
-        /**
+        /*
           SIGNUPS_ALLOWED is closed in steady state — single-user
           homelab. Existing accounts can still be unlocked via SSO
           (linked by email) or master password; the flag only gates
@@ -122,7 +122,7 @@ lib.mkMerge [
         # SSO_CLIENT_SECRET injected via EnvironmentFile (sops template);
         # see systemd.services.vaultwarden.serviceConfig below.
         SSO_PKCE = true; # PKCE S256 — Authelia enforces it; default true, explicit for the record.
-        /**
+        /*
           `offline_access` is critical: without it Bitwarden's 5-min
           relock detector trips at every access-token expiry. With it,
           Vaultwarden refreshes silently and sessions stay live.
@@ -147,7 +147,7 @@ lib.mkMerge [
       SupplementaryGroups = [ "keys" ];
     };
 
-    /**
+    /*
       Pattern C2 — VACUUM INTO snapshot before restic. Static
       `vaultwarden` user (not DynamicUser), so /var/lib/vaultwarden is
       a real directory. The `if` guards the bootstrap case where the

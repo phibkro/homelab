@@ -23,7 +23,7 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.sonarr.enabled {
-    /**
+    /*
       Sonarr — TV show management. Watches Prowlarr for new episode
       availability, hands matches to qBittorrent, scans the download
       complete dir, hardlinks finished episodes into the shows library.
@@ -57,7 +57,7 @@ lib.mkMerge [
       openFirewall = false;
     };
 
-    /**
+    /*
       Servarr `<APP>__<SECTION>__<KEY>` env vars override config.xml at
       startup. Auth disabled for localhost so Caddy's forward-auth is the
       only browser gate; the Forms login still covers SSH-tunnel-direct

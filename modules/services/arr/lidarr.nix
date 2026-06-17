@@ -23,7 +23,7 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.lidarr.enabled {
-    /**
+    /*
       Lidarr — music management. Same role as Sonarr/Radarr but for music:
       watches Prowlarr for releases, hands grabs to qBittorrent, hardlinks
       finished tracks into the music library. Library lives under

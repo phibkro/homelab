@@ -23,7 +23,7 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.prowlarr.enabled {
-    /**
+    /*
       Prowlarr — indexer aggregator for the *arr stack. Holds the list of
       torrent trackers / Usenet indexers in one place; Sonarr + Radarr
       query Prowlarr for searches instead of each maintaining its own

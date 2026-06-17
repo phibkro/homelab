@@ -5,7 +5,7 @@
   ...
 }:
 
-/**
+/*
   stremio — Stremio Server (the streaming-server backend that pairs
   with the Stremio web/desktop client). Operator-personal; tailnet-only
   at https://stremio.nori.lan.

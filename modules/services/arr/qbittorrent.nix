@@ -26,7 +26,7 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.qbittorrent.enabled {
-    /**
+    /*
       qBittorrent — torrent download client for the *arr stack. WebUI only
       (no desktop GUI per the homelab's server/client separation).
 

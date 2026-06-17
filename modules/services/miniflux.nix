@@ -32,7 +32,7 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.miniflux.enabled {
-    /**
+    /*
       Miniflux — minimal RSS / feed reader (Go binary + Postgres). All
       state in Postgres; no on-disk per-user files.
 
@@ -115,7 +115,7 @@ lib.mkMerge [
 
     sops.secrets."miniflux-admin-password" = { };
 
-    /**
+    /*
       DynamicUser=true upstream → the unit can't read /run/secrets/*
       without an extra group. `keys` is the sops-nix convention for
       the secret-file owner; SupplementaryGroups grants read.
@@ -124,7 +124,7 @@ lib.mkMerge [
 
     nori.harden.miniflux = { };
 
-    /**
+    /*
       Pattern C1 — pg_dump to /var/backup/postgresql/, restic picks it
       up below. services.postgresqlBackup is idempotent; another
       service enabling it just appends to `databases`.

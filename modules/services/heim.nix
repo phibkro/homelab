@@ -5,7 +5,7 @@
   ...
 }:
 
-/**
+/*
   heim — operator's portfolio site. Astro static site, markdown-
   authored content, no DB. Same deploy-app shape as filmder.nix:
   manual `just deploy-app heim` triggers the oneshot, kept out of

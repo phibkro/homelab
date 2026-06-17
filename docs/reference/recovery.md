@@ -34,7 +34,6 @@ Each runbook is the step-by-step for one failure class. Initial outlines:
 | `drive-failure-root.md` | SN750 dies | Replace drive → boot installer → clone flake → run disko → `nixos-install` → restic restore service state from OneTouch (off-chassis on aurora) or mp510 (local) |
 | `drive-failure-media.md` | IronWolf dies | Replace drive → `mkfs.btrfs` + subvolumes → restic restore irreplaceable subvolumes from Pi → re-download streaming media from sources |
 | `pi-failure.md` | Pi unreachable / hardware dead | Swap to spare USB SSD with current flake → boot → verify Blocky + Tailscale come up → router DHCP unaffected (workstation is secondary DNS) |
-| `inspect-windows-drive.md` | Need to verify Windows partition state | MP510 read-only mount + verification |
 | `storage-full.md` | Disk pressure | Find what filled up; library is reflinked (not duplicated) — see `.claude/skills/gotcha-arr-reflinks-not-hardlinks/` |
 | `tailscale-acl.md` | Tailscale admin UI ACL recovery | Live ACL lives only in admin UI; this snapshots `tailscale-acl.json` for editor-regression + account-loss recovery |
 

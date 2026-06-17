@@ -134,6 +134,7 @@ PR-review-style structured rundown:
 - **Cross-cutting observations** — patterns across commits, debt accumulated, decisions that may warrant ADRs
 - **Things done right, named** — not flattery; explicit "we should keep doing X" so the next-amnesiac agent inherits the practice
 - **Recommendation** with action items
+- **Diff size — quoted verbatim, not estimated.** Paste the literal output of `git diff --shortstat origin/main..HEAD` (e.g. `48 files changed, 1234 insertions(+), 567 deletions(-)`) into the report. Estimating diff size invites the 50%-off self-grade the 2026-06-17 PR-review reviewer caught. The mechanization is "run the command, paste the output" — zero estimation surface.
 
 **Verification — did we solve the Prologue's problem?**
 

@@ -25,7 +25,7 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.syncthing.enabled {
-    /**
+    /*
       Syncthing — peer-to-peer file sync over tailnet. Replaces "manually
       rsync between machines" + "stuff in Samba I might want on my laptop
       too." Each device runs its own Syncthing; folders are negotiated
@@ -88,7 +88,7 @@ lib.mkMerge [
       ];
     };
 
-    /**
+    /*
       Default-deny FS hardening — relaxed for /home since Syncthing
       legitimately reaches into the user's home dir to sync arbitrary
       paths. `protectHome = null` skips the ProtectHome setting entirely

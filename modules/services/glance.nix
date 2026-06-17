@@ -5,7 +5,7 @@
 }:
 
 let
-  /**
+  /*
     Dashboard catalog is *not* maintained here — it's derived from
     `config.nori.lanRoutes`. Each service module declares a
     `dashboard = { ... }` block on its own lanRoute (schema in
@@ -14,7 +14,7 @@ let
   */
   dashed = lib.filterAttrs (_: r: r.dashboard != null) config.nori.lanRoutes;
 
-  /**
+  /*
     Glance renders bookmark groups in the order given. Sort by the
     group's position in this list, falling back to alphabetical
     within a group via attrset key order. Consume first (most-clicked),
@@ -52,7 +52,7 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.glance.enabled {
-    /**
+    /*
       Glance — family-facing landing page at home.nori.lan.
 
       Three-column layout (small | full | small) — desktop side-by-side,

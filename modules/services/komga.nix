@@ -18,7 +18,7 @@ lib.mkMerge [
       exposeOnTailnet = true;
       monitor = { };
       audience = "family";
-      /**
+      /*
         Forward-auth via Authelia. /api/* exempt so OPDS readers
         (Tachiyomi, Paperback, Komelia) and the e-reader catalog at
         /api/v1/opds/v2 keep working — they authenticate with HTTP
@@ -34,7 +34,7 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.komga.enabled {
-    /**
+    /*
       Komga — comics/manga server. Scans a directory tree for CBZ/CBR/
       PDF/EPUB files, exposes them via web UI + native apps (Tachiyomi
       extension, Paperback, Komelia) + OPDS feed for e-readers.
@@ -68,7 +68,7 @@ lib.mkMerge [
 
     nori.harden.komga.binds = [ config.nori.fs.library.path ];
 
-    /**
+    /*
       Pattern A — Komga's user/library/read-progress DB. Comic files
       themselves live at /mnt/media/library/comics (already in
       media-irreplaceable). Static `komga` user.
