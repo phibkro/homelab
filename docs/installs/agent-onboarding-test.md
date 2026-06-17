@@ -131,13 +131,13 @@ nori.lanRoutes.widget = {
 **Question**: How does a service module declare default-deny FS-namespace hardening today? What's the principle, and what enforces that you don't forget?
 
 **Expected (shape)**:
-- `nori.harden.<systemd-unit-name> = { binds = [...]; readOnlyBinds = [...]; protectHome = true|false|null; };` (schema in `modules/effects/harden.nix`)
+- `nori.harden.<systemd-unit-name> = { binds = [...]; readOnlyBinds = [...]; protectHome = true|false|null; };` (schema in `modules/infra/capabilities/default.nix`)
 - Generator emits `ProtectHome = mkForce true` + `TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ]` + `BindPaths` + `BindReadOnlyPaths` on the systemd unit
 - `protectHome = null` skips the directive (preserves upstream NixOS module's value, e.g. syncthing where upstream is opinionated)
 - Principle: default-deny FS namespace; compromised service can't browse host paths it doesn't need
 - Enforcement: `every-service-has-fs-hardening` flake check fails the build if any `modules/services/*.nix` (outside the excluded list) lacks a `nori.harden.<n>` declaration
 
-**Source**: `docs/reference/module-authoring.md` "Filesystem hardening", `docs/decisions/0000-rationales.md` "Default-deny filesystem access", `modules/effects/harden.nix`.
+**Source**: `docs/reference/module-authoring.md` "Filesystem hardening", `docs/decisions/0000-rationales.md` "Default-deny filesystem access", `modules/infra/capabilities/default.nix`.
 
 ---
 

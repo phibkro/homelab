@@ -161,7 +161,7 @@ services.<service>.accelerationDevices = config.nori.gpu.nvidiaDevices;
 systemd.services.<unit>.serviceConfig.DeviceAllow = config.nori.gpu.nvidiaDevices;
 ```
 
-Single source of truth in `modules/effects/gpu.nix` — host's hardware.nix sets `nori.gpu.nvidiaDevices`; consumers reference that. Empty list on hosts without a GPU; opt-in services pass through cleanly.
+Single source of truth in `modules/infra/capabilities/gpu.nix` — host's hardware.nix sets `nori.gpu.nvidiaDevices`; consumers reference that. Empty list on hosts without a GPU; opt-in services pass through cleanly.
 
 ### 8. Wire imports
 

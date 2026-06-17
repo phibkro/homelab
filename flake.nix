@@ -562,7 +562,7 @@
                   echo "  ProtectHome=true, TemporaryFileSystem=[/mnt:ro,/srv:ro]"
                   echo "Set binds=[...] for writable paths, readOnlyBinds=[...] for"
                   echo "read-only, protectHome=null to leave upstream's value alone."
-                  echo "See modules/effects/harden.nix for the schema."
+                  echo "See modules/infra/capabilities/default.nix for the schema."
                   exit 1
                 fi
               '';

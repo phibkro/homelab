@@ -178,7 +178,7 @@
   networking.dhcpcd.wait = "if-carrier-up";
 
   # Canonical GPU device list for services that opt in via
-  # accelerationDevices / DeviceAllow. Default in modules/effects/gpu.nix
+  # accelerationDevices / DeviceAllow. Default in modules/infra/capabilities/gpu.nix
   # is empty; host explicitly enumerates what's present so Pi (no
   # GPU) doesn't get phantom device references.
   nori.gpu.nvidiaDevices = [

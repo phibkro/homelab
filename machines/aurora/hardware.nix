@@ -44,7 +44,7 @@
   # NVIDIA GM107M (GTX 950M, Maxwell) — same device-node set as
   # workstation's RTX 5060 Ti; consumed by services.immich.machine-
   # learning.accelerationDevices via the schema in
-  # modules/effects/gpu.nix. nvidia-modeset / -uvm-tools omitted as
+  # modules/infra/capabilities/gpu.nix. nvidia-modeset / -uvm-tools omitted as
   # they're display / profiling-only and not needed for compute.
   nori.gpu.nvidiaDevices = [
     "/dev/nvidia0"

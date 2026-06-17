@@ -141,7 +141,7 @@ Add another via `/relocate-to-pi`. Precedents above.
 
 ## GPU access pattern
 
-Services that need the GPU set `accelerationDevices` (or systemd `DeviceAllow`) from `config.nori.gpu.nvidiaDevices` — single source of truth in `modules/effects/gpu.nix`.
+Services that need the GPU set `accelerationDevices` (or systemd `DeviceAllow`) from `config.nori.gpu.nvidiaDevices` — single source of truth in `modules/infra/capabilities/gpu.nix`.
 
 | Service | Status | Resource |
 |---|---|---|

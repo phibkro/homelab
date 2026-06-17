@@ -152,7 +152,7 @@ just rebuild      → persist
 
 ## Filesystem hardening (`nori.harden`)
 
-The default-deny systemd FS-namespace block (`ProtectHome = mkForce true`, `TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ]`, plus `BindPaths` / `BindReadOnlyPaths` for what's let back in) lives behind the `nori.harden` abstraction in `modules/effects/harden.nix`.
+The default-deny systemd FS-namespace block (`ProtectHome = mkForce true`, `TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ]`, plus `BindPaths` / `BindReadOnlyPaths` for what's let back in) lives behind the `nori.harden` abstraction in `modules/infra/capabilities/default.nix`.
 
 ```nix
 nori.harden.<unit> = {

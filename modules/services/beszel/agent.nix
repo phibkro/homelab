@@ -83,7 +83,7 @@ lib.mkMerge [
 
     # PrivateDevices override: upstream sets it true (when smartmon is
     # off), which hides /dev/nvidia*. On hosts that opt into NVIDIA via
-    # nori.gpu.nvidiaDevices (see modules/effects/gpu.nix) the agent surfaces
+    # nori.gpu.nvidiaDevices (see modules/infra/capabilities/gpu.nix) the agent surfaces
     # driver telemetry via nvidia-smi, so we expose /dev/* there. The
     # rest of the hardening (ProtectKernel*, SystemCallFilter,
     # RestrictSUIDSGID, NoNewPrivileges, PrivateUsers) still applies —

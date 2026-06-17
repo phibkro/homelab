@@ -86,7 +86,7 @@ lib.mkMerge [
     # legitimately reaches into the user's home dir to sync arbitrary
     # paths. `protectHome = null` skips the ProtectHome setting entirely
     # (rather than forcing it false), preserving the upstream NixOS
-    # module's value — explicit trade documented at modules/effects/harden.nix.
+    # module's value — explicit trade documented at modules/infra/capabilities/default.nix.
     #
     # binds: explicit RW access to whichever media subvols the running
     # host actually has. Workstation has both downloads + library;

@@ -1,5 +1,23 @@
 { config, lib, ... }:
 
+/**
+  Capabilities concern — what services can DO on the machine.
+
+  Distinct from "access" (who can REACH the service): capabilities
+  covers the outbound / local direction — filesystem visibility, GPU
+  device allocation, system capabilities, shared group memberships.
+  PaaS analogue: sidecar permissions, volume mounts, device
+  allocations.
+
+  `default.nix` carries the `nori.harden` schema + systemd
+  FS-namespace adapter. `gpu.nix` carries `nori.gpu.nvidiaDevices`
+  registry (the device-path SoT services read from).
+
+  Shared `media` group declarations live in
+  `modules/services/arr/shared.nix` + `machines/aurora/default.nix`
+  (declared by each host that uses it; idempotent merge). A future
+  `media-group.nix` could centralize this.
+*/
 let
   inherit (lib)
     mkOption
@@ -11,21 +29,27 @@ let
     ;
 in
 {
-  # nori.harden — default-deny filesystem-namespace hardening.
-  #
-  # `/mnt` and `/srv` are tmpfs-overlaid read-only; services see only
-  # the subpaths they explicitly bind. Variation across services is just
-  # `binds` / `readOnlyBinds` / `protectHome`; the rest is constant
-  # serviceConfig that every server module used to rewrite by hand.
-  #
-  # Attribute name MUST match the systemd unit name. Multi-unit services
-  # declare separate entries (immich-server + immich-machine-learning).
-  #
-  # Composition: services needing extra serviceConfig keys
-  # (PrivateDevices, SupplementaryGroups, EnvironmentFile, …) declare
-  # them in a sibling `systemd.services.<name>.serviceConfig` block —
-  # NixOS module merging combines them with this abstraction's output.
+  imports = [ ./gpu.nix ];
 
+  /**
+    `nori.harden` — default-deny filesystem-namespace hardening.
+
+    `/mnt` and `/srv` are tmpfs-overlaid read-only; services see only
+    the subpaths they explicitly bind. Variation across services is
+    just `binds` / `readOnlyBinds` / `protectHome`; the rest is
+    constant `serviceConfig` that every server module used to
+    rewrite by hand.
+
+    Attribute name MUST match the systemd unit name. Multi-unit
+    services declare separate entries (`immich-server` +
+    `immich-machine-learning`).
+
+    Composition: services needing extra `serviceConfig` keys
+    (PrivateDevices, SupplementaryGroups, EnvironmentFile, …)
+    declare them in a sibling `systemd.services.<name>.serviceConfig`
+    block — NixOS module merging combines them with this
+    abstraction's output.
+  */
   options.nori.harden = mkOption {
     default = { };
     description = ''
@@ -92,16 +116,19 @@ in
           BindReadOnlyPaths = cfg.readOnlyBinds;
           BindPaths = cfg.binds;
 
-          # Universal baseline: stricter than NixOS systemd defaults;
-          # verified no-impact against the live service set 2026-05-08.
-          # Promote any of these to a per-entry option on the third
-          # concrete need (rule of three).
-          #
-          # ProtectSystem=strict deliberately NOT here: would block
-          # state-dir writes for services that don't list their state
-          # path in `binds` (bazarr's StateDirectory output is empty;
-          # several *arr services rely on upstream-module writability
-          # semantics). Promote per-entry if a service needs it.
+          /**
+            Universal baseline: stricter than NixOS systemd defaults;
+            verified no-impact against the live service set
+            2026-05-08. Promote any of these to a per-entry option on
+            the third concrete need (rule of three).
+
+            `ProtectSystem=strict` deliberately NOT here: would block
+            state-dir writes for services that don't list their state
+            path in `binds` (bazarr's `StateDirectory` output is
+            empty; several *arr services rely on upstream-module
+            writability semantics). Promote per-entry if a service
+            needs it.
+          */
           PrivateTmp = lib.mkDefault true;
           NoNewPrivileges = lib.mkDefault true;
           LockPersonality = lib.mkDefault true;
@@ -110,9 +137,11 @@ in
           ProtectKernelTunables = lib.mkDefault true;
           ProtectKernelLogs = lib.mkDefault true;
           ProtectClock = lib.mkDefault true;
-          # AF_NETLINK is required: libuv's getifaddrs needs it, which
-          # Node + Bun depend on. Still blocks AF_PACKET, AF_BLUETOOTH,
-          # AF_VSOCK, and friends.
+          /**
+            `AF_NETLINK` is required: libuv's `getifaddrs` needs it,
+            which Node + Bun depend on. Still blocks `AF_PACKET`,
+            `AF_BLUETOOTH`, `AF_VSOCK`, and friends.
+          */
           RestrictAddressFamilies = lib.mkDefault [
             "AF_UNIX"
             "AF_INET"

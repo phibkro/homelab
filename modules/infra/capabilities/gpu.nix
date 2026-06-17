@@ -1,12 +1,14 @@
 { lib, ... }:
 
 {
-  # nori.gpu.nvidiaDevices — single source of truth for NVIDIA device
-  # nodes. Services that need GPU access read this rather than hardcode
-  # paths, so a GPU swap is a one-line change.
-  #
-  # Compute-only by design: nvidia-modeset (display) and
-  # nvidia-uvm-tools (profiling) aren't in this set.
+  /**
+    `nori.gpu.nvidiaDevices` — single source of truth for NVIDIA
+    device nodes. Services that need GPU access read this rather
+    than hardcode paths, so a GPU swap is a one-line change.
+
+    Compute-only by design: `nvidia-modeset` (display) and
+    `nvidia-uvm-tools` (profiling) aren't in this set.
+  */
   options.nori.gpu.nvidiaDevices = lib.mkOption {
     type = lib.types.listOf lib.types.str;
     default = [ ];

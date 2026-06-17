@@ -22,8 +22,7 @@
     ../effects/lan-route.nix
     ../effects/service-placement.nix
     ../infra/backup
-    ../effects/gpu.nix
-    ../effects/harden.nix
+    ../infra/capabilities
     ../effects/gatus-probe.nix
     ../effects/restart-policy.nix
     ../effects/rust-motd.nix # codename banner + live MOTD on login
