@@ -14,31 +14,46 @@ Authoritative procedure. The flake's `readDir ./modules/machines/` + `genAttrs h
 1. **Role**: `workhorse` (heavy compute / state / GPU; backed up locally and offsite) or `appliance` (observability + alert plane that survives workhorse failure; anti-write storage; backups via skip-only). Drives concern selection + the placement assertion in `modules/infra/backup/default.nix`.
 2. **Architecture**: `x86_64-linux` or `aarch64-linux`. Pi-class is aarch64; needs `nixos-hardware/raspberry-pi-4` import + sd-image build path; station builds Pi closures via aarch64 binfmt emulation.
 3. **Install path**: bare-metal disko (workhorse-class x86) vs sd-image build + dd to flash (appliance-class aarch64) vs UTM dry-run (transient).
-4. **Concern selection**: `modules/common` (always) + `modules/services` (workhorse bundle) + `modules/desktop` (graphical). Or for appliance: `modules/common` + flat imports of specific modules the host needs.
+4. **Concern selection**: `modules/machines/base` (always) + `modules/services` (workhorse bundle) + `modules/machines/desktop` (graphical). Or for appliance: `modules/machines/base` + flat imports of specific modules the host needs.
 
 ## Step-by-step
 
 ### 1. Create the host folder
 
 ```bash
-mkdir machines/<name>
-touch machines/<name>/{default,hardware}.nix
+mkdir modules/machines/<name>
+touch modules/machines/<name>/{default,hardware}.nix
 ```
 
-The folder name IS the hostname. `flake.nix`'s `mkHost` injects `config.networking.hostName = <folder name>`. Don't redeclare it inside the host's `default.nix`.
+The folder name IS the hostname. `modules/machines/default.nix`'s `mkHost` injects `config.networking.hostName = <folder name>`. Don't redeclare it inside the host's `default.nix`.
 
-### 2. Add identity to the registry
+### 2. Register the host in two places
+
+Both `nixosMachines` AND `identityFor` need the new entry — the key-set assertion in `modules/machines/default.nix` fails eval if either is missing.
 
 ```nix
-# flake.nix → identityFor
-<name> = {
-  tailnetIp = "100.X.Y.Z";  # assigned after first tailscale auth; placeholder OK initially
-  lanIp = "192.168.1.N";    # static lease on the router; null if none
-  role = "workhorse";       # or "appliance"
+# modules/machines/default.nix
+nixosMachines = {
+  workstation = ./workstation;
+  pi = ./pi;
+  pavilion = ./pavilion;
+  aurora = ./aurora;
+  <name> = ./<name>;        # ← add here
+};
+
+identityFor = {
+  # …
+  <name> = {                 # ← and here
+    tailnetIp = "100.X.Y.Z"; # assigned after first tailscale auth; placeholder OK initially
+    lanIp = "192.168.1.N";   # static lease on the router; null if none
+    role = "workhorse";      # or "appliance" / "agent"
+    roleOneLiner = "…";
+    codename = "…";
+    hardware = "…";
+    primaryJob = ''…'';
+  };
 };
 ```
-
-Eval fails if you skip this — `genAttrs hostNames mkHost` needs `identityFor.<name>`.
 
 For a transient host (UTM dry-run target like `vm-test`), placeholder values that satisfy the schema are fine; nothing cross-host references them.
 
@@ -52,7 +67,7 @@ Required minimum:
   nixpkgs.hostPlatform = "x86_64-linux";  # or "aarch64-linux"
 
   # Host-specific stuff — disks via disko, kernel modules, hardware-specific sysctl.
-  # Workhorse-class x86: import disko + ../hardware/workstation/disko.nix shape
+  # Workhorse-class x86: import disko + ./disko.nix shape (see modules/machines/workstation/disko.nix)
   # Pi-class aarch64: import nixos-hardware.nixosModules.raspberry-pi-4 + the sd-image-aarch64 module
 }
 ```
@@ -63,16 +78,16 @@ Anti-write storage host (USB flash, SD card)? See `modules/machines/pi/hardware.
 
 ### 4. Write default.nix
 
-Workhorse pattern (everything bundled):
+Workhorse pattern (everything bundled). Relative paths are from `modules/machines/<host>/default.nix`:
 
 ```nix
 { inputs, lib, ... }:
 {
   imports = [
     inputs.disko.nixosModules.disko
-    ../../modules/common
-    ../../modules/services
-    ../../modules/desktop  # if graphical
+    ../base        # NixOS baseline every host imports
+    ../../services # workload bundle
+    ../desktop     # if graphical
     ./hardware.nix
     # ./disko.nix or other host-specific files
   ];
@@ -80,7 +95,7 @@ Workhorse pattern (everything bundled):
 }
 ```
 
-Appliance pattern (flat imports — Pi precedent):
+Appliance pattern (flat imports — Pi precedent). Relative paths are from `modules/machines/<host>/default.nix`:
 
 ```nix
 { inputs, lib, modulesPath, config, ... }:
@@ -88,11 +103,11 @@ Appliance pattern (flat imports — Pi precedent):
   imports = [
     inputs.nixos-hardware.nixosModules.raspberry-pi-4
     "${modulesPath}/installer/sd-card/sd-image-aarch64.nix"
-    ../../modules/common
+    ../base
     # Pick specific server modules the host needs (don't import the bundle):
-    ../../modules/infra/networking/blocky.nix
-    ../../modules/infra/observability/gatus.nix
-    ../../modules/infra/observability/beszel/{hub,agent}.nix
+    ../../infra/networking/blocky.nix
+    ../../infra/observability/gatus.nix
+    ../../infra/observability/beszel/{hub,agent}.nix
     # ...
     ./hardware.nix
   ];

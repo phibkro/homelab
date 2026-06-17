@@ -38,7 +38,7 @@ oidc-ops-client-secret: '<raw>'
 oidc-ops-client-secret-hash: '$pbkdf2-sha512$310000$...'
 ```
 
-### 3. Edit `modules/services/grafana.nix`
+### 3. Edit `modules/infra/observability/grafana.nix`
 
 Apply these three changes:
 

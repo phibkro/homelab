@@ -115,10 +115,10 @@ Edit `modules/services/immich.nix`:
 Aurora already has 2283 + 3003 open on tailnet (since P8), so no
 firewall edit needed.
 
-Edit `machines/workstation/default.nix`:
+Edit `modules/machines/workstation/default.nix`:
 - `immich.enable = false;`
 
-Edit `machines/aurora/default.nix` — verify `immich.enable = true;` is
+Edit `modules/machines/aurora/default.nix` — verify `immich.enable = true;` is
 still in the family-tier block (it should be from P8).
 
 ### 6. Rebuild

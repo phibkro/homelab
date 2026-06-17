@@ -81,11 +81,15 @@ regex_abs='(modules|machines|home)/[a-zA-Z0-9/<>_.-]+\.nix'
 # against the importing file's directory.
 regex_rel='(\.\.?/)+[a-zA-Z0-9/<>_.-]+\.nix'
 
-# Files in scope
+# Files in scope. Widened post-review (2026-06-17 PR review) to catch
+# drift in session-start mandatory reading (roadmap, runbooks) + the
+# top-level README and secrets/README — the files agents and operators
+# actually read first. Previously these were silently excluded; bulk-
+# moves left stale refs in exactly the docs humans look at.
 mapfile -t files < <(
   find . -name '*.nix' -not -path './result*' -not -path './.git/*' 2>/dev/null
-  find docs/reference docs/decisions docs/installs -name '*.md' 2>/dev/null
-  for f in docs/glossary.md docs/invariants.md docs/README.md; do
+  find docs/reference docs/decisions docs/installs docs/runbooks -name '*.md' 2>/dev/null
+  for f in docs/glossary.md docs/invariants.md docs/README.md docs/roadmap.md README.md secrets/README.md; do
     [ -f "$f" ] && echo "$f"
   done
   find .claude/skills -name 'SKILL.md' 2>/dev/null

@@ -45,7 +45,7 @@
   nixpkgs.hostPlatform = "x86_64-linux";
 
   # AMD CPU detected. enableRedistributableFirmware is on via
-  # modules/common, so this microcode flag activates correctly.
+  # modules/machines/base, so this microcode flag activates correctly.
   hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
 
   /*

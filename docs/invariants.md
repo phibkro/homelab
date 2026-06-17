@@ -39,7 +39,7 @@ Strongest rung each claim has reached. `[prose: unchecked]` entries are promotio
 | **Security & isolation** | |
 | Every service module declares `nori.harden.<unit>` (or names an exclusion) | `[law: every-service-has-fs-hardening]` |
 | Every service has backup intent (`nori.backups.<svc>.paths` or `.skip = <reason>`) | `[law: every-service-has-backup-intent]` + `[runtime-introspection: just test-backups]` (fresh snapshot per target ≤25h) |
-| Default-deny firewall — only Caddy ports open by default | `[structural]` (modules/common firewall config) |
+| Default-deny firewall — only Caddy ports open by default | `[structural]` (modules/machines/base firewall config) |
 | Tailnet is the auth perimeter; Authelia only for per-user identity | `[structural]` (the `audience` enum forces the choice at the type level) |
 | `disko*.nix` configs reference disks by `/dev/disk/by-id/*`, never `/dev/nvmeN` | `[law: lint.diskoUsesById]` (promoted 2026-06-16; nori.lint TOML registry) |
 | Sops-encrypted secrets stay in `secrets/secrets.yaml`; encryption itself is structural | `[structural]` (sops policy file `.sops.yaml`) |

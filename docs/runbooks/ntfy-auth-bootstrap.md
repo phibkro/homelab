@@ -90,7 +90,7 @@ systemd.services.gatus.serviceConfig.LoadCredential = [
 # Splice NTFY_PUBLISHER_TOKEN into the existing environmentFile via wrapper.
 ```
 
-**`notify@` template** (`modules/services/notify.nix`) — add the bearer header to its curl call:
+**`notify@` template** (`modules/infra/observability/ntfy/notify.nix`) — add the bearer header to its curl call:
 
 ```nix
 script = ''

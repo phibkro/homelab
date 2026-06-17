@@ -52,7 +52,7 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.vaultwarden.enabled {
-    /**
+    /*
       Vaultwarden — self-hosted Bitwarden-compatible password manager.
       Mainline 1.35.0+ (Dec 2024) ships native OIDC SSO; the Timshel
       fork is no longer required.

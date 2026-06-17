@@ -18,7 +18,7 @@ secrets file, just `sops secrets/<name>.yaml` and start adding keys.
 
 ## Per-secret file routing
 
-`modules/common/sops.nix` sets `sops.defaultSopsFile =
+`modules/machines/base/sops.nix` sets `sops.defaultSopsFile =
 ../../secrets/secrets.yaml`, so secrets without an explicit
 `sopsFile` declaration read from there. To route a secret at a
 different file, override per-secret:
@@ -132,7 +132,7 @@ the host with the declared owner / mode.
 ## Agent-access boundary
 
 This repo's coding agent (Claude) writes the unencrypted *wiring*:
-`modules/.../sops.nix`, `.sops.yaml`, this README, and `sops.secrets.X`
+`modules/machines/base/sops.nix`, `.sops.yaml`, this README, and `sops.secrets.X`
 declarations inside service modules. The agent **must not have access
 to your age private key** (`~/.config/sops/age/keys.txt`); without it,
 encrypted secrets are gibberish to anything other than you and the

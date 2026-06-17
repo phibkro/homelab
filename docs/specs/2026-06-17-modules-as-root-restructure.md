@@ -1,6 +1,6 @@
 ---
 date: 2026-06-17
-status: EXECUTED — Phases 0-4 landed 2026-06-17
+status: EXECUTED — Phases 0-6 landed 2026-06-17 (Phase 5 cleanup + Phase 6 scope-alignment as follow-on per docs/specs/2026-06-17-scope-aligned-tree.md)
 seed: Stage 2.5 redirect; operator framing 2026-06-17 (PaaS lens + dual-access split)
 summary: Restructure the codebase under modules/ as the single root, with services/ (workloads) and infra/<concern>/ (hosting platform) as the load-bearing split. Apply the PaaS lens to name infra sub-concerns; separate audience access from capabilities access. Use default.nix per folder; move enumeration logic into modules/<tree>/default.nix; thin flake.nix to dep-injection.
 executed-as:
@@ -16,13 +16,21 @@ executed-as:
   - Phase 3f  9d63fd5  drain effects/
   - doc-pass  3cc23a9  CLAUDE.md + module-authoring.md + glossary.md +
                        documentation-writing.md aligned
-  - Phase 4   <this>   /home → modules/home; /machines → modules/machines.
+  - Phase 4   5e35815  /home → modules/home; /machines → modules/machines.
                        path-coherence refined to skip relative imports;
                        tailnetIp lint scope expanded; chromecast
                        allowlist; 3 generated docs regenerated.
+  - Phase 5a  4e9cb36  machines/default.nix explicit imports + key-set assert
+  - Phase 5b  63b7225  delete modules/dev (per-project concern)
+  - Phase 5c  b7e9a84  extract lint to /lint at root + ripgrep
+  - Phase 5d  2c2cf38  demote path-coherence + multi-line-comments to
+                       one-off scripts; delete doc-coherence
+  - Phase 6a  7bb8a82  modules/common → modules/machines/base
+  - Phase 6b  2bb9de7  modules/desktop → modules/machines/desktop
 verification: byte-equal nix eval on representative trees per phase;
-              all 11 flake checks pass at every commit; 4 NixOS hosts
-              unchanged behaviorally.
+              8 flake checks pass post-Phase-5d pruning (was 11
+              pre-Phase-5d); 4 NixOS hosts unchanged behaviorally;
+              just check-migration clean.
 ---
 
 # Modules-as-root restructure (spec)

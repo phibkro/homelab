@@ -1,5 +1,14 @@
 # Inspect the Windows drive (MP510) from NixOS
 
+> **Historical runbook** (kept for procedural reference). The MP510's
+> Windows partition was wiped in Aurora migration P9 — the drive is
+> now a btrfs target for backup replication. There is no `windows-mount.nix`
+> in the current tree. If a future Windows-drive scenario emerges, the
+> ntfs3 read-only mount pattern below is the reference shape; rebuild
+> the `fileSystems.<n>` config fresh against the new drive layout.
+
+<!-- path-coherence: skip-file — describes removed config (windows-mount.nix wiped in P9). Kept for procedural reference. -->
+
 The Corsair Force MP510 is the Windows NVMe and is **never** written
 to from NixOS (CLAUDE.md hard rule; full constraint in RECOVERY.md § "Permanent constraints"). This runbook covers the
 read-only access path.
@@ -7,7 +16,7 @@ read-only access path.
 ## Default state
 
 `/mnt/windows-ro` is a read-only mount of the Windows C: partition,
-declared in `machines/workstation/windows-mount.nix`. It comes up at
+declared in `modules/machines/workstation/windows-mount.nix`. It comes up at
 boot via `fileSystems.<name>` and survives reboots. The kernel
 `ntfs3` driver enforces read-only at the syscall layer — no path
 through this mount can mutate the partition.

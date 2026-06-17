@@ -28,7 +28,7 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.jellyfin.enabled {
-    /**
+    /*
       Jellyfin — media streaming server. Library paths configured via
       web UI (Dashboard → Libraries → Add).
 

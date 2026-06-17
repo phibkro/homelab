@@ -3,6 +3,19 @@ date: 2026-06-17
 status: EXECUTED — Phases 6a + 6b landed 2026-06-17
 seed: operator framing 2026-06-17 ("move modules/common to modules/home and modules/desktop to modules/machines under base/. is that reasonable?"); refined after scope-distinction pushback.
 summary: Consolidate NixOS-system-scope concerns under `modules/machines/` so the tree's TOP-LEVEL CUT mirrors the Nix module SCOPE (system vs home-manager). Today `modules/common/` and `modules/desktop/` are NixOS-system-scope but live at the top level alongside the home-manager-scope `modules/home/`; the conflation forces readers to know each subtree's scope by reading its content. Proposal: move `modules/common/` → `modules/machines/base/`, `modules/desktop/` → `modules/machines/desktop/`. After: `modules/machines/` IS the NixOS-system tree; `modules/home/` IS the home-manager tree; the scope distinction is structural.
+executed-as:
+  - Phase 6a  7bb8a82  modules/common → modules/machines/base
+                       4 hosts updated (../../common → ../base);
+                       internal infra imports in base/ updated
+                       (../infra → ../../infra); bulk prose rewrite
+                       across .nix + selected .md
+  - Phase 6b  2bb9de7  modules/desktop → modules/machines/desktop
+                       workstation import updated (../../desktop → ../desktop);
+                       bulk prose rewrite
+  - Phase 6c  (folded into 6a/6b; doc cleanup done inline)
+verification: byte-equal nix eval per host; 8 flake checks pass at every commit
+              (Phase 5d already demoted 11 → 8 before 6a/6b); just check-migration
+              clean; generated docs regenerated (lan-route-options + topology-generated).
 ---
 
 # Scope-aligned tree consolidation (spec)

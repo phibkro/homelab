@@ -23,7 +23,7 @@ hl.monitor({
 -----------------------------
 
 hl.config({
-    -- Norwegian keymap to mirror modules/common/base.nix.
+    -- Norwegian keymap to mirror modules/machines/base/base.nix.
     -- follow_mouse=0 → click-to-focus. Stops the floating ghostty
     -- quick-terminal from stealing focus on hover.
     input = {

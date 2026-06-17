@@ -53,8 +53,8 @@ Edit Tailscale admin UI → DNS → Global nameservers. Replace pi (`100.100.71.
 
 Last resort. Re-enable Caddy + Authelia on workstation:
 
-1. `nori.lanIp = config.nori.hosts.workstation.lanIp;` in `modules/common/default.nix`.
-2. Set `nori.services.caddy.enable = true` and `nori.services.authelia.enable = true` in `machines/workstation/default.nix`.
+1. `nori.lanIp = config.nori.hosts.workstation.lanIp;` in `modules/machines/base/default.nix`.
+2. Set `nori.services.caddy.enable = true` and `nori.services.authelia.enable = true` in `modules/machines/workstation/default.nix`.
 3. Flip `nori.lanRoutes.auth.runsOn = "workstation"` (override in workstation's config).
 4. Open ports 80/443 on workstation's tailnet firewall.
 5. `just rebuild` workstation.

@@ -110,17 +110,20 @@ The flake derives configurations from the directory structure:
 | `desktop/` | *This host has a graphical session*: Hyprland, greetd, audio | workstation; future `nori-laptop` |
 | `effects/` | Reader + Writer interface options | imported by `common/`; populated by hosts (Reader) and services (Writer) |
 
-A typical NixOS host file:
+A typical NixOS host file (workstation, post-Phase-6):
 
-<!-- path-coherence: skip-block — illustrative fenced example; relative paths are SHAPE from the perspective of the host file shown in the comment header, not this doc's location -->
+<!-- path-coherence: skip-block — illustrative fenced example; ./hardware.nix and ./disko.nix are siblings of the host file shown in the comment header (modules/machines/workstation/), not this doc -->
 
 ```nix
 # modules/machines/workstation/default.nix
 imports = [
   inputs.disko.nixosModules.disko
-  ../../modules/common
-  ../../modules/services
-  ../../modules/desktop
+  inputs.home-manager.nixosModules.home-manager
+
+  ../base       # base + users + sops + tailscale + lib options
+  ../../services # every server module (HTTP, *arr, backup, …)
+  ../desktop    # Hyprland + greetd + audio + bars + apps + gaming
+
   ./hardware.nix
   ./disko.nix
 ];

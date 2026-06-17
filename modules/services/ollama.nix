@@ -39,7 +39,7 @@ lib.mkMerge [
   }
   (lib.mkIf config.nori.services.ollama.enabled {
 
-    /**
+    /*
       Ollama: local LLM inference server. NVIDIA driver lives in
       modules/machines/workstation/hardware.nix; CUDA runtime is pulled in by the
       `package` override below.

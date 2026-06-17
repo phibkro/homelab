@@ -50,7 +50,7 @@ curl -s -u "${API_KEY}:" \
 Cross-reference against the JSON to make sure these intents are still encoded:
 
 - **SSH ACL: `action: accept`** for all tag:operator → tag:operator paths (eliminates per-session reauth dance; see [[just-remote-tailnet-hostnames]]).
-- **`tag:agent` quarantine** — pavilion's tag, restricted to ollama (workstation:11434) + outbound :443. Verify pavilion CANNOT reach `workstation:9119` (hermes) — that's the load-bearing assumption documented in `home/hermes/default.nix` and NETWORK.md.
+- **`tag:agent` quarantine** — pavilion's tag, restricted to ollama (workstation:11434) + outbound :443. Verify pavilion CANNOT reach `workstation:9119` (hermes) — that's the load-bearing assumption documented in `modules/home/hermes/default.nix` and NETWORK.md.
 - **`tag:family` member tags** — phones + tablets join with this tag; their access scope is the family-tier subset of routes.
 - **Per-host subnet/exit-node approvals** — pi is the subnet router + exit node; these need re-approval in admin UI on every key rotation.
 
