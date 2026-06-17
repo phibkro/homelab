@@ -26,7 +26,7 @@
     */
     "${modulesPath}/installer/sd-card/sd-image-aarch64.nix"
 
-    ../../common
+    ../base
 
     /*
       Full service bundle. Post P2/P3 wrap + P1b route lift, importing

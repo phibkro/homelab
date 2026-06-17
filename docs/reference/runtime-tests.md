@@ -37,7 +37,7 @@ One lever maxed = nice-to-have. Two = ship it. Three+ = required.
 
 ## The architectural correlation worth knowing
 
-**The homelab's testable surface is exactly the Reader+Writer-shaped subset of `modules/infra/` plus `home/`.** Every `nori.<X>` registry is a producer of effects whose runtime state can silently desync from the declaration. Everything else (`machines/`, `modules/common/`, service modules themselves) is either pure declaration (verified at nix-eval time) or loud-failing at runtime (no test needed).
+**The homelab's testable surface is exactly the Reader+Writer-shaped subset of `modules/infra/` plus `home/`.** Every `nori.<X>` registry is a producer of effects whose runtime state can silently desync from the declaration. Everything else (`machines/`, `modules/machines/base/`, service modules themselves) is either pure declaration (verified at nix-eval time) or loud-failing at runtime (no test needed).
 
 | `modules/infra/` file | Reader-Writer shape | Test | Test value |
 |---|:-:|---|:-:|

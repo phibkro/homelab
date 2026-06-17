@@ -125,7 +125,7 @@ The constraints called out in the prior addendum were addressed and the entry-pl
 - Every workstation-resident route (the arr stack, jellyfin, ollama, syncthing, stremio, gatus, hermes) marked `exposeOnTailnet = true`, opening the tailnet firewall hole so pi's Caddy can reverse-proxy them too.
 - Hermes refused non-loopback binds; landed via `--insecure` (operator-tier; tailnet ACL is the actual gate). Caddy still rewrites Host/Origin to `127.0.0.1:9119` so the GHSA-ppp5-vxwm-4cf7 mitigation against browser-DNS-rebinding stays in effect.
 - syncthing UI re-bound via `services.syncthing.guiAddress` (the XML `settings.gui.address` path doesn't propagate — the systemd ExecStart hardcodes `--gui-address` and overrides it; saved as `[[syncthing-gui-address-cli-override]]` memory).
-- `nori.lanIp` derives from pi in `modules/common/default.nix`; `authelia.runsOn` flips to pi.
+- `nori.lanIp` derives from pi in `modules/machines/base/default.nix`; `authelia.runsOn` flips to pi.
 - Workstation `caddy.enable = false` + `authelia.enable = false`; closure shrinks ~96 MB.
 - Tailscale admin UI DNS push order swapped (`home.phibkro.org` row: workstation 100.81.5.122 → pi 100.100.71.3).
 

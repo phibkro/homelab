@@ -23,6 +23,6 @@ _: {
   programs.virt-manager.enable = true;
 
   # NixOS module list-merging means this appends to the user's groups
-  # set in modules/common/users.nix; no conflict.
+  # set in modules/machines/base/users.nix; no conflict.
   users.users.nori.extraGroups = [ "libvirtd" ];
 }

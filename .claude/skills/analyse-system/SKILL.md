@@ -15,7 +15,7 @@ NixOS flake; the canonical entry-point + abstraction-family reading order is:
 
 1. `flake.nix` — entry point, `identityFor` host registry, `checks.${system}` rules suite
 2. `modules/infra/*.nix` — the `nori.<X>` Reader+Writer effect family (`hosts`, `gpu`, `fs`, `lan-route`, `backup`, `harden`)
-3. `modules/common/default.nix` — what every host imports
+3. `modules/machines/base/default.nix` — what every host imports
 4. Sample 5-7 of `modules/services/*.nix` — representative service shapes (don't read all ~25)
 5. `modules/machines/<host>/default.nix` per host — workstation + pi today
 6. `Justfile` — operator workflows

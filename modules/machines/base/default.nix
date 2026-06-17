@@ -8,7 +8,7 @@
    - `base.nix` / `users.nix` / `tailscale.nix` / `sops.nix` —
      baseline OS-level config (locale, sshd, the `nori` operator
      user, tailnet daemon, sops machinery).
-   - `../infra/<concern>/` — PaaS layer (storage / networking /
+   - `../../infra/<concern>/` — PaaS layer (storage / networking /
      access / backup / capabilities / observability) exposing
      `nori.<X>` options. Hosts produce context (`nori.hosts`
      registry, `nori.gpu` hardware capabilities, `nori.fs`
@@ -30,19 +30,19 @@
     ./sops.nix
 
     # Infra layer — the PaaS concerns + their schemas.
-    ../infra/hosts.nix
-    ../infra/storage
-    ../infra/networking
-    ../infra/access
-    ../infra/backup
-    ../infra/capabilities
-    ../infra/observability
+    ../../infra/hosts.nix
+    ../../infra/storage
+    ../../infra/networking
+    ../../infra/access
+    ../../infra/backup
+    ../../infra/capabilities
+    ../../infra/observability
 
     # Top-level policies + leaf config.
-    ../infra/placement.nix
-    ../infra/restart-policy.nix
-    ../infra/tailnet-appliance.nix
-    ../infra/motd.nix # codename banner + live MOTD on login
+    ../../infra/placement.nix
+    ../../infra/restart-policy.nix
+    ../../infra/tailnet-appliance.nix
+    ../../infra/motd.nix # codename banner + live MOTD on login
   ];
 
   /**

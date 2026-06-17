@@ -196,7 +196,7 @@ Phase 4 is done when all four work.
 
 - **`flake.lock` capture and commit** — see step 7. Easy to miss.
 - **Service migration.** Tailscale comes up by virtue of
-  `services.tailscale` in `modules/common/`. Phase 5 services
+  `services.tailscale` in `modules/machines/base/`. Phase 5 services
   (Samba, Ollama, Jellyfin, Immich, the *arr stack, Glance,
   Radicale, Syncthing, etc.) come up via `modules/services/` —
   the host imports the whole "server concern" via

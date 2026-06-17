@@ -83,6 +83,6 @@ Convention-not-rule (Reader/Writer split isn't structurally prevented). Enforced
 **Adding an effect:**
 
 1. `modules/infra/<concern>/default.nix` — option schema + assertions + (Writer-shaped: consumer logic)
-2. Import in `modules/common/default.nix`
+2. Import in `modules/machines/base/default.nix`
 3. Header comment names the producer/consumer split (Reader/Writer at a glance)
 4. **Ship its test** — adding an effect = committing to `just test-<n>` (see `docs/reference/runtime-tests.md`)

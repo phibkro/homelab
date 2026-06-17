@@ -36,7 +36,7 @@
     inputs.disko.nixosModules.disko
     inputs.home-manager.nixosModules.home-manager
 
-    ../../common
+    ../base
 
     /*
       Full services bundle. Importing does NOT activate services —

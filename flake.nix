@@ -157,7 +157,7 @@
         shell — needed because `claude-code` is unfree and the
         default `legacyPackages.${system}` honours the strict
         default. Hosts get unfree separately via
-        `modules/common/base.nix` setting `nixpkgs.config.allowUnfree`,
+        `modules/machines/base/base.nix` setting `nixpkgs.config.allowUnfree`,
         but that path doesn't reach flake-level outputs like devShells.
       */
       pkgsUnfree = import nixpkgs {

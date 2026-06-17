@@ -56,6 +56,6 @@
     "/dev/nvidia-uvm"
   ];
 
-  # system.stateVersion inherited from modules/common/base.nix.
+  # system.stateVersion inherited from modules/machines/base/base.nix.
   # Pin with `lib.mkForce "26.05"` once activated.
 }

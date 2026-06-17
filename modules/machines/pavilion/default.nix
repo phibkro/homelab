@@ -51,7 +51,7 @@
     inputs.impermanence.nixosModules.impermanence
     inputs.home-manager.nixosModules.home-manager
 
-    ../../common # base + users + sops + tailscale + lib options
+    ../base # base + users + sops + tailscale + lib options
 
     /*
       Per-process RSS + system metrics → pi VictoriaMetrics. Imported
@@ -269,7 +269,7 @@
         `prohibit-password` lets root in via SSH key but not via
         password — needed for nixos-anywhere redeploys (which use
         root over SSH). Operator's day-to-day SSH is the `nori` user.
-        mkForce overrides modules/common/users.nix's safe-default
+        mkForce overrides modules/machines/base/users.nix's safe-default
         "no" — this host's role specifically requires root key login.
       */
       PermitRootLogin = lib.mkForce "prohibit-password";

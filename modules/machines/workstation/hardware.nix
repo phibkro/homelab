@@ -43,7 +43,7 @@
 
   /*
     Disk-backed swap behind zram (16 GiB compressed, configured in
-    modules/common/base.nix). Two roles:
+    modules/machines/base/base.nix). Two roles:
       1. Overflow tier — zram absorbs most pressure in-memory; this
          catches what zram can't compress further. Observed pre-freeze
          on 2026-06-06 (zram pegged at 16 GiB for ~3 weeks before the

@@ -49,7 +49,7 @@
   hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
 
   /*
-    system.stateVersion is inherited from modules/common/base.nix.
+    system.stateVersion is inherited from modules/machines/base/base.nix.
     When this host is first activated, set with
       lib.mkForce "26.05";
     to pin its identity to the release it was installed against —

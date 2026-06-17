@@ -15,7 +15,7 @@
     inputs.disko.nixosModules.disko
     inputs.home-manager.nixosModules.home-manager
 
-    ../../common # base + users + sops + tailscale + lib options
+    ../base # base + users + sops + tailscale + lib options
     ../../services # every server module (HTTP, *arr, backup, …)
     ../../desktop # Hyprland + greetd + audio + bars + apps + gaming
 

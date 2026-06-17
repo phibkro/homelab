@@ -81,7 +81,7 @@ docs/
 - `modules/infra/` — **platform** (HOW the system works: storage, networking, access control, observability, backup, capabilities). The hosting layer.
 - `modules/machines/` — composition (per-host module list + identity).
 - `modules/home/` + `home/` — home-manager (user-space + standalone Mac).
-- `modules/common/` — universal NixOS bits + imports of the infra layer.
+- `modules/machines/base/` — universal NixOS bits + imports of the infra layer.
 
 Workloads in `services/` depend on infra concerns; infra concerns depend on `machines/` (the hosts they run on). No upward dependencies; no cycles.
 
@@ -297,7 +297,7 @@ Packages and config live at one of four scopes. Pick the **lowest** scope that g
 
 | Scope | Where | Audience | Examples |
 |---|---|---|---|
-| **System floor** | `modules/common/base.nix` `environment.systemPackages` | Every host (incl. pi, which has no home-manager); root, sshd, system services | `bat curl dig fd git htop just ripgrep tmux tree vim wget` |
+| **System floor** | `modules/machines/base/base.nix` `environment.systemPackages` | Every host (incl. pi, which has no home-manager); root, sshd, system services | `bat curl dig fd git htop just ripgrep tmux tree vim wget` |
 | **System desktop** | `modules/desktop/apps.nix` `environment.systemPackages` + `fonts.packages` | Workstation Linux desktop session — Hyprland-invoked apps, GUI clients, fonts | `ghostty fuzzel hyprpaper zen bitwarden-desktop zed-editor davinci-resolve nerd-fonts.jetbrains-mono` |
 | **User core** | `modules/home/core.nix` `home.packages` + `programs.<x>` | Every interactive machine where nori is the operator | `comma starship programs.git age sops claude-code` |
 | **Per-machine user** | `modules/machines/<host>/home.nix` `home.packages` | One specific machine | workstation: `nvtop` (NVIDIA), `compsize` (btrfs), Hyprland binds; Mac: `bun pnpm ffmpeg`, `home.file."Library/Fonts/..."` |
@@ -319,7 +319,7 @@ Dev environments are a per-project concern, not a homelab capability. Each repo 
 
 ## Dev workflow
 
-`Justfile` at repo root for common workflows. Install: `pkgs.just` already in `modules/common/base.nix`; `brew install just` on macOS.
+`Justfile` at repo root for common workflows. Install: `pkgs.just` already in `modules/machines/base/base.nix`; `brew install just` on macOS.
 
 ```sh
 just                          # default: rebuild via rsync + nh os switch

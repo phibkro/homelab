@@ -1,6 +1,6 @@
 ---
 name: gotcha-tailscale-ssh-browser-auth
-description: USE WHEN automation script / justfile recipe hangs silently doing `tailscale ssh` or `ssh` to a tailnet host — Tailscale SSH periodically wedges on a browser-auth re-check (URL in stderr that non-interactive shells never see). Fix order — (1) add station's pubkey to Pi's `authorized_keys` in `modules/common/users.nix`, then use regular OpenSSH via LAN IP; (2) re-auth via the URL; (3) drive from Mac (already keyed).
+description: USE WHEN automation script / justfile recipe hangs silently doing `tailscale ssh` or `ssh` to a tailnet host — Tailscale SSH periodically wedges on a browser-auth re-check (URL in stderr that non-interactive shells never see). Fix order — (1) add station's pubkey to Pi's `authorized_keys` in `modules/machines/base/users.nix`, then use regular OpenSSH via LAN IP; (2) re-auth via the URL; (3) drive from Mac (already keyed).
 ---
 
 # Tailscale SSH browser-auth wedges cross-host automation
@@ -9,7 +9,7 @@ description: USE WHEN automation script / justfile recipe hangs silently doing `
 
 Workarounds, in order of preference:
 
-1. **Add station's pubkey to Pi's `authorized_keys` via `users.users.nori.openssh.authorizedKeys.keys`** in `modules/common/users.nix`. Cross-host automation then uses regular OpenSSH auth (LAN IP path), bypassing tailscale-SSH entirely. Bootstrap chicken-and-egg: needs SSH to deploy, so initially copy the key manually or run from a host that already has working SSH.
+1. **Add station's pubkey to Pi's `authorized_keys` via `users.users.nori.openssh.authorizedKeys.keys`** in `modules/machines/base/users.nix`. Cross-host automation then uses regular OpenSSH auth (LAN IP path), bypassing tailscale-SSH entirely. Bootstrap chicken-and-egg: needs SSH to deploy, so initially copy the key manually or run from a host that already has working SSH.
 2. **Re-auth interactively** via the URL in the wedge message — keeps Tailscale-SSH working but the next expiry hits again.
 3. **Drive cross-host work from Mac** — Mac's pubkey is already in Pi's authorized_keys, so `just remote pi rebuild` from there works.
 

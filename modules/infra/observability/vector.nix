@@ -3,7 +3,7 @@
 {
   /**
     Vector — journald → VictoriaLogs shipper, replacing systemd-journal-
-    upload (the previous incumbent at modules/common/journal-upload.nix, path-coherence: skip — historical
+    upload (the previous incumbent at modules/machines/base/journal-upload.nix, path-coherence: skip — historical
     since deleted). The /insert/journald path in VictoriaLogs 1.50.0
     silently dropped every row as `too_small_timestamp` despite
     journal-upload sending correct microsecond `__REALTIME_TIMESTAMP`
