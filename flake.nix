@@ -537,18 +537,6 @@
             # under home/hermes/. No NixOS-scope service, state, or
             # hardening surface.
             "modules/services/hermes.nix"
-            # Reserved concern-split names — per-service folders
-            # (e.g. modules/services/vaultwarden/) decompose into
-            # default.nix (engine) + access.nix (lan-route) +
-            # storage.nix (backups) + observability.nix (scrape).
-            # The whole folder is ONE service; access.nix and
-            # observability.nix don't carry their own backup /
-            # hardening intent (storage.nix and default.nix
-            # respectively cover that). See module-authoring.md §
-            # per-service folder shape. Stage 2.5 convention from
-            # 2026-06-17.
-            "*/access.nix"
-            "*/observability.nix"
           ];
           # Generate a `case` glob from a list of patterns, joined with
           # `|`. Used at the head of each scanner loop to skip framework
@@ -707,8 +695,6 @@
                 # of `checks.${system}`. Plus this check's specifics:
                 #   * ntfy/notify.nix — template only, no service of its own
                 #   * samba.nix       — legitimate /srv-full-access exception
-                #   * */storage.nix   — per-service folder concern split;
-                #                       hardening lives in default.nix (engine)
                 for f in $(find modules/services -name '*.nix' | sort); do
                   case "$f" in
                     ${
@@ -717,7 +703,6 @@
                         ++ [
                           "modules/services/ntfy/notify.nix"
                           "modules/services/samba.nix"
-                          "*/storage.nix"
                         ]
                       )
                     })
