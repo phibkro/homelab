@@ -81,6 +81,8 @@ Anti-write storage — declared in `machines/pi/hardware.nix`:
 
 SD-card / flash wear is the #1 Pi failure mode. **Restic-as-target deferred:** Pi can host the workstation restic repo only when a real disk replaces the FIT — the anti-write posture rules out daily restic to flash.
 
+**NVMe enumeration is unstable across reboots.** Disko configs target `/dev/disk/by-id/...` paths; never touch `nvme0n1` without verifying the model string. Workstation's WD SN750 was `nvme0n1` at install time; post-reboot the drives swapped. Load-bearing rationale lives at `machines/workstation/disko.nix:46-51`. See `.claude/skills/gotcha-nvme-enumeration/`.
+
 ## Topology registry (`nori.hosts`)
 
 Cross-host references go through the registry, **never IP literals**. The `forbidden-patterns` flake check fails the build on a stray `100.x.y.z` literal anywhere outside `flake.nix`'s `identityFor`.
