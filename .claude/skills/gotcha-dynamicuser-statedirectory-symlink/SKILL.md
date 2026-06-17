@@ -11,7 +11,7 @@ Services declared with `DynamicUser = yes` in their NixOS module (open-webui, je
 
 We hit this in production: `restic stats latest` on the open-webui repo showed 0B / 3 files for months before anyone noticed, despite daily backups running successfully.
 
-**Fix**: declare paths as `/var/lib/private/<n>` directly for DynamicUser services. The `nori.backups.<n>` abstraction (modules/effects/backup.nix) is the call site; per-module backup declarations encode the right path. Bash file ops (sqlite3, cp, etc.) in `prepareCommand` blocks DO follow symlinks, so prepareCommand source paths can use either path.
+**Fix**: declare paths as `/var/lib/private/<n>` directly for DynamicUser services. The `nori.backups.<n>` abstraction (modules/infra/backup/default.nix) is the call site; per-module backup declarations encode the right path. Bash file ops (sqlite3, cp, etc.) in `prepareCommand` blocks DO follow symlinks, so prepareCommand source paths can use either path.
 
 ```nix
 # Wrong (silent 0-byte snapshot for DynamicUser services):

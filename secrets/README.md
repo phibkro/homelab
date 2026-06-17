@@ -38,7 +38,7 @@ secret is genuinely scoped to one project (`heim-payload-secret`,
 `heim-revalidate-secret` — those mean nothing outside Payload CMS).
 
 Convention:
-- **Homelab service secrets** (used by `modules/server/<service>.nix` to run the service itself) → `secrets.yaml` (default file, no override needed).
+- **Homelab service secrets** (used by `modules/services/<service>.nix` to run the service itself) → `secrets.yaml` (default file, no override needed).
 - **Self-deployed app secrets** (used by personal projects: filmder, heim, drinks, finnbydel) → `apps.yaml` (override `sopsFile` per declaration).
 
 ## One-time bootstrap (do this once per editor machine)

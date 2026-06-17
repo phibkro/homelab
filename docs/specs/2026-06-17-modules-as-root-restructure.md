@@ -373,7 +373,7 @@ Phase 0 — clean slate
   - Single commit
 
 Phase 1 — pilot ONE infra concern: backup
-  - Move modules/effects/backup.nix → modules/infra/backup/
+  - Move modules/infra/backup/default.nix → modules/infra/backup/
     default.nix
   - Move modules/services/backup/{restic,btrbk,verify}.nix →
     modules/infra/backup/{restic,btrbk,verify}.nix

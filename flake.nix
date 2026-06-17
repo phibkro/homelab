@@ -605,6 +605,26 @@
                 touch $out
               '';
 
+          # Path-string coherence. Body in scripts/checks/path-coherence.sh.
+          # Catches comment-narrative refs that name files which have
+          # moved, renamed, or been deleted. Literal paths must exist;
+          # paths with `<...>` placeholders must glob-match at least
+          # one file; lines annotated with `path-coherence: skip` are
+          # ignored (for intentionally-historical or template refs).
+          path-coherence =
+            pkgs.runCommandLocal "path-coherence"
+              {
+                nativeBuildInputs = [
+                  pkgs.bash
+                  pkgs.gnugrep
+                  pkgs.findutils
+                ];
+              }
+              ''
+                bash ${./scripts/checks/path-coherence.sh} ${./.}
+                touch $out
+              '';
+
           # Routing table ↔ filesystem coherence. Body in
           # scripts/checks/routing-coherence.sh. Enforces that CLAUDE.md
           # routes only to existing docs, every L2 doc is routed, and

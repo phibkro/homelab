@@ -39,7 +39,7 @@ lib.mkMerge [
 
     # Gatus alerts come independently via ntfy.sh, so a hub rebuild
     # loses only recent metrics history. Revisit when Pi gains the
-    # planned local fast-restore SSD repo (see modules/server/backup/restic.nix L28).
+    # planned local fast-restore SSD repo (see modules/infra/backup/restic.nix L28).
     nori.backups.beszel.skip = "Hub on appliance host. Pi flash anti-write posture + non-load-bearing metrics; defer until Pi local-fast-restore repo lands.";
   })
 ]

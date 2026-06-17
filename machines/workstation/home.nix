@@ -247,7 +247,7 @@ in
       "Projects" = link "/srv/nori/Projects";
     };
 
-  # modules/desktop/hypr-lock.nix already owns hyprlock.settings.background
+  # home/desktop/hypr-lock.nix already owns hyprlock.settings.background
   # (blur + screenshot capture); Stylix's hyprlock target would collide.
   stylix.targets.hyprlock.enable = false;
 

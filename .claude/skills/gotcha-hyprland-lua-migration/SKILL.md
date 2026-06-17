@@ -36,7 +36,7 @@ description: USE WHEN debugging Hyprland config issues, rolling back to hyprlang
 | When | Site | Symptom |
 |---|---|---|
 | 2026-06-07 | `popup-term` script (`machines/workstation/home.nix`) | SUPER+RETURN did nothing; only "ok" exit code surfaced the silent fail |
-| 2026-06-07 | hypridle DPMS off (`modules/desktop/hypr-lock.nix`) | Monitors stayed lit at lock screen since the lua migration; power draw never dropped. Electricity-bill investigation surfaced this |
+| 2026-06-07 | hypridle DPMS off (`home/desktop/hypr-lock.nix`) | Monitors stayed lit at lock screen since the lua migration; power draw never dropped. Electricity-bill investigation surfaced this |
 
 **Detection commands** (run when in doubt about a dispatch):
 

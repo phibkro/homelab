@@ -9,7 +9,7 @@
   # Minimal by intent: enough so apps don't render tofu boxes (squares
   # for missing glyphs) without pulling tens of MB of unused families.
   # JetBrainsMono Nerd Font is the terminal / launcher / hyprlock font
-  # (see modules/desktop/hypr-lock.nix `font_family`); plain JetBrainsMono
+  # (see home/desktop/hypr-lock.nix `font_family`); plain JetBrainsMono
   # for documents that don't need Nerd Font icons; noto-fonts +
   # noto-fonts-color-emoji + dejavu_fonts cover broad Unicode + emoji.
   #

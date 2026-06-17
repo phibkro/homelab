@@ -82,6 +82,6 @@ in
   };
 
   # No explicit `nori.backups.*` here — that guard is scoped to
-  # modules/server/. ~/.hermes is covered by the user-data restic repo
+  # modules/services/. ~/.hermes is covered by the user-data restic repo
   # (encrypts .env + sessions/) + root btrbk snapshots.
 }

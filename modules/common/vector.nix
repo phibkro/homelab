@@ -2,7 +2,7 @@
 
 {
   # Vector — journald → VictoriaLogs shipper, replacing systemd-journal-
-  # upload (the previous incumbent at modules/common/journal-upload.nix,
+  # upload (the previous incumbent at modules/common/journal-upload.nix,  # path-coherence: skip — historical
   # since deleted). The /insert/journald path in VictoriaLogs 1.50.0
   # silently dropped every row as `too_small_timestamp` despite
   # journal-upload sending correct microsecond `__REALTIME_TIMESTAMP`
@@ -54,7 +54,7 @@
           # it through unmodified so `_time:1h`-style LogsQL queries are
           # truthful. Trade-off: on first ingest, entries older than
           # the retention window (currently 14d, set on pi at
-          # modules/server/victorialogs/server.nix) get silently dropped
+          # modules/services/victorialogs/server.nix) get silently dropped
           # by VictoriaLogs as `too_small_timestamp`. Widen retention if
           # we want deeper backfill queryable.
 

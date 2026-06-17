@@ -74,7 +74,7 @@ All three are wrap-up failures; fix and re-run.
 **Question**: You're adding a service `widget` that serves HTTP on port 9000. What abstractions and files do you touch?
 
 **Expected (shape)**:
-- New file `modules/services/widget.nix`
+- New file `modules/services/widget.nix` <!-- path-coherence: skip — onboarding-test placeholder -->
 - Enable the upstream module (`services.widget.enable = true`)
 - Default-deny FS hardening: `nori.harden.widget = { binds = [...]; readOnlyBinds = [...]; };` (`every-service-has-fs-hardening` flake check enforces presence)
 - `nori.lanRoutes.widget = { port = 9000; monitor = { }; };`
@@ -166,7 +166,7 @@ nori.lanRoutes.widget = {
 **Expected (shape)**:
 - Create folder: `mkdir machines/nori-foo`
 - Add `identityFor.nori-foo = { tailnetIp = "100.99.0.5"; lanIp = null; role = "workhorse"; };` in `flake.nix`
-- Write `machines/nori-foo/default.nix` (imports + concerns) and `hardware.nix` — don't redeclare `networking.hostName` (injected from folder name)
+- Write `machines/nori-foo/default.nix` (imports + concerns) and `hardware.nix` — don't redeclare `networking.hostName` (injected from folder name) <!-- path-coherence: skip — onboarding-test placeholder -->
 - Add host's age public key to `.sops.yaml`, run `sops updatekeys secrets/secrets.yaml`
 - First boot + `tailscale up`
 

@@ -200,7 +200,7 @@ in
       The two-state schema forces every service module to make an
       explicit decision rather than silently being uncovered. The
       paired flake check (`every-service-has-backup-intent` in
-      flake.nix) enforces that every modules/server/**.nix
+      flake.nix) enforces that every modules/services/**.nix
       contains a nori.backups.<n> declaration.
 
       Active backups (those with non-null `include`) fan out across
@@ -405,7 +405,7 @@ in
       # path-based backups, for different reasons (anti-write storage
       # vs intentional impermanence; see role enum in hosts.nix). The
       # structural fix for appliance is the planned local SSD — see
-      # modules/server/backup/restic.nix L28.
+      # modules/infra/backup/restic.nix L28.
       myRole = config.nori.hosts.${config.networking.hostName}.role or null;
       backupPaths = lib.filter (cfg: cfg.include != null) (lib.attrValues config.nori.backups);
 
@@ -563,7 +563,7 @@ in
             nori.backups has active jobs (with non-null `include`) but
             nori.backupTargets is empty — no targets means no restic
             units get generated. Declare at least one target in
-            modules/server/backup/restic.nix (or override per-host).
+            modules/infra/backup/restic.nix (or override per-host).
           '';
         }
       ];
@@ -597,7 +597,7 @@ in
 
       # Auto-generated OnFailure → notify@ wiring per (job, target).
       # Mirror of the manual block this replaced in
-      # modules/server/backup/restic.nix; without it a silent backup
+      # modules/infra/backup/restic.nix; without it a silent backup
       # failure stays silent. Per-target means the ntfy message names
       # exactly which target failed.
       #

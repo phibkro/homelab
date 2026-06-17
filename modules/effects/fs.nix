@@ -9,7 +9,7 @@ in
   # Collapses subvolume paths that used to be magic strings across arr
   # binds, jellyfin/immich/komga consumers, and the restic+btrbk
   # generators. Reader-shaped effect: hosts declare (alongside disko),
-  # services consume by name; backup generators in modules/server/backup/
+  # services consume by name; backup generators in modules/infra/backup/
   # filter by tier (the Writer-shaped consequence).
   #
   # Optional `samba` block — when set, the share follows the drive: any
@@ -58,7 +58,7 @@ in
                 Drives which restic repo (if any) the path lands in
                 and the snapshot retention class. Adding a tier:
                 extend the enum, document the contract, update the
-                filter generators in modules/server/backup/.
+                filter generators in modules/infra/backup/.
               '';
             };
             samba = mkOption {

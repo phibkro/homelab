@@ -63,7 +63,7 @@ route advertisement (services\.tailscale\.useRoutingFeatures =
 “server” in machines/pi/default\.nix); the client side needs
 –accept-routes set in its tailscaled config\.
 
-Consumers: Blocky’s forwarder mode (modules/server/blocky\.nix)
+Consumers: Blocky’s forwarder mode (modules/services/blocky\.nix)
 and the Blocky DNS generator below\. Both want a single “where
 does \*\.nori\.lan live” address\.
 
@@ -369,7 +369,7 @@ break under cookie-based forward-auth\.
 Authelia uptime becomes load-bearing: an Authelia outage
 returns 502 for every forward-auth’d route\. SSH-tunnel to
 the backend port directly as the recovery escape hatch\.
-See modules/server/authelia\.nix for the upstream\.
+See modules/services/authelia\.nix for the upstream\.
 
 
 
@@ -559,7 +559,7 @@ string
 If set, this route gets:
 
  - an Authelia OIDC client entry (assembled by
-   modules/server/authelia\.nix from this declaration)
+   modules/services/authelia\.nix from this declaration)
  - a sops secret named ` oidc-<name>-client-secret `
  - a sops env-file template named ` oidc-<name>-env `
    containing ` <secretEnvName>=<raw> `, ready to wire as

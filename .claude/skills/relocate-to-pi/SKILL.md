@@ -34,7 +34,7 @@ Folder = coupling (per MODULES.md § "Coupling vs categorization"). The `daemon.
 ### 2. Daemon side (lives on Pi)
 
 ```nix
-# modules/services/<service>/daemon.nix
+# modules/services/<service>/daemon.nix      # path-coherence: skip — template
 { config, lib, pkgs, ... }:
 {
   services.<service> = {
@@ -58,7 +58,7 @@ Folder = coupling (per MODULES.md § "Coupling vs categorization"). The `daemon.
 ### 3. Client side (lives on every host)
 
 ```nix
-# modules/services/<service>/client.nix
+# modules/services/<service>/client.nix      # path-coherence: skip — template
 { config, lib, pkgs, ... }:
 {
   # Cross-host lanRoute gated on Caddy presence — only the host running
@@ -91,8 +91,8 @@ The `host = config.nori.hosts.pi.tailnetIp` is also load-bearing — never use I
 
 # machines/pi/default.nix
 imports = [
-  ../../modules/services/<service>/daemon.nix
-  ../../modules/services/<service>/client.nix  # Pi runs both — agent talks to its own hub, etc.
+  ../../modules/services/<service>/daemon.nix  # path-coherence: skip — template
+  ../../modules/services/<service>/client.nix  # path-coherence: skip — template; Pi runs both — agent talks to its own hub, etc.
 ];
 ```
 

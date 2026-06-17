@@ -237,6 +237,6 @@ Each phase ends in a working system. Validation gate at the end of each must pas
 - `docs/reference/storage.md` § value tiers, backup destinations
 - `docs/reference/topology.md` § service placement
 - `docs/roadmap.md` § Lower-priority appliance candidates
-- `modules/effects/backup.nix` — `nori.backupTargets` schema (remote-URL support landed 2026-06-10)
+- `modules/infra/backup/default.nix` — `nori.backupTargets` schema (remote-URL support landed 2026-06-10)
 - `modules/effects/fs.nix` — `nori.fs` schema (extension for `samba` block lands in P4)
 - `modules/effects/lan-route.nix` — `nori.lanRoutes` (extensions for `port` aggregator + `upstreams` land in P1)
