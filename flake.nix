@@ -552,71 +552,19 @@
             sourceRoot = ./.;
           };
 
-          /**
-            Doc-code coherence. Body in lint/checks/doc-coherence.sh.
-            Catches the drift class where a host (or other named module)
-            is live in the repo, but a doc still calls it deferred /
-            planned / not-yet-done.
-          */
-          doc-coherence =
-            pkgs.runCommandLocal "doc-coherence"
-              {
-                nativeBuildInputs = [
-                  pkgs.bash
-                  pkgs.gnugrep
-                  pkgs.findutils
-                ];
-              }
-              ''
-                bash ${./lint/checks/doc-coherence.sh} ${./.}
-                touch $out
-              '';
+          /*
+            Migration-era checks (path-coherence, multi-line-comments)
+            were demoted to one-off scripts under lint/checks/ — invoked
+            via `just check-migration` on demand. Their catch-rate at
+            steady state is near-nil; the convention is set and new
+            agents inherit it. The flake check overhead they imposed on
+            every `nix flake check`/`nix develop`/CI run wasn't paying
+            for itself. Re-promote if a future restructure phase pulls
+            them back to non-zero catch rate.
 
-          /**
-            Path-string coherence. Body in lint/checks/path-coherence.sh.
-            Catches comment-narrative refs that name files which have
-            moved, renamed, or been deleted. Literal paths must exist;
-            paths with `<...>` placeholders must glob-match at least
-            one file; lines annotated with `path-coherence: skip` are
-            ignored (for intentionally-historical or template refs).
+            doc-coherence was deleted: it targeted the aurora-deferred-
+            phase drift class (resolved 2026-06-16) and never generalized.
           */
-          path-coherence =
-            pkgs.runCommandLocal "path-coherence"
-              {
-                nativeBuildInputs = [
-                  pkgs.bash
-                  pkgs.gnugrep
-                  pkgs.findutils
-                ];
-              }
-              ''
-                bash ${./lint/checks/path-coherence.sh} ${./.}
-                touch $out
-              '';
-
-          /**
-            Multi-line `#` comment ban. Stage 4 convention enforcement
-            (per docs/reference/documentation-writing.md): 3+ consecutive
-            `# ` lines must be converted to one of the Nix block-comment
-            forms — RFC 145 doc-comments (extracted to generated docs)
-            or plain Nix multi-line comments (not extracted). Explicit
-            opt-out via `# multi-line: ok` for rare cases (e.g. CSS
-            selectors inside heredocs, bash comments inside script
-            strings).
-          */
-          multi-line-comments =
-            pkgs.runCommandLocal "multi-line-comments"
-              {
-                nativeBuildInputs = [
-                  pkgs.bash
-                  pkgs.gawk
-                  pkgs.findutils
-                ];
-              }
-              ''
-                bash ${./lint/checks/multi-line-comments.sh} ${./.}
-                touch $out
-              '';
 
           /**
             Routing table ↔ filesystem coherence. Body in

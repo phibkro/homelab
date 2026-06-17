@@ -547,6 +547,14 @@ default: rebuild
 @check:
     nix --extra-experimental-features "nix-command flakes" flake check
 
+# Migration-era one-off checks (path-coherence, multi-line-comments).
+# Not part of nix flake check by design — they served the restructure
+# phases and have near-nil catch-rate at steady state. Run on demand
+# during restructures or when a long-running drift is suspected.
+@check-migration:
+    bash lint/checks/path-coherence.sh .
+    bash lint/checks/multi-line-comments.sh .
+
 # Format all .nix files via nixfmt.
 @fmt:
     nix-shell -p nixfmt-rfc-style --command "find . -name '*.nix' -not -path './result*' -exec nixfmt {} +"
