@@ -44,7 +44,7 @@ in
      - Tailnet firewall hole (if `exposeOnTailnet`)
      - sops raw + hash secrets + env-file template (if `oidc` is
        set) — Authelia client list assembly lives in
-       `modules/infra/access/authelia.nix` <!-- path-coherence: skip — forward ref; lands in Phase 3d -->, reading back
+       `modules/infra/access/authelia.nix`, reading back
        `config.nori.lanRoutes` from here. Hash material stays in
        sops; the authelia config-filter injects it at runtime.
 
@@ -423,7 +423,7 @@ in
               Authelia uptime becomes load-bearing: an Authelia outage
               returns 502 for every forward-auth'd route. SSH-tunnel to
               the backend port directly as the recovery escape hatch.
-              See modules/services/authelia.nix for the upstream.
+              See modules/infra/access/authelia.nix for the upstream.
             '';
             type = types.nullOr (
               types.submodule {
@@ -449,7 +449,7 @@ in
             description = ''
               If set, this route gets:
                 * an Authelia OIDC client entry (assembled by
-                  modules/services/authelia.nix from this declaration)
+                  modules/infra/access/authelia.nix from this declaration)
                 * a sops secret named `oidc-<name>-client-secret`
                 * a sops env-file template named `oidc-<name>-env`
                   containing `<secretEnvName>=<raw>`, ready to wire as
@@ -574,7 +574,7 @@ in
             auth check). Routes with forwardAuth: ${lib.concatStringsSep ", " (lib.attrNames forwardAuthRoutes)}.
 
             Either drop the forwardAuth blocks, or import
-            modules/services/authelia.nix on this host.
+            modules/infra/access/authelia.nix on this host.
           '';
         }
         {
@@ -681,7 +681,7 @@ in
       );
 
       # OIDC plumbing for routes with `oidc` set. The Authelia client
-      # entry is assembled by modules/services/authelia.nix reading
+      # entry is assembled by modules/infra/access/authelia.nix reading
       # config.nori.lanRoutes — keeps single ownership of the clients
       # list (NixOS module merging on freeform-typed lists conflicts
       # rather than concatenates, so a centralized assembly site is

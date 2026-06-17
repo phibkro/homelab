@@ -28,7 +28,7 @@ docLink = ".claude/skills/add-oidc-client/"
 message = '''
 Inline pbkdf2 hashes found above. OIDC hashes belong in sops
 (key: oidc-<n>-client-secret-hash); Authelia reads them via the
-template config-filter (see modules/services/authelia.nix).'''
+template config-filter (see modules/infra/access/authelia.nix).'''
 
 # ── Stale references ────────────────────────────────────────────
 

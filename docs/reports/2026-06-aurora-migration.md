@@ -207,7 +207,7 @@ clients that arrive via the Caddy path.
 | | |
 |---|---|
 | Commit | `0629326` |
-| Files | `modules/common/default.nix`, `modules/services/authelia.nix`, `modules/services/default.nix` (hermes added to bundle), `machines/workstation/default.nix`, `machines/pi/default.nix` (gatus.exposeViaCaddy override dropped) |
+| Files | `modules/common/default.nix`, `modules/infra/access/authelia.nix`, `modules/services/default.nix` (hermes added to bundle), `machines/workstation/default.nix`, `machines/pi/default.nix` (gatus.exposeViaCaddy override dropped) |
 
 The architectural flip itself, in one commit:
 

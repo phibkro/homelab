@@ -20,6 +20,7 @@
     ../effects/hosts.nix
     ../infra/storage
     ../infra/networking
+    ../infra/access
     ../effects/service-placement.nix
     ../infra/backup
     ../infra/capabilities

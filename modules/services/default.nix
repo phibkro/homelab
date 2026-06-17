@@ -31,7 +31,6 @@ _: {
     ./arr
 
     # Loose services
-    ./authelia.nix
     ./beszel/agent.nix
     ./calibre-web.nix
     ./disk-alert.nix
