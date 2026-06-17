@@ -26,11 +26,11 @@ What an `identityFor` entry must declare to satisfy the schema.
 Schema lives in `modules/infra/hosts.nix`; values live in
 `modules/machines/default.nix`.
 
-## nori\.hosts
+## nori.hosts
 
-Topology registry\. Single source of truth for cross-host
-references\. Populated in flake\.nix’s ` identityFor ` (driven by
-readDir over \./hosts/)\.
+Topology registry. Single source of truth for cross-host
+references. Populated in flake.nix’s ` identityFor ` (driven by
+readDir over ./hosts/).
 
 
 
@@ -46,19 +46,19 @@ attribute set of (submodule)
 ```
 
 *Declared by:*
- - [/nix/store/\[^/]\*-source/modules/infra/hosts\.nix](file:///nix/store/[^/]*-source/modules/infra/hosts.nix)
+ - [<nixpkgs/modules/infra/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//modules/infra/hosts.nix)
 
 
 
-## nori\.hosts\.\<name>\.codename
+## nori.hosts.<name>.codename
 
 
 
-Aesthetic codename for MOTD / dashboards / casual reference\.
+Aesthetic codename for MOTD / dashboards / casual reference.
 The hostname (not the codename) stays the identifier that
-SSH / Tailscale / nix flakes know — codename is decoration\.
+SSH / Tailscale / nix flakes know — codename is decoration.
 
-Theme: cold / polar / penguin\.
+Theme: cold / polar / penguin.
 
 
 
@@ -66,22 +66,22 @@ Theme: cold / polar / penguin\.
 string
 
 *Declared by:*
- - [/nix/store/\[^/]\*-source/modules/infra/hosts\.nix](file:///nix/store/[^/]*-source/modules/infra/hosts.nix)
+ - [<nixpkgs/modules/infra/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//modules/infra/hosts.nix)
 
 
 
-## nori\.hosts\.\<name>\.hardware
+## nori.hosts.<name>.hardware
 
 
 
 One-line hardware identification — chassis · CPU · RAM · GPU
-· notable storage\. Drives the hosts-at-a-glance table in
-the generated topology doc; not consumed by evaluation\.
+· notable storage. Drives the hosts-at-a-glance table in
+the generated topology doc; not consumed by evaluation.
 
 Format guidance: model · CPU family · RAM · GPU (if any) ·
-storage notes\. Keep terse — the field is a table cell, not
-a spec sheet\. Detailed posture lives in modules/machines/\<n>/default\.nix
-header comments (anti-write posture, impermanence, etc\.)\.
+storage notes. Keep terse — the field is a table cell, not
+a spec sheet. Detailed posture lives in modules/machines/<n>/default.nix
+header comments (anti-write posture, impermanence, etc.).
 
 
 
@@ -89,18 +89,18 @@ header comments (anti-write posture, impermanence, etc\.)\.
 string
 
 *Declared by:*
- - [/nix/store/\[^/]\*-source/modules/infra/hosts\.nix](file:///nix/store/[^/]*-source/modules/infra/hosts.nix)
+ - [<nixpkgs/modules/infra/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//modules/infra/hosts.nix)
 
 
 
-## nori\.hosts\.\<name>\.lanIp
+## nori.hosts.<name>.lanIp
 
 
 
-Static-DHCP LAN IP, or null\. Used by ops tooling (Justfile
+Static-DHCP LAN IP, or null. Used by ops tooling (Justfile
 rsync targets) when the tailnet hostname doesn’t resolve —
-e\.g\., ` workstation.saola-matrix.ts.net ` from Mac without
-tailnet DNS\.
+e.g., ` workstation.saola-matrix.ts.net ` from Mac without
+tailnet DNS.
 
 
 
@@ -116,24 +116,24 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/\[^/]\*-source/modules/infra/hosts\.nix](file:///nix/store/[^/]*-source/modules/infra/hosts.nix)
+ - [<nixpkgs/modules/infra/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//modules/infra/hosts.nix)
 
 
 
-## nori\.hosts\.\<name>\.primaryJob
+## nori.hosts.<name>.primaryJob
 
 
 
 Multi-clause prose describing what this host does — the
-“Primary job” cell in the topology table\. CommonMark
-permitted (bullets, inline code, links)\. Keep to a
-paragraph; deeper rationale belongs in modules/machines/\<n>/default\.nix
-or the relevant ADR\.
+“Primary job” cell in the topology table. CommonMark
+permitted (bullets, inline code, links). Keep to a
+paragraph; deeper rationale belongs in modules/machines/<n>/default.nix
+or the relevant ADR.
 
 Drift policy: when a host’s job changes materially (gains
 or loses a service tier), update this string in the same
-commit\. The generator surfaces it; the prose-only
-topology\.md no longer carries it\.
+commit. The generator surfaces it; the prose-only
+topology.md no longer carries it.
 
 
 
@@ -141,41 +141,41 @@ topology\.md no longer carries it\.
 string
 
 *Declared by:*
- - [/nix/store/\[^/]\*-source/modules/infra/hosts\.nix](file:///nix/store/[^/]*-source/modules/infra/hosts.nix)
+ - [<nixpkgs/modules/infra/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//modules/infra/hosts.nix)
 
 
 
-## nori\.hosts\.\<name>\.role
+## nori.hosts.<name>.role
 
 
 
 Structural role driving placement assertions:
 
- - ` workhorse ` — heavy compute, state, GPU, large disks\.
-   Backed up to local restic\. Today this covers two
+ - ` workhorse ` — heavy compute, state, GPU, large disks.
+   Backed up to local restic. Today this covers two
    distinct shapes — workstation (GPU + desktop +
    bulk media) and aurora (always-on family vault +
    family-tier backends) — which still share the
    “owns state, can take paths-based backups” properties
-   workhorse implies\. **Rule of three**: if a third host
+   workhorse implies. **Rule of three**: if a third host
    matches aurora’s always-on-no-desktop shape, extract
-   a dedicated ` vault ` (or ` compute `) role then\.
+   a dedicated ` vault ` (or ` compute `) role then.
 
  - ` appliance ` — observability + alerting + DNS + network
    plumbing + HTTP entry plane (Caddy + Authelia +
-   Blocky-authoritative)\. Survives workhorse failure\.
+   Blocky-authoritative). Survives workhorse failure.
    Anti-write storage (no swap, volatile journald, flash)
    → paths-based backups are a build error (assertion in
-   modules/infra/backup/default\.nix)\.
+   modules/infra/backup/default.nix).
 
- - ` agent ` — untrusted-compute quarantine\. Stateless by
-   design: tmpfs root + impermanence /persist\. No GPU
-   (inference offloaded to workhorse), no GH credential\.
+ - ` agent ` — untrusted-compute quarantine. Stateless by
+   design: tmpfs root + impermanence /persist. No GPU
+   (inference offloaded to workhorse), no GH credential.
    ` nori.backups.<X> ` declarations are a build error —
-   anything escaping the box sandbox vanishes on reboot\.
+   anything escaping the box sandbox vanishes on reboot.
 
 Adding a role = extend the enum, document its constraints,
-and add the assertions that key off it\.
+and add the assertions that key off it.
 
 
 
@@ -183,20 +183,20 @@ and add the assertions that key off it\.
 one of “workhorse”, “appliance”, “agent”
 
 *Declared by:*
- - [/nix/store/\[^/]\*-source/modules/infra/hosts\.nix](file:///nix/store/[^/]*-source/modules/infra/hosts.nix)
+ - [<nixpkgs/modules/infra/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//modules/infra/hosts.nix)
 
 
 
-## nori\.hosts\.\<name>\.roleOneLiner
+## nori.hosts.<name>.roleOneLiner
 
 
 
 Short qualifier appended to the ` role ` cell in the topology
 table — disambiguates the role for hosts that share a typed
-role but differ in shape (e\.g\. workstation “sleep-friendly
+role but differ in shape (e.g. workstation “sleep-friendly
 compute” vs aurora “always-on family vault”; both are
-` workhorse `)\. Empty string when the role itself is the
-full story (pavilion: ` agent `)\.
+` workhorse `). Empty string when the role itself is the
+full story (pavilion: ` agent `).
 
 
 
@@ -204,17 +204,17 @@ full story (pavilion: ` agent `)\.
 string
 
 *Declared by:*
- - [/nix/store/\[^/]\*-source/modules/infra/hosts\.nix](file:///nix/store/[^/]*-source/modules/infra/hosts.nix)
+ - [<nixpkgs/modules/infra/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//modules/infra/hosts.nix)
 
 
 
-## nori\.hosts\.\<name>\.tailnetIp
+## nori.hosts.<name>.tailnetIp
 
 
 
-Tailnet (100\.x\.y\.z) IP\. Stable per device once authed —
-survives reboots and re-IPs\. The canonical address for
-cross-host references in this flake\.
+Tailnet (100.x.y.z) IP. Stable per device once authed —
+survives reboots and re-IPs. The canonical address for
+cross-host references in this flake.
 
 
 
@@ -222,6 +222,6 @@ cross-host references in this flake\.
 string
 
 *Declared by:*
- - [/nix/store/\[^/]\*-source/modules/infra/hosts\.nix](file:///nix/store/[^/]*-source/modules/infra/hosts.nix)
+ - [<nixpkgs/modules/infra/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//modules/infra/hosts.nix)
 
 

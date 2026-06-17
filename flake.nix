@@ -288,19 +288,21 @@
                 Rewrite per-option "Declared by" paths to repo-relative so
                 the artifact is byte-stable across builds (the docs-fresh
                 check would otherwise fire on every commit because the
-                store path's hash differs each rebuild).
+                store path's hash differs each rebuild). The output is the
+                literal repo-relative path (e.g. `modules/infra/networking`)
+                — readable, stable, no regex syntax leaking into rendered
+                docs.
               */
               stripStorePrefix =
                 p:
                 let
                   s = toString p;
-                  pattern = "/nix/store/[^/]*-source/";
                 in
                 if lib.hasPrefix "/nix/store/" s then
                   let
                     m = builtins.match "/nix/store/[^/]*-source/(.*)" s;
                   in
-                  if m == null then s else "${pattern}" + builtins.head m
+                  if m == null then s else builtins.head m
                 else
                   s;
               optionsDoc = pkgs.nixosOptionsDoc {
@@ -319,31 +321,46 @@
                 category = "networking";
               };
             in
-            pkgs.runCommandLocal "docs-lan-route" { } ''
-              cat > $out <<'HEADER'
-              ---
-              generated: true
-              source: flake.nix § packages.docs-lan-route
-              regenerate: nix build .#docs-lan-route
-              ---
+            pkgs.runCommandLocal "docs-lan-route"
+              {
+                nativeBuildInputs = [ pkgs.gnused ];
+              }
+              ''
+                cat > $out <<'HEADER'
+                ---
+                generated: true
+                source: flake.nix § packages.docs-lan-route
+                regenerate: nix build .#docs-lan-route
+                ---
 
-              # `nori.lanRoutes` — generated reference
+                # `nori.lanRoutes` — generated reference
 
-              Two-section artifact:
+                Two-section artifact:
 
-               1. Networking-concern overview — RFC 145 doc-comments
-                  extracted from `modules/infra/networking/default.nix`.
-               2. `nori.lanRoutes.<name>.*` schema reference — option
-                  fields extracted via `nixosOptionsDoc`.
+                 1. Networking-concern overview — RFC 145 doc-comments
+                    extracted from `modules/infra/networking/default.nix`.
+                 2. `nori.lanRoutes.<name>.*` schema reference — option
+                    fields extracted via `nixosOptionsDoc`.
 
-              The hand-written `network.md` keeps the WHY + patterns;
-              this artifact carries the WHAT (schema details).
+                The hand-written `network.md` keeps the WHY + patterns;
+                this artifact carries the WHAT (schema details).
 
-              HEADER
-              cat ${moduleDoc} >> $out
-              echo >> $out
-              cat ${optionsDoc.optionsCommonMark} >> $out
-            '';
+                HEADER
+                cat ${moduleDoc} >> $out
+                echo >> $out
+                # nixosOptionsDoc emits noisy backslash escapes (intended for
+                # the NixOS manual's docbook renderer; pure noise in GFM) and
+                # auto-rewrites the post-stripStorePrefix paths as nixpkgs
+                # github links (because the paths look nixpkgs-relative).
+                # Post-process for readable GFM:
+                #   - drop backslash before chars that aren't markdown-special
+                #   - replace [<nixpkgs/path>](https://github.com/...) with `path`
+                #   - replace any [path](file://path) leftovers with `path`
+                sed -e 's/\\\([.<>()]\)/\1/g' \
+                    -e 's|\[<nixpkgs/\([^]]*\)>\](https://github\.com/[^)]*)|`\1`|g' \
+                    -e 's|\[\([^]]*\)\](file://[^)]*)|`\1`|g' \
+                    ${optionsDoc.optionsCommonMark} >> $out
+              '';
 
           /*
             ── Generated topology docs (Stage 2 pressure test) ───────────────
@@ -414,13 +431,12 @@
                 p:
                 let
                   s = toString p;
-                  pattern = "/nix/store/[^/]*-source/";
                 in
                 if lib.hasPrefix "/nix/store/" s then
                   let
                     m = builtins.match "/nix/store/[^/]*-source/(.*)" s;
                   in
-                  if m == null then s else "${pattern}" + builtins.head m
+                  if m == null then s else builtins.head m
                 else
                   s;
               optionsDoc = pkgs.nixosOptionsDoc {
@@ -434,38 +450,45 @@
                 documentType = "none";
               };
             in
-            pkgs.runCommandLocal "docs-topology" { } ''
-              cat > $out <<'HEADER'
-              ---
-              generated: true
-              source: flake.nix § packages.docs-topology
-              regenerate: nix build .#docs-topology
-              ---
+            pkgs.runCommandLocal "docs-topology"
+              {
+                nativeBuildInputs = [ pkgs.gnused ];
+              }
+              ''
+                cat > $out <<'HEADER'
+                ---
+                generated: true
+                source: flake.nix § packages.docs-topology
+                regenerate: nix build .#docs-topology
+                ---
 
-              # Topology — generated reference
+                # Topology — generated reference
 
-              Auto-derived from `nori.hosts` schema + `identityFor` values
-              in `modules/machines/default.nix`. Do not hand-edit; the
-              hand-curated overview + diagram + invariants live in
-              `docs/reference/topology.md`.
+                Auto-derived from `nori.hosts` schema + `identityFor` values
+                in `modules/machines/default.nix`. Do not hand-edit; the
+                hand-curated overview + diagram + invariants live in
+                `docs/reference/topology.md`.
 
-              ## Hosts at a glance
+                ## Hosts at a glance
 
-              HEADER
-              cat >> $out <<'TABLE'
-              ${hostsTable}
-              TABLE
-              cat >> $out <<'SCHEMA_HEADER'
+                HEADER
+                cat >> $out <<'TABLE'
+                ${hostsTable}
+                TABLE
+                cat >> $out <<'SCHEMA_HEADER'
 
-              ## Registry schema (`nori.hosts.<name>.*`)
+                ## Registry schema (`nori.hosts.<name>.*`)
 
-              What an `identityFor` entry must declare to satisfy the schema.
-              Schema lives in `modules/infra/hosts.nix`; values live in
-              `modules/machines/default.nix`.
+                What an `identityFor` entry must declare to satisfy the schema.
+                Schema lives in `modules/infra/hosts.nix`; values live in
+                `modules/machines/default.nix`.
 
-              SCHEMA_HEADER
-              cat ${optionsDoc.optionsCommonMark} >> $out
-            '';
+                SCHEMA_HEADER
+                # See docs-lan-route for the GFM-cleanup rationale.
+                sed -e 's/\\\([.<>()]\)/\1/g' \
+                    -e 's|\[\([^]]*\)\](file://[^)]*)|`\1`|g' \
+                    ${optionsDoc.optionsCommonMark} >> $out
+              '';
 
         };
 
