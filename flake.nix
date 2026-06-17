@@ -136,118 +136,21 @@
       };
 
       # ── Machines ──────────────────────────────────────────────────
-      # The list of machines is the filesystem: each subdirectory of
-      # ./machines/ is a machine. NixOS hosts have a default.nix;
-      # standalone home-manager machines (like Mac) have only a
-      # home.nix. The flake derives both shapes from the directory.
-      #
-      # Identity metadata (tailnet/lan IPs, role) is indexed by NixOS
-      # host name in `identityFor` below — non-NixOS machines aren't in
-      # the registry because nothing in the NixOS module system
-      # references them. The genAttrs lookup forces every NixOS host
-      # folder to have an identity entry — a folder without identity
-      # fails eval; an identity entry without a folder is silently dead
-      # code (caught by code review, visible at deploy time).
-      #
-      # Schema: modules/effects/hosts.nix.
-      # Consumers (cross-host refs):
-      #   * modules/effects/lan-route.nix       (nori.lanIp default)
-      #   * modules/infra/backup/default.nix          (host-aware appliance assertion)
-      #   * modules/services/beszel/agent.nix     (metrics route backend)
-      #   * modules/services/ntfy/notify.nix      (alert route backend)
-      #   * machines/workstation/default.nix    (Pi probe URLs)
-      #
-      # Topology change = edit identityFor, redeploy. Adding a NixOS
-      # host = `mkdir machines/<n> && touch machines/<n>/{default,hardware}.nix`
-      # plus an identityFor entry — eval errors on either omission.
-      # Adding a non-NixOS machine = `mkdir machines/<n> && touch
-      # machines/<n>/home.nix` (no default.nix; not in identityFor).
-      machineNames = lib.attrNames (
-        lib.filterAttrs (_: t: t == "directory") (builtins.readDir ./machines)
-      );
-
-      # NixOS machines are those with a default.nix. Drives both
-      # nixosConfigurations enumeration and the host registry.
-      nixosMachineNames = lib.filter (
-        n: builtins.pathExists (./machines + "/${n}/default.nix")
-      ) machineNames;
-
-      identityFor = {
-        workstation = {
-          tailnetIp = "100.81.5.122";
-          lanIp = "192.168.1.181";
-          role = "workhorse";
-          roleOneLiner = "sleep-friendly compute";
-          codename = "emperor";
-          hardware = "Ryzen 5600X · 32 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) · WD SN750 1 TB NVMe + Corsair MP510 960 GB NVMe + Seagate IronWolf Pro 4 TB (USB)";
-          primaryJob = ''
-            GPU services (Ollama / Jellyfin NVENC), `*arr` stack +
-            qBittorrent, `@downloads` + `@streaming` on the IronWolf,
-            daily-driver desktop. Cold replica of `/mnt/family/*` on
-            MP510 (btrbk receive endpoint). WoL-wake when media access
-            happens.
-          '';
-        };
-        pi = {
-          tailnetIp = "100.100.71.3";
-          lanIp = "192.168.1.225";
-          role = "appliance";
-          roleOneLiner = "always-on entry plane";
-          codename = "fairy";
-          hardware = "Raspberry Pi 4 8 GB · aarch64 · USB-boot from Samsung FIT 128 GB";
-          primaryJob = ''
-            HTTP entry plane (Caddy + Authelia + Blocky-authoritative,
-            LE wildcard cert on `*.''${nori.domain}`), observability
-            hub, alert plane, Tailscale subnet router + exit node.
-          '';
-        };
-        # Pavilion — HP g6 retasked as the agent quarantine host.
-        # Tailnet IP fills in after first `tailscale up`; lan stays
-        # null since the device roams (no static DHCP reservation).
-        # See machines/pavilion/default.nix for the impermanence /
-        # agent-role posture. Sits under tag:agent in the Tailscale ACL
-        # — can reach workhorse :11434 (ollama) only; cannot SSH any
-        # privileged-tier host.
-        pavilion = {
-          tailnetIp = "100.93.230.66";
-          lanIp = null; # roams; no static DHCP lease
-          role = "agent";
-          roleOneLiner = "";
-          codename = "pavilion"; # hostname-equal — "pavilion" already evokes the polar/exploration theme
-          hardware = "HP Pavilion g6 · AMD Athlon II · BIOS+GRUB · btrfs-rollback root (impermanence)";
-          primaryJob = ''
-            Agent quarantine — hermes / nixpkgs-agent / sandboxed
-            claude work, headless. Planned weekly tertiary replica
-            of `/mnt/family/*` (P16).
-          '';
-        };
-        # Aurora — retired Asus N552V gaming laptop (i7-6700HQ, 12 GB
-        # RAM, GTX 950M, dead battery). Repurposed as a single-role
-        # immich machine-learning offload host so workstation's 5060 Ti
-        # stays dedicated to ollama. Classified workhorse — has GPU,
-        # has compute, hosts a service — but it's a *minimal* workhorse;
-        # if a second compute-offload host ever appears, that's the
-        # rule-of-three signal to extract a dedicated `compute` role.
-        aurora = {
-          tailnetIp = "100.101.67.111";
-          lanIp = null; # wifi-only, no static lease
-          role = "workhorse";
-          roleOneLiner = "always-on family vault";
-          codename = "aurora"; # already polar
-          hardware = "Asus N552V · Intel Skylake-H i7-6700HQ · 12 GB DDR4 · NVIDIA GTX 950M (legacy_535) · Toshiba HDD + OneTouch USB";
-          primaryJob = ''
-            Family vault: `/mnt/family/{photos,home-videos,projects,library,archive}`
-            on the Toshiba HDD + family-tier service backends
-            (Vaultwarden, Radicale, Miniflux, Immich full stack + ML,
-            Calibre-web, Komga, Navidrome, Glance, Heim, Filmder,
-            Grafana). Samba shares for `/mnt/family/*`. OneTouch
-            restic vault. Always-on so it survives workstation's
-            sleep / outage.
-          '';
-        };
+      # Enumeration, identity registry, and mkHost wrapper all live
+      # at modules/machines/default.nix. flake.nix imports the
+      # factory; it returns `nixosConfigurations`. See the module
+      # for the schema, the registry, and the rationale.
+      machinesModule = import ./modules/machines {
+        inherit lib inputs;
+        machinesPath = ./machines;
       };
 
-      hostRegistry = lib.genAttrs nixosMachineNames (n: identityFor.${n});
+      # ── Home configurations ──────────────────────────────────────
+      # Standalone home-manager entries for non-NixOS machines (Mac).
+      # Lives at modules/home/default.nix.
+      homeModule = import ./modules/home {
+        inherit inputs nixpkgs home-manager;
+      };
 
       # ── Dev shells ────────────────────────────────────────────────
       # Per-project dev environments composed from atomic fragments
@@ -260,74 +163,9 @@
       # call `lab.lib.mkDevShell pkgs { modules = [ ... ]; }`.
       devLib = import ./modules/dev { inherit lib; };
 
-      /**
-        Build a `nixosSystem` for a host folder.
-
-        Wraps `lib.nixosSystem` with three injections every host needs:
-
-         - `specialArgs.inputs` so machine modules can reach flake
-           inputs without re-importing.
-         - `networking.hostName` set from the folder name — the
-           folder is the SoT; registry keys, hostnames, and module
-           imports all derive from the same string. No parallel
-           identifier to keep in sync.
-         - `nori.hosts = hostRegistry` so cross-host references
-           (`config.nori.hosts.<other>.tailnetIp`) resolve on every
-           host's eval.
-
-        Called once per entry in `nixosMachineNames` via `genAttrs`;
-        not exported for external consumers.
-
-        # Inputs
-
-        `name`
-
-        : Host folder name under `./machines/`. Must exist as a
-          directory with a `default.nix`. Drives both the module
-          import path (`./machines/${name}`) and
-          `config.networking.hostName`.
-
-        # Type
-
-        ```
-        mkHost :: String -> nixosSystem
-        ```
-
-        # Examples
-
-        :::{.example}
-        ## `mkHost "workstation"`
-
-        ```nix
-        mkHost "workstation"
-        => lib.nixosSystem {
-             specialArgs = { inherit inputs; };
-             modules = [
-               ./machines/workstation
-               { config.networking.hostName = "workstation";
-                 config.nori.hosts = hostRegistry; }
-             ];
-           }
-        ```
-
-        Called from `nixosConfigurations = lib.genAttrs nixosMachineNames mkHost`.
-        :::
-      */
-      mkHost =
-        name:
-        lib.nixosSystem {
-          specialArgs = { inherit inputs; };
-          modules = [
-            ./machines/${name}
-            {
-              config.networking.hostName = name;
-              config.nori.hosts = hostRegistry;
-            }
-          ];
-        };
     in
     {
-      nixosConfigurations = lib.genAttrs nixosMachineNames mkHost;
+      inherit (machinesModule) nixosConfigurations;
 
       # Dev-shell composer + the available fragment list. Consumers
       # (downstream project flakes, this flake's own devShells) call
@@ -351,25 +189,9 @@
         ];
       };
 
-      # Standalone home-manager configurations for non-NixOS machines.
-      # NixOS machines embed home-manager as a NixOS module inside their
-      # own machines/<n>/default.nix; these standalone entries are only
-      # for machines where the host OS isn't NixOS (Mac). Activate with
-      # `home-manager switch --flake .#<name>`.
-      homeConfigurations.macbook = home-manager.lib.homeManagerConfiguration {
-        # Mac pkgs with allowUnfree so claude-code (unfree license)
-        # resolves. Same pattern as `pkgsUnfree` above for the dev shell.
-        pkgs = import nixpkgs {
-          system = "x86_64-darwin";
-          config.allowUnfree = true;
-        };
-        # Pass `inputs` to home-manager modules so home/claude-code/
-        # can reach the third-party-skill flake inputs (superpowers,
-        # caveman, anthropics-skills). Workstation gets the same via
-        # extraSpecialArgs in its NixOS-side home-manager wrapper.
-        extraSpecialArgs = { inherit inputs; };
-        modules = [ ./machines/macbook/home.nix ];
-      };
+      # Standalone home-manager configurations come from
+      # modules/home/default.nix.
+      inherit (homeModule) homeConfigurations;
 
       formatter.${system} = pkgs.nixfmt;
 
