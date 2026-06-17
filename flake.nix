@@ -260,20 +260,65 @@
       # call `lab.lib.mkDevShell pkgs { modules = [ ... ]; }`.
       devLib = import ./modules/dev { inherit lib; };
 
+      /**
+        Build a `nixosSystem` for a host folder.
+
+        Wraps `lib.nixosSystem` with three injections every host needs:
+
+         - `specialArgs.inputs` so machine modules can reach flake
+           inputs without re-importing.
+         - `networking.hostName` set from the folder name — the
+           folder is the SoT; registry keys, hostnames, and module
+           imports all derive from the same string. No parallel
+           identifier to keep in sync.
+         - `nori.hosts = hostRegistry` so cross-host references
+           (`config.nori.hosts.<other>.tailnetIp`) resolve on every
+           host's eval.
+
+        Called once per entry in `nixosMachineNames` via `genAttrs`;
+        not exported for external consumers.
+
+        # Inputs
+
+        `name`
+
+        : Host folder name under `./machines/`. Must exist as a
+          directory with a `default.nix`. Drives both the module
+          import path (`./machines/${name}`) and
+          `config.networking.hostName`.
+
+        # Type
+
+        ```
+        mkHost :: String -> nixosSystem
+        ```
+
+        # Examples
+
+        :::{.example}
+        ## `mkHost "workstation"`
+
+        ```nix
+        mkHost "workstation"
+        => lib.nixosSystem {
+             specialArgs = { inherit inputs; };
+             modules = [
+               ./machines/workstation
+               { config.networking.hostName = "workstation";
+                 config.nori.hosts = hostRegistry; }
+             ];
+           }
+        ```
+
+        Called from `nixosConfigurations = lib.genAttrs nixosMachineNames mkHost`.
+        :::
+      */
       mkHost =
         name:
         lib.nixosSystem {
           specialArgs = { inherit inputs; };
           modules = [
             ./machines/${name}
-            # Inject from the registry: hostName comes from the same
-            # name that picks the host folder. The folder name is the
-            # source of truth — registry keys derive from readDir,
-            # networking.hostName injects from the same name. No
-            # parallel string to keep in sync.
-            #
-            # Every host sees the full registry so cross-host
-            # references (config.nori.hosts.<other>.tailnetIp) resolve.
             {
               config.networking.hostName = name;
               config.nori.hosts = hostRegistry;
