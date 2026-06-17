@@ -7,7 +7,7 @@
 }:
 
 # pavilion — HP Pavilion g6, agent-quarantine host. The `agent` role
-# in modules/effects/hosts.nix is the source of truth for why: untrusted
+# in modules/infra/hosts.nix is the source of truth for why: untrusted
 # compute kept off the workhorse kernel, ephemeral by construction,
 # reboot-as-safety-valve. This file enforces that posture; the assertion
 # at the bottom catches role-drift at eval time.
@@ -21,7 +21,7 @@
 #    tailnet (`http://workstation.saola-matrix.ts.net:11434` — the
 #    `tag:agent → tag:privileged:11434` ACL rule documented below).
 # 3. **No claude-code, no GitHub credential.** Per the
-#    `agent`-role posture in modules/effects/hosts.nix: claude-code is
+#    `agent`-role posture in modules/infra/hosts.nix: claude-code is
 #    the operator's trusted hands and lives on workstation; the
 #    pavilion agent runs only `pi` (badlogic/pi-mono) inside
 #    `box --pi --pwd-ro` when the worktree lives under any sensitive
@@ -128,7 +128,7 @@
     '';
   };
 
-  # MOTD additions on top of the universal core (modules/effects/
+  # MOTD additions on top of the universal core (modules/infra/
   # rust-motd.nix) — iwd is laptop-specific.
   programs.rust-motd.settings.service_status.iwd = "iwd";
 

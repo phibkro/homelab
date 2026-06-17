@@ -14,7 +14,7 @@ lib.mkMerge [
 
     # Caddy-gated so the Pi (no Caddy, runs the ntfy server itself)
     # doesn't register a route pointing at its own backend. Host coupling
-    # lives in nori.hosts (see modules/effects/hosts.nix).
+    # lives in nori.hosts (see modules/infra/hosts.nix).
     nori.lanRoutes = lib.mkIf config.services.caddy.enable {
       alert = {
         port = 8081;
@@ -50,7 +50,7 @@ lib.mkMerge [
               UNIT="$1"
 
               # Wait through the system-wide restart cycle before alerting.
-              # modules/effects/restart-policy.nix sets RestartSec=1s with
+              # modules/infra/restart-policy.nix sets RestartSec=1s with
               # backoff ramping to 5min over 9 steps, then gives up at
               # StartLimitBurst=15 in 1h. Most transient failures self-heal in
               # well under a minute — alerting immediately produces "service

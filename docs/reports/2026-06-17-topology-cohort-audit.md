@@ -30,7 +30,7 @@ SoT before                  SoT after                       method
 Hosts table (prose dup)     nori.hosts values + schema      nixosOptionsDoc
                                                             + hand-rolled
                                                             value walk
-nori.hosts schema in prose  modules/effects/hosts.nix       option descriptions
+nori.hosts schema in prose  modules/infra/hosts.nix       option descriptions
                             options                         (already there;
                                                             now generator-
                                                             picked-up)

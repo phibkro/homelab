@@ -158,7 +158,7 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  # MOTD additions on top of the universal core (modules/effects/
+  # MOTD additions on top of the universal core (modules/infra/
   # rust-motd.nix) — iwd is laptop-specific, immich-ml is aurora's
   # reason for existing.
   programs.rust-motd.settings.service_status = {

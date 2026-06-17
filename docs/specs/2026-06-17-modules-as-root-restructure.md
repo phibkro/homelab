@@ -14,7 +14,7 @@ Stage 2.5 redirect. The vaultwarden concern-split (Stage 2.5 v1) was the wrong a
 ```
 problem                                  symptom
 ─────────────────────────────────────────────────────────────────
-modules/effects/ became a dumping        13 files of mixed shapes:
+modules/infra/ became a dumping        13 files of mixed shapes:
 ground for "Nix-y things that aren't     effect handlers, policies,
 services"                                registries, leaf config
                                          
@@ -424,11 +424,11 @@ Phase 4 — machines + home rewire
   - Verify per-machine eval byte-equal
 
 Phase 5 — leaves + meta-tools
-  - modules/effects/motd.nix → modules/infra/motd.nix or
+  - modules/infra/motd.nix → modules/infra/motd.nix or
     modules/machines/base/
   - modules/lint/ stays
   - modules/dev/ stays
-  - modules/effects/ deleted (empty)
+  - modules/infra/ deleted (empty)
 
 Phase 6 — docs cleanup
   - module-authoring.md rewrites for the new shape

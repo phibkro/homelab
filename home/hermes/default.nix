@@ -68,7 +68,7 @@ in
     Service = {
       ExecStart = "${hermes}/bin/hermes dashboard --port ${toString dashboardPort} --host 0.0.0.0 --no-open --skip-build --insecure";
       Restart = "on-failure";
-      # modules/effects/restart-policy.nix covers systemd.services but
+      # modules/infra/restart-policy.nix covers systemd.services but
       # NOT systemd.user.services — backoff is declared here so a stale
       # `hermes dashboard` holding the port doesn't trigger a tight spin.
       RestartSec = "1s";

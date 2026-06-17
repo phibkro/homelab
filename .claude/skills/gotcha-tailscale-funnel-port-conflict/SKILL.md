@@ -14,4 +14,4 @@ listen tcp4 100.81.5.122:443: bind: address already in use
 
 Followed by TLS handshakes returning "internal error" (because the cert never loaded — the listener never came up).
 
-Fix: use 8443 in `nori.funnelRoutes` (already encoded in `modules/effects/funnel-route.nix`). <!-- path-coherence: skip — funnel feature removed in d0cee68 (filmder went LAN-only); skill retained for future re-introduction --> Tailscale's public-edge maps internet `:443` → local `:8443` transparently — visitors hit `https://<host>.<tailnet>.ts.net/<path>` (no port shown). Inside-tailnet direct access uses `:8443`.
+Fix: use 8443 in `nori.funnelRoutes` (already encoded in `modules/infra/funnel-route.nix`). <!-- path-coherence: skip — funnel feature removed in d0cee68 (filmder went LAN-only); skill retained for future re-introduction --> Tailscale's public-edge maps internet `:443` → local `:8443` transparently — visitors hit `https://<host>.<tailnet>.ts.net/<path>` (no port shown). Inside-tailnet direct access uses `:8443`.

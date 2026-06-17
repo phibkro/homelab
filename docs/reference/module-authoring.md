@@ -47,7 +47,7 @@ docs/
   skills/                        # procedure skills (load on demand)
 ```
 
-**Layout principle:** `machines/<host>/` = pure machine-specific NixOS wiring; `home/` = home-manager (cross-host operator-side); `modules/effects/` = `nori.<X>` declarative options; `modules/services/` = NixOS-side service modules. The split between `modules/` and `home/` is the **NixOS-vs-home-manager** module-system boundary.
+**Layout principle:** `machines/<host>/` = pure machine-specific NixOS wiring; `home/` = home-manager (cross-host operator-side); `modules/infra/` = `nori.<X>` declarative options; `modules/services/` = NixOS-side service modules. The split between `modules/` and `home/` is the **NixOS-vs-home-manager** module-system boundary.
 
 ## Configuration derivation from layout
 

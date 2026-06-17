@@ -18,7 +18,7 @@ Operator framing (paraphrased from session 2026-06-17):
 Today, modules are organized by SHAPE (what they look like syntactically), not by CONCERN (what question they answer):
 
 ```
-modules/effects/      Reader/collected-Writer schemas (the SHAPE)
+modules/infra/      Reader/collected-Writer schemas (the SHAPE)
   ├── lan-route.nix       routes + access + location
   ├── backup.nix          backup intent
   ├── replication.nix     btrbk send/receive policy

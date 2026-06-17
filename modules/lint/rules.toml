@@ -89,7 +89,7 @@ filmder/heim/hermes).'''
 # ── lanRoutes single-source-of-truth ────────────────────────────
 
 [rules.caddyVirtualHosts]
-# Caddy vhost declarations must come from modules/effects/lan-
+# Caddy vhost declarations must come from modules/infra/lan-
 # route.nix only — nori.lanRoutes is the single source of truth
 # for *.<nori.domain> exposure. caddy.nix is exempt because it
 # carries the transitional *.nori.lan → *.<nori.domain> 301
@@ -157,20 +157,20 @@ fields:
 #                      constant, not a host)
 #   * 100.64.0.0/10    CGNAT range spec (network spec, not a
 #                      host — legitimate in firewall ACLs)
-#   * modules/effects/hosts.nix — the registry schema's own
+#   * modules/infra/hosts.nix — the registry schema's own
 #                                 header comment narrates the
 #                                 refactor.
 #   * modules/machines/default.nix — identityFor lives here
 #                                    post-Phase-2.
 pattern = '\b100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+\b'
 scope = ["modules/"]
-excludeFiles = ["modules/effects/hosts.nix", "modules/machines/default.nix"]
+excludeFiles = ["modules/infra/hosts.nix", "modules/machines/default.nix"]
 excludePatterns = ['100\.100\.100\.100', '100\.64\.0\.0/10']
 tags = ["topology"]
 message = '''
 Tailnet IP literal (CGNAT range) found above. Use
 config.nori.hosts.<host>.tailnetIp from the topology registry.
-Schema: modules/effects/hosts.nix; values: modules/machines/default.nix identityFor.'''
+Schema: modules/infra/hosts.nix; values: modules/machines/default.nix identityFor.'''
 
 # ── Migration drift ─────────────────────────────────────────────
 

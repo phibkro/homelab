@@ -170,7 +170,7 @@
   # at the app layer and ignores DHCP + Tailscale's DNS push. Pi is its
   # exit node, so we DNAT outgoing :53 to Blocky here. MUST stay in sync
   # with tag:appliance assignment in the Tailscale ACL — same trust
-  # boundary at two layers. See modules/effects/tailnet-appliance.nix
+  # boundary at two layers. See modules/infra/tailnet-appliance.nix
   # for the architectural-compromise note.
   nori.tailnet.appliances.chromecast = {
     tailnetIp = "100.94.135.114";

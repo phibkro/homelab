@@ -1,13 +1,13 @@
 ---
-description: USE WHEN a structural change just landed — a new abstraction, pattern, convention, flake check, host, or cross-cutting decision fresh agents would need to know about. Triggers: "we just landed X", "what doc tier needs updating?", "after this commit, anything else?". Also auto-invoke after committing a new file in `modules/effects/`, a new flake check, or a new host folder. Decides which doc tier (or skill, or memory) needs updating. Runs IMMEDIATELY after the change, not at session end — drift compounds.
-when_to_use: A structural change just landed (or is about to) — phrases like "we just landed <abstraction>", "after this commit, anything else?", "what doc tier needs updating?", "I just merged X, what's the followup?". Also auto-invoke after committing a new file in `modules/effects/`, a new flake check, a new convention-codifying assertion, or a new host folder.
+description: USE WHEN a structural change just landed — a new abstraction, pattern, convention, flake check, host, or cross-cutting decision fresh agents would need to know about. Triggers: "we just landed X", "what doc tier needs updating?", "after this commit, anything else?". Also auto-invoke after committing a new file in `modules/infra/`, a new flake check, or a new host folder. Decides which doc tier (or skill, or memory) needs updating. Runs IMMEDIATELY after the change, not at session end — drift compounds.
+when_to_use: A structural change just landed (or is about to) — phrases like "we just landed <abstraction>", "after this commit, anything else?", "what doc tier needs updating?", "I just merged X, what's the followup?". Also auto-invoke after committing a new file in `modules/infra/`, a new flake check, a new convention-codifying assertion, or a new host folder.
 ---
 
 # On every structural change — refresh the doc tier
 
 A "structural change" introduces a new pattern, abstraction, module shape, constraint, or convention that a fresh agent's mental model needs and that isn't obvious from one file's syntax.
 
-Examples in this project: the `nori.<...>` family of attrset-keyed declarative options in `modules/effects/`, the topology registry, the cross-host service split pattern, the appliance/workhorse role split, each new flake check.
+Examples in this project: the `nori.<...>` family of attrset-keyed declarative options in `modules/infra/`, the topology registry, the cross-host service split pattern, the appliance/workhorse role split, each new flake check.
 
 ## The question to ask
 
@@ -24,7 +24,7 @@ If the answer is "nothing — it's self-documenting via flake check + module hea
 | New convention agents should follow (rule, not example) | Add the shape to `docs/reference/module-authoring.md`; add the rule + its rung to `docs/invariants.md`. Ideally backed by a flake check or module assertion. Rules in prose drift; rules in code don't. |
 | Hard-won mistake worth surfacing (subtle gotcha, footgun) | New `.claude/skills/gotcha-<name>/SKILL.md` with USE-WHEN trigger. Each gotcha is an inoculation. |
 | Cross-session fact (preferences, project state, host topology) | Update auto-memory in `~/.claude/projects/.../memory/`. Don't duplicate what's in CLAUDE.md. |
-| Stale enumeration / count that mirrors code cardinality | Replace with a category description + live oracle (`nix flake show .#checks`, `just list-ports`, `ls modules/effects/`). Per `feedback/stratify_by_leverage` memory. |
+| Stale enumeration / count that mirrors code cardinality | Replace with a category description + live oracle (`nix flake show .#checks`, `just list-ports`, `ls modules/infra/`). Per `feedback/stratify_by_leverage` memory. |
 
 ## Specific patterns this session has seen
 
@@ -37,7 +37,7 @@ If the answer is "nothing — it's self-documenting via flake check + module hea
 ## What NOT to do
 
 - **Don't batch for session end.** Drift compounds. The cost asymmetry favors immediate updates.
-- **Don't update docs that derive from code** — a list mirroring `modules/effects/` contents is drift-prone; describe the pattern + point at `ls modules/effects/`. (See `feedback/stratify_by_leverage` memory.)
+- **Don't update docs that derive from code** — a list mirroring `modules/infra/` contents is drift-prone; describe the pattern + point at `ls modules/infra/`. (See `feedback/stratify_by_leverage` memory.)
 - **Don't add to CLAUDE.md when a skill is the right home** — skills load on demand; CLAUDE.md is always-loaded context cost.
 - **Don't write a procedure prose section when the procedure is non-deterministic and reusable** — extract to a skill instead.
 - **Don't codify a pattern that's only been used once.** Wait for the third concrete use. Two instances look like a pattern but are often coincidence; the third reveals the actual axis of variation.

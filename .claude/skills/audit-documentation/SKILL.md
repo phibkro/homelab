@@ -328,7 +328,7 @@ including:
 * `docs/reference/documentation-writing.md` — full taxonomy + anti-patterns +
   the amnesiac-imitation feedback loop
 * `git log --grep "chore(comments):"` — worked examples; 40+ files
-  audited across `modules/effects/`, `home/`, `machines/`,
+  audited across `modules/infra/`, `home/`, `machines/`,
   `modules/services/arr/`
 * `git log --grep "^docs:" --grep "^just:"` — the docs + Justfile
   rename commits (read for the rename rationale + USE-WHEN convention)

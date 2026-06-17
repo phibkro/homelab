@@ -189,7 +189,7 @@ question.
 Stage 2 deliverables:
 
 ```
-K2  modules/effects/hosts.nix      — schema extended (hardware,
+K2  modules/infra/hosts.nix      — schema extended (hardware,
                                      primaryJob, roleOneLiner)
 K3  flake.nix                      — packages.docs-topology
     docs/reference/topology-       — generated artifact

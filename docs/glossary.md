@@ -25,11 +25,11 @@ Models make the heuristics make sense.
 
 | Term | Meaning | Source |
 |---|---|---|
-| **workhorse** | Host role: services land here by default — GPU, state-heavy, the HTTP entry plane. The `role` field on the host. | `modules/effects/hosts.nix` (`role`); set in `flake.nix` `identityFor` |
-| **appliance** | Host role: only services that must survive the workhorse's failure (observability, alerting, DNS) or are network-appliance functions (subnet routing, exit node). Drives the placement assertion (appliance hosts can't use `paths`-based backups). | `modules/effects/hosts.nix`; assertion in `modules/infra/backup/default.nix` |
-| **`nori.<X>`** | The repo's effect-interface family — one declarative input, many generated outputs. Reader + collected-Writer shape. | `modules/effects/`; see § "Effect interface deep-dive" below |
-| **Reader (effect)** | `nori.<X>` flavor that hosts *produce* and services *read*: host-scoped context (`nori.hosts`, `nori.gpu`, `nori.fs`). Set in `flake.nix`/`hardware.nix`/`disko*.nix`. | `modules/effects/{hosts,gpu,fs}.nix` |
-| **Writer (effect)** | `nori.<X>` flavor that services *contribute* and generators *interpret*: declarations assembled across modules (`nori.lanRoutes`, `nori.backups`, `nori.harden`). | `modules/effects/{lan-route,backup,harden}.nix` |
+| **workhorse** | Host role: services land here by default — GPU, state-heavy, the HTTP entry plane. The `role` field on the host. | `modules/infra/hosts.nix` (`role`); set in `flake.nix` `identityFor` |
+| **appliance** | Host role: only services that must survive the workhorse's failure (observability, alerting, DNS) or are network-appliance functions (subnet routing, exit node). Drives the placement assertion (appliance hosts can't use `paths`-based backups). | `modules/infra/hosts.nix`; assertion in `modules/infra/backup/default.nix` |
+| **`nori.<X>`** | The repo's effect-interface family — one declarative input, many generated outputs. Reader + collected-Writer shape. | `modules/infra/`; see § "Effect interface deep-dive" below |
+| **Reader (effect)** | `nori.<X>` flavor that hosts *produce* and services *read*: host-scoped context (`nori.hosts`, `nori.gpu`, `nori.fs`). Set in `flake.nix`/`hardware.nix`/`disko*.nix`. | `modules/infra/{hosts,gpu,fs}.nix` |
+| **Writer (effect)** | `nori.<X>` flavor that services *contribute* and generators *interpret*: declarations assembled across modules (`nori.lanRoutes`, `nori.backups`, `nori.harden`). | `modules/infra/{lan-route,backup,harden}.nix` |
 | **value tier** | Data-protection level driving snapshot/backup/retention: `re-derivable` (minimal) → `user`/`service` (daily + local) → `irreplaceable` (snapshots + local + off-site). | `modules/infra/storage/default.nix` (tier); STORAGE.md "Value tiers" |
 | **audience** | Per-route trust level: `operator` (trusts tailnet, no Authelia) / `family` (needs OIDC for per-user state) / `public` (intentionally open). Decides where Authelia layers on. | `modules/infra/networking/default.nix` (`audience`); CLAUDE.md bias section |
 | **split-module pattern** | Cross-host service shipped as two modules: daemon module on the host that runs it, client/proxy module on every host. Live: `beszel`, `ntfy`. | `modules/services/{beszel,ntfy}/`; `/relocate-to-pi` skill |
@@ -45,7 +45,7 @@ first principles. These aren't rules; they're what makes the rules make sense.
 | Model | What it represents | Source |
 |---|---|---|
 | **Amnesiac team** | Each agent session is a fresh teammate who quits at the end. Predicts which software-team practices transfer (anything that externalizes knowledge or verifies a claim — docs, tests, skills, INVARIANTS) and which don't (anything that assumes persistent humans — feature branches, code review as gate, onboarding meetings). | ADR-0001 |
-| **Reader + collected-Writer effect interface** | Cross-cutting concerns assemble in two flavors: hosts *produce* read values (Reader: `nori.hosts`, `nori.gpu`, `nori.fs`), services *contribute* write values (Writer: `nori.lanRoutes`, `nori.backups`, `nori.harden`), generators *interpret* the collected whole. Predicts where any new abstraction lives. | `modules/effects/`; full prose below in § "Effect interface deep-dive" |
+| **Reader + collected-Writer effect interface** | Cross-cutting concerns assemble in two flavors: hosts *produce* read values (Reader: `nori.hosts`, `nori.gpu`, `nori.fs`), services *contribute* write values (Writer: `nori.lanRoutes`, `nori.backups`, `nori.harden`), generators *interpret* the collected whole. Predicts where any new abstraction lives. | `modules/infra/`; full prose below in § "Effect interface deep-dive" |
 | **Audience-driven trust topology** | Trust isn't a property of a service — it's the intersection of *who's reaching it* (operator / family / public) and *what network layer they arrived on* (tailnet / LAN / internet). The auth stack is layered selectively from this intersection. Predicts where Authelia / OIDC layers on without re-litigating per service. | `modules/infra/networking/default.nix` (`audience`); CLAUDE.md "What's the bias" |
 | **Workhorse / appliance fate-sharing** | A host's *role* defines what it must survive. A service migrates to the appliance only when "fate-sharing breaks the function" — its purpose requires outliving the workhorse. Predicts placement without taste arguments ("feels lightweight" isn't a reason). | TOPOLOGY.md "Service placement"; CLAUDE.md "workhorse-by-default" |
 | **Enforcement ladder** | A claim's truth lives on `prose → comment → test → type / lint / CI rule`; each rung is a different mechanism for staying true. Predicts what protects a claim from drift, and which `[prose: unchecked]` items are worth promoting. | `docs/invariants.md` |
@@ -60,10 +60,10 @@ flowchart LR
   Hosts -- "set in flake.nix / hardware.nix / disko*.nix" --> R["Reader<br/>nori.hosts<br/>nori.gpu<br/>nori.fs"]
   R -- read --> Services
   Services -- "contribute" --> W["Writer<br/>nori.lanRoutes<br/>nori.backups<br/>nori.harden"]
-  W -- "interpreted by" --> G["modules/effects/&lt;x&gt;.nix<br/>+ downstream handlers"]
+  W -- "interpreted by" --> G["modules/infra/&lt;x&gt;.nix<br/>+ downstream handlers"]
 ```
 
-Each `modules/effects/<x>.nix` carries one effect's full surface:
+Each `modules/infra/<x>.nix` carries one effect's full surface:
 
 | Layer | What | Mechanism |
 |---|---|---|
@@ -81,7 +81,7 @@ Convention-not-rule (Reader/Writer split isn't structurally prevented). Enforced
 
 **Adding an effect:**
 
-1. `modules/effects/<n>.nix` — option schema + assertions + (Writer-shaped: consumer logic)
+1. `modules/infra/<n>.nix` — option schema + assertions + (Writer-shaped: consumer logic)
 2. Import in `modules/common/default.nix`
 3. Header comment names the producer/consumer split (Reader/Writer at a glance)
 4. **Ship its test** — adding an effect = committing to `just test-<n>` (see `docs/reference/runtime-tests.md`)

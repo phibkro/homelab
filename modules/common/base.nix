@@ -164,7 +164,7 @@
   #
   # Hostnames stay as identifiers (SSH / known_hosts / Tailscale /
   # nix flake refs); codenames are aesthetic. Theme: polar / penguin.
-  # See modules/effects/hosts.nix for the full mapping.
+  # See modules/infra/hosts.nix for the full mapping.
   #
   # Gated on rust-motd not being enabled — pavilion + aurora opt in
   # to rust-motd for live battery/cpu/memory/service data; this

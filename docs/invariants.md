@@ -56,7 +56,7 @@ Strongest rung each claim has reached. `[prose: unchecked]` entries are promotio
 | Every `Restart=on-failure` unit's `ExecStart` is smoke-tested before landing (prevents restart-loop bombs that break the next `switch-to-configuration` — incident 2026-06-03 in `.claude/skills/gotcha-*/`) | `[prose: unchecked]` — promote? flake check resolving each `ExecStart` to a real nix-store binary path |
 | **Convention shapes** | |
 | `nori.<X>` effects are one input → multiple generators (Reader + collected-Writer interface) | `[structural]` (the abstraction shape itself; documented in `docs/glossary.md` § effect-interface deep-dive) |
-| Adding `modules/effects/<X>.nix` ships with a `just test-<X>` runtime introspection recipe | `[prose: unchecked]` — promote? meta-check that every Reader+Writer-shaped effect file has a matching test recipe in `Justfile`. See `docs/reference/runtime-tests.md` § "Next potential test targets" |
+| Adding `modules/infra/<X>.nix` ships with a `just test-<X>` runtime introspection recipe | `[prose: unchecked]` — promote? meta-check that every Reader+Writer-shaped effect file has a matching test recipe in `Justfile`. See `docs/reference/runtime-tests.md` § "Next potential test targets" |
 | A service module owns *everything* about its service in one file (no fan-out) | `[prose: unchecked]` — promote? per-service file boundary check |
 | Rule of three before extracting an abstraction | `[judgment]` |
 | Iterate-to-stable, then codify | `[judgment]` |
@@ -157,7 +157,7 @@ When you write the words **"we should always..."** or **"don't ever..."** in pro
 
 ## Live `nori.<X>` enforcement — worked example
 
-The effect-interface family in `modules/effects/` is enforced by all five rungs simultaneously:
+The effect-interface family in `modules/infra/` is enforced by all five rungs simultaneously:
 
 | Rung | Example |
 |---|---|

@@ -20,7 +20,7 @@ trigger: Phase 3c (bash extraction) committed 2026-06-16; operator surfaced the
 > design-trail record; live code is in `modules/lint/`. Two refinements vs
 > this spec landed during execution:
 >
-> 1. **Location** — operator pushed back on `modules/effects/lint.nix`;
+> 1. **Location** — operator pushed back on `modules/infra/lint.nix`;
 >    `effects/` is for Reader+Writer modules that affect SYSTEM state
 >    (filesystem, network, hardening). Lint is dev-time tooling, so it
 >    lives at `modules/lint/` as a new top-level category.
@@ -158,7 +158,7 @@ From `scripts/checks/routing-coherence.sh`:
 3. **Per-rule grep flags.** Some rules use `-rn`, others `-rln`, others `-rEn`. Standardize to `-rEn` or expose a `flags` field? Probably standardize; the field is one more variable to drift.
 4. **Dispatcher language.** Bash today (matches existing posture). Could be Python/Rust later. The Reader stays the same; the Writer changes. Decide whether to bake the assumption that there can be multiple dispatchers (e.g., `dispatchLintRules-grep` + `dispatchLintRules-treesitter` later) into the schema design now.
 5. **Where do the rules live in the tree?** Options:
-   - `modules/effects/lint.nix` — schema + dispatcher live together; rules are declared in flake.nix `checks` section.
+   - `modules/infra/lint.nix` — schema + dispatcher live together; rules are declared in flake.nix `checks` section.
    - `modules/lint/<rule-tag>.nix` — one file per rule category. More files but cleaner per-rule co-location.
    - `flake.nix` — rules + dispatcher all there. Most concentrated; loses the deep-modules property.
 

@@ -1,6 +1,6 @@
 # nori.lint — declarative grep-rule registry + lowering to a single
 # `nix flake check` derivation. Shares the Reader+Writer data shape
-# with the `nori.<X>` effect family in modules/effects/, but lives
+# with the `nori.<X>` effect family in modules/infra/, but lives
 # outside that folder because lint is dev-time tooling — affects
 # `nix flake check`, not running system state.
 #

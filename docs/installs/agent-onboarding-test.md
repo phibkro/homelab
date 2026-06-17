@@ -101,10 +101,10 @@ nori.lanRoutes.widget = {
 **Expected (shape)**:
 - Wrong — IP literal
 - Should use `config.nori.hosts.pi.tailnetIp` (the topology registry)
-- Registry schema: `modules/effects/hosts.nix`; values: `flake.nix` `identityFor`
+- Registry schema: `modules/infra/hosts.nix`; values: `flake.nix` `identityFor`
 - Topology coupling lives in the host name in the lookup, not in the IP
 
-**Source**: `docs/reference/topology.md` "Topology registry (`nori.hosts`)", `modules/effects/hosts.nix` header.
+**Source**: `docs/reference/topology.md` "Topology registry (`nori.hosts`)", `modules/infra/hosts.nix` header.
 
 ---
 

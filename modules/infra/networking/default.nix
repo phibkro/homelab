@@ -113,7 +113,7 @@ in
     description = ''
       LAN IP that *.nori.lan names resolve to. Derived from the
       nori.hosts registry as "the unique host with role=workhorse
-      and a non-null lanIp" (see modules/effects/hosts.nix). When
+      and a non-null lanIp" (see modules/infra/hosts.nix). When
       a future second workhorse with a static LAN lease lands, the
       derivation fails eval — surfaces the ambiguity instead of
       silently picking workstation.

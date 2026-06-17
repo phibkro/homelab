@@ -330,7 +330,7 @@
             ## Registry schema (`nori.hosts.<name>.*`)
 
             What an `identityFor` entry must declare to satisfy the schema.
-            Schema lives in `modules/effects/hosts.nix`; values live in
+            Schema lives in `modules/infra/hosts.nix`; values live in
             `flake.nix`.
 
             SCHEMA_HEADER

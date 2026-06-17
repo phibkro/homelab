@@ -7,7 +7,7 @@
 # fragment names; the composer resolves transitive deps, dedupes,
 # merges contributions, and returns a `pkgs.mkShell`.
 #
-# Same Reader+collected-Writer effect shape as `modules/effects/`:
+# Same Reader+collected-Writer effect shape as `modules/infra/`:
 # fragments declare contributions, the composer collects + interprets.
 # Languages vs services vs tooling is a *folder-coupling* signal (none
 # enforced today), not a type — every fragment has the same surface.

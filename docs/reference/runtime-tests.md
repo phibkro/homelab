@@ -37,9 +37,9 @@ One lever maxed = nice-to-have. Two = ship it. Three+ = required.
 
 ## The architectural correlation worth knowing
 
-**The homelab's testable surface is exactly the Reader+Writer-shaped subset of `modules/effects/` plus `home/`.** Every `nori.<X>` registry is a producer of effects whose runtime state can silently desync from the declaration. Everything else (`machines/`, `modules/common/`, service modules themselves) is either pure declaration (verified at nix-eval time) or loud-failing at runtime (no test needed).
+**The homelab's testable surface is exactly the Reader+Writer-shaped subset of `modules/infra/` plus `home/`.** Every `nori.<X>` registry is a producer of effects whose runtime state can silently desync from the declaration. Everything else (`machines/`, `modules/common/`, service modules themselves) is either pure declaration (verified at nix-eval time) or loud-failing at runtime (no test needed).
 
-| `modules/effects/` file | Reader-Writer shape | Test | Test value |
+| `modules/infra/` file | Reader-Writer shape | Test | Test value |
 |---|:-:|---|:-:|
 | `backup.nix` | ✓ `nori.backups` | `test-backups` | ★★★★★ |
 | `lan-route.nix` | ✓ `nori.lanRoutes` | `test-routes` | ★★★★★ |
@@ -53,7 +53,7 @@ One lever maxed = nice-to-have. Two = ship it. Three+ = required.
 | `rust-motd.nix` | — config wrapper | — | n/a |
 | `gpu.nix` | — config wrapper | — | n/a |
 
-Corollary: **adding a new file to `modules/effects/` is implicitly committing to a runtime introspection test for it.** If the new file is a config wrapper without the Reader-Writer shape (rust-motd, gpu), it probably doesn't belong in `effects/` at all — it's just a service or desktop module that happens to live there for historical reasons.
+Corollary: **adding a new file to `modules/infra/` is implicitly committing to a runtime introspection test for it.** If the new file is a config wrapper without the Reader-Writer shape (rust-motd, gpu), it probably doesn't belong in `effects/` at all — it's just a service or desktop module that happens to live there for historical reasons.
 
 ## Next potential test targets
 
@@ -65,7 +65,7 @@ These are the unshipped recipes the four-lever evaluation flagged as worth-doing
 | `test-fs` | For each `nori.fs.<n>`: path exists, owner/mode/subvolume matches, AND entry exists in `nori.backups` or has an explicit excluded flag | `modules/infra/storage/default.nix` | leverage 3 · volatility 1 · opacity 3 · blast 4 | The "I added a folder but forgot to wire backup" class — likely if user-data shape changes |
 | `test-secrets` | For each `sops.secrets.<n>`: rendered file exists at expected path, mode/owner/group matches declaration, sops can decrypt with current key | sops integration | leverage 2 · volatility 1 · opacity 3 · blast 4 | Next sops key rotation, or any "service can't read secret" deploy break |
 | `test-firewall` | Declared tailnet-only ports actually bound to tailscale0 (not 0.0.0.0); declared LAN-public ports actually open | implicit in service modules + `nori.lanRoutes` | leverage 3 · volatility 1 · opacity 4 · blast 4 | After any change that adds a new exposed port; the silent-exposure class |
-| `test-network` | DNS: blocky resolves every `*.${nori.domain}`, Tailscale MagicDNS resolves tailnet hostnames, subnet routes advertised correctly | `modules/effects/hosts.nix` + tailscale | leverage 3 · volatility 1 · opacity 2 · blast 3 | DNS failure mostly loud; ship only after a subnet-route or DNS subtlety bites |
+| `test-network` | DNS: blocky resolves every `*.${nori.domain}`, Tailscale MagicDNS resolves tailnet hostnames, subnet routes advertised correctly | `modules/infra/hosts.nix` + tailscale | leverage 3 · volatility 1 · opacity 2 · blast 3 | DNS failure mostly loud; ship only after a subnet-route or DNS subtlety bites |
 | `test-systemd` | Generic safety net — no failed units, all timers scheduled, no `bad-setting` states | cross-cutting | leverage 1 · volatility 4 · opacity 1 · blast 1 | (skip — `systemctl --failed` is already loud) |
 
 **Pattern for shipping new tests:** when an incident occurs in an effect's area, the post-mortem question is "which test would have caught this?" If the answer maps to one of these unshipped recipes, that recipe becomes worth the ~50 lines of bash. Otherwise the framework's ratings predicted correctly that the recipe wasn't yet earning its keep.
@@ -103,7 +103,7 @@ edit  →  just preview  →  just test  →  just rebuild
 Tests can be run against any generation. They're idempotent (paired
 toggles where applicable, snapshot freshness checks where state-only).
 The composite `just test` is the right precondition gate for any
-deploy that touches `modules/effects/` or `home/`.
+deploy that touches `modules/infra/` or `home/`.
 
 ## Real catches, for posterity
 

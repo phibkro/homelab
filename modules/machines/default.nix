@@ -21,7 +21,7 @@
   identity fails eval; an identity entry without a folder is
   silently dead code (caught by code review).
 
-  Schema: `modules/effects/hosts.nix`.
+  Schema: `modules/infra/hosts.nix`.
 
   Consumers (cross-host refs):
 
