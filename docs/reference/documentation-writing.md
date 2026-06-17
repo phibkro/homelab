@@ -155,17 +155,66 @@ docs/reference/services.md             backup pattern doctrine + routing;
                                        per-service from each module
 ```
 
-### Adoption status (2026-06-16)
+### Adoption status (2026-06-17)
 
 | Stage | Status |
 |---|---|
 | **1. Convention codified** | ✓ this section |
-| **2. Pilot RFC 145** on one non-option construct | □ next |
+| **2. Pressure test** — densest doc (`topology.md`) | ✓ Stage 2 |
+| **2.5. Structure-by-tier restructure** — prerequisite for cross-effect generators | □ spec at `docs/specs/2026-06-17-structure-by-tier.md` |
 | **3. Generator extended** to extract RFC 145 doc-strings via nixdoc | □ |
 | **4. Content migration** — doctrine from `docs/reference/*.md` into co-located doc-strings | □ multi-sprint |
 | **5. `docs-fresh` flake check** — committed-generated vs on-the-fly | □ closes drift surface by construction |
 
-Sprint 6 (`feat(docs-gen): Sprint 6 prototype`) landed Stage 0 — proof-of-concept for the mkOption surface via `nixosOptionsDoc` on `nori.lanRoutes`. Stages 2+ are their own sprints with their own Prologues.
+Stage 2 verdict (per `docs/reports/2026-06-17-topology-cohort-audit.md`): **keep the convention, commit to structure-by-tier restructure as the follow-on**. The pressure test on `topology.md` landed three signals:
+
+```
+SIGNAL                                              READS AS
+──────────────────────────────────────────────────────────────────
+Config-dump dominant sections (hosts table,         CONVENTION SCALES
+schema) cleanly co-locate via nixosOptionsDoc       (Stage 2 ✓)
++ small hand-rolled value walks.
+
+Code-already-has-it sections (Pi posture, NVMe      ALREADY WORKING —
+by-id) prove the convention isn't novel; the gap   topology.md was the
+was that topology.md duplicated what code already   dupe, not the source
+said.
+
+Cross-effect sections (service placement, drives,   CONVENTION INSUFFICIENT
+GPU, caps) RESIST co-location at module-as-shipped  ALONE — restructure
+because no single module owns the cross-effect      needed (R3 spec)
+question.
+```
+
+Stage 2 deliverables:
+
+```
+K2  modules/effects/hosts.nix      — schema extended (hardware,
+                                     primaryJob, roleOneLiner)
+K3  flake.nix                      — packages.docs-topology
+    docs/reference/topology-       — generated artifact
+    generated.md
+K4  modules/dev/default.nix        — RFC 145 pilot on
+                                     mkDevShell + fragmentNames
+                                     (nixdoc extracts both)
+    flake.nix                      — RFC 145 style precedent on
+                                     mkHost (let-binding;
+                                     non-extracted)
+K5  docs/reference/topology.md     — trimmed to meta + curated;
+                                     tier principle codified
+K6  docs/reports/2026-06-17-       — side-by-side audit; NVMe
+    topology-cohort-audit.md         warning restored to topology.md
+R1  docs/reports/2026-06-17-       — diagrams-from-code
+    diagram-generation-              feasibility; D2 vs mermaid;
+    feasibility.md                   hybrid recommendation
+R2  docs/reports/2026-06-17-       — runsOn coupling analysis;
+    runson-coupling-analysis.md      tier insight; algebraic
+                                     forward-extension named
+R3  docs/specs/2026-06-17-         — structure-by-tier restructure
+    structure-by-tier.md             spec; phase sequencing
+```
+
+Sprint 6 (`feat(docs-gen): Sprint 6 prototype`) landed Stage 0 — proof-of-concept for the mkOption surface via `nixosOptionsDoc` on `nori.lanRoutes`. Stages 3+ are their own sprints with their own Prologues; Stage 2.5 (structure-by-tier) is a multi-PR restructure arc preceding Stages 3-5.
 
 ## Why this lives in docs (the amnesiac-teammate loop)
 
