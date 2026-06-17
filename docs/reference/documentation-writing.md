@@ -161,7 +161,7 @@ docs/reference/services.md             backup pattern doctrine + routing;
 |---|---|
 | **1. Convention codified** | ✓ this section |
 | **2. Pressure test** — densest doc (`topology.md`) | ✓ Stage 2 |
-| **2.5. Structure-by-tier restructure** — prerequisite for cross-effect generators | □ spec at `docs/specs/2026-06-17-structure-by-tier.md` |
+| **2.5. Modules-as-root restructure** — PaaS lens; infra/<concern>/ + services/ split | ✓ Phases 0-3f landed; spec at `docs/specs/2026-06-17-modules-as-root-restructure.md` |
 | **3. Generator extended** to extract RFC 145 doc-strings via nixdoc | □ |
 | **4. Content migration** — doctrine from `docs/reference/*.md` into co-located doc-strings | □ multi-sprint |
 | **5. `docs-fresh` flake check** — committed-generated vs on-the-fly | □ closes drift surface by construction |

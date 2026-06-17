@@ -10,7 +10,7 @@ NixOS flake managing four NixOS hosts + a home-manager macbook:
 | **pavilion** | agent quarantine (x86_64) | hermes worktrees, weekly tertiary `/mnt/family/*` replica (planned) |
 | **macbook** | daily-driver laptop (intel x86_64) | standalone home-manager only — not under the flake's `nixosConfigurations` |
 
-Three of the four NixOS hosts (pi, aurora, workstation) import the full `modules/services` bundle and opt into individual services via `nori.services.<X>.enable`. Importing the bundle gives a host the route registry; activation is per-service. See `docs/reference/module-authoring.md` for the convention.
+The codebase splits along the PaaS lens: `modules/services/` holds **workloads** (vaultwarden, immich, jellyfin — what the operator USES); `modules/infra/` holds the **platform** (storage / networking / access / capabilities / observability / backup — HOW the system works). Universal infra (the platform layer + baseline OS bits) is imported by every host via `modules/common/`. Three of the four NixOS hosts (pi, aurora, workstation) additionally import the workloads bundle (`modules/services/default.nix`); pavilion flat-imports just what it needs. Activation is per-service via `nori.services.<X>.enable`. See `docs/reference/module-authoring.md` for the convention.
 
 ## Docs map
 
@@ -45,7 +45,7 @@ without this file's context.
 | `docs/reference/capacity-baseline.md` | sizing a new service against current RAM/disk/CPU baselines per host |
 | `docs/reference/agentic-workflow.md` | starting a new PR (prologue), wrapping one (epilogue), deciding session vs PR boundary, or designing per-sprint ceremonies — the per-PR three-phase ceremony lives here |
 | `docs/reference/lan-route-options.md` | looking up the schema details for a specific `nori.lanRoutes.<name>.<field>` option — generated from `modules/infra/networking/default.nix` via `nix build .#docs-lan-route` (the hand-written `network.md` keeps the WHY) |
-| `docs/reference/topology-generated.md` | looking up the hosts-at-a-glance table or `nori.hosts` schema — generated from `flake.nix:identityFor` + `modules/infra/hosts.nix` via `nix build .#docs-topology` (the hand-written `topology.md` keeps the curated overview, diagram, and invariants) |
+| `docs/reference/topology-generated.md` | looking up the hosts-at-a-glance table or `nori.hosts` schema — generated from `modules/machines/default.nix:identityFor` + `modules/infra/hosts.nix` via `nix build .#docs-topology` (the hand-written `topology.md` keeps the curated overview, diagram, and invariants) |
 
 ### Drill-down (pulled in only when a parent doc cross-refs it)
 

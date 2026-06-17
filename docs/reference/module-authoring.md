@@ -11,43 +11,79 @@ Repository-wide patterns for *writing* modules. Rules and how they're checked li
 ## Repository structure
 
 ```
-flake.nix
-flake.lock                       # Pinned 26.05 revision; source of reproducibility
-machines/                        # PER-HOST: NixOS system config only
-  workstation/    pi/    pavilion/    aurora/   # NixOS hosts (default.nix + hardware + disko + home.nix)
-  macbook/                       # Standalone home-manager (no NixOS layer)
-home/                            # HOME-MANAGER modules (user-space, dotfiles, CLIs)
-  core.nix                       # cross-platform CLI baseline — every host imports
-  pc.nix                         # operator-PC tier — heavy closures (claude-code, hermes)
-  claude-code/                   # CLI + ~/.claude/skills/* + settings.json
-  hermes/                        # Hermes Agent CLI (Linux-only; skips on Mac)
-modules/                         # NixOS modules (root, system)
-  common/                        # universal infra — every host imports
-    base.nix · users.nix · sops.nix · tailscale.nix · vector.nix
-  effects/                       # `nori.<X>` Reader + Writer interface options
-    hosts.nix · gpu.nix · fs.nix              # Reader-shaped
-    lan-route.nix · backup.nix · harden.nix   # Writer-shaped
-    gatus-probe.nix · resource-tiers.nix · restart-policy.nix · rust-motd.nix · hosts.nix
-  services/                      # "this host serves things"
-    default.nix                  # workhorse bundle (workstation imports whole; pi picks flat)
-    <service>.nix                # loose: independent services
-    arr/    backup/    beszel/    ntfy/    victorialogs/   # tightly-coupled clusters
-  desktop/                       # "this host has a graphical session"
-    hyprland.nix · greetd.nix · stylix.nix · apps.nix · ...
-  dev/                           # dev-shell fragments composed via mkDevShell
+flake.nix                          dep injection + thin output wiring
+flake.lock                         Pinned 26.05 revision; reproducibility
+machines/                          per-host NixOS system config
+  workstation/  pi/  pavilion/     NixOS hosts (default + hardware +
+  aurora/                          disko + home.nix)
+  macbook/                         standalone home-manager (no NixOS)
+home/                              home-manager modules — user-space
+  core.nix                         cross-platform CLI baseline
+  pc.nix                           operator-PC tier — heavy closures
+  claude-code/                     CLI + skills/ + settings.json
+  hermes/                          Hermes Agent CLI (Linux-only)
+modules/
+  machines/                        nixosConfigurations factory
+    default.nix                    enumeration + mkHost + identityFor
+                                   + hostRegistry
+  home/                            homeConfigurations factory
+    default.nix                    macbook (standalone home-manager)
+  common/                          universal — every host imports
+    base.nix · users.nix ·         baseline OS bits + the infra layer
+    sops.nix · tailscale.nix       (imports of ../infra/<concern>/)
+  infra/                           PaaS platform — the hosting layer
+    backup/                        nori.backups schema + restic +
+                                   btrbk + verify adapters
+    storage/                       nori.fs + nori.replicas
+    networking/                    nori.lanRoutes + Caddy + Blocky
+    access/                        Authelia (audience IAM)
+    capabilities/                  nori.harden + nori.gpu (what a
+                                   service can DO on the machine)
+    observability/                 Gatus + Victoria* + Beszel + ntfy
+                                   + exporters + Grafana + vector
+                                   + heartbeat + disk-alert
+    hosts.nix                      nori.hosts schema (registry)
+    placement.nix                  role × backup compatibility
+    resource-tiers.nix             memory-tier defaults
+    restart-policy.nix             systemd restart defaults
+    tailnet-appliance.nix          appliance hardening defaults
+    motd.nix                       codename banner + live MOTD
+  services/                        workloads — what the operator runs
+    <workload>.nix                 vaultwarden, navidrome, immich,
+                                   ollama, jellyfin, calibre-web,
+                                   komga, radicale, miniflux,
+                                   glance, heim, filmder, hermes,
+                                   open-webui, stremio, syncthing,
+                                   samba
+    arr/                           coupled cluster — Sonarr/Radarr/
+                                   Lidarr/Bazarr/Jellyseerr/Prowlarr/
+                                   qBittorrent (cross-reference via
+                                   API + shared media group)
+    default.nix                    workload bundle aggregator
+  desktop/                         GUI session — Hyprland, Stylix, …
+  dev/                             dev-shell fragments (mkDevShell)
+  lint/                            code-quality dispatcher
 secrets/
-  secrets.yaml · apps.yaml · .sops.yaml
+  secrets.yaml · apps.yaml ·       sops-encrypted
+  .sops.yaml
 docs/
-  decisions/                     # ADRs — hard-to-reverse decisions, dated
-  runbooks/                      # per-failure recovery
-  superpowers/                   # per-feature specs + plans
-  RUNTIME_TESTS.md               # runtime introspection framework + recipes
-  <REFERENCE>.md                 # tier-2 reference docs (see CLAUDE.md routing)
+  decisions/                       ADRs — hard-to-reverse choices
+  runbooks/                        per-failure recovery
+  reference/                       tier-2 reference docs
+  plans/ · reports/ · specs/       forward-looking + retrospective
 .claude/
-  skills/                        # procedure skills (load on demand)
+  skills/                          procedure skills (load on demand)
 ```
 
-**Layout principle:** `machines/<host>/` = pure machine-specific NixOS wiring; `home/` = home-manager (cross-host operator-side); `modules/infra/` = `nori.<X>` declarative options; `modules/services/` = NixOS-side service modules. The split between `modules/` and `home/` is the **NixOS-vs-home-manager** module-system boundary.
+**Layout principle (PaaS lens):** the homelab IS a hosting provider for self-hosted family-tier services. The split mirrors what a PaaS layers:
+
+- `modules/services/` — **workloads** (what the operator USES: vaultwarden, immich, jellyfin, …). User-facing applications consuming the platform.
+- `modules/infra/` — **platform** (HOW the system works: storage, networking, access control, observability, backup, capabilities). The hosting layer.
+- `modules/machines/` — composition (per-host module list + identity).
+- `modules/home/` + `home/` — home-manager (user-space + standalone Mac).
+- `modules/common/` — universal NixOS bits + imports of the infra layer.
+
+Workloads in `services/` depend on infra concerns; infra concerns depend on `machines/` (the hosts they run on). No upward dependencies; no cycles.
 
 ## Configuration derivation from layout
 
