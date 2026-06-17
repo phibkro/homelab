@@ -169,7 +169,7 @@ docs/reference/storage.md              value-tier framing + routing;
                                        subvol details from disko
 docs/reference/network.md              routing + DNS arch + audience
                                        model; option details
-                                       from `lan-route-options.md`
+                                       from `docs/generated/lan-route.md`
                                        (generated)
 docs/reference/services.md             backup pattern doctrine + routing;
                                        per-service from each module

@@ -8,7 +8,7 @@ summary: Hosts, hardware, roles, the topology registry, GPU access, resource
 
 Four persistent NixOS hosts on a single residential network plus a Mac on standalone home-manager. Roles are typed; placement assertions enforce them; cross-host refs go through `nori.hosts` registry — never IP literals.
 
-**Tables move to generated** — the hosts-at-a-glance table and `nori.hosts.<name>.*` schema reference live in [`topology-generated.md`](./topology-generated.md), regenerated via `nix build .#docs-topology` from `flake.nix:identityFor` + `modules/infra/hosts.nix`. This file keeps the curated overview, the diagram, the placement reasoning, the invariants — anything the schema can't express.
+**Tables move to generated** — the hosts-at-a-glance table and `nori.hosts.<name>.*` schema reference live in [`docs/generated/topology.md`](../generated/topology.md), regenerated via `nix build .#docs-topology` from `flake.nix:identityFor` + `modules/infra/hosts.nix`. This file keeps the curated overview, the diagram, the placement reasoning, the invariants — anything the schema can't express.
 
 ```mermaid
 graph TB
@@ -87,7 +87,7 @@ SD-card / flash wear is the #1 Pi failure mode. **Restic-as-target deferred:** P
 
 Cross-host references go through the registry, **never IP literals**. The `forbidden-patterns` flake check fails the build on a stray `100.x.y.z` literal anywhere outside `flake.nix`'s `identityFor`.
 
-Schema lives in `modules/infra/hosts.nix`; values in `flake.nix:identityFor`. A `readDir` over `./machines/` drives both `nixosConfigurations` enumeration and the registry — adding a host is "create the folder + add identity"; either omission fails eval. Schema details in [`topology-generated.md`](./topology-generated.md).
+Schema lives in `modules/infra/hosts.nix`; values in `modules/machines/default.nix:identityFor`. Two explicit attrset maps (`nixosMachines` + `identityFor`) form the SoT; an assertion cross-checks the key sets so adding a host requires both entries — eval fails on either omission. Schema details in [`docs/generated/topology.md`](../generated/topology.md).
 
 **Consumer-side lookup** (this is how cross-host wiring stays IP-literal-free):
 

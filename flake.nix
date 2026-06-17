@@ -348,14 +348,12 @@
                 HEADER
                 cat ${moduleDoc} >> $out
                 echo >> $out
-                # nixosOptionsDoc emits noisy backslash escapes (intended for
-                # the NixOS manual's docbook renderer; pure noise in GFM) and
-                # auto-rewrites the post-stripStorePrefix paths as nixpkgs
-                # github links (because the paths look nixpkgs-relative).
-                # Post-process for readable GFM:
-                #   - drop backslash before chars that aren't markdown-special
-                #   - replace [<nixpkgs/path>](https://github.com/...) with `path`
-                #   - replace any [path](file://path) leftovers with `path`
+                # nixosOptionsDoc emits docbook-flavoured escapes + nixpkgs   # multi-line: ok (bash inside heredoc)
+                # github links (the auto-rewrite assumes paths are nixpkgs-
+                # relative). Post-process to plain GFM: strip backslash
+                # before non-markdown-special chars; replace both link forms
+                # ([<nixpkgs/path>](https://github.com/…) and stray
+                # [path](file://path)) with inline-code `path`.
                 sed -e 's/\\\([.<>()]\)/\1/g' \
                     -e 's|\[<nixpkgs/\([^]]*\)>\](https://github\.com/[^)]*)|`\1`|g' \
                     -e 's|\[\([^]]*\)\](file://[^)]*)|`\1`|g' \
@@ -742,10 +740,10 @@
                   fi
                 }
                 check "docs-lan-route" \
-                  ${./docs/reference/lan-route-options.md} \
+                  ${./docs/generated/lan-route.md} \
                   ${inputs.self.packages.${system}.docs-lan-route}
                 check "docs-topology" \
-                  ${./docs/reference/topology-generated.md} \
+                  ${./docs/generated/topology.md} \
                   ${inputs.self.packages.${system}.docs-topology}
 
                 if [ $fail -eq 0 ]; then
@@ -754,10 +752,10 @@
                   echo
                   echo "Generated docs drifted. Regenerate + commit:"
                   echo "  nix build .#docs-lan-route -o /tmp/r && \\"
-                  echo "    cp /tmp/r docs/reference/lan-route-options.md"
+                  echo "    cp /tmp/r docs/generated/lan-route.md"
                   echo "  nix build .#docs-topology  -o /tmp/r && \\"
-                  echo "    cp /tmp/r docs/reference/topology-generated.md"
-                  echo "  chmod +w docs/reference/{lan-route-options,topology-generated}.md"
+                  echo "    cp /tmp/r docs/generated/topology.md"
+                  echo "  chmod +w docs/generated/{lan-route,topology}.md"
                   exit 1
                 fi
               '';

@@ -44,8 +44,8 @@ without this file's context.
 | `docs/reference/runtime-tests.md` | adding a `just test-<X>` lever or auditing whether an infra concern ships with one |
 | `docs/reference/capacity-baseline.md` | sizing a new service against current RAM/disk/CPU baselines per host |
 | `docs/reference/agentic-workflow.md` | starting a new PR (prologue), wrapping one (epilogue), deciding session vs PR boundary, or designing per-sprint ceremonies — the per-PR three-phase ceremony lives here |
-| `docs/reference/lan-route-options.md` | looking up the schema details for a specific `nori.lanRoutes.<name>.<field>` option — generated from `modules/infra/networking/default.nix` via `nix build .#docs-lan-route` (the hand-written `network.md` keeps the WHY) |
-| `docs/reference/topology-generated.md` | looking up the hosts-at-a-glance table or `nori.hosts` schema — generated from `modules/machines/default.nix:identityFor` + `modules/infra/hosts.nix` via `nix build .#docs-topology` (the hand-written `topology.md` keeps the curated overview, diagram, and invariants) |
+| `docs/generated/lan-route.md` | looking up the schema details for a specific `nori.lanRoutes.<name>.<field>` option — generated from `modules/infra/networking/default.nix` via `nix build .#docs-lan-route`. Pairs with the hand-written `docs/reference/network.md`; they coexist under separate paths so the generated-vs-handwritten coverage trade-off stays comparable over time |
+| `docs/generated/topology.md` | looking up the hosts-at-a-glance table or `nori.hosts` schema — generated from `modules/machines/default.nix:identityFor` + `modules/infra/hosts.nix` via `nix build .#docs-topology`. Pairs with `docs/reference/topology.md`; same coexistence pattern as above |
 
 ### Drill-down (pulled in only when a parent doc cross-refs it)
 
