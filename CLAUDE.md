@@ -44,6 +44,7 @@ without this file's context.
 | `docs/reference/runtime-tests.md` | adding a `just test-<X>` lever or auditing whether an effect family ships with one |
 | `docs/reference/capacity-baseline.md` | sizing a new service against current RAM/disk/CPU baselines per host |
 | `docs/reference/agentic-workflow.md` | starting a new PR (prologue), wrapping one (epilogue), deciding session vs PR boundary, or designing per-sprint ceremonies — the per-PR three-phase ceremony lives here |
+| `docs/reference/lan-route-options.md` | looking up the schema details for a specific `nori.lanRoutes.<name>.<field>` option — generated from `modules/effects/lan-route.nix` via `nix build .#docs-lan-route` (the hand-written `network.md` keeps the WHY) |
 
 ### Drill-down (pulled in only when a parent doc cross-refs it)
 

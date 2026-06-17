@@ -19,6 +19,154 @@ overlay + the load-bearing meta-rule that makes the framework matter
 > If the next reader would figure out the intent without the comment,
 > delete the comment.
 
+## Co-locate documentation with code (SoT applied to docs)
+
+```
+Hand-written meta docs ←→ extracted code-doc strings
+   (the WHY — workflow,     (the WHAT — every option,
+    glossary, invariants,    every lib function,
+    ADRs, plans, specs)      every binding)
+```
+
+**The rule:** documentation that describes code lives **with the code**. Hand-written prose is for meta content — workflow, glossary, mental models, ADRs, multi-phase plans, runbooks. Everything else gets extracted from co-located doc strings at build time.
+
+Why: documentation that *paraphrases* code drifts the second the code changes. With agents producing code at velocity, hand-maintained option / function tables become a perpetual cleanup tax. Per [Sprint 6 prototype findings](../specs/2026-06-16-generated-docs-and-okf.md), the `nixosOptionsDoc` generator surfaced 3 real doc gaps on its first pass — the SoT axiom pays dividends immediately.
+
+### Two extraction surfaces (the dual mechanism)
+
+Nix carries two distinct documentation surfaces. Both extract to markdown automatically; both stay co-located with what they describe.
+
+| Surface | Applies to | Extracted by | Canonical example |
+|---|---|---|---|
+| `mkOption { description = ''...''; }` | NixOS module **options** (every `nori.<X>` schema field) | [`nixosOptionsDoc`](https://github.com/NixOS/nixpkgs/blob/master/nixos/lib/make-options-doc/default.nix) | `modules/effects/lan-route.nix` → `nori.lanRoutes.<name>.audience` |
+| `/** ... */` doc-comments ([RFC 145](https://github.com/NixOS/rfcs/blob/master/rfcs/0145-doc-strings.md)) | **Non-option** code: lib functions, let bindings, attrset entries, lambda formals | [`nixdoc`](https://github.com/nix-community/nixdoc) | [`nixpkgs/lib/attrsets.nix`](https://github.com/NixOS/nixpkgs/blob/master/lib/attrsets.nix) → `lib.attrByPath` |
+
+### mkOption description shape
+
+```nix
+options.nori.lanRoutes = mkOption {
+  type = types.attrsOf (types.submodule {
+    options.audience = mkOption {
+      type = types.enum [ "operator" "family" "public" ];
+      default = "operator";
+      description = ''
+        Who this route is for. Documents intent + drives the
+        auth-stacking principle:
+
+        - operator — admin-only management UIs. Tailnet membership
+          IS the auth; layering Authelia duplicates the perimeter
+          guarantee for no per-user-state value.
+        - family — services with per-user state inside the app.
+          Native OIDC propagates user identity into the app.
+        - public — intentionally open dashboards + the SSO portal.
+      '';
+    };
+  });
+};
+```
+
+Multi-paragraph CommonMark in the indented-string `''...''` works as-is. Lists, code blocks, links, and headings (after `#`) all survive intact through `nixosOptionsDoc`.
+
+### RFC 145 doc-comment shape
+
+Canonical reference: `nixpkgs/lib/attrsets.nix`. The convention:
+
+```nix
+/**
+  One-line summary as the opening sentence.
+
+  Optional prose paragraphs (CommonMark) elaborating rationale,
+  trade-offs, or context the next reader needs.
+
+  # Inputs
+
+  `paramName`
+
+  : Description of the parameter (term-definition list syntax;
+    the colon-prefix indents under the term).
+
+  # Type
+
+  ```
+  funcName :: ParamType -> ReturnType
+  ```
+
+  # Examples
+  :::{.example}
+  ## `lib.namespace.funcName` usage example
+
+  ```nix
+  funcName arg1 arg2
+  => result
+  ```
+
+  :::
+*/
+funcName = arg1: arg2: ...
+```
+
+Placement: the doc-comment appears **before** the documentable node, with only whitespace between them. For attribute paths, document the body. When ambiguous, the doc-comment closer to the body takes precedence.
+
+Format precedence (lifted from RFC 145):
+- `/** */` distinguishes doc-comments from regular `#` comments
+- CommonMark per [RFC 72](https://github.com/NixOS/rfcs/blob/master/rfcs/0072-commonmark.md)
+- Section headings via `#`, `##` markdown
+- Code blocks via triple-backtick fences
+
+### When to reach for which
+
+| Context | Mechanism |
+|---|---|
+| `mkOption { ... }` declaration | `description = ''...''` |
+| Lib function in `modules/`, `flake.nix`, or `modules/lint/default.nix` | `/** ... */` |
+| Let-binding with non-obvious purpose (e.g. our `lintLib`, `lintRules`, `baseNonServicePatterns`) | `/** ... */` |
+| Attribute set entry that's effectively a function or registry | `/** ... */` |
+| Inline implementation detail not part of the public surface | standard `#` comment |
+| Cross-cutting prose (mental models, why-this-shape, multi-module rationale) | hand-written `docs/reference/<topic>.md` |
+
+### What stays hand-written
+
+These survive any docs-co-location sweep because their content isn't extractable from a single code site:
+
+```
+docs/glossary.md                       vocabulary, cross-cutting framing
+docs/invariants.md                     enforcement ladder + claims catalog
+docs/reference/agentic-workflow.md     per-PR ceremony
+docs/reference/documentation-writing.md  this file
+docs/decisions/*                       ADRs (durable why)
+docs/plans/* docs/specs/* docs/reports/*  multi-phase narrative
+docs/runbooks/*                        incident procedures
+docs/installs/*                        bring-up procedures
+CLAUDE.md                              the routing root
+```
+
+These shrink dramatically as doctrine moves into co-located doc-strings:
+
+```
+docs/reference/topology.md             routing + cross-host patterns;
+                                       per-host details from machines/*
+docs/reference/storage.md              value-tier framing + routing;
+                                       subvol details from disko
+docs/reference/network.md              routing + DNS arch + audience
+                                       model; option details
+                                       from `lan-route-options.md`
+                                       (generated)
+docs/reference/services.md             backup pattern doctrine + routing;
+                                       per-service from each module
+```
+
+### Adoption status (2026-06-16)
+
+| Stage | Status |
+|---|---|
+| **1. Convention codified** | ✓ this section |
+| **2. Pilot RFC 145** on one non-option construct | □ next |
+| **3. Generator extended** to extract RFC 145 doc-strings via nixdoc | □ |
+| **4. Content migration** — doctrine from `docs/reference/*.md` into co-located doc-strings | □ multi-sprint |
+| **5. `docs-fresh` flake check** — committed-generated vs on-the-fly | □ closes drift surface by construction |
+
+Sprint 6 (`feat(docs-gen): Sprint 6 prototype`) landed Stage 0 — proof-of-concept for the mkOption surface via `nixosOptionsDoc` on `nori.lanRoutes`. Stages 2+ are their own sprints with their own Prologues.
+
 ## Why this lives in docs (the amnesiac-teammate loop)
 
 This codebase is shaped by agents with no memory; they imitate the code
@@ -127,5 +275,19 @@ without examples drift; examples without rules don't generalise.
   prose-side companion).
 - `docs/invariants.md` — load-bearing claims tagged by enforcement tier
   + the prose → comment → test → type ladder for promoting one a rung.
+- [RFC 145 — Doc Strings](https://github.com/NixOS/rfcs/blob/master/rfcs/0145-doc-strings.md)
+  — the `/** ... */` convention for non-option Nix code.
+- [RFC 72 — CommonMark](https://github.com/NixOS/rfcs/blob/master/rfcs/0072-commonmark.md)
+  — the markdown dialect RFC 145 doc-strings (and `mkOption description`
+  fields) use.
+- [nixpkgs/lib/attrsets.nix](https://github.com/NixOS/nixpkgs/blob/master/lib/attrsets.nix)
+  — canonical reference for how nixpkgs uses RFC 145 (also at
+  `/srv/share/projects/nixpkgs/lib/`).
+- [`nixosOptionsDoc`](https://github.com/NixOS/nixpkgs/blob/master/nixos/lib/make-options-doc/default.nix)
+  — the extractor for mkOption descriptions; consumed by the
+  `docs-lan-route` flake package output.
+- `docs/specs/2026-06-16-generated-docs-and-okf.md` — Sprint 6 research
+  seed; combines generated-docs + Open Knowledge Format (OKF v0.1)
+  compliance.
 - `git log --grep "chore(comments):"` — the audit-sweep commits;
   worked examples seeded throughout `modules/`, `home/`, `machines/`.
