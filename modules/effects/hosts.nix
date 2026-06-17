@@ -13,7 +13,7 @@ in
   # `forbidden-patterns` flake check (no `100.x.y.z` outside identityFor).
   #
   # `role` is typed (enum, not free-form) because it's the key for
-  # placement assertions in modules/effects/backup.nix (appliance ≠
+  # placement assertions in modules/infra/backup/default.nix (appliance ≠
   # paths-backups; agent ≠ `nori.backups` at all). A new constraint
   # = a new enum value, document below, add the assertion.
 
@@ -112,7 +112,7 @@ in
                 Blocky-authoritative). Survives workhorse failure.
                 Anti-write storage (no swap, volatile journald, flash)
                 → paths-based backups are a build error (assertion in
-                modules/effects/backup.nix).
+                modules/infra/backup/default.nix).
 
               * `agent` — untrusted-compute quarantine. Stateless by
                 design: tmpfs root + impermanence /persist. No GPU

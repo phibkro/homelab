@@ -21,7 +21,7 @@
     ../effects/fs.nix
     ../effects/lan-route.nix
     ../effects/service-placement.nix
-    ../effects/backup.nix
+    ../infra/backup
     ../effects/gpu.nix
     ../effects/harden.nix
     ../effects/gatus-probe.nix

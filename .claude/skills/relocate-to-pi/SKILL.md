@@ -12,7 +12,7 @@ Pattern established by beszel-hub (commit b4499ee) and ntfy-server (commit 9e0b2
 1. **Does the service genuinely belong on Pi?** Workhorse-by-default per CLAUDE.md bias. The exception is observability + alerting + DNS + network plumbing — services whose entire reason to exist is to observe / alert / route, which lose their function when the host they monitor goes down. Pi has 8 GiB and anti-write storage; every additional service competes with the observer role.
 2. **Split shape**: `modules/services/<service>/{daemon,client}.nix` where the daemon is the actual server (lives on Pi) and the client is the proxy / notification template / agent (lives on every host).
 3. **State migration**: usually NOT worth it for non-load-bearing data (metrics, ephemeral caches). Daemon comes up empty and rebuilds from sops + first-use. Document the decision.
-4. **Backup decision**: Pi's anti-write posture means `nori.backups.<n>.skip = "..."` for the daemon — host-aware assertion in `modules/effects/backup.nix` enforces this.
+4. **Backup decision**: Pi's anti-write posture means `nori.backups.<n>.skip = "..."` for the daemon — host-aware assertion in `modules/infra/backup/default.nix` enforces this.
 
 ## Step-by-step
 
@@ -51,7 +51,7 @@ Folder = coupling (per MODULES.md § "Coupling vs categorization"). The `daemon.
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ N ];
 
   # Pi anti-write posture — backup must skip
-  nori.backups.<n>.skip = "Hub on appliance host. Pi flash anti-write posture; <reason data is non-load-bearing>. Defer until Pi gains the planned local fast-restore disk repo (see modules/services/backup/restic.nix).";
+  nori.backups.<n>.skip = "Hub on appliance host. Pi flash anti-write posture; <reason data is non-load-bearing>. Defer until Pi gains the planned local fast-restore disk repo (see modules/infra/backup/restic.nix).";
 }
 ```
 

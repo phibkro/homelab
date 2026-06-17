@@ -38,7 +38,7 @@ lib.mkIf (config.networking.hostName == "workstation") {
   #
   # Per-job declarations live in the service modules they belong
   # to (`nori.backups.sonarr` in sonarr.nix, etc.) — see
-  # modules/effects/backup.nix for the abstraction. The non-service-tied
+  # modules/infra/backup/default.nix for the abstraction. The non-service-tied
   # jobs (user-data for /home + /srv/share, media-irreplaceable for
   # /mnt/media subvolumes + Immich's Pattern B dump dir) are
   # declared at the bottom of this file because they don't belong
@@ -53,7 +53,7 @@ lib.mkIf (config.networking.hostName == "workstation") {
   #   onetouch  — Seagate OneTouch HDD relocated to aurora on
   #               2026-06-11; reached over SFTP via the chrooted
   #               `restic` user on aurora (machines/aurora/
-  #               disko-onetouch.nix + modules/services/backup/
+  #               disko-onetouch.nix + modules/infra/backup/
   #               restic-target.nix). Full failure-domain
   #               independence from workstation now: separate
   #               chassis, PSU, and USB controller.
@@ -83,11 +83,11 @@ lib.mkIf (config.networking.hostName == "workstation") {
     "d /var/backup 0755 root root -"
   ];
 
-  # Backup target registry — schema in modules/effects/backup.nix.
+  # Backup target registry — schema in modules/infra/backup/default.nix.
   nori.backupTargets = {
     onetouch = {
       repository = "sftp:restic@aurora.saola-matrix.ts.net:";
-      description = "OneTouch HDD relocated to aurora 2026-06-11; reached over SFTP via the chrooted `restic` user on aurora (see machines/aurora/disko-onetouch.nix + modules/services/backup/restic-target.nix).";
+      description = "OneTouch HDD relocated to aurora 2026-06-11; reached over SFTP via the chrooted `restic` user on aurora (see machines/aurora/disko-onetouch.nix + modules/infra/backup/restic-target.nix).";
       extraOptions = [
         "sftp.command='${pkgs.openssh}/bin/ssh -o BatchMode=yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/etc/ssh/aurora_known_hosts -i /run/secrets/restic-ssh-key restic@aurora.saola-matrix.ts.net -s sftp'"
       ];
@@ -100,7 +100,7 @@ lib.mkIf (config.networking.hostName == "workstation") {
 
   # SSH identity for the chrooted `restic` user on aurora. Private
   # half lives in sops; public half lives in
-  # modules/services/backup/restic-target.nix (authorized_keys).
+  # modules/infra/backup/restic-target.nix (authorized_keys).
   # `owner = root` because restic backup units run as root.
   sops.secrets.restic-ssh-key = {
     owner = "root";

@@ -208,6 +208,6 @@ Discussed under "Decision" above. The residual risk profile (total apartment los
 - `docs/reference/storage.md` § value tiers — vocabulary used here
 - `docs/reference/topology.md` § service placement — the fate-sharing test this ADR honours
 - ADR-0001 § "Code is the single source of truth" — the practice that makes the per-host opt-in registry the authoritative answer to "where does X run?"
-- `modules/effects/backup.nix` — `nori.backupTargets` (remote-URL support already landed)
+- `modules/infra/backup/default.nix` — `nori.backupTargets` (remote-URL support already landed)
 - `modules/effects/fs.nix` — `nori.fs` (the `samba` block extension is part of P4)
 - `modules/effects/lan-route.nix` — extensions for `port` auto-aggregation + `upstreams` land in P1

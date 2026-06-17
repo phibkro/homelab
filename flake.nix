@@ -152,7 +152,7 @@
       # Schema: modules/effects/hosts.nix.
       # Consumers (cross-host refs):
       #   * modules/effects/lan-route.nix       (nori.lanIp default)
-      #   * modules/effects/backup.nix          (host-aware appliance assertion)
+      #   * modules/infra/backup/default.nix          (host-aware appliance assertion)
       #   * modules/services/beszel/agent.nix     (metrics route backend)
       #   * modules/services/ntfy/notify.nix      (alert route backend)
       #   * machines/workstation/default.nix    (Pi probe URLs)
@@ -529,9 +529,6 @@
           baseNonServicePatterns = [
             "*/default.nix"
             "modules/services/arr/shared.nix"
-            "modules/services/backup/restic.nix"
-            "modules/services/backup/verify.nix"
-            "modules/services/backup/btrbk.nix"
             # Route-only — declares nori.lanRoutes for the hermes
             # daemon, which itself is a home-manager user service
             # under home/hermes/. No NixOS-scope service, state, or
@@ -668,7 +665,7 @@
                   echo "or:"
                   echo "  nori.backups.<name>.skip = \"<one-line reason>\";"
                   echo
-                  echo "See modules/effects/backup.nix for the schema."
+                  echo "See modules/infra/backup/default.nix for the schema."
                   exit 1
                 fi
               '';

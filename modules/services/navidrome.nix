@@ -124,7 +124,7 @@ lib.mkMerge [
     # Pattern C2 — sqlite3 .backup before restic. DynamicUser's symlink
     # at /var/lib/navidrome → /var/lib/private/navidrome means restic
     # paths target the private dir directly (the symlink-trap assertion
-    # in modules/effects/backup.nix catches the wrong shape at eval).
+    # in modules/infra/backup/default.nix catches the wrong shape at eval).
     # The prepareCommand can use either path — bash file ops follow
     # symlinks.
     nori.backups.navidrome = {

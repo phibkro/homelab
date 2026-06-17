@@ -87,7 +87,7 @@ Schema in `modules/effects/fs.nix`; declarations in `machines/workstation/disko*
 
 ## Snapshot policy (btrbk)
 
-`modules/services/backup/btrbk.nix` declares two btrfs subvolume snapshot instances (root + media). Daily by default; retention follows the value-tier table above.
+`modules/infra/backup/btrbk.nix` declares two btrfs subvolume snapshot instances (root + media). Daily by default; retention follows the value-tier table above.
 
 Both `restic-backups-*` and `btrbk-*` units get `OnFailure = [ "notify@%n.service" ]` so silent failures fire an ntfy alert.
 
@@ -124,8 +124,8 @@ All failures alert via ntfy. The drill is the **real RTO measurement**, not the 
 
 `nori.backups.<n>` (paths or skip + optional `tier`) drives every restic job. `tier` (`service` | `user` | `irreplaceable`) drives the default `pruneOpts` retention curve. The `every-service-has-backup-intent` flake check ensures no service module ships without declaring intent — either real paths or an explicit `.skip = "<reason>"`.
 
-**Appliance hosts cannot use `paths`** — the role drives a placement assertion in `modules/effects/backup.nix` that fails eval if an appliance host (`nori.hosts.<self>.role = "appliance"`) declares a `paths`-based backup. Pi is an observer, not a state holder; daily restic writes to flash defeat its anti-write storage posture. Appliance-host services declare `.skip = "<reason>"` instead (or move the backup target to the workhorse via `nori.fs`).
+**Appliance hosts cannot use `paths`** — the role drives a placement assertion in `modules/infra/backup/default.nix` that fails eval if an appliance host (`nori.hosts.<self>.role = "appliance"`) declares a `paths`-based backup. Pi is an observer, not a state holder; daily restic writes to flash defeat its anti-write storage posture. Appliance-host services declare `.skip = "<reason>"` instead (or move the backup target to the workhorse via `nori.fs`).
 
 The DynamicUser `StateDirectory` symlink-trap assertion derives from `config.systemd.services` introspection — self-maintaining. See `.claude/skills/gotcha-dynamicuser-statedirectory-symlink/`.
 
-Schema in `modules/effects/backup.nix`. Cross-cutting infra (sops password, check timers) in `modules/services/backup/restic.nix`. Each repo writes to **both** `/mnt/backup/<job>` (OneTouch ext4) **and** `/mnt/backup-local/<job>` (mp510 btrfs).
+Schema in `modules/infra/backup/default.nix`. Cross-cutting infra (sops password, check timers) in `modules/infra/backup/restic.nix`. Each repo writes to **both** `/mnt/backup/<job>` (OneTouch ext4) **and** `/mnt/backup-local/<job>` (mp510 btrfs).

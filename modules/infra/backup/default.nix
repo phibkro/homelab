@@ -5,6 +5,20 @@
   ...
 }:
 
+# Backup concern — schema + collection + adapter wiring.
+#
+# This default.nix carries the nori.backups schema (Reader) and the
+# assertions (placement: appliance ≠ paths-backups; agent ≠ nori.backups).
+# It also imports the adapter siblings (Writer): restic, btrbk,
+# btrbk-replication, btrbk-replica-target, verify. Each adapter
+# conditionally activates from declared nori.backups.<X> entries +
+# its own gates (e.g. btrbk-replica-target's hostName == "workstation"
+# gate); adapters are inert otherwise.
+#
+# restic-target.nix is the one adapter NOT in the aggregator —
+# it's per-host opt-in via direct import on aurora/default.nix
+# (declares the SFTP-chrooted restic user that workstation pushes to).
+
 let
   inherit (lib)
     mkOption
@@ -13,6 +27,14 @@ let
     ;
 in
 {
+  imports = [
+    ./btrbk.nix
+    ./btrbk-replication.nix
+    ./btrbk-replica-target.nix
+    ./restic.nix
+    ./verify.nix
+  ];
+
   # nori.backups + nori.backupTargets — declarative restic backup model.
   #
   # Two-layer schema:
@@ -76,7 +98,7 @@ in
       doesn't block other targets.
 
       Declared once at host scope (typically in
-      modules/services/backup/restic.nix).
+      modules/infra/backup/restic.nix).
     '';
     example = lib.literalExpression ''
       {

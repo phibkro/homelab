@@ -29,7 +29,6 @@ _: {
   imports = [
     # Coupled stacks (folder = coupling)
     ./arr
-    ./backup
 
     # Loose services
     ./authelia.nix

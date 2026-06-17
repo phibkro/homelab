@@ -48,7 +48,7 @@
     # disko-onetouch entry below; both arrived 2026-06-11 when the
     # OneTouch HDD physically moved from workstation. See
     # docs/plans/2026-06-11-aurora-migration.md § P13.
-    ../../modules/services/backup/restic-target.nix
+    ../../modules/infra/backup/restic-target.nix
 
     # Notably absent:
     #   modules/desktop/default.nix — headless
@@ -107,12 +107,12 @@
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8384 ];
 
   # Backup infrastructure for aurora's family-tier services. The
-  # cross-cutting `modules/services/backup/restic.nix` is gated
+  # cross-cutting `modules/infra/backup/restic.nix` is gated
   # workstation-only by data ownership; aurora declares its own
   # target here. The OneTouch HDD lives on aurora, so aurora's own
   # backups land LOCAL at /mnt/backup — bypassing SFTP. Remote
   # clients (workstation, pi) reach the same drive via the SFTP
-  # target declared in modules/services/backup/restic-target.nix.
+  # target declared in modules/infra/backup/restic-target.nix.
   sops.secrets.restic-password = {
     owner = "root";
     mode = "0400";

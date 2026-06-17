@@ -6,7 +6,7 @@
 # restic-target / restic split.
 #
 # The local `services.btrbk` instance on workstation (snapshotting
-# workstation's own subvols, see modules/services/backup/btrbk.nix)
+# workstation's own subvols, see modules/infra/backup/btrbk.nix)
 # already declares the `btrbk` user, group, shell, home, AND the
 # NOPASSWD sudoers for `btrfs` / `mkdir` / `readlink` — which is
 # exactly what aurora's `sudo btrfs receive` flow needs on this side.

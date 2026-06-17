@@ -120,7 +120,7 @@ nori.lanRoutes.widget = {
 - `skip = "<reason>"` for explicit opt-out (covered elsewhere, stateless, intentionally re-derivable)
 - Appliance hosts (`role = "appliance"`) cannot use `include` — host-aware assertion fails eval (anti-write storage posture)
 
-**Source**: `modules/effects/backup.nix` (schema + assertions), `docs/reference/storage.md` "Backup intent abstraction".
+**Source**: `modules/infra/backup/default.nix` (schema + assertions), `docs/reference/storage.md` "Backup intent abstraction".
 
 ---
 
@@ -151,9 +151,9 @@ nori.lanRoutes.widget = {
 - Backup snapshot is empty (3 files / 0 bytes) — restic stores symlinks AS symlinks
 - `/var/lib/foo` is a symlink to `/var/lib/private/foo`
 - Fix: `nori.backups.foo.paths = [ "/var/lib/private/foo" ]`
-- The DynamicUser-symlink assertion in `modules/effects/backup.nix` catches this at eval time (lists known DynamicUser services explicitly)
+- The DynamicUser-symlink assertion in `modules/infra/backup/default.nix` catches this at eval time (lists known DynamicUser services explicitly)
 
-**Source**: `.claude/skills/gotcha-dynamicuser-statedirectory-symlink/`, `modules/effects/backup.nix` assertion.
+**Source**: `.claude/skills/gotcha-dynamicuser-statedirectory-symlink/`, `modules/infra/backup/default.nix` assertion.
 
 ---
 

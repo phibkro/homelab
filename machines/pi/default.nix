@@ -81,7 +81,7 @@
   # Pi → OneTouch via aurora SFTP. Restic reads pi's local state
   # (Caddy + Authelia DB) and streams over SFTP — preserves pi's
   # anti-write posture (the SD card stays read-mostly).
-  # `modules/services/backup/restic.nix` is workstation-only by data
+  # `modules/infra/backup/restic.nix` is workstation-only by data
   # ownership; pi declares its own target + per-service backups here.
   #
   # Path prefix `/pi/` separates pi's snapshots from workstation's so

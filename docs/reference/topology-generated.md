@@ -45,7 +45,7 @@ attribute set of (submodule)
 ```
 
 *Declared by:*
- - [/nix/store/cp56427i6bvs6y24kxp0ngfwk24qnl14-source/modules/effects/hosts\.nix](file:///nix/store/cp56427i6bvs6y24kxp0ngfwk24qnl14-source/modules/effects/hosts.nix)
+ - [/nix/store/6hsavr3ig6gcml6vfpvvi5cmhyq2gw0p-source/modules/effects/hosts\.nix](file:///nix/store/6hsavr3ig6gcml6vfpvvi5cmhyq2gw0p-source/modules/effects/hosts.nix)
 
 
 
@@ -65,7 +65,7 @@ Theme: cold / polar / penguin\.
 string
 
 *Declared by:*
- - [/nix/store/cp56427i6bvs6y24kxp0ngfwk24qnl14-source/modules/effects/hosts\.nix](file:///nix/store/cp56427i6bvs6y24kxp0ngfwk24qnl14-source/modules/effects/hosts.nix)
+ - [/nix/store/6hsavr3ig6gcml6vfpvvi5cmhyq2gw0p-source/modules/effects/hosts\.nix](file:///nix/store/6hsavr3ig6gcml6vfpvvi5cmhyq2gw0p-source/modules/effects/hosts.nix)
 
 
 
@@ -88,7 +88,7 @@ header comments (anti-write posture, impermanence, etc\.)\.
 string
 
 *Declared by:*
- - [/nix/store/cp56427i6bvs6y24kxp0ngfwk24qnl14-source/modules/effects/hosts\.nix](file:///nix/store/cp56427i6bvs6y24kxp0ngfwk24qnl14-source/modules/effects/hosts.nix)
+ - [/nix/store/6hsavr3ig6gcml6vfpvvi5cmhyq2gw0p-source/modules/effects/hosts\.nix](file:///nix/store/6hsavr3ig6gcml6vfpvvi5cmhyq2gw0p-source/modules/effects/hosts.nix)
 
 
 
@@ -115,7 +115,7 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/cp56427i6bvs6y24kxp0ngfwk24qnl14-source/modules/effects/hosts\.nix](file:///nix/store/cp56427i6bvs6y24kxp0ngfwk24qnl14-source/modules/effects/hosts.nix)
+ - [/nix/store/6hsavr3ig6gcml6vfpvvi5cmhyq2gw0p-source/modules/effects/hosts\.nix](file:///nix/store/6hsavr3ig6gcml6vfpvvi5cmhyq2gw0p-source/modules/effects/hosts.nix)
 
 
 
@@ -140,7 +140,7 @@ topology\.md no longer carries it\.
 string
 
 *Declared by:*
- - [/nix/store/cp56427i6bvs6y24kxp0ngfwk24qnl14-source/modules/effects/hosts\.nix](file:///nix/store/cp56427i6bvs6y24kxp0ngfwk24qnl14-source/modules/effects/hosts.nix)
+ - [/nix/store/6hsavr3ig6gcml6vfpvvi5cmhyq2gw0p-source/modules/effects/hosts\.nix](file:///nix/store/6hsavr3ig6gcml6vfpvvi5cmhyq2gw0p-source/modules/effects/hosts.nix)
 
 
 
@@ -165,7 +165,7 @@ Structural role driving placement assertions:
    Blocky-authoritative)\. Survives workhorse failure\.
    Anti-write storage (no swap, volatile journald, flash)
    → paths-based backups are a build error (assertion in
-   modules/effects/backup\.nix)\.
+   modules/infra/backup/default\.nix)\.
 
  - ` agent ` — untrusted-compute quarantine\. Stateless by
    design: tmpfs root + impermanence /persist\. No GPU
@@ -182,7 +182,7 @@ and add the assertions that key off it\.
 one of “workhorse”, “appliance”, “agent”
 
 *Declared by:*
- - [/nix/store/cp56427i6bvs6y24kxp0ngfwk24qnl14-source/modules/effects/hosts\.nix](file:///nix/store/cp56427i6bvs6y24kxp0ngfwk24qnl14-source/modules/effects/hosts.nix)
+ - [/nix/store/6hsavr3ig6gcml6vfpvvi5cmhyq2gw0p-source/modules/effects/hosts\.nix](file:///nix/store/6hsavr3ig6gcml6vfpvvi5cmhyq2gw0p-source/modules/effects/hosts.nix)
 
 
 
@@ -203,7 +203,7 @@ full story (pavilion: ` agent `)\.
 string
 
 *Declared by:*
- - [/nix/store/cp56427i6bvs6y24kxp0ngfwk24qnl14-source/modules/effects/hosts\.nix](file:///nix/store/cp56427i6bvs6y24kxp0ngfwk24qnl14-source/modules/effects/hosts.nix)
+ - [/nix/store/6hsavr3ig6gcml6vfpvvi5cmhyq2gw0p-source/modules/effects/hosts\.nix](file:///nix/store/6hsavr3ig6gcml6vfpvvi5cmhyq2gw0p-source/modules/effects/hosts.nix)
 
 
 
@@ -221,6 +221,6 @@ cross-host references in this flake\.
 string
 
 *Declared by:*
- - [/nix/store/cp56427i6bvs6y24kxp0ngfwk24qnl14-source/modules/effects/hosts\.nix](file:///nix/store/cp56427i6bvs6y24kxp0ngfwk24qnl14-source/modules/effects/hosts.nix)
+ - [/nix/store/6hsavr3ig6gcml6vfpvvi5cmhyq2gw0p-source/modules/effects/hosts\.nix](file:///nix/store/6hsavr3ig6gcml6vfpvvi5cmhyq2gw0p-source/modules/effects/hosts.nix)
 
 

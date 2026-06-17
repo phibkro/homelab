@@ -100,7 +100,7 @@ nori.lanRoutes.metrics = {
 };
 ```
 
-The `role` field on each host drives the placement assertion in `modules/effects/backup.nix`: appliance hosts cannot use `paths`-based backups (they're observers, not state holders); agent hosts cannot use `nori.backups.<X>` at all (impermanence root erases anything escaping the box sandbox).
+The `role` field on each host drives the placement assertion in `modules/infra/backup/default.nix`: appliance hosts cannot use `paths`-based backups (they're observers, not state holders); agent hosts cannot use `nori.backups.<X>` at all (impermanence root erases anything escaping the box sandbox).
 
 ## Service placement
 
