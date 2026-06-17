@@ -1,3 +1,53 @@
+---
+generated: true
+source: flake.nix § packages.docs-lan-route
+regenerate: nix build .#docs-lan-route
+---
+
+# `nori.lanRoutes` — generated reference
+
+Two-section artifact:
+
+ 1. Networking-concern overview — RFC 145 doc-comments
+    extracted from `modules/infra/networking/default.nix`.
+ 2. `nori.lanRoutes.<name>.*` schema reference — option
+    fields extracted via `nixosOptionsDoc`.
+
+The hand-written `network.md` keeps the WHY + patterns;
+this artifact carries the WHAT (schema details).
+
+# Networking concern — overview {#sec-functions-library-networking}
+
+
+## `homelab.networking.options.nori.domain` {#function-library-homelab.networking.options.nori.domain}
+
+`nori.lanRoutes` — single source of truth for services exposed
+under `*.${domain}`. Each entry generates ALL of:
+
+ - Caddy vhost reverse-proxying `<name>.<domain>` → backend port
+ - Blocky customDNS mapping `<name>.<domain>` → `config.nori.lanIp`
+ - Gatus monitor (if `monitor` is non-null)
+ - Tailnet firewall hole (if `exposeOnTailnet`)
+ - sops raw + hash secrets + env-file template (if `oidc` is
+   set) — Authelia client list assembly lives in
+   `modules/infra/access/authelia.nix`, reading back
+   `config.nori.lanRoutes` from here. Hash material stays in
+   sops; the authelia config-filter injects it at runtime.
+
+Service modules declare routing inline alongside their config:
+
+```nix
+nori.lanRoutes.chat = {
+  port = 8080;
+  oidc = {
+    clientName  = "Open WebUI";
+    redirectPath = "/oauth/oidc/callback";
+  };
+};
+```
+
+
+
 ## nori\.domain
 
 Parent DNS domain for the homelab’s ` *.<domain> ` services\.
@@ -38,7 +88,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -63,7 +113,7 @@ route advertisement (services\.tailscale\.useRoutingFeatures =
 “server” in machines/pi/default\.nix); the client side needs
 –accept-routes set in its tailscaled config\.
 
-Consumers: Blocky’s forwarder mode (modules/services/blocky\.nix)
+Consumers: Blocky’s forwarder mode (modules/infra/networking/blocky\.nix)
 and the Blocky DNS generator below\. Both want a single “where
 does \*\.nori\.lan live” address\.
 
@@ -83,7 +133,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -122,7 +172,7 @@ attribute set of (submodule)
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -171,7 +221,7 @@ one of “operator”, “family”, “public”
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -205,7 +255,7 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -232,7 +282,7 @@ false
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -250,7 +300,7 @@ server-rendered”), not feature-list\.
 string
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -268,7 +318,7 @@ first (most-clicked), Admin last\.
 one of “Consume”, “Acquire”, “Personal”, “Projects”, “Admin”
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -288,7 +338,7 @@ Calibre-web, Komga, Beszel, …)
 string
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -307,7 +357,7 @@ as a parenthetical for the monitor widget —
 string
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -335,7 +385,7 @@ false
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -369,7 +419,7 @@ break under cookie-based forward-auth\.
 Authelia uptime becomes load-bearing: an Authelia outage
 returns 502 for every forward-auth’d route\. SSH-tunnel to
 the backend port directly as the recovery escape hatch\.
-See modules/services/authelia\.nix for the upstream\.
+See modules/infra/access/authelia\.nix for the upstream\.
 
 
 
@@ -385,7 +435,7 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -416,7 +466,7 @@ list of string
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -443,7 +493,7 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -473,7 +523,7 @@ list of string
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -499,7 +549,7 @@ signed integer
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -524,7 +574,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -548,7 +598,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -559,7 +609,7 @@ string
 If set, this route gets:
 
  - an Authelia OIDC client entry (assembled by
-   modules/services/authelia\.nix from this declaration)
+   modules/infra/access/authelia\.nix from this declaration)
  - a sops secret named ` oidc-<name>-client-secret `
  - a sops env-file template named ` oidc-<name>-env `
    containing ` <secretEnvName>=<raw> `, ready to wire as
@@ -584,7 +634,7 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -608,7 +658,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -624,7 +674,7 @@ Display name shown on Authelia consent screen\.
 string
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -644,7 +694,7 @@ Vaultwarden: /identity/connect/oidc-signin
 string
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -675,7 +725,7 @@ list of string
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -703,7 +753,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -719,7 +769,7 @@ Backend TCP port (validated 0-65535 at eval time)\.
 16 bit unsigned integer; between 0 and 65535 (both inclusive)
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -769,7 +819,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -793,7 +843,7 @@ one of “http”, “https”
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -832,7 +882,7 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
 
@@ -873,6 +923,6 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/infra/networking/default.nix)
+ - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
 
 
