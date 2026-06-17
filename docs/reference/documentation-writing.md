@@ -194,12 +194,13 @@ K2  modules/infra/hosts.nix      — schema extended (hardware,
 K3  flake.nix                      — packages.docs-topology
     docs/reference/topology-       — generated artifact
     generated.md
-K4  modules/dev/default.nix        — RFC 145 pilot on
-                                     mkDevShell + fragmentNames
-                                     (nixdoc extracts both)
-    flake.nix                      — RFC 145 style precedent on
+K4  flake.nix                      — RFC 145 style precedent on
                                      mkHost (let-binding;
                                      non-extracted)
+    [historical] modules/dev/      — RFC 145 pilot site;
+                                     modules/dev/ deleted in
+                                     Phase 5b (dev environments
+                                     moved to per-project concern)
 K5  docs/reference/topology.md     — trimmed to meta + curated;
                                      tier principle codified
 K6  docs/reports/2026-06-17-       — side-by-side audit; NVMe

@@ -313,17 +313,9 @@ Acceptable cross-scope overlap: `git` lives in both `base.nix` (for root + Nix's
 
 What does NOT belong in `core.nix`: anything platform-specific (NVIDIA tools, Wayland-only programs, Linux fontconfig). Cross-platform CLI only — if the tool doesn't build on `x86_64-darwin`, it's not core.
 
-## Dev shells (`mkDevShell` fragments)
+## Dev shells
 
-`modules/dev/<n>.nix` are atomic dev-environment fragments — a language toolchain, runtime, package manager, tool, or service. The composer at `modules/dev/default.nix` exposes:
-
-```nix
-mkDevShell pkgs { modules = [ "ts" "nix" "claude-code" ]; }
-```
-
-The composer resolves transitive deps, dedupes `buildInputs`, merges Claude allowlists. The `claude-code` fragment is the **consent signal**: present → composer materializes `.claude/settings.json`; absent → contributions are collected silently (project usable without Claude Code).
-
-Reachable from downstream project flakes via `self.lib.mkDevShell`. Live fragments: `nix eval .#lib.fragmentNames`.
+Dev environments are a per-project concern, not a homelab capability. Each repo owns its own (devenv / direnv / `nix shell` / project flake `devShells`). The homelab repo itself has a lean `devShells.default` for editing — `nixfmt`, `statix`, `deadnix`, `nh`, `ripgrep`. No cross-project shell library lives here anymore.
 
 ## Dev workflow
 

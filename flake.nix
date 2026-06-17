@@ -185,46 +185,24 @@
         inherit inputs nixpkgs home-manager;
       };
 
-      /**
-        ── Dev shells ────────────────────────────────────────────────
-        Per-project dev environments composed from atomic fragments
-        under modules/dev/. Each fragment contributes buildInputs +
-        Claude allowlists + shell hooks; the composer (`mkDevShell`)
-        resolves transitive deps + merges + returns a `pkgs.mkShell`.
-        See modules/dev/default.nix for the composer; modules/dev/
-        *.nix for the fragment library. Exposed via `self.lib` so
-        downstream project flakes can `inputs.lab.url = "..."` then
-        call `lab.lib.mkDevShell pkgs { modules = [ ... ]; }`.
-      */
-      devLib = import ./modules/dev { inherit lib; };
-
     in
     {
       inherit (machinesModule) nixosConfigurations;
 
-      /**
-        Dev-shell composer + the available fragment list. Consumers
-        (downstream project flakes, this flake's own devShells) call
-        `mkDevShell pkgs { modules = [ "ts" "claude-code" ]; }` to get
-        a configured `pkgs.mkShell`. `fragmentNames` is the live list
-        — read it via `nix eval .#lib.fragmentNames` rather than
-        maintaining a static doc table.
-      */
-      lib = {
-        inherit (devLib) mkDevShell fragmentNames;
-      };
-
       /*
-        Self-test: this repo's own dev shell. `nix develop` here gives
-        nixfmt + statix + deadnix + nh + claude-code, plus a
-        materialized `.claude/settings.json` whose allowlist is the
-        union of nix + claude-code fragment contributions. The
-        operator-specific settings.local.json layers on top.
+        Minimal dev shell for editing this repo. Dev environments are
+        a per-project concern (devenv / direnv / nix shell), not a
+        homelab-managed capability — each repo owns its own dev
+        config. This shell gives `nix develop` here the tools needed
+        to edit + format + lint the homelab itself.
       */
-      devShells.${system}.default = devLib.mkDevShell pkgsUnfree {
-        modules = [
-          "nix"
-          "claude-code"
+      devShells.${system}.default = pkgsUnfree.mkShell {
+        buildInputs = with pkgsUnfree; [
+          nixfmt
+          statix
+          deadnix
+          nh
+          ripgrep
         ];
       };
 
@@ -489,16 +467,6 @@
               cat ${optionsDoc.optionsCommonMark} >> $out
             '';
 
-          /**
-            Build with: `nix build .#docs-dev`
-            Dev-shell composer reference — RFC 145 doc-comments
-            extracted from modules/dev/default.nix via nixdoc.
-          */
-          docs-dev = mkNixdocSection {
-            file = ./modules/dev/default.nix;
-            description = "Dev-shell composer (`mkDevShell` + `fragmentNames`)";
-            category = "dev";
-          };
         };
 
       # Quality gates. `nix flake check` validates host evals + the
@@ -808,9 +776,6 @@
                 check "docs-topology" \
                   ${./docs/reference/topology-generated.md} \
                   ${inputs.self.packages.${system}.docs-topology}
-                check "docs-dev" \
-                  ${./docs/reference/dev-shell-library.md} \
-                  ${inputs.self.packages.${system}.docs-dev}
 
                 if [ $fail -eq 0 ]; then
                   touch $out
@@ -821,9 +786,7 @@
                   echo "    cp /tmp/r docs/reference/lan-route-options.md"
                   echo "  nix build .#docs-topology  -o /tmp/r && \\"
                   echo "    cp /tmp/r docs/reference/topology-generated.md"
-                  echo "  nix build .#docs-dev       -o /tmp/r && \\"
-                  echo "    cp /tmp/r docs/reference/dev-shell-library.md"
-                  echo "  chmod +w docs/reference/{lan-route-options,topology-generated,dev-shell-library}.md"
+                  echo "  chmod +w docs/reference/{lan-route-options,topology-generated}.md"
                   exit 1
                 fi
               '';

@@ -46,7 +46,6 @@ without this file's context.
 | `docs/reference/agentic-workflow.md` | starting a new PR (prologue), wrapping one (epilogue), deciding session vs PR boundary, or designing per-sprint ceremonies — the per-PR three-phase ceremony lives here |
 | `docs/reference/lan-route-options.md` | looking up the schema details for a specific `nori.lanRoutes.<name>.<field>` option — generated from `modules/infra/networking/default.nix` via `nix build .#docs-lan-route` (the hand-written `network.md` keeps the WHY) |
 | `docs/reference/topology-generated.md` | looking up the hosts-at-a-glance table or `nori.hosts` schema — generated from `modules/machines/default.nix:identityFor` + `modules/infra/hosts.nix` via `nix build .#docs-topology` (the hand-written `topology.md` keeps the curated overview, diagram, and invariants) |
-| `docs/reference/dev-shell-library.md` | looking up `mkDevShell` / `fragmentNames` library API — generated from `modules/dev/default.nix` RFC 145 doc-comments via `nix build .#docs-dev` |
 
 ### Drill-down (pulled in only when a parent doc cross-refs it)
 
