@@ -58,7 +58,7 @@ _: {
     ./samba.nix
     ./stremio.nix
     ./syncthing.nix
-    ./vaultwarden.nix
+    ./vaultwarden
     ./victorialogs/default.nix
   ];
 }

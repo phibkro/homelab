@@ -92,15 +92,14 @@ Reading this answers "what kind of machine is `workstation`?" at a glance. `pi` 
 
 ### Coupling vs categorization
 
-**Within `modules/services/`, folders signal coupling, not categorization.** Tightly-coupled clusters get their own folder + `default.nix`:
+**Within `modules/services/`, folders signal coupling or concern-split, not categorization.** Two folder shapes coexist:
 
-| Cluster | Coupling |
-|---|---|
-| `arr/` | Sonarr/Radarr/Lidarr/Bazarr/Jellyseerr/Prowlarr/qBittorrent — reference each other via API; share `/mnt/media/streaming` via the `media` group + `arr/shared.nix` tmpfiles |
-| `backup/` | `restic.nix` + `verify.nix` + `btrbk.nix` — share `/mnt/backup`, the `restic-password` sops secret, the `notify@` failure pipeline |
-| `beszel/`, `ntfy/` | Cross-host split-module pattern |
+| Folder shape | Meaning | Examples |
+|---|---|---|
+| **Coupled cluster** | Multiple services that reference each other or share state; each file is its own service | `arr/` (Sonarr ↔ Radarr ↔ Lidarr ↔ Bazarr ↔ Jellyseerr ↔ Prowlarr ↔ qBittorrent), `backup/` (`restic.nix` + `verify.nix` + `btrbk.nix`), `beszel/` and `ntfy/` (split-module daemon/client) |
+| **Concern-split** | ONE service split into reserved concern files: `default.nix` (engine) + `access.nix` (lan-route) + `storage.nix` (backups) + `observability.nix` (scrape/dashboard, when content exists) | `vaultwarden/` (pilot — 2026-06-17) |
 
-Loose services that just happen to be in the same conceptual area (Beszel, Gatus, Glance, ntfy — all observability-shaped but mutually independent) stay flat at `server/`'s top level.
+Loose services that just happen to be in the same conceptual area (Beszel, Gatus, Glance, ntfy — all observability-shaped but mutually independent) stay flat at `services/`'s top level as single-file modules.
 
 ## Service module template
 
@@ -149,6 +148,37 @@ just test         → runs all introspection tests (test-hypr / -backups / -rout
 just show-pending-diff      → review diff before push
 just rebuild      → persist
 ```
+
+## Per-service folder shape (concern split)
+
+When a service's single-file shape gets dense or its concerns benefit from independent reading, split into a per-service folder. Reserved concern names (canonical pilot: `modules/services/vaultwarden/`):
+
+```
+modules/services/<svc>/
+  default.nix         engine — services.<svc> config + systemd
+                      + nori.harden + nori.services.<svc>.tags
+                      + imports of the concern files
+  access.nix          nori.lanRoutes.<route> — port, runsOn,
+                      audience, OIDC, monitor
+  storage.nix         nori.backups.<svc> — paths, prepareCommand,
+                      timer (Pattern A/B/C as appropriate)
+  observability.nix   scrape config, dashboards, alerts —
+                      OMITTED when the service has no custom
+                      observability beyond universal node-exporter
+```
+
+**Rules**:
+
+- The whole folder is ONE service. `nori.services.<X>` declarations land in `default.nix`.
+- `observability.nix` is **variable** — present only when content exists. Empty-file scaffolding is a smell.
+- File names are **reserved**: `access.nix`, `storage.nix`, `observability.nix` are concern-split sub-files; they cannot be names of separate services in the same folder. (Use a coupled-cluster folder for that — see § Coupling vs categorization.)
+- `default.nix` carries `nori.harden.<svc>` (engine-level). `storage.nix` carries `nori.backups.<svc>` (data-level). The `every-service-has-<X>` flake checks know about this convention: `*/access.nix` and `*/observability.nix` are reserved (no backup/hardening expectation); `*/storage.nix` is exempted from the hardening check (engine ≠ storage).
+
+**Discovery**: NixOS resolves `./vaultwarden` in an `imports` list to `./vaultwarden/default.nix` automatically. The folder default.nix then `imports = [ ./access.nix ./storage.nix ];` its siblings.
+
+**When to split**: bias toward single-file until concerns become entangled enough that the file's outline becomes hard to scan. Don't pre-split for cleanliness alone.
+
+**Coexistence with single-file**: every flat `modules/services/<svc>.nix` is still valid. The convention is additive — split when it helps, single-file otherwise.
 
 ## Filesystem hardening (`nori.harden`)
 
