@@ -16,7 +16,7 @@
 
     System scope (vs home-manager) because fontconfig system path is the
     path GUI apps + system processes both honor; pi (no GUI) doesn't
-    import modules/desktop/ so it stays font-free. Mac handles fonts at
+    import modules/machines/desktop/ so it stays font-free. Mac handles fonts at
     user scope (~/Library/Fonts) in modules/machines/macbook/home.nix because
     macOS has no system layer here.
   */

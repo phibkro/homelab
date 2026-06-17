@@ -57,7 +57,7 @@
     ../../infra/backup/restic-target.nix
 
     # Notably absent:
-    #   modules/desktop/default.nix — headless
+    #   modules/machines/desktop/default.nix — headless
 
     ./hardware.nix
     ./disko-onetouch.nix

@@ -17,7 +17,7 @@
 
     ../base # base + users + sops + tailscale + lib options
     ../../services # every server module (HTTP, *arr, backup, …)
-    ../../desktop # Hyprland + greetd + audio + bars + apps + gaming
+    ../desktop # Hyprland + greetd + audio + bars + apps + gaming
 
     ./hardware.nix
     ./disko.nix

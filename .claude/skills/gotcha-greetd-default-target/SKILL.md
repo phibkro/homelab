@@ -8,7 +8,7 @@ description: USE WHEN greetd doesn't autostart at boot (monitor shows TTY login 
 NixOS's greetd unit is `WantedBy = graphical.target`. On a fresh install (or any host that came up without a display manager), the system's `default.target` points at `multi-user.target`, so the boot path never reaches `graphical.target` and greetd just sits enabled-but-inactive. Symptom: boot completes, getty@tty1 stays running, monitor shows the TTY login prompt instead of tuigreet.
 
 ```nix
-# modules/desktop/greetd.nix — pin the default target
+# modules/machines/desktop/greetd.nix — pin the default target
 systemd.defaultUnit = "graphical.target";
 ```
 

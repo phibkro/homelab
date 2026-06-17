@@ -14,7 +14,7 @@
       (waybar, mako, hypridle, hyprsunset) activate cleanly on login
       instead of needing a manual `systemctl --user restart` dance.
       Hyprland upstream warns at session start if UWSM isn't used.
-      Exposes `hyprland-uwsm.desktop` — see modules/desktop/greetd.nix
+      Exposes `hyprland-uwsm.desktop` — see modules/machines/desktop/greetd.nix
       for the greetd-side wiring.
     */
     withUWSM = true;

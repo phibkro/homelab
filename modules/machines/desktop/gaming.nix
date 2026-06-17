@@ -3,7 +3,7 @@ _:
 {
   /*
     Steam + Proton stack for workstation's desktop session — placed in
-    modules/desktop/ because each is meaningless headless (pi never wants
+    modules/machines/desktop/ because each is meaningless headless (pi never wants
     Steam). NVIDIA modesetting + open kernel module live in hardware.nix;
     anti-cheat games may need `WINE_FULLSCREEN_FSR=1` or similar per-game
     launch options.

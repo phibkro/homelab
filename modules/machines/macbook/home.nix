@@ -93,7 +93,7 @@
       Brew: `brew install --cask moonlight`. Add the host by tailnet
       name `workstation` if mDNS doesn't auto-list it, and pair via the
       Sunshine web UI at https://workstation:47990. Host config:
-      modules/desktop/sunshine.nix.
+      modules/machines/desktop/sunshine.nix.
     */
   ];
 

@@ -86,7 +86,7 @@
     /*
       Fonts — Material-aligned sans (Roboto) + JetBrainsMono Nerd for
       mono. Noto covers fallback for missing glyphs; configured at
-      system level via modules/desktop/fonts.nix. Stylix wires these
+      system level via modules/machines/desktop/fonts.nix. Stylix wires these
       into GTK / Qt / Hyprland chrome / terminal apps in lockstep.
     */
     fonts = {

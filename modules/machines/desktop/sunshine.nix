@@ -7,7 +7,7 @@
     GPU does all encode/render work, the client is thin.
 
     Workstation-only by construction: imported via
-    modules/desktop/default.nix, which the darwin MacBook never imports
+    modules/machines/desktop/default.nix, which the darwin MacBook never imports
     (it pulls only modules/home/pc.nix). Design + rationale:
     docs/specs/2026-05-22-sunshine-remote-host-design.md.
   */

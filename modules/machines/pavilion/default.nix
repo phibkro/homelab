@@ -64,7 +64,7 @@
     /*
       Notably absent:
         modules/services/default.nix    — no LAN services
-        modules/desktop/default.nix   — headless
+        modules/machines/desktop/default.nix   — headless
     */
 
     ./hardware.nix

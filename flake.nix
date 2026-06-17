@@ -9,7 +9,7 @@
       whose nixos-unstable channel cut lags far behind upstream. Don't
       mass-overlay from this; resolve specific lags one package at a
       time. Currently consumed by:
-        modules/desktop/apps.nix → zed-editor (nixos-unstable shipping
+        modules/machines/desktop/apps.nix → zed-editor (nixos-unstable shipping
           v0.232.3 as of 2026-05-07, master shipping v1.1.6; months of
           Linux/Wayland/file-watcher fixes in the gap)
     */
@@ -75,7 +75,7 @@
       Stylix — single-input system-wide theming. Same
       Reader+collected-Writer shape as the lab's `nori.<X>` effect
       family — fits cleanly. Workstation imports the NixOS module
-      via modules/desktop/stylix.nix.
+      via modules/machines/desktop/stylix.nix.
     */
     stylix.url = "github:danth/stylix/release-26.05";
     stylix.inputs.nixpkgs.follows = "nixpkgs";

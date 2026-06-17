@@ -5,7 +5,7 @@
     lands in ~/.nix-profile, on PATH for the graphical session and any
     shell. Cross-references:
       - System-level enables (Thunar's file:// handler, tumbler thumbnail
-        daemon) live in modules/desktop/apps.nix — those need NixOS
+        daemon) live in modules/machines/desktop/apps.nix — those need NixOS
         module scope to wire xdg-mime + dbus.
       - Hyprland config + binds live in modules/machines/workstation/hyprland.lua.
       - Cross-platform tools (browsers, editors that also live on Mac)

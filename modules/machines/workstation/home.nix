@@ -234,7 +234,7 @@ in
   programs.btop = {
     enable = true;
     /*
-      color_theme + theme_background managed by Stylix (modules/desktop/
+      color_theme + theme_background managed by Stylix (modules/machines/desktop/
       stylix.nix) via the Material You palette. Set to `default` here
       would override Stylix; leave unset.
     */
