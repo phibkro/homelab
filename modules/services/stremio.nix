@@ -5,31 +5,33 @@
   ...
 }:
 
-# stremio — Stremio Server (the streaming-server backend that pairs
-# with the Stremio web/desktop client). Operator-personal; tailnet-only
-# at https://stremio.nori.lan.
-#
-# ── Why a hand-rolled module ─────────────────────────────────────
-# nixpkgs dropped `stremio` 2026-02-11 (depended on the vulnerable
-# qt5-webengine) and there's no `services.stremio-server` module. The
-# replacement `stremio-linux-shell` is a UI shell only, not the
-# server binary. Upstream officially distributes `server.js` as a
-# self-contained Node bundle at dl.strem.io — fetchurl as a
-# fixed-output derivation and run with pkgs.nodejs.
-#
-# ── Pairing flow ─────────────────────────────────────────────────
-# Stremio Web (https://web.stremio.com) won't talk to a plaintext
-# server — mixed-content rule. Caddy fronts our server with a valid
-# nori.lan cert (operator's clients trust the local CA via the same
-# mechanism that makes immich-cli + claude-code MCP fetches work),
-# so the client points at https://stremio.nori.lan as its streaming
-# server URL and the handshake succeeds.
-#
-# ── State + env ──────────────────────────────────────────────────
-# APP_PATH=/var/lib/stremio holds the per-server cert + identifier
-# that clients pair with on first connect. NO_CORS disables the CORS
-# check since Caddy's reverse-proxy origin differs from the client
-# origin.
+/**
+  stremio — Stremio Server (the streaming-server backend that pairs
+  with the Stremio web/desktop client). Operator-personal; tailnet-only
+  at https://stremio.nori.lan.
+
+  ── Why a hand-rolled module ─────────────────────────────────────
+  nixpkgs dropped `stremio` 2026-02-11 (depended on the vulnerable
+  qt5-webengine) and there's no `services.stremio-server` module. The
+  replacement `stremio-linux-shell` is a UI shell only, not the
+  server binary. Upstream officially distributes `server.js` as a
+  self-contained Node bundle at dl.strem.io — fetchurl as a
+  fixed-output derivation and run with pkgs.nodejs.
+
+  ── Pairing flow ─────────────────────────────────────────────────
+  Stremio Web (https://web.stremio.com) won't talk to a plaintext
+  server — mixed-content rule. Caddy fronts our server with a valid
+  nori.lan cert (operator's clients trust the local CA via the same
+  mechanism that makes immich-cli + claude-code MCP fetches work),
+  so the client points at https://stremio.nori.lan as its streaming
+  server URL and the handshake succeeds.
+
+  ── State + env ──────────────────────────────────────────────────
+  APP_PATH=/var/lib/stremio holds the per-server cert + identifier
+  that clients pair with on first connect. NO_CORS disables the CORS
+  check since Caddy's reverse-proxy origin differs from the client
+  origin.
+*/
 
 let
   version = "4.20.12";

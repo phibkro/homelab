@@ -6,26 +6,28 @@
 }:
 
 let
-  # Drill repo tiers — split so failures are isolated and cadence
-  # matches cost. The split surfaced 2026-06-07 after one user-data
-  # red mask 17 GREEN service drills in the alert payload.
-  #
-  # Workstation-only by data ownership — same gate as the sibling
-  # backup/restic.nix. Other hosts importing the bundle (pi, aurora)
-  # don't have the source data being restored here OR the
-  # restic-password sops secret this script consumes.
-  #
-  # - `serviceRepos`  — the 17 service-state repos. Cheap (~few min
-  #                     total). Monthly drill cadence.
-  # - `userDataRepos` — user-data tier (irreplaceable personal state).
-  #                     Heavy (~99 GiB, 30+ min). Quarterly cadence.
-  # - `mediaRepos`    — media-irreplaceable (hundreds of GB). NEVER
-  #                     in automated drill — manual only via
-  #                     `restore-drill-all.service`. Weekly
-  #                     `restic check` + monthly read-data-subset
-  #                     already verify pack integrity.
-  #
-  # Repos with `paths` set (skip explicit-opt-out entries).
+  /**
+    Drill repo tiers — split so failures are isolated and cadence
+    matches cost. The split surfaced 2026-06-07 after one user-data
+    red mask 17 GREEN service drills in the alert payload.
+
+    Workstation-only by data ownership — same gate as the sibling
+    backup/restic.nix. Other hosts importing the bundle (pi, aurora)
+    don't have the source data being restored here OR the
+    restic-password sops secret this script consumes.
+
+    - `serviceRepos`  — the 17 service-state repos. Cheap (~few min
+                        total). Monthly drill cadence.
+    - `userDataRepos` — user-data tier (irreplaceable personal state).
+                        Heavy (~99 GiB, 30+ min). Quarterly cadence.
+    - `mediaRepos`    — media-irreplaceable (hundreds of GB). NEVER
+                        in automated drill — manual only via
+                        `restore-drill-all.service`. Weekly
+                        `restic check` + monthly read-data-subset
+                        already verify pack integrity.
+
+    Repos with `paths` set (skip explicit-opt-out entries).
+  */
   activeRepos = lib.attrNames (lib.filterAttrs (_: cfg: cfg.include != null) config.nori.backups);
   userDataRepos = lib.filter (n: n == "user-data") activeRepos;
   serviceRepos = lib.filter (n: n != "user-data" && n != "media-irreplaceable") activeRepos;
@@ -34,7 +36,7 @@ lib.mkIf (config.networking.hostName == "workstation") (
   let
 
     drillScript = repos: ''
-      # NixOS's systemd.services.*.script prepends `set -e` to the body.
+      # NixOS's systemd.services.*.script prepends `set -e` to the body. # multi-line: ok
       # Combined with `pipefail` below it interrupts the loop on the first
       # transient pipeline failure (e.g. a flaky sha256sum sample on a
       # jellyfin metadata file vanishing mid-walk), defeating the script's
@@ -99,22 +101,24 @@ lib.mkIf (config.networking.hostName == "workstation") (
     '';
   in
   {
-    # Restore drills — verify backups are not just *recorded* (which
-    # `restic check` confirms) but actually *restorable*. Three units
-    # by tier; cadence matches blast-radius and runtime cost:
-    #
-    #   restore-drill-services   — 17 service repos. Monthly. ~5 min.
-    #                              Cheap signal, runs often.
-    #   restore-drill-user-data  — user-data tier. Quarterly. ~30 min.
-    #                              Irreplaceable personal state.
-    #   restore-drill-all        — everything incl. media. Manual only.
-    #                              Multi-hour. Deep audits.
-    #
-    # Output:
-    #   /var/log/restore-drill/<timestamp>.txt   one log per run
-    #   /var/restore-test/<repo>-<timestamp>/    restored data, kept 30d
-    #
-    # ntfy alert on failure via OnFailure → notify@ template per unit.
+    /**
+      Restore drills — verify backups are not just *recorded* (which
+      `restic check` confirms) but actually *restorable*. Three units
+      by tier; cadence matches blast-radius and runtime cost:
+
+        restore-drill-services   — 17 service repos. Monthly. ~5 min.
+                                   Cheap signal, runs often.
+        restore-drill-user-data  — user-data tier. Quarterly. ~30 min.
+                                   Irreplaceable personal state.
+        restore-drill-all        — everything incl. media. Manual only.
+                                   Multi-hour. Deep audits.
+
+      Output:
+        /var/log/restore-drill/<timestamp>.txt   one log per run
+        /var/restore-test/<repo>-<timestamp>/    restored data, kept 30d
+
+      ntfy alert on failure via OnFailure → notify@ template per unit.
+    */
 
     systemd.tmpfiles.rules = [
       "d /var/restore-test 0700 root root -"
@@ -167,17 +171,21 @@ lib.mkIf (config.networking.hostName == "workstation") (
       description = "Quarterly user-data restore drill timer";
       wantedBy = [ "timers.target" ];
       timerConfig = {
-        # First Sunday of each quarter (Jan/Apr/Jul/Oct) at 05:00.
-        # Offset 1h from the services drill to keep the disk I/O windows
-        # separate. Every month has a Sunday in days 1..7.
+        /*
+          First Sunday of each quarter (Jan/Apr/Jul/Oct) at 05:00.
+          Offset 1h from the services drill to keep the disk I/O windows
+          separate. Every month has a Sunday in days 1..7.
+        */
         OnCalendar = "Sun *-01,04,07,10-01..07 05:00:00";
         Persistent = true;
       };
     };
 
-    # Manual deep-audit — restores everything including
-    # media-irreplaceable. Multi-hour disk I/O. Trigger with
-    # `sudo systemctl start restore-drill-all.service`. No timer.
+    /**
+      Manual deep-audit — restores everything including
+      media-irreplaceable. Multi-hour disk I/O. Trigger with
+      `sudo systemctl start restore-drill-all.service`. No timer.
+    */
     systemd.services.restore-drill-all = {
       description = "Restore drill — full pass including media-irreplaceable";
       after = [ "mnt-backup.mount" ];

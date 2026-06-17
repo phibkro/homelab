@@ -5,23 +5,27 @@
   ...
 }:
 
-# Claude Code agent — declarative + reusable. Imported via home/pc.nix on
-# every operator-attached PC (workstation + macbook). NOT imported by pi:
-# no operator agent loop, and the Node closure shouldn't land on pi's
-# anti-write SSD.
-#
-# Static config only — settings.json, CLAUDE.md, ~/.claude/{skills,agents,
-# artifacts}/ — wired in the home.file block below. Dynamic state
-# (per-project memory, per-session todos, ~/.claude.json with OAuth tokens
-# + runtime caches) is excluded by design; it mutates per launch and would
-# be clobbered on rebuild. Per-project `<project>/.claude/` stays
-# per-project.
+/**
+  Claude Code agent — declarative + reusable. Imported via home/pc.nix on
+  every operator-attached PC (workstation + macbook). NOT imported by pi:
+  no operator agent loop, and the Node closure shouldn't land on pi's
+  anti-write SSD.
+
+  Static config only — settings.json, CLAUDE.md, ~/.claude/{skills,agents,
+  artifacts}/ — wired in the home.file block below. Dynamic state
+  (per-project memory, per-session todos, ~/.claude.json with OAuth tokens
+  + runtime caches) is excluded by design; it mutates per launch and would
+  be clobbered on rebuild. Per-project `<project>/.claude/` stays
+  per-project.
+*/
 
 let
-  # Status line script. Operator's content intact (jq-based parse of the
-  # JSON Claude Code pipes in) but PATH injects jq + git so they're
-  # guaranteed available — declarative deps beats `nix-shell -p jq` at
-  # runtime.
+  /*
+    Status line script. Operator's content intact (jq-based parse of the
+    JSON Claude Code pipes in) but PATH injects jq + git so they're
+    guaranteed available — declarative deps beats `nix-shell -p jq` at
+    runtime.
+  */
   statuslineScript = pkgs.writeShellScript "claude-statusline" ''
     PATH=${
       lib.makeBinPath [
@@ -71,9 +75,11 @@ let
 
     theme = "auto";
 
-    # Default thinking depth. "high" gives Opus more headroom for
-    # deeper structural reasoning by default; flip to "medium" if
-    # latency starts to bite.
+    /*
+      Default thinking depth. "high" gives Opus more headroom for
+      deeper structural reasoning by default; flip to "medium" if
+      latency starts to bite.
+    */
     effortLevel = "high";
 
     # Trusted dev loop — skip the launch-time warning AND don't prompt
@@ -81,31 +87,37 @@ let
     skipDangerousModePermissionPrompt = true;
     permissions.defaultMode = "auto";
 
-    # MCP server posture: per-project opt-in.
-    #   * allowManagedMcpServersOnly:    only servers explicitly
-    #     allow-listed elsewhere are loadable. Blocks ad-hoc loads.
-    #   * enableAllProjectMcpServers:    do NOT auto-trust project-
-    #     level .mcp.json files. Each project that wants MCP must
-    #     opt in explicitly (via enabledMcpjsonServers in this file
-    #     or by accepting the per-project trust prompt once).
-    # Together these cap MCP-driven context consumption — large tool
-    # surfaces only load when a project actually needs them.
+    /*
+      MCP server posture: per-project opt-in.
+        * allowManagedMcpServersOnly:    only servers explicitly
+          allow-listed elsewhere are loadable. Blocks ad-hoc loads.
+        * enableAllProjectMcpServers:    do NOT auto-trust project-
+          level .mcp.json files. Each project that wants MCP must
+          opt in explicitly (via enabledMcpjsonServers in this file
+          or by accepting the per-project trust prompt once).
+      Together these cap MCP-driven context consumption — large tool
+      surfaces only load when a project actually needs them.
+    */
     allowManagedMcpServersOnly = true;
     enableAllProjectMcpServers = false;
-    # Auto-trust these specific servers from project .mcp.json files —
-    # no per-project trust prompt for the ones we always want. Project
-    # .mcp.json declares the actual command + args; this just gates
-    # which names are allowed to load.
+    /*
+      Auto-trust these specific servers from project .mcp.json files —
+      no per-project trust prompt for the ones we always want. Project
+      .mcp.json declares the actual command + args; this just gates
+      which names are allowed to load.
+    */
     enabledMcpjsonServers = [
       "fetch"
       "context7"
     ];
 
-    # "user-invocable-only" hides the description from auto-loaded
-    # skills (saves ~150-300 tokens/session per skill) but keeps
-    # `/<name>` reachable. Applied to skills too heavy for the
-    # auto-discovery slot — opt-in modes (caveman) and UI tools
-    # (frontend-design, shadcn-ui).
+    /*
+      "user-invocable-only" hides the description from auto-loaded
+      skills (saves ~150-300 tokens/session per skill) but keeps
+      `/<name>` reachable. Applied to skills too heavy for the
+      auto-discovery slot — opt-in modes (caveman) and UI tools
+      (frontend-design, shadcn-ui).
+    */
     skillOverrides = {
       caveman = "user-invocable-only";
       frontend-design = "user-invocable-only";
@@ -118,24 +130,29 @@ let
     };
   };
 
-  # pagu-box — cross-platform sandboxed agent launcher (github:phibkro/
-  # pagu-box). `--profile=strict` puts $HOME on tmpfs, binds $PWD + the
-  # agent's state dir RW, blocks secrets (~/.ssh, sops age, gh, host keys),
-  # blocks system mutation (no setuid binaries, user namespace blocks sudo),
-  # and blocks `git push` (no SSH key bound — operator pushes from outside).
-  # claude-box / opencode-box just set cwd and forward args; the strict
-  # profile + --ro-allow list IS the security boundary.
+  /*
+    pagu-box — cross-platform sandboxed agent launcher (github:phibkro/
+    pagu-box). `--profile=strict` puts $HOME on tmpfs, binds $PWD + the
+    agent's state dir RW, blocks secrets (~/.ssh, sops age, gh, host keys),
+    blocks system mutation (no setuid binaries, user namespace blocks sudo),
+    and blocks `git push` (no SSH key bound — operator pushes from outside).
+    claude-box / opencode-box just set cwd and forward args; the strict
+    profile + --ro-allow list IS the security boundary.
+  */
   pagu-box = inputs.pagu-box.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
-  # `box` — homelab-wrapped pagu-box. Operator-specific policy lives
-  # here, not upstream: detects "strict + $PWD under the homelab repo"
-  # and injects --pwd-ro so any sandboxed agent (hermes, pi, opencode)
-  # reads homelab config but can't edit it. Operator's own claude-code
-  # runs outside the sandbox and is unaffected.
+  /*
+    `box` — homelab-wrapped pagu-box. Operator-specific policy lives
+    here, not upstream: detects "strict + $PWD under the homelab repo"
+    and injects --pwd-ro so any sandboxed agent (hermes, pi, opencode)
+    reads homelab config but can't edit it. Operator's own claude-code
+    runs outside the sandbox and is unaffected.
+  */
   box = pkgs.writeShellApplication {
     name = "box";
     runtimeInputs = [ pagu-box ];
     text = ''
+      # multi-line: ok
       # Inspect args for --profile=strict (or `--profile strict`) without
       # consuming them. If yes AND $PWD is under the homelab repo, prepend
       # --pwd-ro. Anything else passes through untouched.
@@ -154,6 +171,7 @@ let
         i=$((i + 1))
       done
 
+      # multi-line: ok
       # box-launched agents always get read-only journal access. Debugging the
       # host (services, boot history, OOMs) is the common case for box invocations
       # and the alternative is the operator pasting !-prefixed journalctl into
@@ -174,11 +192,13 @@ let
     '';
   };
 
-  # pi — github:badlogic/pi-mono coding-agent CLI. Installed via npm at
-  # ~/.local/lib/node_modules/@earendil-works/pi-coding-agent. The wrapper
-  # puts `pi` on the system PATH (so it's reachable from inside box) and
-  # uses nixpkgs nodejs to run it, so the user doesn't need a separately
-  # installed node.
+  /*
+    pi — github:badlogic/pi-mono coding-agent CLI. Installed via npm at
+    ~/.local/lib/node_modules/@earendil-works/pi-coding-agent. The wrapper
+    puts `pi` on the system PATH (so it's reachable from inside box) and
+    uses nixpkgs nodejs to run it, so the user doesn't need a separately
+    installed node.
+  */
   piAgent = pkgs.writeShellApplication {
     name = "pi";
     runtimeInputs = [ pkgs.nodejs ];
@@ -231,10 +251,12 @@ in
   home.packages = [
     pkgs.claude-code # Anthropic CLI; pulls Node closure (~300 MB)
     pkgs.agent-browser # Persistent browser automation for AI agents
-    # MCP servers — direct binaries from nixpkgs (no npx-fetch latency,
-    # version pinned by flake.lock). Wired into Claude Code via the
-    # project-level .mcp.json at the repo root + enabledMcpjsonServers
-    # in settings below.
+    /*
+      MCP servers — direct binaries from nixpkgs (no npx-fetch latency,
+      version pinned by flake.lock). Wired into Claude Code via the
+      project-level .mcp.json at the repo root + enabledMcpjsonServers
+      in settings below.
+    */
     pkgs.mcp-server-fetch # `fetch` — URL → markdown tool
     pkgs.context7-mcp # `context7` — library docs lookup
   ]
@@ -254,10 +276,12 @@ in
     opencodeBox
   ];
 
-  # Claude Code skill discovery is shallow (~/.claude/skills/<name>/
-  # SKILL.md, not nested), so external collections get flattened one-
-  # subdir-per-skill into the flat tree. recursive=true symlinks at the
-  # file level so multiple sources can coexist under the same parent dir.
+  /*
+    Claude Code skill discovery is shallow (~/.claude/skills/<name>/
+    SKILL.md, not nested), so external collections get flattened one-
+    subdir-per-skill into the flat tree. recursive=true symlinks at the
+    file level so multiple sources can coexist under the same parent dir.
+  */
   home.file =
     let
       # Allowlist rather than import-all so the curated ./skills set
@@ -292,15 +316,17 @@ in
         ".claude/settings.json".text = builtins.toJSON settings;
       }
 
-      # Third-party skill collections — flake-input-pinned, mapped one-
-      # subdir-per-skill into the flat ~/.claude/skills/.
-      # superpowers: only the survivors of the curation (utilities + code
-      # review). brainstorming is vendored + adapted in ./skills (repointed
-      # to grill-with-docs); test-driven-development/systematic-debugging/
-      # writing-skills were replaced by ./skills (tdd/diagnose/write-a-skill);
-      # writing-plans/executing-plans/subagent-driven-development/
-      # verification-before-completion/finishing-a-development-branch/
-      # using-superpowers were dropped.
+      /*
+        Third-party skill collections — flake-input-pinned, mapped one-
+        subdir-per-skill into the flat ~/.claude/skills/.
+        superpowers: only the survivors of the curation (utilities + code
+        review). brainstorming is vendored + adapted in ./skills (repointed
+        to grill-with-docs); test-driven-development/systematic-debugging/
+        writing-skills were replaced by ./skills (tdd/diagnose/write-a-skill);
+        writing-plans/executing-plans/subagent-driven-development/
+        verification-before-completion/finishing-a-development-branch/
+        using-superpowers were dropped.
+      */
       (importSkills "${inputs.superpowers}/skills" [
         "dispatching-parallel-agents"
         "receiving-code-review"
@@ -327,31 +353,33 @@ in
       }
     ];
 
-  # Claude Code Remote Control — server-mode session so the Claude
-  # mobile app + claude.ai/code can spawn fresh sessions against this
-  # workstation. Outbound HTTPS only (no inbound ports); chat + tool
-  # results flow through Anthropic's relay, not tailnet — the trade
-  # for zero infra and off-tailnet access.
-  #
-  # Runs INSIDE claude-box: a prompt-injected remote session inherits
-  # the same blast-radius cap as a local one (no ~/.ssh, no sops keys,
-  # no system mutate, no `git push`). Per-call permission policy comes
-  # from settings.json `permissions.defaultMode = "auto"`.
-  #
-  # Do NOT pass --dangerously-skip-permissions to `remote-control`: the
-  # subcommand rejects that flag with "Unknown argument" and the unit
-  # spins in a restart loop. The flag is interactive-`claude`-only.
-  #
-  # First-time setup (manual one-shot, service won't start otherwise):
-  #   1. `claude` in a normal shell
-  #   2. `/login` + complete OAuth (API-key auth NOT supported here)
-  #   3. `systemctl --user enable --now claude-remote-control`
-  # Inspect: `systemctl --user status claude-remote-control` /
-  #          `journalctl --user -fu claude-remote-control`. Session
-  #          name `workstation-*` appears in startup logs + claude.ai/code.
-  #
-  # Linux-only: claudeBox is bwrap-based, systemd user services don't
-  # exist on darwin. Mac equivalent (launchd) not wired yet.
+  /*
+    Claude Code Remote Control — server-mode session so the Claude
+    mobile app + claude.ai/code can spawn fresh sessions against this
+    workstation. Outbound HTTPS only (no inbound ports); chat + tool
+    results flow through Anthropic's relay, not tailnet — the trade
+    for zero infra and off-tailnet access.
+
+    Runs INSIDE claude-box: a prompt-injected remote session inherits
+    the same blast-radius cap as a local one (no ~/.ssh, no sops keys,
+    no system mutate, no `git push`). Per-call permission policy comes
+    from settings.json `permissions.defaultMode = "auto"`.
+
+    Do NOT pass --dangerously-skip-permissions to `remote-control`: the
+    subcommand rejects that flag with "Unknown argument" and the unit
+    spins in a restart loop. The flag is interactive-`claude`-only.
+
+    First-time setup (manual one-shot, service won't start otherwise):
+      1. `claude` in a normal shell
+      2. `/login` + complete OAuth (API-key auth NOT supported here)
+      3. `systemctl --user enable --now claude-remote-control`
+    Inspect: `systemctl --user status claude-remote-control` /
+             `journalctl --user -fu claude-remote-control`. Session
+             name `workstation-*` appears in startup logs + claude.ai/code.
+
+    Linux-only: claudeBox is bwrap-based, systemd user services don't
+    exist on darwin. Mac equivalent (launchd) not wired yet.
+  */
   systemd.user.services = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
     claude-remote-control = {
       Unit = {
@@ -365,9 +393,11 @@ in
         ExecStart = "${claudeBox}/bin/claude-box remote-control --remote-control-session-name-prefix workstation --verbose";
         Restart = "on-failure";
         RestartSec = "10s";
-        # Cap restart loop so a chronic outage / bad creds don't burn CPU
-        # in a tight retry spin — five tries in five minutes is enough to
-        # surface the failure via `systemctl status`.
+        /*
+          Cap restart loop so a chronic outage / bad creds don't burn CPU
+          in a tight retry spin — five tries in five minutes is enough to
+          surface the failure via `systemctl status`.
+        */
         StartLimitIntervalSec = "300";
         StartLimitBurst = "5";
       };
@@ -375,15 +405,17 @@ in
     };
   };
 
-  # Shared memory across /srv/share/projects/* namespaces. Claude Code
-  # keys MEMORY.md by cwd at session-start, so launching in /srv/share/
-  # projects vs. .../homelab vs. .../bang-lang gives three disjoint
-  # memory pools ("amnesiac team member"). Walks every existing
-  # -srv-share-projects-* namespace and symlinks its memory/ to the
-  # single canonical at ~/.claude/projects/-srv-share-projects/memory.
-  # Reactive: a fresh project's first session gets a project-local
-  # memory dir until the next rebuild. Never clobbers a non-empty dir
-  # (operator merges manually).
+  /*
+    Shared memory across /srv/share/projects/* namespaces. Claude Code
+    keys MEMORY.md by cwd at session-start, so launching in /srv/share/
+    projects vs. .../homelab vs. .../bang-lang gives three disjoint
+    memory pools ("amnesiac team member"). Walks every existing
+    -srv-share-projects-* namespace and symlinks its memory/ to the
+    single canonical at ~/.claude/projects/-srv-share-projects/memory.
+    Reactive: a fresh project's first session gets a project-local
+    memory dir until the next rebuild. Never clobbers a non-empty dir
+    (operator merges manually).
+  */
   home.activation.claudeSharedMemorySymlinks = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     canonical="$HOME/.claude/projects/-srv-share-projects/memory"
 

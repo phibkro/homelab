@@ -5,32 +5,34 @@
   ...
 }:
 
-# Off-host dead-man-switch for the pi appliance.
-#
-# Pi centralises observability (VictoriaMetrics, VictoriaLogs, Gatus,
-# Beszel hub) AND alert delivery (ntfy server). If pi dies, the
-# evidence-of-failure exists on workstation's gatus, but the
-# delivery channel dies with the host — so the operator wouldn't
-# know.
-#
-# Mitigation: pi pings an external healthchecks.io check every 60s.
-# When the pings stop for ~3 min (period 60s + grace 2min), the
-# external service alerts via channels configured at hc.io
-# (email/Telegram/etc.) — totally independent of this LAN.
-#
-# The ping URL is the secret (anyone with it can spoof "I'm alive"),
-# stored in sops. The systemd timer reads it from the rendered
-# secret path at runtime; nothing on disk references the URL plain.
-#
-# Failure mode coverage:
-#   pi powered off / kernel panic / SD-card death / network gone →
-#   pings stop → hc.io alerts off-host.
-#
-# What this does NOT catch:
-#   - Service-level failures while pi itself is healthy (workstation
-#     gatus + pi ntfy still cover those).
-#   - hc.io itself being unreachable from pi (false positive — operator
-#     pings, finds pi fine; rare enough to live with).
+/**
+  Off-host dead-man-switch for the pi appliance.
+
+  Pi centralises observability (VictoriaMetrics, VictoriaLogs, Gatus,
+  Beszel hub) AND alert delivery (ntfy server). If pi dies, the
+  evidence-of-failure exists on workstation's gatus, but the
+  delivery channel dies with the host — so the operator wouldn't
+  know.
+
+  Mitigation: pi pings an external healthchecks.io check every 60s.
+  When the pings stop for ~3 min (period 60s + grace 2min), the
+  external service alerts via channels configured at hc.io
+  (email/Telegram/etc.) — totally independent of this LAN.
+
+  The ping URL is the secret (anyone with it can spoof "I'm alive"),
+  stored in sops. The systemd timer reads it from the rendered
+  secret path at runtime; nothing on disk references the URL plain.
+
+  Failure mode coverage:
+    pi powered off / kernel panic / SD-card death / network gone →
+    pings stop → hc.io alerts off-host.
+
+  What this does NOT catch:
+    - Service-level failures while pi itself is healthy (workstation
+      gatus + pi ntfy still cover those).
+    - hc.io itself being unreachable from pi (false positive — operator
+      pings, finds pi fine; rare enough to live with).
+*/
 
 lib.mkMerge [
   { nori.services.heartbeat.tags = [ "observability" ]; }

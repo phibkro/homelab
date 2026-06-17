@@ -20,25 +20,29 @@
         "@wheel"
       ];
 
-      # Binary cache substituters. cache.nixos.org is the default
-      # upstream cache (NixOS module sets it implicitly). garnix.io
-      # is a community-built CI cache that covers many derivations
-      # cache.nixos.org doesn't — notably, aarch64-linux Pi-specific
-      # builds (linux-rpi kernel, etc).
-      #
-      # Confirmed coverage 2026-04-28: garnix had the linux-rpi
-      # kernel cached when cache.nixos.org didn't, which would have
-      # saved 60-90 min of qemu-emulated compile during pi
-      # sd-image build had it been configured beforehand. Adding
-      # so future Pi rebuilds, kernel bumps, etc don't re-pay that
-      # cost.
+      /*
+        Binary cache substituters. cache.nixos.org is the default
+        upstream cache (NixOS module sets it implicitly). garnix.io
+        is a community-built CI cache that covers many derivations
+        cache.nixos.org doesn't — notably, aarch64-linux Pi-specific
+        builds (linux-rpi kernel, etc).
+
+        Confirmed coverage 2026-04-28: garnix had the linux-rpi
+        kernel cached when cache.nixos.org didn't, which would have
+        saved 60-90 min of qemu-emulated compile during pi
+        sd-image build had it been configured beforehand. Adding
+        so future Pi rebuilds, kernel bumps, etc don't re-pay that
+        cost.
+      */
       extra-substituters = [
         "https://cache.garnix.io"
-        # nixpkgs-cuda-ci builds nixpkgs with cudaSupport=true and
-        # publishes here. Without it, every CUDA-touching derivation
-        # (cudatoolkit, cudnn, onnxruntime+cuda, …) compiles from
-        # source — hours to many hours per rebuild. Migrated from
-        # cuda-maintainers.cachix.org to cache.nixos-cuda.org Nov 2025.
+        /*
+          nixpkgs-cuda-ci builds nixpkgs with cudaSupport=true and
+          publishes here. Without it, every CUDA-touching derivation
+          (cudatoolkit, cudnn, onnxruntime+cuda, …) compiles from
+          source — hours to many hours per rebuild. Migrated from
+          cuda-maintainers.cachix.org to cache.nixos-cuda.org Nov 2025.
+        */
         "https://cache.nixos-cuda.org"
       ];
       extra-trusted-public-keys = [
@@ -55,16 +59,18 @@
 
   nixpkgs.config.allowUnfree = true;
 
-  # Known-insecure packages we accept. Each entry is a deliberate
-  # trade-off, not a blanket allow. Promote to removal as soon as
-  # nixpkgs ships a non-EOL bump.
-  #
-  # electron-39.8.10 — bundled by bitwarden-desktop in nixos-26.05.
-  #   Verified still required on stable 2026-06-03 (a removal attempt
-  #   failed the build). Accepted because the electron renderer here
-  #   only displays the vault UI (sandboxed, no broad attack surface
-  #   in this app's usage). Remove when `bitwarden-desktop` in nixpkgs
-  #   bumps electron.
+  /*
+    Known-insecure packages we accept. Each entry is a deliberate
+    trade-off, not a blanket allow. Promote to removal as soon as
+    nixpkgs ships a non-EOL bump.
+
+    electron-39.8.10 — bundled by bitwarden-desktop in nixos-26.05.
+      Verified still required on stable 2026-06-03 (a removal attempt
+      failed the build). Accepted because the electron renderer here
+      only displays the vault UI (sandboxed, no broad attack surface
+      in this app's usage). Remove when `bitwarden-desktop` in nixpkgs
+      bumps electron.
+  */
   nixpkgs.config.permittedInsecurePackages = [
     "electron-39.8.10"
   ];
@@ -72,19 +78,23 @@
   # --- locale / time -----------------------------------------------------
 
   time.timeZone = "Europe/Oslo";
-  # Locale stays en_US for English error messages / man pages / web
-  # search continuity. Switch to nb_NO.UTF-8 if you want Norwegian
-  # date/sort formats too.
+  /*
+    Locale stays en_US for English error messages / man pages / web
+    search continuity. Switch to nb_NO.UTF-8 if you want Norwegian
+    date/sort formats too.
+  */
   i18n.defaultLocale = "en_US.UTF-8";
   console.keyMap = "no";
 
   # --- packages (minimal baseline shared by all hosts) ------------------
-  #
-  # System-scope only what root + system services + emergency operations
-  # genuinely need. Operator-interactive CLI (just, ripgrep, tmux,
-  # starship, etc.) lives at user scope in home/core.nix — every host
-  # (incl. pi) imports a home/<host>.nix that pulls in core, so nori on
-  # any machine has the same baseline.
+
+  /*
+    System-scope only what root + system services + emergency operations
+    genuinely need. Operator-interactive CLI (just, ripgrep, tmux,
+    starship, etc.) lives at user scope in home/core.nix — every host
+    (incl. pi) imports a home/<host>.nix that pulls in core, so nori on
+    any machine has the same baseline.
+  */
   environment.systemPackages = with pkgs; [
     bat
     curl
@@ -98,28 +108,34 @@
     wget
   ];
 
-  # Default editor — sops uses $EDITOR to launch the secrets editor
-  # session, git uses it for commit messages, crontab + visudo follow
-  # the same convention. Setting both EDITOR and VISUAL covers tools
-  # that distinguish (notably `sudo -e` follows VISUAL first).
+  /*
+    Default editor — sops uses $EDITOR to launch the secrets editor
+    session, git uses it for commit messages, crontab + visudo follow
+    the same convention. Setting both EDITOR and VISUAL covers tools
+    that distinguish (notably `sudo -e` follows VISUAL first).
+  */
   environment.variables = {
     EDITOR = "vim";
     VISUAL = "vim";
   };
 
-  # nh wraps `nixos-rebuild` with internal sudo elevation (don't prefix
-  # `nh` with sudo) and `--target-host` for SSH-based remote deployment.
-  # The Justfile + `just remote` wrap the common invocations.
+  /**
+    nh wraps `nixos-rebuild` with internal sudo elevation (don't prefix
+    `nh` with sudo) and `--target-host` for SSH-based remote deployment.
+    The Justfile + `just remote` wrap the common invocations.
+  */
   programs.nh.enable = true;
 
-  # nix-ld provides the dynamic loader + a curated LD_LIBRARY_PATH for
-  # prebuilt non-NixOS Linux binaries. Required for Zed's remote-server
-  # (auto-installed under ~/.zed-server/ when Zed connects via SSH) and
-  # other dev tools that ship Linux binaries.
-  #
-  # Library set is iterative: extend when a binary errors with
-  # "error while loading shared libraries: <name>" — find it via
-  # `nix-locate <name>`.
+  /*
+    nix-ld provides the dynamic loader + a curated LD_LIBRARY_PATH for
+    prebuilt non-NixOS Linux binaries. Required for Zed's remote-server
+    (auto-installed under ~/.zed-server/ when Zed connects via SSH) and
+    other dev tools that ship Linux binaries.
+
+    Library set is iterative: extend when a binary errors with
+    "error while loading shared libraries: <name>" — find it via
+    `nix-locate <name>`.
+  */
   programs.nix-ld = {
     enable = true;
     libraries = with pkgs; [
@@ -133,15 +149,17 @@
 
   # --- swap (zram) -------------------------------------------------------
 
-  # Compressed in-memory swap. No disk required; kernel compresses evicted
-  # pages with zstd before they land in the zram device. At 50% of RAM
-  # (default) this machine gets ~16 GiB of swap backed by ~8 GiB of
-  # physical RAM at ~2x compression.
-  #
-  # Primary motivation: CUDA compilation (nvcc, onnxruntime) is extremely
-  # memory-hungry and caused an OOM + unresponsive system when attempted
-  # with no swap. zram gives the kernel somewhere to shed pressure instead
-  # of killing processes. Low overhead when idle.
+  /*
+    Compressed in-memory swap. No disk required; kernel compresses evicted
+    pages with zstd before they land in the zram device. At 50% of RAM
+    (default) this machine gets ~16 GiB of swap backed by ~8 GiB of
+    physical RAM at ~2x compression.
+
+    Primary motivation: CUDA compilation (nvcc, onnxruntime) is extremely
+    memory-hungry and caused an OOM + unresponsive system when attempted
+    with no swap. zram gives the kernel somewhere to shed pressure instead
+    of killing processes. Low overhead when idle.
+  */
   zramSwap.enable = true;
 
   # --- firewall ----------------------------------------------------------
@@ -150,26 +168,30 @@
 
   # --- versioning --------------------------------------------------------
 
-  # stateVersion is a *migration* marker, not the nixpkgs version.
-  # Do not bump this casually. It captures the defaults in effect when the
-  # system was first installed so stateful services don't silently reshape.
+  /*
+    stateVersion is a *migration* marker, not the nixpkgs version.
+    Do not bump this casually. It captures the defaults in effect when the
+    system was first installed so stateful services don't silently reshape.
+  */
   system.stateVersion = "25.11";
 
   # --- MOTD --------------------------------------------------------------
 
-  # Codename + role banner on login. Written directly to /etc/motd
-  # (via environment.etc rather than users.motd) so sshd's
-  # PrintMotd picks it up — users.motd goes through pam_motd which
-  # isn't enabled for sshd by default and would silently not show.
-  #
-  # Hostnames stay as identifiers (SSH / known_hosts / Tailscale /
-  # nix flake refs); codenames are aesthetic. Theme: polar / penguin.
-  # See modules/infra/hosts.nix for the full mapping.
-  #
-  # Gated on rust-motd not being enabled — pavilion + aurora opt in
-  # to rust-motd for live battery/cpu/memory/service data; this
-  # static banner is the fallback for hosts that don't (pi,
-  # workstation).
+  /*
+    Codename + role banner on login. Written directly to /etc/motd
+    (via environment.etc rather than users.motd) so sshd's
+    PrintMotd picks it up — users.motd goes through pam_motd which
+    isn't enabled for sshd by default and would silently not show.
+
+    Hostnames stay as identifiers (SSH / known_hosts / Tailscale /
+    nix flake refs); codenames are aesthetic. Theme: polar / penguin.
+    See modules/infra/hosts.nix for the full mapping.
+
+    Gated on rust-motd not being enabled — pavilion + aurora opt in
+    to rust-motd for live battery/cpu/memory/service data; this
+    static banner is the fallback for hosts that don't (pi,
+    workstation).
+  */
   environment.etc.motd =
     let
       self = config.nori.hosts.${config.networking.hostName} or null;

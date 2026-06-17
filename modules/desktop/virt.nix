@@ -1,12 +1,14 @@
 _: {
-  # libvirtd + virt-manager — general VM use (testing NixOS configs,
-  # ephemeral environments, isolated sandboxes, occasional Windows VMs
-  # without PCIe passthrough). Equivalent of UTM on the Mac.
-  #
-  # No PCIe passthrough (VFIO) setup here — separate decision tied to
-  # a concrete use case. The MP510 read-only mount in
-  # ../../machines/workstation/windows-mount.nix covers the only  # path-coherence: skip — historical
-  # currently-pulling Windows-data workflow.
+  /*
+    libvirtd + virt-manager — general VM use (testing NixOS configs,
+    ephemeral environments, isolated sandboxes, occasional Windows VMs
+    without PCIe passthrough). Equivalent of UTM on the Mac.
+
+    No PCIe passthrough (VFIO) setup here — separate decision tied to
+    a concrete use case. The MP510 read-only mount in
+    ../../machines/workstation/windows-mount.nix covers the only  # path-coherence: skip — historical
+    currently-pulling Windows-data workflow.
+  */
 
   virtualisation.libvirtd = {
     enable = true;

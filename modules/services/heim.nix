@@ -5,28 +5,30 @@
   ...
 }:
 
-# heim — operator's portfolio site. Astro static site, markdown-
-# authored content, no DB. Same deploy-app shape as filmder.nix:
-# manual `just deploy-app heim` triggers the oneshot, kept out of
-# `wantedBy` so nixos-rebuild stays fast.
-#
-# ── Migration history ────────────────────────────────────────────
-# Earlier attempt was Next.js + Payload CMS + Postgres + Turborepo;
-# blocked on Payload-CLI + bun + tsx ESM-resolution incompat. Pivoted
-# to Astro because (a) operator likes writing markdown, (b) static
-# output drops the entire runtime + DB dependency tree, (c) the
-# bun-build-then-darkhttpd-serve pattern is the proven shape on this
-# homelab. The Postgres `heim` DB + role from the prior attempt are
-# orphaned and should be dropped manually:
-#   sudo -u postgres dropdb heim && sudo -u postgres dropuser heim
-#
-# ── sharp + LD_LIBRARY_PATH ──────────────────────────────────────
-# Astro's <Image> component uses sharp for build-time image
-# optimization. Sharp's native binary loads libstdc++.so.6 at runtime
-# via dlopen; NixOS systemd's minimal env doesn't have libstdc++ on
-# the dynamic-linker path. LD_LIBRARY_PATH at pkgs.stdenv.cc.cc.lib
-# resolves the dlopen during build. (Serve-side: pure static files,
-# no sharp at runtime.)
+/**
+  heim — operator's portfolio site. Astro static site, markdown-
+  authored content, no DB. Same deploy-app shape as filmder.nix:
+  manual `just deploy-app heim` triggers the oneshot, kept out of
+  `wantedBy` so nixos-rebuild stays fast.
+
+  ── Migration history ────────────────────────────────────────────
+  Earlier attempt was Next.js + Payload CMS + Postgres + Turborepo;
+  blocked on Payload-CLI + bun + tsx ESM-resolution incompat. Pivoted
+  to Astro because (a) operator likes writing markdown, (b) static
+  output drops the entire runtime + DB dependency tree, (c) the
+  bun-build-then-darkhttpd-serve pattern is the proven shape on this
+  homelab. The Postgres `heim` DB + role from the prior attempt are
+  orphaned and should be dropped manually:
+    sudo -u postgres dropdb heim && sudo -u postgres dropuser heim
+
+  ── sharp + LD_LIBRARY_PATH ──────────────────────────────────────
+  Astro's <Image> component uses sharp for build-time image
+  optimization. Sharp's native binary loads libstdc++.so.6 at runtime
+  via dlopen; NixOS systemd's minimal env doesn't have libstdc++ on
+  the dynamic-linker path. LD_LIBRARY_PATH at pkgs.stdenv.cc.cc.lib
+  resolves the dlopen during build. (Serve-side: pure static files,
+  no sharp at runtime.)
+*/
 
 let
   heimRepo = "https://github.com/phibkro/heim.git";
@@ -130,14 +132,16 @@ lib.mkMerge [
       description = "Serve heim static files for Caddy reverse-proxy";
       wantedBy = [ "multi-user.target" ];
 
-      # No `After=heim-build`. heim-build is a manually-triggered oneshot,
-      # not a boot dependency — and `After=` plus `ExecStartPost=systemctl
-      # restart heim-serve` deadlocks: heim-build's start-post fires the
-      # restart, the restart's start-job waits for heim-build to be
-      # `active`, heim-build can't reach `active` until start-post returns.
-      # ConditionPathExists guards cold-boot ordering instead (skip cleanly
-      # before the first deploy populates dist; build's ExecStartPost
-      # bounces this unit on subsequent deploys).
+      /*
+        No `After=heim-build`. heim-build is a manually-triggered oneshot,
+        not a boot dependency — and `After=` plus `ExecStartPost=systemctl
+        restart heim-serve` deadlocks: heim-build's start-post fires the
+        restart, the restart's start-job waits for heim-build to be
+        `active`, heim-build can't reach `active` until start-post returns.
+        ConditionPathExists guards cold-boot ordering instead (skip cleanly
+        before the first deploy populates dist; build's ExecStartPost
+        bounces this unit on subsequent deploys).
+      */
       unitConfig.ConditionPathExists = "/var/lib/heim/dist";
 
       serviceConfig = {

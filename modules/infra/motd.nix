@@ -5,12 +5,14 @@
   ...
 }:
 
-# rust-motd renders the stats body (uptime/load/memory/fs/services/
-# last-login) into /var/lib/rust-motd/motd. The codename banner is
-# rendered by the `motd` wrapper below instead, so it can be
-# customised per invocation (font/filter/colour/random/animated).
-# Consequence: sshd PrintMotd shows the cached body only; the toilet
-# codename renders only when `motd` is run interactively.
+/*
+  rust-motd renders the stats body (uptime/load/memory/fs/services/
+  last-login) into /var/lib/rust-motd/motd. The codename banner is
+  rendered by the `motd` wrapper below instead, so it can be
+  customised per invocation (font/filter/colour/random/animated).
+  Consequence: sshd PrintMotd shows the cached body only; the toilet
+  codename renders only when `motd` is run interactively.
+*/
 
 let
   self = config.nori.hosts.${config.networking.hostName} or null;
@@ -198,7 +200,7 @@ in
           exit 0
         fi
 
-        # --- in-place animate ---
+        # --- in-place animate ---  # multi-line: ok (bash heredoc)
         # ms → fractional seconds for `sleep`. LC_ALL=C so `.` is the
         # decimal separator regardless of locale.
         sleep_sec=$(LC_ALL=C printf '%d.%03d' $((REFRESH_MS/1000)) $((REFRESH_MS%1000)))

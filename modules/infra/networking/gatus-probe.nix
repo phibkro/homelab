@@ -9,21 +9,23 @@ let
     ;
 in
 {
-  # nori.gatusProbes — manual Gatus endpoints for things that don't
-  # fit the auto-generated nori.lanRoutes.<n>.monitor path. Used for:
-  #   * non-HTTP probes — TCP DNS (port 53), SMB (445), SSH (22)
-  #   * cross-host probes — workstation watching pi over tailnet, pi
-  #     watching workstation over LAN; alerts still fire when the
-  #     other host's Gatus is wedged
-  #
-  # Same Reader+collected-Writer shape as the rest of the nori.<X>
-  # effect family. Hosts declare probes inline; this generator emits
-  # services.gatus.settings.endpoints with the standard ntfy alert tail
-  # (failure-threshold=3, send-on-resolved=true) baked in.
-  #
-  # Coexists with modules/infra/networking/default.nix's auto-Gatus endpoints
-  # via list merging — lan-route uses lib.mkAfter so its entries land
-  # after the manual probes; both contribute to the same final list.
+  /**
+    nori.gatusProbes — manual Gatus endpoints for things that don't
+    fit the auto-generated nori.lanRoutes.<n>.monitor path. Used for:
+      * non-HTTP probes — TCP DNS (port 53), SMB (445), SSH (22)
+      * cross-host probes — workstation watching pi over tailnet, pi
+        watching workstation over LAN; alerts still fire when the
+        other host's Gatus is wedged
+
+    Same Reader+collected-Writer shape as the rest of the nori.<X>
+    effect family. Hosts declare probes inline; this generator emits
+    services.gatus.settings.endpoints with the standard ntfy alert tail
+    (failure-threshold=3, send-on-resolved=true) baked in.
+
+    Coexists with modules/infra/networking/default.nix's auto-Gatus endpoints
+    via list merging — lan-route uses lib.mkAfter so its entries land
+    after the manual probes; both contribute to the same final list.
+  */
 
   options.nori.gatusProbes = mkOption {
     default = { };

@@ -4,10 +4,12 @@
   ...
 }:
 
-# Resource tiers — per-service cgroup limits + systemd-oomd pressure
-# valve. Without this, a single mis-behaving service balloons and the
-# kernel OOM-killer picks targets by oom_score_adj — often killing
-# Caddy or sshd while the offender survives.
+/**
+  Resource tiers — per-service cgroup limits + systemd-oomd pressure
+  valve. Without this, a single mis-behaving service balloons and the
+  kernel OOM-killer picks targets by oom_score_adj — often killing
+  Caddy or sshd while the offender survives.
+*/
 
 let
   inherit (lib) mkOption types;
@@ -92,9 +94,11 @@ in
       serviceConfig = lib.mapAttrs (_: v: lib.mkDefault v) profiles.${tier};
     }) config.nori.resourceTier;
 
-    # systemd-oomd targets cgroups by PSI pressure contribution, not
-    # by oom_score_adj. Heavy/decorative tend to be the pressure
-    # source, so they get killed before critical units do.
+    /*
+      systemd-oomd targets cgroups by PSI pressure contribution, not
+      by oom_score_adj. Heavy/decorative tend to be the pressure
+      source, so they get killed before critical units do.
+    */
     services.systemd-oomd = {
       enable = true;
       enableRootSlice = true;

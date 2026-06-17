@@ -524,20 +524,24 @@ in
       oidcRoutes = filterAttrs (_: r: r.oidc != null) routes;
       forwardAuthRoutes = filterAttrs (_: r: r.forwardAuth != null) routes;
 
-      # Resolve a route's backend host. `runsOn` (the placement field)
-      # wins when set: 127.0.0.1 if the route runs on the evaluating
-      # host, the runsOn host's tailnet IP otherwise.
+      /*
+        Resolve a route's backend host. `runsOn` (the placement field)
+        wins when set: 127.0.0.1 if the route runs on the evaluating
+        host, the runsOn host's tailnet IP otherwise.
+      */
       myHost = config.networking.hostName;
       routeHost =
         cfg: if cfg.runsOn == myHost then "127.0.0.1" else config.nori.hosts.${cfg.runsOn}.tailnetIp;
       autheliaEnabled =
         config.services.authelia.instances != { }
         && lib.any (i: i.enable) (lib.attrValues config.services.authelia.instances);
-      # Caddy on this host actually consumes the forwardAuth blocks. If
-      # Caddy isn't enabled, the routes are just data — no proxying
-      # happens, so the Authelia dependency doesn't bite. Hosts that
-      # only import the bundle for the route registry shouldn't trip
-      # the assertion.
+      /*
+        Caddy on this host actually consumes the forwardAuth blocks. If
+        Caddy isn't enabled, the routes are just data — no proxying
+        happens, so the Authelia dependency doesn't bite. Hosts that
+        only import the bundle for the route registry shouldn't trip
+        the assertion.
+      */
       caddyEnabledHere = config.services.caddy.enable;
     in
     {
@@ -591,15 +595,17 @@ in
         }
       ];
 
-      # Single wildcard vhost matching `*.<nori.domain>`. Inside, per-
-      # route `@host` matchers + `handle` blocks route each subdomain
-      # to its backend. Why one block instead of per-route vhosts:
-      # Caddy issues one cert per vhost name by default, so 30 vhosts
-      # = 30 separate ACME flows = thousands of CF API calls every
-      # renewal cycle. A single wildcard cert (`*.<nori.domain>`)
-      # covers every subdomain in ONE issuance and ONE renewal — the
-      # ACME volume drops by 30× and rate-limit risk effectively
-      # disappears. Wildcards require DNS-01 (which we already use).
+      /*
+        Single wildcard vhost matching `*.<nori.domain>`. Inside, per-
+        route `@host` matchers + `handle` blocks route each subdomain
+        to its backend. Why one block instead of per-route vhosts:
+        Caddy issues one cert per vhost name by default, so 30 vhosts
+        = 30 separate ACME flows = thousands of CF API calls every
+        renewal cycle. A single wildcard cert (`*.<nori.domain>`)
+        covers every subdomain in ONE issuance and ONE renewal — the
+        ACME volume drops by 30× and rate-limit risk effectively
+        disappears. Wildcards require DNS-01 (which we already use).
+      */
       services.caddy.virtualHosts."*.${config.nori.domain}".extraConfig =
         let
           routes = config.nori.lanRoutes;
@@ -642,29 +648,35 @@ in
         (mapAttrs' (
           name: _: nameValuePair "${name}.${config.nori.domain}" config.nori.lanIp
         ) config.nori.lanRoutes)
-        # Transitional mapping — keep `*.nori.lan` resolving so old
-        # bookmarks land at Caddy's redirect vhost (in caddy.nix), which
-        # 301s them to the new domain. Drop this block when family
-        # devices have all migrated bookmarks. Until then, every route
-        # gets a parallel `<name>.nori.lan` entry pointing at the same IP.
+        /*
+          Transitional mapping — keep `*.nori.lan` resolving so old
+          bookmarks land at Caddy's redirect vhost (in caddy.nix), which
+          301s them to the new domain. Drop this block when family
+          devices have all migrated bookmarks. Until then, every route
+          gets a parallel `<name>.nori.lan` entry pointing at the same IP.
+        */
         // (mapAttrs' (name: _: nameValuePair "${name}.nori.lan" config.nori.lanIp) config.nori.lanRoutes);
 
-      # Tailnet firewall: open backend ports for opt-in routes only,
-      # AND only on the host that actually runs the backend. Without
-      # the `runsOn == hostName` filter, every host that imports the
-      # bundle opens every exposed port — harmless when no listener
-      # responds, but a wider firewall surface than the topology calls
-      # for. Default-deny aligns with the rest of the network policy
-      # (Caddy on :80 + :443 from caddy.nix is the canonical entry).
+      /*
+        Tailnet firewall: open backend ports for opt-in routes only,
+        AND only on the host that actually runs the backend. Without
+        the `runsOn == hostName` filter, every host that imports the
+        bundle opens every exposed port — harmless when no listener
+        responds, but a wider firewall surface than the topology calls
+        for. Default-deny aligns with the rest of the network policy
+        (Caddy on :80 + :443 from caddy.nix is the canonical entry).
+      */
       networking.firewall.interfaces."tailscale0".allowedTCPPorts = lib.flatten (
         lib.mapAttrsToList (_: cfg: lib.optional cfg.exposeOnTailnet cfg.port) (
           lib.filterAttrs (_: cfg: cfg.runsOn == config.networking.hostName) config.nori.lanRoutes
         )
       );
 
-      # Auto-generated Gatus endpoints for routes that opt in via
-      # `monitor`. Manual entries in modules/infra/observability/gatus.nix
-      # (blocky-dns, samba-smb) coexist via list concatenation.
+      /*
+        Auto-generated Gatus endpoints for routes that opt in via
+        `monitor`. Manual entries in modules/infra/observability/gatus.nix
+        (blocky-dns, samba-smb) coexist via list concatenation.
+      */
       services.gatus.settings.endpoints = lib.mkAfter (
         lib.mapAttrsToList (name: cfg: {
           inherit name;
@@ -680,30 +692,34 @@ in
         }) (filterAttrs (_: cfg: cfg.monitor != null) config.nori.lanRoutes)
       );
 
-      # OIDC plumbing for routes with `oidc` set. The Authelia client
-      # entry is assembled by modules/infra/access/authelia.nix reading
-      # config.nori.lanRoutes — keeps single ownership of the clients
-      # list (NixOS module merging on freeform-typed lists conflicts
-      # rather than concatenates, so a centralized assembly site is
-      # cleaner than mkMerge from multiple modules).
-      #
-      # Two sops secrets per OIDC route:
-      #   * oidc-<name>-client-secret       — RAW secret, mode 0440
-      #     group=keys, consumed by the service via the env-file
-      #     template below.
-      #   * oidc-<name>-client-secret-hash  — PBKDF2 HASH, mode 0400
-      #     owner=authelia-main, consumed by Authelia at startup via
-      #     its `template` config-filter (see authelia.nix). This
-      #     keeps hash material out of committed Nix entirely.
+      /**
+        OIDC plumbing for routes with `oidc` set. The Authelia client
+        entry is assembled by modules/infra/access/authelia.nix reading
+        config.nori.lanRoutes — keeps single ownership of the clients
+        list (NixOS module merging on freeform-typed lists conflicts
+        rather than concatenates, so a centralized assembly site is
+        cleaner than mkMerge from multiple modules).
+
+        Two sops secrets per OIDC route:
+          * oidc-<name>-client-secret       — RAW secret, mode 0440
+            group=keys, consumed by the service via the env-file
+            template below.
+          * oidc-<name>-client-secret-hash  — PBKDF2 HASH, mode 0400
+            owner=authelia-main, consumed by Authelia at startup via
+            its `template` config-filter (see authelia.nix). This
+            keeps hash material out of committed Nix entirely.
+      */
       sops.secrets =
         let
           routesWithOidc = filterAttrs (_: cfg: cfg.oidc != null) config.nori.lanRoutes;
         in
-        # Raw client secrets: emitted on any host that has routes
-        # declared, since service modules read them on the host where
-        # the BACKEND runs (via `EnvironmentFile` from the sops template
-        # below). Owned by the `keys` group; consuming services join
-        # that group via `SupplementaryGroups`.
+        /*
+          Raw client secrets: emitted on any host that has routes
+          declared, since service modules read them on the host where
+          the BACKEND runs (via `EnvironmentFile` from the sops template
+          below). Owned by the `keys` group; consuming services join
+          that group via `SupplementaryGroups`.
+        */
         (mapAttrs' (
           name: _:
           nameValuePair "oidc-${name}-client-secret" {
@@ -711,9 +727,11 @@ in
             group = "keys";
           }
         ) routesWithOidc)
-        # PBKDF2 hashes: only emit on hosts that run Authelia (the user
-        # `authelia-main` only exists there). Other hosts importing the
-        # bundle for the route registry don't need the hash material.
+        /*
+          PBKDF2 hashes: only emit on hosts that run Authelia (the user
+          `authelia-main` only exists there). Other hosts importing the
+          bundle for the route registry don't need the hash material.
+        */
         // (lib.optionalAttrs autheliaEnabled (
           mapAttrs' (
             name: _:

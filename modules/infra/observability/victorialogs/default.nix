@@ -1,7 +1,7 @@
 { config, lib, ... }:
 
 {
-  # Cross-host lanRoute for VictoriaLogs running on pi. Daemon lives
+  # Cross-host lanRoute for VictoriaLogs running on pi. Daemon lives # multi-line: ok
   # in ./server.nix (imported only by pi); this file is imported by
   # Caddy-running hosts via modules/services/default.nix and declares
   # the https://logs.nori.lan reverse-proxy.

@@ -1,10 +1,12 @@
 _: {
-  # Mako — Wayland notification daemon. Picks up `notify-send` from any
-  # CLI / app and renders toasts in the corner. home-manager provisions
-  # a systemd user service that starts at session login.
-  #
-  # Defaults are sensible; the only knob set is corner radius matching
-  # Hyprland's `decoration.rounding = 4` for visual consistency.
+  /**
+    Mako — Wayland notification daemon. Picks up `notify-send` from any
+    CLI / app and renders toasts in the corner. home-manager provisions
+    a systemd user service that starts at session login.
+
+    Defaults are sensible; the only knob set is corner radius matching
+    Hyprland's `decoration.rounding = 4` for visual consistency.
+  */
   services.mako = {
     enable = true;
     settings = {

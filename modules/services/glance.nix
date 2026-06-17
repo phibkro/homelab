@@ -5,17 +5,21 @@
 }:
 
 let
-  # Dashboard catalog is *not* maintained here — it's derived from
-  # `config.nori.lanRoutes`. Each service module declares a
-  # `dashboard = { ... }` block on its own lanRoute (schema in
-  # modules/infra/networking/default.nix); URL is derived from the route name
-  # as `https://<n>.nori.lan`, so URL drift is impossible.
+  /**
+    Dashboard catalog is *not* maintained here — it's derived from
+    `config.nori.lanRoutes`. Each service module declares a
+    `dashboard = { ... }` block on its own lanRoute (schema in
+    modules/infra/networking/default.nix); URL is derived from the route name
+    as `https://<n>.nori.lan`, so URL drift is impossible.
+  */
   dashed = lib.filterAttrs (_: r: r.dashboard != null) config.nori.lanRoutes;
 
-  # Glance renders bookmark groups in the order given. Sort by the
-  # group's position in this list, falling back to alphabetical
-  # within a group via attrset key order. Consume first (most-clicked),
-  # Admin last.
+  /**
+    Glance renders bookmark groups in the order given. Sort by the
+    group's position in this list, falling back to alphabetical
+    within a group via attrset key order. Consume first (most-clicked),
+    Admin last.
+  */
   groupOrder = [
     "Consume"
     "Acquire"
@@ -48,27 +52,29 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.glance.enabled {
-    # Glance — family-facing landing page at home.nori.lan.
-    #
-    # Three-column layout (small | full | small) — desktop side-by-side,
-    # phone stacks as scrollable sections.
-    #
-    #   Status   (col 1, small)  observational — calendar, weather, host stats
-    #   Apps     (col 2, full)   navigation — grouped bookmarks for *.nori.lan
-    #   Read     (col 3, small)  consumption — Twitch live-state, RSS
-    #
-    # Cross-host stats (Pi) and service uptime monitoring intentionally
-    # NOT inline — Beszel (Pi-hosted) is the canonical stats plane (it
-    # survives station outages which a station-hosted widget cannot);
-    # Gatus is the canonical uptime monitor. Both reachable from the
-    # Admin bookmark group.
-    #
-    # Default port 8080 collides with Open WebUI; remapped to 8086.
-    #
-    # Icon prefixes (declared per-service): si:<slug> (Simple Icons) or
-    # sh:<slug> (selfh.st icons — has homelab brands Simple Icons doesn't).
-    #
-    # Glance docs: https://github.com/glanceapp/glance
+    /**
+      Glance — family-facing landing page at home.nori.lan.
+
+      Three-column layout (small | full | small) — desktop side-by-side,
+      phone stacks as scrollable sections.
+
+        Status   (col 1, small)  observational — calendar, weather, host stats
+        Apps     (col 2, full)   navigation — grouped bookmarks for *.nori.lan
+        Read     (col 3, small)  consumption — Twitch live-state, RSS
+
+      Cross-host stats (Pi) and service uptime monitoring intentionally
+      NOT inline — Beszel (Pi-hosted) is the canonical stats plane (it
+      survives station outages which a station-hosted widget cannot);
+      Gatus is the canonical uptime monitor. Both reachable from the
+      Admin bookmark group.
+
+      Default port 8080 collides with Open WebUI; remapped to 8086.
+
+      Icon prefixes (declared per-service): si:<slug> (Simple Icons) or
+      sh:<slug> (selfh.st icons — has homelab brands Simple Icons doesn't).
+
+      Glance docs: https://github.com/glanceapp/glance
+    */
     services.glance = {
       enable = true;
       openFirewall = false;
@@ -109,11 +115,13 @@ lib.mkMerge [
                 ];
               }
 
-              # ============== Col 2 — Apps / Services ==============
-              # Bookmarks-only — uptime status is owned by the dedicated
-              # Gatus instance (linked from the Admin bookmark group),
-              # not duplicated as an inline widget. Keeps the family-
-              # facing landing page uncluttered.
+              /*
+                ============== Col 2 — Apps / Services ==============
+                Bookmarks-only — uptime status is owned by the dedicated
+                Gatus instance (linked from the Admin bookmark group),
+                not duplicated as an inline widget. Keeps the family-
+                facing landing page uncluttered.
+              */
               {
                 size = "full";
                 widgets = [
@@ -131,11 +139,13 @@ lib.mkMerge [
               {
                 size = "small";
                 widgets = [
-                  # Twitch live-state — surfaces a thumbnail + viewer
-                  # count when channels are streaming, "offline" line
-                  # otherwise. Time-sensitive (state changes per stream
-                  # session), so this lives ABOVE the RSS feeds where
-                  # the eye lands first.
+                  /*
+                    Twitch live-state — surfaces a thumbnail + viewer
+                    count when channels are streaming, "offline" line
+                    otherwise. Time-sensitive (state changes per stream
+                    session), so this lives ABOVE the RSS feeds where
+                    the eye lands first.
+                  */
                   {
                     type = "twitch-channels";
                     channels = [

@@ -1,9 +1,11 @@
 _: {
-  # hyprlock only — the manual lock screen UI (Super+L). hypridle is
-  # deliberately not enabled: the workstation is sleep-friendly compute,
-  # not always-on, so the intended idle posture is "operator powers off
-  # when done, aurora WoLs it on demand" rather than auto-suspend/auto-
-  # lock. See machines/workstation/hardware.nix § Wake-on-LAN.
+  /*
+    hyprlock only — the manual lock screen UI (Super+L). hypridle is
+    deliberately not enabled: the workstation is sleep-friendly compute,
+    not always-on, so the intended idle posture is "operator powers off
+    when done, aurora WoLs it on demand" rather than auto-suspend/auto-
+    lock. See machines/workstation/hardware.nix § Wake-on-LAN.
+  */
   programs.hyprlock = {
     enable = true;
     settings = {

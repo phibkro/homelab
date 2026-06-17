@@ -5,34 +5,36 @@
   ...
 }:
 
-# filmder — TMDB-backed movie browser. Static Vite + React build.
-#
-# Internet-public exposure was prototyped via Tailscale Funnel (Phase
-# A1) and reverted — the LAN-only shape keeps tailnet-IS-the-perimeter
-# uncomplicated. To re-enable, see
-# `memory/reference/tailscale_funnel_implementation.md`.
-#
-# ── Build/deploy shape ─────────────────────────────────────────────
-# Build is an *activation-time systemd oneshot* rather than a Nix
-# flake build, because filmder's TMDB token is read at *build time*
-# by Vite and embedded into the JS bundle (`import.meta.env.VITE_*`).
-# Nix's hermetic build sandbox can't read /run/secrets/X, so the
-# clean `nix build → /nix/store/<hash>-filmder` path doesn't apply.
-# Activation-time build with the secret read in the script is the
-# pragmatic compromise.
-#
-# ── Trigger ──────────────────────────────────────────────────────
-# `filmder-build.service` is a oneshot but NOT in `wantedBy` — every
-# nixos-rebuild would otherwise re-run install + build, wasteful on
-# no-op rebuilds. Operator triggers via `just deploy-app filmder`.
-# The serve unit auto-starts; before first build it serves 404s until
-# the operator runs the deploy script once.
-#
-# ── Tooling: bun, not npm ────────────────────────────────────────
-# Drop-in replacement for `npm ci && npm run build`. Bonus side-effect:
-# bun handles native-module postinstall internally (no shelling to
-# `sh`), so the `bash`-on-systemd-path workaround that npm needed
-# (@swc/core spawns `sh` for platform detection) goes away.
+/**
+  filmder — TMDB-backed movie browser. Static Vite + React build.
+
+  Internet-public exposure was prototyped via Tailscale Funnel (Phase
+  A1) and reverted — the LAN-only shape keeps tailnet-IS-the-perimeter
+  uncomplicated. To re-enable, see
+  `memory/reference/tailscale_funnel_implementation.md`.
+
+  ── Build/deploy shape ─────────────────────────────────────────────
+  Build is an *activation-time systemd oneshot* rather than a Nix
+  flake build, because filmder's TMDB token is read at *build time*
+  by Vite and embedded into the JS bundle (`import.meta.env.VITE_*`).
+  Nix's hermetic build sandbox can't read /run/secrets/X, so the
+  clean `nix build → /nix/store/<hash>-filmder` path doesn't apply.
+  Activation-time build with the secret read in the script is the
+  pragmatic compromise.
+
+  ── Trigger ──────────────────────────────────────────────────────
+  `filmder-build.service` is a oneshot but NOT in `wantedBy` — every
+  nixos-rebuild would otherwise re-run install + build, wasteful on
+  no-op rebuilds. Operator triggers via `just deploy-app filmder`.
+  The serve unit auto-starts; before first build it serves 404s until
+  the operator runs the deploy script once.
+
+  ── Tooling: bun, not npm ────────────────────────────────────────
+  Drop-in replacement for `npm ci && npm run build`. Bonus side-effect:
+  bun handles native-module postinstall internally (no shelling to
+  `sh`), so the `bash`-on-systemd-path workaround that npm needed
+  (@swc/core spawns `sh` for platform detection) goes away.
+*/
 
 let
   inherit (config.sops) secrets;
@@ -46,9 +48,11 @@ lib.mkMerge [
       "stateless"
     ];
 
-    # `audience = "public"` here means tailnet-public (any tailnet device
-    # reaches it without an auth prompt). Distinct from internet-public
-    # — see header for the Tailscale-Funnel path if that's ever needed.
+    /**
+      `audience = "public"` here means tailnet-public (any tailnet device
+      reaches it without an auth prompt). Distinct from internet-public
+      — see header for the Tailscale-Funnel path if that's ever needed.
+    */
     nori.lanRoutes.filmder = {
       port = servePort;
       runsOn = "aurora";
@@ -114,7 +118,7 @@ lib.mkMerge [
 
         cd src
 
-        # 2. Skip rebuild if dist already matches HEAD. Force a fresh
+        # 2. Skip rebuild if dist already matches HEAD. Force a fresh # multi-line: ok
         #    build via:
         #      sudo rm /var/lib/filmder/.last-built-commit && just deploy-app filmder
         CURRENT_COMMIT=$(git rev-parse HEAD)
@@ -124,7 +128,7 @@ lib.mkMerge [
           exit 0
         fi
 
-        # 3. Inject the TMDB token. sops stores the raw v4 read-access
+        # 3. Inject the TMDB token. sops stores the raw v4 read-access # multi-line: ok
         #    JWT; filmder uses the env var as the full Authorization
         #    header value verbatim, so we prepend `Bearer ` here. Other
         #    consumers of `tmdb-token` get the raw value and format

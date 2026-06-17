@@ -4,18 +4,20 @@ let
   inherit (lib) mkOption types;
 in
 {
-  # nori.hosts — topology registry.
-  #
-  # Collapses cross-host IP literals (was 6+ grep hits for 100.x.y.z
-  # across service modules and probes) into one declaration site:
-  # `identityFor` in flake.nix. Cross-host refs read
-  # `config.nori.hosts.<n>.tailnetIp`. Enforced by the
-  # `forbidden-patterns` flake check (no `100.x.y.z` outside identityFor).
-  #
-  # `role` is typed (enum, not free-form) because it's the key for
-  # placement assertions in modules/infra/backup/default.nix (appliance ≠
-  # paths-backups; agent ≠ `nori.backups` at all). A new constraint
-  # = a new enum value, document below, add the assertion.
+  /**
+    nori.hosts — topology registry.
+
+    Collapses cross-host IP literals (was 6+ grep hits for 100.x.y.z
+    across service modules and probes) into one declaration site:
+    `identityFor` in flake.nix. Cross-host refs read
+    `config.nori.hosts.<n>.tailnetIp`. Enforced by the
+    `forbidden-patterns` flake check (no `100.x.y.z` outside identityFor).
+
+    `role` is typed (enum, not free-form) because it's the key for
+    placement assertions in modules/infra/backup/default.nix (appliance ≠
+    paths-backups; agent ≠ `nori.backups` at all). A new constraint
+    = a new enum value, document below, add the assertion.
+  */
 
   options.nori.hosts = mkOption {
     type = types.attrsOf (

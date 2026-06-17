@@ -5,16 +5,18 @@
   ...
 }:
 
-# NVIDIA GPU power + utilisation metrics → scraped by pi VictoriaMetrics.
-#
-# Wraps the upstream utkuozdemir/nvidia_gpu_exporter, which shells out
-# to nvidia-smi and exposes the result on :9835. Power draw lives in
-# `nvidia_smi_power_draw_watts` — the load-bearing series for the
-# electricity-bill audit.
-#
-# Conditional on `config.nori.gpu.nvidiaDevices != [ ]` — same gate
-# the immich + ollama services use, so only hosts that have NVIDIA
-# devices run the exporter. pi + pavilion silently skip.
+/**
+  NVIDIA GPU power + utilisation metrics → scraped by pi VictoriaMetrics.
+
+  Wraps the upstream utkuozdemir/nvidia_gpu_exporter, which shells out
+  to nvidia-smi and exposes the result on :9835. Power draw lives in
+  `nvidia_smi_power_draw_watts` — the load-bearing series for the
+  electricity-bill audit.
+
+  Conditional on `config.nori.gpu.nvidiaDevices != [ ]` — same gate
+  the immich + ollama services use, so only hosts that have NVIDIA
+  devices run the exporter. pi + pavilion silently skip.
+*/
 
 let
   tailnetIp = config.nori.hosts.${config.networking.hostName}.tailnetIp;

@@ -1,10 +1,12 @@
 { config, lib, ... }:
 
-# VictoriaMetrics — single-binary metrics database. Lives on the
-# appliance host (pi) for the same fate-sharing reason as VictoriaLogs:
-# observability infra shouldn't go down with the host being observed.
-# When workstation hangs, the metrics history that might explain why
-# has to live somewhere that's still up.
+/**
+  VictoriaMetrics — single-binary metrics database. Lives on the
+  appliance host (pi) for the same fate-sharing reason as VictoriaLogs:
+  observability infra shouldn't go down with the host being observed.
+  When workstation hangs, the metrics history that might explain why
+  has to live somewhere that's still up.
+*/
 
 lib.mkMerge [
   {
@@ -13,11 +15,13 @@ lib.mkMerge [
       "stateful"
     ];
 
-    # Caddy lanRoute on workstation: metrics.nori.lan is taken by
-    # Beszel's hub. Park the VM query UI under a function-name that
-    # signals "TSDB" rather than competing with Beszel's branding.
-    # Operator-only audience (tailnet auth perimeter) — the VM web UI
-    # is admin tooling, never a family-tier surface.
+    /*
+      Caddy lanRoute on workstation: metrics.nori.lan is taken by
+      Beszel's hub. Park the VM query UI under a function-name that
+      signals "TSDB" rather than competing with Beszel's branding.
+      Operator-only audience (tailnet auth perimeter) — the VM web UI
+      is admin tooling, never a family-tier surface.
+    */
     nori.lanRoutes.tsdb = {
       port = 8428;
       runsOn = "pi";
@@ -35,12 +39,14 @@ lib.mkMerge [
     services.victoriametrics = {
       enable = true;
       listenAddress = ":8428";
-      # `prometheusConfig` takes the structured attrset, NOT a YAML
-      # string or file path. The NixOS module serialises this to JSON
-      # (which VM also accepts) and passes the resulting path via
-      # -promscrape.config. Passing a path here would write the path
-      # STRING into the file, not the YAML content, and VM rejects it
-      # with "cannot unmarshal !!str into promscrape.Config".
+      /*
+        `prometheusConfig` takes the structured attrset, NOT a YAML
+        string or file path. The NixOS module serialises this to JSON
+        (which VM also accepts) and passes the resulting path via
+        -promscrape.config. Passing a path here would write the path
+        STRING into the file, not the YAML content, and VM rejects it
+        with "cannot unmarshal !!str into promscrape.Config".
+      */
       prometheusConfig = {
         global = {
           scrape_interval = "30s";
@@ -69,10 +75,12 @@ lib.mkMerge [
               }
             ];
           }
-          # System + per-process metrics from each host's node-exporter
-          # and process-exporter (modules/infra/observability/node-exporter.nix).
-          # Single static_configs block per kind, one label per target,
-          # so the {host=...} dimension carries the dispatch.
+          /*
+            System + per-process metrics from each host's node-exporter
+            and process-exporter (modules/infra/observability/node-exporter.nix).
+            Single static_configs block per kind, one label per target,
+            so the {host=...} dimension carries the dispatch.
+          */
           {
             job_name = "node";
             metrics_path = "/metrics";
@@ -111,9 +119,11 @@ lib.mkMerge [
               }
             ];
           }
-          # GPU power + utilisation from nvidia-gpu-exporter (modules/
-          # services/nvidia-gpu-exporter.nix). Only hosts with NVIDIA
-          # devices run the exporter; pavilion + pi silently absent.
+          /*
+            GPU power + utilisation from nvidia-gpu-exporter (modules/
+            services/nvidia-gpu-exporter.nix). Only hosts with NVIDIA
+            devices run the exporter; pavilion + pi silently absent.
+          */
           {
             job_name = "nvidia-gpu";
             metrics_path = "/metrics";

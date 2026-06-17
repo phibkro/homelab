@@ -37,51 +37,53 @@ in
     ./verify.nix
   ];
 
-  # nori.backups + nori.backupTargets — declarative restic backup model.
-  #
-  # Two-layer schema:
-  #
-  #   nori.backupTargets.<target>  — WHERE backups go (the destination
-  #                                  repo bases). Declared once at
-  #                                  host scope.
-  #   nori.backups.<job>           — WHAT to back up (paths, prepare
-  #                                  commands, retention). Declared per
-  #                                  service module alongside the
-  #                                  service definition.
-  #
-  # The generator fans out: each (job, target) pair becomes its own
-  # `services.restic.backups.<job>-<target>` and corresponding
-  # `restic-backups-<job>-<target>.service` systemd unit with its own
-  # OnFailure → notify@ wiring. That's deliberate — independent units
-  # mean independent failure modes. A wedged OneTouch USB controller
-  # (2026-06-04 incident) doesn't take down the mp510-local backups,
-  # and ntfy alerts disambiguate which target failed.
-  #
-  # Service modules look like:
-  #
-  #   nori.backups.sonarr = { include = [ "/var/lib/sonarr" ]; };
-  #
-  #   nori.backups.vaultwarden = {
-  #     include = [ "/var/lib/vaultwarden" "/var/backup/vaultwarden" ];
-  #     prepareCommand = ''
-  #       ${pkgs.sqlite}/bin/sqlite3 /var/lib/vaultwarden/db.sqlite3 \
-  #         ".backup '/var/backup/vaultwarden/db.sqlite3'"
-  #     '';
-  #   };
-  #
-  # By default every job writes to every declared target. Override
-  # selectively via `targets = [ "onetouch" ];` per job.
-  #
-  # Three pattern shapes from docs/reference/services.md § "Backup-correctness
-  # patterns" fit this schema:
-  #   * Pattern A (filesystem-only)   → include = [...];
-  #   * Pattern B (built-in dump)     → include lists the dump dir
-  #   * Pattern C2 (external dump)    → include + prepareCommand
-  #
-  # DynamicUser services: point `include` at /var/lib/private/<n>,
-  # not /var/lib/<n> (which is a symlink restic would store as a
-  # symlink → 0-byte snapshot). Enforced by the `badPaths` assertion
-  # below; see .claude/skills/gotcha-dynamicuser-statedirectory-symlink/
+  /**
+    nori.backups + nori.backupTargets — declarative restic backup model.
+
+    Two-layer schema:
+
+      nori.backupTargets.<target>  — WHERE backups go (the destination
+                                     repo bases). Declared once at
+                                     host scope.
+      nori.backups.<job>           — WHAT to back up (paths, prepare
+                                     commands, retention). Declared per
+                                     service module alongside the
+                                     service definition.
+
+    The generator fans out: each (job, target) pair becomes its own
+    `services.restic.backups.<job>-<target>` and corresponding
+    `restic-backups-<job>-<target>.service` systemd unit with its own
+    OnFailure → notify@ wiring. That's deliberate — independent units
+    mean independent failure modes. A wedged OneTouch USB controller
+    (2026-06-04 incident) doesn't take down the mp510-local backups,
+    and ntfy alerts disambiguate which target failed.
+
+    Service modules look like:
+
+      nori.backups.sonarr = { include = [ "/var/lib/sonarr" ]; };
+
+      nori.backups.vaultwarden = {
+        include = [ "/var/lib/vaultwarden" "/var/backup/vaultwarden" ];
+        prepareCommand = ''
+          ${pkgs.sqlite}/bin/sqlite3 /var/lib/vaultwarden/db.sqlite3 \
+            ".backup '/var/backup/vaultwarden/db.sqlite3'"
+        '';
+      };
+
+    By default every job writes to every declared target. Override
+    selectively via `targets = [ "onetouch" ];` per job.
+
+    Three pattern shapes from docs/reference/services.md § "Backup-correctness
+    patterns" fit this schema:
+      * Pattern A (filesystem-only)   → include = [...];
+      * Pattern B (built-in dump)     → include lists the dump dir
+      * Pattern C2 (external dump)    → include + prepareCommand
+
+    DynamicUser services: point `include` at /var/lib/private/<n>,
+    not /var/lib/<n> (which is a symlink restic would store as a
+    symlink → 0-byte snapshot). Enforced by the `badPaths` assertion
+    below; see .claude/skills/gotcha-dynamicuser-statedirectory-symlink/
+  */
 
   options.nori.backupTargets = mkOption {
     default = { };
@@ -217,7 +219,7 @@ in
           include = [ "/var/lib/vaultwarden" "/var/backup/vaultwarden" ];
           prepareCommand = "sqlite3 ... .backup ...";
           timer = "*-*-* 04:30:00";
-          # targets defaults to all declared nori.backupTargets;
+          # targets defaults to all declared nori.backupTargets; # multi-line: ok
           # override here to limit, e.g.:
           # targets = [ "onetouch" ];
         };
@@ -328,7 +330,7 @@ in
                 }
                 .${config.tier};
               defaultText = lib.literalExpression ''
-                # derived from `tier`:
+                # derived from `tier`: # multi-line: ok
                 # service       → 7d / 4w / 12m
                 # user          → 14d / 4w / 12m
                 # irreplaceable → 14d / 8w / 12m / 5y
@@ -337,11 +339,13 @@ in
             };
             targets = mkOption {
               type = types.nullOr (types.listOf types.str);
-              # Default = every declared nori.backupTargets entry. The
-              # default is read from the outer `config` argument because
-              # this submodule can't see the parent without `mkOptionDefault`
-              # gymnastics; the actual resolution happens in the generator
-              # below.
+              /*
+                Default = every declared nori.backupTargets entry. The
+                default is read from the outer `config` argument because
+                this submodule can't see the parent without `mkOptionDefault`
+                gymnastics; the actual resolution happens in the generator
+                below.
+              */
               default = null;
               defaultText = lib.literalExpression "lib.attrNames config.nori.backupTargets";
               description = ''
@@ -361,17 +365,21 @@ in
 
   config = mkIf (config.nori.backups != { }) (
     let
-      # Default targets to all declared destinations if a job didn't
-      # specify them — done here rather than in the submodule default
-      # so each entry sees the full top-level `nori.backupTargets`.
+      /*
+        Default targets to all declared destinations if a job didn't
+        specify them — done here rather than in the submodule default
+        so each entry sees the full top-level `nori.backupTargets`.
+      */
       effectiveTargets =
         cfg: if cfg.targets == null then lib.attrNames config.nori.backupTargets else cfg.targets;
 
       activeJobs = lib.filterAttrs (_: cfg: cfg.include != null) config.nori.backups;
 
-      # Flattened (jobName, target, cfg) triples — the cartesian
-      # product of jobs × their targets. Used by both the
-      # services.restic.backups generator and the OnFailure wiring.
+      /*
+        Flattened (jobName, target, cfg) triples — the cartesian
+        product of jobs × their targets. Used by both the
+        services.restic.backups generator and the OnFailure wiring.
+      */
       activePairs = lib.flatten (
         lib.mapAttrsToList (
           jobName: cfg:
@@ -381,14 +389,16 @@ in
         ) activeJobs
       );
 
-      # Services that use systemd DynamicUser=yes plus StateDirectory,
-      # where /var/lib/<n> is a SYMLINK to /var/lib/private/<n>. restic
-      # stores symlinks as symlinks; a backup pointing at /var/lib/<n>
-      # for one of these services produces an empty (3-file / 0-byte)
-      # snapshot. Derived from systemd unit configs — assertions run
-      # after the module fixed-point so config.systemd.services is
-      # fully resolved. Self-maintaining: a new DynamicUser service
-      # appears here automatically the moment its module enables it.
+      /*
+        Services that use systemd DynamicUser=yes plus StateDirectory,
+        where /var/lib/<n> is a SYMLINK to /var/lib/private/<n>. restic
+        stores symlinks as symlinks; a backup pointing at /var/lib/<n>
+        for one of these services produces an empty (3-file / 0-byte)
+        snapshot. Derived from systemd unit configs — assertions run
+        after the module fixed-point so config.systemd.services is
+        fully resolved. Self-maintaining: a new DynamicUser service
+        appears here automatically the moment its module enables it.
+      */
       dynamicUserServices = lib.attrNames (
         lib.filterAttrs (_: cfg: cfg.serviceConfig.DynamicUser or false) config.systemd.services
       );
@@ -403,17 +413,21 @@ in
         ) config.nori.backups
       );
 
-      # Host-aware placement check — appliance and agent both reject
-      # path-based backups, for different reasons (anti-write storage
-      # vs intentional impermanence; see role enum in hosts.nix). The
-      # structural fix for appliance is the planned local SSD — see
-      # modules/infra/backup/restic.nix L28.
+      /*
+        Host-aware placement check — appliance and agent both reject
+        path-based backups, for different reasons (anti-write storage
+        vs intentional impermanence; see role enum in hosts.nix). The
+        structural fix for appliance is the planned local SSD — see
+        modules/infra/backup/restic.nix L28.
+      */
       myRole = config.nori.hosts.${config.networking.hostName}.role or null;
       backupPaths = lib.filter (cfg: cfg.include != null) (lib.attrValues config.nori.backups);
 
-      # Validate that every per-job `targets` references a real
-      # declared target. Catches typos at eval time rather than at
-      # daily-3am restic failure time.
+      /*
+        Validate that every per-job `targets` references a real
+        declared target. Catches typos at eval time rather than at
+        daily-3am restic failure time.
+      */
       unknownTargets = lib.flatten (
         lib.mapAttrsToList (
           jobName: cfg:
@@ -456,12 +470,14 @@ in
           '';
         }
         {
-          # Appliance hosts have anti-write storage — local restic
-          # targets violate the posture. Remote targets (SFTP, REST,
-          # S3, B2, Azure) don't write to local disk; restic reads
-          # the source paths and streams to the remote. Anti-write
-          # holds. So the appliance-include-allowed condition is "all
-          # targets are remote" — local targets remain rejected.
+          /*
+            Appliance hosts have anti-write storage — local restic
+            targets violate the posture. Remote targets (SFTP, REST,
+            S3, B2, Azure) don't write to local disk; restic reads
+            the source paths and streams to the remote. Anti-write
+            holds. So the appliance-include-allowed condition is "all
+            targets are remote" — local targets remain rejected.
+          */
           assertion =
             let
               isRemoteRepo =
@@ -556,10 +572,12 @@ in
           '';
         }
         {
-          # No-targets vacuously satisfies the cartesian product but
-          # silently produces zero backup units, which would let a
-          # service slip through `every-service-has-backup-intent`
-          # without any actual backup running. Flag it.
+          /*
+            No-targets vacuously satisfies the cartesian product but
+            silently produces zero backup units, which would let a
+            service slip through `every-service-has-backup-intent`
+            without any actual backup running. Flag it.
+          */
           assertion = activeJobs == { } || config.nori.backupTargets != { };
           message = ''
             nori.backups has active jobs (with non-null `include`) but
@@ -597,24 +615,26 @@ in
         ) activePairs
       );
 
-      # Auto-generated OnFailure → notify@ wiring per (job, target).
-      # Mirror of the manual block this replaced in
-      # modules/infra/backup/restic.nix; without it a silent backup
-      # failure stays silent. Per-target means the ntfy message names
-      # exactly which target failed.
-      #
-      # Also injects a stale-lock self-healing ExecStartPre before the
-      # upstream pre-start. Without it, a prior crashed restic run
-      # leaves an exclusive lock that wedges every subsequent run:
-      # upstream's `cat config || init` chain dies because cat-config
-      # needs a read lock (refused) and init errors on "config exists",
-      # so the unit's built-in `unlock` ExecStart (later in the chain)
-      # is never reached. mkBefore puts our unlock ahead of upstream's
-      # pre-start; default `restic unlock` only removes locks older
-      # than 30min (stale-detection), so an actively-running concurrent
-      # restic is unaffected. See memory restic-stale-lock-recovery
-      # for the recovery procedure if this isn't enough; upstream
-      # nixpkgs fix tracked separately.
+      /*
+        Auto-generated OnFailure → notify@ wiring per (job, target).
+        Mirror of the manual block this replaced in
+        modules/infra/backup/restic.nix; without it a silent backup
+        failure stays silent. Per-target means the ntfy message names
+        exactly which target failed.
+
+        Also injects a stale-lock self-healing ExecStartPre before the
+        upstream pre-start. Without it, a prior crashed restic run
+        leaves an exclusive lock that wedges every subsequent run:
+        upstream's `cat config || init` chain dies because cat-config
+        needs a read lock (refused) and init errors on "config exists",
+        so the unit's built-in `unlock` ExecStart (later in the chain)
+        is never reached. mkBefore puts our unlock ahead of upstream's
+        pre-start; default `restic unlock` only removes locks older
+        than 30min (stale-detection), so an actively-running concurrent
+        restic is unaffected. See memory restic-stale-lock-recovery
+        for the recovery procedure if this isn't enough; upstream
+        nixpkgs fix tracked separately.
+      */
       systemd.services = lib.listToAttrs (
         map (
           { jobName, target, ... }:

@@ -12,9 +12,11 @@ lib.mkMerge [
       "alerting"
     ];
 
-    # Caddy-gated so the Pi (no Caddy, runs the ntfy server itself)
-    # doesn't register a route pointing at its own backend. Host coupling
-    # lives in nori.hosts (see modules/infra/hosts.nix).
+    /*
+      Caddy-gated so the Pi (no Caddy, runs the ntfy server itself)
+      doesn't register a route pointing at its own backend. Host coupling
+      lives in nori.hosts (see modules/infra/hosts.nix).
+    */
     nori.lanRoutes = lib.mkIf config.services.caddy.enable {
       alert = {
         port = 8081;
@@ -25,19 +27,21 @@ lib.mkMerge [
     };
   }
   (lib.mkIf config.nori.services.ntfy-notify.enabled {
-    # notify@ — OnFailure handler used by any unit that should alert on
-    # failure (restic backups, btrbk snapshots, …). Imported by every host
-    # so each host's own units can wire `OnFailure = "notify@%n.service"`.
-    #
-    # Posts directly to ntfy.sh (public) — that's where the user's mobile
-    # app is already subscribed; the alert path through ntfy.sh stays
-    # alive even when the local ntfy on Pi is down. The local server in
-    # ./server.nix is for future internal-only alerts (services that
-    # shouldn't traverse public internet), not used by this template.
-    #
-    # Test from any tailnet host (after the secret is in place):
-    #   curl -H "Title: test" -d "hello" \
-    #     "https://ntfy.sh/$(cat /run/secrets/ntfy-channel)"
+    /**
+      notify@ — OnFailure handler used by any unit that should alert on
+      failure (restic backups, btrbk snapshots, …). Imported by every host
+      so each host's own units can wire `OnFailure = "notify@%n.service"`.
+
+      Posts directly to ntfy.sh (public) — that's where the user's mobile
+      app is already subscribed; the alert path through ntfy.sh stays
+      alive even when the local ntfy on Pi is down. The local server in
+      ./server.nix is for future internal-only alerts (services that
+      shouldn't traverse public internet), not used by this template.
+
+      Test from any tailnet host (after the secret is in place):
+        curl -H "Title: test" -d "hello" \
+          "https://ntfy.sh/$(cat /run/secrets/ntfy-channel)"
+    */
 
     sops.secrets.ntfy-channel = {
       mode = "0444";
@@ -49,7 +53,7 @@ lib.mkMerge [
       script = ''
               UNIT="$1"
 
-              # Wait through the system-wide restart cycle before alerting.
+              # Wait through the system-wide restart cycle before alerting. # multi-line: ok
               # modules/infra/restart-policy.nix sets RestartSec=1s with
               # backoff ramping to 5min over 9 steps, then gives up at
               # StartLimitBurst=15 in 1h. Most transient failures self-heal in
