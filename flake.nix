@@ -174,7 +174,6 @@
       */
       machinesModule = import ./modules/machines {
         inherit lib inputs;
-        machinesPath = ./modules/machines;
       };
 
       /*

@@ -1,52 +1,47 @@
 {
   lib,
   inputs,
-  machinesPath,
 }:
 
 /**
-  Machine-enumeration + `nixosConfigurations` factory.
+  Machine registry + `nixosConfigurations` factory.
 
-  Reads `machinesPath` (`./modules/machines/`) to derive the list of
-  machines from the filesystem. NixOS machines are those with a
-  `default.nix`; standalone home-manager machines (the Mac) only
-  have `home.nix`.
+  Two explicit maps form the single source of truth:
 
-  Identity metadata (tailnet/lan IPs, role, hardware, primaryJob) is
-  indexed by NixOS host name in `identityFor` below — non-NixOS
-  machines aren't in the registry because nothing in the NixOS
-  module system references them. The `genAttrs` lookup forces every
-  NixOS host folder to have an identity entry — a folder without
-  identity fails eval; an identity entry without a folder is
-  silently dead code (caught by code review).
+   - `nixosMachines`     — NixOS hosts the flake builds, name → folder path
+   - `standaloneHomes`   — non-NixOS machines (Mac) that ride home-manager
+                           standalone, name → home.nix path
+   - `identityFor`       — per-host identity facts (tailnet/lan IPs, role,
+                           hardware, primaryJob); keys MUST equal those of
+                           `nixosMachines`. Asserted eval-time below.
+
+  Adding a NixOS host: add the entry to BOTH `nixosMachines` AND
+  `identityFor`. The key-set assertion fails eval if one is missing,
+  preserving the "no parallel identifier to keep in sync" property the
+  old readDir-driven enumeration had — but explicit instead of magic.
 
   Schema: `modules/infra/hosts.nix`.
 
   Consumers (cross-host refs):
 
    - `modules/infra/networking/default.nix`     — `nori.lanIp` default
-   - `modules/infra/backup/default.nix`  — host-aware appliance assertion
+   - `modules/infra/backup/default.nix`         — host-aware appliance assertion
    - `modules/infra/observability/beszel/agent.nix` — metrics route backend
    - `modules/infra/observability/ntfy/notify.nix`  — alert route backend
-   - `modules/machines/workstation/default.nix`  — Pi probe URLs
-
-  Topology change = edit `identityFor`, redeploy. Adding a NixOS
-  host = `mkdir machines/<n> && touch machines/<n>/{default,hardware}.nix`
-  plus an `identityFor` entry — eval errors on either omission.
-  Adding a non-NixOS machine = `mkdir machines/<n> && touch
-  modules/machines/<n>/home.nix` (no `default.nix`; not in `identityFor`).
+   - `modules/machines/workstation/default.nix` — Pi probe URLs
 */
 
 let
-  machineNames = lib.attrNames (
-    lib.filterAttrs (_: t: t == "directory") (builtins.readDir machinesPath)
-  );
+  nixosMachines = {
+    workstation = ./workstation;
+    pi = ./pi;
+    pavilion = ./pavilion;
+    aurora = ./aurora;
+  };
 
-  # NixOS machines are those with a default.nix. Drives both
-  # nixosConfigurations enumeration and the host registry.
-  nixosMachineNames = lib.filter (
-    n: builtins.pathExists (machinesPath + "/${n}/default.nix")
-  ) machineNames;
+  standaloneHomes = {
+    macbook = ./macbook/home.nix;
+  };
 
   identityFor = {
     workstation = {
@@ -127,46 +122,38 @@ let
     };
   };
 
-  hostRegistry = lib.genAttrs nixosMachineNames (n: identityFor.${n});
+  /*
+    Key-set assertion: every key in nixosMachines must have a matching
+    identityFor entry and vice versa. Replaces the readDir-driven
+    eval-fail behaviour with an explicit, single-line check.
+  */
+  machineKeys = lib.attrNames nixosMachines;
+  identityKeys = lib.attrNames identityFor;
+  missingIdentity = lib.subtractLists identityKeys machineKeys;
+  missingMachine = lib.subtractLists machineKeys identityKeys;
+
+  hostRegistry = lib.mapAttrs (_: id: id) identityFor;
 
   /**
-    Build a `nixosSystem` for a host folder.
+    Build a `nixosSystem` for a host entry.
 
     Wraps `lib.nixosSystem` with three injections every host needs:
 
      - `specialArgs.inputs` so machine modules can reach flake
        inputs without re-importing.
-     - `networking.hostName` set from the folder name — the
-       folder is the SoT; registry keys, hostnames, and module
-       imports all derive from the same string. No parallel
-       identifier to keep in sync.
+     - `networking.hostName` set from the registry key — keys,
+       hostnames, and module imports all derive from the same
+       string. No parallel identifier to keep in sync.
      - `nori.hosts = hostRegistry` so cross-host references
        (`config.nori.hosts.<other>.tailnetIp`) resolve on every
        host's eval.
-
-    Called once per entry in `nixosMachineNames` via `genAttrs`;
-    not exported for external consumers.
-
-    # Inputs
-
-    `name`
-
-    : Host folder name under `machinesPath`. Must exist as a
-      directory with a `default.nix`. Drives both the module
-      import path and `config.networking.hostName`.
-
-    # Type
-
-    ```
-    mkHost :: String -> nixosSystem
-    ```
   */
   mkHost =
-    name:
+    name: path:
     lib.nixosSystem {
       specialArgs = { inherit inputs; };
       modules = [
-        (machinesPath + "/${name}")
+        path
         {
           config.networking.hostName = name;
           config.nori.hosts = hostRegistry;
@@ -174,6 +161,15 @@ let
       ];
     };
 in
+assert (
+  lib.assertMsg (missingIdentity == [ ])
+    "modules/machines/default.nix: nixosMachines has key(s) ${toString missingIdentity} with no identityFor entry"
+);
+assert (
+  lib.assertMsg (missingMachine == [ ])
+    "modules/machines/default.nix: identityFor has key(s) ${toString missingMachine} with no nixosMachines entry"
+);
 {
-  nixosConfigurations = lib.genAttrs nixosMachineNames mkHost;
+  nixosConfigurations = lib.mapAttrs mkHost nixosMachines;
+  inherit standaloneHomes;
 }
