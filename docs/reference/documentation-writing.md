@@ -118,7 +118,7 @@ Format precedence (lifted from RFC 145):
 | Context | Mechanism |
 |---|---|
 | `mkOption { ... }` declaration | `description = ''...''` |
-| Lib function in `modules/`, `flake.nix`, or `modules/lint/default.nix` | `/** ... */` |
+| Lib function in `modules/`, `flake.nix`, or `lint/default.nix` | `/** ... */` |
 | Let-binding with non-obvious purpose (e.g. our `lintLib`, `lintRules`, `baseNonServicePatterns`) | `/** ... */` |
 | Attribute set entry that's effectively a function or registry | `/** ... */` |
 | Inline implementation detail not part of the public surface | standard `#` comment |

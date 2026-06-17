@@ -131,7 +131,7 @@ let
     it defines, the same way a grammar file isn't subject to its own
     grammar.
   */
-  selfExcludeChain = " | grep -vE '^modules/lint/'";
+  selfExcludeChain = " | grep -vE '^lint/'";
 
   lowerRule =
     name: rule:
@@ -196,7 +196,7 @@ let
     in
     ''
       # ── ${name}${tagAnnotation} ────────────────────────────────
-      matches_${slug}=$(grep -rEn ${lib.escapeShellArg rule.pattern} ${scopePaths}${selfExcludeChain}${fileExcludeChain}${patternExcludeChain} || true)
+      matches_${slug}=$(rg --no-config --no-ignore --line-number --no-heading -e ${lib.escapeShellArg rule.pattern} ${scopePaths}${selfExcludeChain}${fileExcludeChain}${patternExcludeChain} || true)
       if [ -n "$matches_${slug}" ]; then
         echo
         echo "$matches_${slug}"
@@ -218,6 +218,7 @@ in
         nativeBuildInputs = [
           pkgs.bash
           pkgs.gnugrep
+          pkgs.ripgrep
         ];
       }
       ''

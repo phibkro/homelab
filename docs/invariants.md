@@ -95,7 +95,7 @@ Live examples in `modules/infra/networking/default.nix` (port uniqueness, name r
 
 Derivations under `checks.${system}.<n>` in `flake.nix`. Arbitrary shell, runs grep / find / scripts over the source tree. Use for repo-wide rules that don't live inside the module system.
 
-For grep-shaped rules, the canonical home is `nori.lint` — a Reader (rule registry as data) + Writer (lowering dispatcher) split, with rules declared in `modules/lint/rules.toml`:
+For grep-shaped rules, the canonical home is `nori.lint` — a Reader (rule registry as data) + Writer (lowering dispatcher) split, with rules declared in `lint/rules.toml`:
 
 ```toml
 [rules.<name>]
@@ -109,7 +109,7 @@ message = '''
 Operator-facing explanation when the rule fires.'''
 ```
 
-Dispatcher lives at `modules/lint/default.nix`; wired in `flake.nix` via `lintLib.makeLintCheck { rules = builtins.fromTOML (builtins.readFile ./modules/lint/rules.toml).rules; ... }`. Adding a rule = one TOML block.
+Dispatcher lives at `lint/default.nix`; wired in `flake.nix` via `lintLib.makeLintCheck { rules = builtins.fromTOML (builtins.readFile ./lint/rules.toml).rules; ... }`. Adding a rule = one TOML block.
 
 Live examples in the `lint` check: `pbkdf2` (no inline OIDC hashes), `caddyVirtualHosts` + `blockyCustomDNS` (single-source via `nori.lanRoutes`), `caddyAcmeInternal` + `gatusNtfyUrl` (gotcha patterns), `tailnetIp` (no `100.x.y.z` literals outside `identityFor`), `noriLan` (legacy alias migration), `migrationPhase` (no decaying phase tokens), `diskoUsesById` (NVMe safety). Plus standalone derivations for non-grep rules: `every-service-has-fs-hardening`, `every-service-has-backup-intent`, `routing-coherence`, `doc-coherence`, `path-coherence`.
 

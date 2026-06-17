@@ -501,13 +501,13 @@
 
           /*
             nori.lint dispatcher — lowers the TOML rule registry to one
-            `grep`-shaped flake-check derivation. See modules/lint/
+            `grep`-shaped flake-check derivation. See lint/
             default.nix for the schema + the data-vs-control-plane
             rationale (rules are pure data in TOML; the dispatcher is
             the program that consumes them).
           */
-          lintLib = import ./modules/lint { inherit lib pkgs; };
-          lintRules = (builtins.fromTOML (builtins.readFile ./modules/lint/rules.toml)).rules;
+          lintLib = import ./lint { inherit lib pkgs; };
+          lintRules = (builtins.fromTOML (builtins.readFile ./lint/rules.toml)).rules;
         in
         {
           # cd into the source so statix picks up `statix.toml` (looked up
@@ -537,13 +537,13 @@
           /*
             Repo-convention enforcement (Reader+Writer applied to lint).
 
-            Rules live as data in modules/lint/rules.toml (the Reader);
-            modules/lint/default.nix is the dispatcher that lowers the
+            Rules live as data in lint/rules.toml (the Reader);
+            lint/default.nix is the dispatcher that lowers the
             rule registry to a single bash check (the Writer). Adding a
             rule = one `[rules.<name>]` block in the TOML.
 
             Replaces the prior `forbidden-patterns` flake check that
-            carried 9 rules in modules/lint/checks/forbidden-patterns.sh.
+            carried 9 rules in lint/checks/forbidden-patterns.sh.
             Behavior parity verified: same patterns, same scopes, same
             allowlists.
           */
@@ -553,7 +553,7 @@
           };
 
           /**
-            Doc-code coherence. Body in modules/lint/checks/doc-coherence.sh.
+            Doc-code coherence. Body in lint/checks/doc-coherence.sh.
             Catches the drift class where a host (or other named module)
             is live in the repo, but a doc still calls it deferred /
             planned / not-yet-done.
@@ -568,12 +568,12 @@
                 ];
               }
               ''
-                bash ${./modules/lint/checks/doc-coherence.sh} ${./.}
+                bash ${./lint/checks/doc-coherence.sh} ${./.}
                 touch $out
               '';
 
           /**
-            Path-string coherence. Body in modules/lint/checks/path-coherence.sh.
+            Path-string coherence. Body in lint/checks/path-coherence.sh.
             Catches comment-narrative refs that name files which have
             moved, renamed, or been deleted. Literal paths must exist;
             paths with `<...>` placeholders must glob-match at least
@@ -590,7 +590,7 @@
                 ];
               }
               ''
-                bash ${./modules/lint/checks/path-coherence.sh} ${./.}
+                bash ${./lint/checks/path-coherence.sh} ${./.}
                 touch $out
               '';
 
@@ -614,13 +614,13 @@
                 ];
               }
               ''
-                bash ${./modules/lint/checks/multi-line-comments.sh} ${./.}
+                bash ${./lint/checks/multi-line-comments.sh} ${./.}
                 touch $out
               '';
 
           /**
             Routing table ↔ filesystem coherence. Body in
-            modules/lint/checks/routing-coherence.sh. Enforces that CLAUDE.md
+            lint/checks/routing-coherence.sh. Enforces that CLAUDE.md
             routes only to existing docs, every L2 doc is routed, and
             every L1 doc is both present + routed.
           */
@@ -635,7 +635,7 @@
                 ];
               }
               ''
-                bash ${./modules/lint/checks/routing-coherence.sh} ${./.}
+                bash ${./lint/checks/routing-coherence.sh} ${./.}
                 touch $out
               '';
 
