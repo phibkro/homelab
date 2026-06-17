@@ -46,7 +46,7 @@ attribute set of (submodule)
 ```
 
 *Declared by:*
- - [/nix/store/zzsd0l5p9d20ma7g8nfv0pd4h6yykfx5-source/modules/infra/hosts\.nix](file:///nix/store/zzsd0l5p9d20ma7g8nfv0pd4h6yykfx5-source/modules/infra/hosts.nix)
+ - [/nix/store/\[^/]\*-source/modules/infra/hosts\.nix](file:///nix/store/[^/]*-source/modules/infra/hosts.nix)
 
 
 
@@ -66,7 +66,7 @@ Theme: cold / polar / penguin\.
 string
 
 *Declared by:*
- - [/nix/store/zzsd0l5p9d20ma7g8nfv0pd4h6yykfx5-source/modules/infra/hosts\.nix](file:///nix/store/zzsd0l5p9d20ma7g8nfv0pd4h6yykfx5-source/modules/infra/hosts.nix)
+ - [/nix/store/\[^/]\*-source/modules/infra/hosts\.nix](file:///nix/store/[^/]*-source/modules/infra/hosts.nix)
 
 
 
@@ -89,7 +89,7 @@ header comments (anti-write posture, impermanence, etc\.)\.
 string
 
 *Declared by:*
- - [/nix/store/zzsd0l5p9d20ma7g8nfv0pd4h6yykfx5-source/modules/infra/hosts\.nix](file:///nix/store/zzsd0l5p9d20ma7g8nfv0pd4h6yykfx5-source/modules/infra/hosts.nix)
+ - [/nix/store/\[^/]\*-source/modules/infra/hosts\.nix](file:///nix/store/[^/]*-source/modules/infra/hosts.nix)
 
 
 
@@ -116,7 +116,7 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/zzsd0l5p9d20ma7g8nfv0pd4h6yykfx5-source/modules/infra/hosts\.nix](file:///nix/store/zzsd0l5p9d20ma7g8nfv0pd4h6yykfx5-source/modules/infra/hosts.nix)
+ - [/nix/store/\[^/]\*-source/modules/infra/hosts\.nix](file:///nix/store/[^/]*-source/modules/infra/hosts.nix)
 
 
 
@@ -141,7 +141,7 @@ topology\.md no longer carries it\.
 string
 
 *Declared by:*
- - [/nix/store/zzsd0l5p9d20ma7g8nfv0pd4h6yykfx5-source/modules/infra/hosts\.nix](file:///nix/store/zzsd0l5p9d20ma7g8nfv0pd4h6yykfx5-source/modules/infra/hosts.nix)
+ - [/nix/store/\[^/]\*-source/modules/infra/hosts\.nix](file:///nix/store/[^/]*-source/modules/infra/hosts.nix)
 
 
 
@@ -183,7 +183,7 @@ and add the assertions that key off it\.
 one of “workhorse”, “appliance”, “agent”
 
 *Declared by:*
- - [/nix/store/zzsd0l5p9d20ma7g8nfv0pd4h6yykfx5-source/modules/infra/hosts\.nix](file:///nix/store/zzsd0l5p9d20ma7g8nfv0pd4h6yykfx5-source/modules/infra/hosts.nix)
+ - [/nix/store/\[^/]\*-source/modules/infra/hosts\.nix](file:///nix/store/[^/]*-source/modules/infra/hosts.nix)
 
 
 
@@ -204,7 +204,7 @@ full story (pavilion: ` agent `)\.
 string
 
 *Declared by:*
- - [/nix/store/zzsd0l5p9d20ma7g8nfv0pd4h6yykfx5-source/modules/infra/hosts\.nix](file:///nix/store/zzsd0l5p9d20ma7g8nfv0pd4h6yykfx5-source/modules/infra/hosts.nix)
+ - [/nix/store/\[^/]\*-source/modules/infra/hosts\.nix](file:///nix/store/[^/]*-source/modules/infra/hosts.nix)
 
 
 
@@ -222,6 +222,6 @@ cross-host references in this flake\.
 string
 
 *Declared by:*
- - [/nix/store/zzsd0l5p9d20ma7g8nfv0pd4h6yykfx5-source/modules/infra/hosts\.nix](file:///nix/store/zzsd0l5p9d20ma7g8nfv0pd4h6yykfx5-source/modules/infra/hosts.nix)
+ - [/nix/store/\[^/]\*-source/modules/infra/hosts\.nix](file:///nix/store/[^/]*-source/modules/infra/hosts.nix)
 
 

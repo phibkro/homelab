@@ -88,7 +88,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -133,7 +133,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -172,7 +172,7 @@ attribute set of (submodule)
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -221,7 +221,7 @@ one of “operator”, “family”, “public”
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -255,7 +255,7 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -282,7 +282,7 @@ false
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -300,7 +300,7 @@ server-rendered”), not feature-list\.
 string
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -318,7 +318,7 @@ first (most-clicked), Admin last\.
 one of “Consume”, “Acquire”, “Personal”, “Projects”, “Admin”
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -338,7 +338,7 @@ Calibre-web, Komga, Beszel, …)
 string
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -357,7 +357,7 @@ as a parenthetical for the monitor widget —
 string
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -385,7 +385,7 @@ false
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -435,7 +435,7 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -466,7 +466,7 @@ list of string
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -493,7 +493,7 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -523,7 +523,7 @@ list of string
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -549,7 +549,7 @@ signed integer
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -574,7 +574,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -598,7 +598,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -634,7 +634,7 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -658,7 +658,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -674,7 +674,7 @@ Display name shown on Authelia consent screen\.
 string
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -694,7 +694,7 @@ Vaultwarden: /identity/connect/oidc-signin
 string
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -725,7 +725,7 @@ list of string
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -753,7 +753,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -769,7 +769,7 @@ Backend TCP port (validated 0-65535 at eval time)\.
 16 bit unsigned integer; between 0 and 65535 (both inclusive)
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -819,7 +819,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -843,7 +843,7 @@ one of “http”, “https”
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -882,7 +882,7 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 
 
@@ -923,6 +923,6 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking](file:///nix/store/r950bb0ax0fmflxgx9qjhi12ar3i4b5y-source/modules/infra/networking)
+ - [/nix/store/\[^/]\*-source/modules/infra/networking](file:///nix/store/[^/]*-source/modules/infra/networking)
 
 

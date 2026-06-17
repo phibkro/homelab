@@ -265,9 +265,31 @@
                   second = if builtins.length loc >= 2 then builtins.elemAt loc 1 else "";
                 in
                 prefix == "nori" && (second == "lanRoutes" || second == "domain" || second == "lanIp");
+              # Rewrite per-option "Declared by" paths to repo-relative so
+              # the artifact is byte-stable across builds (the docs-fresh
+              # check would otherwise fire on every commit because the
+              # store path's hash differs each rebuild).
+              stripStorePrefix =
+                p:
+                let
+                  s = toString p;
+                  pattern = "/nix/store/[^/]*-source/";
+                in
+                if lib.hasPrefix "/nix/store/" s then
+                  let
+                    m = builtins.match "/nix/store/[^/]*-source/(.*)" s;
+                  in
+                  if m == null then s else "${pattern}" + builtins.head m
+                else
+                  s;
               optionsDoc = pkgs.nixosOptionsDoc {
                 inherit (eval) options;
-                transformOptions = opt: if isLanRouteOption opt then opt else opt // { visible = false; };
+                transformOptions =
+                  opt:
+                  let
+                    base = if isLanRouteOption opt then opt else opt // { visible = false; };
+                  in
+                  base // { declarations = map stripStorePrefix base.declarations; };
                 documentType = "none";
               };
               moduleDoc = mkNixdocSection {
@@ -363,9 +385,29 @@
                 in
                 prefix == "nori" && second == "hosts";
 
+              # See docs-lan-route above for why we strip the store
+              # hash from "Declared by" paths.
+              stripStorePrefix =
+                p:
+                let
+                  s = toString p;
+                  pattern = "/nix/store/[^/]*-source/";
+                in
+                if lib.hasPrefix "/nix/store/" s then
+                  let
+                    m = builtins.match "/nix/store/[^/]*-source/(.*)" s;
+                  in
+                  if m == null then s else "${pattern}" + builtins.head m
+                else
+                  s;
               optionsDoc = pkgs.nixosOptionsDoc {
                 inherit (eval) options;
-                transformOptions = opt: if isHostsOption opt then opt else opt // { visible = false; };
+                transformOptions =
+                  opt:
+                  let
+                    base = if isHostsOption opt then opt else opt // { visible = false; };
+                  in
+                  base // { declarations = map stripStorePrefix base.declarations; };
                 documentType = "none";
               };
             in
@@ -637,6 +679,56 @@
                   echo "Set binds=[...] for writable paths, readOnlyBinds=[...] for"
                   echo "read-only, protectHome=null to leave upstream's value alone."
                   echo "See modules/infra/capabilities/default.nix for the schema."
+                  exit 1
+                fi
+              '';
+
+          # Docs-fresh — committed generated artifacts must match
+          # what the generators would produce right now. Catches the
+          # drift class where a schema change lands but the docs/
+          # reference/*.md artifact isn't regenerated + committed.
+          # Each diff is byte-equal; a single byte difference fails
+          # the build with the diff inline.
+          docs-fresh =
+            pkgs.runCommandLocal "docs-fresh"
+              {
+                nativeBuildInputs = [ pkgs.diffutils ];
+              }
+              ''
+                fail=0
+                check() {
+                  local name=$1 committed=$2 generated=$3
+                  if ! diff -q "$committed" "$generated" > /dev/null 2>&1; then
+                    echo "✗ $name: committed artifact differs from generator output"
+                    echo "  committed:  $committed"
+                    echo "  generator:  $generated"
+                    echo "  diff:"
+                    diff "$committed" "$generated" | head -20 | sed 's/^/    /'
+                    fail=1
+                  fi
+                }
+                check "docs-lan-route" \
+                  ${./docs/reference/lan-route-options.md} \
+                  ${inputs.self.packages.${system}.docs-lan-route}
+                check "docs-topology" \
+                  ${./docs/reference/topology-generated.md} \
+                  ${inputs.self.packages.${system}.docs-topology}
+                check "docs-dev" \
+                  ${./docs/reference/dev-shell-library.md} \
+                  ${inputs.self.packages.${system}.docs-dev}
+
+                if [ $fail -eq 0 ]; then
+                  touch $out
+                else
+                  echo
+                  echo "Generated docs drifted. Regenerate + commit:"
+                  echo "  nix build .#docs-lan-route -o /tmp/r && \\"
+                  echo "    cp /tmp/r docs/reference/lan-route-options.md"
+                  echo "  nix build .#docs-topology  -o /tmp/r && \\"
+                  echo "    cp /tmp/r docs/reference/topology-generated.md"
+                  echo "  nix build .#docs-dev       -o /tmp/r && \\"
+                  echo "    cp /tmp/r docs/reference/dev-shell-library.md"
+                  echo "  chmod +w docs/reference/{lan-route-options,topology-generated,dev-shell-library}.md"
                   exit 1
                 fi
               '';
