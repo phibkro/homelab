@@ -1,6 +1,6 @@
 ---
 date: 2026-06-17
-status: spec — not in execution
+status: EXECUTED — Phases 6a + 6b landed 2026-06-17
 seed: operator framing 2026-06-17 ("move modules/common to modules/home and modules/desktop to modules/machines under base/. is that reasonable?"); refined after scope-distinction pushback.
 summary: Consolidate NixOS-system-scope concerns under `modules/machines/` so the tree's TOP-LEVEL CUT mirrors the Nix module SCOPE (system vs home-manager). Today `modules/common/` and `modules/desktop/` are NixOS-system-scope but live at the top level alongside the home-manager-scope `modules/home/`; the conflation forces readers to know each subtree's scope by reading its content. Proposal: move `modules/common/` → `modules/machines/base/`, `modules/desktop/` → `modules/machines/desktop/`. After: `modules/machines/` IS the NixOS-system tree; `modules/home/` IS the home-manager tree; the scope distinction is structural.
 ---
