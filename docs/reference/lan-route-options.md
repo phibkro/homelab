@@ -38,7 +38,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -83,7 +83,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -122,7 +122,7 @@ attribute set of (submodule)
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -171,7 +171,7 @@ one of “operator”, “family”, “public”
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -205,7 +205,7 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -232,7 +232,7 @@ false
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -250,7 +250,7 @@ server-rendered”), not feature-list\.
 string
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -268,7 +268,7 @@ first (most-clicked), Admin last\.
 one of “Consume”, “Acquire”, “Personal”, “Projects”, “Admin”
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -288,7 +288,7 @@ Calibre-web, Komga, Beszel, …)
 string
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -307,7 +307,7 @@ as a parenthetical for the monitor widget —
 string
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -335,7 +335,7 @@ false
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -385,7 +385,7 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -416,7 +416,7 @@ list of string
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -443,7 +443,7 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -473,7 +473,7 @@ list of string
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -499,7 +499,7 @@ signed integer
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -524,7 +524,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -548,7 +548,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -584,7 +584,7 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -608,7 +608,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -624,7 +624,7 @@ Display name shown on Authelia consent screen\.
 string
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -644,7 +644,7 @@ Vaultwarden: /identity/connect/oidc-signin
 string
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -675,7 +675,7 @@ list of string
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -703,7 +703,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -719,7 +719,7 @@ Backend TCP port (validated 0-65535 at eval time)\.
 16 bit unsigned integer; between 0 and 65535 (both inclusive)
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -744,6 +744,17 @@ address per host\. Encodes the pi-central entry plane
 shape: pi’s Caddy serves every route; backends live on
 whichever host fits (workhorse vs always-on vault)\.
 
+Why location-policy is coupled with route registration
+here, not extracted: location is implicit-from-import-site
+for host-confined services; it becomes explicit only when
+a service crosses machines, which IS the act of declaring
+an HTTP route\. The three concerns (service / route /
+location) degenerate at host-local and unify at
+cross-machine\. See
+` docs/reports/2026-06-17-runson-coupling-analysis.md `
+for the full analysis + algebraic forward-extension
+(failover / loadbalance / sequential)\.
+
 
 
 *Type:*
@@ -758,7 +769,7 @@ string
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -782,7 +793,7 @@ one of “http”, “https”
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -821,7 +832,7 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 
 
@@ -862,6 +873,6 @@ null
 ```
 
 *Declared by:*
- - [/nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route\.nix](file:///nix/store/qsncrfih6ras2nafkx0l8jijm0vqx1vm-source/modules/effects/lan-route.nix)
+ - [/nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route\.nix](file:///nix/store/ihyqnddx7wyacsjxqparp5djsa0r0v5a-source/modules/effects/lan-route.nix)
 
 

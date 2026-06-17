@@ -146,6 +146,17 @@ in
               address per host. Encodes the pi-central entry plane
               shape: pi's Caddy serves every route; backends live on
               whichever host fits (workhorse vs always-on vault).
+
+              Why location-policy is coupled with route registration
+              here, not extracted: location is implicit-from-import-site
+              for host-confined services; it becomes explicit only when
+              a service crosses machines, which IS the act of declaring
+              an HTTP route. The three concerns (service / route /
+              location) degenerate at host-local and unify at
+              cross-machine. See
+              `docs/reports/2026-06-17-runson-coupling-analysis.md`
+              for the full analysis + algebraic forward-extension
+              (failover / loadbalance / sequential).
             '';
           };
           scheme = mkOption {
