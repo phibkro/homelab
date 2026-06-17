@@ -88,7 +88,7 @@ Appliance pattern (flat imports — Pi precedent):
     "${modulesPath}/installer/sd-card/sd-image-aarch64.nix"
     ../../modules/common
     # Pick specific server modules the host needs (don't import the bundle):
-    ../../modules/services/blocky.nix
+    ../../modules/infra/networking/blocky.nix
     ../../modules/services/gatus.nix
     ../../modules/services/beszel/{hub,agent}.nix
     # ...

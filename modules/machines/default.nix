@@ -25,7 +25,7 @@
 
   Consumers (cross-host refs):
 
-   - `modules/effects/lan-route.nix`     — `nori.lanIp` default
+   - `modules/infra/networking/default.nix`     — `nori.lanIp` default
    - `modules/infra/backup/default.nix`  — host-aware appliance assertion
    - `modules/services/beszel/agent.nix` — metrics route backend
    - `modules/services/ntfy/notify.nix`  — alert route backend

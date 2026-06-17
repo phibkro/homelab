@@ -61,7 +61,7 @@ shared files to make them inseparable in practice:
 
 1. **Foundation effect modules** (P1 + P1b + P2 + P3 + P4):
    - `modules/effects/service-placement.nix` (NEW) — `nori.services.<X>.{enable,tags,enabled}` registry + `nori.enableServicesByTag`. Lets hosts opt-in by name or by tag.
-   - `modules/effects/lan-route.nix` — adds `runsOn` field. Routes now declare cross-host placement; the proxy host (whichever runs Caddy) resolves the upstream via `routeHost` (127.0.0.1 if local, tailnet IP otherwise).
+   - `modules/infra/networking/default.nix` — adds `runsOn` field. Routes now declare cross-host placement; the proxy host (whichever runs Caddy) resolves the upstream via `routeHost` (127.0.0.1 if local, tailnet IP otherwise).
    - `modules/infra/storage/default.nix` — adds optional `samba = { … }` block per entry; generator emits Samba shares + ownership tmpfiles. Same fs entry stays the source of truth for path + tier + share.
    - **Every `modules/services/*.nix`** wrapped in `mkMerge` + `mkIf cfg.enabled` (commit `714aa10`). Route declarations lift outside the activation gate so the route registry is visible host-wide even when the service itself is disabled (lets proxy hosts know how to route to the backend running elsewhere). **This was a big mechanical refactor — semantically a no-op per host.**
    - `machines/<host>/default.nix` declares its activation set via `nori.services.*.enable = true`. Workstation reproduces today's set exactly.
@@ -98,7 +98,7 @@ Two architectural pivots, deeply tangled because LE landed via pi.
 
 **Verify:**
 ```sh
-git diff cp/02-foundation-and-bootstrap..cp/03-entry-plane-le -- modules/services/caddy.nix
+git diff cp/02-foundation-and-bootstrap..cp/03-entry-plane-le -- modules/infra/networking/caddy.nix
 # the LE pivot + transitional redirect
 git diff cp/02-foundation-and-bootstrap..cp/03-entry-plane-le -- machines/pi/default.nix
 # pi's new entry-plane services

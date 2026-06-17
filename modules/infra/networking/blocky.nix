@@ -96,7 +96,7 @@ in
 
           # customDNS.mapping for self-hosted role is auto-generated from
           # nori.lanRoutes declarations in each service module — see
-          # modules/effects/lan-route.nix. Only customTTL stays here as the
+          # modules/infra/networking/default.nix. Only customTTL stays here as the
           # global default for those entries. On forwarder hosts the map
           # stays empty; conditional.mapping does the work instead.
           customDNS.customTTL = "1h";

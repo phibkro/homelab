@@ -21,7 +21,7 @@ in
   # services.gatus.settings.endpoints with the standard ntfy alert tail
   # (failure-threshold=3, send-on-resolved=true) baked in.
   #
-  # Coexists with modules/effects/lan-route.nix's auto-Gatus endpoints
+  # Coexists with modules/infra/networking/default.nix's auto-Gatus endpoints
   # via list merging — lan-route uses lib.mkAfter so its entries land
   # after the manual probes; both contribute to the same final list.
 

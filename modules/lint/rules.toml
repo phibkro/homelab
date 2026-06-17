@@ -97,7 +97,7 @@ filmder/heim/hermes).'''
 # redirect goes away.
 pattern = 'services\.caddy\.virtualHosts'
 scope = ["modules/"]
-excludeFiles = ["modules/effects/lan-route.nix", "modules/services/caddy.nix"]
+excludeFiles = ["modules/infra/networking/default.nix", "modules/infra/networking/caddy.nix"]
 tags = ["architecture", "lan-route"]
 message = '''
 Direct services.caddy.virtualHosts found above. Use
@@ -107,7 +107,7 @@ instead — the abstraction generates Caddy + Blocky + Gatus together.'''
 [rules.blockyCustomDNS]
 pattern = 'services\.blocky\.settings\.customDNS'
 scope = ["modules/"]
-excludeFiles = ["modules/effects/lan-route.nix"]
+excludeFiles = ["modules/infra/networking/default.nix"]
 tags = ["architecture", "lan-route"]
 message = '''
 Direct services.blocky.settings.customDNS found above. Use
@@ -193,7 +193,7 @@ Schema: modules/effects/hosts.nix; values: modules/machines/default.nix identity
 # in their headers.
 pattern = '"https?://[a-z0-9.-]*\.nori\.lan'
 scope = ["modules/"]
-excludeFiles = ["modules/services/caddy.nix", "modules/effects/lan-route.nix"]
+excludeFiles = ["modules/infra/networking/caddy.nix", "modules/infra/networking/default.nix"]
 tags = ["migration", "adr-0004"]
 message = '''
 Hard-coded https://*.nori.lan URI found above. Use

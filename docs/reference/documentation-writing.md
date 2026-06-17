@@ -38,7 +38,7 @@ Nix carries two distinct documentation surfaces. Both extract to markdown automa
 
 | Surface | Applies to | Extracted by | Canonical example |
 |---|---|---|---|
-| `mkOption { description = ''...''; }` | NixOS module **options** (every `nori.<X>` schema field) | [`nixosOptionsDoc`](https://github.com/NixOS/nixpkgs/blob/master/nixos/lib/make-options-doc/default.nix) | `modules/effects/lan-route.nix` → `nori.lanRoutes.<name>.audience` |
+| `mkOption { description = ''...''; }` | NixOS module **options** (every `nori.<X>` schema field) | [`nixosOptionsDoc`](https://github.com/NixOS/nixpkgs/blob/master/nixos/lib/make-options-doc/default.nix) | `modules/infra/networking/default.nix` → `nori.lanRoutes.<name>.audience` |
 | `/** ... */` doc-comments ([RFC 145](https://github.com/NixOS/rfcs/blob/master/rfcs/0145-doc-strings.md)) | **Non-option** code: lib functions, let bindings, attrset entries, lambda formals | [`nixdoc`](https://github.com/nix-community/nixdoc) | [`nixpkgs/lib/attrsets.nix`](https://github.com/NixOS/nixpkgs/blob/master/lib/attrsets.nix) → `lib.attrByPath` |
 
 ### mkOption description shape

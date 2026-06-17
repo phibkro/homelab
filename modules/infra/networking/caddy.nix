@@ -30,7 +30,7 @@ lib.mkMerge [
     # certs/week — we have ~30 vhosts so single rebuild is fine but
     # don't churn the cert config in a loop.
     #
-    # DNS path: Blocky's customDNS (modules/services/blocky.nix) maps
+    # DNS path: Blocky's customDNS (modules/infra/networking/blocky.nix) maps
     # each *.<nori.domain> to nori.lanIp (workstation today, pi post
     # ADR-0003 pivot). LAN clients hit Caddy directly; off-LAN tailnet
     # clients reach the same address via pi's subnet route advertisement
@@ -72,7 +72,7 @@ lib.mkMerge [
 
       # Virtual hosts are NOT defined here. They're auto-generated from
       # `nori.lanRoutes.<name>` declarations in each service's own
-      # module — see modules/effects/lan-route.nix for the option +
+      # module — see modules/infra/networking/default.nix for the option +
       # generator. Adding/renaming a route happens at the source
       # (the service module), not here.
     };
@@ -118,7 +118,7 @@ lib.mkMerge [
     nori.harden.caddy = { };
 
     # Open globally, not per-interface: with `*.<nori.domain>` resolving
-    # to nori.lanIp (set in modules/effects/lan-route.nix), requests
+    # to nori.lanIp (set in modules/infra/networking/default.nix), requests
     # arrive on the LAN interface for LAN clients and on tailscale0 for
     # off-LAN tailnet clients via pi's subnet route. Same precedent as
     # Blocky's :53. The router doesn't forward :80/:443 inbound from

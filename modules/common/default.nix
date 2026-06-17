@@ -19,11 +19,10 @@
     ./vector.nix
     ../effects/hosts.nix
     ../infra/storage
-    ../effects/lan-route.nix
+    ../infra/networking
     ../effects/service-placement.nix
     ../infra/backup
     ../infra/capabilities
-    ../effects/gatus-probe.nix
     ../effects/restart-policy.nix
     ../effects/rust-motd.nix # codename banner + live MOTD on login
     ../effects/tailnet-appliance.nix

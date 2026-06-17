@@ -152,7 +152,7 @@ Concrete use cases worth pre-naming:
 Operator's second framing: "whether to co-locate options in a singular file or a folder."
 
 Today:
-- `nori.lanRoutes` lives in `modules/effects/lan-route.nix` (single file, ~700 lines)
+- `nori.lanRoutes` lives in `modules/infra/networking/default.nix` (single file, ~700 lines)
 - `nori.backups` lives in `modules/services/backup/` (a folder — backup.nix + restic.nix + verify.nix + btrbk.nix)
 - `nori.harden` lives in `modules/infra/capabilities/default.nix` (single file)
 - `nori.fs` lives in `modules/infra/storage/default.nix` (single file)

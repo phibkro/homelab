@@ -30,8 +30,8 @@ One lever maxed = nice-to-have. Two = ship it. Three+ = required.
 |---|---|---|
 | `just test-hypr` | Hyprland keybind registry — declared `hl.bind(...)` → `hyprctl binds -j` reflects every (modmask, key) tuple | `machines/workstation/hyprland.lua` |
 | `just test-backups` | `nori.backups.<n>` → restic units exist + per-target snapshots ≤25h | `modules/infra/backup/default.nix` |
-| `just test-routes` | `nori.lanRoutes.<n>` → Caddy route + DNS + HTTPS reachable | `modules/effects/lan-route.nix` |
-| `just test-observability` | VM scrape targets up + process-exporter publishing + pi heartbeat <90s + zero failing gatus probes | `modules/effects/gatus-probe.nix` + `modules/services/victoriametrics.nix` |
+| `just test-routes` | `nori.lanRoutes.<n>` → Caddy route + DNS + HTTPS reachable | `modules/infra/networking/default.nix` |
+| `just test-observability` | VM scrape targets up + process-exporter publishing + pi heartbeat <90s + zero failing gatus probes | `modules/infra/networking/gatus-probe.nix` + `modules/services/victoriametrics.nix` |
 | `just test-replicas` | `nori.replicas.<n>` → per-replica verifier oneshot succeeded within freshness budget on the target host (smoke-passes on empty registry) | `modules/infra/storage/replication.nix` |
 | `just test` | All of the above | composite |
 

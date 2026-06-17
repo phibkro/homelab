@@ -8,7 +8,7 @@ let
   # OIDC clients assembled here (not at call sites) because NixOS
   # module merging on freeform-typed lists conflicts rather than
   # concatenates — centralized assembly avoids mkMerge ceremony per
-  # client. Schema lives in modules/effects/lan-route.nix.
+  # client. Schema lives in modules/infra/networking/default.nix.
   #
   # `client_secret` uses the template config-filter (enabled below)
   # to read the PBKDF2 hash from sops at startup — hash never lands
@@ -71,7 +71,7 @@ lib.mkMerge [
     # secrets bootstrap. Add an OIDC client by declaring
     # `nori.lanRoutes.<name>.oidc = { ... }` in the consuming module
     # (see open-webui.nix / beszel.nix). OIDC client secrets are
-    # auto-declared by modules/effects/lan-route.nix.
+    # auto-declared by modules/infra/networking/default.nix.
 
     sops.secrets = {
       # All base secrets carry `restartUnits` so a sops edit + rebuild

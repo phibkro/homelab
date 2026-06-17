@@ -186,7 +186,7 @@ curl -sk https://<short-name>.nori.lan -m 5 | head -3                           
 If a flake check fails, the message lists the offending file(s) with what's missing. Common failure modes:
 - forgot `nori.harden.<n>` → `every-service-has-fs-hardening` fails with the file path
 - forgot `nori.backups.<n>` → `every-service-has-backup-intent` fails
-- port collision → eval-time assertion in `modules/effects/lan-route.nix`
+- port collision → eval-time assertion in `modules/infra/networking/default.nix`
 - DynamicUser symlink in backup paths → eval-time assertion in `modules/infra/backup/default.nix`
 
 ### 10. First-run setup

@@ -66,7 +66,7 @@ Worked examples (from `git show fb1edfc`, the auth-perimeter run):
   terminating TLS. The Caddy reference explains why the cookie domain
   is `nori.lan` — load-bearing decision in authelia.nix.
 * **KEEP**: `caddy.nix` firewall comment that references `nori.lanIp`
-  in `modules/effects/lan-route.nix`. The reference explains why caddy
+  in `modules/infra/networking/default.nix`. The reference explains why caddy
   can listen globally (the resolution chain `*.nori.lan → nori.lanIp`
   determines which interface traffic arrives on).
 * **CUT**: `authelia.nix` preamble that restates Caddy's reverse-proxy

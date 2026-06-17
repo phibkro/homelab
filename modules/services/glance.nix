@@ -8,7 +8,7 @@ let
   # Dashboard catalog is *not* maintained here — it's derived from
   # `config.nori.lanRoutes`. Each service module declares a
   # `dashboard = { ... }` block on its own lanRoute (schema in
-  # modules/effects/lan-route.nix); URL is derived from the route name
+  # modules/infra/networking/default.nix); URL is derived from the route name
   # as `https://<n>.nori.lan`, so URL drift is impossible.
   dashed = lib.filterAttrs (_: r: r.dashboard != null) config.nori.lanRoutes;
 

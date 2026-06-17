@@ -40,7 +40,7 @@ nori.lanRoutes.<name> = {
 };
 ```
 
-Schema + assertions in `modules/effects/lan-route.nix`. Adding a service is one declaration in its own module — no edits scattered across `caddy.nix` + `blocky.nix` + `gatus.nix`.
+Schema + assertions in `modules/infra/networking/default.nix`. Adding a service is one declaration in its own module — no edits scattered across `caddy.nix` + `blocky.nix` + `gatus.nix`.
 
 ### Naming: function over brand
 
@@ -60,15 +60,15 @@ Every route declares an audience. The auth stack is layered selectively from the
 | **family** | per-user state (Jellyfin, Immich, Vaultwarden) | Native OIDC where the app supports it; forward-auth at Caddy where it doesn't (Komga, calibre-web). The auth layer carries identity *into* the app. |
 | **public** | intentionally open dashboards + the SSO portal itself | Home dashboard (Glance), status (Gatus), auth (Authelia portal) — meant to be the unauthenticated entry surface |
 
-Full rationale in the `audience` option description in `modules/effects/lan-route.nix`. The conceptual model: see `docs/glossary.md` § audience-driven trust topology.
+Full rationale in the `audience` option description in `modules/infra/networking/default.nix`. The conceptual model: see `docs/glossary.md` § audience-driven trust topology.
 
 ## Caddy + TLS + naming
 
 Caddy terminates TLS for every `<name>.home.phibkro.org` with a **Let's Encrypt** wildcard cert (`*.home.phibkro.org`) obtained via ACME DNS-01 against Cloudflare. The wildcard avoids per-vhost issuance + the LE rate-limit storm that would follow. ISRG roots ship pre-trusted on every modern device — no per-device CA install, no Mac keychain dance, no Node `NODE_EXTRA_CA_CERTS` env var. See ADR-0004 for the rationale.
 
-The Cloudflare API token lives in sops (`cloudflare_acme_token`); Caddy's `withPlugins` bakes in `caddy-dns/cloudflare`. The `nori.domain` option (`modules/effects/lan-route.nix`) is the single source of truth — every vhost name, Authelia cookie domain + issuer URL, and OIDC redirect URI reads from it.
+The Cloudflare API token lives in sops (`cloudflare_acme_token`); Caddy's `withPlugins` bakes in `caddy-dns/cloudflare`. The `nori.domain` option (`modules/infra/networking/default.nix`) is the single source of truth — every vhost name, Authelia cookie domain + issuer URL, and OIDC redirect URI reads from it.
 
-Transitional `*.nori.lan` redirect: pi's Caddy still serves `*.nori.lan` (Caddy internal CA) and 301-redirects to the same path under `home.phibkro.org`. Drop this block from `modules/services/caddy.nix` + the parallel entries in `modules/effects/lan-route.nix § blocky customDNS` once family bookmarks have migrated.
+Transitional `*.nori.lan` redirect: pi's Caddy still serves `*.nori.lan` (Caddy internal CA) and 301-redirects to the same path under `home.phibkro.org`. Drop this block from `modules/infra/networking/caddy.nix` + the parallel entries in `modules/infra/networking/default.nix § blocky customDNS` once family bookmarks have migrated.
 
 **Python services** with `certifi`-based clients (open-webui's `httpx`/`requests`/`urllib3`) historically needed `SSL_CERT_FILE = "/etc/ssl/certs/ca-bundle.crt"` to see the local CA. With LE, certifi's Mozilla bundle already includes ISRG roots — the override is no longer load-bearing but harmless.
 

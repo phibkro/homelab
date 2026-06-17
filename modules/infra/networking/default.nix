@@ -1,5 +1,22 @@
 { config, lib, ... }:
 
+/**
+  Networking concern — the lan-route registry + its adapters.
+
+  `default.nix` carries `nori.lanRoutes` (schema + collection +
+  Caddy vhost / Blocky DNS / Gatus monitor / Authelia OIDC-secret
+  generators). Adapter siblings:
+
+   - `caddy.nix`        — Caddy reverse-proxy daemon
+   - `blocky.nix`       — Blocky DNS daemon (authoritative for
+                          `*.${domain}` on LAN/tailnet)
+   - `gatus-probe.nix`  — per-route monitor schema fragment
+                          (consumed inline by lan-route)
+
+  Authelia (the OIDC daemon) is access-concern, not networking;
+  lives at `modules/infra/access/` (Phase 3d). lan-route generates
+  the sops-templated OIDC secrets here; authelia consumes them.
+*/
 let
   inherit (lib)
     mkOption
@@ -11,27 +28,38 @@ let
     ;
 in
 {
-  # nori.lanRoutes — single source of truth for services exposed
-  # under *.nori.lan. Each entry generates ALL of:
-  #   * Caddy vhost reverse-proxying <name>.nori.lan → backend port
-  #   * Blocky customDNS mapping <name>.nori.lan → config.nori.lanIp
-  #   * Gatus monitor          (if `monitor` is non-null)
-  #   * Tailnet firewall hole  (if `exposeOnTailnet`)
-  #   * sops raw + hash secrets + env-file template (if `oidc` is set)
-  #     — Authelia client list assembly lives in modules/services/
-  #     authelia.nix, reading back config.nori.lanRoutes from here.
-  #     Hash material stays in sops; the authelia config-filter
-  #     injects it at runtime.
-  #
-  # Service modules declare routing inline alongside their config:
-  #
-  #   nori.lanRoutes.chat = {
-  #     port = 8080;
-  #     oidc = {
-  #       clientName  = "Open WebUI";
-  #       redirectPath = "/oauth/oidc/callback";
-  #     };
-  #   };
+  imports = [
+    ./gatus-probe.nix
+    ./caddy.nix
+    ./blocky.nix
+  ];
+
+  /**
+    `nori.lanRoutes` — single source of truth for services exposed
+    under `*.${domain}`. Each entry generates ALL of:
+
+     - Caddy vhost reverse-proxying `<name>.<domain>` → backend port
+     - Blocky customDNS mapping `<name>.<domain>` → `config.nori.lanIp`
+     - Gatus monitor (if `monitor` is non-null)
+     - Tailnet firewall hole (if `exposeOnTailnet`)
+     - sops raw + hash secrets + env-file template (if `oidc` is
+       set) — Authelia client list assembly lives in
+       `modules/infra/access/authelia.nix` <!-- path-coherence: skip — forward ref; lands in Phase 3d -->, reading back
+       `config.nori.lanRoutes` from here. Hash material stays in
+       sops; the authelia config-filter injects it at runtime.
+
+    Service modules declare routing inline alongside their config:
+
+    ```nix
+    nori.lanRoutes.chat = {
+      port = 8080;
+      oidc = {
+        clientName  = "Open WebUI";
+        redirectPath = "/oauth/oidc/callback";
+      };
+    };
+    ```
+  */
 
   options.nori.domain = mkOption {
     type = types.str;
@@ -100,7 +128,7 @@ in
       "server" in machines/pi/default.nix); the client side needs
       --accept-routes set in its tailscaled config.
 
-      Consumers: Blocky's forwarder mode (modules/services/blocky.nix)
+      Consumers: Blocky's forwarder mode (modules/infra/networking/blocky.nix)
       and the Blocky DNS generator below. Both want a single "where
       does *.nori.lan live" address.
     '';

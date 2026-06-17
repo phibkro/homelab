@@ -74,7 +74,7 @@ options.nori.lint = mkOption {
       excludeFiles = mkOption {
         type = types.listOf types.str;
         default = [ ];
-        example = [ "modules/effects/lan-route.nix" ];
+        example = [ "modules/infra/networking/default.nix" ];
         description = "File paths exempted from the rule.";
       };
       excludePatterns = mkOption {
@@ -184,6 +184,6 @@ The other two scripts (doc-coherence, routing-coherence) decision-bound to quest
 
 - `docs/plans/2026-06-16-docs-deep-sweep.md` — parent plan; this spec is a follow-up sub-phase
 - `scripts/checks/forbidden-patterns.sh` — the rules to translate
-- `modules/effects/lan-route.nix` — canonical shape of a `nori.<X>` effect with mkOption + types.submodule + assertions; serves as the structural template
+- `modules/infra/networking/default.nix` — canonical shape of a `nori.<X>` effect with mkOption + types.submodule + assertions; serves as the structural template
 - `modules/infra/backup/default.nix` — second worked example
 - `docs/invariants.md` — the catalog this lint system enforces against (every `[law: foo]` row maps to a flake check; this consolidates them)

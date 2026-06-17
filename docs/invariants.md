@@ -49,7 +49,7 @@ Strongest rung each claim has reached. `[prose: unchecked]` entries are promotio
 | Cross-host service split: daemon on one host, client/proxy on every consumer; cross-host refs via `nori.hosts` registry | `[structural]` (the registry IS the wiring) |
 | Each host has one folder at `machines/<n>/`; identity registered in `nori.hosts`; eval fails if folder + registry don't both land | `[law: add-host eval check]` (via `add-host` skill's exit invariant) |
 | **lanRoutes** | |
-| One `nori.lanRoutes` entry generates Caddy vhost + Blocky DNS + Gatus monitor consistently | `[structural]` (single schema → multiple generators in `modules/effects/lan-route.nix`) + `[runtime-introspection: just test-routes]` (Caddy + DNS + HTTPS all reachable per declared route) |
+| One `nori.lanRoutes` entry generates Caddy vhost + Blocky DNS + Gatus monitor consistently | `[structural]` (single schema → multiple generators in `modules/infra/networking/default.nix`) + `[runtime-introspection: just test-routes]` (Caddy + DNS + HTTPS all reachable per declared route) |
 | `audience: operator` routes get no Authelia overlay; `family` gets OIDC; `public` is intentionally open | `[structural]` (typed `audience` enum, generators branch on it) |
 | Service names function over brand (`status`, not `gatus`; `chat`, not `ollama`) unless brand IS identity | `[law: lint.functionNamedSubdomains]` (promoted 2026-06-16; nori.lint TOML denylist of 13 upstream brands with clean function-name mappings) |
 | **systemd units** | |
@@ -89,7 +89,7 @@ assertions = [
 ];
 ```
 
-Live examples in `modules/effects/lan-route.nix` (port uniqueness, name regex, redirectPath shape). Use when a rule depends on multiple options together — derived properties, uniqueness across attrs, conditional requirements.
+Live examples in `modules/infra/networking/default.nix` (port uniqueness, name regex, redirectPath shape). Use when a rule depends on multiple options together — derived properties, uniqueness across attrs, conditional requirements.
 
 ### Custom flake checks
 

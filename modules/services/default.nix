@@ -33,8 +33,6 @@ _: {
     # Loose services
     ./authelia.nix
     ./beszel/agent.nix
-    ./blocky.nix
-    ./caddy.nix
     ./calibre-web.nix
     ./disk-alert.nix
     ./filmder.nix

@@ -239,4 +239,4 @@ Each phase ends in a working system. Validation gate at the end of each must pas
 - `docs/roadmap.md` § Lower-priority appliance candidates
 - `modules/infra/backup/default.nix` — `nori.backupTargets` schema (remote-URL support landed 2026-06-10)
 - `modules/infra/storage/default.nix` — `nori.fs` schema (extension for `samba` block lands in P4)
-- `modules/effects/lan-route.nix` — `nori.lanRoutes` (extensions for `port` aggregator + `upstreams` land in P1)
+- `modules/infra/networking/default.nix` — `nori.lanRoutes` (extensions for `port` aggregator + `upstreams` land in P1)

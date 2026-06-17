@@ -5,7 +5,7 @@ description: USE WHEN configuring Authelia OIDC clients whose `client_secret` us
 
 # Authelia OIDC clients require `X_AUTHELIA_CONFIG_FILTERS=template`
 
-OIDC client `client_secret` values use `{{ secret "/run/secrets/oidc-<n>-client-secret-hash" }}` template syntax (see `modules/effects/lan-route.nix` + `modules/services/authelia.nix`). The substitution only happens when Authelia is invoked with the template config-filter enabled:
+OIDC client `client_secret` values use `{{ secret "/run/secrets/oidc-<n>-client-secret-hash" }}` template syntax (see `modules/infra/networking/default.nix` + `modules/services/authelia.nix`). The substitution only happens when Authelia is invoked with the template config-filter enabled:
 
 ```nix
 systemd.services.authelia-main.environment.X_AUTHELIA_CONFIG_FILTERS = "template";

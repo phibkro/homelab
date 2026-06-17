@@ -107,6 +107,6 @@ The previously-killed Hetzner path from ADR-0002 (offsite restic) and LE are ind
 ## See also
 
 - ADR-0003 — pi-central entry plane decision; this ADR refines the TLS portion of that.
-- `modules/effects/lan-route.nix` § `nori.domain` and the wildcard Caddy vhost generator.
-- `modules/services/caddy.nix` § `withPlugins`, `acme_dns`, `acme_ca`, sops token wiring.
+- `modules/infra/networking/default.nix` § `nori.domain` and the wildcard Caddy vhost generator.
+- `modules/infra/networking/caddy.nix` § `withPlugins`, `acme_dns`, `acme_ca`, sops token wiring.
 - `docs/plans/2026-06-11-aurora-migration.md` — P7 standup on pi inherits this Caddy config wholesale.
