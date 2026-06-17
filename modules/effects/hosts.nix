@@ -120,8 +120,8 @@ in
                 `nori.backups.<X>` declarations are a build error —
                 anything escaping the box sandbox vanishes on reboot.
 
-              Adding a role = extend the enum + document its constraints
-              + add the assertions that key off it.
+              Adding a role = extend the enum, document its constraints,
+              and add the assertions that key off it.
             '';
           };
         };

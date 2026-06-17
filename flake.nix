@@ -350,24 +350,126 @@
       #
       # Build with: `nix build .#docs-lan-route`
       # Output:     ./result (CommonMark file)
-      packages.${system}.docs-lan-route =
-        let
-          eval = inputs.self.nixosConfigurations.workstation;
-          isLanRouteOption =
-            opt:
-            let
-              inherit (opt) loc;
-              prefix = builtins.head loc;
-              second = if builtins.length loc >= 2 then builtins.elemAt loc 1 else "";
-            in
-            prefix == "nori" && (second == "lanRoutes" || second == "domain" || second == "lanIp");
-          optionsDoc = pkgs.nixosOptionsDoc {
-            inherit (eval) options;
-            transformOptions = opt: if isLanRouteOption opt then opt else opt // { visible = false; };
-            documentType = "none";
-          };
-        in
-        optionsDoc.optionsCommonMark;
+      packages.${system} = {
+        docs-lan-route =
+          let
+            eval = inputs.self.nixosConfigurations.workstation;
+            isLanRouteOption =
+              opt:
+              let
+                inherit (opt) loc;
+                prefix = builtins.head loc;
+                second = if builtins.length loc >= 2 then builtins.elemAt loc 1 else "";
+              in
+              prefix == "nori" && (second == "lanRoutes" || second == "domain" || second == "lanIp");
+            optionsDoc = pkgs.nixosOptionsDoc {
+              inherit (eval) options;
+              transformOptions = opt: if isLanRouteOption opt then opt else opt // { visible = false; };
+              documentType = "none";
+            };
+          in
+          optionsDoc.optionsCommonMark;
+
+        # ── Generated topology docs (Stage 2 pressure test) ───────────────
+        #
+        # Two-section artifact:
+        #
+        #   §1  Hosts at a glance — walks `config.nori.hosts` values,
+        #       emits the per-host overview table that topology.md used
+        #       to carry as hand-maintained prose.
+        #
+        #   §2  Topology registry schema — nixosOptionsDoc reference for
+        #       `nori.hosts.<name>.*` option fields. Tells you what an
+        #       identityFor entry must declare.
+        #
+        # §1 is built from VALUES (config.nori.hosts.workstation.hardware
+        # etc.); §2 is built from the OPTIONS tree. nixosOptionsDoc handles
+        # the second; the first is hand-rolled string concatenation in Nix
+        # because it has no equivalent built-in (the renderer emits option
+        # docs, not config dumps).
+        #
+        # Entry point uses workstation's eval (same rationale as
+        # docs-lan-route above — piggyback on an eval that already pays
+        # its cost in `nix flake check`).
+        #
+        # Build with: `nix build .#docs-topology`
+        docs-topology =
+          let
+            eval = inputs.self.nixosConfigurations.workstation;
+            hosts = eval.config.nori.hosts;
+            hostNames = lib.attrNames hosts;
+
+            # Render a single host's primaryJob — multi-line prose, paragraph
+            # in markdown source, gets joined with <br> in the table cell.
+            renderJob = job: lib.replaceStrings [ "\n" ] [ " " ] (lib.strings.trim job);
+
+            renderRoleCell =
+              host: if host.roleOneLiner == "" then "`${host.role}`" else "`${host.role}` (${host.roleOneLiner})";
+
+            hostRow =
+              name:
+              let
+                h = hosts.${name};
+              in
+              "| **${name}** | ${h.codename} | ${renderRoleCell h} | `${h.tailnetIp}` | ${
+                if h.lanIp == null then "—" else "`${h.lanIp}`"
+              } | ${h.hardware} | ${renderJob h.primaryJob} |";
+
+            hostsTable = lib.concatStringsSep "\n" (
+              [
+                "| Host | Codename | Role | Tailnet | LAN | Hardware | Primary job |"
+                "|---|---|---|---|---|---|---|"
+              ]
+              ++ map hostRow hostNames
+            );
+
+            isHostsOption =
+              opt:
+              let
+                inherit (opt) loc;
+                prefix = builtins.head loc;
+                second = if builtins.length loc >= 2 then builtins.elemAt loc 1 else "";
+              in
+              prefix == "nori" && second == "hosts";
+
+            optionsDoc = pkgs.nixosOptionsDoc {
+              inherit (eval) options;
+              transformOptions = opt: if isHostsOption opt then opt else opt // { visible = false; };
+              documentType = "none";
+            };
+          in
+          pkgs.runCommandLocal "docs-topology" { } ''
+            cat > $out <<'HEADER'
+            ---
+            generated: true
+            source: flake.nix § packages.docs-topology
+            regenerate: nix build .#docs-topology
+            ---
+
+            # Topology — generated reference
+
+            Auto-derived from `nori.hosts` schema + `identityFor` values
+            in `flake.nix`. Do not hand-edit; the hand-curated overview +
+            diagram + invariants live in `docs/reference/topology.md`.
+
+            ## Hosts at a glance
+
+            HEADER
+            cat >> $out <<'TABLE'
+            ${hostsTable}
+            TABLE
+            cat >> $out <<'SCHEMA_HEADER'
+
+            ## Registry schema (`nori.hosts.<name>.*`)
+
+            What an `identityFor` entry must declare to satisfy the schema.
+            Schema lives in `modules/effects/hosts.nix`; values live in
+            `flake.nix`.
+
+            SCHEMA_HEADER
+            cat ${optionsDoc.optionsCommonMark} >> $out
+          '';
+      };
 
       # Quality gates. `nix flake check` validates host evals + the
       # checks below; `nix flake show .#checks` is the live index.
