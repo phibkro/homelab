@@ -61,7 +61,7 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 | ~~`function-named-subdomains`~~ | ✓ `[law: lint.functionNamedSubdomains]` (landed 2026-06-16) | service-name leakage in `nori.lanRoutes` |
 | `workhorse-vs-appliance-placement` | `[law]` — module assertion (eval-time, not grep) | service placement matches host role |
 | `systemd-execstart-resolves` | `[law]` — flake check (eval-time introspection) | ExecStart's first token resolves to closure path (incident 2026-06-03 class) |
-| `effects-have-tests` *(added 2026-06-07)* | `[law]` — meta-check | every `modules/infra/<X>.nix` with Reader+Writer shape has matching `just test-<X>` recipe in `Justfile`. See `docs/reference/runtime-tests.md` |
+| `infra-concerns-have-tests` *(added 2026-06-07; renamed 2026-06-17 post-restructure)* | `[law]` — meta-check | every `modules/infra/<concern>/` with Reader+Writer shape has matching `just test-<concern>` recipe in `Justfile`. See `docs/reference/runtime-tests.md` |
 
 ## Idea backlog (no commitment)
 

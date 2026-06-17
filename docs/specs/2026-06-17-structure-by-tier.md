@@ -1,9 +1,13 @@
 ---
 date: 2026-06-17
-status: spec — not in execution
+status: SUPERSEDED — replaced by docs/specs/2026-06-17-modules-as-root-restructure.md
 seed: Stage 2 R3 deliverable; restructure recon from K6 audit + R1/R2 findings
 summary: Reorganize modules from shape-based (effects/, services/) to tier-based (packages / services / distributed-services) with concerns cleaving WITHIN tiers. Prerequisite for several downstream generators (diagrams-from-code, location-policy extraction, drives-table-from-disko, resource-caps aggregation).
+superseded-by: docs/specs/2026-06-17-modules-as-root-restructure.md
+superseded-reason: Operator redirect 2026-06-17 — the tier framing didn't fit; PaaS lens + infra/<concern>/ split landed instead. The "tier" axis (packages / services / distributed-services) was the wrong cut. Kept as historical record of the R3 recon that led to the actual spec.
 ---
+
+**This spec was superseded before any execution.** It captured the initial structure-by-tier proposal from Stage 2 R3, which the operator then redirected during the design discussion that led to the PaaS-lens restructure. The actual restructure is at `docs/specs/2026-06-17-modules-as-root-restructure.md` (executed Phases 0-3f).
 
 # Structure-by-tier restructure (spec seed)
 

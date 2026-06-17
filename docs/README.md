@@ -36,7 +36,7 @@ topic so `ls` is enough to find the right one.
 | `MODULE_AUTHORING.md`     | writing a new module — template, sops conventions, packages-by-scope, dev workflow                                                   |
 | `DOCUMENTATION_WRITING.md`| writing/auditing comments + prose — earns-rent taxonomy, anti-patterns, the agent-imitation loop                                     |
 | `RECOVERY.md`             | something is broken or you're planning recovery — RTO targets, runbook index, permanent constraints                                  |
-| `RUNTIME_TESTS.md`        | adding a `just test-<X>` lever or auditing whether an effect family ships with one                                                   |
+| `RUNTIME_TESTS.md`        | adding a `just test-<X>` lever or auditing whether an infra concern ships with one                                                   |
 | `RATIONALES.md`           | wondering "why was X chosen?" before re-litigating a design decision                                                                 |
 | `PROJECTS.md`             | orchestrating work across the several projects on this machine (homelab, occupational-health, pagu, bang-lang, …)                    |
 | `capacity-baseline.md`    | sizing a new service against current RAM/disk/CPU baselines per host                                                                 |

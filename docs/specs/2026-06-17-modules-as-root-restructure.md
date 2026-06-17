@@ -1,8 +1,24 @@
 ---
 date: 2026-06-17
-status: spec — not in execution
+status: EXECUTED — Phases 0-3f landed 2026-06-17
 seed: Stage 2.5 redirect; operator framing 2026-06-17 (PaaS lens + dual-access split)
 summary: Restructure the codebase under modules/ as the single root, with services/ (workloads) and infra/<concern>/ (hosting platform) as the load-bearing split. Apply the PaaS lens to name infra sub-concerns; separate audience access from capabilities access. Use default.nix per folder; move enumeration logic into modules/<tree>/default.nix; thin flake.nix to dep-injection.
+executed-as:
+  - Phase 0   175b822  revert vaultwarden split (wrong axis)
+  - Phase 1   0b8c384  backup → modules/infra/backup/
+  - Phase 1.5 47d373c  path-coherence flake check
+  - Phase 2   280fd7e  flake.nix trim (→ modules/machines + modules/home factories)
+  - Phase 3a  ec3a58f  storage → modules/infra/storage/
+  - Phase 3b  73a803b  capabilities → modules/infra/capabilities/
+  - Phase 3c  3406078  networking → modules/infra/networking/
+  - Phase 3d  72022cf  access → modules/infra/access/
+  - Phase 3e  f0539e3  observability → modules/infra/observability/
+  - Phase 3f  9d63fd5  drain effects/
+  - doc-pass  3cc23a9  CLAUDE.md + module-authoring.md + glossary.md +
+                       documentation-writing.md aligned
+verification: byte-equal nix eval on representative trees per phase;
+              all 9 flake checks pass at every commit; 4 NixOS hosts
+              unchanged behaviorally.
 ---
 
 # Modules-as-root restructure (spec)

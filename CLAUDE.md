@@ -26,7 +26,7 @@ without this file's context.
 
 | Doc | USE WHEN |
 |---|---|
-| `docs/glossary.md` | always, first — establishes vocabulary (`nori.<X>` effect family, audience, fate-sharing, value tiers, split-module). Every other doc reads as undefined jargon without it. |
+| `docs/glossary.md` | always, first — establishes vocabulary (`nori.<X>` infra-concern family, audience, fate-sharing, value tiers, split-module, workload). Every other doc reads as undefined jargon without it. |
 | `docs/invariants.md` | always, second — load-bearing claims catalog + the enforcement ladder that keeps each true. Drift register (`[prose: unchecked]` = promotion candidate). Read before changing anything structural; also the doc to reach for when adding a new rule (§ "Decision tree — when to add a rule"). |
 
 ### Topic-triggered reference
@@ -41,7 +41,7 @@ without this file's context.
 | `docs/reference/module-authoring.md` | writing a new module — template, sops conventions, packages-by-scope, dev workflow |
 | `docs/reference/documentation-writing.md` | writing/auditing comments + prose — earns-rent taxonomy, anti-patterns, agent-imitation loop |
 | `docs/reference/recovery.md` | something is broken or you're planning recovery — RTO targets, runbook index, permanent constraints |
-| `docs/reference/runtime-tests.md` | adding a `just test-<X>` lever or auditing whether an effect family ships with one |
+| `docs/reference/runtime-tests.md` | adding a `just test-<X>` lever or auditing whether an infra concern ships with one |
 | `docs/reference/capacity-baseline.md` | sizing a new service against current RAM/disk/CPU baselines per host |
 | `docs/reference/agentic-workflow.md` | starting a new PR (prologue), wrapping one (epilogue), deciding session vs PR boundary, or designing per-sprint ceremonies — the per-PR three-phase ceremony lives here |
 | `docs/reference/lan-route-options.md` | looking up the schema details for a specific `nori.lanRoutes.<name>.<field>` option — generated from `modules/infra/networking/default.nix` via `nix build .#docs-lan-route` (the hand-written `network.md` keeps the WHY) |
