@@ -294,6 +294,47 @@
 
       formatter.${system} = pkgs.nixfmt;
 
+      # ── Generated docs prototype (Sprint 6 exploration) ─────────────
+      #
+      # Generates per-option reference markdown for the `nori.lanRoutes`
+      # effect via nixpkgs' `nixosOptionsDoc`. The hand-maintained
+      # docs/reference/network.md keeps the WHY + patterns; this
+      # generated artifact carries the WHAT (schema details). Pattern
+      # taken from rustdoc/jsdoc/Zig doc-comment generation, applied to
+      # NixOS module options.
+      #
+      # Why this entry point (workstation's eval):
+      #   * nixosOptionsDoc renders options against an EVALUATED
+      #     options tree; the workstation config already pays the eval
+      #     cost via `nix flake check`, so we piggyback rather than
+      #     spinning up a scratch evalModules (which would need to stub
+      #     out nori.hosts to satisfy lan-route's `default` derivation
+      #     of nori.lanIp).
+      #   * `transformOptions` filters to the lan-route surface only —
+      #     nori.lanRoutes.* + nori.domain + nori.lanIp. Everything
+      #     else gets `visible = false`, which the renderer drops.
+      #
+      # Build with: `nix build .#docs-lan-route`
+      # Output:     ./result (CommonMark file)
+      packages.${system}.docs-lan-route =
+        let
+          eval = inputs.self.nixosConfigurations.workstation;
+          isLanRouteOption =
+            opt:
+            let
+              inherit (opt) loc;
+              prefix = builtins.head loc;
+              second = if builtins.length loc >= 2 then builtins.elemAt loc 1 else "";
+            in
+            prefix == "nori" && (second == "lanRoutes" || second == "domain" || second == "lanIp");
+          optionsDoc = pkgs.nixosOptionsDoc {
+            inherit (eval) options;
+            transformOptions = opt: if isLanRouteOption opt then opt else opt // { visible = false; };
+            documentType = "none";
+          };
+        in
+        optionsDoc.optionsCommonMark;
+
       # Quality gates. `nix flake check` validates host evals + the
       # checks below; `nix flake show .#checks` is the live index.
       checks.${system} =
