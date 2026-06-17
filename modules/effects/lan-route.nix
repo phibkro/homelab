@@ -254,14 +254,30 @@ in
                   interval = mkOption {
                     type = types.str;
                     default = "60s";
+                    description = ''
+                      How often Gatus runs the probe. systemd-style
+                      duration string (`60s`, `5m`, `1h`).
+                    '';
                   };
                   failureThreshold = mkOption {
                     type = types.int;
                     default = 3;
+                    description = ''
+                      Consecutive failed probes before Gatus fires an
+                      alert. 3 absorbs transient blips without delaying
+                      a real outage long.
+                    '';
                   };
                   conditions = mkOption {
                     type = types.listOf types.str;
                     default = [ "[STATUS] == 200" ];
+                    description = ''
+                      Gatus condition expressions (see
+                      <https://gatus.io/docs/conditions>). Each must
+                      hold for the probe to pass. Default checks HTTP
+                      status; override for richer probes (header
+                      match, body regex, response time).
+                    '';
                   };
                 };
               }
