@@ -62,7 +62,7 @@ shared files to make them inseparable in practice:
 1. **Foundation effect modules** (P1 + P1b + P2 + P3 + P4):
    - `modules/effects/service-placement.nix` (NEW) — `nori.services.<X>.{enable,tags,enabled}` registry + `nori.enableServicesByTag`. Lets hosts opt-in by name or by tag.
    - `modules/effects/lan-route.nix` — adds `runsOn` field. Routes now declare cross-host placement; the proxy host (whichever runs Caddy) resolves the upstream via `routeHost` (127.0.0.1 if local, tailnet IP otherwise).
-   - `modules/effects/fs.nix` — adds optional `samba = { … }` block per entry; generator emits Samba shares + ownership tmpfiles. Same fs entry stays the source of truth for path + tier + share.
+   - `modules/infra/storage/default.nix` — adds optional `samba = { … }` block per entry; generator emits Samba shares + ownership tmpfiles. Same fs entry stays the source of truth for path + tier + share.
    - **Every `modules/services/*.nix`** wrapped in `mkMerge` + `mkIf cfg.enabled` (commit `714aa10`). Route declarations lift outside the activation gate so the route registry is visible host-wide even when the service itself is disabled (lets proxy hosts know how to route to the backend running elsewhere). **This was a big mechanical refactor — semantically a no-op per host.**
    - `machines/<host>/default.nix` declares its activation set via `nori.services.*.enable = true`. Workstation reproduces today's set exactly.
 
@@ -145,7 +145,7 @@ git diff cp/03-entry-plane-le..cp/04-aurora-p8 -- machines/aurora/default.nix
 
 Two unrelated landings that happened consecutively:
 
-- **P5 — `modules/effects/replication.nix`** (`7275f6b`). New effect module with `nori.replicas.<n>.{source,target,mechanism,maxAgeHours}` registry + per-replica verifier oneshot emitted on the target host. Empty registry = zero units, no false negatives. `just test-replicas` lever added to the Justfile. Smoke-passes today (empty registry); becomes load-bearing when P15 wires the btrfs send/receive timer.
+- **P5 — `modules/infra/storage/replication.nix`** (`7275f6b`). New effect module with `nori.replicas.<n>.{source,target,mechanism,maxAgeHours}` registry + per-replica verifier oneshot emitted on the target host. Empty registry = zero units, no false negatives. `just test-replicas` lever added to the Justfile. Smoke-passes today (empty registry); becomes load-bearing when P15 wires the btrfs send/receive timer.
 - **Drop internal-CA artifacts** (`f190578`). Removes `modules/services/caddy-local-ca.crt` (stale workstation CA) + `NODE_EXTRA_CA_CERTS` env var in `machines/macbook/home.nix` + cert refs in README/NETWORK.md/MODULE_AUTHORING.md/ROADMAP.md/runbook + the add-oidc-client skill's "Caddy's local CA" section. Post-ADR-0004 cleanup.
 
 **Risk:** low. Both are additive/cleanup.

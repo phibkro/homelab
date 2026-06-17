@@ -18,14 +18,13 @@
     ./sops.nix
     ./vector.nix
     ../effects/hosts.nix
-    ../effects/fs.nix
+    ../infra/storage
     ../effects/lan-route.nix
     ../effects/service-placement.nix
     ../infra/backup
     ../effects/gpu.nix
     ../effects/harden.nix
     ../effects/gatus-probe.nix
-    ../effects/replication.nix
     ../effects/restart-policy.nix
     ../effects/rust-motd.nix # codename banner + live MOTD on login
     ../effects/tailnet-appliance.nix

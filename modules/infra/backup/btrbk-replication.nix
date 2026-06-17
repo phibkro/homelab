@@ -17,7 +17,7 @@
 # `/mnt/family-replica/<X>` on workstation's MP510 (subvols already
 # carved out by the P9 disko-mp510.nix layout).
 #
-# Verification: `modules/effects/replication.nix` (P5) provides
+# Verification: `modules/infra/storage/replication.nix` (P5) provides
 # `nori.replicas.<n>` registry + per-replica freshness verifier on
 # the target host. This module populates the registry as it activates
 # the send timer, so a stalled receive surfaces via the verifier

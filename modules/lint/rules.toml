@@ -148,8 +148,9 @@ fields:
 [rules.tailnetIp]
 # CGNAT range (100.64.0.0/10). Cross-host references go through
 # the topology registry: config.nori.hosts.<host>.tailnetIp.
-# flake.nix is the only legitimate site for the host-specific
-# literal (via identityFor).
+# modules/machines/default.nix is the only legitimate site for
+# the host-specific literal (via identityFor; was in flake.nix
+# pre-Phase-2 trim).
 #
 # Allowlist:
 #   * 100.100.100.100  Tailscale MagicDNS stub (well-known
@@ -159,15 +160,17 @@ fields:
 #   * modules/effects/hosts.nix — the registry schema's own
 #                                 header comment narrates the
 #                                 refactor.
+#   * modules/machines/default.nix — identityFor lives here
+#                                    post-Phase-2.
 pattern = '\b100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+\b'
 scope = ["modules/"]
-excludeFiles = ["modules/effects/hosts.nix"]
+excludeFiles = ["modules/effects/hosts.nix", "modules/machines/default.nix"]
 excludePatterns = ['100\.100\.100\.100', '100\.64\.0\.0/10']
 tags = ["topology"]
 message = '''
 Tailnet IP literal (CGNAT range) found above. Use
 config.nori.hosts.<host>.tailnetIp from the topology registry.
-Schema: modules/effects/hosts.nix; values: flake.nix identityFor.'''
+Schema: modules/effects/hosts.nix; values: modules/machines/default.nix identityFor.'''
 
 # ── Migration drift ─────────────────────────────────────────────
 

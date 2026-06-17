@@ -13,7 +13,7 @@ _: {
   # is just a `nori.services.<svc>.enable = true` on aurora.
   nori.fs = {
     # `samba = { }` blocks emit per-fs SMB shares via the generator in
-    # modules/effects/fs.nix. Family clients hit smb://aurora/<share>
+    # modules/infra/storage/default.nix. Family clients hit smb://aurora/<share>
     # over the tailnet (default-deny LAN; samba.nix opens 445 only on
     # tailscale0). Share names match the workstation-side naming so a
     # family bookmark only needs the hostname swapped. `ownerTmpfilesRule

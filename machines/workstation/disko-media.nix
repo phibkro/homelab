@@ -5,7 +5,7 @@ _: {
   # generators in modules/infra/backup/ filter by `tier`. Single
   # source of truth for both the wire-format (disko) and the
   # service-facing interface — change one, the other is right here
-  # next to it. See modules/effects/fs.nix for the schema.
+  # next to it. See modules/infra/storage/default.nix for the schema.
   nori.fs = {
     downloads = {
       path = "/mnt/media/downloads";

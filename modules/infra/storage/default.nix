@@ -1,24 +1,43 @@
 { config, lib, ... }:
 
+/**
+  Storage concern — `nori.fs` (subvol / value-tier policy) +
+  `nori.replicas` (cross-host replication registry).
+
+  `default.nix` carries the `nori.fs` schema + generators;
+  `replication.nix` carries the cross-host replication verifier.
+
+  Both schemas are part of "where data lives + how it's protected"
+  (the storage half of the PaaS lens). Adapters that ACT on these
+  schemas live elsewhere:
+
+   - btrfs subvol creation: disko configs per host
+   - btrbk send/receive timers: `modules/infra/backup/btrbk*.nix`
+*/
 let
   inherit (lib) mkOption types;
 in
 {
-  # nori.fs — named filesystem locations + value-tier metadata.
-  #
-  # Collapses subvolume paths that used to be magic strings across arr
-  # binds, jellyfin/immich/komga consumers, and the restic+btrbk
-  # generators. Reader-shaped effect: hosts declare (alongside disko),
-  # services consume by name; backup generators in modules/infra/backup/
-  # filter by tier (the Writer-shaped consequence).
-  #
-  # Optional `samba` block — when set, the share follows the drive: any
-  # host whose nori.fs declares `samba = { … }` for an entry emits the
-  # corresponding Samba share via the generator below. When a drive
-  # physically moves between hosts (OneTouch → aurora 2026-06-11; future
-  # IronWolf moves), the share moves with it automatically because the
-  # `nori.fs.<X>.samba` declaration lives next to the disko entry.
+  imports = [ ./replication.nix ];
 
+  /**
+    `nori.fs` — named filesystem locations + value-tier metadata.
+
+    Collapses subvolume paths that used to be magic strings across
+    arr binds, jellyfin/immich/komga consumers, and the
+    restic+btrbk generators. Reader-shaped effect: hosts declare
+    (alongside disko), services consume by name; backup generators
+    in `modules/infra/backup/` filter by tier (the Writer-shaped
+    consequence).
+
+    Optional `samba` block — when set, the share follows the drive:
+    any host whose `nori.fs` declares `samba = { … }` for an entry
+    emits the corresponding Samba share via the generator below.
+    When a drive physically moves between hosts (OneTouch → aurora
+    2026-06-11; future IronWolf moves), the share moves with it
+    automatically because the `nori.fs.<X>.samba` declaration lives
+    next to the disko entry.
+  */
   options.nori.fs = mkOption {
     default = { };
     description = ''
@@ -166,10 +185,13 @@ in
     );
   };
 
-  # Writer half of nori.fs: hosts that declare any `nori.fs.<X>.samba`
-  # entries emit the corresponding share + ownership tmpfiles. The
-  # samba globals (workgroup, hosts allow, vfs objects, the firewall
-  # rule) live in modules/services/samba.nix on the host that imports it.
+  /**
+    Writer half of `nori.fs`: hosts that declare any
+    `nori.fs.<X>.samba` entries emit the corresponding share +
+    ownership tmpfiles. The samba globals (workgroup, hosts allow,
+    vfs objects, the firewall rule) live in
+    `modules/services/samba.nix` on the host that imports it.
+  */
   config =
     let
       withSamba = lib.filterAttrs (_: f: f.samba != null) config.nori.fs;

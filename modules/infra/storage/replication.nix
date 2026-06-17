@@ -11,32 +11,38 @@ let
     ;
 in
 {
-  # nori.replicas — declarative cross-host data-replication registry.
-  #
-  # Each entry pairs a source dataset on one host with a target on
-  # another, plus a mechanism + freshness budget. The Writer half
-  # below emits a per-replica verifier oneshot on the *target* host
-  # (where the snapshot must land): if the latest snapshot is older
-  # than `maxAgeHours`, the unit fails → notify@ alerts via ntfy.
-  #
-  # The replicator itself (e.g. btrfs send/receive timer aurora →
-  # workstation MP510 for `/mnt/family/*`) lands in P15 — this module
-  # only defines the registry + the verifier so the freshness check
-  # is wired before any replicas actually exist. On hosts with zero
-  # matching entries the writer is a clean no-op (no units emitted)
-  # and `just test-replicas` exits 0 with "no replicas declared".
-  #
-  # Service-tier shape:
-  #
-  #   nori.replicas.family-photos = {
-  #     source       = { host = "aurora";      path = "/mnt/family/photos"; };
-  #     target       = { host = "workstation"; path = "/mnt/family-replica/photos"; };
-  #     mechanism    = "btrfs-send-receive";
-  #     maxAgeHours  = 25;  # daily cadence + 1h slack
-  #   };
-  #
-  # See docs/plans/2026-06-11-aurora-migration.md § P5/P15.
+  /**
+    `nori.replicas` — declarative cross-host data-replication registry.
 
+    Each entry pairs a source dataset on one host with a target on
+    another, plus a mechanism + freshness budget. The Writer half
+    below emits a per-replica verifier oneshot on the *target* host
+    (where the snapshot must land): if the latest snapshot is older
+    than `maxAgeHours`, the unit fails → notify@ alerts via ntfy.
+
+    The replicator itself (e.g. btrfs send/receive timer aurora →
+    workstation MP510 for `/mnt/family/*`) lands in P15 — this
+    module only defines the registry + the verifier so the freshness
+    check is wired before any replicas actually exist. On hosts with
+    zero matching entries the writer is a clean no-op (no units
+    emitted) and `just test-replicas` exits 0 with "no replicas
+    declared".
+
+    # Examples
+
+    Service-tier shape:
+
+    ```nix
+    nori.replicas.family-photos = {
+      source       = { host = "aurora";      path = "/mnt/family/photos"; };
+      target       = { host = "workstation"; path = "/mnt/family-replica/photos"; };
+      mechanism    = "btrfs-send-receive";
+      maxAgeHours  = 25;  # daily cadence + 1h slack
+    };
+    ```
+
+    See `docs/plans/2026-06-11-aurora-migration.md` § P5/P15.
+  */
   options.nori.replicas = mkOption {
     default = { };
     description = ''
@@ -92,9 +98,11 @@ in
     );
   };
 
-  # Writer: per-replica verifier oneshot emitted on the target host.
-  # Empty registry on this host → mkIf collapses to {} cleanly; no
-  # units, no timers, no test-replicas false negatives.
+  /**
+    Writer: per-replica verifier oneshot emitted on the target host.
+    Empty registry on this host → `mkIf` collapses to `{}` cleanly;
+    no units, no timers, no `test-replicas` false negatives.
+  */
   config =
     let
       mine = filterAttrs (_: r: r.target.host == config.networking.hostName) config.nori.replicas;
@@ -109,13 +117,15 @@ in
             Type = "oneshot";
             User = "root";
           };
-          # Latest snapshot mtime under target.path. btrfs receive
-          # lands subvols as direct children (snapshot dir convention
-          # is `<n>-YYYYMMDD-HHMMSS` per btrbk); take the newest by
-          # mtime. Failure = alert, which is the right behavior
-          # whenever the registry claims a replica but nothing's
-          # actually been received yet (the verifier's whole job is
-          # to catch silent receive-stalls).
+          /**
+            Latest snapshot mtime under `target.path`. btrfs receive
+            lands subvols as direct children (snapshot dir convention
+            is `<n>-YYYYMMDD-HHMMSS` per btrbk); take the newest by
+            mtime. Failure = alert, which is the right behavior
+            whenever the registry claims a replica but nothing's
+            actually been received yet (the verifier's whole job is
+            to catch silent receive-stalls).
+          */
           script = ''
             set -uo pipefail
             target=${r.target.path}

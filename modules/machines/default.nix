@@ -4,35 +4,39 @@
   machinesPath,
 }:
 
-# Machine-enumeration + nixosConfigurations factory.
-#
-# Reads `machinesPath` (currently `./machines/` at repo root; will be
-# `./modules/machines/` after Phase 4 of the modules-as-root
-# restructure) to derive the list of machines from the filesystem.
-# NixOS machines are those with a default.nix; standalone home-manager
-# machines (the Mac) only have home.nix.
-#
-# Identity metadata (tailnet/lan IPs, role, hardware, primaryJob) is
-# indexed by NixOS host name in `identityFor` below — non-NixOS
-# machines aren't in the registry because nothing in the NixOS module
-# system references them. The genAttrs lookup forces every NixOS host
-# folder to have an identity entry — a folder without identity fails
-# eval; an identity entry without a folder is silently dead code
-# (caught by code review).
-#
-# Schema:    modules/effects/hosts.nix
-# Consumers (cross-host refs):
-#   * modules/effects/lan-route.nix       (nori.lanIp default)
-#   * modules/infra/backup/default.nix    (host-aware appliance assertion)
-#   * modules/services/beszel/agent.nix   (metrics route backend)
-#   * modules/services/ntfy/notify.nix    (alert route backend)
-#   * machines/workstation/default.nix    (Pi probe URLs)
-#
-# Topology change = edit identityFor, redeploy.
-# Adding a NixOS host = `mkdir machines/<n> && touch machines/<n>/{default,hardware}.nix`
-# plus an identityFor entry — eval errors on either omission.
-# Adding a non-NixOS machine = `mkdir machines/<n> && touch machines/<n>/home.nix`
-# (no default.nix; not in identityFor).
+/**
+  Machine-enumeration + `nixosConfigurations` factory.
+
+  Reads `machinesPath` (currently `./machines/` at repo root; will be
+  `./modules/machines/` after Phase 4 of the modules-as-root
+  restructure) to derive the list of machines from the filesystem.
+  NixOS machines are those with a `default.nix`; standalone
+  home-manager machines (the Mac) only have `home.nix`.
+
+  Identity metadata (tailnet/lan IPs, role, hardware, primaryJob) is
+  indexed by NixOS host name in `identityFor` below — non-NixOS
+  machines aren't in the registry because nothing in the NixOS
+  module system references them. The `genAttrs` lookup forces every
+  NixOS host folder to have an identity entry — a folder without
+  identity fails eval; an identity entry without a folder is
+  silently dead code (caught by code review).
+
+  Schema: `modules/effects/hosts.nix`.
+
+  Consumers (cross-host refs):
+
+   - `modules/effects/lan-route.nix`     — `nori.lanIp` default
+   - `modules/infra/backup/default.nix`  — host-aware appliance assertion
+   - `modules/services/beszel/agent.nix` — metrics route backend
+   - `modules/services/ntfy/notify.nix`  — alert route backend
+   - `machines/workstation/default.nix`  — Pi probe URLs
+
+  Topology change = edit `identityFor`, redeploy. Adding a NixOS
+  host = `mkdir machines/<n> && touch machines/<n>/{default,hardware}.nix`
+  plus an `identityFor` entry — eval errors on either omission.
+  Adding a non-NixOS machine = `mkdir machines/<n> && touch
+  machines/<n>/home.nix` (no `default.nix`; not in `identityFor`).
+*/
 
 let
   machineNames = lib.attrNames (
@@ -74,13 +78,15 @@ let
         hub, alert plane, Tailscale subnet router + exit node.
       '';
     };
-    # Pavilion — HP g6 retasked as the agent quarantine host.
-    # Tailnet IP fills in after first `tailscale up`; lan stays
-    # null since the device roams (no static DHCP reservation).
-    # See machines/pavilion/default.nix for the impermanence /
-    # agent-role posture. Sits under tag:agent in the Tailscale ACL
-    # — can reach workhorse :11434 (ollama) only; cannot SSH any
-    # privileged-tier host.
+    /**
+      Pavilion — HP g6 retasked as the agent quarantine host.
+      Tailnet IP fills in after first `tailscale up`; lan stays null
+      since the device roams (no static DHCP reservation). See
+      `machines/pavilion/default.nix` for the impermanence /
+      agent-role posture. Sits under `tag:agent` in the Tailscale
+      ACL — can reach workhorse :11434 (ollama) only; cannot SSH
+      any privileged-tier host.
+    */
     pavilion = {
       tailnetIp = "100.93.230.66";
       lanIp = null; # roams; no static DHCP lease
@@ -94,13 +100,15 @@ let
         of `/mnt/family/*` (P16).
       '';
     };
-    # Aurora — retired Asus N552V gaming laptop (i7-6700HQ, 12 GB
-    # RAM, GTX 950M, dead battery). Repurposed as a single-role
-    # immich machine-learning offload host so workstation's 5060 Ti
-    # stays dedicated to ollama. Classified workhorse — has GPU,
-    # has compute, hosts a service — but it's a *minimal* workhorse;
-    # if a second compute-offload host ever appears, that's the
-    # rule-of-three signal to extract a dedicated `compute` role.
+    /**
+      Aurora — retired Asus N552V gaming laptop (i7-6700HQ, 12 GB
+      RAM, GTX 950M, dead battery). Repurposed as a single-role
+      immich machine-learning offload host so workstation's 5060 Ti
+      stays dedicated to ollama. Classified workhorse — has GPU,
+      has compute, hosts a service — but it's a *minimal* workhorse;
+      if a second compute-offload host ever appears, that's the
+      rule-of-three signal to extract a dedicated `compute` role.
+    */
     aurora = {
       tailnetIp = "100.101.67.111";
       lanIp = null; # wifi-only, no static lease

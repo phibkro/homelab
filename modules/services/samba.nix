@@ -10,7 +10,7 @@ lib.mkMerge [
     # Samba server, tailnet-only.
     #
     # Shares — one declared here (whole-drive `media`), two derived
-    # from nori.fs entries via modules/effects/fs.nix:
+    # from nori.fs entries via modules/infra/storage/default.nix:
     #   media → /mnt/media   (whole IronWolf btrfs root; subvolumes visible
     #                          as subdirs: streaming, photos, home-videos,
     #                          projects). Hardcoded here because the share
@@ -77,7 +77,7 @@ lib.mkMerge [
           };
 
           # `share`/`nori`/family-tier shares emitted by
-          # modules/effects/fs.nix from the per-fs `samba = { … }`
+          # modules/infra/storage/default.nix from the per-fs `samba = { … }`
           # blocks declared next to disko on each host.
         }
 
@@ -107,7 +107,7 @@ lib.mkMerge [
 
     # Ownership tmpfiles for the subvols accessed via the workstation
     # `media` SMB share. Per-fs `samba = { … }` blocks emit their own
-    # tmpfiles via modules/effects/fs.nix; the four below cover the
+    # tmpfiles via modules/infra/storage/default.nix; the four below cover the
     # subvols exposed transitively by the whole-drive media share.
     #
     # Enumerated, not auto-derived: @library and @archive are also

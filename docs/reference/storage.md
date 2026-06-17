@@ -83,7 +83,7 @@ Filesystem snapshot of a running database produces inconsistent state. Backup co
 
 `nori.fs.<n>` is Reader-shaped — declared alongside the host's disko config; each entry pairs a path with a value tier (`re-derivable` | `user` | `service` | `irreplaceable`). Service modules read `config.nori.fs.<n>.path`; backup repo paths + btrbk subvolume lists derive from the tier filter.
 
-Schema in `modules/effects/fs.nix`; declarations in `machines/workstation/disko*.nix`. Adding a media subvolume = one declaration; backup + snapshot wiring follows.
+Schema in `modules/infra/storage/default.nix`; declarations in `machines/workstation/disko*.nix`. Adding a media subvolume = one declaration; backup + snapshot wiring follows.
 
 ## Snapshot policy (btrbk)
 

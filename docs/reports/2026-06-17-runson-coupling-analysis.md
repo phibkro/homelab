@@ -155,7 +155,7 @@ Today:
 - `nori.lanRoutes` lives in `modules/effects/lan-route.nix` (single file, ~700 lines)
 - `nori.backups` lives in `modules/services/backup/` (a folder — backup.nix + restic.nix + verify.nix + btrbk.nix)
 - `nori.harden` lives in `modules/effects/harden.nix` (single file)
-- `nori.fs` lives in `modules/effects/fs.nix` (single file)
+- `nori.fs` lives in `modules/infra/storage/default.nix` (single file)
 
 The split-into-folder happens when ONE concept has multiple implementation surfaces (backup has: collect intents + restic dispatcher + verify check + btrbk replication). Lan-route has one (the schema + the generators). File-versus-folder isn't about complexity; it's about implementation-surface count.
 

@@ -36,7 +36,7 @@ Box-specific names worth remembering:
 - *arr stack: `sonarr radarr lidarr bazarr`.
 - qBittorrent state dir: `/var/lib/qBittorrent/qBittorrent/` (config, data, incomplete, downloads, cache). The 100s-of-GB consumer when wedged is `incomplete/`.
 - Root snapshots: `/.snapshots/{home,lib,share}.<YYYYMMDD>T<HHMM>`.
-- Media snapshots: `/mnt/media/.snapshots/{archive,home-videos,library,photos,projects}.<...>`. `@downloads` is **not** snapshotted (re-derivable tier per `modules/effects/fs.nix`) — deleting from `/mnt/media/downloads/` frees space immediately.
+- Media snapshots: `/mnt/media/.snapshots/{archive,home-videos,library,photos,projects}.<...>`. `@downloads` is **not** snapshotted (re-derivable tier per `modules/infra/storage/default.nix`) — deleting from `/mnt/media/downloads/` frees space immediately.
 
 ## Stage 1 — stop the writers
 
