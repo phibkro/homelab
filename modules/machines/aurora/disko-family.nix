@@ -2,7 +2,7 @@ _: {
   /*
     ── nori.fs declarations ───────────────────────────────────────────
     Aurora-side family-tier locations. Mirrors the irreplaceable-tier
-    entries that live on workstation (machines/workstation/disko-media.nix),
+    entries that live on workstation (modules/machines/workstation/disko-media.nix),
     but at /mnt/family/<X> instead of /mnt/media/<X>. Co-existence
     during P6-P11 is fine: each host evals independently, no cross-host
     conflict. The data move from workstation to aurora happens in P10.
@@ -21,7 +21,7 @@ _: {
       tailscale0). Share names match the workstation-side naming so a
       family bookmark only needs the hostname swapped. `ownerTmpfilesRule
       = false` on library + archive because aurora's tmpfiles already pin
-      them root:media at 02775 (machines/aurora/default.nix) for
+      them root:media at 02775 (modules/machines/aurora/default.nix) for
       calibre-web + komga; a second `nori users` rule would race.
     */
     photos = {
@@ -57,7 +57,7 @@ _: {
     triggered (it WIPES the drive):
 
       nix run github:nix-community/disko/latest -- \
-        --mode disko machines/aurora/disko-family.nix
+        --mode disko modules/machines/aurora/disko-family.nix
 
     Pre-disko-apply state: GPT with sdb1 (2G) + sdb2 (929.5G) leftovers
     from this laptop's prior life. Wipe-OK (operator confirmed in the
@@ -66,7 +66,7 @@ _: {
     SSD-vs-HDD choice for service state is the "Still open" decision
     in the migration plan; defer until first service move measures it.
 
-    nofail on every subvolume so the import in machines/aurora/default.nix
+    nofail on every subvolume so the import in modules/machines/aurora/default.nix
     is safe BEFORE the disko apply — boot keeps going even when the
     subvols don't exist yet. Same `x-systemd.automount` pattern used by
     disko-onetouch.nix; lazy-mount means the subvol mounts on first

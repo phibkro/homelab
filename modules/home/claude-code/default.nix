@@ -6,7 +6,7 @@
 }:
 
 /**
-  Claude Code agent — declarative + reusable. Imported via home/pc.nix on
+  Claude Code agent — declarative + reusable. Imported via modules/home/pc.nix on
   every operator-attached PC (workstation + macbook). NOT imported by pi:
   no operator agent loop, and the Node closure shouldn't land on pi's
   anti-write SSD.

@@ -162,6 +162,10 @@ fields:
 #                                 refactor.
 #   * modules/machines/default.nix — identityFor lives here
 #                                    post-Phase-2.
+# Other one-off canonical-site declarations should use the
+# line-level `# lint: skip tailnetIp — <reason>` annotation
+# instead of expanding `excludeFiles`; that keeps the rationale
+# next to the literal and avoids whole-file blast radius.
 pattern = '\b100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+\b'
 scope = ["modules/"]
 excludeFiles = ["modules/infra/hosts.nix", "modules/machines/default.nix"]
@@ -214,13 +218,13 @@ redirect_uris or service root URLs.'''
 # comments mentioning the convention (e.g. "use by-id, not /dev/sda")
 # don't trigger. Comments are prose; the rule guards config values.
 #
-# Scope: disko declarations live alongside each host. machines/
-# is the only legitimate site.
+# Scope: disko declarations live alongside each host.
+# modules/machines/ is the only legitimate site.
 #
 # Promoted from prose 2026-06-16 — see docs/invariants.md §
 # "Promotion register".
 pattern = '=\s*"/dev/(nvme[0-9]|sd[a-z][0-9]?|vd[a-z][0-9]?)'
-scope = ["machines/"]
+scope = ["modules/machines/"]
 tags = ["safety", "disko"]
 docLink = ".claude/skills/gotcha-nvme-enumeration/"
 message = '''
@@ -235,12 +239,12 @@ and use the matching by-id path in disko config.'''
 
 [rules.migrationPhase]
 # Migration-phase tokens (P<N> prep|cutover|landing|migration)
-# decay the moment the phase lands. modules/ + machines/ are for
-# what the code does today, not what it's getting ready to do.
+# decay the moment the phase lands. modules/ is for what the code
+# does today, not what it's getting ready to do.
 # Plans + reports + ADRs under docs/ are the right home for phase
 # narration; flag anywhere else.
 pattern = '\bP[0-9]+ (prep|cutover|landing|migration)\b'
-scope = ["modules/", "machines/"]
+scope = ["modules/"]
 tags = ["doc-hygiene"]
 message = '''
 Migration-phase token found above. Phase tokens (P12 prep, P15

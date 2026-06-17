@@ -36,7 +36,7 @@
     inputs.disko.nixosModules.disko
     inputs.home-manager.nixosModules.home-manager
 
-    ../../modules/common
+    ../../common
 
     /*
       Full services bundle. Importing does NOT activate services —
@@ -45,7 +45,7 @@
       on aurora is a one-line edit per service (see `nori.services`
       below).
     */
-    ../../modules/services
+    ../../services
 
     /*
       Aurora-only specialty: chrooted SFTP backup target. Sits outside
@@ -54,7 +54,7 @@
       OneTouch HDD physically moved from workstation. See
       docs/plans/2026-06-11-aurora-migration.md § P13.
     */
-    ../../modules/infra/backup/restic-target.nix
+    ../../infra/backup/restic-target.nix
 
     # Notably absent:
     #   modules/desktop/default.nix — headless
@@ -165,7 +165,7 @@
   /*
     nori in `media` so syncthing (runs as nori:users) can write to the
     /mnt/family/library/* tree, which is 02775 root:media per the
-    tmpfiles above. Mirrors machines/workstation/default.nix:53. Without
+    tmpfiles above. Mirrors modules/machines/workstation/default.nix:53. Without
     this, syncthing logs `mkdir /mnt/family/library/<X>/.stfolder:
     permission denied` and the folder fails initial scan.
   */
@@ -174,7 +174,7 @@
   /*
     ── Boot ───────────────────────────────────────────────────────────
     2016 laptop with UEFI — assume systemd-boot. If first boot reveals
-    legacy BIOS, flip to GRUB (see machines/pavilion/default.nix for
+    legacy BIOS, flip to GRUB (see modules/machines/pavilion/default.nix for
     the BIOS-mode shape).
   */
   boot.loader.systemd-boot.enable = true;

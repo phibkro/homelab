@@ -166,7 +166,7 @@ nori.lanRoutes.widget = {
 **Expected (shape)**:
 - Create folder: `mkdir machines/nori-foo`
 - Add `identityFor.nori-foo = { tailnetIp = "100.99.0.5"; lanIp = null; role = "workhorse"; };` in `flake.nix`
-- Write `machines/nori-foo/default.nix` (imports + concerns) and `hardware.nix` — don't redeclare `networking.hostName` (injected from folder name) <!-- path-coherence: skip — onboarding-test placeholder -->
+- Write `modules/machines/nori-foo/default.nix` (imports + concerns) and `hardware.nix` — don't redeclare `networking.hostName` (injected from folder name) <!-- path-coherence: skip — onboarding-test placeholder -->
 - Add host's age public key to `.sops.yaml`, run `sops updatekeys secrets/secrets.yaml`
 - First boot + `tailscale up`
 

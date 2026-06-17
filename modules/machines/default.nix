@@ -7,11 +7,10 @@
 /**
   Machine-enumeration + `nixosConfigurations` factory.
 
-  Reads `machinesPath` (currently `./machines/` at repo root; will be
-  `./modules/machines/` after Phase 4 of the modules-as-root
-  restructure) to derive the list of machines from the filesystem.
-  NixOS machines are those with a `default.nix`; standalone
-  home-manager machines (the Mac) only have `home.nix`.
+  Reads `machinesPath` (`./modules/machines/`) to derive the list of
+  machines from the filesystem. NixOS machines are those with a
+  `default.nix`; standalone home-manager machines (the Mac) only
+  have `home.nix`.
 
   Identity metadata (tailnet/lan IPs, role, hardware, primaryJob) is
   indexed by NixOS host name in `identityFor` below — non-NixOS
@@ -29,13 +28,13 @@
    - `modules/infra/backup/default.nix`  — host-aware appliance assertion
    - `modules/infra/observability/beszel/agent.nix` — metrics route backend
    - `modules/infra/observability/ntfy/notify.nix`  — alert route backend
-   - `machines/workstation/default.nix`  — Pi probe URLs
+   - `modules/machines/workstation/default.nix`  — Pi probe URLs
 
   Topology change = edit `identityFor`, redeploy. Adding a NixOS
   host = `mkdir machines/<n> && touch machines/<n>/{default,hardware}.nix`
   plus an `identityFor` entry — eval errors on either omission.
   Adding a non-NixOS machine = `mkdir machines/<n> && touch
-  machines/<n>/home.nix` (no `default.nix`; not in `identityFor`).
+  modules/machines/<n>/home.nix` (no `default.nix`; not in `identityFor`).
 */
 
 let
@@ -82,7 +81,7 @@ let
       Pavilion — HP g6 retasked as the agent quarantine host.
       Tailnet IP fills in after first `tailscale up`; lan stays null
       since the device roams (no static DHCP reservation). See
-      `machines/pavilion/default.nix` for the impermanence /
+      `modules/machines/pavilion/default.nix` for the impermanence /
       agent-role posture. Sits under `tag:agent` in the Tailscale
       ACL — can reach workhorse :11434 (ollama) only; cannot SSH
       any privileged-tier host.

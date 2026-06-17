@@ -10,14 +10,14 @@
     Minimal by intent: enough so apps don't render tofu boxes (squares
     for missing glyphs) without pulling tens of MB of unused families.
     JetBrainsMono Nerd Font is the terminal / launcher / hyprlock font
-    (see home/desktop/hypr-lock.nix `font_family`); plain JetBrainsMono
+    (see modules/home/desktop/hypr-lock.nix `font_family`); plain JetBrainsMono
     for documents that don't need Nerd Font icons; noto-fonts +
     noto-fonts-color-emoji + dejavu_fonts cover broad Unicode + emoji.
 
     System scope (vs home-manager) because fontconfig system path is the
     path GUI apps + system processes both honor; pi (no GUI) doesn't
     import modules/desktop/ so it stays font-free. Mac handles fonts at
-    user scope (~/Library/Fonts) in machines/macbook/home.nix because
+    user scope (~/Library/Fonts) in modules/machines/macbook/home.nix because
     macOS has no system layer here.
   */
   fonts.packages = [

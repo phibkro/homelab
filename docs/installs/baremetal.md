@@ -5,7 +5,7 @@ summary: Phase 4 step-by-step — disko-applied bare-metal NixOS install on work
 
 # Phase 4: NixOS install on workstation (disko-based)
 
-Bare-metal install. The flake's `machines/workstation/disko.nix` declares
+Bare-metal install. The flake's `modules/machines/workstation/disko.nix` declares
 the partition layout; disko applies it; `nixos-install` writes the
 system. No manual `parted` or `mkfs` — the layout is in version control.
 
@@ -94,7 +94,7 @@ nix --experimental-features 'nix-command flakes' \
 ```
 
 What this does:
-- Wipes and re-partitions `/dev/nvme0n1` per `machines/workstation/disko.nix`.
+- Wipes and re-partitions `/dev/nvme0n1` per `modules/machines/workstation/disko.nix`.
 - Creates the ESP (vfat, label `BOOT`) and btrfs filesystem (label
   `nixos`) with six subvolumes.
 - Mounts everything under `/mnt/` ready for `nixos-install`.
@@ -200,7 +200,7 @@ Phase 4 is done when all four work.
   (Samba, Ollama, Jellyfin, Immich, the *arr stack, Glance,
   Radicale, Syncthing, etc.) come up via `modules/services/` —
   the host imports the whole "server concern" via
-  `machines/workstation/default.nix`.
+  `modules/machines/workstation/default.nix`.
 - **Tailscale identity restore.** Fresh `tailscale up` registers a *new*
   node. The old `workstation` from Ubuntu lingers as expired in the
   admin console. Either delete it now or restore `/var/lib/tailscale/`
@@ -208,7 +208,7 @@ Phase 4 is done when all four work.
 - **IronWolf Pro reformat.** Phase 2. Separate operation; runs when
   you have a free evening.
 - **OneTouch as restic target.** Phase 5+ — see
-  `machines/workstation/disko-onetouch.nix`. <!-- path-coherence: skip — historical install doc; file moved to machines/aurora/ when OneTouch relocated 2026-06-11 --> Don't run that disko
+  `modules/machines/workstation/disko-onetouch.nix`. <!-- path-coherence: skip — historical install doc; file moved to machines/aurora/ when OneTouch relocated 2026-06-11 --> Don't run that disko
   config until the OneTouch's existing data has been migrated off
   (any Phase-1 backups it held are now on @archive on IronWolf;
   the migration is in `git log` around the OneTouch transition).

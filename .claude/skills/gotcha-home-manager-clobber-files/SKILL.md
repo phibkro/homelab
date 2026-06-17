@@ -29,4 +29,4 @@ For standalone HM, the equivalent is the `-b SUFFIX` CLI flag at switch time:
 home-manager switch -b hm-backup --flake .#macbook
 ```
 
-This is baked into the iteration command in `machines/macbook/home.nix`'s file header. If you find yourself hitting the clobber error on the mac, you forgot `-b hm-backup` — re-run with it.
+This is baked into the iteration command in `modules/machines/macbook/home.nix`'s file header. If you find yourself hitting the clobber error on the mac, you forgot `-b hm-backup` — re-run with it.

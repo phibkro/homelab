@@ -85,18 +85,18 @@ The `host = config.nori.hosts.pi.tailnetIp` is also load-bearing — never use I
 ### 4. Update host imports
 
 ```nix
-# machines/workstation/default.nix → modules/services/default.nix bundle
+# modules/machines/workstation/default.nix → modules/services/default.nix bundle
 # imports the client side (notify / agent / proxy) automatically.
 # DO NOT import the daemon side — station shouldn't be running it.
 
-# machines/pi/default.nix
+# modules/machines/pi/default.nix
 imports = [
   ../../modules/services/<service>/daemon.nix  # path-coherence: skip — template
   ../../modules/services/<service>/client.nix  # path-coherence: skip — template; Pi runs both — agent talks to its own hub, etc.
 ];
 ```
 
-Update `modules/services/default.nix` (the workhorse bundle) to import only the client side. Update `machines/pi/default.nix` (flat imports) to import both daemon + client.
+Update `modules/services/default.nix` (the workhorse bundle) to import only the client side. Update `modules/machines/pi/default.nix` (flat imports) to import both daemon + client.
 
 ### 5. Per-host config that varies
 

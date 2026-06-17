@@ -115,7 +115,7 @@ lib.mkMerge [
                btrbk-replication-ssh-key: |
                  -----BEGIN OPENSSH PRIVATE KEY-----
                  …
-          3. Paste the matching pubkey into machines/workstation/default.nix
+          3. Paste the matching pubkey into modules/machines/workstation/default.nix
              under users.users.btrbk.openssh.authorizedKeys.keys (see the
              workstation-side TODO below).
           4. Re-encrypt sops: `cd secrets && sops updatekeys secrets.yaml`

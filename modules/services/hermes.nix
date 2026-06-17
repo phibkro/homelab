@@ -3,11 +3,12 @@ _:
 /*
   Hermes Agent dashboard — Caddy lanRoute on the workstation.
 
-  Split from ./default.nix because that module is home-manager scope
-  (user package + user systemd service) and `nori.lanRoutes` is a NixOS
-  option. Both live under home/hermes/ for ownership clarity;
-  pc.nix imports ./default.nix (HM) and workstation/default.nix
-  imports ./route.nix (NixOS).
+  Split from modules/home/hermes/default.nix because that module is
+  home-manager scope (user package + user systemd service) and
+  `nori.lanRoutes` is a NixOS option. Both live under modules/home/hermes/
+  (HM side) and modules/services/hermes.nix (NixOS side) for ownership
+  clarity; modules/home/pc.nix imports the HM module, and
+  modules/machines/workstation/default.nix imports this NixOS module.
 
   Naming: brand-identified `hermes.nori.lan` rather than function-named
   `agent.nori.lan` — the convention exception applies here (the brand

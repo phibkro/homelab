@@ -14,7 +14,7 @@
   registry (the device-path SoT services read from).
 
   Shared `media` group declarations live in
-  `modules/services/arr/shared.nix` + `machines/aurora/default.nix`
+  `modules/services/arr/shared.nix` + `modules/machines/aurora/default.nix`
   (declared by each host that uses it; idempotent merge). A future
   `media-group.nix` could centralize this.
 */

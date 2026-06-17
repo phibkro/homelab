@@ -11,7 +11,7 @@
     across GTK / Qt / Hyprland / Kitty / btop / fuzzel / etc.
 
     Replaces the per-target manual config that lived in
-    machines/workstation/home.nix (gtk = { ... }, qt = { ... },
+    modules/machines/workstation/home.nix (gtk = { ... }, qt = { ... },
     home.pointerCursor, dconf, Hyprland env XCURSOR / GTK_THEME).
     Stylix's NixOS module also extends home-manager when home-manager
     runs as a NixOS module (the workstation case), so per-user theming
@@ -116,7 +116,7 @@
       Per-target opt-outs at NixOS scope go here when needed. Targets
       that live at home-manager scope (hyprlock, alacritty, etc.) opt
       out from the home-manager config instead — see
-      machines/workstation/home.nix `stylix.targets.<X>.enable`.
+      modules/machines/workstation/home.nix `stylix.targets.<X>.enable`.
     */
 
   };

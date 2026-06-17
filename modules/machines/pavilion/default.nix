@@ -51,15 +51,15 @@
     inputs.impermanence.nixosModules.impermanence
     inputs.home-manager.nixosModules.home-manager
 
-    ../../modules/common # base + users + sops + tailscale + lib options
+    ../../common # base + users + sops + tailscale + lib options
 
     /*
       Per-process RSS + system metrics → pi VictoriaMetrics. Imported
       file-by-file (not the whole services/ bundle) since pavilion has
       no LAN services. Catches agent-process leaks before they OOM.
     */
-    ../../modules/infra/observability/node-exporter.nix
-    ../../modules/infra/observability/beszel/agent.nix # aggregate dashboard → pi's Beszel hub
+    ../../infra/observability/node-exporter.nix
+    ../../infra/observability/beszel/agent.nix # aggregate dashboard → pi's Beszel hub
 
     /*
       Notably absent:

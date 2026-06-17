@@ -91,8 +91,8 @@
   /*
     System-scope only what root + system services + emergency operations
     genuinely need. Operator-interactive CLI (just, ripgrep, tmux,
-    starship, etc.) lives at user scope in home/core.nix — every host
-    (incl. pi) imports a home/<host>.nix that pulls in core, so nori on
+    starship, etc.) lives at user scope in modules/home/core.nix — every host
+    (incl. pi) imports a modules/home/<host>.nix that pulls in core, so nori on
     any machine has the same baseline.
   */
   environment.systemPackages = with pkgs; [

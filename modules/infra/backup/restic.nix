@@ -93,14 +93,14 @@ lib.mkIf (config.networking.hostName == "workstation") {
   nori.backupTargets = {
     onetouch = {
       repository = "sftp:restic@aurora.saola-matrix.ts.net:";
-      description = "OneTouch HDD relocated to aurora 2026-06-11; reached over SFTP via the chrooted `restic` user on aurora (see machines/aurora/disko-onetouch.nix + modules/infra/backup/restic-target.nix).";
+      description = "OneTouch HDD relocated to aurora 2026-06-11; reached over SFTP via the chrooted `restic` user on aurora (see modules/machines/aurora/disko-onetouch.nix + modules/infra/backup/restic-target.nix).";
       extraOptions = [
         "sftp.command='${pkgs.openssh}/bin/ssh -o BatchMode=yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/etc/ssh/aurora_known_hosts -i /run/secrets/restic-ssh-key restic@aurora.saola-matrix.ts.net -s sftp'"
       ];
     };
     mp510 = {
       repository = "/mnt/backup-local";
-      description = "Always-mounted btrfs subvolume on the MP510 NVMe (@backup-local). Drive-based name matching the `onetouch` convention. Replaced the prior `ironwolf` target (data was on the IronWolf @restic-local subvol) in P14 2026-06-11; see machines/workstation/disko-mp510.nix.";
+      description = "Always-mounted btrfs subvolume on the MP510 NVMe (@backup-local). Drive-based name matching the `onetouch` convention. Replaced the prior `ironwolf` target (data was on the IronWolf @restic-local subvol) in P14 2026-06-11; see modules/machines/workstation/disko-mp510.nix.";
     };
   };
 

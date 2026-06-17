@@ -5,6 +5,8 @@ when_to_use: The user asks to install, deploy, set up, or run a new service on t
 
 # Add a new homelab service
 
+<!-- path-coherence: skip-file — illustrative tutorial. Placeholder paths like `<service>.nix` are SHAPE EXAMPLES the reader copies into their new service file, not refs that resolve from the skill's own location. -->
+
 Authoritative procedure. Three flake checks (`every-service-has-fs-hardening`, `every-service-has-backup-intent`, `forbidden-patterns`) plus per-module assertions enforce the schema; this skill is the playbook + decision tree before the build catches you.
 
 ## Decision summary up front

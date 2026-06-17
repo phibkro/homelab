@@ -41,7 +41,7 @@ _: {
     existing exfat partition; preserve any irreplaceable data first.
 
       nix run github:nix-community/disko/latest -- \
-        --mode disko machines/workstation/disko-media.nix
+        --mode disko modules/machines/workstation/disko-media.nix
 
     See docs/reference/storage.md § "Workstation media" for the subvol → tier
     table. Mountpoints stay under /mnt/media/ — the label describes the

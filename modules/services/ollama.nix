@@ -41,7 +41,7 @@ lib.mkMerge [
 
     /**
       Ollama: local LLM inference server. NVIDIA driver lives in
-      machines/workstation/hardware.nix; CUDA runtime is pulled in by the
+      modules/machines/workstation/hardware.nix; CUDA runtime is pulled in by the
       `package` override below.
 
       Restore previous model library from the Ubuntu One Touch backup

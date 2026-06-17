@@ -4,7 +4,7 @@
     System-side Hyprland: provides /run/current-system/sw/bin/Hyprland (the
     binary greetd execs), polkit + dbus integration, and the
     xdg-desktop-portal-hyprland config. Per-user config (keybinds, monitors,
-    autostart) lives in ./home.nix via home-manager.
+    autostart) lives in modules/machines/workstation/home.nix via home-manager.
   */
   programs.hyprland = {
     enable = true;

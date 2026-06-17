@@ -161,7 +161,7 @@ let
 in
 /**
   Pure home-manager module — same shape as every other
-  machines/<n>/home.nix. The home-manager-as-NixOS-module wrapper
+  modules/machines/<n>/home.nix. The home-manager-as-NixOS-module wrapper
   lives in the sibling default.nix so this file is portable.
 */
 {
@@ -192,7 +192,7 @@ in
     pkgs.lazysql # SQL TUI (Immich pg, Open WebUI sqlite, etc.)
     pkgs.nix-tree # interactive Nix dependency-graph viewer
     pkgs.nvd # diff between NixOS generations
-    pkgs.handbrake # GUI video transcoder (GTK). Mac counterpart is a brew cask — broken on x86_64-darwin in nixpkgs; see machines/macbook/home.nix.
+    pkgs.handbrake # GUI video transcoder (GTK). Mac counterpart is a brew cask — broken on x86_64-darwin in nixpkgs; see modules/machines/macbook/home.nix.
     /*
       pkgs.deno: TS/JS runtime + the security sandbox for `pagu` (the local
       capability-gated agent in the gitignored ./pagu repo). pagu runs on
@@ -269,7 +269,7 @@ in
       "Projects" = link "/srv/nori/Projects";
     };
 
-  # home/desktop/hypr-lock.nix already owns hyprlock.settings.background
+  # modules/home/desktop/hypr-lock.nix already owns hyprlock.settings.background
   # (blur + screenshot capture); Stylix's hyprlock target would collide.
   stylix.targets.hyprlock.enable = false;
 

@@ -1,11 +1,11 @@
 ---
 name: gotcha-hyprland-lua-migration
-description: USE WHEN debugging Hyprland config issues, rolling back to hyprlang, asked about the hyprlang→Lua transition, OR any `hyprctl dispatch <cmd> <args>` call silently no-ops (returns ok or fails with "')' expected near 'X'") — this homelab MIGRATED to Lua on 2026-06-03 (Hyprland 0.55+ deprecated hyprlang, machines/workstation/hyprland.lua is the source). Setting `configType = "lua"` in home-manager stops rendering hyprland.conf entirely. Critical: any `hyprctl dispatch` invocation (from hypridle, scripts, mako handlers, anywhere) must use the `hl.dsp.*` builder form in lua mode — old hyprlang positional syntax silently breaks. Caught twice already: popup-term + DPMS.
+description: USE WHEN debugging Hyprland config issues, rolling back to hyprlang, asked about the hyprlang→Lua transition, OR any `hyprctl dispatch <cmd> <args>` call silently no-ops (returns ok or fails with "')' expected near 'X'") — this homelab MIGRATED to Lua on 2026-06-03 (Hyprland 0.55+ deprecated hyprlang, modules/machines/workstation/hyprland.lua is the source). Setting `configType = "lua"` in home-manager stops rendering hyprland.conf entirely. Critical: any `hyprctl dispatch` invocation (from hypridle, scripts, mako handlers, anywhere) must use the `hl.dsp.*` builder form in lua mode — old hyprlang positional syntax silently breaks. Caught twice already: popup-term + DPMS.
 ---
 
 # Hyprland config language: lua (migrated 2026-06-03)
 
-**Status as of 2026-06-03**: this homelab is on Hyprland 0.55+ via stable nixos-26.05; config is written in Lua at `machines/workstation/hyprland.lua`. `wayland.windowManager.hyprland.configType = "lua"` in `home.nix` makes home-manager stop rendering `hyprland.conf` entirely — Hyprland reads the `.lua` exclusively.
+**Status as of 2026-06-03**: this homelab is on Hyprland 0.55+ via stable nixos-26.05; config is written in Lua at `modules/machines/workstation/hyprland.lua`. `wayland.windowManager.hyprland.configType = "lua"` in `home.nix` makes home-manager stop rendering `hyprland.conf` entirely — Hyprland reads the `.lua` exclusively.
 
 **Migration history** (kept for context):
 
@@ -35,8 +35,8 @@ description: USE WHEN debugging Hyprland config issues, rolling back to hyprlang
 
 | When | Site | Symptom |
 |---|---|---|
-| 2026-06-07 | `popup-term` script (`machines/workstation/home.nix`) | SUPER+RETURN did nothing; only "ok" exit code surfaced the silent fail |
-| 2026-06-07 | hypridle DPMS off (`home/desktop/hypr-lock.nix`) | Monitors stayed lit at lock screen since the lua migration; power draw never dropped. Electricity-bill investigation surfaced this |
+| 2026-06-07 | `popup-term` script (`modules/machines/workstation/home.nix`) | SUPER+RETURN did nothing; only "ok" exit code surfaced the silent fail |
+| 2026-06-07 | hypridle DPMS off (`modules/home/desktop/hypr-lock.nix`) | Monitors stayed lit at lock screen since the lua migration; power draw never dropped. Electricity-bill investigation surfaced this |
 
 **Detection commands** (run when in doubt about a dispatch):
 

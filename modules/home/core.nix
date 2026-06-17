@@ -7,7 +7,7 @@
 
   Pi imports this too. Heavy packages (claude-code → Node, anything
   pulling large Rust/C++ toolchains) live per-machine in
-  `machines/<machine>/home.nix` rather than here — pi's anti-write
+  `modules/machines/<machine>/home.nix` rather than here — pi's anti-write
   USB SSD shouldn't carry packages it can't use.
 */
 

@@ -61,7 +61,7 @@ let
                         With Nix-declared rules, double-escape: `"\\$pbkdf2-"`.
       scope           — required list of strings. Paths under sourceRoot
                         that grep walks (e.g. `[ "modules/" ]` or
-                        `[ "modules/" "machines/" ]`).
+                        `[ "modules/machines/" ]`).
       message         — required string. Operator-facing explanation
                         when the rule fires. Should name the right thing
                         to do, not just identify the violation.
@@ -81,6 +81,24 @@ let
       tags            — optional list of strings, default `[ ]`. For
                         future filtering (`just lint --tag security`);
                         also annotated in the rule header in output.
+
+    ── Line-level skip annotation ──────────────────────────────────
+
+    Every rule implicitly accepts `# lint: skip <ruleName>` as a
+    line-level escape hatch. The format is:
+
+      <code> # lint: skip <ruleName> — <reason; doc-link if any>
+
+    The implicit pattern is added to each rule's excludePatterns at
+    lowering time. Use this over `excludeFiles` when the suppression
+    target is ONE LINE (a canonical declaration site, a known-safe
+    literal); reserve `excludeFiles` for files where the rule is
+    systematically inapplicable (the schema file, the registry).
+
+    The trailing `— <reason>` is operator discipline (not enforced
+    by the check). Reviewing future violations is easier when the
+    rationale lives next to the literal instead of in a grep-able
+    allowlist comment elsewhere.
 
     ── Lowering ────────────────────────────────────────────────────
 
@@ -137,17 +155,33 @@ let
           in
           " | grep -vE ${lib.escapeShellArg joined}";
 
+      /*
+        Line-level skip annotation. `# lint: skip <ruleName>` on the
+        same line as a violation suppresses just that rule for just
+        that line — the fine-grained alternative to `excludeFiles`.
+
+        Use when:
+         - the violating literal is canonical at this site (a
+           registry value declaration, like nori.hosts.<X>.tailnetIp
+           in identityFor or nori.tailnet.appliances.<X>.tailnetIp
+           for an appliance);
+         - the literal cannot move to a more central location
+           without premature abstraction (rule-of-three);
+         - the reason is captured ALONGSIDE the skip annotation
+           (after a `—`) so future readers see WHY without grepping.
+
+        Format: `# lint: skip <ruleName> — <reason, doc-link if any>`
+        The reason is operator discipline, not enforced by the check.
+      */
+      annotationSkip = "# lint: skip ${name}";
+
       patternExcludeChain =
         let
-          patterns = rule.excludePatterns or [ ];
+          explicit = rule.excludePatterns or [ ];
+          patterns = explicit ++ [ annotationSkip ];
+          joined = lib.concatStringsSep "|" patterns;
         in
-        if patterns == [ ] then
-          ""
-        else
-          let
-            joined = lib.concatStringsSep "|" patterns;
-          in
-          " | grep -vE ${lib.escapeShellArg joined}";
+        " | grep -vE ${lib.escapeShellArg joined}";
 
       docLinkLine = lib.optionalString (
         rule.docLink or null != null

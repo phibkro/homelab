@@ -42,7 +42,7 @@ Failure domain independence: each host shares no storage, no PSU, no critical bo
 A service has three concerns: registration (it exists), state (it persists data), location (it runs on host X). For services confined to one host, **location is implicit from the import site**:
 
 ```
-machines/aurora/default.nix imports modules/services/vaultwarden.nix
+modules/machines/aurora/default.nix imports modules/services/vaultwarden.nix
                             ⇒ vaultwarden runs on aurora
 ```
 
@@ -73,7 +73,7 @@ Today `runsOn` is a single host string. Forward-shape (not in tree yet but pre-n
 
 ## Pi posture
 
-Anti-write storage — declared in `machines/pi/hardware.nix`:
+Anti-write storage — declared in `modules/machines/pi/hardware.nix`:
 
 - `swapDevices = [ ]` — no swap on flash; zramSwap if pressure shows up.
 - `services.journald.extraConfig = Storage=volatile` — RAM-backed journal, no writes to the FIT.
@@ -81,7 +81,7 @@ Anti-write storage — declared in `machines/pi/hardware.nix`:
 
 SD-card / flash wear is the #1 Pi failure mode. **Restic-as-target deferred:** Pi can host the workstation restic repo only when a real disk replaces the FIT — the anti-write posture rules out daily restic to flash.
 
-**NVMe enumeration is unstable across reboots.** Disko configs target `/dev/disk/by-id/...` paths; never touch `nvme0n1` without verifying the model string. Workstation's WD SN750 was `nvme0n1` at install time; post-reboot the drives swapped. Load-bearing rationale lives at `machines/workstation/disko.nix:46-51`. See `.claude/skills/gotcha-nvme-enumeration/`.
+**NVMe enumeration is unstable across reboots.** Disko configs target `/dev/disk/by-id/...` paths; never touch `nvme0n1` without verifying the model string. Workstation's WD SN750 was `nvme0n1` at install time; post-reboot the drives swapped. Load-bearing rationale lives at `modules/machines/workstation/disko.nix:46-51`. See `.claude/skills/gotcha-nvme-enumeration/`.
 
 ## Topology registry (`nori.hosts`)
 
@@ -111,7 +111,7 @@ The `role` field on each host drives the placement assertion in `modules/infra/b
 | ML inference (Immich machine-learning / PyTorch) | aurora | Co-located with immich-server; GTX 950M is sufficient. `IMMICH_MACHINE_LEARNING_URL` resolves to aurora's tailnet IP |
 | Family-tier services (Vaultwarden, Radicale, Miniflux, Immich, Calibre-web, Komga, Glance, Heim, Filmder, Grafana) | aurora | Always-on so they survive workstation sleep / outage; ADR-0002 |
 | Family-tier file storage (`/mnt/family/{photos,home-videos,projects,library,archive}`) | aurora | Family vault — Toshiba HDD, btrfs label `family-vault` |
-| Family Samba shares | aurora | Follows the drive — per-fs `samba = { }` blocks in `machines/aurora/disko-family.nix` |
+| Family Samba shares | aurora | Follows the drive — per-fs `samba = { }` blocks in `modules/machines/aurora/disko-family.nix` |
 | Workstation Samba shares (`media`, `share`, `nori`) | workstation | Whole-drive `media` share scoped to `/mnt/media` (IronWolf root) stays workstation-only; per-fs `share` + `nori` shares stay workstation-only via the gated workstation-shape check in `samba.nix` |
 | Observability + alert plane (Beszel hub, Gatus, VictoriaMetrics, VictoriaLogs, ntfy server) | pi | Must survive workstation outage — that's *when* they fire |
 | Heartbeat / dead-man-switch (healthchecks.io ping) | pi | SPOF mitigation — see `modules/infra/observability/heartbeat.nix` |
@@ -135,7 +135,7 @@ Daemon on one host, client/proxy on every consumer. Cross-host Caddy lanRoute ga
 | VictoriaLogs | pi | `logs.${nori.domain}` | `modules/infra/observability/vector.nix` ships journald |
 | VictoriaMetrics | pi | `tsdb.${nori.domain}` (Grafana datasource) | `modules/infra/observability/node-exporter.nix` scraped from pi |
 | immich-ml | aurora | n/a (RPC only) | `modules/services/immich.nix` (workstation) — `IMMICH_MACHINE_LEARNING_URL` |
-| hermes-agent | pavilion (planned) → currently workstation | `hermes.${nori.domain}` | `home/hermes/default.nix` (PCs) |
+| hermes-agent | pavilion (planned) → currently workstation | `hermes.${nori.domain}` | `modules/home/hermes/default.nix` (PCs) |
 
 Add another via `/relocate-to-pi`. Precedents above.
 

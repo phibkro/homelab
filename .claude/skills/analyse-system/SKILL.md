@@ -5,7 +5,7 @@ when_to_use: Same as user-level /analyse-system — fresh-context session, struc
 
 # Analyse system — homelab-specific supplement
 
-The framework — Meadows' 12 leverage points, dimension-choice guidance (the artifact / dev-workflow / agentic-workflow cut is suggestive, not prescriptive), procedure, generic per-tier examples, caveats — lives in the **user-level** `~/.claude/skills/analyse-system/SKILL.md`. That skill is managed declaratively from `home/claude-code/skills/analyse-system/SKILL.md` in this repo and symlinked into `~/` via home-manager (see `home/claude-code/default.nix`), so workstation + macbook share the same agent config. Read it first.
+The framework — Meadows' 12 leverage points, dimension-choice guidance (the artifact / dev-workflow / agentic-workflow cut is suggestive, not prescriptive), procedure, generic per-tier examples, caveats — lives in the **user-level** `~/.claude/skills/analyse-system/SKILL.md`. That skill is managed declaratively from `home/claude-code/skills/analyse-system/SKILL.md` in this repo and symlinked into `~/` via home-manager (see `modules/home/claude-code/default.nix`), so workstation + macbook share the same agent config. Read it first.
 
 This file adds two things specific to this homelab:
 
@@ -17,7 +17,7 @@ NixOS flake; the canonical entry-point + abstraction-family reading order is:
 2. `modules/infra/*.nix` — the `nori.<X>` Reader+Writer effect family (`hosts`, `gpu`, `fs`, `lan-route`, `backup`, `harden`)
 3. `modules/common/default.nix` — what every host imports
 4. Sample 5-7 of `modules/services/*.nix` — representative service shapes (don't read all ~25)
-5. `machines/<host>/default.nix` per host — workstation + pi today
+5. `modules/machines/<host>/default.nix` per host — workstation + pi today
 6. `Justfile` — operator workflows
 7. `docs/{DESIGN,CONVENTIONS,gotchas}.md` — for *why*; trust code over doc when they conflict
 8. `git log --oneline -20` — recent narrative

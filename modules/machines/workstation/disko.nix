@@ -43,7 +43,7 @@ _: {
     Declarative partition layout for workstation's NVMe root. Applied
     at install time:
       nix run github:nix-community/disko/latest -- \
-        --mode disko machines/workstation/disko.nix
+        --mode disko modules/machines/workstation/disko.nix
 
     See docs/reference/storage.md § "Workstation root" for the subvol → mount
     table. All btrfs subvolumes mount compress=zstd:3,noatime; disko

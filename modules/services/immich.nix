@@ -103,7 +103,7 @@ lib.mkMerge [
       database.enable = true; # dedicated postgres + VectorChord ext
       redis.enable = true;
       /*
-        ML offloaded to aurora (machines/aurora/default.nix) — the 5060
+        ML offloaded to aurora (modules/machines/aurora/default.nix) — the 5060
         Ti stays dedicated to ollama, no contention on heavy photo
         ingest. immich-server reaches the remote ML via env override
         below. Maxwell 950M on aurora is plenty for CLIP + face
@@ -129,7 +129,7 @@ lib.mkMerge [
       the aurora migration. Workstation no longer runs the ML unit, so
       any override targeting immich-machine-learning here produces a
       unit with no ExecStart — systemd refuses to load it and activation
-      fails. Aurora-side tuning lives in machines/aurora/default.nix.
+      fails. Aurora-side tuning lives in modules/machines/aurora/default.nix.
     */
 
     # Joins `media` to read the user-organized photo tree if you point

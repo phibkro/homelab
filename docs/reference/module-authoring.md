@@ -91,13 +91,13 @@ The flake derives configurations from the directory structure:
 
 | Detected | Produces |
 |---|---|
-| `./machines/<n>/default.nix` | `nixosConfigurations.<n>` (NixOS host) |
-| `./machines/<n>/home.nix` without `default.nix` | `homeConfigurations.<n>` (e.g. Mac; activated via standalone home-manager) |
+| `modules/machines/<n>/default.nix` | `nixosConfigurations.<n>` (NixOS host) |
+| `modules/machines/<n>/home.nix` without `default.nix` | `homeConfigurations.<n>` (e.g. Mac; activated via standalone home-manager) |
 | NixOS hosts that have `home.nix` | Activate via `home-manager-as-NixOS-module` inside their own `default.nix` |
 
-`machines/<n>/home.nix` is a **pure home-manager module** regardless of the host's OS. Same file shape across NixOS + standalone — no platform-specific module conventions inside `home.nix`.
+`modules/machines/<n>/home.nix` is a **pure home-manager module** regardless of the host's OS. Same file shape across NixOS + standalone — no platform-specific module conventions inside `home.nix`.
 
-`home/core.nix` is the shared user-scope baseline imported by every machine's `home.nix` via `imports = [ ../../home/core.nix ]`. Cross-platform CLI + identity (starship, programs.git, comma, sops/age/claude-code, just/ripgrep/tmux).
+`modules/home/core.nix` is the shared user-scope baseline imported by every machine's `home.nix` via `imports = [ ../../home/core.nix ]`. <!-- path-coherence: skip — illustrative import string (quoted as it appears in machines/*/home.nix, not resolved from this doc's location) --> Cross-platform CLI + identity (starship, programs.git, comma, sops/age/claude-code, just/ripgrep/tmux).
 
 ## Concerns compose host identity
 
@@ -112,8 +112,10 @@ The flake derives configurations from the directory structure:
 
 A typical NixOS host file:
 
+<!-- path-coherence: skip-block — illustrative fenced example; relative paths are SHAPE from the perspective of the host file shown in the comment header, not this doc's location -->
+
 ```nix
-# machines/workstation/default.nix
+# modules/machines/workstation/default.nix
 imports = [
   inputs.disko.nixosModules.disko
   ../../modules/common
@@ -123,6 +125,8 @@ imports = [
   ./disko.nix
 ];
 ```
+
+<!-- path-coherence: end-skip -->
 
 Reading this answers "what kind of machine is `workstation`?" at a glance. `pi` lives as `common +` *flat imports of specific server modules* (Blocky, Gatus, Beszel hub+agent, ntfy server+notify) — the bundle import is too coarse for the appliance role.
 
@@ -295,8 +299,8 @@ Packages and config live at one of four scopes. Pick the **lowest** scope that g
 |---|---|---|---|
 | **System floor** | `modules/common/base.nix` `environment.systemPackages` | Every host (incl. pi, which has no home-manager); root, sshd, system services | `bat curl dig fd git htop just ripgrep tmux tree vim wget` |
 | **System desktop** | `modules/desktop/apps.nix` `environment.systemPackages` + `fonts.packages` | Workstation Linux desktop session — Hyprland-invoked apps, GUI clients, fonts | `ghostty fuzzel hyprpaper zen bitwarden-desktop zed-editor davinci-resolve nerd-fonts.jetbrains-mono` |
-| **User core** | `home/core.nix` `home.packages` + `programs.<x>` | Every interactive machine where nori is the operator | `comma starship programs.git age sops claude-code` |
-| **Per-machine user** | `machines/<host>/home.nix` `home.packages` | One specific machine | workstation: `nvtop` (NVIDIA), `compsize` (btrfs), Hyprland binds; Mac: `bun pnpm ffmpeg`, `home.file."Library/Fonts/..."` |
+| **User core** | `modules/home/core.nix` `home.packages` + `programs.<x>` | Every interactive machine where nori is the operator | `comma starship programs.git age sops claude-code` |
+| **Per-machine user** | `modules/machines/<host>/home.nix` `home.packages` | One specific machine | workstation: `nvtop` (NVIDIA), `compsize` (btrfs), Hyprland binds; Mac: `bun pnpm ffmpeg`, `home.file."Library/Fonts/..."` |
 
 Decision rules:
 
@@ -358,12 +362,12 @@ nh os switch --target-host pi --build-host workstation .#pi
 
 ### Disko at install
 
-Disk layouts in `machines/<host>/disko*.nix` from day zero. First install:
+Disk layouts in `modules/machines/<host>/disko*.nix` from day zero. First install:
 
 1. Boot NixOS minimal installer USB
 2. SSH into installer or work locally
 3. Clone the flake to `/tmp/homelab`
-4. `nix --experimental-features 'nix-command flakes' run github:nix-community/disko/latest -- --mode disko /tmp/homelab/machines/workstation/disko.nix`
+4. `nix --experimental-features 'nix-command flakes' run github:nix-community/disko/latest -- --mode disko /tmp/homelab/modules/machines/workstation/disko.nix`
 5. `nixos-install --flake /tmp/homelab#workstation`
 6. Reboot, set password on first login, push generated flake.lock
 

@@ -60,7 +60,7 @@ in
 
               Format guidance: model · CPU family · RAM · GPU (if any) ·
               storage notes. Keep terse — the field is a table cell, not
-              a spec sheet. Detailed posture lives in machines/<n>/default.nix
+              a spec sheet. Detailed posture lives in modules/machines/<n>/default.nix
               header comments (anti-write posture, impermanence, etc.).
             '';
           };
@@ -70,7 +70,7 @@ in
               Multi-clause prose describing what this host does — the
               "Primary job" cell in the topology table. CommonMark
               permitted (bullets, inline code, links). Keep to a
-              paragraph; deeper rationale belongs in machines/<n>/default.nix
+              paragraph; deeper rationale belongs in modules/machines/<n>/default.nix
               or the relevant ADR.
 
               Drift policy: when a host's job changes materially (gains

@@ -8,7 +8,7 @@
   Standalone home-manager configurations for non-NixOS machines.
 
   NixOS machines embed home-manager as a NixOS module inside their
-  own `machines/<n>/default.nix`; these standalone entries are only
+  own `modules/machines/<n>/default.nix`; these standalone entries are only
   for machines where the host OS isn't NixOS (Mac).
 
   Activate with `home-manager switch --flake .#<name>`.
@@ -31,6 +31,6 @@ in
       `extraSpecialArgs` in its NixOS-side home-manager wrapper.
     */
     extraSpecialArgs = { inherit inputs; };
-    modules = [ ../../machines/macbook/home.nix ];
+    modules = [ ../machines/macbook/home.nix ];
   };
 }

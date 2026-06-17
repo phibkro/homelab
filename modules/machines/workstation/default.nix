@@ -15,9 +15,9 @@
     inputs.disko.nixosModules.disko
     inputs.home-manager.nixosModules.home-manager
 
-    ../../modules/common # base + users + sops + tailscale + lib options
-    ../../modules/services # every server module (HTTP, *arr, backup, …)
-    ../../modules/desktop # Hyprland + greetd + audio + bars + apps + gaming
+    ../../common # base + users + sops + tailscale + lib options
+    ../../services # every server module (HTTP, *arr, backup, …)
+    ../../desktop # Hyprland + greetd + audio + bars + apps + gaming
 
     ./hardware.nix
     ./disko.nix
@@ -28,7 +28,7 @@
   /*
     home-manager-as-NixOS-module wrapper. Activates the user's home
     config (./home.nix — pure home-manager module shape) as part of
-    nixos-rebuild. The same shape lives in machines/pi/default.nix;
+    nixos-rebuild. The same shape lives in modules/machines/pi/default.nix;
     extract a shared snippet at the third instance.
   */
   home-manager = {
@@ -144,7 +144,7 @@
     behind Caddy are auto-probed via nori.lanRoutes.<n>.monitor.
 
     Mutual observability: station probes Pi's Blocky + SSH via tailnet
-    IP; pi has matching probes for station (machines/pi/default.nix).
+    IP; pi has matching probes for station (modules/machines/pi/default.nix).
     Each host's Gatus alerts via ntfy.sh directly (no local-ntfy
     dependency), so one host's outage gets caught by the other.
   */

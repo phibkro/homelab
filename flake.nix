@@ -42,7 +42,7 @@
     /*
       snappy-switcher — Hyprland alt-tab overlay. Not in nixpkgs;
       upstream ships a flake. Bindings + daemon autostart live in
-      machines/workstation/hyprland.lua (ALT+Tab MRU global, SUPER+Tab
+      modules/machines/workstation/hyprland.lua (ALT+Tab MRU global, SUPER+Tab
       workspace-local).
     */
     snappy-switcher.url = "github:OpalAayan/snappy-switcher";
@@ -55,7 +55,7 @@
       Discord/Telegram or external memory providers.
 
       No GitHub credential is plumbed into hermes by design — see the
-      security note in home/claude-code/default.nix; operator-driven
+      security note in modules/home/claude-code/default.nix; operator-driven
       claude-code remains the only path to commit/push.
     */
     hermes-agent.url = "github:NousResearch/hermes-agent";
@@ -82,7 +82,7 @@
 
     /*
       Third-party Claude Code skill sources — pinned via flake.lock,
-      consumed as plain source trees by home/claude-code/default.nix.
+      consumed as plain source trees by modules/home/claude-code/default.nix.
       Update via `nix flake update --update-input <name>`. Not flakes
       themselves, hence flake = false.
     */
@@ -174,7 +174,7 @@
       */
       machinesModule = import ./modules/machines {
         inherit lib inputs;
-        machinesPath = ./machines;
+        machinesPath = ./modules/machines;
       };
 
       /*

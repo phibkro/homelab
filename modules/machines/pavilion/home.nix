@@ -8,7 +8,7 @@
   `nixpkgs-agent/solve.sh <package>`; the agent fires under
   `box --pi --pwd-ro` and either lands a diff or doesn't.
 
-  Notably absent vs machines/workstation/home.nix:
+  Notably absent vs modules/machines/workstation/home.nix:
     * No desktop (Hyprland, fuzzel, ghostty) — headless
     * No claude-code — operator's trusted hands stay on workstation;
       pavilion only runs sandboxed agents (pi)
@@ -35,7 +35,7 @@
   /*
     `pi` (badlogic/pi-mono) + `pagu-box` + `box` alias are added
     separately once those wrappers land in a shared module.
-    Today they live in home/claude-code/default.nix, which we
+    Today they live in modules/home/claude-code/default.nix, which we
     explicitly DON'T import here (claude-code itself shouldn't run on
     pavilion). Follow-up: extract the agent-tooling subset of
     claude-code/default.nix into a small shared module that pavilion

@@ -26,7 +26,7 @@
     */
     "${modulesPath}/installer/sd-card/sd-image-aarch64.nix"
 
-    ../../modules/common
+    ../../common
 
     /*
       Full service bundle. Post P2/P3 wrap + P1b route lift, importing
@@ -35,18 +35,18 @@
       import time so pi's Caddy (when enabled below) gets the complete
       `*.${nori.domain}` map without per-route stubs.
     */
-    ../../modules/services
+    ../../services
 
     /*
       Appliance-specialty modules that live outside the bundle (the
       bundle covers what workstation runs; these are pi-side service
       halves of the workhorse/appliance splits, plus pi's heartbeat).
     */
-    ../../modules/infra/observability/beszel/hub.nix
-    ../../modules/infra/observability/ntfy/server.nix
-    ../../modules/infra/observability/victorialogs/server.nix
-    ../../modules/infra/observability/victoriametrics.nix
-    ../../modules/infra/observability/heartbeat.nix
+    ../../infra/observability/beszel/hub.nix
+    ../../infra/observability/ntfy/server.nix
+    ../../infra/observability/victorialogs/server.nix
+    ../../infra/observability/victoriametrics.nix
+    ../../infra/observability/heartbeat.nix
 
     ./hardware.nix
     inputs.home-manager.nixosModules.home-manager
@@ -54,7 +54,7 @@
 
   /*
     home-manager-as-NixOS-module wrapper. Same shape as
-    machines/workstation/default.nix; extract a shared snippet at the
+    modules/machines/workstation/default.nix; extract a shared snippet at the
     third NixOS host (laptop NixOS would be the trigger).
   */
   home-manager = {
@@ -183,7 +183,7 @@
     wakeonlan on PATH so the operator can WoL workstation from a phone
     SSH session into pi (Termius snippet `wakeonlan <mac>`). Sends a
     UDP magic packet (port 9), so no sudo or raw-socket cap needed.
-    See machines/workstation/hardware.nix § Wake-on-LAN for the
+    See modules/machines/workstation/hardware.nix § Wake-on-LAN for the
     receiving side.
   */
   environment.systemPackages = [ pkgs.wakeonlan ];
@@ -197,7 +197,7 @@
     for the architectural-compromise note.
   */
   nori.tailnet.appliances.chromecast = {
-    tailnetIp = "100.94.135.114";
+    tailnetIp = "100.94.135.114"; # lint: skip tailnetIp — chromecast appliance, canonical declaration site (parallel to identityFor.<host> for hosts). Schema: modules/infra/tailnet-appliance.nix.
     interceptedAt = "pi";
   };
 

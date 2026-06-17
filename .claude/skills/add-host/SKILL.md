@@ -5,7 +5,9 @@ when_to_use: User mentions adding a new physical or virtual machine to the flake
 
 # Add a new homelab host
 
-Authoritative procedure. The flake's `readDir ./machines/` + `genAttrs hostNames` + `identityFor` lookup means the folder structure IS the host enumeration; missing either side fails eval.
+<!-- path-coherence: skip-file — illustrative tutorial. Relative paths in this skill are SHAPE EXAMPLES the reader copies into their new host folder, not refs that resolve from the skill's own location. -->
+
+Authoritative procedure. The flake's `readDir ./modules/machines/` + `genAttrs hostNames` + `identityFor` lookup means the folder structure IS the host enumeration; missing either side fails eval.
 
 ## Decision summary up front
 
@@ -57,7 +59,7 @@ Required minimum:
 
 GPU host? Set `nori.gpu.nvidiaDevices = [ "/dev/nvidia0" "/dev/nvidiactl" "/dev/nvidia-uvm" ]` here.
 
-Anti-write storage host (USB flash, SD card)? See `machines/pi/hardware.nix` — `swapDevices = []`, `journald.Storage=volatile`, `vm.mmap_rnd_bits` aarch64 fixup if applicable.
+Anti-write storage host (USB flash, SD card)? See `modules/machines/pi/hardware.nix` — `swapDevices = []`, `journald.Storage=volatile`, `vm.mmap_rnd_bits` aarch64 fixup if applicable.
 
 ### 4. Write default.nix
 

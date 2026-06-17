@@ -1,6 +1,6 @@
 ---
 date: 2026-06-17
-status: EXECUTED — Phases 0-3f landed 2026-06-17
+status: EXECUTED — Phases 0-4 landed 2026-06-17
 seed: Stage 2.5 redirect; operator framing 2026-06-17 (PaaS lens + dual-access split)
 summary: Restructure the codebase under modules/ as the single root, with services/ (workloads) and infra/<concern>/ (hosting platform) as the load-bearing split. Apply the PaaS lens to name infra sub-concerns; separate audience access from capabilities access. Use default.nix per folder; move enumeration logic into modules/<tree>/default.nix; thin flake.nix to dep-injection.
 executed-as:
@@ -16,8 +16,12 @@ executed-as:
   - Phase 3f  9d63fd5  drain effects/
   - doc-pass  3cc23a9  CLAUDE.md + module-authoring.md + glossary.md +
                        documentation-writing.md aligned
+  - Phase 4   <this>   /home → modules/home; /machines → modules/machines.
+                       path-coherence refined to skip relative imports;
+                       tailnetIp lint scope expanded; chromecast
+                       allowlist; 3 generated docs regenerated.
 verification: byte-equal nix eval on representative trees per phase;
-              all 9 flake checks pass at every commit; 4 NixOS hosts
+              all 11 flake checks pass at every commit; 4 NixOS hosts
               unchanged behaviorally.
 ---
 
@@ -431,13 +435,32 @@ Phase 3 — bulk move infra concerns (one PR per concern)
     - Verify byte-equal eval
     - Single commit per concern
 
-Phase 4 — machines + home rewire
+Phase 4 — machines + home rewire (EXECUTED 2026-06-17)
+  - /machines/* → modules/machines/* (siblings of the factory's default.nix)
+  - /home/* → modules/home/* (siblings of the factory's default.nix)
+  - flake.nix:177 machinesPath: ./machines → ./modules/machines
+  - modules/home/default.nix:34 ../../machines → ../machines (macbook ref)
+  - All other home.nix imports (../../home/X.nix from machines/<host>/)
+    PRESERVE because both trees moved by equal depth.
+  - Lint scope expansions: diskoUsesById to modules/machines/;
+    migrationPhase consolidated to modules/.
+  - tailnetIp lint coverage grew to include modules/machines/<host>/;
+    chromecast appliance (100.94.135.114) added to allowlist.
+  - path-coherence check refined to skip relative-path imports
+    (the existing regex captured `home/X.nix` from `../../home/X.nix`
+    and false-positived after the move).
+  - Doc-comment rewrites: ~120 occurrences of `home/X.nix` and
+    `machines/X.nix` updated to the modules-rooted form.
+  - 3 generated docs regenerated (lan-route, topology, dev-shell).
+
+Deferred from Phase 4 (separate spec):
   - modules/common/ → modules/machines/common/ or base.nix
-  - /machines/* → modules/machines/* (or stay at /machines/
-    if the modules/ move is rejected)
-  - /home/* → modules/home/*
-  - modules/desktop/ → modules/home/base.nix
-  - Verify per-machine eval byte-equal
+    (decision NOT made — `modules/common/` reads cleanly as the
+     "shared baseline imported by every NixOS host" and the
+     move would obscure that. Keeping it at modules/common/.)
+  - modules/desktop/ → modules/home/base.nix (deferred; desktop/
+    is NixOS-system-scope, not home-scope; rename only if scope
+    clarification surfaces.)
 
 Phase 5 — leaves + meta-tools
   - modules/infra/motd.nix → modules/infra/motd.nix or

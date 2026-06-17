@@ -18,7 +18,7 @@ lib.mkMerge [
                                covers the btrfs root, which isn't a single
                                nori.fs subvol entry.
         share → /srv/share   (emitted by nori.fs.share.samba — declared
-                               alongside disko at machines/workstation/disko.nix)
+                               alongside disko at modules/machines/workstation/disko.nix)
         nori  → /srv/nori    (emitted by nori.fs.nori.samba — recursive
                                dotfile veto declared alongside disko)
 

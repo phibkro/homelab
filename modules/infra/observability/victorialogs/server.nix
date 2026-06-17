@@ -21,7 +21,7 @@ lib.mkMerge [
 
       State at /var/lib/private/victorialogs (DynamicUser, upstream
       module). Treated as ephemeral — Pi's flash storage is anti-write
-      (machines/pi/hardware.nix), log data is event-history, and the
+      (modules/machines/pi/hardware.nix), log data is event-history, and the
       alert path (ntfy + Gatus) is independent of this index. Revisit
       if/when Pi gains a real disk.
     */

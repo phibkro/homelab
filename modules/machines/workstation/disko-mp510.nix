@@ -51,7 +51,7 @@ _: {
     Applied with:
 
       nix run github:nix-community/disko/latest -- \
-        --mode disko machines/workstation/disko-mp510.nix
+        --mode disko modules/machines/workstation/disko-mp510.nix
 
     **One-shot wipe** — operator's responsibility to extract anything
     off the prior NTFS partition before running disko. See
