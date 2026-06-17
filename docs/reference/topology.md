@@ -8,15 +8,7 @@ summary: Hosts, hardware, roles, the topology registry, GPU access, resource
 
 Four persistent NixOS hosts on a single residential network plus a Mac on standalone home-manager. Roles are typed; placement assertions enforce them; cross-host refs go through `nori.hosts` registry — never IP literals.
 
-## Hosts at a glance
-
-| Host | Codename | Role | OS | Arch | Hardware | Primary job |
-|---|---|---|---|---|---|---|
-| **pi** | fairy | `appliance` | NixOS 26.05 | aarch64 | Raspberry Pi 4 8 GB · USB-boot from Samsung FIT 128 GB | HTTP entry plane (Caddy + Authelia + Blocky-authoritative, LE wildcard cert on `*.${nori.domain}`), observability hub, alert plane, Tailscale subnet router + exit node |
-| **aurora** | aurora | `workhorse` (always-on family vault) | NixOS 26.05 | x86_64 | Asus N552V · Intel Skylake-H · NVIDIA GTX 950M (legacy_535) | Family vault: `/mnt/family/{photos,home-videos,projects,library,archive}` on the Toshiba HDD + family-tier service backends (Vaultwarden, Radicale, Miniflux, Immich full stack + ML, Calibre-web, Komga, Navidrome, Glance, Heim, Filmder, Grafana). Samba shares for `/mnt/family/*`. OneTouch restic vault. Always-on so it survives workstation's sleep / outage. |
-| **workstation** | emperor | `workhorse` (sleep-friendly compute) | NixOS 26.05 | x86_64 | Ryzen 5600X · 32 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) | GPU services (Ollama / Jellyfin NVENC), `*arr` stack + qBittorrent, `@downloads` + `@streaming` on the IronWolf, daily-driver desktop. Cold replica of `/mnt/family/*` on MP510 (btrbk receive endpoint). WoL-wake when media access happens. |
-| **pavilion** | pavilion | `agent` | NixOS 26.05 + impermanence | x86_64 | HP Pavilion g6 · AMD Athlon II · BIOS+GRUB · btrfs-rollback root | Agent quarantine — hermes / nixpkgs-agent / sandboxed claude work, headless. Planned weekly tertiary replica of `/mnt/family/*` (P16). |
-| **macbook** | adelie | (no role) | macOS · standalone home-manager | x86_64-darwin | Intel Mac (EOL clock — see ROADMAP) | Daily-driver laptop; Nix-managed CLI + brew for Mac-only |
+**Tables move to generated** — the hosts-at-a-glance table and `nori.hosts.<name>.*` schema reference live in [`topology-generated.md`](./topology-generated.md), regenerated via `nix build .#docs-topology` from `flake.nix:identityFor` + `modules/effects/hosts.nix`. This file keeps the curated overview, the diagram, the placement reasoning, the invariants — anything the schema can't express.
 
 ```mermaid
 graph TB
@@ -45,44 +37,55 @@ graph TB
 
 Failure domain independence: each host shares no storage, no PSU, no critical boot-path dependency with the others. Any single failure does not block the rest.
 
-## Workstation drives
+## Service-implicit until lan-route'd (the tier principle)
 
-| Drive | OS / use | Notes |
-|---|---|---|
-| WD Black SN750 1TB NVMe | NixOS root | btrfs, six subvolumes, label `nixos`, disko-managed |
-| Corsair Force MP510 960GB NVMe | Backup + family replica | btrfs, label `mp510-backup`, disko-managed. `@backup-local` mounted at `/mnt/backup-local` (workstation's restic-local target); `@family-replica-*` are the receive endpoints for aurora's `/mnt/family/*` send/receive. |
-| Seagate IronWolf Pro 4TB (USB) | Media storage | btrfs, label `ironwolf-storage`, disko-managed. Six subvolumes: `@downloads`, `@photos`, `@home-videos`, `@projects`, `@library`, `@archive`, `@snapshots`. |
+A service has three concerns: registration (it exists), state (it persists data), location (it runs on host X). For services confined to one host, **location is implicit from the import site**:
 
-**NVMe enumeration is unstable across reboots.** `nvme0n1` was NixOS root at install time; post-reboot the drives swapped. Disko configs target `/dev/disk/by-id/...` paths for this reason. See `.claude/skills/gotcha-nvme-enumeration/`.
-
-## Pi posture
-
-USB-then-SD boot order via EEPROM `BOOT_ORDER=0xf41`. Anti-write storage posture:
-
-```nix
-swapDevices = [ ];
-services.journald.extraConfig = "Storage=volatile";
-boot.kernel.sysctl."vm.mmap_rnd_bits" = 18;  # aarch64 fixup
+```
+machines/aurora/default.nix imports modules/services/vaultwarden.nix
+                            ⇒ vaultwarden runs on aurora
 ```
 
-SD-card / flash wear is the #1 Pi failure mode. Volatile journald + no swap mitigate.
+The service doesn't declare a host. The fact that aurora's module list pulls it in IS the location declaration. No explicit `runsOn`, no cross-host wiring.
 
-**Restic-as-target deferred:** Pi can host the workstation restic repo only when a real disk replaces the FIT — the anti-write posture rules out daily restic to flash.
-
-## Topology registry (`nori.hosts`)
-
-Cross-host references go through the registry, **never IP literals**. Schema in `modules/effects/hosts.nix`; values in `flake.nix` `identityFor`. A `readDir` over `./machines/` drives both `nixosConfigurations` enumeration and the registry — adding a host is "create the folder + add identity"; either omission fails eval.
+**Location becomes explicit when a service crosses machines.** That happens through `nori.lanRoutes.<X>.runsOn`, which names the host backing a route:
 
 ```nix
-config.nori.hosts.<name> = {
-  role = "workhorse" | "appliance";  # typed; drives placement assertions
-  tailnetIp = "100.x.y.z";            # the ONLY place IP literals live
-  lanIp = "192.168.1.z";
-  # … hardware-derived context, see modules/effects/hosts.nix
+# pi's Caddy proxies metrics.${nori.domain} → workstation:8090
+nori.lanRoutes.metrics = {
+  port = 8090;
+  runsOn = "workstation";
 };
 ```
 
-The `role` field drives the placement assertion in `modules/effects/backup.nix`: appliance hosts cannot use `paths`-based backups (they're observers, not state holders).
+`runsOn` lives on lan-route not by convenience — but because the act of exposing a service via HTTP IS the act of declaring location-needs-resolving. Pre-exposure, location is implicit; at exposure, location is the cross-machine answer the proxy needs.
+
+```
+  declaration      state      location          cross-machine?
+  ─────────────────────────────────────────────────────────────────
+  packages         none       anywhere          N/A (stateless)
+  services         local      implicit (import) opt-in via lan-route
+  distributed      local +    EXPLICIT —        N/A (already is)
+  services         binding    runsOn host(s)
+```
+
+Today `runsOn` is a single host string. Forward-shape (not in tree yet but pre-named): a list with a semantic tag — `failover` (sum), `loadbalance` (product), `sequential` (ordered sum). Rule of three: extract when a second service genuinely needs multi-host routing.
+
+## Pi posture
+
+Anti-write storage — declared in `machines/pi/hardware.nix`:
+
+- `swapDevices = [ ]` — no swap on flash; zramSwap if pressure shows up.
+- `services.journald.extraConfig = Storage=volatile` — RAM-backed journal, no writes to the FIT.
+- `boot.kernel.sysctl."vm.mmap_rnd_bits" = 18` — aarch64 fixup (default 33 from x86_64 systemd fails on aarch64 39-bit VA).
+
+SD-card / flash wear is the #1 Pi failure mode. **Restic-as-target deferred:** Pi can host the workstation restic repo only when a real disk replaces the FIT — the anti-write posture rules out daily restic to flash.
+
+## Topology registry (`nori.hosts`)
+
+Cross-host references go through the registry, **never IP literals**. The `forbidden-patterns` flake check fails the build on a stray `100.x.y.z` literal anywhere outside `flake.nix`'s `identityFor`.
+
+Schema lives in `modules/effects/hosts.nix`; values in `flake.nix:identityFor`. A `readDir` over `./machines/` drives both `nixosConfigurations` enumeration and the registry — adding a host is "create the folder + add identity"; either omission fails eval. Schema details in [`topology-generated.md`](./topology-generated.md).
 
 **Consumer-side lookup** (this is how cross-host wiring stays IP-literal-free):
 
@@ -95,7 +98,7 @@ nori.lanRoutes.metrics = {
 };
 ```
 
-The `forbidden-patterns` flake check fails the build on a stray `100.x.y.z` literal anywhere outside `flake.nix`'s `identityFor`.
+The `role` field on each host drives the placement assertion in `modules/effects/backup.nix`: appliance hosts cannot use `paths`-based backups (they're observers, not state holders); agent hosts cannot use `nori.backups.<X>` at all (impermanence root erases anything escaping the box sandbox).
 
 ## Service placement
 
@@ -117,7 +120,7 @@ The `forbidden-patterns` flake check fails the build on a stray `100.x.y.z` lite
 | Host-level high-level metrics (`beszel-agent`) | workstation + pavilion + aurora | Pi's Beszel hub aggregates per-host. Aurora added 2026-06-11 alongside its family-tier service standup |
 | OnFailure → ntfy notifier (`ntfy-notify`) | workstation + pi + aurora | Per-host so the alert source is unambiguous and aurora-side unit failures (restic, btrbk, postgres dumps) page the operator without depending on workstation being awake |
 
-Placement test = **fate-sharing breaks the function** (not "feels lightweight"). See `docs/glossary.md § fate-sharing`.
+Placement test = **fate-sharing breaks the function** (not "feels lightweight"). See `docs/glossary.md § fate-sharing`. This table is a cross-effect view — placement reasoning crosses module, lan-route, and observability surfaces. Restructure candidate: a `location-policy` module concern (see `docs/specs/2026-06-17-structure-by-tier.md`).
 
 ## Cross-host services (split-module pattern)
 
@@ -161,11 +164,17 @@ Services that need the GPU set `accelerationDevices` (or systemd `DeviceAllow`) 
 - Single user `nori`, passwordless wheel sudo, SSH key-only.
 - CPU cooler repasted 2026-04-29 — sustained 12-thread load ~72°C (was 95°C TJ_max throttling pre-repaste).
 
+## Workstation drives
+
+(Workstation drives table deferred to `structure-by-tier` restructure — disko schema carries the SoT; surfacing it requires the storage-policy concern shape. See `docs/specs/2026-06-17-structure-by-tier.md`.)
+
+**NVMe enumeration is unstable across reboots.** `nvme0n1` was NixOS root at install time; post-reboot the drives swapped. Disko configs target `/dev/disk/by-id/...` paths for this reason. See `.claude/skills/gotcha-nvme-enumeration/`.
+
 ## Adding a host
 
 See `/add-host`. Short version:
 
 1. Create `machines/<name>/` (folder name = `networking.hostName` — injected, don't redeclare).
-2. Add an `identityFor` entry in `flake.nix` with `role`, `tailnetIp`, `lanIp`. Eval fails if folder or registry is missing.
+2. Add an `identityFor` entry in `flake.nix` with `role`, `tailnetIp`, `lanIp`, `hardware`, `primaryJob`, `roleOneLiner`. Eval fails if folder or registry is missing.
 3. **Add the new host's age public key** (derived from its SSH host key via `ssh-to-age`) to `.sops.yaml` and run `sops updatekeys secrets/secrets.yaml` to re-encrypt existing secrets so the new host can decrypt them. Without this, sops secrets are unreachable on first boot.
 4. First boot → `tailscale up` → approve in admin console for subnet route / exit node if applicable.
