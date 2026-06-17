@@ -49,6 +49,45 @@ in
               Theme: cold / polar / penguin.
             '';
           };
+          hardware = mkOption {
+            type = types.str;
+            description = ''
+              One-line hardware identification — chassis · CPU · RAM · GPU
+              · notable storage. Drives the hosts-at-a-glance table in
+              the generated topology doc; not consumed by evaluation.
+
+              Format guidance: model · CPU family · RAM · GPU (if any) ·
+              storage notes. Keep terse — the field is a table cell, not
+              a spec sheet. Detailed posture lives in machines/<n>/default.nix
+              header comments (anti-write posture, impermanence, etc.).
+            '';
+          };
+          primaryJob = mkOption {
+            type = types.str;
+            description = ''
+              Multi-clause prose describing what this host does — the
+              "Primary job" cell in the topology table. CommonMark
+              permitted (bullets, inline code, links). Keep to a
+              paragraph; deeper rationale belongs in machines/<n>/default.nix
+              or the relevant ADR.
+
+              Drift policy: when a host's job changes materially (gains
+              or loses a service tier), update this string in the same
+              commit. The generator surfaces it; the prose-only
+              topology.md no longer carries it.
+            '';
+          };
+          roleOneLiner = mkOption {
+            type = types.str;
+            description = ''
+              Short qualifier appended to the `role` cell in the topology
+              table — disambiguates the role for hosts that share a typed
+              role but differ in shape (e.g. workstation "sleep-friendly
+              compute" vs aurora "always-on family vault"; both are
+              `workhorse`). Empty string when the role itself is the
+              full story (pavilion: `agent`).
+            '';
+          };
           role = mkOption {
             type = types.enum [
               "workhorse"
