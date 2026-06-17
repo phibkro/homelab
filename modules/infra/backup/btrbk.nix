@@ -84,7 +84,7 @@ lib.mkIf (config.networking.hostName == "workstation") {
     };
   };
 
-  # Alert via ntfy template in modules/services/ntfy/notify.nix.
+  # Alert via ntfy template in modules/infra/observability/ntfy/notify.nix.
   systemd.services.btrbk-root.unitConfig.OnFailure = [ "notify@btrbk-root.service" ];
   systemd.services.btrbk-media.unitConfig.OnFailure = [ "notify@btrbk-media.service" ];
 

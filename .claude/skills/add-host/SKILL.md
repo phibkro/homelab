@@ -89,8 +89,8 @@ Appliance pattern (flat imports — Pi precedent):
     ../../modules/common
     # Pick specific server modules the host needs (don't import the bundle):
     ../../modules/infra/networking/blocky.nix
-    ../../modules/services/gatus.nix
-    ../../modules/services/beszel/{hub,agent}.nix
+    ../../modules/infra/observability/gatus.nix
+    ../../modules/infra/observability/beszel/{hub,agent}.nix
     # ...
     ./hardware.nix
   ];

@@ -32,7 +32,7 @@ ntfy-publisher-token: 'ntfy_<32-char base64 random>'
 
 You can generate with: `nix shell nixpkgs#openssl -c openssl rand -base64 24 | tr -d '/+=' | head -c 32 | sed 's/^/ntfy_/'`.
 
-### 2. Edit `modules/services/ntfy/server.nix`
+### 2. Edit `modules/infra/observability/ntfy/server.nix`
 
 Replace the auth-default-access line and add the imperative user setup:
 
@@ -72,7 +72,7 @@ systemd.services.ntfy-sh-bootstrap = {
 
 ### 3. Wire publishers to send the Authorization header
 
-**Gatus** (`modules/services/gatus.nix`) — add the env-file consumption and the `Authorization` header to the ntfy provider config:
+**Gatus** (`modules/infra/observability/gatus.nix`) — add the env-file consumption and the `Authorization` header to the ntfy provider config:
 
 ```nix
 sops.secrets.ntfy-publisher-token = { /* already declared in ntfy server module */ };

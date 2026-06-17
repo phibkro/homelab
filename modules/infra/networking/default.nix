@@ -663,7 +663,7 @@ in
       );
 
       # Auto-generated Gatus endpoints for routes that opt in via
-      # `monitor`. Manual entries in modules/services/gatus.nix
+      # `monitor`. Manual entries in modules/infra/observability/gatus.nix
       # (blocky-dns, samba-smb) coexist via list concatenation.
       services.gatus.settings.endpoints = lib.mkAfter (
         lib.mapAttrsToList (name: cfg: {

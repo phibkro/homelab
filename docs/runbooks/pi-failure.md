@@ -4,7 +4,7 @@
 
 ## Symptom
 
-`healthchecks.io` fires the off-host alert (pi misses 3+ heartbeats — see `modules/services/heartbeat.nix`). `https://*.home.phibkro.org` either times out (Caddy gone) or resolves to NXDOMAIN (Blocky gone via the Tailscale DNS push). Family-tier services that gate on Authelia OIDC reject every login.
+`healthchecks.io` fires the off-host alert (pi misses 3+ heartbeats — see `modules/infra/observability/heartbeat.nix`). `https://*.home.phibkro.org` either times out (Caddy gone) or resolves to NXDOMAIN (Blocky gone via the Tailscale DNS push). Family-tier services that gate on Authelia OIDC reject every login.
 
 ## What still works while pi is down
 

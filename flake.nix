@@ -540,7 +540,7 @@
                       mkCasePattern (
                         baseNonServicePatterns
                         ++ [
-                          "modules/services/ntfy/notify.nix"
+                          "modules/infra/observability/ntfy/notify.nix"
                           "modules/services/samba.nix"
                         ]
                       )

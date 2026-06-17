@@ -44,15 +44,15 @@ edge type     where it's encoded in the Nix tree
 proxy         nori.lanRoutes.<X>.runsOn — proxy host runs Caddy
                 (pi); runsOn names the backend (aurora/workstation)
                 ⇒ edge (Caddy-host, runsOn-host) per route
-scrape        modules/services/node-exporter.nix +
-                modules/services/beszel/agent.nix +
-                modules/common/vector.nix (journald → VictoriaLogs)
+scrape        modules/infra/observability/node-exporter.nix +
+                modules/infra/observability/beszel/agent.nix +
+                modules/infra/observability/vector.nix (journald → VictoriaLogs)
                 — scrape target == pi tailnet IP
                 ⇒ edge (scraping-host, pi) per scraper
 backup        modules/services/backup/btrbk.nix targets +
                 workstation-side @family-replica-* subvols
                 ⇒ edge (sender-host, receiver-host)
-heartbeat     modules/services/heartbeat.nix → healthchecks.io
+heartbeat     modules/infra/observability/heartbeat.nix → healthchecks.io
                 ⇒ edge (pi, Internet)
 SSH (Mac)     not in code; it's ambient operator-knowledge
                 that the daily-driver SSHes into anything

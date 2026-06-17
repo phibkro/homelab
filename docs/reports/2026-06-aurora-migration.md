@@ -182,7 +182,7 @@ share the "workstation prep" theme.
 | Commit | `bd5326b` |
 | Files | `.sops.yaml`, `machines/pavilion/default.nix`, `secrets/secrets.yaml`, `secrets/apps.yaml` |
 
-Two gaps: `modules/services/beszel/agent.nix` was never imported on
+Two gaps: `modules/infra/observability/beszel/agent.nix` was never imported on
 pavilion (it's flat-imports), AND pavilion's age key wasn't in
 `.sops.yaml`. Fixed both; pavilion's beszel-agent now active on
 `:45876`. Operator follow-up: add pavilion as a system in the Beszel

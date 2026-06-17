@@ -14,7 +14,7 @@ btrbk retention (`7d 4w 6m` on root, `14d 8w 12m` on media) works in the steady 
 
 Pre-2026-05-14 prevention gaps that let this happen:
 
-- No free-space alerts (added 2026-05-14 — `modules/services/disk-alert.nix`).
+- No free-space alerts (added 2026-05-14 — `modules/infra/observability/disk-alert.nix`).
 - No Sonarr/Radarr/Lidarr `MinimumFreeSpaceWhenImporting` setting. Set per-instance via UI on first-run — see the *arr modules' setup comments.
 
 ## Diagnose

@@ -127,7 +127,7 @@ Subnet route + exit node require one-time approval in the Tailscale admin consol
 
 **SSH ACL: `action: accept`** (since 2026-06-07). Eliminates the periodic browser reauth dance for cross-host SSH automation. Tailnet membership IS the gate. Edited in admin UI JSON, not in this repo. See [[just-remote-tailnet-hostnames]].
 
-**SPOF mitigation for pi:** heartbeat to healthchecks.io every 60s via `modules/services/heartbeat.nix`. Pi dies → hc.io alerts off-host. Pre-fix, pi outage would have taken its own alert delivery (ntfy server) with it.
+**SPOF mitigation for pi:** heartbeat to healthchecks.io every 60s via `modules/infra/observability/heartbeat.nix`. Pi dies → hc.io alerts off-host. Pre-fix, pi outage would have taken its own alert delivery (ntfy server) with it.
 
 ## Access summary
 

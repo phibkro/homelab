@@ -54,8 +54,8 @@
     # Per-process RSS + system metrics → pi VictoriaMetrics. Imported
     # file-by-file (not the whole services/ bundle) since pavilion has
     # no LAN services. Catches agent-process leaks before they OOM.
-    ../../modules/services/node-exporter.nix
-    ../../modules/services/beszel/agent.nix # aggregate dashboard → pi's Beszel hub
+    ../../modules/infra/observability/node-exporter.nix
+    ../../modules/infra/observability/beszel/agent.nix # aggregate dashboard → pi's Beszel hub
 
     # Notably absent:
     #   modules/services/default.nix    — no LAN services

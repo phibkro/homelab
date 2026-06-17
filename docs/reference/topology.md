@@ -114,7 +114,7 @@ The `role` field on each host drives the placement assertion in `modules/infra/b
 | Family Samba shares | aurora | Follows the drive — per-fs `samba = { }` blocks in `machines/aurora/disko-family.nix` |
 | Workstation Samba shares (`media`, `share`, `nori`) | workstation | Whole-drive `media` share scoped to `/mnt/media` (IronWolf root) stays workstation-only; per-fs `share` + `nori` shares stay workstation-only via the gated workstation-shape check in `samba.nix` |
 | Observability + alert plane (Beszel hub, Gatus, VictoriaMetrics, VictoriaLogs, ntfy server) | pi | Must survive workstation outage — that's *when* they fire |
-| Heartbeat / dead-man-switch (healthchecks.io ping) | pi | SPOF mitigation — see `modules/services/heartbeat.nix` |
+| Heartbeat / dead-man-switch (healthchecks.io ping) | pi | SPOF mitigation — see `modules/infra/observability/heartbeat.nix` |
 | DNS authoritative for `*.${nori.domain}` (Blocky self-hosted) | pi | ADR-0003 prerequisite for the LE wildcard issuance (ADR-0004). Workstation's Blocky stays as a secondary self-hosted forwarder for LAN-side resilience if pi is down |
 | Network plumbing (subnet router + exit node) | pi | Appliance role; opt-in per device for exit node |
 | Agent quarantine (hermes-agent CLI + dashboard) | pavilion | Sandboxed; pavilion's impermanence root makes pollution self-healing |
@@ -130,10 +130,10 @@ Daemon on one host, client/proxy on every consumer. Cross-host Caddy lanRoute ga
 
 | Service | Daemon | Routed at | Client module |
 |---|---|---|---|
-| Beszel | pi | `metrics.${nori.domain}` | `modules/services/beszel/agent.nix` everywhere |
-| ntfy | pi | `alert.${nori.domain}` | `modules/services/ntfy/notify.nix` everywhere |
-| VictoriaLogs | pi | `logs.${nori.domain}` | `modules/common/vector.nix` ships journald |
-| VictoriaMetrics | pi | `tsdb.${nori.domain}` (Grafana datasource) | `modules/services/node-exporter.nix` scraped from pi |
+| Beszel | pi | `metrics.${nori.domain}` | `modules/infra/observability/beszel/agent.nix` everywhere |
+| ntfy | pi | `alert.${nori.domain}` | `modules/infra/observability/ntfy/notify.nix` everywhere |
+| VictoriaLogs | pi | `logs.${nori.domain}` | `modules/infra/observability/vector.nix` ships journald |
+| VictoriaMetrics | pi | `tsdb.${nori.domain}` (Grafana datasource) | `modules/infra/observability/node-exporter.nix` scraped from pi |
 | immich-ml | aurora | n/a (RPC only) | `modules/services/immich.nix` (workstation) — `IMMICH_MACHINE_LEARNING_URL` |
 | hermes-agent | pavilion (planned) → currently workstation | `hermes.${nori.domain}` | `home/hermes/default.nix` (PCs) |
 

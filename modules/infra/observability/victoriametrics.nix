@@ -70,7 +70,7 @@ lib.mkMerge [
             ];
           }
           # System + per-process metrics from each host's node-exporter
-          # and process-exporter (modules/services/node-exporter.nix).
+          # and process-exporter (modules/infra/observability/node-exporter.nix).
           # Single static_configs block per kind, one label per target,
           # so the {host=...} dimension carries the dispatch.
           {

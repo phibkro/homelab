@@ -34,11 +34,11 @@
     # Appliance-specialty modules that live outside the bundle (the
     # bundle covers what workstation runs; these are pi-side service
     # halves of the workhorse/appliance splits, plus pi's heartbeat).
-    ../../modules/services/beszel/hub.nix
-    ../../modules/services/ntfy/server.nix
-    ../../modules/services/victorialogs/server.nix
-    ../../modules/services/victoriametrics.nix
-    ../../modules/services/heartbeat.nix
+    ../../modules/infra/observability/beszel/hub.nix
+    ../../modules/infra/observability/ntfy/server.nix
+    ../../modules/infra/observability/victorialogs/server.nix
+    ../../modules/infra/observability/victoriametrics.nix
+    ../../modules/infra/observability/heartbeat.nix
 
     ./hardware.nix
     inputs.home-manager.nixosModules.home-manager

@@ -31,13 +31,9 @@ _: {
     ./arr
 
     # Loose services
-    ./beszel/agent.nix
     ./calibre-web.nix
-    ./disk-alert.nix
     ./filmder.nix
-    ./gatus.nix
     ./glance.nix
-    ./grafana.nix
     ./heim.nix
     ./hermes.nix
     ./immich.nix
@@ -45,9 +41,6 @@ _: {
     ./komga.nix
     ./miniflux.nix
     ./navidrome.nix
-    ./node-exporter.nix
-    ./nvidia-gpu-exporter.nix
-    ./ntfy/notify.nix
     ./ollama.nix
     ./open-webui.nix
     ./radicale.nix
@@ -55,6 +48,5 @@ _: {
     ./stremio.nix
     ./syncthing.nix
     ./vaultwarden.nix
-    ./victorialogs/default.nix
   ];
 }

@@ -54,7 +54,7 @@
           # it through unmodified so `_time:1h`-style LogsQL queries are
           # truthful. Trade-off: on first ingest, entries older than
           # the retention window (currently 14d, set on pi at
-          # modules/services/victorialogs/server.nix) get silently dropped
+          # modules/infra/observability/victorialogs/server.nix) get silently dropped
           # by VictoriaLogs as `too_small_timestamp`. Widen retention if
           # we want deeper backfill queryable.
 

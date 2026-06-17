@@ -12,7 +12,7 @@
 # 2. Give up eventually. StartLimitIntervalSec=1h + StartLimitBurst=15:
 #    ramp the ladder, sit at 5min for a few attempts, then stop.
 # 3. Alert on failure. OnFailure → notify@%n.service for any service
-#    that doesn't declare its own (template: modules/services/ntfy/).
+#    that doesn't declare its own (template: modules/infra/observability/ntfy/).
 #
 # Wired by extending the *type* of `systemd.services` so the defaults
 # apply inside every submodule instance. The naïve
@@ -22,7 +22,7 @@
 # X in an attrsOf submodule."
 
 let
-  # notify@ template lives in modules/services/ntfy/notify.nix. Hosts
+  # notify@ template lives in modules/infra/observability/ntfy/notify.nix. Hosts
   # that don't import it (pavilion — agent-quarantine, no notify
   # infrastructure) shouldn't get OnFailure pointed at a missing unit.
   hasNotifyTemplate = config.systemd.services ? "notify@";

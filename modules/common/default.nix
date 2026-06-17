@@ -16,7 +16,7 @@
     ./users.nix
     ./tailscale.nix
     ./sops.nix
-    ./vector.nix
+    ../infra/observability
     ../effects/hosts.nix
     ../infra/storage
     ../infra/networking
