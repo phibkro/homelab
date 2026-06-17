@@ -49,8 +49,6 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 - **Lower-priority appliance candidates.** Glance + Radicale moved to aurora at P11 (family-vault posture). The original motivation was "failure independence from workstation"; that's now achieved on the aurora→pi failure-domain axis. A *further* split to pi (independence from aurora too) is theoretical — aurora is meant to be always-on family-vault, so aurora outages are the rare path. Reopen only if aurora's failure profile turns out worse than projected.
 
-- **Batch C: generated docs from live config.** Replace static "active services" + "host placement" + "snapshot policy" tables in `docs/reference/{services,topology,storage}.md` with `nix eval`-driven output (`scripts/render-docs.sh` → `docs/auto/*.md`, gated by a `docs-fresh` flake check). Eliminates a class of doc drift entirely (executable docs don't decay). Roughly 1–2h to land.
-
 ## Promotion register (from `docs/invariants.md`)
 
 `[prose: unchecked]` claims worth mechanizing — detail in `docs/invariants.md § promotion work-list`:
