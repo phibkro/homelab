@@ -872,18 +872,51 @@
               '';
 
           /**
-            E2E Phase 1 — pi-alone smoke nixosTest. Boots a stripped-
-            down pi-like config in QEMU + verifies blocky + gatus +
-            beszel-hub reach active state, blocky resolves the test
-            LAN zone, gatus self-probe returns 200. Catches unit-
-            startup failures including the bare-name ExecStart class
-            the (superseded) systemd-execstart-resolves spec targeted.
-
-            Test body at tests/e2e-pi-smoke.nix; fixtures at
-            tests/fixtures/. See docs/specs/2026-06-17-e2e-vm-
-            simulation.md § Phase 1.
+            E2E — pi-alone smoke nixosTest. Boots a stripped-down
+            pi-like config in QEMU + verifies the homelab services
+            reach active state. The per-service scope (Phase 1
+            through Phase 5+) is documented in
+            docs/specs/2026-06-17-e2e-vm-simulation.md. Per
+            docs/reference/testing-methodology.md this is layer 2
+            (nixosTest) — pair with layer-1 eval tests at
+            tests/eval/ for sub-second feedback during inner-loop
+            iteration.
           */
           e2e-pi-smoke = import ./tests/e2e-pi-smoke.nix { inherit pkgs lib inputs; };
+
+          /**
+            Layer-1 eval test — `nori.lanRoutes` → blocky.customDNS
+            auto-generation. Sub-second; runs at every flake check
+            via the import below. Per docs/reference/testing-
+            methodology.md: eval tests catch schema regressions +
+            cross-module composition errors before they surface in
+            the nixosTest (which is much slower).
+          */
+          eval-lanroute-customdns =
+            let
+              result = import ./tests/eval/lanroute-customdns.nix {
+                inherit pkgs lib inputs;
+              };
+            in
+            pkgs.runCommandLocal "eval-lanroute-customdns" { } ''
+              echo ${lib.escapeShellArg result} > $out
+            '';
+
+          /**
+            Layer-1 eval test — `nori.lanRoutes.<X>.port` validates as
+            16-bit unsigned (types.port). Demonstrates the
+            negative-path eval pattern: assert that a BAD config
+            throws, not just that a good config succeeds.
+          */
+          eval-lanroute-port-validation =
+            let
+              result = import ./tests/eval/lanroute-port-validation.nix {
+                inherit pkgs lib inputs;
+              };
+            in
+            pkgs.runCommandLocal "eval-lanroute-port-validation" { } ''
+              echo ${lib.escapeShellArg result} > $out
+            '';
 
           /**
             Docs-fresh — committed generated artifacts must match

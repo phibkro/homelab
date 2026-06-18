@@ -555,6 +555,28 @@ default: rebuild
     bash lint/checks/path-coherence.sh .
     bash lint/checks/multi-line-comments.sh .
 
+# === e2e nixosTest helpers (per docs/reference/testing-methodology.md) ===
+
+# Open the nixosTest driver interactively — boot the VM ONCE, iterate
+# on testScript fragments without rebuilding. The big iteration-loop
+# win for layer 2 (nixosTest) work. Default to e2e-pi-smoke; pass a
+# different test name to open another driver.
+@e2e-shell test="e2e-pi-smoke":
+    nix run .#checks.x86_64-linux.{{test}}.driverInteractive
+
+# Run all layer-1 eval tests — sub-second checks of schema +
+# composition. Faster inner-loop than the layer-2 nixosTest. Each
+# eval-* flake check evaluates a NixOS config in-process and asserts
+# the resulting `config.<X>` shape.
+@test-eval:
+    nix --extra-experimental-features "nix-command flakes" \
+      build --no-link --print-out-paths \
+      $(nix --extra-experimental-features "nix-command flakes" \
+        flake show --json 2>/dev/null | \
+        nix shell nixpkgs#jq -c jq -r \
+          '.checks."x86_64-linux" | to_entries | map(select(.key | startswith("eval-"))) | .[].key' | \
+        sed 's|^|.#checks.x86_64-linux.|')
+
 # Format all .nix files via nixfmt.
 @fmt:
     nix-shell -p nixfmt-rfc-style --command "find . -name '*.nix' -not -path './result*' -exec nixfmt {} +"

@@ -1,15 +1,23 @@
 ---
 summary: Runtime introspection tests for the homelab — when they pay
   off, where they live, and which `nori.<X>` effect each one covers.
+  This is LAYER 3 of the testing methodology; see
+  `docs/reference/testing-methodology.md` for the pyramid and when to
+  reach for eval / nixosTest / runtime introspection.
 ---
 
 # Runtime tests
 
-The homelab's tests are **runtime introspection** recipes: query the
+The homelab's runtime tests are **introspection recipes**: query the
 live system's registries (systemd, restic, Caddy, VictoriaMetrics,
 Hyprland IPC) and assert the declared intent landed. They're not unit
 tests — they verify that the multi-step transformation from nix
 declaration to runtime effect didn't silently desync.
+
+**This is layer 3 of the three-layer methodology.** Layers 1-2 (eval
+and nixosTest) catch failures BEFORE deploy; runtime introspection
+catches drift AFTER. See [`testing-methodology.md`](./testing-methodology.md)
+for the decision tree on when to reach for each.
 
 ## When introspection tests pay off
 
