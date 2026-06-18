@@ -884,6 +884,7 @@
           */
           e2e-pi-smoke = import ./tests/e2e-pi-smoke.nix { inherit pkgs lib inputs; };
           e2e-multi-host = import ./tests/e2e-multi-host.nix { inherit pkgs lib inputs; };
+          e2e-restic-backup = import ./tests/e2e-restic-backup.nix { inherit pkgs lib inputs; };
 
           /**
             Layer-1 eval test — `nori.lanRoutes` → blocky.customDNS
