@@ -7,9 +7,14 @@ executed-as:
   - Phase 2   9fd2163   sops-stub fixture + homelab blocky module
                         with lanRoutes → customDNS auto-generation
                         validated end-to-end
-  - Phase 3   <this>    gatus + heartbeat observability services
+  - Phase 3   0390b39   gatus + heartbeat observability services
                         added; validates timer-driven unit
                         activation pattern under sops-stub
+  - Phase 4   <this>    caddy entry-plane added with internal CA
+                        (no real ACME contact, plain pkgs.caddy
+                        instead of cloudflare-plugin variant);
+                        sops-stub extended with templates + placeholder
+                        for caddy's CF_API_TOKEN template wiring
 phase-1-scope-down: original Phase 1 was "blocky + gatus + beszel-hub
   from real pi config + sops fixture". Discovered mid-execution that
   the homelab module graph requires pervasive sops-secret reads at

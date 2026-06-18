@@ -110,7 +110,34 @@ pkgs.testers.runNixOSTest {
       nori.services.blocky.enable = true;
       nori.services.gatus.enable = true;
       nori.services.heartbeat.enable = true;
+      nori.services.caddy.enable = true;
       nori.blocky.role = "self-hosted";
+
+      # Stub backup target — required because caddy declares
+      # `nori.backups.caddy.include = [...]` and the backup module
+      # asserts that any active paths-backup needs ≥1 target. Test
+      # doesn't actually run restic (would need real repo + key);
+      # the target just satisfies the assertion.
+      nori.backupTargets.test-stub = {
+        # Use a remote-shaped URL to satisfy the appliance-host
+        # assertion (pi role=appliance can't have LOCAL restic
+        # targets — anti-write storage posture). Test never actually
+        # runs restic; the URL is never dialed.
+        repository = "sftp:stub@stub.test:/stub";
+        description = "test stub; never actually used";
+      };
+      # backup/default.nix reads config.sops.secrets.restic-password
+      # — declare it so sops-stub plants a fixture for the eval.
+      sops.secrets.restic-password = { };
+
+      # Caddy test overrides — skip ACME, skip cloudflare plugin.
+      services.caddy.package = lib.mkForce pkgs.caddy;
+      services.caddy.globalConfig = lib.mkForce ''
+        # `local_certs` makes Caddy issue self-signed certs from its
+        # internal CA for ALL sites — no external ACME contact, no
+        # cloudflare token required. Standard pattern for test envs.
+        local_certs
+      '';
 
       # Test framework's nixpkgs.config differs from base.nix's;
       # force ours to match the test framework to avoid the
@@ -160,5 +187,15 @@ pkgs.testers.runNixOSTest {
         # a stub comment, not a real hc.io endpoint); we DO care that
         # the timer activates without systemd refusing to load it.
         pi.wait_for_unit("heartbeat.timer")
+
+    with subtest("caddy.service starts + binds :443"):
+        # caddy uses local_certs (internal CA) — no real ACME contact.
+        # Validates: caddy module evals, the auto-generated vhost
+        # config (from nori.lanRoutes) is syntactically valid, caddy
+        # binds to :443. Doesn't try to proxy requests through to
+        # synthetic backends — upstreams aren't reachable in this
+        # single-node test.
+        pi.wait_for_unit("caddy.service")
+        pi.wait_for_open_port(443)
   '';
 }

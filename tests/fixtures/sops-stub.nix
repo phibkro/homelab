@@ -155,12 +155,25 @@ in
       type = types.attrsOf (types.submodule templateSubmodule);
       default = { };
     };
+
+    # sops-nix's `sops.placeholder.<name>` is a per-secret string
+    # consumed in `sops.templates.<X>.content` for in-template
+    # substitution. At render time the real sops-nix replaces the
+    # placeholder with the secret's plaintext; for the stub, return
+    # a non-empty marker string so consumers' template content
+    # evaluates without crashing.
+    placeholder = mkOption {
+      type = types.attrsOf types.str;
+      default = { };
+    };
   };
 
   config = {
-    # Plant a dummy file at each declared secret's path. Services
-    # reading config.sops.secrets.<X>.path get a real, readable
-    # file at boot.
+    sops.placeholder = lib.mapAttrs (name: _: "stub-${name}") config.sops.secrets;
+
+    # Plant a dummy file at each declared secret AND template path.
+    # Services reading config.sops.{secrets,templates}.<X>.path get
+    # a real, readable file at boot.
     #
     # Content shape: a single `#` comment line. This is valid both
     # as an EnvironmentFile (systemd ignores `#`-prefixed lines, so
@@ -169,12 +182,23 @@ in
     # produces a graceful failure mode, e.g. curl can't resolve a
     # URL that's a comment, but the calling unit still TRIES to
     # start, which is what the smoke test is checking).
-    environment.etc = lib.mapAttrs' (
-      name: _:
-      lib.nameValuePair "test-secrets/${name}" {
-        text = "# sops-stub fixture — ${name}\n";
-        mode = "0440";
-      }
-    ) config.sops.secrets;
+    environment.etc =
+      lib.mapAttrs' (
+        name: _:
+        lib.nameValuePair "test-secrets/${name}" {
+          text = "# sops-stub fixture — ${name}\n";
+          mode = "0440";
+        }
+      ) config.sops.secrets
+      // lib.mapAttrs' (
+        name: tpl:
+        lib.nameValuePair "test-secrets/${name}" {
+          # Templates have explicit content; for the stub render it
+          # via the placeholder substitution (which our placeholder
+          # option resolves to `stub-<name>`).
+          text = tpl.content;
+          mode = "0440";
+        }
+      ) config.sops.templates;
   };
 }
