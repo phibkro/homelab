@@ -41,6 +41,7 @@ One lever maxed = nice-to-have. Two = ship it. Three+ = required.
 | `just test-routes` | `nori.lanRoutes.<n>` → Caddy route + DNS + HTTPS reachable | `modules/infra/networking/default.nix` |
 | `just test-observability` | VM scrape targets up + process-exporter publishing + pi heartbeat <90s + zero failing gatus probes | `modules/infra/networking/gatus-probe.nix` + `modules/infra/observability/victoriametrics.nix` |
 | `just test-replicas` | `nori.replicas.<n>` → per-replica verifier oneshot succeeded within freshness budget on the target host (smoke-passes on empty registry) | `modules/infra/storage/replication.nix` |
+| `just test-authelia` | Authelia live ↔ `nori.lanRoutes.<n>.oidc` declarations: systemd active, /api/health OK, OIDC discovery issuer correct, /run/secrets/oidc-<n>-* present + non-empty for every declared OIDC route | `modules/infra/access/authelia.nix` + `modules/infra/networking/default.nix` |
 | `just test` | All of the above | composite |
 
 ## The architectural correlation worth knowing
@@ -53,6 +54,7 @@ One lever maxed = nice-to-have. Two = ship it. Three+ = required.
 | `lan-route.nix` | ✓ `nori.lanRoutes` | `test-routes` | ★★★★★ |
 | `gatus-probe.nix` | ✓ embedded + standalone | `test-observability` | ★★★★★ |
 | `replication.nix` | ✓ `nori.replicas` | `test-replicas` | ★★★★ (silent-stale class, blast = data divergence) |
+| `access/authelia.nix` | ✓ consumes `nori.lanRoutes.<X>.oidc` | `test-authelia` | ★★★★★ (silent-OIDC-broken class, blast = every family-tier service login fails) |
 | `harden.nix` | ✓ `nori.harden` | — | ★★ (flake check is primary defence) |
 | `fs.nix` | ✓ `nori.fs` | — | ★★ |
 | `hosts.nix` | ✓ Reader-only | — | ★ (used transitively) |
