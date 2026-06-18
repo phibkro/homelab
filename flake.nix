@@ -550,6 +550,102 @@
                     ${optionsDoc.optionsCommonMark} >> $out
               '';
 
+          /*
+            ── Generated capabilities docs ─────────────────────────────────
+
+            Two-section artifact:
+
+              §1  Capabilities concern overview — file-level docstring
+                  from modules/infra/capabilities/default.nix (nori.harden
+                  + FS-namespace adapter narrative).
+
+              §2  GPU access pattern — file-level docstring from
+                  modules/infra/capabilities/gpu.nix (the live driver
+                  split, the per-service GPU consumer table, the
+                  registry shape rationale) plus the nori.gpu and
+                  nori.harden option schemas.
+
+            Build with: `nix build .#docs-capabilities`
+          */
+          docs-capabilities =
+            let
+              isCapabilitiesOption =
+                opt:
+                let
+                  inherit (opt) loc;
+                  prefix = builtins.head loc;
+                  second = if builtins.length loc >= 2 then builtins.elemAt loc 1 else "";
+                in
+                prefix == "nori" && (second == "harden" || second == "gpu");
+              stripStorePrefix =
+                p:
+                let
+                  s = toString p;
+                in
+                if lib.hasPrefix "/nix/store/" s then
+                  let
+                    m = builtins.match "/nix/store/[^/]*-source/(.*)" s;
+                  in
+                  if m == null then s else builtins.head m
+                else
+                  s;
+              optionsDoc = pkgs.nixosOptionsDoc {
+                inherit (eval) options;
+                transformOptions =
+                  opt:
+                  let
+                    base = if isCapabilitiesOption opt then opt else opt // { visible = false; };
+                  in
+                  base // { declarations = map stripStorePrefix base.declarations; };
+                documentType = "none";
+              };
+              hardenDoc = mkNixdocSection {
+                file = ./modules/infra/capabilities/default.nix;
+                description = "Capabilities concern — overview";
+                category = "capabilities";
+              };
+              gpuDoc = mkNixdocSection {
+                file = ./modules/infra/capabilities/gpu.nix;
+                description = "GPU access pattern";
+                category = "capabilities-gpu";
+              };
+            in
+            pkgs.runCommandLocal "docs-capabilities"
+              {
+                nativeBuildInputs = [ pkgs.gnused ];
+              }
+              ''
+                cat > $out <<'HEADER'
+                ---
+                generated: true
+                source: flake.nix § packages.docs-capabilities
+                regenerate: nix build .#docs-capabilities
+                ---
+
+                # Capabilities — generated reference
+
+                Module overviews + per-option schema for `nori.harden` and
+                `nori.gpu`. Hand-curated cross-module synthesis (which
+                services consume which capability, per-host driver
+                choices) lives in the file-level doc-comments at
+                `modules/infra/capabilities/{default,gpu}.nix`.
+
+                HEADER
+                cat ${hardenDoc} >> $out
+                echo >> $out
+                cat ${gpuDoc} >> $out
+                echo >> $out
+                cat >> $out <<'SCHEMA_HEADER'
+
+                ## Option schema
+
+                SCHEMA_HEADER
+                # See docs-lan-route for the GFM-cleanup rationale.            # multi-line: ok (bash inside heredoc)
+                sed -e 's/\\\([.<>()]\)/\1/g' \
+                    -e 's|\[<nixpkgs/\([^]]*\)>\](https://github\.com/[^)]*)|`\1`|g' \
+                    -e 's|\[\([^]]*\)\](file://[^)]*)|`\1`|g' \
+                    ${optionsDoc.optionsCommonMark} >> $out
+              '';
         };
 
       # Quality gates. `nix flake check` validates host evals + the
@@ -807,17 +903,22 @@
                 check "docs-topology" \
                   ${./docs/generated/topology.md} \
                   ${inputs.self.packages.${system}.docs-topology}
+                check "docs-capabilities" \
+                  ${./docs/generated/capabilities.md} \
+                  ${inputs.self.packages.${system}.docs-capabilities}
 
                 if [ $fail -eq 0 ]; then
                   touch $out
                 else
                   echo
                   echo "Generated docs drifted. Regenerate + commit:"
-                  echo "  nix build .#docs-lan-route -o /tmp/r && \\"
+                  echo "  nix build .#docs-lan-route    -o /tmp/r && \\"
                   echo "    cp /tmp/r docs/generated/lan-route.md"
-                  echo "  nix build .#docs-topology  -o /tmp/r && \\"
+                  echo "  nix build .#docs-topology     -o /tmp/r && \\"
                   echo "    cp /tmp/r docs/generated/topology.md"
-                  echo "  chmod +w docs/generated/{lan-route,topology}.md"
+                  echo "  nix build .#docs-capabilities -o /tmp/r && \\"
+                  echo "    cp /tmp/r docs/generated/capabilities.md"
+                  echo "  chmod +w docs/generated/{lan-route,topology,capabilities}.md"
                   exit 1
                 fi
               '';

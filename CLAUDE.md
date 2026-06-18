@@ -46,6 +46,7 @@ without this file's context.
 | `docs/reference/agentic-workflow.md` | starting a new PR (prologue), wrapping one (epilogue), deciding session vs PR boundary, or designing per-sprint ceremonies — the per-PR three-phase ceremony lives here |
 | `docs/generated/lan-route.md` | looking up the schema details for a specific `nori.lanRoutes.<name>.<field>` option — generated from `modules/infra/networking/default.nix` via `nix build .#docs-lan-route`. Pairs with the hand-written `docs/reference/network.md`; they coexist under separate paths so the generated-vs-handwritten coverage trade-off stays comparable over time |
 | `docs/generated/topology.md` | looking up the hosts-at-a-glance table or `nori.hosts` schema — generated from `modules/machines/default.nix:identityFor` + `modules/infra/hosts.nix` via `nix build .#docs-topology`. Pairs with `docs/reference/topology.md`; same coexistence pattern as above |
+| `docs/generated/capabilities.md` | looking up the GPU access pattern or `nori.harden` / `nori.gpu` schemas — generated from `modules/infra/capabilities/{default,gpu}.nix` via `nix build .#docs-capabilities`. No handwritten counterpart; capabilities concern is mono-module enough that the generated doc carries the whole story |
 
 ### Drill-down (pulled in only when a parent doc cross-refs it)
 
