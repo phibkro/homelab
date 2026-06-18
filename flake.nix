@@ -919,6 +919,23 @@
             '';
 
           /**
+            Layer-1 eval test — cross-product invariants over
+            nori.lanRoutes. Verifies module assertions in
+            modules/infra/networking/default.nix actually FIRE on
+            the failure modes (port collisions, runsOn ∉ nori.hosts).
+            Catches regressions that drop an assertion silently.
+          */
+          eval-route-invariants =
+            let
+              result = import ./tests/eval/route-invariants.nix {
+                inherit pkgs lib inputs;
+              };
+            in
+            pkgs.runCommandLocal "eval-route-invariants" { } ''
+              echo ${lib.escapeShellArg result} > $out
+            '';
+
+          /**
             Docs-fresh — committed generated artifacts must match
             what the generators would produce right now. Catches the
             drift class where a schema change lands but the docs/

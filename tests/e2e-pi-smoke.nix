@@ -197,8 +197,14 @@ pkgs.testers.runNixOSTest {
       # Smaller closure for faster test boot.
       documentation.enable = lib.mkForce false;
 
-      # `dig` for the DNS-resolution assertions in testScript.
-      environment.systemPackages = [ pkgs.bind.dnsutils ];
+      # `dig` for the DNS-resolution assertions + `curl` (for OIDC
+      # flow subtests; the systemd path's curl is also fine but the
+      # explicit dep makes the test's intent obvious).
+      environment.systemPackages = [
+        pkgs.bind.dnsutils
+        pkgs.curl
+        pkgs.jq
+      ];
     };
 
   testScript = ''
