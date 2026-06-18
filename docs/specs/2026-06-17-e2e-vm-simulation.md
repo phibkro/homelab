@@ -1,6 +1,6 @@
 ---
 date: 2026-06-17
-status: Phases 1-6 EXECUTED 2026-06-18; Phase 7 (ntfy + OnFailure path) deferred
+status: EXECUTED — Phases 1-7 landed 2026-06-18 + 5 follow-on tests beyond original scope. testable-in-VM infra surface ≈ 100% covered.
 executed-as:
   - Phase 1   cc9d1d4   pi-alone framework smoke (scope-down — see
                         phase-1-scope-down below)
@@ -19,7 +19,7 @@ executed-as:
                         + 2 layer-1 eval checks (sub-second) +
                         just e2e-shell / just test-eval recipes.
                         Establishes the TDD inner-loop ergonomics.
-  - Phase 6   pending   real sops + authelia. Replaces sops-stub
+  - Phase 6   f0a0e15   real sops + authelia. Replaces sops-stub
                         with the actual sops-nix module against a
                         committed test age key + committed sops-
                         encrypted test.yaml containing real-shape
@@ -29,7 +29,40 @@ executed-as:
                         secret hash). Authelia reaches active +
                         binds :9091; /api/health responds OK. Layer-1
                         eval tests migrated to real sops too.
-                        sops-stub.nix deleted. Test cycle: 20s warm.
+                        sops-stub.nix deleted.
+  - Phase 7   92d2ad4   OnFailure → notify@ → ntfy POST pipeline.
+                        Refactored notify.nix to accept baseUrl +
+                        recoveryWindowSeconds options (defaults
+                        match prod), stub HTTP receiver in-VM,
+                        intentionally failing unit. Asserts URL
+                        path, headers, body shape end-to-end.
+
+follow-on (beyond original spec, same branch):
+  - 5e1b324   nixfmt-tree migration (silences nixpkgs deprecation)
+  - 2758219   eval-route-invariants: cross-product layer-1 test +
+              runsOn-membership module assertion
+  - 325605c   OIDC end-to-end curl flow (discovery + first-factor +
+              session cookie roundtrip via caddy)
+  - cddbabe   test-authelia runtime probe (Justfile, 4 tiers)
+  - aa06a72   multi-host nixosTest (pi + workstation; cross-host
+              DNS, backend reachability, caddy reverse-proxy
+              across the vlan)
+  - 0cdc839   restic backup roundtrip (real backup against local
+              repo, snapshot lands + contains marker file)
+  - e60b1e1   forwardAuth flow subtest (the OTHER auth pattern
+              besides OIDC; rejection + cookie + exemptPaths)
+  - fe0c67f   disk-alert pipeline (L2) + gatus probe-registry (L1)
+
+final state — 15 flake checks:
+  L1   eval-lanroute-customdns, eval-lanroute-port-validation,
+       eval-route-invariants, eval-gatus-probes
+  L2   e2e-pi-smoke (10 subtests, ~22s warm),
+       e2e-multi-host (3 subtests, ~17s),
+       e2e-restic-backup (3 subtests, ~26s),
+       e2e-disk-alert (1 subtest, ~16s)
+  L3   test-{hypr,backups,routes,observability,replicas,authelia}
+  + 8 hygiene gates (deadnix/statix/lint/format/docs-fresh/
+                     routing-coherence/fs-hardening/backup-intent)
 
 phase-5-superseded-by-6: Phase 5's authelia attempt with option-schema
   stubs failed because authelia parses every secret at startup. Phase 6
@@ -37,13 +70,6 @@ phase-5-superseded-by-6: Phase 5's authelia attempt with option-schema
   test data. The lesson became the methodology doc's "Real values,
   not stubs" section: stubbing IS lying about composition; if you can
   generate real-shape test data, you should.
-
-phase-7-deferred: ntfy / OnFailure-handler integration. Currently
-  ntfy-channel + ntfy-publisher-token are stub values in test.yaml
-  so modules that reference them eval cleanly; ntfy itself is NOT
-  enabled in the VM. A future Phase 7 would stand up a real ntfy
-  server in-VM, intentionally fail a unit, and assert a notification
-  lands. That validates the OnFailure → notify@ pipe end-to-end.
 phase-1-scope-down: original Phase 1 was "blocky + gatus + beszel-hub
   from real pi config + sops fixture". Discovered mid-execution that
   the homelab module graph requires pervasive sops-secret reads at
