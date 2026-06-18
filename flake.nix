@@ -264,13 +264,30 @@
             }:
             pkgs.runCommandLocal "nixdoc-${category}"
               {
-                nativeBuildInputs = [ pkgs.nixdoc ];
+                nativeBuildInputs = [
+                  pkgs.nixdoc
+                  pkgs.gawk
+                ];
               }
               ''
+                # nixdoc extracts per-attribute /** */ blocks but skips the
+                # file-level /** */ at the top of file (treats it as
+                # implicit module docstring rather than extractable content).
+                # The awk pass below extracts that file-level block so the
+                # generator can carry module-as-whole narrative + diagrams
+                # — the E experiment hinges on the file-level block being
+                # the canvas for cross-module reasoning.
+                awk '
+                  BEGIN { in_block = 0; printed = 0 }
+                  /^\/\*\*$/ && !printed { in_block = 1; next }
+                  /^\*\/$/ && in_block { in_block = 0; printed = 1; exit }
+                  in_block { sub(/^  /, ""); print }
+                ' ${file} > $out
+                echo >> $out
                 nixdoc --description ${lib.escapeShellArg description} \
                        --prefix ${lib.escapeShellArg prefix} \
                        --category ${lib.escapeShellArg category} \
-                       --file ${file} > $out
+                       --file ${file} >> $out
               '';
         in
         {
@@ -447,6 +464,11 @@
                   base // { declarations = map stripStorePrefix base.declarations; };
                 documentType = "none";
               };
+              machinesDoc = mkNixdocSection {
+                file = ./modules/machines/default.nix;
+                description = "Topology — overview";
+                category = "topology";
+              };
             in
             pkgs.runCommandLocal "docs-topology"
               {
@@ -464,12 +486,18 @@
 
                 Auto-derived from `nori.hosts` schema + `identityFor` values
                 in `modules/machines/default.nix`. Do not hand-edit; the
-                hand-curated overview + diagram + invariants live in
-                `docs/reference/topology.md`.
+                hand-curated overview lives at `docs/reference/topology.md`
+                (kept parallel for the generated-vs-handwritten coverage
+                experiment).
+
+                HEADER
+                cat ${machinesDoc} >> $out
+                echo >> $out
+                cat >> $out <<'GLANCE_HEADER'
 
                 ## Hosts at a glance
 
-                HEADER
+                GLANCE_HEADER
                 cat >> $out <<'TABLE'
                 ${hostsTable}
                 TABLE

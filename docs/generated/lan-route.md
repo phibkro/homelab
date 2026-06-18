@@ -16,6 +16,102 @@ Two-section artifact:
 The hand-written `network.md` keeps the WHY + patterns;
 this artifact carries the WHAT (schema details).
 
+Networking concern — the lan-route registry + its adapters.
+
+`default.nix` carries `nori.lanRoutes` (schema + collection +
+Caddy vhost / Blocky DNS / Gatus monitor / Authelia OIDC-secret
+generators). Adapter siblings:
+
+ - `caddy.nix`        — Caddy reverse-proxy daemon
+ - `blocky.nix`       — Blocky DNS daemon (authoritative for
+                        `*.${domain}` on LAN/tailnet)
+ - `gatus-probe.nix`  — per-route monitor schema fragment
+                        (consumed inline by lan-route)
+
+Authelia (the OIDC daemon) is access-concern, not networking;
+lives at `modules/infra/access/` (Phase 3d). lan-route generates
+the sops-templated OIDC secrets here; authelia consumes them.
+
+## Three zones, default-deny
+
+| Zone | What's there | Default posture |
+|---|---|---|
+| **localhost** | Services bind here unless explicitly exposed | Closed to outside |
+| **tailnet** | Personal devices + family. SSH, Samba, `*.${domain}` HTTPS, direct service ports | Closed by default; Caddy on 80+443 + Samba on 445 are the only globally-open tailnet ports |
+| **public internet** | Personal apps that need public exposure live at Cloudflare edge (Pages + Workers + D1) | **Homelab serves nothing publicly** by default. Tailscale Funnel is the prototyped path if anything ever needs to land public traffic |
+
+The Cloudflare edge apps (phibkro.org apex, filmder, drinks-app,
+finnbydel-app, heim) live as Pages (static) + Workers+D1 (stateful).
+The homelab keeps tailnet-only copies of `filmder` + `heim` via
+`nori.lanRoutes` for fast internal access. A `cloudflared` Tunnel
+approach was decommissioned 2026-05-08.
+
+## DNS architecture
+
+```mermaid
+flowchart LR
+    device[tailnet device] -->|DNS query| ts[Tailscale stub 100.100.100.100]
+    ts -->|global-nameserver push| pi_blocky[Pi Blocky · authoritative]
+    pi_blocky -->|"*.${nori.domain}"| host_map["*.${nori.domain} → pi LAN IP<br/>auto-generated from nori.lanRoutes"]
+    pi_blocky -->|other| upstream[1.1.1.1 / 9.9.9.9]
+    classDef primary fill:#3a5,stroke:#2a4,color:#fff
+    class pi_blocky primary
+```
+
+Pi runs Blocky in **self-hosted mode** — auto-generates the
+`*.${domain}` customDNS map from `nori.lanRoutes` (every route
+name resolves to pi's LAN IP, since pi is the Caddy host).
+Tailscale's global-nameserver push points tailnet devices at pi.
+LAN-only devices (smart TV, guest phones) are NOT covered — they
+keep using whatever the router pushes. Workstation's Blocky is
+also self-hosted as a fallback secondary (resolves the same map;
+LAN-side resilience for if pi is down).
+
+Why Tailscale push, not router DHCP: the ISP-shipped Genexis EG400
+locks DHCP DNS settings out of the user-facing admin UI. Router-
+side DNS replacement requires either bridge-mode activation by
+phone request + a second router, or double-NAT with a downstream
+router. Neither set up; Tailscale push is the zero-hardware-cost
+workaround.
+
+**Bootstrap loop hazard:** workstation's `/etc/resolv.conf` points
+at Tailscale's stub (100.100.100.100); Tailscale forwards back to
+workstation's Blocky; Blocky can't resolve its own outbound URLs
+(blocklist sources, DoH endpoints) before serving DNS.
+`services.blocky.settings.bootstrapDns` MUST be set to direct
+upstream IPs. Codified in `.claude/skills/gotcha-blocky-bootstrap-
+loop/`.
+
+## Caddy + TLS + naming
+
+Caddy terminates TLS for every `<name>.${domain}` with a
+**Let's Encrypt wildcard cert** (`*.${domain}`) obtained via ACME
+DNS-01 against Cloudflare. The wildcard avoids per-vhost issuance
++ the LE rate-limit storm that would follow. ISRG roots ship pre-
+trusted on every modern device — no per-device CA install, no Mac
+keychain dance, no Node `NODE_EXTRA_CA_CERTS` env var. See
+ADR-0004 for the rationale.
+
+The Cloudflare API token lives in sops (`cloudflare_acme_token`);
+Caddy's `withPlugins` bakes in `caddy-dns/cloudflare`. The
+`nori.domain` option is the single source of truth — every vhost
+name, Authelia cookie domain + issuer URL, and OIDC redirect URI
+reads from it.
+
+Transitional `*.nori.lan` redirect: pi's Caddy still serves
+`*.nori.lan` (Caddy internal CA) and 301-redirects to the same
+path under `home.phibkro.org`. Drop this block from `caddy.nix` +
+the parallel entries in `blocky` customDNS once family bookmarks
+have migrated.
+
+## Naming: function over brand
+
+`chat.${domain}` not `open-webui.${domain}`. `media` not
+`jellyfin`. The brand changes (Uptime Kuma → Gatus); the function
+doesn't. Brand-named only when the brand IS the identity (`auth`
+for Authelia, `samba`). Enforced by the
+`lint.functionNamedSubdomains` TOML rule.
+
 # Networking concern — overview {#sec-functions-library-networking}
 
 
