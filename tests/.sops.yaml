@@ -11,7 +11,7 @@
 # up the production .sops.yaml first.
 
 keys:
-  - &test age1q0dky09kh9wd40edh6pe5yy0wd28zwhdxlpnas9g70r0gmwe4fjqtl87nc
+  - &test age1u32v58gz04wvhdfndy58sh4t8q7jhrwctsn8z0r6tj7prxxsd99sax0aql
 
 creation_rules:
   - path_regex: \.yaml$

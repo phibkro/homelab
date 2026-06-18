@@ -41,7 +41,7 @@ need() {
     exit 1
   }
 }
-for t in age-keygen sops openssl argon2 python3 authelia; do need "$t"; done
+for t in age-keygen sops openssl argon2 python3 authelia ssh-keygen; do need "$t"; done
 
 echo "==> generating test age key → $KEY_FILE"
 rm -f "$KEY_FILE"
@@ -96,6 +96,11 @@ SESSION="$(openssl rand -hex 32)"
 STORAGE="$(openssl rand -hex 32)"
 HMAC="$(openssl rand -hex 32)"
 RESTIC_PASS="$(openssl rand -hex 16)"
+# restic-ssh-key: SSH private key used by workstation's restic units
+# to talk to aurora's chrooted SFTP target. Tests don't actually run
+# restic; the secret just needs to satisfy sops-install-secrets's
+# manifest check. Use a real ed25519 key to keep the shape honest.
+RESTIC_SSH_KEY="$(ssh-keygen -t ed25519 -N '' -q -f /tmp/_test_restic_key -C 'test-only' && cat /tmp/_test_restic_key && rm -f /tmp/_test_restic_key /tmp/_test_restic_key.pub)"
 # Caddy's cloudflare-acme-token — test value (cf API never dialed in
 # the VM since caddy uses local_certs there). The key MUST exist
 # because modules/infra/networking/caddy.nix declares the sops secret
@@ -159,6 +164,7 @@ trap 'rm -f "$PLAIN"' EXIT
 JWT="$JWT" SESSION="$SESSION" STORAGE="$STORAGE" HMAC="$HMAC" \
 ISSUER_KEY="$ISSUER_KEY" USERS_YAML="$USERS_YAML" RESTIC_PASS="$RESTIC_PASS" \
 CF_ACME_TOKEN="$CF_ACME_TOKEN" GATUS_ENV="$GATUS_ENV" \
+RESTIC_SSH_KEY="$RESTIC_SSH_KEY" \
 HEARTBEAT_URL="$HEARTBEAT_URL" \
 NTFY_CHANNEL="$NTFY_CHANNEL" NTFY_PUB_TOKEN="$NTFY_PUB_TOKEN" \
 TESTAPP_RAW="$TESTAPP_RAW" TESTAPP_HASH="$TESTAPP_HASH" \
@@ -172,6 +178,7 @@ data = {
     "authelia-oidc-issuer-private-key": os.environ["ISSUER_KEY"],
     "authelia-users-database": os.environ["USERS_YAML"],
     "restic-password": os.environ["RESTIC_PASS"],
+    "restic-ssh-key": os.environ["RESTIC_SSH_KEY"],
     "gatus-env": os.environ["GATUS_ENV"],
     "heartbeat-pi-url": os.environ["HEARTBEAT_URL"],
     "ntfy-channel": os.environ["NTFY_CHANNEL"],

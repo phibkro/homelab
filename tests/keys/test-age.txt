@@ -2,6 +2,6 @@
 # Committed in plaintext on purpose. The homelab production sops
 # files are encrypted to a different recipient set and cannot
 # be opened by this key. See scripts/regen-test-secrets.sh.
-# created: 2026-06-18T06:46:25Z
-# public key: age1q0dky09kh9wd40edh6pe5yy0wd28zwhdxlpnas9g70r0gmwe4fjqtl87nc
-AGE-SECRET-KEY-16YE3KXN3VZ4C0ZPDPJNA3PN5CZQ9CUS6T3ZZPLHYYRTTC2ML97QSRA0V5D
+# created: 2026-06-18T07:24:45Z
+# public key: age1u32v58gz04wvhdfndy58sh4t8q7jhrwctsn8z0r6tj7prxxsd99sax0aql
+AGE-SECRET-KEY-18GL9XRG7YKLCWUCZDJAHPUWFR6SPYGAQQ7UZFT483QC2SUNYPPJS8KKMPH
