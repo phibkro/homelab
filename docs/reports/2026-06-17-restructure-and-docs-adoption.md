@@ -3,19 +3,27 @@ date: 2026-06-17
 type: PR description + epilogue report
 pr-title: "feat: modules-as-root restructure + RFC 145 documentation adoption"
 branch: restructure/modules-as-root-and-docs-adoption
-commits: 48
-arcs: docs adoption (Stages 1-5) · modules-as-root restructure (Phases 0-6) · cleanup (Phase 5) · supporting specs
-status: ready for review
-summary: 48 commits completing two coupled arcs — the RFC 145 documentation-co-location adoption (Stages 1-5) and the modules-as-root structural restructure (Phases 0-6). The first establishes a sustainable docs-to-code coupling so docs decay-out is structurally prevented; the second consolidates the tree under modules/ with a scope-aligned cut. The two arcs were chosen tightly coupled because Stage 4's bulk doc-comment migration needed the restructured tree to be stable, and Phase 6's scope-aligned consolidation needed the docs convention established.
+commits: 59
+arcs: docs adoption (Stages 1-5 + option-E experiment) · modules-as-root restructure (Phases 0-6) · cleanup (Phase 5) · supporting specs · post-review fixups
+status: ready for review (after 1 prior review + 2 fixup loops + option-E experiment)
+summary: 59 commits completing two coupled arcs — the RFC 145 documentation-co-location adoption (Stages 1-5, then extended with the option-E experiment that moves narrative + diagrams into code) and the modules-as-root structural restructure (Phases 0-6). The first establishes a sustainable docs-to-code coupling so docs decay-out is structurally prevented; the second consolidates the tree under modules/ with a scope-aligned cut. The post-review loop added the presentation-fix sweep + docs-capabilities generator + per-host hardware extraction + a side-by-side comparison report. The two arcs were chosen tightly coupled because Stage 4's bulk doc-comment migration needed the restructured tree to be stable, and Phase 6's scope-aligned consolidation needed the docs convention established.
 ---
 
 # PR: modules-as-root restructure + RFC 145 documentation adoption
 
 ## Summary
 
-This branch completes the documentation-co-location arc (Stages 1-5 of the RFC 145 adoption) and the modules-as-root structural restructure (Phases 0-6) that together turn `modules/` into the single root for everything the homelab deploys, with the top-level cut now mirroring Nix module scope. Generated docs eliminate a class of doc-decay structurally; ~120 RFC 145 doc-comments seed agent-imitation patterns; 8 flake checks gate every commit.
+This branch completes the documentation-co-location arc (Stages 1-5 of the RFC 145 adoption, then extended via the option-E experiment in 8 follow-on commits) and the modules-as-root structural restructure (Phases 0-6) that together turn `modules/` into the single root for everything the homelab deploys, with the top-level cut now mirroring Nix module scope. Generated docs eliminate a class of doc-decay structurally; the option-E experiment moves architecture diagrams + mental models into file-level `/** */` blocks so they extract to the generated artifacts; ~120 RFC 145 doc-comments seed agent-imitation patterns; 8 flake checks (with 10 derivations including 3 generated docs) gate every commit.
 
-48 commits, ~3500 lines net. All atomic, all green at each step.
+Diff (per the agentic-workflow Epilogue § Reporting convention codified
+mid-PR):
+
+```
+$ git diff --shortstat origin/main..HEAD
+270 files changed, 15191 insertions(+), 8804 deletions(-)
+```
+
+59 commits, ~6.4k lines net. All atomic, all green at each step.
 
 ## Prologue (retroactive)
 
@@ -80,7 +88,40 @@ stage 5   080c653   docs-fresh flake check + store-path stripping
                     (catches drift between committed and generated artifacts)
 ```
 
-**Net effect:** docs that describe code now extract from co-located doc-comments and option descriptions via `nixdoc` + `nixosOptionsDoc`. Hand-written prose stays for meta-content (mental models, ADRs, plans). Drift between code and its docs becomes a build error.
+**Post-review extension — the option-E experiment (8 commits):**
+
+```
+preso fix a874b47   strip nixosOptionsDoc escape noise + broken links
+                    (backslash escapes, /nix/store github-link artifacts)
+move     ca1c0f1   move generated docs to docs/generated/
+                    (separation from handwritten so coverage stays
+                     comparable over time)
+E exp.   0bd2559   extract file-level /** */ docstrings into generated
+                    (awk pre-pass added to mkNixdocSection; narrative
+                     + diagrams migrated to modules/infra/networking/
+                     default.nix + modules/machines/default.nix)
+report   8569962   side-by-side comparison of E experiment
+                    (~78% networking coverage, ~33% topology coverage,
+                     ~55% weighted average can live in code)
+per-host 76851e3   per-host hardware narrative in generated topology
+                    (mkFileDocstring helper; /** */ added to each
+                     <host>/hardware.nix; extracts posture narrative)
+caps     de36882   docs-capabilities — GPU + harden schemas
+                    (3rd generated artifact; GPU access pattern moved
+                     from topology.md handwritten)
+trim     f7eebec   trim handwritten to cross-module synthesis
+                    (network.md 145 → 72 lines; topology.md 182 → 81)
+codify   181f7c9   convention: module-scoped → code; cross-module →
+                    handwritten (the rule that emerged, documented)
+```
+
+**Net effect:** docs that describe code now extract from co-located
+doc-comments and option descriptions via `nixdoc` + `nixosOptionsDoc`.
+Module-scoped narrative + architecture diagrams now also live in
+file-level `/** */` blocks and extract via the new `mkFileDocstring`
+helper. Hand-written prose stays for cross-module synthesis (service
+placement, Authelia OIDC, access summary, resource caps). Drift
+between code and its docs becomes a build error.
 
 ### Arc 2: Modules-as-root restructure (Phases 0-6)
 
@@ -167,23 +208,50 @@ f5155ac   rm docs-inventory artifacts; close Sprint 4 debt list
 4e75d4d   add descriptions to 3 monitor sub-options
 ```
 
+### Arc 5: Post-review fixups (review-feedback loops)
+
+```
+c3eea64   docs(reports): initial PR description draft
+b0bb7dd   fixup(review): address PR review feedback
+            - 2 blockers (module-authoring example, add-host SKILL)
+            - 5 nits (stale path refs in scope-excluded files)
+            - 2 spec frontmatter updates
+            - jellyfin reclassify (/** */ → /* */ for runbook block)
+            - widen path-coherence scope (roadmap + runbooks + skills)
+a76d7f5   followup(review): future-pass items
+            - delete inspect-windows-drive runbook (removed config)
+            - exhaustive /** */ vs /* */ audit (5 parallel subagents)
+              → 51 reclassified to /* */, 3 kept legitimately
+            - codify skip-file vs skip-block annotation policy
+            - net-diff self-grading mechanization for PR descriptions
+8fc6a49   docs(invariants): invariants.md sync (missed by tool hiccup)
+```
+
 ## Verification
 
 ### Goal hit?
 
 ```
-✓ generated docs derive from code (3 packages: docs-lan-route,
-  docs-topology, [docs-dev removed in 5b], regenerable via nix build)
+✓ generated docs derive from code (3 packages now:
+    docs-lan-route       schema + networking concern narrative
+    docs-topology         hosts table + tier principle + per-host
+    docs-capabilities     GPU pattern + harden schema (post-review add)
+  regenerable via nix build)
 ✓ ~120 RFC 145 doc-comments seeded across modules/
-✓ docs-fresh flake check enforces no drift
+✓ docs-fresh flake check enforces no drift (3 artifacts covered)
 ✓ multi-line # convention lint rule (demoted to one-off, convention seeded)
 ✓ scope-aligned modules/ tree:
     modules/machines/ = NixOS-system scope
     modules/home/     = home-manager scope
     modules/infra/    = PaaS infra (consumed)
     modules/services/ = workloads (consumed)
-✓ 8 flake checks green at every commit
+✓ 8 flake checks + 10 derivations green at every commit
 ✓ just check-migration clean (path-coherence + multi-line-comments)
+✓ post-E experiment: module-scoped → code; cross-module → handwritten
+   - networking concern E coverage  ~78%
+   - topology concern E coverage    ~33% (+ per-host hardware: ~50%)
+   - capabilities concern coverage  100% (no handwritten counterpart)
+   - handwritten docs trimmed:      327 → 153 lines (-53%)
 ```
 
 ### Constraints respected?
@@ -194,7 +262,7 @@ f5155ac   rm docs-inventory artifacts; close Sprint 4 debt list
 | C2. CI green at every commit | ✓ Every push-gate-eligible commit passed `nix flake check` (≥8 checks at the time). |
 | C3. No security/safety regressions | ✓ sops boundary intact; restic + btrbk untouched; OnFailure → ntfy preserved; disko by-id paths unchanged. |
 | C4. No nvme0n1 operations | ✓ N/A — no disk operations in this PR. |
-| C5. Atomic per-axis commits | ✓ 48 commits, each one concern. Revertable individually. |
+| C5. Atomic per-axis commits | ✓ 59 commits, each one concern. Revertable individually. |
 
 ### Values honored?
 
@@ -232,6 +300,38 @@ f5155ac   rm docs-inventory artifacts; close Sprint 4 debt list
                                     caught agent overgeneralization
                                     early; structural conventions
                                     emerged from those moments
+
+✓ independent-reviewer pattern      spawning a sceptical-engineer agent
+                                    for the PR-review pass surfaced 2
+                                    blockers, 5 nits, spec frontmatter
+                                    drift, and a Stage 4 misclassification
+                                    the author missed. Worth repeating
+                                    for any non-trivial PR.
+
+✓ option-E + side-by-side report    the experiment paired with explicit
+                                    coverage measurement (per-concern %)
+                                    gave a concrete answer instead of
+                                    aesthetic opinion. Generated 55%
+                                    coverage was the right verdict —
+                                    handwritten kept for cross-module
+                                    synthesis, generated took the rest.
+
+✓ sample-and-correct subagent       Stage 4's parallel-subagent bulk
+   pattern                          conversion was over-promotion-prone;
+                                    the follow-on audit dispatched 5
+                                    subagents with concrete calibration
+                                    examples (jellyfin/ollama/vaultwarden)
+                                    + the YES/NO test. 51/54 (94%)
+                                    miscalibration caught + fixed.
+                                    Bulk → audit → calibrate → re-bulk.
+
+✓ mkFileDocstring as a primitive    nixdoc's blind spot (skips file-
+                                    level docstrings) became a feature:
+                                    a 6-line awk pass surfaced the
+                                    module-as-whole narrative without
+                                    the noise of per-attribute extraction.
+                                    Mechanism less-magic, output more
+                                    useful.
 ```
 
 ### Q2. Did we hit the DoD from the Prologue?
@@ -279,6 +379,37 @@ There was **no formal Prologue** for this work — it grew organically across se
                                       when sibling files are coupled.
                                       Convention reframed in path-coherence
                                       script + spec.
+
+✗ diff-size self-grade off by 50%     prior PR description claimed
+                                      "~3500 lines net"; actual was
+                                      ~5230. Reviewer caught. Now
+                                      mechanized: every PR Epilogue
+                                      pastes verbatim `git diff
+                                      --shortstat` output. Codified in
+                                      agentic-workflow.md.
+
+✗ initial generated docs were ugly    backslash-escaped option paths,
+                                      broken /nix/store github-link
+                                      artifacts. Sat for an unknown
+                                      number of regenerations before the
+                                      post-review presentation-fix sweep.
+                                      Mechanization: any new generator
+                                      adds a "render-and-eyeball" check
+                                      before declaring done.
+
+✗ option-E experiment had to come     the initial Stage 3-5 work
+   second                              produced functional generated
+                                      docs but didn't ask "can these
+                                      replace handwritten?". The
+                                      experiment surfaced the rule
+                                      (module-scoped → code; cross-
+                                      module → handwritten); could have
+                                      saved a regeneration cycle by
+                                      asking up-front. Mechanization: at
+                                      every generator addition, ask
+                                      "what handwritten doc does this
+                                      pair with, and what's the coverage
+                                      target?"
 ```
 
 ### Q4. Did we leave the codebase clean for the next amnesiac team?
@@ -288,20 +419,35 @@ There was **no formal Prologue** for this work — it grew organically across se
   tree, machine-capabilities, e2e simulation, lint-rule-schema)
 ✓ roadmap.md trimmed — done work in git log, not roadmap
 ✓ docs/reference/ updated:
-    documentation-writing.md         RFC 145 convention codified
-    invariants.md                    promotion ladder + check map
-    module-authoring.md              post-restructure shape
-    topology.md                      tier principle
+    documentation-writing.md         RFC 145 convention + skip-annotation
+                                     policy + module-scoped → code rule
+    invariants.md                    promotion ladder + check map +
+                                     migration-check demotion sync
+    module-authoring.md              post-restructure shape + Phase 5a
+                                     explicit-imports registration step
+    network.md                       trimmed to cross-module (Authelia
+                                     overview, Tailscale, access summary)
+    topology.md                      trimmed to cross-module (service
+                                     placement, split-module pattern,
+                                     resource caps, operator facts)
     runtime-tests.md                 infra-concerns-have-tests register
-    agentic-workflow.md              per-PR ceremony (unchanged here)
-✓ generated docs are byte-stable; docs-fresh enforces
+    agentic-workflow.md              per-PR ceremony + diff-size
+                                     verbatim-shortstat mechanization
+✓ generated docs are byte-stable; docs-fresh enforces; 3 artifacts in
+  docs/generated/ (lan-route, topology, capabilities)
 ✓ check-migration is documented; future restructures know to run it
+✓ side-by-side comparison report captures the option-E findings for
+  future reference (docs/reports/2026-06-17-generated-vs-handwritten-
+  docs.md)
 ✓ memory updated (post-session):
     [[stm-feature-progress]]         no change
     [[bang-lang-build-reality]]      no change
     new memories candidates for capture:
     - "modules-as-root tree convention" → would supersede some current
       memory entries that name old paths (deferred to post-merge)
+    - "option-E pattern" → bring narrative into doc-comments + measure
+      coverage explicitly; module-scoped → code, cross-module →
+      handwritten (deferred to post-merge)
 ```
 
 ## Out of scope (intentionally NOT touched)
@@ -349,7 +495,7 @@ The cumulative rollback would only be needed if a deploy surfaces an issue we di
 
 Per the project's push gate convention: this PR description IS the diff surface. The operator should:
 
-1. Skim the commit list (`git log --oneline origin/main..HEAD` — 48 commits)
+1. Skim the commit list (`git log --oneline origin/main..HEAD` — 59 commits)
 2. Spot-check 2-3 commits with `git show <hash>` to confirm shape
 3. Verify the 8 flake checks pass: `nix flake check`
 4. Verify migration-era scripts pass: `just check-migration`
@@ -357,12 +503,13 @@ Per the project's push gate convention: this PR description IS the diff surface.
 6. Approve / push back
 
 The work was substantial enough that a single PR may feel large. Splitting candidates:
-- Arc 1 (docs adoption, Stages 1-5) — 10 commits
+- Arc 1 (docs adoption, Stages 1-5 + option-E experiment) — 18 commits
 - Arc 2 (modules-as-root, Phases 0-6) — 22 commits
 - Arc 3 (specs) — 6 commits
 - Arc 4 (cleanup) — 10 commits
+- Arc 5 (post-review fixups) — 4 commits
 
-But the arcs were tightly coupled in execution (Stage 4 needed Phase 4; Phase 6 needed Stage 5). Splitting now is post-hoc, would lose the dependency narrative, and the operator already lived the work through this session. My recommendation: single PR, one merge.
+But the arcs were tightly coupled in execution (Stage 4 needed Phase 4; Phase 6 needed Stage 5; the option-E experiment needed Stage 5 + the post-Phase-6 module headers). Splitting now is post-hoc, would lose the dependency narrative, and the operator already lived the work through this session. The independent reviewer agreed with the single-PR call after their first review pass. My recommendation: single PR, one merge.
 
 ## Deferred follow-ups
 
@@ -389,8 +536,24 @@ Items surfaced during this work but explicitly out of scope:
    smoke) is the bite-sized starting point.
 
 5. push-gate diff-surface ergonomics
-   This PR's "just show-pending-diff" output would be ~5000 lines. The
-   PR description above is the operator-friendly summary. Worth
-   considering a `just show-pending-summary` recipe for future large
-   PRs.
+   This PR's verbatim `git diff --shortstat` is now part of the PR
+   description per the convention codified mid-PR. The PR description
+   above is the operator-friendly summary. Worth considering a
+   `just show-pending-summary` recipe for future large PRs.
+
+6. extend option-E coverage to remaining handwritten concerns
+   The pattern works for module-scoped content. Future passes could
+   bring observability.md, storage.md, services.md into the same
+   shape (each pairs with its corresponding modules/infra/<concern>/
+   default.nix file-level docstring). Each is a ~half-day pass; not
+   in scope here.
+
+7. consider extending the mkFileDocstring → docs-<X> pattern to
+   per-service modules
+   Each modules/services/<X>.nix could get a generated artifact at
+   docs/generated/services/<X>.md if the service narrative is
+   load-bearing enough. Today the operator-facing runbooks for those
+   services live in /** */ comments at the module head; per-service
+   generators would surface them. Defer to "when a service-doc lookup
+   becomes painful enough to be worth automating".
 ```
