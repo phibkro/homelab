@@ -20,8 +20,10 @@
 
   Builds the homelab config explicitly using
   `nixpkgs/nixos/lib/eval-config.nix` (no flake build, no closure
-  realization for services). Imports the same module bundle as the
-  nixosTest does, plus the sops-stub fixture.
+  realization for services). Imports the SAME module bundle the
+  nixosTest does, including the real sops-nix module — no stubs.
+  Eval succeeds even without runtime decryption because the eval
+  layer never realizes the manifest.json derivation.
 
   Invoked as the `eval-lanroute-customdns` flake check via
   flake.nix:checks.${system}.
@@ -34,7 +36,7 @@ let
     system = "x86_64-linux";
     specialArgs = { inherit inputs; };
     modules = [
-      ../fixtures/sops-stub.nix
+      inputs.sops-nix.nixosModules.sops
       ../../modules/infra/hosts.nix
       ../../modules/infra/placement.nix
       ../../modules/infra/capabilities
@@ -80,6 +82,14 @@ let
             repository = "sftp:stub@stub:/stub";
             description = "test";
           };
+          # Real sops, test recipient — same wiring as the nixosTest
+          # at tests/e2e-pi-smoke.nix. The age key path is a literal
+          # string (not a nix-store path) because sops-nix refuses
+          # store-path keyFiles. At eval time the file doesn't need to
+          # exist — only at activation, which this layer never runs.
+          sops.age.keyFile = "/etc/sops-test-age.txt";
+          sops.age.sshKeyPaths = lib.mkForce [ ];
+          sops.defaultSopsFile = ../secrets/test.yaml;
           sops.secrets.restic-password = { };
           # Minimal scaffolding to satisfy NixOS module-system assertions.
           system.stateVersion = "26.05";

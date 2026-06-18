@@ -1,6 +1,6 @@
 ---
 date: 2026-06-17
-status: Phases 1-4 EXECUTED 2026-06-18; Phase 5 (authelia) ATTEMPTED + DEFERRED; Phase 5b methodology EXECUTED
+status: Phases 1-6 EXECUTED 2026-06-18; Phase 7 (ntfy + OnFailure path) deferred
 executed-as:
   - Phase 1   cc9d1d4   pi-alone framework smoke (scope-down — see
                         phase-1-scope-down below)
@@ -19,32 +19,31 @@ executed-as:
                         + 2 layer-1 eval checks (sub-second) +
                         just e2e-shell / just test-eval recipes.
                         Establishes the TDD inner-loop ergonomics.
+  - Phase 6   pending   real sops + authelia. Replaces sops-stub
+                        with the actual sops-nix module against a
+                        committed test age key + committed sops-
+                        encrypted test.yaml containing real-shape
+                        secrets (argon2id user hash, RSA OIDC issuer
+                        key, 32B random for jwt/session/storage/hmac,
+                        authelia-generated PBKDF2 for OIDC client
+                        secret hash). Authelia reaches active +
+                        binds :9091; /api/health responds OK. Layer-1
+                        eval tests migrated to real sops too.
+                        sops-stub.nix deleted. Test cycle: 20s warm.
 
-phase-5-deferred: Authelia attempt timed-out twice (~15min each).
-  authelia-main.service started but exited 1 after 916s of internal
-  retries. The sops-stub option-schema fixture provides PATHS but
-  not VALID-SHAPED CONTENT — authelia parses the secret content at
-  startup and fails on:
-   - Argon2id hash format in the users database
-   - RSA private key shape for OIDC issuer (may need RSA-PSS-capable
-     2048+ bit key with specific OID)
-   - Storage encryption key length (≥20 bytes; the # comment is 28 chars
-     but stripped of newlines may not parse)
+phase-5-superseded-by-6: Phase 5's authelia attempt with option-schema
+  stubs failed because authelia parses every secret at startup. Phase 6
+  fixed it by stopping the stubbing — use real sops-nix against real
+  test data. The lesson became the methodology doc's "Real values,
+  not stubs" section: stubbing IS lying about composition; if you can
+  generate real-shape test data, you should.
 
-  Lesson: authelia is the first homelab service that needs SEMANTIC
-  fixtures (real-shape values that parse), not just SYNTACTIC
-  fixtures (a file at the right path). Building such fixtures is
-  half-day to day-of work — generate fresh keys with openssl, plant
-  via environment.etc.X.source, write a real argon2 hash for the
-  fake user, etc. The Phase 4 fixture pattern doesn't generalize.
-
-  Recommended Phase 6 shape: real fixture content per secret.
-  Each authelia secret gets a dedicated tests/fixtures/authelia-<X>
-  module that builds the right shape. Replace lib.mkForce overrides
-  with cleaner per-secret fixture modules.
-
-  Until then: layer-2 nixosTest covers blocky + gatus + heartbeat +
-  caddy. Authelia behavior is validated by deploying to real pi.
+phase-7-deferred: ntfy / OnFailure-handler integration. Currently
+  ntfy-channel + ntfy-publisher-token are stub values in test.yaml
+  so modules that reference them eval cleanly; ntfy itself is NOT
+  enabled in the VM. A future Phase 7 would stand up a real ntfy
+  server in-VM, intentionally fail a unit, and assert a notification
+  lands. That validates the OnFailure → notify@ pipe end-to-end.
 phase-1-scope-down: original Phase 1 was "blocky + gatus + beszel-hub
   from real pi config + sops fixture". Discovered mid-execution that
   the homelab module graph requires pervasive sops-secret reads at

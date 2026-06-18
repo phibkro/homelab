@@ -29,7 +29,7 @@ let
       system = "x86_64-linux";
       specialArgs = { inherit inputs; };
       modules = [
-        ../fixtures/sops-stub.nix
+        inputs.sops-nix.nixosModules.sops
         ../../modules/infra/hosts.nix
         ../../modules/infra/placement.nix
         ../../modules/infra/capabilities
@@ -68,6 +68,9 @@ let
               repository = "sftp:stub@stub:/stub";
               description = "test";
             };
+            sops.age.keyFile = "/etc/sops-test-age.txt";
+            sops.age.sshKeyPaths = lib.mkForce [ ];
+            sops.defaultSopsFile = ../secrets/test.yaml;
             sops.secrets.restic-password = { };
             system.stateVersion = "26.05";
             fileSystems."/" = {
