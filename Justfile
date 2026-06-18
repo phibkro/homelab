@@ -477,11 +477,11 @@ default: rebuild
 #   just set modules/desktop/stylix.nix stylix.image '"${pkgs.nixos-artwork.wallpapers.dracula}/share/.../image.png"'
 #   just set modules/services/blocky.nix services.blocky.enable false
 #
-# AST-splice a scalar into a `.nix` file, then run nixfmt. Complex exprs: edit by hand.
+# AST-splice a scalar into a `.nix` file, then run the project formatter. Complex exprs: edit by hand.
 @set file attr value:
-    # nix-editor's -f flag uses nixpkgs-fmt; project uses nixfmt (see
-    # flake.nix `formatter.${system} = pkgs.nixfmt;`). Skip -f and run
-    # project's nixfmt after to keep style consistent.
+    # nix-editor's -f flag uses nixpkgs-fmt; project uses nixfmt via
+    # nixfmt-tree (see flake.nix `formatter.${system} = pkgs.nixfmt-tree;`).
+    # Skip -f and run `nix fmt` after to keep style consistent.
     nix run github:snowfallorg/nix-editor -- -i -v '{{value}}' '{{file}}' '{{attr}}'
     nix fmt -- '{{file}}'
     @echo "--- diff ---"
@@ -577,9 +577,9 @@ default: rebuild
           '.checks."x86_64-linux" | to_entries | map(select(.key | startswith("eval-"))) | .[].key' | \
         sed 's|^|.#checks.x86_64-linux.|')
 
-# Format all .nix files via nixfmt.
+# Format all .nix files via the project formatter (nixfmt via nixfmt-tree).
 @fmt:
-    nix-shell -p nixfmt-rfc-style --command "find . -name '*.nix' -not -path './result*' -exec nixfmt {} +"
+    nix fmt
 
 # Update flake.lock (re-pin inputs). Re-pinning unstable should be deliberate.
 @update-flake:

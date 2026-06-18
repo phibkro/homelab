@@ -199,6 +199,7 @@
       devShells.${system}.default = pkgsUnfree.mkShell {
         buildInputs = with pkgsUnfree; [
           nixfmt
+          nixfmt-tree
           statix
           deadnix
           nh
@@ -210,7 +211,7 @@
       # modules/home/default.nix.
       inherit (homeModule) homeConfigurations;
 
-      formatter.${system} = pkgs.nixfmt;
+      formatter.${system} = pkgs.nixfmt-tree;
 
       /*
         ── Generated docs prototype (Sprint 6 exploration) ─────────────
@@ -708,8 +709,7 @@
           '';
 
           format = pkgs.runCommandLocal "format" { } ''
-            cd ${./.}
-            ${pkgs.nixfmt}/bin/nixfmt --check $(find . -name '*.nix' -not -path '*/result/*')
+            ${pkgs.nixfmt-tree}/bin/treefmt --ci --tree-root ${./.}
             touch $out
           '';
 
