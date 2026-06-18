@@ -3,6 +3,36 @@
   ...
 }:
 
+/**
+  ## pi — Raspberry Pi 4 (8 GiB) · aarch64 · USB-boot from Samsung FIT 128 GB
+
+  **Anti-write storage posture.** SD-card / flash wear is the #1 Pi failure
+  mode; this host's filesystem layer is configured to minimize writes:
+
+   - `swapDevices = [ ]` — no physical swap. zramSwap (RAM-backed compressed)
+     is the right alternative if memory pressure ever shows up.
+   - `services.journald.extraConfig` — `Storage=volatile` (RAM-backed
+     journal) + `SystemMaxUse=64M` cap.
+   - `boot.kernel.sysctl."vm.mmap_rnd_bits" = 18` — aarch64 fixup (default
+     33 from x86_64 systemd fails on aarch64's 39-bit VA).
+
+  **Restic-as-target deferred:** Pi can host the workstation restic repo
+  only when a real disk replaces the FIT — the anti-write posture rules
+  out daily restic to flash.
+
+  **NVMe enumeration warning.** Disko configs target `/dev/disk/by-id/...`
+  paths because NVMe enumeration is unstable across reboots. Pi itself
+  doesn't have NVMe today, but the convention is universal in this repo;
+  see `.claude/skills/gotcha-nvme-enumeration/`.
+
+  ## Build path
+
+  Pi closures build on workstation via aarch64 binfmt emulation
+  (`boot.binfmt.emulatedSystems` in `modules/machines/workstation/hardware.nix`);
+  the sd-image-aarch64 module handles partitioning. Flashed once, then
+  rebuilt in-place via `nh os switch` over tailnet.
+*/
+
 {
   # aarch64. Workstation builds Pi closures via aarch64 binfmt
   # emulation (boot.binfmt.emulatedSystems in workstation/hardware.nix).

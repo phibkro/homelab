@@ -255,6 +255,30 @@
 
             Output: derivation whose `out` is a CommonMark file.
           */
+          /*
+            Extract ONLY the file-level doc-comment block from a Nix file.
+            Use for files that have a load-bearing module overview but no
+            library API (hardware.nix, host config). The awk pass walks
+            until it finds the first leading-`/**`-on-its-own-line, captures
+            until the matching closing-marker line, and prints the body
+            de-indented by 2 spaces (the standard nesting indent inside
+            an RFC 145 doc-comment block).
+          */
+          mkFileDocstring =
+            file:
+            pkgs.runCommandLocal "file-docstring"
+              {
+                nativeBuildInputs = [ pkgs.gawk ];
+              }
+              ''
+                awk '
+                  BEGIN { in_block = 0; printed = 0 }
+                  /^\/\*\*$/ && !printed { in_block = 1; next }
+                  /^\*\/$/ && in_block { in_block = 0; printed = 1; exit }
+                  in_block { sub(/^  /, ""); print }
+                ' ${file} > $out
+              '';
+
           mkNixdocSection =
             {
               file,
@@ -266,23 +290,12 @@
               {
                 nativeBuildInputs = [
                   pkgs.nixdoc
-                  pkgs.gawk
                 ];
               }
               ''
-                # nixdoc extracts per-attribute /** */ blocks but skips the
-                # file-level /** */ at the top of file (treats it as
-                # implicit module docstring rather than extractable content).
-                # The awk pass below extracts that file-level block so the
-                # generator can carry module-as-whole narrative + diagrams
-                # — the E experiment hinges on the file-level block being
-                # the canvas for cross-module reasoning.
-                awk '
-                  BEGIN { in_block = 0; printed = 0 }
-                  /^\/\*\*$/ && !printed { in_block = 1; next }
-                  /^\*\/$/ && in_block { in_block = 0; printed = 1; exit }
-                  in_block { sub(/^  /, ""); print }
-                ' ${file} > $out
+                # File-level docstring first (nixdoc skips it as implicit
+                # module-docstring rather than extractable content).
+                cat ${mkFileDocstring file} > $out
                 echo >> $out
                 nixdoc --description ${lib.escapeShellArg description} \
                        --prefix ${lib.escapeShellArg prefix} \
@@ -469,6 +482,25 @@
                 description = "Topology — overview";
                 category = "topology";
               };
+              # Per-host hardware narrative — extracts JUST the file-level
+              # /** */ block from each modules/machines/<host>/hardware.nix.
+              # We DON'T want the per-attribute nixdoc extraction here (each
+              # `swapDevices = [ ]` setting has a `/* */` rationale comment
+              # that becomes noisy clutter when extracted). The file-level
+              # docstring carries the module-as-whole story; that's all we
+              # need.
+              hostHardwareDoc = name: mkFileDocstring (./modules/machines + "/${name}/hardware.nix");
+              hardwareSection = pkgs.runCommandLocal "hardware-section" { } (
+                lib.concatStringsSep "\n" (
+                  [
+                    "cat <<'HEADER' > $out"
+                    "## Per-host hardware posture"
+                    ""
+                    "HEADER"
+                  ]
+                  ++ map (n: "cat ${hostHardwareDoc n} >> $out") (lib.sort builtins.lessThan hostNames)
+                )
+              );
             in
             pkgs.runCommandLocal "docs-topology"
               {
@@ -492,6 +524,8 @@
 
                 HEADER
                 cat ${machinesDoc} >> $out
+                echo >> $out
+                cat ${hardwareSection} >> $out
                 echo >> $out
                 cat >> $out <<'GLANCE_HEADER'
 

@@ -6,6 +6,43 @@
   ...
 }:
 
+/**
+  ## workstation — Ryzen 5600X · 32 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell)
+
+  Workhorse-tier compute. Three NVMe-class drives + one USB-attached HDD:
+
+   - **WD SN750 1 TB NVMe** — root + service state (`@`, `@home`,
+     `@nix`, `@var-lib`, `@var-log`). disko at `./disko.nix`.
+   - **Corsair MP510 960 GB NVMe** — cold replica of `/mnt/family/*`
+     (btrbk receive endpoint, P14). disko at `./disko-mp510.nix`.
+   - **Seagate IronWolf Pro 4 TB (USB)** — `@downloads` + `@streaming`
+     for arr stack throughput. disko at `./disko-media.nix`.
+
+  ## NVMe enumeration warning
+
+  `nvme0n1` was NixOS root at install time; post-reboot the drives
+  swapped. Disko configs target `/dev/disk/by-id/...` paths because of
+  this. **Never touch `nvme0n1` without verifying the model string via
+  `/dev/disk/by-id/`** — full constraint in CLAUDE.md hard rules. See
+  `.claude/skills/gotcha-nvme-enumeration/`.
+
+  ## Wake-on-LAN
+
+  Pi's `wakeonlan` sender targets this host's MAC (`scripted-networking
+  → systemd-network-link` config; P19 Aurora-migration). The combined
+  shape is: aurora always-on serving family routes; workstation
+  WoL-woken from pi when media access happens (Jellyfin / Samba /
+  arr web UI).
+
+  ## Sleep + GPU constraint
+
+  NVIDIA Blackwell + `suspend-then-hibernate` hangs upstream (systemd
+  #27559). Workstation uses manual `super+P` lock-then-suspend with
+  the VRAM-preserve kernel param fix; PipeWire-aware idle inhibit
+  prevents idle-sleep during ambient sound. Full debt note in
+  `docs/roadmap.md § Architectural debt`.
+*/
+
 {
   imports = [
     /*

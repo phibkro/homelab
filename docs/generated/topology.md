@@ -117,6 +117,125 @@ Consumers (cross-host refs):
 
 
 
+## Per-host hardware posture
+
+## aurora — Asus N552V · Intel Skylake-H i7-6700HQ · 12 GB DDR4 · NVIDIA GTX 950M
+
+Retired gaming laptop repurposed as the family-vault host. Dead
+battery, but otherwise solid: always-on AC, lid closed, runs headless.
+
+ - **119 GB LiteOn SSD (`/dev/sda`)** — root + boot + `/nix`. btrfs
+   subvols; no impermanence (immich-ml's CLIP/face weights are ~2 GB
+   and worth keeping across reboots).
+ - **932 GB Toshiba HDD (`/dev/sdb`)** — `/mnt/family/{photos,home-videos,
+   projects,library,archive}`. The family vault.
+ - **External Seagate OneTouch USB HDD** — `/mnt/backup/onetouch`,
+   restic vault for both pi and workstation backups. SFTP-served via
+   the chrooted `restic` user.
+
+Derived from `nixos-generate-config --no-filesystems` on the live
+ISO (2026-06-06). UEFI firmware. ~1 GB of the 12 GB is iGPU-pinned
+(Intel HD 530); ~11 GB usable for services.
+
+## GPU posture
+
+NVIDIA GTX 950M (Maxwell) handles immich-ml CLIP + face recognition
+via the legacy_535 driver branch (`hardware.nvidia.package =
+config.boot.kernelPackages.nvidiaPackages.legacy_535`). Not enough
+VRAM for LLM inference — that stays on workstation's 5060 Ti.
+
+## Why workhorse role
+
+Has GPU, has compute, hosts state. Classified workhorse — but it's a
+*minimal* workhorse. If a second compute-offload host ever appears,
+the rule-of-three signal is to extract a dedicated `compute` role
+then (see `modules/infra/hosts.nix § role`).
+## pavilion — HP Pavilion g6 · AMD Athlon II P360 · 3.6 GB RAM · BIOS+GRUB
+
+Decade-old laptop (Phenom II era, 2010) repurposed as the agent
+quarantine host. Headless, lid closed, always-on power.
+
+ - **Single 640 GB SATA rotational HDD** — root + impermanence
+   /persist. No discrete GPU.
+ - **3.6 GB RAM** — the ceiling that drives the impermanence choice
+   in `../default.nix`. tmpfs-root would eat ~half of system RAM;
+   btrfs-rollback keeps the "clean every boot" property without
+   that cost.
+ - **BIOS firmware (not UEFI)** — boot.loader uses GRUB, not systemd-
+   boot (see `../default.nix`).
+
+## Agent quarantine posture
+
+Pavilion sits under `tag:agent` in the Tailscale ACL. Can reach
+workhorse `:11434` (ollama) only; cannot SSH any privileged-tier
+host. `nori.backups.<X>` declarations are a build error — anything
+escaping the box sandbox vanishes on reboot via the impermanence
+rollback.
+
+Derived from `nixos-generate-config --no-filesystems` on the live
+ISO (2026-06-05).
+## pi — Raspberry Pi 4 (8 GiB) · aarch64 · USB-boot from Samsung FIT 128 GB
+
+**Anti-write storage posture.** SD-card / flash wear is the #1 Pi failure
+mode; this host's filesystem layer is configured to minimize writes:
+
+ - `swapDevices = [ ]` — no physical swap. zramSwap (RAM-backed compressed)
+   is the right alternative if memory pressure ever shows up.
+ - `services.journald.extraConfig` — `Storage=volatile` (RAM-backed
+   journal) + `SystemMaxUse=64M` cap.
+ - `boot.kernel.sysctl."vm.mmap_rnd_bits" = 18` — aarch64 fixup (default
+   33 from x86_64 systemd fails on aarch64's 39-bit VA).
+
+**Restic-as-target deferred:** Pi can host the workstation restic repo
+only when a real disk replaces the FIT — the anti-write posture rules
+out daily restic to flash.
+
+**NVMe enumeration warning.** Disko configs target `/dev/disk/by-id/...`
+paths because NVMe enumeration is unstable across reboots. Pi itself
+doesn't have NVMe today, but the convention is universal in this repo;
+see `.claude/skills/gotcha-nvme-enumeration/`.
+
+## Build path
+
+Pi closures build on workstation via aarch64 binfmt emulation
+(`boot.binfmt.emulatedSystems` in `modules/machines/workstation/hardware.nix`);
+the sd-image-aarch64 module handles partitioning. Flashed once, then
+rebuilt in-place via `nh os switch` over tailnet.
+## workstation — Ryzen 5600X · 32 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell)
+
+Workhorse-tier compute. Three NVMe-class drives + one USB-attached HDD:
+
+ - **WD SN750 1 TB NVMe** — root + service state (`@`, `@home`,
+   `@nix`, `@var-lib`, `@var-log`). disko at `./disko.nix`.
+ - **Corsair MP510 960 GB NVMe** — cold replica of `/mnt/family/*`
+   (btrbk receive endpoint, P14). disko at `./disko-mp510.nix`.
+ - **Seagate IronWolf Pro 4 TB (USB)** — `@downloads` + `@streaming`
+   for arr stack throughput. disko at `./disko-media.nix`.
+
+## NVMe enumeration warning
+
+`nvme0n1` was NixOS root at install time; post-reboot the drives
+swapped. Disko configs target `/dev/disk/by-id/...` paths because of
+this. **Never touch `nvme0n1` without verifying the model string via
+`/dev/disk/by-id/`** — full constraint in CLAUDE.md hard rules. See
+`.claude/skills/gotcha-nvme-enumeration/`.
+
+## Wake-on-LAN
+
+Pi's `wakeonlan` sender targets this host's MAC (`scripted-networking
+→ systemd-network-link` config; P19 Aurora-migration). The combined
+shape is: aurora always-on serving family routes; workstation
+WoL-woken from pi when media access happens (Jellyfin / Samba /
+arr web UI).
+
+## Sleep + GPU constraint
+
+NVIDIA Blackwell + `suspend-then-hibernate` hangs upstream (systemd
+#27559). Workstation uses manual `super+P` lock-then-suspend with
+the VRAM-preserve kernel param fix; PipeWire-aware idle inhibit
+prevents idle-sleep during ambient sound. Full debt note in
+`docs/roadmap.md § Architectural debt`.
+
 
 ## Hosts at a glance
 

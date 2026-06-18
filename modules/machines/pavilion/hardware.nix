@@ -5,17 +5,31 @@
   ...
 }:
 
-/*
-  HP Pavilion g6 — hardware specifics.
+/**
+  ## pavilion — HP Pavilion g6 · AMD Athlon II P360 · 3.6 GB RAM · BIOS+GRUB
 
-  Derived from `nixos-generate-config --no-filesystems` on the live ISO
-  (2026-06-05). CPU: AMD Athlon II P360 (mobile, Phenom II era, 2010);
-  BIOS firmware (NOT UEFI — boot.loader uses GRUB, not systemd-boot,
-  see ../default.nix); single 640 GB SATA rotational HDD; 3.6 GB RAM.
+  Decade-old laptop (Phenom II era, 2010) repurposed as the agent
+  quarantine host. Headless, lid closed, always-on power.
 
-  The 3.6 GB ceiling drives the impermanence choice in default.nix —
-  tmpfs-root would eat ~half of system RAM; btrfs-rollback keeps the
-  "clean every boot" property without that cost. See default.nix.
+   - **Single 640 GB SATA rotational HDD** — root + impermanence
+     /persist. No discrete GPU.
+   - **3.6 GB RAM** — the ceiling that drives the impermanence choice
+     in `../default.nix`. tmpfs-root would eat ~half of system RAM;
+     btrfs-rollback keeps the "clean every boot" property without
+     that cost.
+   - **BIOS firmware (not UEFI)** — boot.loader uses GRUB, not systemd-
+     boot (see `../default.nix`).
+
+  ## Agent quarantine posture
+
+  Pavilion sits under `tag:agent` in the Tailscale ACL. Can reach
+  workhorse `:11434` (ollama) only; cannot SSH any privileged-tier
+  host. `nori.backups.<X>` declarations are a build error — anything
+  escaping the box sandbox vanishes on reboot via the impermanence
+  rollback.
+
+  Derived from `nixos-generate-config --no-filesystems` on the live
+  ISO (2026-06-05).
 */
 
 {
