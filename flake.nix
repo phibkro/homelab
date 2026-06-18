@@ -885,6 +885,7 @@
           e2e-pi-smoke = import ./tests/e2e-pi-smoke.nix { inherit pkgs lib inputs; };
           e2e-multi-host = import ./tests/e2e-multi-host.nix { inherit pkgs lib inputs; };
           e2e-restic-backup = import ./tests/e2e-restic-backup.nix { inherit pkgs lib inputs; };
+          e2e-disk-alert = import ./tests/e2e-disk-alert.nix { inherit pkgs lib inputs; };
 
           /**
             Layer-1 eval test — `nori.lanRoutes` → blocky.customDNS
@@ -934,6 +935,23 @@
               };
             in
             pkgs.runCommandLocal "eval-route-invariants" { } ''
+              echo ${lib.escapeShellArg result} > $out
+            '';
+
+          /**
+            Layer-1 eval test — `nori.lanRoutes.<X>.monitor` →
+            `services.gatus.settings.endpoints`. Pins the registry-
+            to-Gatus contract so a schema regression that silently
+            drops endpoints (and the operator's alerting) fails the
+            check.
+          */
+          eval-gatus-probes =
+            let
+              result = import ./tests/eval/gatus-probes.nix {
+                inherit pkgs lib inputs;
+              };
+            in
+            pkgs.runCommandLocal "eval-gatus-probes" { } ''
               echo ${lib.escapeShellArg result} > $out
             '';
 
