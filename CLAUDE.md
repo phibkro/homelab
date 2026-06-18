@@ -41,6 +41,7 @@ without this file's context.
 | `docs/reference/module-authoring.md` | writing a new module — template, sops conventions, packages-by-scope, dev workflow |
 | `docs/reference/documentation-writing.md` | writing/auditing comments + prose — earns-rent taxonomy, anti-patterns, agent-imitation loop |
 | `docs/reference/recovery.md` | something is broken or you're planning recovery — RTO targets, runbook index, permanent constraints |
+| `docs/reference/testing-methodology.md` | deciding which test layer to use (eval / nixosTest / runtime introspection), wiring a TDD red-green-refactor loop, looking up the speed budget per layer, designing test fixtures + stubs |
 | `docs/reference/runtime-tests.md` | adding a `just test-<X>` lever or auditing whether an infra concern ships with one |
 | `docs/reference/capacity-baseline.md` | sizing a new service against current RAM/disk/CPU baselines per host |
 | `docs/reference/agentic-workflow.md` | starting a new PR (prologue), wrapping one (epilogue), deciding session vs PR boundary, or designing per-sprint ceremonies — the per-PR three-phase ceremony lives here |

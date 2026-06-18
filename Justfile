@@ -185,6 +185,7 @@ default: rebuild
     just test-routes
     just test-observability
     just test-replicas
+    just test-authelia
 
 # Each `nori.lanRoutes.<X>` is a Reader-Writer effect: one declaration
 # emits Caddy route + Gatus monitor + DNS record + (optional) Authelia
@@ -257,6 +258,94 @@ default: rebuild
       else
         echo "  ✗ $vhost unreachable (status=$status)"; fail=1
       fi
+    done
+
+    echo
+    [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
+
+# Authelia is the value-prop linchpin for family-tier services: every
+# OIDC route depends on it. When it silently goes wrong (sops key
+# rotation without `sops updatekeys`, config schema drift on upgrade,
+# OIDC client count desync), users discover via "login is broken" and
+# the operator hears about it from a phone. Catch it on a probe instead.
+#
+# Tier 1 — systemd: authelia-main.service is active on pi.
+# Tier 2 — health: /api/health responds OK via the local loopback.
+# Tier 3 — OIDC: /.well-known/openid-configuration declares the right
+#                issuer (caddy reverse-proxy + cert + authelia all
+#                compose cleanly).
+# Tier 4 — clients: count of OIDC clients authelia knows about ==
+#                   count of nori.lanRoutes.<X>.oidc declarations
+#                   (catches a route added without a rebuild on pi).
+#
+# Runtime-introspection test: authelia live ↔ nori.lanRoutes.<X>.oidc declarations.
+@test-authelia:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    fail=0
+
+    host_self=$(hostname)
+    flake_ref=".#nixosConfigurations.${host_self}.config"
+    domain=$(nix eval --raw "${flake_ref}.nori.domain" 2>/dev/null)
+    pi_tailnet=$(nix eval --raw "${flake_ref}.nori.hosts.pi.tailnetIp" 2>/dev/null)
+
+    # Helpers — every probe lands on pi regardless of which host invoked
+    # this recipe (authelia only runs there).
+    pi_curl() {
+      if [[ "$host_self" == "pi" ]]; then curl -s "$@"
+      else ssh -o ConnectTimeout=3 "nori@${pi_tailnet}" "curl -s $*"
+      fi
+    }
+    pi_ssh() {
+      if [[ "$host_self" == "pi" ]]; then bash -c "$*"
+      else ssh -o ConnectTimeout=3 "nori@${pi_tailnet}" "$*"
+      fi
+    }
+
+    echo "=== Tier 1 — authelia-main.service active on pi ==="
+    active=$(pi_ssh "systemctl is-active authelia-main.service" 2>/dev/null || echo "unknown")
+    if [[ "$active" == "active" ]]; then
+      echo "  ✓ active"
+    else
+      echo "  ✗ $active"; fail=1
+    fi
+
+    echo "=== Tier 2 — /api/health on loopback ==="
+    health=$(pi_curl http://127.0.0.1:9091/api/health 2>/dev/null || echo "")
+    if echo "$health" | grep -qi 'ok'; then
+      echo "  ✓ OK"
+    else
+      echo "  ✗ health=$health"; fail=1
+    fi
+
+    echo "=== Tier 3 — OIDC discovery via caddy ==="
+    issuer_expected="https://auth.${domain}"
+    meta=$(curl -fsS -m 4 "${issuer_expected}/.well-known/openid-configuration" 2>/dev/null || echo "{}")
+    issuer_actual=$(echo "$meta" | nix shell nixpkgs#jq -c jq -r '.issuer // ""' 2>/dev/null)
+    if [[ "$issuer_actual" == "$issuer_expected" ]]; then
+      echo "  ✓ issuer=$issuer_actual"
+    else
+      echo "  ✗ issuer=$issuer_actual (expected $issuer_expected)"; fail=1
+    fi
+
+    echo "=== Tier 4 — sops secrets for every declared OIDC route present + non-empty ==="
+    # Authelia config validation rejects empty/malformed secrets at
+    # startup, so if Tier 1 passed, the secrets evaluated OK. But the
+    # *files* in /run/secrets can desync after a sops updatekeys race;
+    # this tier catches that class. One file per declared OIDC route
+    # (raw client-secret + PBKDF2 hash).
+    declared_oidc=$(nix eval --raw "${flake_ref}.nori.lanRoutes" \
+                      --apply 'r: builtins.concatStringsSep " " (builtins.filter (n: r.${n}.oidc != null) (builtins.attrNames r))' 2>/dev/null)
+    for route in $declared_oidc; do
+      for kind in client-secret client-secret-hash; do
+        path="/run/secrets/oidc-${route}-${kind}"
+        sz=$(pi_ssh "stat -c '%s' '$path' 2>/dev/null || echo 0")
+        if [[ "$sz" -gt 0 ]]; then
+          echo "  ✓ oidc-${route}-${kind} ($sz bytes)"
+        else
+          echo "  ✗ oidc-${route}-${kind} missing or empty"; fail=1
+        fi
+      done
     done
 
     echo
@@ -477,11 +566,11 @@ default: rebuild
 #   just set modules/desktop/stylix.nix stylix.image '"${pkgs.nixos-artwork.wallpapers.dracula}/share/.../image.png"'
 #   just set modules/services/blocky.nix services.blocky.enable false
 #
-# AST-splice a scalar into a `.nix` file, then run nixfmt. Complex exprs: edit by hand.
+# AST-splice a scalar into a `.nix` file, then run the project formatter. Complex exprs: edit by hand.
 @set file attr value:
-    # nix-editor's -f flag uses nixpkgs-fmt; project uses nixfmt (see
-    # flake.nix `formatter.${system} = pkgs.nixfmt;`). Skip -f and run
-    # project's nixfmt after to keep style consistent.
+    # nix-editor's -f flag uses nixpkgs-fmt; project uses nixfmt via
+    # nixfmt-tree (see flake.nix `formatter.${system} = pkgs.nixfmt-tree;`).
+    # Skip -f and run `nix fmt` after to keep style consistent.
     nix run github:snowfallorg/nix-editor -- -i -v '{{value}}' '{{file}}' '{{attr}}'
     nix fmt -- '{{file}}'
     @echo "--- diff ---"
@@ -555,9 +644,31 @@ default: rebuild
     bash lint/checks/path-coherence.sh .
     bash lint/checks/multi-line-comments.sh .
 
-# Format all .nix files via nixfmt.
+# === e2e nixosTest helpers (per docs/reference/testing-methodology.md) ===
+
+# Open the nixosTest driver interactively — boot the VM ONCE, iterate
+# on testScript fragments without rebuilding. The big iteration-loop
+# win for layer 2 (nixosTest) work. Default to e2e-pi-smoke; pass a
+# different test name to open another driver.
+@e2e-shell test="e2e-pi-smoke":
+    nix run .#checks.x86_64-linux.{{test}}.driverInteractive
+
+# Run all layer-1 eval tests — sub-second checks of schema +
+# composition. Faster inner-loop than the layer-2 nixosTest. Each
+# eval-* flake check evaluates a NixOS config in-process and asserts
+# the resulting `config.<X>` shape.
+@test-eval:
+    nix --extra-experimental-features "nix-command flakes" \
+      build --no-link --print-out-paths \
+      $(nix --extra-experimental-features "nix-command flakes" \
+        flake show --json 2>/dev/null | \
+        nix shell nixpkgs#jq -c jq -r \
+          '.checks."x86_64-linux" | to_entries | map(select(.key | startswith("eval-"))) | .[].key' | \
+        sed 's|^|.#checks.x86_64-linux.|')
+
+# Format all .nix files via the project formatter (nixfmt via nixfmt-tree).
 @fmt:
-    nix-shell -p nixfmt-rfc-style --command "find . -name '*.nix' -not -path './result*' -exec nixfmt {} +"
+    nix fmt
 
 # Update flake.lock (re-pin inputs). Re-pinning unstable should be deliberate.
 @update-flake:

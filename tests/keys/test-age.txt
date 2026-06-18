@@ -1,0 +1,7 @@
+# TEST KEY — DO NOT USE IN PRODUCTION.
+# Committed in plaintext on purpose. The homelab production sops
+# files are encrypted to a different recipient set and cannot
+# be opened by this key. See scripts/regen-test-secrets.sh.
+# created: 2026-06-18T07:24:45Z
+# public key: age1u32v58gz04wvhdfndy58sh4t8q7jhrwctsn8z0r6tj7prxxsd99sax0aql
+AGE-SECRET-KEY-18GL9XRG7YKLCWUCZDJAHPUWFR6SPYGAQQ7UZFT483QC2SUNYPPJS8KKMPH

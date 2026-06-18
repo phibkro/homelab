@@ -636,6 +636,24 @@ in
           '';
         }
         {
+          assertion = lib.all (n: builtins.hasAttr routes.${n}.runsOn config.nori.hosts) names;
+          message =
+            let
+              unknown = lib.filter (n: !(builtins.hasAttr routes.${n}.runsOn config.nori.hosts)) names;
+            in
+            ''
+              nori.lanRoutes.<n>.runsOn must reference a host declared
+              in nori.hosts (the placement registry). Caught at eval
+              instead of as an opaque `attribute '<typo>' missing`
+              error when caddy/dashboards walk the route at build time.
+
+              Offending routes: ${
+                lib.concatStringsSep ", " (map (n: "${n} (runsOn=${routes.${n}.runsOn})") unknown)
+              }
+              Known hosts: ${lib.concatStringsSep ", " (lib.attrNames config.nori.hosts)}
+            '';
+        }
+        {
           assertion = lib.all (n: builtins.match "[a-z][a-z0-9-]*" n != null) names;
           message = ''
             nori.lanRoutes names must be DNS-safe: lowercase, must

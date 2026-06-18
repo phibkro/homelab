@@ -1,0 +1,20 @@
+# sops policy scoped to tests/ — the test age recipient cannot decrypt
+# anything outside this subtree, and the production .sops.yaml does not
+# include this key. The two configs are isolated by design.
+#
+# Refresh the recipient by re-running scripts/regen-test-secrets.sh; the
+# script writes the same public key into both this file and
+# tests/keys/test-age.pub.
+#
+# Use this config explicitly via `sops --config tests/.sops.yaml ...`
+# — sops walks up to the repo root by default and would otherwise pick
+# up the production .sops.yaml first.
+
+keys:
+  - &test age1u32v58gz04wvhdfndy58sh4t8q7jhrwctsn8z0r6tj7prxxsd99sax0aql
+
+creation_rules:
+  - path_regex: \.yaml$
+    key_groups:
+      - age:
+          - *test

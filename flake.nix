@@ -199,6 +199,7 @@
       devShells.${system}.default = pkgsUnfree.mkShell {
         buildInputs = with pkgsUnfree; [
           nixfmt
+          nixfmt-tree
           statix
           deadnix
           nh
@@ -210,7 +211,7 @@
       # modules/home/default.nix.
       inherit (homeModule) homeConfigurations;
 
-      formatter.${system} = pkgs.nixfmt;
+      formatter.${system} = pkgs.nixfmt-tree;
 
       /*
         ── Generated docs prototype (Sprint 6 exploration) ─────────────
@@ -708,8 +709,7 @@
           '';
 
           format = pkgs.runCommandLocal "format" { } ''
-            cd ${./.}
-            ${pkgs.nixfmt}/bin/nixfmt --check $(find . -name '*.nix' -not -path '*/result/*')
+            ${pkgs.nixfmt-tree}/bin/treefmt --ci --tree-root ${./.}
             touch $out
           '';
 
@@ -870,6 +870,90 @@
                   exit 1
                 fi
               '';
+
+          /**
+            E2E — pi-alone smoke nixosTest. Boots a stripped-down
+            pi-like config in QEMU + verifies the homelab services
+            reach active state. The per-service scope (Phase 1
+            through Phase 5+) is documented in
+            docs/specs/2026-06-17-e2e-vm-simulation.md. Per
+            docs/reference/testing-methodology.md this is layer 2
+            (nixosTest) — pair with layer-1 eval tests at
+            tests/eval/ for sub-second feedback during inner-loop
+            iteration.
+          */
+          e2e-pi-smoke = import ./tests/e2e-pi-smoke.nix { inherit pkgs lib inputs; };
+          e2e-multi-host = import ./tests/e2e-multi-host.nix { inherit pkgs lib inputs; };
+          e2e-restic-backup = import ./tests/e2e-restic-backup.nix { inherit pkgs lib inputs; };
+          e2e-disk-alert = import ./tests/e2e-disk-alert.nix { inherit pkgs lib inputs; };
+
+          /**
+            Layer-1 eval test — `nori.lanRoutes` → blocky.customDNS
+            auto-generation. Sub-second; runs at every flake check
+            via the import below. Per docs/reference/testing-
+            methodology.md: eval tests catch schema regressions +
+            cross-module composition errors before they surface in
+            the nixosTest (which is much slower).
+          */
+          eval-lanroute-customdns =
+            let
+              result = import ./tests/eval/lanroute-customdns.nix {
+                inherit pkgs lib inputs;
+              };
+            in
+            pkgs.runCommandLocal "eval-lanroute-customdns" { } ''
+              echo ${lib.escapeShellArg result} > $out
+            '';
+
+          /**
+            Layer-1 eval test — `nori.lanRoutes.<X>.port` validates as
+            16-bit unsigned (types.port). Demonstrates the
+            negative-path eval pattern: assert that a BAD config
+            throws, not just that a good config succeeds.
+          */
+          eval-lanroute-port-validation =
+            let
+              result = import ./tests/eval/lanroute-port-validation.nix {
+                inherit pkgs lib inputs;
+              };
+            in
+            pkgs.runCommandLocal "eval-lanroute-port-validation" { } ''
+              echo ${lib.escapeShellArg result} > $out
+            '';
+
+          /**
+            Layer-1 eval test — cross-product invariants over
+            nori.lanRoutes. Verifies module assertions in
+            modules/infra/networking/default.nix actually FIRE on
+            the failure modes (port collisions, runsOn ∉ nori.hosts).
+            Catches regressions that drop an assertion silently.
+          */
+          eval-route-invariants =
+            let
+              result = import ./tests/eval/route-invariants.nix {
+                inherit pkgs lib inputs;
+              };
+            in
+            pkgs.runCommandLocal "eval-route-invariants" { } ''
+              echo ${lib.escapeShellArg result} > $out
+            '';
+
+          /**
+            Layer-1 eval test — `nori.lanRoutes.<X>.monitor` →
+            `services.gatus.settings.endpoints`. Pins the registry-
+            to-Gatus contract so a schema regression that silently
+            drops endpoints (and the operator's alerting) fails the
+            check.
+          */
+          eval-gatus-probes =
+            let
+              result = import ./tests/eval/gatus-probes.nix {
+                inherit pkgs lib inputs;
+              };
+            in
+            pkgs.runCommandLocal "eval-gatus-probes" { } ''
+              echo ${lib.escapeShellArg result} > $out
+            '';
 
           /**
             Docs-fresh — committed generated artifacts must match

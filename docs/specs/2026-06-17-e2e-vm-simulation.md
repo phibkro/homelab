@@ -1,6 +1,87 @@
 ---
 date: 2026-06-17
-status: spec — not in execution
+status: EXECUTED — Phases 1-7 landed 2026-06-18 + 5 follow-on tests beyond original scope. testable-in-VM infra surface ≈ 100% covered.
+executed-as:
+  - Phase 1   cc9d1d4   pi-alone framework smoke (scope-down — see
+                        phase-1-scope-down below)
+  - Phase 2   9fd2163   sops-stub fixture + homelab blocky module
+                        with lanRoutes → customDNS auto-generation
+                        validated end-to-end
+  - Phase 3   0390b39   gatus + heartbeat observability services
+                        added; validates timer-driven unit
+                        activation pattern under sops-stub
+  - Phase 4   68bd30b   caddy entry-plane added with internal CA
+                        (no real ACME contact, plain pkgs.caddy
+                        instead of cloudflare-plugin variant);
+                        sops-stub extended with templates + placeholder
+                        for caddy's CF_API_TOKEN template wiring
+  - Phase 5b  ca55db1   testing methodology doc (3-layer pyramid)
+                        + 2 layer-1 eval checks (sub-second) +
+                        just e2e-shell / just test-eval recipes.
+                        Establishes the TDD inner-loop ergonomics.
+  - Phase 6   f0a0e15   real sops + authelia. Replaces sops-stub
+                        with the actual sops-nix module against a
+                        committed test age key + committed sops-
+                        encrypted test.yaml containing real-shape
+                        secrets (argon2id user hash, RSA OIDC issuer
+                        key, 32B random for jwt/session/storage/hmac,
+                        authelia-generated PBKDF2 for OIDC client
+                        secret hash). Authelia reaches active +
+                        binds :9091; /api/health responds OK. Layer-1
+                        eval tests migrated to real sops too.
+                        sops-stub.nix deleted.
+  - Phase 7   92d2ad4   OnFailure → notify@ → ntfy POST pipeline.
+                        Refactored notify.nix to accept baseUrl +
+                        recoveryWindowSeconds options (defaults
+                        match prod), stub HTTP receiver in-VM,
+                        intentionally failing unit. Asserts URL
+                        path, headers, body shape end-to-end.
+
+follow-on (beyond original spec, same branch):
+  - 5e1b324   nixfmt-tree migration (silences nixpkgs deprecation)
+  - 2758219   eval-route-invariants: cross-product layer-1 test +
+              runsOn-membership module assertion
+  - 325605c   OIDC end-to-end curl flow (discovery + first-factor +
+              session cookie roundtrip via caddy)
+  - cddbabe   test-authelia runtime probe (Justfile, 4 tiers)
+  - aa06a72   multi-host nixosTest (pi + workstation; cross-host
+              DNS, backend reachability, caddy reverse-proxy
+              across the vlan)
+  - 0cdc839   restic backup roundtrip (real backup against local
+              repo, snapshot lands + contains marker file)
+  - e60b1e1   forwardAuth flow subtest (the OTHER auth pattern
+              besides OIDC; rejection + cookie + exemptPaths)
+  - fe0c67f   disk-alert pipeline (L2) + gatus probe-registry (L1)
+
+final state — 15 flake checks:
+  L1   eval-lanroute-customdns, eval-lanroute-port-validation,
+       eval-route-invariants, eval-gatus-probes
+  L2   e2e-pi-smoke (10 subtests, ~22s warm),
+       e2e-multi-host (3 subtests, ~17s),
+       e2e-restic-backup (3 subtests, ~26s),
+       e2e-disk-alert (1 subtest, ~16s)
+  L3   test-{hypr,backups,routes,observability,replicas,authelia}
+  + 8 hygiene gates (deadnix/statix/lint/format/docs-fresh/
+                     routing-coherence/fs-hardening/backup-intent)
+
+phase-5-superseded-by-6: Phase 5's authelia attempt with option-schema
+  stubs failed because authelia parses every secret at startup. Phase 6
+  fixed it by stopping the stubbing — use real sops-nix against real
+  test data. The lesson became the methodology doc's "Real values,
+  not stubs" section: stubbing IS lying about composition; if you can
+  generate real-shape test data, you should.
+phase-1-scope-down: original Phase 1 was "blocky + gatus + beszel-hub
+  from real pi config + sops fixture". Discovered mid-execution that
+  the homelab module graph requires pervasive sops-secret reads at
+  activation time; building a proper test-key fixture layer was
+  genuine Phase 2 work, not Phase 1 polish. Pivoted to a framework
+  smoke: minimal NixOS config + bare nixpkgs blocky module +
+  customDNS resolution check. Phase 2 then folded gatus + ntfy +
+  caddy + authelia coverage back in via the sops-stub approach
+  (option-schema fake, not real decryption — see fixtures/sops-
+  stub.nix). Real homelab blocky.nix + lanRoutes registry pipeline
+  validated; phases 3+ pick up gatus/caddy/authelia (each needs
+  additional fixture work beyond the option stub).
 seed: operator question 2026-06-17 ("is it possible to simulate our homelab system? end-to-end testing before application")
 summary: Adopt `pkgs.nixosTest` as the end-to-end pre-flight for inter-host wiring. QEMU boots the host trees inside a synthetic network, a Python driver exercises the entry-plane / routing / observability seams that single-host `nh os test` cannot cover. Phased: phase 1 (pi-alone smoke) → phase 2 (pi + workstation routing) → phase 3 (all 3 NixOS hosts) → phase 4 (push-gate integration). Explicitly NOT a replacement for `nh os test`, real-host journey verification, or the push gate's diff review — it's an additional safety net for the regression class "entry-plane silently broke X".
 ---

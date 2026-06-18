@@ -1,0 +1,3 @@
+# test-only age public key — corresponds to tests/keys/test-age.txt
+# committed; safe to share; cannot decrypt production secrets
+age1u32v58gz04wvhdfndy58sh4t8q7jhrwctsn8z0r6tj7prxxsd99sax0aql

@@ -1,15 +1,23 @@
 ---
 summary: Runtime introspection tests for the homelab — when they pay
   off, where they live, and which `nori.<X>` effect each one covers.
+  This is LAYER 3 of the testing methodology; see
+  `docs/reference/testing-methodology.md` for the pyramid and when to
+  reach for eval / nixosTest / runtime introspection.
 ---
 
 # Runtime tests
 
-The homelab's tests are **runtime introspection** recipes: query the
+The homelab's runtime tests are **introspection recipes**: query the
 live system's registries (systemd, restic, Caddy, VictoriaMetrics,
 Hyprland IPC) and assert the declared intent landed. They're not unit
 tests — they verify that the multi-step transformation from nix
 declaration to runtime effect didn't silently desync.
+
+**This is layer 3 of the three-layer methodology.** Layers 1-2 (eval
+and nixosTest) catch failures BEFORE deploy; runtime introspection
+catches drift AFTER. See [`testing-methodology.md`](./testing-methodology.md)
+for the decision tree on when to reach for each.
 
 ## When introspection tests pay off
 
@@ -33,6 +41,7 @@ One lever maxed = nice-to-have. Two = ship it. Three+ = required.
 | `just test-routes` | `nori.lanRoutes.<n>` → Caddy route + DNS + HTTPS reachable | `modules/infra/networking/default.nix` |
 | `just test-observability` | VM scrape targets up + process-exporter publishing + pi heartbeat <90s + zero failing gatus probes | `modules/infra/networking/gatus-probe.nix` + `modules/infra/observability/victoriametrics.nix` |
 | `just test-replicas` | `nori.replicas.<n>` → per-replica verifier oneshot succeeded within freshness budget on the target host (smoke-passes on empty registry) | `modules/infra/storage/replication.nix` |
+| `just test-authelia` | Authelia live ↔ `nori.lanRoutes.<n>.oidc` declarations: systemd active, /api/health OK, OIDC discovery issuer correct, /run/secrets/oidc-<n>-* present + non-empty for every declared OIDC route | `modules/infra/access/authelia.nix` + `modules/infra/networking/default.nix` |
 | `just test` | All of the above | composite |
 
 ## The architectural correlation worth knowing
@@ -45,6 +54,7 @@ One lever maxed = nice-to-have. Two = ship it. Three+ = required.
 | `lan-route.nix` | ✓ `nori.lanRoutes` | `test-routes` | ★★★★★ |
 | `gatus-probe.nix` | ✓ embedded + standalone | `test-observability` | ★★★★★ |
 | `replication.nix` | ✓ `nori.replicas` | `test-replicas` | ★★★★ (silent-stale class, blast = data divergence) |
+| `access/authelia.nix` | ✓ consumes `nori.lanRoutes.<X>.oidc` | `test-authelia` | ★★★★★ (silent-OIDC-broken class, blast = every family-tier service login fails) |
 | `harden.nix` | ✓ `nori.harden` | — | ★★ (flake check is primary defence) |
 | `fs.nix` | ✓ `nori.fs` | — | ★★ |
 | `hosts.nix` | ✓ Reader-only | — | ★ (used transitively) |
