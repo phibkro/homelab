@@ -1,29 +1,29 @@
 /**
-  e2e Phase 2 — pi-alone smoke with homelab blocky module.
+  e2e Phases 1-4 — pi-alone smoke nixosTest.
 
-  Builds on Phase 1 (which booted a bare nixpkgs blocky for a
-  framework smoke). Phase 2 imports the REAL homelab blocky
-  module (`modules/infra/networking/blocky.nix`) via the lanRoutes
-  registry pipeline, with a sops-stub fixture covering the option-
-  schema requirements.
+  Boots a stripped-down pi-like NixOS config in a QEMU VM and verifies
+  the homelab's entry-plane services reach active state. Per-phase
+  scope:
 
-  Verifies:
-   1. The infra/networking module's lanRoutes → blocky.customDNS
-      auto-generation works (a route declared in
-      `nori.lanRoutes.<X>` is auto-resolved by Blocky).
-   2. The full schema chain (hosts → placement → capabilities →
-      backup → networking) composes correctly with the sops stub.
-   3. The homelab's blocky.nix produces a functional DNS resolver.
+   - Phase 1: framework smoke (bare nixpkgs blocky)
+   - Phase 2: homelab blocky + lanRoutes → customDNS pipeline
+   - Phase 3: + gatus.timer + heartbeat.timer (timer-driven
+     activation pattern)
+   - Phase 4: + caddy.service with internal-CA mode
+   - Phase 5: + authelia ATTEMPTED, DEFERRED — see
+     docs/specs/2026-06-17-e2e-vm-simulation.md § phase-5-deferred
+     for the lessons + why option-schema stubs aren't sufficient
+     for authelia (needs real fixture content: RSA-PSS issuer key,
+     valid argon2id hashes in users db, etc).
 
-  What it still skips (Phase 3+ targets):
-   - gatus (needs sops env file with real values)
-   - ntfy server (publishes to ntfy.sh, needs internet)
-   - caddy (needs ACME — internal CA + cert generation)
-   - authelia (~10 sops secrets)
+  Validates the unit-startup failure class supersedes the (deprecated)
+  systemd-execstart-resolves spec.
 
-  Implements DoD from docs/specs/2026-06-17-e2e-vm-simulation.md
-  § Phase 1 (now extended to validate the homelab module's behavior,
-  not just the framework).
+  Per docs/reference/testing-methodology.md, this is LAYER 2 of the
+  three-layer pyramid — pair with layer-1 eval tests at tests/eval/
+  for sub-second feedback during inner-loop iteration. Use
+  `just e2e-shell e2e-pi-smoke` to open the interactive driver +
+  iterate on testScript fragments without rebuilding.
 
   Invoked via nix build .#checks.<system>.e2e-pi-smoke.
 */

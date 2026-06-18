@@ -1,6 +1,6 @@
 ---
 date: 2026-06-17
-status: Phases 1-3 EXECUTED 2026-06-18; Phase 4 spec-only
+status: Phases 1-4 EXECUTED 2026-06-18; Phase 5 (authelia) ATTEMPTED + DEFERRED; Phase 5b methodology EXECUTED
 executed-as:
   - Phase 1   cc9d1d4   pi-alone framework smoke (scope-down — see
                         phase-1-scope-down below)
@@ -10,11 +10,41 @@ executed-as:
   - Phase 3   0390b39   gatus + heartbeat observability services
                         added; validates timer-driven unit
                         activation pattern under sops-stub
-  - Phase 4   <this>    caddy entry-plane added with internal CA
+  - Phase 4   68bd30b   caddy entry-plane added with internal CA
                         (no real ACME contact, plain pkgs.caddy
                         instead of cloudflare-plugin variant);
                         sops-stub extended with templates + placeholder
                         for caddy's CF_API_TOKEN template wiring
+  - Phase 5b  ca55db1   testing methodology doc (3-layer pyramid)
+                        + 2 layer-1 eval checks (sub-second) +
+                        just e2e-shell / just test-eval recipes.
+                        Establishes the TDD inner-loop ergonomics.
+
+phase-5-deferred: Authelia attempt timed-out twice (~15min each).
+  authelia-main.service started but exited 1 after 916s of internal
+  retries. The sops-stub option-schema fixture provides PATHS but
+  not VALID-SHAPED CONTENT — authelia parses the secret content at
+  startup and fails on:
+   - Argon2id hash format in the users database
+   - RSA private key shape for OIDC issuer (may need RSA-PSS-capable
+     2048+ bit key with specific OID)
+   - Storage encryption key length (≥20 bytes; the # comment is 28 chars
+     but stripped of newlines may not parse)
+
+  Lesson: authelia is the first homelab service that needs SEMANTIC
+  fixtures (real-shape values that parse), not just SYNTACTIC
+  fixtures (a file at the right path). Building such fixtures is
+  half-day to day-of work — generate fresh keys with openssl, plant
+  via environment.etc.X.source, write a real argon2 hash for the
+  fake user, etc. The Phase 4 fixture pattern doesn't generalize.
+
+  Recommended Phase 6 shape: real fixture content per secret.
+  Each authelia secret gets a dedicated tests/fixtures/authelia-<X>
+  module that builds the right shape. Replace lib.mkForce overrides
+  with cleaner per-secret fixture modules.
+
+  Until then: layer-2 nixosTest covers blocky + gatus + heartbeat +
+  caddy. Authelia behavior is validated by deploying to real pi.
 phase-1-scope-down: original Phase 1 was "blocky + gatus + beszel-hub
   from real pi config + sops fixture". Discovered mid-execution that
   the homelab module graph requires pervasive sops-secret reads at

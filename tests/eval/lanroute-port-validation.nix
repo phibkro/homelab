@@ -95,7 +95,9 @@ if validPasses && invalidFails then
 else
   throw ''
     Port validation test failed.
-    valid port 8080:   success=${toString validResult.success} value=${toString (validResult.value or "n/a")}
+    valid port 8080:   success=${toString validResult.success} value=${
+      toString (validResult.value or "n/a")
+    }
     invalid port 99999: success=${toString invalidResult.success}
     expected: valid passes (success=true, value=8080), invalid fails (success=false)
   ''

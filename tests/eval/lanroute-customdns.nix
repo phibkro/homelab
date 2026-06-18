@@ -94,7 +94,7 @@ let
   };
 
   inherit (result.config.services.blocky.settings) customDNS;
-  mapping = customDNS.mapping;
+  inherit (customDNS) mapping;
 
   expected = {
     "foo.test.lan" = "10.0.0.20";
