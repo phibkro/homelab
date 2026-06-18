@@ -1,29 +1,29 @@
 /**
-  e2e Phase 1 — pi-alone framework smoke.
+  e2e Phase 2 — pi-alone smoke with homelab blocky module.
 
-  Boots a minimal NixOS config in a QEMU VM via nixosTest, reaches
-  multi-user.target, and runs a single blocky DNS resolution check.
-  PROVES the test infrastructure works end-to-end before Phase 2+
-  expand to importing the real pi config (which needs a richer sops
-  fixture layer than Phase 1 budgets).
+  Builds on Phase 1 (which booted a bare nixpkgs blocky for a
+  framework smoke). Phase 2 imports the REAL homelab blocky
+  module (`modules/infra/networking/blocky.nix`) via the lanRoutes
+  registry pipeline, with a sops-stub fixture covering the option-
+  schema requirements.
 
-  Scope reduced from the spec's original Phase 1 (blocky + gatus +
-  beszel-hub) after discovering the homelab module graph requires
-  pervasive sops decryption at activation time — the gatus/ntfy/
-  caddy/authelia modules all read `config.sops.secrets.<X>.path`,
-  which forces either a real sops test-key fixture (Phase 2 work) or
-  per-module stub overrides (fragile + invasive).
+  Verifies:
+   1. The infra/networking module's lanRoutes → blocky.customDNS
+      auto-generation works (a route declared in
+      `nori.lanRoutes.<X>` is auto-resolved by Blocky).
+   2. The full schema chain (hosts → placement → capabilities →
+      backup → networking) composes correctly with the sops stub.
+   3. The homelab's blocky.nix produces a functional DNS resolver.
 
-  This Phase 1 instead: bare-bones blocky with no homelab module
-  bundle. Verifies:
-   - nixosTest framework works on workstation
-   - QEMU VM boots in <90s
-   - blocky package + service module from nixpkgs work in isolation
-   - testScript framework runs Python assertions correctly
+  What it still skips (Phase 3+ targets):
+   - gatus (needs sops env file with real values)
+   - ntfy server (publishes to ntfy.sh, needs internet)
+   - caddy (needs ACME — internal CA + cert generation)
+   - authelia (~10 sops secrets)
 
   Implements DoD from docs/specs/2026-06-17-e2e-vm-simulation.md
-  § Phase 1, with the scope-down noted in the spec's executed-as
-  block.
+  § Phase 1 (now extended to validate the homelab module's behavior,
+  not just the framework).
 
   Invoked via nix build .#checks.<system>.e2e-pi-smoke.
 */
@@ -37,27 +37,83 @@
 pkgs.testers.runNixOSTest {
   name = "e2e-pi-smoke";
 
+  # Same `inputs` plumbing real nixosConfigurations get at flake-
+  # build time. Homelab modules consume `inputs` for impermanence /
+  # nixos-hardware refs even when those features aren't active.
+  node.specialArgs = { inherit inputs; };
+
   nodes.pi =
     { config, lib, ... }:
     {
-      # Minimal blocky config — proves the test framework + nixpkgs
-      # service modules work end-to-end. Doesn't import homelab
-      # modules (those need sops fixtures; out of Phase 1 scope).
-      services.blocky = {
-        enable = true;
-        settings = {
-          ports.dns = 53;
-          upstreams.groups.default = [ "1.1.1.1" ];
-          customDNS.mapping = {
-            "smoke.test.lan" = "10.0.0.20";
-          };
+      imports = [
+        # Stub sops-nix's option surface — see fixture header for
+        # why we don't import the real module.
+        ./fixtures/sops-stub.nix
+
+        # Infra schemas the homelab blocky module reads through.
+        ../modules/infra/hosts.nix
+        ../modules/infra/placement.nix
+        ../modules/infra/capabilities
+        ../modules/infra/storage # nori.fs (consumed by backup/btrbk)
+        ../modules/infra/backup
+        ../modules/infra/networking
+      ];
+
+      # Synthetic identity — provides nori.hosts registry entries
+      # that placement assertions consult.
+      nori.hosts = {
+        pi = {
+          tailnetIp = "100.0.0.1";
+          lanIp = "10.0.0.10";
+          role = "appliance";
+          roleOneLiner = "";
+          codename = "test-pi";
+          hardware = "test-qemu";
+          primaryJob = "Phase 2 smoke";
         };
+        workstation = {
+          tailnetIp = "100.0.0.2";
+          lanIp = "10.0.0.20";
+          role = "workhorse";
+          roleOneLiner = "test workhorse";
+          codename = "test-station";
+          hardware = "test-qemu";
+          primaryJob = "Phase 2 smoke";
+        };
+      };
+
+      networking.hostName = "pi";
+      nori.domain = "test.lan";
+      nori.lanIp = lib.mkForce "10.0.0.20";
+
+      # Test routes — exercise the lanRoutes → blocky.customDNS
+      # auto-generation pipeline. Two routes so we can verify both
+      # resolve identically (to nori.lanIp).
+      nori.lanRoutes.smoke = {
+        port = 9999;
+        runsOn = "workstation";
+      };
+      nori.lanRoutes.another = {
+        port = 8888;
+        runsOn = "workstation";
+      };
+
+      nori.services.blocky.enable = true;
+      nori.blocky.role = "self-hosted";
+
+      # Test framework's nixpkgs.config differs from base.nix's;
+      # force ours to match the test framework to avoid the
+      # allowUnfree conflict.
+      nixpkgs.config = lib.mkForce {
+        allowAliases = true;
+        allowBroken = false;
+        allowUnfree = false;
       };
 
       # Smaller closure for faster test boot.
       documentation.enable = lib.mkForce false;
 
-      # `dig` for the DNS-resolution assertion in testScript.
+      # `dig` for the DNS-resolution assertions in testScript.
       environment.systemPackages = [ pkgs.bind.dnsutils ];
     };
 
@@ -69,11 +125,14 @@ pkgs.testers.runNixOSTest {
         pi.wait_for_unit("blocky.service")
         pi.wait_for_open_port(53)
 
-    with subtest("blocky resolves the test customDNS entry"):
-        # smoke.test.lan should resolve to 10.0.0.20 from the
-        # customDNS.mapping above. This validates the WHOLE chain —
-        # nixpkgs module → systemd → port bind → DNS query.
-        result = pi.succeed("dig +short +time=2 +tries=1 smoke.test.lan @127.0.0.1")
-        assert "10.0.0.20" in result, f"expected 10.0.0.20, got: {result!r}"
+    with subtest("lanRoutes → blocky customDNS auto-generation works"):
+        # smoke.test.lan and another.test.lan are both declared in
+        # nori.lanRoutes; the networking module's customDNS generator
+        # should map each to nori.lanIp (10.0.0.20) automatically.
+        smoke = pi.succeed("dig +short +time=2 +tries=1 smoke.test.lan @127.0.0.1")
+        assert "10.0.0.20" in smoke, f"smoke.test.lan: expected 10.0.0.20, got: {smoke!r}"
+
+        another = pi.succeed("dig +short +time=2 +tries=1 another.test.lan @127.0.0.1")
+        assert "10.0.0.20" in another, f"another.test.lan: expected 10.0.0.20, got: {another!r}"
   '';
 }

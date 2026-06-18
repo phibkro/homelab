@@ -1,18 +1,24 @@
 ---
 date: 2026-06-17
-status: Phase 1 EXECUTED 2026-06-18; Phases 2-4 spec-only
+status: Phases 1-2 EXECUTED 2026-06-18; Phases 3-4 spec-only
 executed-as:
-  - Phase 1   <this commit>  pi-alone framework smoke (scope-down from
-                             original spec — see below)
+  - Phase 1   cc9d1d4   pi-alone framework smoke (scope-down — see
+                        phase-1-scope-down below)
+  - Phase 2   <this>    sops-stub fixture + homelab blocky module
+                        with lanRoutes → customDNS auto-generation
+                        validated end-to-end
 phase-1-scope-down: original Phase 1 was "blocky + gatus + beszel-hub
   from real pi config + sops fixture". Discovered mid-execution that
   the homelab module graph requires pervasive sops-secret reads at
-  activation time; building a proper test-key fixture layer (sops-nix
-  + age key + test-encrypted secrets.yaml) is genuine Phase 2 work,
-  not Phase 1 polish. Pivoted to a framework smoke: minimal NixOS
-  config + bare nixpkgs blocky module + customDNS resolution check.
-  Proves nixosTest works end-to-end; deferred homelab-module-aware
-  testing to Phase 2 where the fixture layer pays for itself.
+  activation time; building a proper test-key fixture layer was
+  genuine Phase 2 work, not Phase 1 polish. Pivoted to a framework
+  smoke: minimal NixOS config + bare nixpkgs blocky module +
+  customDNS resolution check. Phase 2 then folded gatus + ntfy +
+  caddy + authelia coverage back in via the sops-stub approach
+  (option-schema fake, not real decryption — see fixtures/sops-
+  stub.nix). Real homelab blocky.nix + lanRoutes registry pipeline
+  validated; phases 3+ pick up gatus/caddy/authelia (each needs
+  additional fixture work beyond the option stub).
 seed: operator question 2026-06-17 ("is it possible to simulate our homelab system? end-to-end testing before application")
 summary: Adopt `pkgs.nixosTest` as the end-to-end pre-flight for inter-host wiring. QEMU boots the host trees inside a synthetic network, a Python driver exercises the entry-plane / routing / observability seams that single-host `nh os test` cannot cover. Phased: phase 1 (pi-alone smoke) → phase 2 (pi + workstation routing) → phase 3 (all 3 NixOS hosts) → phase 4 (push-gate integration). Explicitly NOT a replacement for `nh os test`, real-host journey verification, or the push gate's diff review — it's an additional safety net for the regression class "entry-plane silently broke X".
 ---
