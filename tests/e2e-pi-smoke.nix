@@ -154,6 +154,42 @@ pkgs.testers.runNixOSTest {
         };
       };
 
+      # forwardAuth-gated route — the OTHER auth pattern (vs OIDC).
+      # Caddy asks authelia's /api/verify whether the request has a
+      # valid session cookie BEFORE forwarding. The backend runs
+      # locally (runsOn = "pi") so the test stays single-node.
+      nori.lanRoutes.gated = {
+        port = 7878;
+        runsOn = "pi";
+        forwardAuth = {
+          # Default exemptPaths = [ "/api/*" ]; we keep that so the
+          # gated.test.lan/api/* exemption can be exercised too.
+        };
+      };
+
+      # Trivial backend behind the gated route. Responds with a
+      # deterministic marker so the testScript can confirm a 200
+      # carried real backend bytes (not authelia's portal HTML).
+      systemd.services.gated-backend = {
+        description = "Test backend for the forwardAuth-gated route";
+        wantedBy = [ "multi-user.target" ];
+        after = [ "network.target" ];
+        serviceConfig = {
+          ExecStart = "${pkgs.python3}/bin/python3 ${pkgs.writeText "gated-backend.py" ''
+            import http.server
+            class H(http.server.BaseHTTPRequestHandler):
+                def do_GET(self):
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/plain")
+                    self.end_headers()
+                    body = b"gated-backend-ok" if self.path == "/" else b"api-exempt-ok"
+                    self.wfile.write(body)
+                def log_message(self, *a, **k): pass
+            http.server.HTTPServer(("127.0.0.1", 7878), H).serve_forever()
+          ''}";
+        };
+      };
+
       nori.services.blocky.enable = true;
       nori.services.gatus.enable = true;
       nori.services.heartbeat.enable = true;
@@ -387,6 +423,54 @@ pkgs.testers.runNixOSTest {
         ).strip()
         assert int(level) >= 1, (
             f"session not authenticated post-login: level={level}, state={state!r}"
+        )
+
+    with subtest("forwardAuth: gated route rejects unauthed, accepts cookie, exempts /api/*"):
+        # Composition under test (the OTHER auth pattern vs OIDC):
+        # request → caddy → forward_auth /api/verify → 401 unauth OR
+        # 200 with backend bytes. Exemption: /api/* bypasses the auth
+        # check entirely (covers app-to-app API key flows).
+        gated_backend = pi.wait_for_unit("gated-backend.service")
+        pi.wait_for_open_port(7878)
+
+        # Fresh cookie jar — the OIDC subtest above left a session
+        # cookie. Reuse it; *.test.lan sessions span both routes.
+        # Unauth flow: drop the cookie, expect 401 from authelia's
+        # verify (caddy returns it as the proxy response).
+        unauth_status = pi.succeed(
+            "curl -s -o /dev/null -w '%{http_code}' "
+            "-k --resolve gated.test.lan:443:127.0.0.1 "
+            "https://gated.test.lan/"
+        ).strip()
+        # Authelia returns 401 on /api/verify failure; caddy
+        # may surface that, or rewrite to a 302 redirect to the
+        # portal. Either signals "not authorized through".
+        assert unauth_status in ("401", "302"), (
+            f"unauthed request not rejected: status={unauth_status!r}"
+        )
+
+        # Authed flow: the cookie jar from the prior login subtest
+        # carries the session. forward_auth /api/verify returns 200,
+        # caddy proxies through to the backend.
+        authed = pi.succeed(
+            "curl -fsS -k -b /tmp/cookies.txt "
+            "--resolve gated.test.lan:443:127.0.0.1 "
+            "https://gated.test.lan/"
+        ).strip()
+        assert authed == "gated-backend-ok", (
+            f"authed gated request didn't reach backend: {authed!r}"
+        )
+
+        # Exempt path: /api/* bypasses forward-auth entirely. Hit
+        # without any cookie, expect the backend's marker for the
+        # /api branch.
+        exempt = pi.succeed(
+            "curl -fsS -k "
+            "--resolve gated.test.lan:443:127.0.0.1 "
+            "https://gated.test.lan/api/v3/whatever"
+        ).strip()
+        assert exempt == "api-exempt-ok", (
+            f"exempt /api/* path didn't bypass auth: {exempt!r}"
         )
 
     with subtest("OnFailure → notify@ → ntfy POST"):
