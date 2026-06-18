@@ -121,11 +121,85 @@ Format precedence (lifted from RFC 145):
 | Lib function in `modules/`, `flake.nix`, or `lint/default.nix` | `/** ... */` |
 | Let-binding with non-obvious purpose (e.g. our `lintLib`, `lintRules`, `baseNonServicePatterns`) | `/** ... */` |
 | Attribute set entry that's effectively a function or registry (e.g. `nori.lanRoutes.<X>`, bundle headers under `modules/services/<group>/default.nix`) | `/** ... */` |
+| **Module overview** — file-level docstring at the top of a `default.nix` carrying mental models, architecture diagrams, and rationale for the concern as a whole (mermaid diagrams, three-zone tables, registry shape rationale) | `/** ... */` (file-level, above the `let`/`{}` body) |
 | Rationale, runbook, or intent narrative (bootstrap procedures, "why we chose Pattern A", "reapply this UI state if X gets stomped", config-line trade-offs) | `/* ... */` |
 | Inline implementation detail not part of the public surface | standard `#` comment |
 | Cross-cutting prose (mental models, why-this-shape, multi-module rationale) | hand-written `docs/reference/<topic>.md` |
 
 The test that distinguishes `/** */` from `/* */`: **would I want this block surfaced in generated docs as code-API reference?** YES → `/** */`. NO → `/* */`. Operator runbooks, "click X then Y" steps, rationale for a specific config value, and service-behavior narrative all fail the test — they're operator-intent content, not consumer-facing API. The 2026-06-17 sweep reclassified 51 such blocks across `modules/services/` after the Stage 4 bulk migration over-promoted them; calibration examples land at `modules/services/{jellyfin,ollama,vaultwarden}.nix` head-comments.
+
+### Module-scoped → code; cross-module → handwritten
+
+The 2026-06-17 option-E experiment landed a clearer split between
+co-located narrative and hand-written docs:
+
+```
+single-module narrative           lives in code as file-level /** */
+  mental models                     at the top of the concern's default.nix
+  architecture diagrams             extracted by the docs-<X> generator
+  registry shape rationale          appears in docs/generated/<X>.md
+  per-host hardware posture         (mkFileDocstring helper extracts the
+                                    leading docstring block; nixdoc fills
+                                    in per-attribute docs after)
+
+cross-module synthesis            lives in docs/reference/<topic>.md
+  service placement                 fundamentally cross-cuts modules; no
+  cross-host service patterns       single home in code
+  resource caps                     spans multiple service modules
+  operator-facing prose             not tied to any module surface
+  decision history not in ADRs      cross-cutting why-now context
+```
+
+The rule: **if the content fits one module's surface, put it in the
+file-level `/** */` and extract it.** If it explicitly spans multiple
+modules' surfaces, write a hand-curated doc. The drift-killer property
+(generated docs can't drift from the code they're derived from) is the
+prize; the cost is that some content genuinely doesn't fit one
+extraction site, and pretending otherwise distorts the content.
+
+Concrete examples from the homelab:
+
+```
+modules/infra/networking/default.nix /** */ carries  the DNS architecture
+                                                     mermaid, audience trust
+                                                     model, Caddy + TLS
+                                                     rationale, function-
+                                                     over-brand naming
+
+modules/machines/default.nix /** */ carries          the topology mermaid,
+                                                     the tier principle,
+                                                     failure-domain claim
+
+modules/infra/capabilities/gpu.nix /** */ carries    the GPU access
+                                                     pattern table + per-
+                                                     host driver split
+
+modules/machines/<host>/hardware.nix /** */ carries  the per-host posture
+                                                     (anti-write Pi, NVMe
+                                                     enumeration warning,
+                                                     impermanence on
+                                                     pavilion, Maxwell vs
+                                                     Blackwell driver
+                                                     branches)
+
+docs/reference/network.md keeps                      Authelia OIDC overview
+                                                     (cross-module), the
+                                                     access summary
+                                                     (FS cross-cut)
+
+docs/reference/topology.md keeps                     service placement
+                                                     (14 rows × why-each-
+                                                     is-where), split-
+                                                     module pattern,
+                                                     resource caps,
+                                                     operator facts
+```
+
+Result (2026-06-17): `network.md` 145 → 72 lines, `topology.md` 182
+→ 81 lines, with no content lost — the trimmed sections live in code
+and appear in the generated docs. See
+`docs/reports/2026-06-17-generated-vs-handwritten-docs.md` for the
+side-by-side comparison.
 
 ### Path-coherence skip annotations
 
