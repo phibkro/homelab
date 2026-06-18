@@ -133,9 +133,9 @@
         /run isn't restricted by ProtectHome.
       */
       nori.harden.disk-alert = {
-        readOnlyBinds = lib.filter (m: lib.hasPrefix "/mnt/" m) (
-          config.nori.observability.diskAlert.mountpoints
-        );
+        readOnlyBinds = lib.filter (
+          m: lib.hasPrefix "/mnt/" m
+        ) config.nori.observability.diskAlert.mountpoints;
       };
     })
   ];

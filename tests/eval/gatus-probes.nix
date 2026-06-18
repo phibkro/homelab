@@ -124,17 +124,15 @@ let
   # Every emitted endpoint should have an ntfy alert wired.
   allHaveNtfyAlert = lib.all (e: lib.any (a: a.type or "" == "ntfy") (e.alerts or [ ])) endpoints;
 in
-if alphaPresent && betaPresent && noProbeAbsent && alphaPathRight && betaPathRight && allHaveNtfyAlert then
+if
+  alphaPresent && betaPresent && noProbeAbsent && alphaPathRight && betaPathRight && allHaveNtfyAlert
+then
   "ok — lanRoutes.<X>.monitor → gatus endpoints mapping correct"
 else
   throw ''
     Gatus probe-registry mismatch.
-      alpha (monitor={}, expect present, default path):    present=${
-        toString alphaPresent
-      } pathRight=${toString alphaPathRight}  url=${alphaUrl}
-      beta  (monitor.path=/api/health, expect present):    present=${
-        toString betaPresent
-      } pathRight=${toString betaPathRight}  url=${betaUrl}
+      alpha (monitor={}, expect present, default path):    present=${toString alphaPresent} pathRight=${toString alphaPathRight}  url=${alphaUrl}
+      beta  (monitor.path=/api/health, expect present):    present=${toString betaPresent} pathRight=${toString betaPathRight}  url=${betaUrl}
       no-probe (no monitor, expect absent):                absent=${toString noProbeAbsent}
       all emitted endpoints have ntfy alert:                ${toString allHaveNtfyAlert}
     Endpoint names emitted: ${builtins.toJSON endpointNames}
