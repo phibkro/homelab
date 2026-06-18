@@ -4,9 +4,16 @@ summary: Eval-time flake check that catches ExecStart first-tokens which
   incident class (2026-06-03 cf. `.claude/skills/gotcha-systemd-execstart-
   resolves/` once it exists). High-value promotion; needs more design than
   a single sub-sprint can absorb so deferred to a focused session.
-status: research seed — Prologue done, gate-passed-A (defer to fresh
-  session) on 2026-06-16. Open questions enumerated; scope-down options
-  named. Implementation queued.
+status: SUPERSEDED — by `docs/specs/2026-06-17-e2e-vm-simulation.md`.
+  Operator-prompted reframe 2026-06-18: the narrow path-prefix check would
+  NOT have caught the 2026-06-03 incident (which was `--no-such-flag` on a
+  real binary at a real store path). The e2e VM simulation's Phase 1 boot-
+  in-QEMU + watch-systemd-units-start primitive catches BOTH the narrow
+  class AND the actual incident class AND inter-host wiring drift. One
+  mechanism, three classes; this spec's narrow check becomes redundant.
+superseded-by: docs/specs/2026-06-17-e2e-vm-simulation.md
+superseded-reason: same mechanism (nixosTest unit-startup watching) covers
+  the unit-startup failure class more thoroughly than the eval-time grep.
 trigger: 2026-06-16 end-of-session, operator picked "B then C" with B =
   this promotion. Prologue research revealed eval-time mechanism + four
   syntactic variants (ExecStart shape) push this from the assumed
