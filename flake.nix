@@ -872,6 +872,20 @@
               '';
 
           /**
+            E2E Phase 1 — pi-alone smoke nixosTest. Boots a stripped-
+            down pi-like config in QEMU + verifies blocky + gatus +
+            beszel-hub reach active state, blocky resolves the test
+            LAN zone, gatus self-probe returns 200. Catches unit-
+            startup failures including the bare-name ExecStart class
+            the (superseded) systemd-execstart-resolves spec targeted.
+
+            Test body at tests/e2e-pi-smoke.nix; fixtures at
+            tests/fixtures/. See docs/specs/2026-06-17-e2e-vm-
+            simulation.md § Phase 1.
+          */
+          e2e-pi-smoke = import ./tests/e2e-pi-smoke.nix { inherit pkgs lib inputs; };
+
+          /**
             Docs-fresh — committed generated artifacts must match
             what the generators would produce right now. Catches the
             drift class where a schema change lands but the docs/
