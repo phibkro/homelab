@@ -160,12 +160,19 @@ in
   config = {
     # Plant a dummy file at each declared secret's path. Services
     # reading config.sops.secrets.<X>.path get a real, readable
-    # file at boot — dummy content, but valid for "does the unit
-    # start" smoke tests.
+    # file at boot.
+    #
+    # Content shape: a single `#` comment line. This is valid both
+    # as an EnvironmentFile (systemd ignores `#`-prefixed lines, so
+    # the unit gets an empty env) AND as cat-able content (consumers
+    # that just read the value get the comment string — usually
+    # produces a graceful failure mode, e.g. curl can't resolve a
+    # URL that's a comment, but the calling unit still TRIES to
+    # start, which is what the smoke test is checking).
     environment.etc = lib.mapAttrs' (
       name: _:
       lib.nameValuePair "test-secrets/${name}" {
-        text = "test-value-${name}";
+        text = "# sops-stub fixture — ${name}\n";
         mode = "0440";
       }
     ) config.sops.secrets;

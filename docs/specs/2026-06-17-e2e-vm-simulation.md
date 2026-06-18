@@ -1,12 +1,15 @@
 ---
 date: 2026-06-17
-status: Phases 1-2 EXECUTED 2026-06-18; Phases 3-4 spec-only
+status: Phases 1-3 EXECUTED 2026-06-18; Phase 4 spec-only
 executed-as:
   - Phase 1   cc9d1d4   pi-alone framework smoke (scope-down — see
                         phase-1-scope-down below)
-  - Phase 2   <this>    sops-stub fixture + homelab blocky module
+  - Phase 2   9fd2163   sops-stub fixture + homelab blocky module
                         with lanRoutes → customDNS auto-generation
                         validated end-to-end
+  - Phase 3   <this>    gatus + heartbeat observability services
+                        added; validates timer-driven unit
+                        activation pattern under sops-stub
 phase-1-scope-down: original Phase 1 was "blocky + gatus + beszel-hub
   from real pi config + sops fixture". Discovered mid-execution that
   the homelab module graph requires pervasive sops-secret reads at

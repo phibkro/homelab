@@ -57,6 +57,15 @@ pkgs.testers.runNixOSTest {
         ../modules/infra/storage # nori.fs (consumed by backup/btrbk)
         ../modules/infra/backup
         ../modules/infra/networking
+
+        # Observability — selected submodules. Skipping the full
+        # bundle import to avoid pulling in vector (needs a
+        # VictoriaLogs server) + beszel agent (would try to register
+        # with a hub) + node-exporter / nvidia-gpu-exporter (not
+        # needed for smoke). Phase 4 picks up the fuller observability
+        # set.
+        ../modules/infra/observability/gatus.nix
+        ../modules/infra/observability/heartbeat.nix
       ];
 
       # Synthetic identity — provides nori.hosts registry entries
@@ -99,6 +108,8 @@ pkgs.testers.runNixOSTest {
       };
 
       nori.services.blocky.enable = true;
+      nori.services.gatus.enable = true;
+      nori.services.heartbeat.enable = true;
       nori.blocky.role = "self-hosted";
 
       # Test framework's nixpkgs.config differs from base.nix's;
@@ -134,5 +145,20 @@ pkgs.testers.runNixOSTest {
 
         another = pi.succeed("dig +short +time=2 +tries=1 another.test.lan @127.0.0.1")
         assert "10.0.0.20" in another, f"another.test.lan: expected 10.0.0.20, got: {another!r}"
+
+    with subtest("gatus.timer activates"):
+        # gatus.service has wantedBy=[] in the homelab module — it's
+        # fired by gatus.timer at OnBootSec=60s instead (so cross-host
+        # rebuilds don't trigger probe-flapping). Wait for the timer
+        # to be active; the service itself starts on the timer's
+        # schedule.
+        pi.wait_for_unit("gatus.timer")
+
+    with subtest("heartbeat.timer activates"):
+        # heartbeat.service is a oneshot — the timer wants to fire it
+        # every 60s. We don't care if the curl succeeds (the URL is
+        # a stub comment, not a real hc.io endpoint); we DO care that
+        # the timer activates without systemd refusing to load it.
+        pi.wait_for_unit("heartbeat.timer")
   '';
 }
