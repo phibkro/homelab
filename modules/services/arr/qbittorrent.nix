@@ -143,11 +143,9 @@ lib.mkMerge [
                 # COMPLETE on @downloads (same subvol as *arr libraries
                 # for hardlink-on-import).
                 r'Session\DefaultSavePath': '${config.nori.fs.downloads.path}/.downloads/complete',
-                /*
-                INCOMPLETE on NVMe (qBittorrent StateDirectory) for IO
-                isolation + HDD wear-isolation. Cross-device copy on
-                completion is the trade.
-                */
+                # INCOMPLETE on NVMe (qBittorrent StateDirectory) for IO
+                # isolation + HDD wear-isolation. Cross-device copy on
+                # completion is the trade.
                 r'Session\TempPath':        '/var/lib/qBittorrent/qBittorrent/incomplete',
                 r'Session\TempPathEnabled': 'true',
             },
