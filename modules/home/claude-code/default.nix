@@ -286,13 +286,22 @@ in
     let
       # Allowlist rather than import-all so the curated ./skills set
       # isn't drowned by upstream skills we've replaced or don't use.
+      # `subdir` lets the helper reach into nested upstream layouts
+      # (Matt Pocock's repo nests by category: skills/engineering/<n>).
       importSkills =
-        src: names:
+        {
+          src,
+          subdir ? "",
+          names,
+        }:
+        let
+          prefix = if subdir == "" then src else "${src}/${subdir}";
+        in
         lib.listToAttrs (
           map (
             n:
             lib.nameValuePair ".claude/skills/${n}" {
-              source = "${src}/${n}";
+              source = "${prefix}/${n}";
               recursive = true;
             }
           ) names
@@ -321,21 +330,81 @@ in
         subdir-per-skill into the flat ~/.claude/skills/.
         superpowers: only the survivors of the curation (utilities + code
         review). brainstorming is vendored + adapted in ./skills (repointed
-        to grill-with-docs); test-driven-development/systematic-debugging/
-        writing-skills were replaced by ./skills (tdd/diagnose/write-a-skill);
-        writing-plans/executing-plans/subagent-driven-development/
-        verification-before-completion/finishing-a-development-branch/
-        using-superpowers were dropped.
+        to grill-with-docs); writing-plans/executing-plans/subagent-driven-
+        development/verification-before-completion/finishing-a-development-
+        branch/using-superpowers were dropped. Superpowers' test-driven-
+        development + systematic-debugging are superseded by Matt Pocock's
+        tdd + diagnosing-bugs below; writing-skills is superseded by
+        ./skills/write-a-skill.
       */
-      (importSkills "${inputs.superpowers}/skills" [
-        "dispatching-parallel-agents"
-        "receiving-code-review"
-        "requesting-code-review"
-        "using-git-worktrees"
-      ])
+      (importSkills {
+        src = "${inputs.superpowers}/skills";
+        names = [
+          "dispatching-parallel-agents"
+          "receiving-code-review"
+          "requesting-code-review"
+          "using-git-worktrees"
+        ];
+      })
       # caveman: keep only the core compressed-comms mode; the -commit/
       # -compress/-help/-review/-stats variants + cavecrew are pruned.
-      (importSkills "${inputs.caveman}/skills" [ "caveman" ])
+      (importSkills {
+        src = "${inputs.caveman}/skills";
+        names = [ "caveman" ];
+      })
+
+      /*
+        Matt Pocock v1.0.1 engineering + productivity skills. The
+        upstream layout nests skills under `skills/<category>/<name>/`;
+        we lift the names we want into the flat ~/.claude/skills/ tree
+        category-by-category. Excludes:
+          • personal/   — operator-personal (obsidian-vault, edit-article)
+          • in-progress/ — explicit alpha (writing-shape, review, etc.)
+          • misc/migrate-to-shoehorn (TS-lib specific)
+          • misc/scaffold-exercises (teaching environments)
+        Local ./skills/{improve-codebase-architecture,tdd,diagnose,
+        grill-with-docs} were removed when this import landed —
+        upstream is canonical.
+      */
+      (importSkills {
+        src = inputs.mattpocock-skills;
+        subdir = "skills/engineering";
+        names = [
+          "ask-matt"
+          "codebase-design"
+          "diagnosing-bugs"
+          "domain-modeling"
+          "grill-with-docs"
+          "implement"
+          "improve-codebase-architecture"
+          "prototype"
+          "resolving-merge-conflicts"
+          "setup-matt-pocock-skills"
+          "tdd"
+          "to-issues"
+          "to-prd"
+          "triage"
+        ];
+      })
+      (importSkills {
+        src = inputs.mattpocock-skills;
+        subdir = "skills/productivity";
+        names = [
+          "grill-me"
+          "grilling"
+          "handoff"
+          "teach"
+          "writing-great-skills"
+        ];
+      })
+      (importSkills {
+        src = inputs.mattpocock-skills;
+        subdir = "skills/misc";
+        names = [
+          "git-guardrails-claude-code"
+          "setup-pre-commit"
+        ];
+      })
 
       {
         ".claude/skills/frontend-design" = {
@@ -344,6 +413,15 @@ in
         };
         ".claude/skills/shadcn-ui" = {
           source = "${inputs.shadcn}/skills/shadcn-ui";
+          recursive = true;
+        };
+        /*
+          shadcn/improve — read-only audit + plan-author skill. Pairs
+          with the implementation skills (tdd, implement) above by
+          producing the spec they execute against.
+        */
+        ".claude/skills/improve" = {
+          source = "${inputs.shadcn-improve}/skills/improve";
           recursive = true;
         };
         ".claude/skills/obsidian-markdown" = {

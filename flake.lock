@@ -337,6 +337,23 @@
         "type": "github"
       }
     },
+    "mattpocock-skills": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781734059,
+        "narHash": "sha256-nuHQ+SG5UerKs334Yk5nsxHOncGXQKF1yVdnwwVpLZ8=",
+        "owner": "mattpocock",
+        "repo": "skills",
+        "rev": "2454c95dc305c158b21a0cdafeb728879dd0359a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "mattpocock",
+        "ref": "v1.0.1",
+        "repo": "skills",
+        "type": "github"
+      }
+    },
     "nixos-hardware": {
       "inputs": {
         "nixpkgs": "nixpkgs_2"
@@ -608,6 +625,7 @@
         "hermes-agent": "hermes-agent",
         "home-manager": "home-manager",
         "impermanence": "impermanence",
+        "mattpocock-skills": "mattpocock-skills",
         "nixos-hardware": "nixos-hardware",
         "nixpkgs": "nixpkgs_3",
         "nixpkgs-master": "nixpkgs-master",
@@ -615,6 +633,7 @@
         "obsidian-skills": "obsidian-skills",
         "pagu-box": "pagu-box",
         "shadcn": "shadcn",
+        "shadcn-improve": "shadcn-improve",
         "snappy-switcher": "snappy-switcher",
         "sops-nix": "sops-nix",
         "stylix": "stylix",
@@ -635,6 +654,22 @@
       "original": {
         "owner": "masonjames",
         "repo": "Shadcnblocks-Skill",
+        "type": "github"
+      }
+    },
+    "shadcn-improve": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781504319,
+        "narHash": "sha256-m0a1n8xguDI2nooJ856sWPofh+tZI5VvIrVZrQH6XgY=",
+        "owner": "shadcn",
+        "repo": "improve",
+        "rev": "03369ee6d7cafbfcecc4346539b05b3dc0a603bb",
+        "type": "github"
+      },
+      "original": {
+        "owner": "shadcn",
+        "repo": "improve",
         "type": "github"
       }
     },
