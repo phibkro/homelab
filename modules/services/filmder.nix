@@ -1,5 +1,6 @@
 {
   config,
+  inputs,
   lib,
   pkgs,
   ...
@@ -69,7 +70,7 @@ lib.mkMerge [
   }
   (lib.mkIf config.nori.services.filmder.enabled {
     sops.secrets.tmdb-token = {
-      sopsFile = ../../secrets/apps.yaml;
+      sopsFile = inputs.self + "/secrets/apps.yaml";
       owner = "filmder";
       mode = "0400";
     };

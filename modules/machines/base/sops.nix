@@ -27,7 +27,16 @@
       Default file for `sops.secrets.<name>` declarations across the
       repo. Per-secret `sopsFile` overrides if a service needs to keep
       its secrets in a separate file (rare).
+
+      Absolute via `inputs.self` (the flake outPath) rather than the
+      file-relative `../../../secrets/...` form — relative paths break
+      silently when a module file gets moved (Phase 6a 2026-06-17
+      shifted this very file two levels deeper and left the
+      `../../secrets/...` reading pointing at a nonexistent path,
+      surfaced as a build-time error on the next rebuild). The
+      `secrets/` directory lives at repo root by convention; its
+      absolute reference survives any future move of consumer files.
     */
-    defaultSopsFile = ../../secrets/secrets.yaml;
+    defaultSopsFile = inputs.self + "/secrets/secrets.yaml";
   };
 }

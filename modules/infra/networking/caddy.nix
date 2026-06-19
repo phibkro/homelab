@@ -1,5 +1,6 @@
 {
   config,
+  inputs,
   lib,
   pkgs,
   ...
@@ -109,7 +110,7 @@ lib.mkMerge [
       `_acme-challenge.*` TXT records for ACME DNS-01.
     */
     sops.secrets.cloudflare-acme-token = {
-      sopsFile = ../../secrets/apps.yaml;
+      sopsFile = inputs.self + "/secrets/apps.yaml";
       key = "cloudflare_acme_token";
       owner = "caddy";
       mode = "0400";
