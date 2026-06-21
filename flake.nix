@@ -915,6 +915,88 @@
               '';
 
           /**
+            Every `modules/infra/<X>/default.nix` that declares a
+            Reader-shaped schema (options.nori.<name>) must ship a
+            matching `test-<X>` runtime-introspection recipe in the
+            Justfile. Codifies docs/reference/runtime-tests.md's
+            "Four levers" framework: declaration at Reader level →
+            generators at Writer level → runtime verification at
+            test-* level. The convention prevents future infra
+            additions from silently landing without their layer-3
+            test (the failure mode that motivated audit findings
+            #1 + #2 — silent harden/fs drift undetectable).
+
+            Mapping registry. Each entry: directory name → expected
+            Justfile recipe. Adding a new infra concern with Reader
+            schema = adding one row OR the check fails.
+          */
+          infra-concerns-have-tests =
+            let
+              expectedRecipes = {
+                backup = "test-backups";
+                capabilities = "test-harden";
+                networking = "test-routes";
+                observability = "test-observability";
+                storage = "test-fs";
+                access = "test-authelia";
+              };
+            in
+            pkgs.runCommandLocal "infra-concerns-have-tests"
+              {
+                nativeBuildInputs = [
+                  pkgs.gnugrep
+                  pkgs.findutils
+                ];
+              }
+              ''
+                cd ${./.}
+                fail=0
+
+                # Find Reader-shaped infra concerns (directories with a
+                # default.nix that declares options.nori.*).
+                concerns=$(
+                  for f in $(find modules/infra -maxdepth 2 -name 'default.nix' | sort); do
+                    if grep -qE 'options\.nori\.' "$f"; then
+                      basename "$(dirname "$f")"
+                    fi
+                  done
+                )
+
+                for concern in $concerns; do
+                  case "$concern" in
+                    ${
+                      lib.concatStringsSep "\n" (
+                        lib.mapAttrsToList (dir: recipe: ''
+                          ${dir})
+                            if ! grep -qE '^@?${recipe}:' Justfile; then
+                              echo "✗ modules/infra/${dir}/ → expected '${recipe}' recipe in Justfile (not found)"
+                              fail=1
+                            fi
+                            ;;
+                        '') expectedRecipes
+                      )
+                    }
+                    *)
+                      echo "✗ modules/infra/$concern/ declares options.nori.* but has no entry in expectedRecipes"
+                      echo "    Add to flake.nix § checks.infra-concerns-have-tests with the recipe name"
+                      echo "    that covers it, and ship the recipe in the Justfile."
+                      fail=1
+                      ;;
+                  esac
+                done
+
+                if [ $fail -eq 0 ]; then
+                  touch $out
+                else
+                  echo
+                  echo "Every Reader-shaped infra concern needs a runtime-introspection recipe."
+                  echo "See docs/reference/runtime-tests.md § 'Four levers' for the framework."
+                  echo "Promotion register: docs/invariants.md § infra-concerns-have-tests."
+                  exit 1
+                fi
+              '';
+
+          /**
             E2E — pi-alone smoke nixosTest. Boots a stripped-down
             pi-like config in QEMU + verifies the homelab services
             reach active state. The per-service scope (Phase 1
