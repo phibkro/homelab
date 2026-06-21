@@ -178,7 +178,11 @@ default: rebuild
 # Use after a multi-effect deploy (anything touching modules/effects/
 # or home/) to verify declared intent landed at every runtime layer.
 #
-# Composite runtime-introspection: runs all `test-*` recipes. ~3 min wall, one signal.
+# Composite: all runtime-introspection recipes + the eval suite.
+# ~3 min wall, one signal. Includes `test-eval` so `just test` locally
+# matches what CI's `nix flake check` covers (eval tests are sub-second;
+# the layer mix is intentional — verifying intent at every layer in
+# one command).
 @test:
     just test-hypr
     just test-backups
@@ -186,6 +190,7 @@ default: rebuild
     just test-observability
     just test-replicas
     just test-authelia
+    just test-eval
 
 # Each `nori.lanRoutes.<X>` is a Reader-Writer effect: one declaration
 # emits Caddy route + Gatus monitor + DNS record + (optional) Authelia
