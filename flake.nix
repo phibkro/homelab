@@ -187,35 +187,7 @@
   };
 
   outputs =
-    inputs@{
-      nixpkgs,
-      home-manager,
-      flake-parts,
-      ...
-    }:
-    let
-      inherit (nixpkgs) lib;
-
-      /*
-        ── Machines ──────────────────────────────────────────────────
-        Enumeration, identity registry, and mkHost wrapper all live
-        at modules/machines/default.nix. flake.nix imports the
-        factory; it returns `nixosConfigurations`. See the module
-        for the schema, the registry, and the rationale.
-      */
-      machinesModule = import ./modules/machines {
-        inherit lib inputs;
-      };
-
-      /*
-        ── Home configurations ──────────────────────────────────────
-        Standalone home-manager entries for non-NixOS machines (Mac).
-        Lives at modules/home/default.nix.
-      */
-      homeModule = import ./modules/home {
-        inherit inputs nixpkgs home-manager;
-      };
-    in
+    inputs@{ flake-parts, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       /*
         `systems` here is the host on which `nix flake check` /
@@ -232,13 +204,9 @@
       imports = [
         ./flake-parts/formatter.nix
         ./flake-parts/devshell.nix
+        ./flake-parts/machines.nix
+        ./flake-parts/home.nix
       ];
-
-      # System-agnostic outputs — don't vary across builder platforms.
-      flake = {
-        inherit (machinesModule) nixosConfigurations;
-        inherit (homeModule) homeConfigurations;
-      };
 
       # System-keyed outputs (devShells, formatter, packages, checks).
       # flake-parts provides pkgs/lib/system via the perSystem function
