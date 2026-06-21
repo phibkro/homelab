@@ -48,6 +48,9 @@ without this file's context.
 | `docs/generated/lan-route.md` | looking up the schema details for a specific `nori.lanRoutes.<name>.<field>` option — generated from `modules/infra/networking/default.nix` via `nix build .#docs-lan-route`. Pairs with the hand-written `docs/reference/network.md`; they coexist under separate paths so the generated-vs-handwritten coverage trade-off stays comparable over time |
 | `docs/generated/topology.md` | looking up the hosts-at-a-glance table or `nori.hosts` schema — generated from `modules/machines/default.nix:identityFor` + `modules/infra/hosts.nix` via `nix build .#docs-topology`. Pairs with `docs/reference/topology.md`; same coexistence pattern as above |
 | `docs/generated/capabilities.md` | looking up the GPU access pattern or `nori.harden` / `nori.gpu` schemas — generated from `modules/infra/capabilities/{default,gpu}.nix` via `nix build .#docs-capabilities`. No handwritten counterpart; capabilities concern is mono-module enough that the generated doc carries the whole story |
+| `docs/generated/backups.md` | looking up the `nori.backups.<name>.<field>` schema — generated from `modules/infra/backup/default.nix` via `nix build .#docs-backups`. Pairs with the patterns described in `docs/reference/services.md § backup`; the generated doc carries the WHAT (fields, types, defaults) |
+| `docs/generated/fs.md` | looking up the `nori.fs.<name>.<field>` schema — generated from `modules/infra/storage/default.nix` via `nix build .#docs-fs`. Pairs with `docs/reference/storage.md` for the WHY (value tiers, btrfs subvolume rationale) |
+| `docs/generated/replicas.md` | looking up the `nori.replicas.<name>.<field>` schema — generated from `modules/infra/storage/replication.nix` via `nix build .#docs-replicas`. Cross-host dataset replication metadata; pairs with `docs/reference/storage.md` |
 
 ### Drill-down (pulled in only when a parent doc cross-refs it)
 
