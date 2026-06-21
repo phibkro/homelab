@@ -46,8 +46,16 @@ let
     + the enabledMcpjsonServers allowlist below. Upstream ships a
     flake; we consume packages.default directly.
     See /srv/share/projects/CLAUDE.md for trigger guidance.
+
+    Override: upstream's checkPhase runs `diff::tests::*` which shell
+    out to `git`, but nix's sandbox PATH doesn't include git by
+    default. Adding it to nativeBuildInputs lets the tests find the
+    binary; without this, all 17 git-shelling tests fail with
+    `failed to run git: NotFound`.
   */
-  tilth = inputs.tilth.packages.${system}.default;
+  tilth = (inputs.tilth.packages.${system}.default).overrideAttrs (old: {
+    nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ pkgs.git ];
+  });
 
   /*
     rtk — CLI proxy that filters boilerplate from noisy commands before
