@@ -191,6 +191,7 @@ default: rebuild
     just test-replicas
     just test-authelia
     just test-harden
+    just test-fs
     just test-eval
 
 # Each `nori.lanRoutes.<X>` is a Reader-Writer effect: one declaration
@@ -533,6 +534,68 @@ default: rebuild
 
     echo
     echo "  $pass bind checks passed; $skipped units not deployed on this host"
+    [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
+
+# Every `nori.fs.<n>` declares a named filesystem location with a value
+# tier. The test asserts: (a) the declared path exists on disk, and
+# (b) every tier=irreplaceable path is covered by a `nori.backups.<X>`
+# entry. The second is the load-bearing check — silent missed-backup
+# coverage on irreplaceable data is the worst failure mode in the lab.
+#
+# Runtime-introspection test: declared nori.fs paths exist + irreplaceable tier has backup coverage.
+@test-fs:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    fail=0
+    pass=0
+
+    host=$(hostname)
+    echo "=== test-fs on $host ==="
+
+    fs=$(nix eval ".#nixosConfigurations.$host.config.nori.fs" --json 2>/dev/null) || {
+      echo "  ✗ failed to eval nori.fs for $host"
+      exit 1
+    }
+    backups=$(nix eval ".#nixosConfigurations.$host.config.nori.backups" --json 2>/dev/null || echo '{}')
+    n_fs=$(echo "$fs" | nix shell nixpkgs#jq -c jq 'length')
+    echo "  ✓ $n_fs declared nori.fs entries"
+
+    echo
+    echo "=== Tier 1 — declared paths exist on disk ==="
+    for name in $(echo "$fs" | nix shell nixpkgs#jq -c jq -r 'keys[]'); do
+      path=$(echo "$fs" | nix shell nixpkgs#jq -c jq -r ".\"$name\".path")
+      if [[ -e "$path" ]]; then
+        pass=$((pass + 1))
+      else
+        echo "  ✗ $name: declared path '$path' not present on disk"
+        fail=1
+      fi
+    done
+
+    echo
+    echo "=== Tier 2 — irreplaceable tier covered by a backup include ==="
+    # Flatten every backup's include list into one set of covered paths.
+    covered=$(echo "$backups" | nix shell nixpkgs#jq -c jq -r '[.[] | .include // [] | .[]] | unique | .[]?')
+
+    for name in $(echo "$fs" | nix shell nixpkgs#jq -c jq -r 'to_entries[] | select(.value.tier == "irreplaceable") | .key'); do
+      path=$(echo "$fs" | nix shell nixpkgs#jq -c jq -r ".\"$name\".path")
+      if echo "$covered" | grep -qxF "$path"; then
+        pass=$((pass + 1))
+      else
+        # Check if any covered path is a prefix (e.g. /mnt/family covers /mnt/family/photos)
+        if echo "$covered" | while IFS= read -r cov; do
+            [[ -n "$cov" ]] && [[ "$path" == "$cov"* ]] && exit 100
+          done; [[ $? -eq 100 ]]; then
+          pass=$((pass + 1))
+        else
+          echo "  ✗ $name (tier=irreplaceable, $path) — no covering nori.backups include"
+          fail=1
+        fi
+      fi
+    done
+
+    echo
+    echo "  $pass checks passed"
     [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
 
 # Smoke-test the Hyprland config we just deployed. Three tiers, each
