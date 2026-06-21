@@ -141,6 +141,29 @@
     impermanence.url = "github:nix-community/impermanence";
 
     /*
+      Context-engineering tooling (Claude Code) — three small third-party
+      tools that shift token-heavy operations off the conversation budget.
+      See /srv/share/projects/CLAUDE.md for the cross-project explainer +
+      modules/home/claude-code/default.nix for the wireup.
+
+      * tilth — MCP server, structural file reads via tree-sitter (replaces
+        Read on large files). Has its own flake; we just consume its
+        packages.default. Pre-1.0 (v0.9.0 as of 2026-06); pin via flake.lock.
+      * rtk — CLI proxy filtering boilerplate from noisy commands. Single
+        Rust binary, no upstream flake.nix; built via rustPlatform inside
+        modules/home/claude-code/default.nix.
+      * stacklit — generates ~250-token codebase index per repo. Go binary;
+        built via buildGoModule from cmd/stacklit/ (the npm wrapper just
+        downloads prebuilt binaries — impure).
+    */
+    tilth.url = "github:jahala/tilth";
+    tilth.inputs.nixpkgs.follows = "nixpkgs";
+    rtk-src.url = "github:rtk-ai/rtk";
+    rtk-src.flake = false;
+    stacklit-src.url = "github:glincker/stacklit";
+    stacklit-src.flake = false;
+
+    /*
       pagu-box — cross-platform sandboxed launcher for any process.
       Pinned to the LOCAL checkout (path:) rather than github so the
       homelab picks up uncommitted operator edits without a push +

@@ -20,6 +20,77 @@
 */
 
 let
+  inherit (pkgs.stdenv.hostPlatform) system;
+
+  /*
+    claude-code overlaid from nixpkgs-master — channel ships 2.1.148 while
+    master ships 2.1.179 (2026-06-21 lock; upstream ~2.1.185). Same
+    overlay rationale as zed-editor (modules/home/desktop/apps.nix): the
+    26.05 channel is curated + lags, master tracks upstream more closely.
+    Revert to plain `pkgs.claude-code` when the channel catches up
+    (likely the 26.11 release boundary).
+
+    We must `import` rather than use `legacyPackages` because claude-code
+    is unfree, and legacyPackages doesn't inherit allowUnfree from our
+    host config (same import-with-config pattern as flake.nix § pkgsUnfree).
+  */
+  pkgsMaster = import inputs.nixpkgs-master {
+    inherit system;
+    config.allowUnfree = true;
+  };
+  claude-code-master = pkgsMaster.claude-code;
+
+  /*
+    tilth — MCP server for structural file navigation (tree-sitter
+    outlines instead of raw text). Activated per-project via .mcp.json
+    + the enabledMcpjsonServers allowlist below. Upstream ships a
+    flake; we consume packages.default directly.
+    See /srv/share/projects/CLAUDE.md for trigger guidance.
+  */
+  tilth = inputs.tilth.packages.${system}.default;
+
+  /*
+    rtk — CLI proxy that filters boilerplate from noisy commands before
+    they reach the model's context (rtk-ai/rtk). Apache-2.0, single
+    Rust binary; no upstream flake.nix, so built here via rustPlatform.
+    cargoLock.lockFile points at upstream's Cargo.lock (no cargoHash
+    iteration needed).
+  */
+  rtk = pkgs.rustPlatform.buildRustPackage {
+    pname = "rtk";
+    version = "unstable-${inputs.rtk-src.shortRev or "dev"}";
+    src = inputs.rtk-src;
+    cargoLock.lockFile = "${inputs.rtk-src}/Cargo.lock";
+    doCheck = false;
+    meta = {
+      description = "Rust Token Killer — CLI proxy stripping LLM-context boilerplate";
+      homepage = "https://github.com/rtk-ai/rtk";
+      license = lib.licenses.asl20;
+      mainProgram = "rtk";
+    };
+  };
+
+  /*
+    stacklit — generates a ~250-token codebase index (stacklit.json,
+    DEPENDENCIES.md, stacklit.html) per repo. MIT, Go binary. The npm
+    package is a wrapper that fetches prebuilt binaries (impure), so
+    we buildGoModule from source instead. vendorHash bumps with each
+    upstream go.sum change.
+  */
+  stacklit = pkgs.buildGoModule {
+    pname = "stacklit";
+    version = "0.4.0";
+    src = inputs.stacklit-src;
+    subPackages = [ "cmd/stacklit" ];
+    vendorHash = "sha256-qjQ5P7SLFE1oZvYRGIn97PBPsAsyt/s9PHcGmfvAMHc=";
+    meta = {
+      description = "Zero-config codebase context for AI agents";
+      homepage = "https://github.com/glincker/stacklit";
+      license = lib.licenses.mit;
+      mainProgram = "stacklit";
+    };
+  };
+
   /*
     Status line script. Operator's content intact (jq-based parse of the
     JSON Claude Code pipes in) but PATH injects jq + git so they're
@@ -109,6 +180,14 @@ let
     enabledMcpjsonServers = [
       "fetch"
       "context7"
+      /*
+        tilth — code-navigation MCP. Allowed by name here; each project
+        opts in by declaring it in its .mcp.json:
+          { "mcpServers": { "tilth": { "command": "tilth", "args": ["--mcp"] } } }
+        Note: tilth uses --mcp as a flag on the root command, not a
+        subcommand (see upstream src/main.rs).
+      */
+      "tilth"
     ];
 
     /*
@@ -249,7 +328,7 @@ let
 in
 {
   home.packages = [
-    pkgs.claude-code # Anthropic CLI; pulls Node closure (~300 MB)
+    claude-code-master # Anthropic CLI; pulls Node closure (~300 MB). Overlaid from master — see let-binding.
     pkgs.agent-browser # Persistent browser automation for AI agents
     /*
       MCP servers — direct binaries from nixpkgs (no npx-fetch latency,
@@ -259,6 +338,13 @@ in
     */
     pkgs.mcp-server-fetch # `fetch` — URL → markdown tool
     pkgs.context7-mcp # `context7` — library docs lookup
+    /*
+      Context-engineering tools — see let-binding for build details +
+      /srv/share/projects/CLAUDE.md for trigger guidance.
+    */
+    tilth # MCP: structural file navigation (tree-sitter outlines)
+    rtk # CLI proxy: noise filter on git/test/build output
+    stacklit # CLI: per-repo ~250-token static codebase index
   ]
   # opencode lacks x86_64-darwin support in nixpkgs 26.05 (aarch64-darwin
   # only). Skip on Intel Mac.
