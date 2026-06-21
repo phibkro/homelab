@@ -1,6 +1,6 @@
 ---
 generated: true
-source: flake.nix § packages.docs-fs
+source: flake-parts/packages/docs-fs.nix
 regenerate: nix build .#docs-fs
 ---
 

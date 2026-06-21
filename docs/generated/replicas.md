@@ -1,6 +1,6 @@
 ---
 generated: true
-source: flake.nix § packages.docs-replicas
+source: flake-parts/packages/docs-replicas.nix
 regenerate: nix build .#docs-replicas
 ---
 

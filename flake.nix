@@ -206,6 +206,9 @@
         ./flake-parts/devshell.nix
         ./flake-parts/machines.nix
         ./flake-parts/home.nix
+        ./flake-parts/packages/docs-backups.nix
+        ./flake-parts/packages/docs-fs.nix
+        ./flake-parts/packages/docs-replicas.nix
       ];
 
       # System-keyed outputs (devShells, formatter, packages, checks).
@@ -312,127 +315,15 @@
                            --category ${lib.escapeShellArg category} \
                            --file ${file} >> $out
                   '';
-              /*
-                Shared between every docs-* derivation: rewrite per-option
-                "Declared by" paths to repo-relative so the artifact is
-                byte-stable across builds (the docs-fresh check would
-                otherwise fire on every commit because the store path's
-                hash differs each rebuild). Output: the literal repo-relative
-                path (e.g. `modules/infra/networking`) — readable, stable,
-                no regex syntax leaking into rendered docs.
-              */
-              stripStorePrefix =
-                p:
-                let
-                  s = toString p;
-                in
-                if lib.hasPrefix "/nix/store/" s then
-                  let
-                    m = builtins.match "/nix/store/[^/]*-source/(.*)" s;
-                  in
-                  if m == null then s else builtins.head m
-                else
-                  s;
-
-              /*
-                mkSimpleDocsArtifact — minimal 2-section generator
-                (module overview + per-option schema) used by the
-                single-schema nori.<X> docs. The richer multi-section
-                generators (docs-lan-route, docs-topology, docs-capabilities)
-                stay inline because their structure varies enough that a
-                helper would over-fit.
-
-                Inputs:
-                  name        — `nori.<name>` registry to render
-                  moduleFile  — path to default.nix of the concern (for nixdoc)
-                  category    — kebab-case section anchor
-
-                Output: docs-${name} derivation; ./result is a CommonMark file
-                        matching docs/generated/${name}.md.
-              */
-              mkSimpleDocsArtifact =
-                {
-                  name,
-                  moduleFile,
-                  category,
-                }:
-                let
-                  isOpt =
-                    opt:
-                    let
-                      inherit (opt) loc;
-                      prefix = builtins.head loc;
-                      second = if builtins.length loc >= 2 then builtins.elemAt loc 1 else "";
-                    in
-                    prefix == "nori" && second == name;
-                  optionsDoc = pkgs.nixosOptionsDoc {
-                    inherit (eval) options;
-                    transformOptions =
-                      opt:
-                      let
-                        base = if isOpt opt then opt else opt // { visible = false; };
-                      in
-                      base // { declarations = map stripStorePrefix base.declarations; };
-                    documentType = "none";
-                  };
-                  moduleDoc = mkNixdocSection {
-                    file = moduleFile;
-                    description = "${name} concern — overview";
-                    inherit category;
-                  };
-                in
-                pkgs.runCommandLocal "docs-${name}"
-                  {
-                    nativeBuildInputs = [ pkgs.gnused ];
-                  }
-                  ''
-                    cat > $out <<HEADER
-                    ---
-                    generated: true
-                    source: flake.nix § packages.docs-${name}
-                    regenerate: nix build .#docs-${name}
-                    ---
-
-                    # \`nori.${name}\` — generated reference
-
-                    Two-section artifact: module overview (RFC 145 doc-comments
-                    from the concern's \`default.nix\`) + per-option schema
-                    (\`nixosOptionsDoc\` over the eval'd options tree). The
-                    concern file's path is shown in the per-option "Declared by"
-                    lines below.
-
-                    HEADER
-                    cat ${moduleDoc} >> $out
-                    echo >> $out
-                    cat >> $out <<'SCHEMA_HEADER'
-
-                    ## Option schema
-
-                    SCHEMA_HEADER
-                    # See docs-lan-route for the GFM-cleanup rationale.
-                    sed -e 's/\\\([.<>()]\)/\1/g' \
-                        -e 's|\[<nixpkgs/\([^]]*\)>\](https://github\.com/[^)]*)|`\1`|g' \
-                        -e 's|\[\([^]]*\)\](file://[^)]*)|`\1`|g' \
-                        ${optionsDoc.optionsCommonMark} >> $out
-                  '';
+              # stripStorePrefix + mkSimpleDocsArtifact moved to lib/nixdoc.nix
+              # (consumed by flake-parts/packages/docs-{backups,fs,replicas}.nix).
+              # The inline docs-{lan-route,topology,capabilities} below still
+              # define their own stripStorePrefix copies for now; they'll move
+              # to flake-parts/packages/ in a subsequent phase.
             in
             {
-              # Single-schema docs use the shared helper above.
-              docs-backups = mkSimpleDocsArtifact {
-                name = "backups";
-                moduleFile = ./modules/infra/backup/default.nix;
-                category = "backups";
-              };
-              docs-fs = mkSimpleDocsArtifact {
-                name = "fs";
-                moduleFile = ./modules/infra/storage/default.nix;
-                category = "fs";
-              };
-              docs-replicas = mkSimpleDocsArtifact {
-                name = "replicas";
-                moduleFile = ./modules/infra/storage/replication.nix;
-                category = "replicas";
-              };
+              # docs-backups, docs-fs, docs-replicas extracted to
+              # flake-parts/packages/docs-{backups,fs,replicas}.nix
 
               docs-lan-route =
                 let
