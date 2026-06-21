@@ -19,6 +19,7 @@ lib.mkMerge [
       exposeOnTailnet = true; # pi's Caddy proxies cross-host over tailnet
       monitor = { };
       audience = "family";
+      noAuthReason = "mobile/TV clients bypass cookie-based forward-auth; native SSO plugin has sharp historical edges";
       dashboard = {
         title = "Jellyfin";
         icon = "si:jellyfin";

@@ -349,9 +349,28 @@ in
                   Authelia). Tailnet trust is the only gate; auth
                   inside these would defeat their purpose.
 
-              Currently informational; future flake checks may assert
-              consistency (e.g., audience=family without an oidc/
-              forwardAuth block warns).
+              Enforced (eval-time assertion below): audience=family
+              requires either an `oidc` or `forwardAuth` block, or
+              an explicit `noAuthReason` string naming why neither
+              fits.
+            '';
+          };
+          noAuthReason = mkOption {
+            type = types.nullOr types.str;
+            default = null;
+            example = "CalDAV clients can't follow forward-auth redirects";
+            description = ''
+              Set to a one-line reason when audience=family but neither
+              `oidc` nor `forwardAuth` applies. Forces the operator to
+              name why; forces future readers to see it. Empty string
+              is invalid — set it or set one of the auth blocks.
+
+              Legitimate today:
+                * radicale  — CalDAV/CardDAV clients can't follow
+                              forward-auth redirects (htpasswd-only)
+                * jellyfin  — mobile/TV clients bypass cookie-based
+                              forward-auth; native SSO plugin has
+                              sharp historical edges
             '';
           };
           monitor = mkOption {
@@ -688,6 +707,28 @@ in
             no app-side awareness. Pick one. Conflicting routes:
               ${lib.concatStringsSep ", " (
                 lib.attrNames (lib.filterAttrs (_: r: r.oidc != null && r.forwardAuth != null) routes)
+              )}
+          '';
+        }
+        {
+          assertion = lib.all (
+            r: r.audience != "family" || r.oidc != null || r.forwardAuth != null || r.noAuthReason != null
+          ) (lib.attrValues routes);
+          message = ''
+            nori.lanRoutes.<n> with audience="family" carries per-user
+            state and needs identity beyond tailnet membership. Set one of:
+              * oidc = { ... }        (preferred — per-user identity in-app)
+              * forwardAuth = { ... } (Caddy-gate when the app can't OIDC)
+              * noAuthReason = "..."  (legitimate exception; document why)
+            …or downgrade audience to "operator" if tailnet auth suffices.
+
+            Routes missing all three:
+              ${lib.concatStringsSep ", " (
+                lib.attrNames (
+                  lib.filterAttrs (
+                    _: r: r.audience == "family" && r.oidc == null && r.forwardAuth == null && r.noAuthReason == null
+                  ) routes
+                )
               )}
           '';
         }

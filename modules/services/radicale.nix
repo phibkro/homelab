@@ -13,6 +13,7 @@ lib.mkMerge [
       exposeOnTailnet = true;
       monitor.path = "/.web/";
       audience = "family";
+      noAuthReason = "CalDAV/CardDAV clients can't follow forward-auth redirects (htpasswd-only)";
       dashboard = {
         title = "Radicale";
         icon = "sh:radicale";
