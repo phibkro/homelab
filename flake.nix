@@ -231,6 +231,7 @@
       # one line here (or auto-discovery via haumea if the tree grows).
       imports = [
         ./flake-parts/formatter.nix
+        ./flake-parts/devshell.nix
       ];
 
       # System-agnostic outputs — don't vary across builder platforms.
@@ -249,42 +250,9 @@
           system,
           ...
         }:
-        let
-          /*
-            A second pkgs binding with `allowUnfree = true` for the dev
-            shell — needed because `claude-code` is unfree and the
-            default `legacyPackages.${system}` honours the strict
-            default. Hosts get unfree separately via
-            `modules/machines/base/base.nix` setting `nixpkgs.config.allowUnfree`,
-            but that path doesn't reach flake-level outputs like devShells.
-          */
-          pkgsUnfree = import nixpkgs {
-            inherit system;
-            config = {
-              allowUnfree = true;
-            };
-          };
-        in
         {
-          /*
-            Minimal dev shell for editing this repo. Dev environments are
-            a per-project concern (devenv / direnv / nix shell), not a
-            homelab-managed capability — each repo owns its own dev
-            config. This shell gives `nix develop` here the tools needed
-            to edit + format + lint the homelab itself.
-          */
-          devShells.default = pkgsUnfree.mkShell {
-            buildInputs = with pkgsUnfree; [
-              nixfmt
-              nixfmt-tree
-              statix
-              deadnix
-              nh
-              ripgrep
-            ];
-          };
-
-          # formatter moved to flake-parts/formatter.nix
+          # devShells.default → flake-parts/devshell.nix
+          # formatter        → flake-parts/formatter.nix
 
           /*
             ── Generated docs prototype (Sprint 6 exploration) ─────────────
