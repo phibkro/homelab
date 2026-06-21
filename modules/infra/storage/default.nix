@@ -112,26 +112,32 @@ in
                     readOnly = mkOption {
                       type = types.bool;
                       default = false;
+                      description = "Mount the share read-only (Samba `read only`). Default false.";
                     };
                     validUsers = mkOption {
                       type = types.listOf types.str;
                       default = [ "nori" ];
+                      description = "Samba users permitted to mount this share.";
                     };
                     forceUser = mkOption {
                       type = types.str;
                       default = "nori";
+                      description = "All file operations execute as this UNIX user (Samba `force user`).";
                     };
                     forceGroup = mkOption {
                       type = types.str;
                       default = "users";
+                      description = "All file operations execute as this UNIX group (Samba `force group`).";
                     };
                     createMask = mkOption {
                       type = types.str;
                       default = "0664";
+                      description = "Octal mask applied to newly created files (Samba `create mask`).";
                     };
                     directoryMask = mkOption {
                       type = types.str;
                       default = "0775";
+                      description = "Octal mask applied to newly created directories (Samba `directory mask`).";
                     };
                     vetoFiles = mkOption {
                       type = types.nullOr types.str;

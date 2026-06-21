@@ -59,8 +59,14 @@ in
             description = "Host + path where the dataset originates.";
             type = types.submodule {
               options = {
-                host = mkOption { type = types.str; };
-                path = mkOption { type = types.path; };
+                host = mkOption {
+                  type = types.str;
+                  description = "Source host name (key into `nori.hosts`).";
+                };
+                path = mkOption {
+                  type = types.path;
+                  description = "Source filesystem path (typically a btrfs subvolume).";
+                };
               };
             };
           };
@@ -68,8 +74,14 @@ in
             description = "Host + path where the replica lands.";
             type = types.submodule {
               options = {
-                host = mkOption { type = types.str; };
-                path = mkOption { type = types.path; };
+                host = mkOption {
+                  type = types.str;
+                  description = "Target host name (key into `nori.hosts`).";
+                };
+                path = mkOption {
+                  type = types.path;
+                  description = "Target filesystem path (subvolume receiving the replica).";
+                };
               };
             };
           };
