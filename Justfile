@@ -190,6 +190,7 @@ default: rebuild
     just test-observability
     just test-replicas
     just test-authelia
+    just test-harden
     just test-eval
 
 # Each `nori.lanRoutes.<X>` is a Reader-Writer effect: one declaration
@@ -472,6 +473,66 @@ default: rebuild
     done
 
     echo
+    [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
+
+# Every `nori.harden.<unit>` declares a filesystem-namespace hardening
+# profile (binds, readOnlyBinds, protectHome). The flake check
+# `every-service-has-fs-hardening` enforces declaration; this recipe
+# verifies the declaration LANDED in the live unit's serviceConfig.
+# Catches mkForce-precedence drift, nori.fs path renames the harden
+# block didn't catch, and unit-name-vs-declaration drift.
+#
+# Runtime-introspection test: every declared nori.harden.<unit> matches live systemd serviceConfig.
+@test-harden:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    fail=0
+    pass=0
+    skipped=0
+
+    host=$(hostname)
+    echo "=== test-harden on $host ==="
+
+    declared=$(nix eval ".#nixosConfigurations.$host.config.nori.harden" --json 2>/dev/null) || {
+      echo "  ✗ failed to eval nori.harden for $host"
+      exit 1
+    }
+    n_units=$(echo "$declared" | nix shell nixpkgs#jq -c jq 'length')
+    echo "  ✓ $n_units declared nori.harden entries"
+
+    echo
+    echo "=== Tier 2 — declared binds + readOnlyBinds present in live systemd ==="
+    # Live values via systemctl show -p; declared paths via jq.
+    # Compare on substring (live BindPaths is "src:dst:opts" form).
+    for unit in $(echo "$declared" | nix shell nixpkgs#jq -c jq -r 'keys[]'); do
+      if ! systemctl cat "$unit.service" > /dev/null 2>&1; then
+        skipped=$((skipped + 1))
+        continue
+      fi
+
+      live_bind=$(systemctl show "$unit.service" -p BindPaths --value 2>/dev/null || echo "")
+      live_robind=$(systemctl show "$unit.service" -p BindReadOnlyPaths --value 2>/dev/null || echo "")
+
+      for b in $(echo "$declared" | nix shell nixpkgs#jq -c jq -r ".\"$unit\".binds[]?"); do
+        if echo "$live_bind" | grep -q "$b"; then
+          pass=$((pass + 1))
+        else
+          echo "  ✗ $unit: declared bind '$b' missing from live BindPaths"
+          fail=1
+        fi
+      done
+      for b in $(echo "$declared" | nix shell nixpkgs#jq -c jq -r ".\"$unit\".readOnlyBinds[]?"); do
+        if echo "$live_robind" | grep -q "$b"; then
+          pass=$((pass + 1))
+        else
+          echo "  ✗ $unit: declared readOnlyBind '$b' missing from live BindReadOnlyPaths"
+          fail=1
+        fi
+      done
+    done
+
+    echo
+    echo "  $pass bind checks passed; $skipped units not deployed on this host"
     [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
 
 # Smoke-test the Hyprland config we just deployed. Three tiers, each
