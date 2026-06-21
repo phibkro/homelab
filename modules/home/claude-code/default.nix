@@ -53,7 +53,7 @@ let
     binary; without this, all 17 git-shelling tests fail with
     `failed to run git: NotFound`.
   */
-  tilth = (inputs.tilth.packages.${system}.default).overrideAttrs (old: {
+  tilth = inputs.tilth.packages.${system}.default.overrideAttrs (old: {
     nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ pkgs.git ];
   });
 

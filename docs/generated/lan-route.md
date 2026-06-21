@@ -299,9 +299,10 @@ auth-stacking principle:
    Authelia). Tailnet trust is the only gate; auth
    inside these would defeat their purpose.
 
-Currently informational; future flake checks may assert
-consistency (e.g., audience=family without an oidc/
-forwardAuth block warns).
+Enforced (eval-time assertion below): audience=family
+requires either an ` oidc ` or ` forwardAuth ` block, or
+an explicit ` noAuthReason ` string naming why neither
+fits.
 
 
 
@@ -691,6 +692,49 @@ string
 
 ```nix
 "/"
+```
+
+*Declared by:*
+ - `modules/infra/networking`
+
+
+
+## nori.lanRoutes.<name>.noAuthReason
+
+
+
+Set to a one-line reason when audience=family but neither
+` oidc ` nor ` forwardAuth ` applies. Forces the operator to
+name why; forces future readers to see it. Empty string
+is invalid — set it or set one of the auth blocks.
+
+Legitimate today:
+
+ - radicale  — CalDAV/CardDAV clients can’t follow
+   forward-auth redirects (htpasswd-only)
+ - jellyfin  — mobile/TV clients bypass cookie-based
+   forward-auth; native SSO plugin has
+   sharp historical edges
+
+
+
+*Type:*
+null or string
+
+
+
+*Default:*
+
+```nix
+null
+```
+
+
+
+*Example:*
+
+```nix
+"CalDAV clients can't follow forward-auth redirects"
 ```
 
 *Declared by:*

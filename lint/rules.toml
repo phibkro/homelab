@@ -168,7 +168,14 @@ fields:
 # next to the literal and avoids whole-file blast radius.
 pattern = '\b100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+\b'
 scope = ["modules/"]
-excludeFiles = ["modules/infra/hosts.nix", "modules/machines/default.nix"]
+excludeFiles = [
+  "modules/infra/hosts.nix",
+  "modules/machines/default.nix",
+  # observability.just is operator-tooling that needs a static endpoint URL;
+  # reading from the registry would add `nix eval` overhead per
+  # `just query-logs` invocation (~1-2s) — bad UX. Pi tailnet IP is stable.
+  "modules/infra/observability/observability.just",
+]
 excludePatterns = ['100\.100\.100\.100', '100\.64\.0\.0/10']
 tags = ["topology"]
 message = '''

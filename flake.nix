@@ -962,24 +962,30 @@
                   done
                 )
 
+                # Walk the root Justfile + every co-located `*.just`
+                # fragment (recipes are co-located with the concern they
+                # operate on; see Justfile § "Co-location" for the map).
+                # `find` traverses the tree so fragments at any depth
+                # (modules/infra/<X>/<X>.just, tests/tests.just, …) get
+                # scanned without an explicit allowlist.
+                just_files="Justfile $(find . -name '*.just' -not -path './.git/*' -printf '%P\n' | sort | tr '\n' ' ')"
+
                 for concern in $concerns; do
                   case "$concern" in
-                    ${
-                      lib.concatStringsSep "\n" (
-                        lib.mapAttrsToList (dir: recipe: ''
-                          ${dir})
-                            if ! grep -qE '^@?${recipe}:' Justfile; then
-                              echo "✗ modules/infra/${dir}/ → expected '${recipe}' recipe in Justfile (not found)"
-                              fail=1
-                            fi
-                            ;;
-                        '') expectedRecipes
-                      )
-                    }
+                    ${lib.concatStringsSep "\n" (
+                      lib.mapAttrsToList (dir: recipe: ''
+                        ${dir})
+                          if ! grep -qhE '^@?${recipe}:' $just_files; then
+                            echo "✗ modules/infra/${dir}/ → expected '${recipe}' recipe (not in: $just_files)"
+                            fail=1
+                          fi
+                          ;;
+                      '') expectedRecipes
+                    )}
                     *)
                       echo "✗ modules/infra/$concern/ declares options.nori.* but has no entry in expectedRecipes"
                       echo "    Add to flake.nix § checks.infra-concerns-have-tests with the recipe name"
-                      echo "    that covers it, and ship the recipe in the Justfile."
+                      echo "    that covers it, and ship the recipe in the Justfile or an imported *.just."
                       fail=1
                       ;;
                   esac
