@@ -1,9 +1,28 @@
 ---
-summary: "Focused evaluation of the dendritic pattern (and the narrower flake-parts decomposition) for this homelab's flake.nix (1055 lines, 13 checks, 3 generated-doc derivations). Maps what concretely moves, identifies a three-tier decision (status-quo vs flake-parts vs full dendritic), names concrete costs + risks for each tier, and recommends a phased path. Pre-decision; no implementation."
-status: EVALUATION — operator decision pending
+summary: "Focused evaluation of the dendritic pattern (and the narrower flake-parts decomposition) for this homelab's flake.nix. Maps what concretely moves, identifies a three-tier decision (status-quo vs flake-parts vs full dendritic), names concrete costs + risks for each tier, and recommends a phased path."
+status: PARTIALLY IMPLEMENTED — phases 1a + 2 + 3a landed; 3b + 4 remain
 audited_commit: 125a07f
 related: docs/plans/2026-06-21-improve-audit.md § finding #9 + § Direction D-C
 ---
+
+> **Implementation status (2026-06-21)**:
+> - ✓ Phase 1a — foundation (cfa59d5)
+> - ✓ Phase 2  — formatter, devshell, machines, home (c247ef3, 7565241, etc.)
+> - ✓ Phase 3a — 3 of 6 packages extracted (docs-backups, docs-fs,
+>   docs-replicas) + shared helpers in lib/nixdoc.nix
+> - ☐ Phase 3b — docs-{lan-route, topology, capabilities} still inline
+>   (each has special multi-section structure; can't reuse the simple
+>   helper. Mechanical extraction following the existing pattern.)
+> - ☐ Phase 4  — 14 checks still inline (statix, deadnix, format, lint,
+>   routing-coherence, every-service-has-{backup,hardening},
+>   infra-concerns-have-tests, e2e-{pi,multi,restic,disk}-*, eval-*,
+>   docs-fresh). Bulk of remaining work.
+> - ☐ Phase 5  — verify byte-equality after 3b + 4 land.
+>
+> flake.nix went 1289 → 1126 lines (-163) after the partial extraction.
+> Pattern is proven; the remainder is mechanical. Use the landed
+> flake-parts/{formatter,devshell,machines,home,packages/docs-*}.nix
+> as templates for the next files.
 
 # Dendritic / flake-parts evaluation
 
