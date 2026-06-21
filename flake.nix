@@ -226,6 +226,13 @@
       */
       systems = [ "x86_64-linux" ];
 
+      # Per-output flake-parts modules — each file declares its own
+      # perSystem or flake fragment. Adding a new output = new file +
+      # one line here (or auto-discovery via haumea if the tree grows).
+      imports = [
+        ./flake-parts/formatter.nix
+      ];
+
       # System-agnostic outputs — don't vary across builder platforms.
       flake = {
         inherit (machinesModule) nixosConfigurations;
@@ -277,7 +284,7 @@
             ];
           };
 
-          formatter = pkgs.nixfmt-tree;
+          # formatter moved to flake-parts/formatter.nix
 
           /*
             ── Generated docs prototype (Sprint 6 exploration) ─────────────
