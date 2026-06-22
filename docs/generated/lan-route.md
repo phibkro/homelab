@@ -462,11 +462,22 @@ string
 
 
 
-Open the backend port on the tailnet, bypassing Caddy.
-Default closed — Caddy on 443 is the canonical entry
-point. Opt in only when something needs direct port
-access (legacy clients, programmatic tools that don’t
-handle Caddy’s internal CA).
+Open the backend port to EVERY tailnet peer, bypassing Caddy.
+Default closed — Caddy on 443 is the canonical entry point.
+
+You do NOT need this for cross-host routing: the entry-plane
+Caddy reaches every backend automatically via an
+appliance-scoped firewall rule (see the firewall block below).
+Opt in only when something OTHER than Caddy needs direct port
+access for ALL peers (legacy clients, programmatic tools that
+don’t handle Caddy’s internal CA).
+
+Forbidden on ` family ` audience or any ` forwardAuth `-gated route
+(assertion below): direct backend access defeats the per-user
+auth Caddy fronts. ` operator ` (tailnet IS the auth) and ` public `
+(no auth) routes may opt in. For direct access scoped to a
+specific peer (e.g. an agent host), prefer a service-local
+` firewall.extraInputRules ` — see modules/services/ollama.nix.
 
 
 

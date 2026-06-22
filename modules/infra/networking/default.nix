@@ -321,11 +321,12 @@ in
               access for ALL peers (legacy clients, programmatic tools that
               don't handle Caddy's internal CA).
 
-              Forbidden on `family`/`public`-via-OIDC routes: direct access
-              defeats the per-user auth Caddy fronts (assertion below). For
-              direct access scoped to a specific peer (e.g. an agent host),
-              add a service-local `firewall.extraInputRules` instead — see
-              modules/services/ollama.nix.
+              Forbidden on `family` audience or any `forwardAuth`-gated route
+              (assertion below): direct backend access defeats the per-user
+              auth Caddy fronts. `operator` (tailnet IS the auth) and `public`
+              (no auth) routes may opt in. For direct access scoped to a
+              specific peer (e.g. an agent host), prefer a service-local
+              `firewall.extraInputRules` — see modules/services/ollama.nix.
             '';
           };
           audience = mkOption {
@@ -672,6 +673,38 @@ in
     in
     {
       assertions = [
+        {
+          /*
+            exposeOnTailnet opens the backend to ALL tailnet peers, bypassing
+            Caddy. A route whose access depends on Caddy-fronted auth — `family`
+            (OIDC) or any `forwardAuth` route — must NOT use it: a tailnet device
+            could curl the backend port and skip the auth entirely. Cross-host
+            Caddy-reach no longer needs this flag (it's automatic + appliance-
+            scoped), so the only legitimate users are `operator`/`public` routes
+            that genuinely want direct all-peer access. Makes the bypass a build
+            error, not a latent runtime hole.
+          */
+          assertion = lib.all (r: !(r.exposeOnTailnet && (r.audience == "family" || r.forwardAuth != null))) (
+            lib.attrValues routes
+          );
+          message =
+            let
+              bad = lib.filter (
+                n:
+                routes.${n}.exposeOnTailnet && (routes.${n}.audience == "family" || routes.${n}.forwardAuth != null)
+              ) names;
+            in
+            ''
+              nori.lanRoutes.<n>.exposeOnTailnet is forbidden on auth-fronted
+              routes (audience=family or forwardAuth set): direct tailnet access
+              to the backend bypasses Authelia/OIDC. Reach is automatic via the
+              appliance-scoped Caddy-reach rule; drop exposeOnTailnet. For
+              scoped direct access to a specific peer, use a service-local
+              firewall.extraInputRules (see modules/services/ollama.nix).
+
+              Offending routes: ${lib.concatMapStringsSep ", " (n: "${n} (audience=${routes.${n}.audience})") bad}
+            '';
+        }
         {
           assertion = lib.length ports == lib.length (lib.unique ports);
           message = ''

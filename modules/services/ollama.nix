@@ -62,9 +62,7 @@ lib.mkMerge [
     */
     networking.firewall.extraInputRules = lib.concatStringsSep "\n" (
       map (ip: ''iifname "tailscale0" ip saddr ${ip} tcp dport 11434 accept'') (
-        lib.mapAttrsToList (_: h: h.tailnetIp) (
-          lib.filterAttrs (_: h: h.role == "agent") config.nori.hosts
-        )
+        lib.mapAttrsToList (_: h: h.tailnetIp) (lib.filterAttrs (_: h: h.role == "agent") config.nori.hosts)
       )
     );
 
