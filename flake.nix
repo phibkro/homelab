@@ -184,6 +184,23 @@
     */
     pagu-box.url = "path:/srv/share/projects/pagu-box";
     pagu-box.inputs.nixpkgs.follows = "nixpkgs";
+
+    /*
+      Tonic — personal music-acquisition stack (Spotify URL paste →
+      Qobuz FLAC → Opus 128k → Syncthing to phone). Activates on
+      workstation only (the audio FS + the source-of-truth `music/`
+      tree live there). The module at modules/services/tonic.nix
+      consumes inputs.tonic.packages.<system>.{backend,pwa} as the
+      stable contract; tonic's own flake.nix exposes them.
+
+      Pinned to the LOCAL checkout (path:) rather than github since the
+      tonic repo is private + operator-owned. Same dev model as pagu-box
+      above — uncommitted operator edits flow through without push +
+      `flake update` cycle. Flip to `github:phibkro/tonic` if the repo
+      goes public or someone else needs to consume this flake.
+    */
+    tonic.url = "path:/srv/share/projects/tonic";
+    tonic.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =

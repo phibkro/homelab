@@ -49,6 +49,7 @@ _: {
     ./samba.nix
     ./stremio.nix
     ./syncthing.nix
+    ./tonic.nix
     ./vaultwarden.nix
   ];
 }
