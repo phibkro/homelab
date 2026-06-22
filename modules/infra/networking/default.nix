@@ -311,11 +311,21 @@ in
             type = types.bool;
             default = false;
             description = ''
-              Open the backend port on the tailnet, bypassing Caddy.
-              Default closed — Caddy on 443 is the canonical entry
-              point. Opt in only when something needs direct port
-              access (legacy clients, programmatic tools that don't
-              handle Caddy's internal CA).
+              Open the backend port to EVERY tailnet peer, bypassing Caddy.
+              Default closed — Caddy on 443 is the canonical entry point.
+
+              You do NOT need this for cross-host routing: the entry-plane
+              Caddy reaches every backend automatically via an
+              appliance-scoped firewall rule (see the firewall block below).
+              Opt in only when something OTHER than Caddy needs direct port
+              access for ALL peers (legacy clients, programmatic tools that
+              don't handle Caddy's internal CA).
+
+              Forbidden on `family`/`public`-via-OIDC routes: direct access
+              defeats the per-user auth Caddy fronts (assertion below). For
+              direct access scoped to a specific peer (e.g. an agent host),
+              add a service-local `firewall.extraInputRules` instead — see
+              modules/services/ollama.nix.
             '';
           };
           audience = mkOption {
@@ -642,6 +652,23 @@ in
         the assertion.
       */
       caddyEnabledHere = config.services.caddy.enable;
+
+      /*
+        Hosts running the HTTP entry plane. `role == "appliance"` IS the
+        declared "runs Caddy" fact (nori.hosts role enum) — single source of
+        truth, no hardcoded 100.x. A cross-host backend must admit these — and
+        only these — on the tailnet so the entry-plane Caddy can reverse-proxy
+        it, while other tailnet peers cannot reach the backend directly (and so
+        cannot bypass the route's `audience` auth). Self is excluded: when the
+        backend IS on an appliance, Caddy reaches it via loopback, no tailnet
+        hole needed.
+      */
+      applianceReachIps = lib.mapAttrsToList (_: h: h.tailnetIp) (
+        lib.filterAttrs (name: h: h.role == "appliance" && name != myHost) config.nori.hosts
+      );
+      # Routes whose backend runs on THIS host — the only ports we open here
+      # (a port with no local listener is dead firewall surface).
+      localRoutes = lib.filterAttrs (_: cfg: cfg.runsOn == myHost) config.nori.lanRoutes;
     in
     {
       assertions = [
@@ -797,18 +824,38 @@ in
         // (mapAttrs' (name: _: nameValuePair "${name}.nori.lan" config.nori.lanIp) config.nori.lanRoutes);
 
       /*
-        Tailnet firewall: open backend ports for opt-in routes only,
-        AND only on the host that actually runs the backend. Without
-        the `runsOn == hostName` filter, every host that imports the
-        bundle opens every exposed port — harmless when no listener
-        responds, but a wider firewall surface than the topology calls
-        for. Default-deny aligns with the rest of the network policy
-        (Caddy on :80 + :443 from caddy.nix is the canonical entry).
+        Tailnet firewall — two openings, separated by intent:
+
+          1. Caddy-reach (automatic, appliance-scoped). Every backend on
+             this host admits the appliance host(s) by SOURCE IP so the
+             entry-plane Caddy can reverse-proxy it over the tailnet. Other
+             tailnet peers cannot reach the backend directly → a route's
+             `audience` gate (Authelia/OIDC for family) cannot be bypassed
+             by curling the backend port. This is what every cross-host
+             route actually needs; it used to be smuggled in via
+             `exposeOnTailnet`, conflating Caddy-reach with all-peer access.
+
+          2. Direct all-peer access (opt-in via `exposeOnTailnet`). Opens
+             the port to EVERY tailnet peer, bypassing Caddy — for the rare
+             legacy-client / programmatic case. Forbidden on `family`
+             audience (assertion below): direct access defeats per-user auth.
+
+        Both filter to `runsOn == hostName` (a port with no local listener is
+        dead surface) and align with default-deny (Caddy :80/:443 is the
+        canonical entry).
       */
-      networking.firewall.interfaces."tailscale0".allowedTCPPorts = lib.flatten (
-        lib.mapAttrsToList (_: cfg: lib.optional cfg.exposeOnTailnet cfg.port) (
-          lib.filterAttrs (_: cfg: cfg.runsOn == config.networking.hostName) config.nori.lanRoutes
+      networking.firewall.extraInputRules = lib.concatStringsSep "\n" (
+        lib.flatten (
+          lib.mapAttrsToList (
+            _: cfg:
+            map (
+              ip: ''iifname "tailscale0" ip saddr ${ip} tcp dport ${toString cfg.port} accept''
+            ) applianceReachIps
+          ) localRoutes
         )
+      );
+      networking.firewall.interfaces."tailscale0".allowedTCPPorts = lib.flatten (
+        lib.mapAttrsToList (_: cfg: lib.optional cfg.exposeOnTailnet cfg.port) localRoutes
       );
 
       /*
