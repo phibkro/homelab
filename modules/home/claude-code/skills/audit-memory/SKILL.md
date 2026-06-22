@@ -90,7 +90,7 @@ End with an explicit ask: **"Apply these changes? (all / per-entry / abort)"**
 While walking, note entries that look like promotion candidates:
 
 - Same pattern appears in 2+ projects' memory → orchestration-level
-- Procedural ("do X then Y") and project-independent → global skill (homelab/home/claude-code/skills/)
+- Procedural ("do X then Y") and project-independent → global skill (homelab/modules/home/claude-code/skills/)
 
 Surface these in the report but **don't promote unilaterally** — promotion changes scope.
 

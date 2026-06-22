@@ -101,7 +101,7 @@ After a significant step, restate: done / verified / left. Lost the thread → s
 
 ### This machine - Config in `/srv/share/projects/homelab`
 `workstation` is configured by the homelab repo at `/srv/share/projects/homelab` (NixOS + home-manager), the canonical source of truth for the whole machine.
-`~/.claude/` is a generated DERIVATION, not the source: `~/.claude/CLAUDE.md`, `~/.claude/skills/`, `~/.claude/settings.json` are home-manager symlinks into the nix store, built from `homelab/home/claude-code/`. To change global Claude config, edit the homelab source and rebuild (`just rebuild`); it re-materializes.
+`~/.claude/` is a generated DERIVATION, not the source: `~/.claude/CLAUDE.md`, `~/.claude/skills/`, `~/.claude/settings.json` are home-manager symlinks into the nix store, built from `homelab/modules/home/claude-code/`. To change global Claude config, edit the homelab source and rebuild (`just rebuild`); it re-materializes.
 
 ### Tooling is a `nix shell` away
 Almost any tool is available ad-hoc: `nix shell nixpkgs#<pkg> -c <cmd>` (e.g. `nix shell nixpkgs#jq -c jq .`) or `nix run nixpkgs#<pkg> -- <args>`. "command not found" on PATH is rarely a dead end; reach for nixpkgs first (node, pnpm, ripgrep, jq, shellcheck, …). Inside a project, prefer its own dev shell (`nix develop`, or direnv auto-loads from `.envrc`): it pins the exact toolchain via the project's `flake.lock`.
