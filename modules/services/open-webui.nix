@@ -32,7 +32,6 @@ lib.mkMerge [
       chat = {
         port = 8080;
         runsOn = "workstation";
-        exposeOnTailnet = true; # pi's Caddy proxies cross-host over tailnet
         monitor = { };
         audience = "family";
         oidc = {

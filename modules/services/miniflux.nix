@@ -19,7 +19,6 @@ lib.mkMerge [
     nori.lanRoutes.news = {
       port = 8087;
       runsOn = "aurora";
-      exposeOnTailnet = true;
       monitor = {
         path = "/healthcheck";
       };

@@ -32,7 +32,6 @@ lib.mkMerge [
       ai = {
         port = 11434;
         runsOn = "workstation";
-        exposeOnTailnet = true; # pi's Caddy proxies cross-host over tailnet
         monitor.path = "/api/tags";
       };
     };

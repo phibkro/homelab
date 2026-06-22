@@ -10,7 +10,6 @@ lib.mkMerge [
     nori.lanRoutes.calendar = {
       port = 5232;
       runsOn = "aurora";
-      exposeOnTailnet = true;
       monitor.path = "/.web/";
       audience = "family";
       noAuthReason = "CalDAV/CardDAV clients can't follow forward-auth redirects (htpasswd-only)";

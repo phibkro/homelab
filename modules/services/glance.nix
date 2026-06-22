@@ -45,7 +45,6 @@ lib.mkMerge [
     nori.lanRoutes.home = {
       port = 8086;
       runsOn = "aurora";
-      exposeOnTailnet = true;
       monitor = { };
       audience = "public";
       # No `dashboard` block — Glance shouldn't link to itself.

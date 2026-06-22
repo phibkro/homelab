@@ -46,7 +46,6 @@ lib.mkMerge [
     nori.lanRoutes.heim = {
       port = servePort;
       runsOn = "aurora";
-      exposeOnTailnet = true;
       audience = "public";
       monitor = { };
       dashboard = {

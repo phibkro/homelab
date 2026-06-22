@@ -232,10 +232,13 @@
   services.tailscale.useRoutingFeatures = lib.mkForce "none";
 
   /*
-    Tailnet firewall: backend ports are opened by the `exposeOnTailnet`
-    field on each `nori.lanRoutes.<X>` entry — pi's Caddy reaches the
-    backend over tailnet. The lan-route generator filters by runsOn,
-    so only the host that owns the backend opens the port.
+    Tailnet firewall: backend ports for cross-host routes are opened
+    automatically by the lan-route generator, scoped to the entry-plane
+    (appliance) host's tailnet IP — pi's Caddy reaches the backend while
+    other tailnet peers can't (so a family/OIDC route can't be bypassed by
+    curling the backend port). `exposeOnTailnet` is now opt-in for the rare
+    ALL-peer direct access only. The generator filters by runsOn, so only
+    the host that owns the backend opens the port.
 
     SSH (22) is opened by services.openssh.openFirewall (global, default
     true). Samba (445) is opened by modules/services/samba.nix on the
