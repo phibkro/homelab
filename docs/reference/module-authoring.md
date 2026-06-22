@@ -179,7 +179,9 @@ A service module owns *everything* about its service in one file. No fan-out.
   # SQLite-backed services: use Pattern C2 (VACUUM INTO + flock)
   # See modules/services/navidrome.nix for canonical impl + SERVICES.md § Pattern C2.
 
-  # Optional: open backend port directly on tailnet (default: closed)
+  # Cross-host Caddy-reach is automatic (appliance-scoped). exposeOnTailnet is
+  # ONLY for rare all-peer direct access, bypassing Caddy — forbidden on
+  # family/forwardAuth routes (ADR-0006). Default closed.
   # nori.lanRoutes.<short-name>.exposeOnTailnet = true;
 }
 ```

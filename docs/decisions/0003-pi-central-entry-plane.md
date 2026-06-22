@@ -139,3 +139,13 @@ End-to-end verified from every tailnet host. The reverted state from the earlier
 - `modules/infra/placement.nix` § `enabled` (P1)
 - `modules/infra/storage/default.nix` § `samba` (P4)
 - `docs/reference/topology.md` — needs update to reflect pi-central post-migration role
+
+## Addendum: reach mechanism refined (2026-06-23, ADR-0006)
+
+The cutover marked every cross-host route `exposeOnTailnet = true` so pi's Caddy
+could reach it — but that flag also opened the backend to *all* tailnet peers,
+letting a family/OIDC backend be curled around Authelia. [ADR-0006](0006-appliance-scoped-backend-exposure.md)
+decomposes this: cross-host Caddy-reach is now automatic and **appliance-scoped**
+(admits only the entry-plane host), and `exposeOnTailnet` reverts to its honest
+"all-peer direct access" meaning (forbidden on `family`/`forwardAuth` routes).
+The pi-central entry-plane decision itself is unchanged.
