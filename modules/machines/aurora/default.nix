@@ -98,7 +98,9 @@
     vaultwarden.enable = true; # bellwether
     radicale.enable = true; # CalDAV / CardDAV (sqlite)
     calibre-web.enable = true; # books (sqlite + library/books read)
-    komga.enable = true; # comics (sqlite + library/comics read)
+    komga.enable = true; # comics + manga (sqlite + library/{comics,manga} read)
+    suwayomi.enable = true; # manga acquisition (sqlite + library/manga write → komga)
+    paperless.enable = true; # document archive (postgres + library/papers originals)
     glance.enable = true; # dashboard (stateless, reads lanRoutes)
     heim.enable = true; # operator portfolio (stateless serve, github build)
     immich.enable = true; # photos (postgres + redis + ML co-located)
@@ -110,6 +112,20 @@
     btrbk-replication.enable = true; # P15 — nightly send to workstation MP510
     syncthing.enable = true; # phone-to-library music sync (SpotiFlac path)
   };
+
+  /*
+    Papers acquisition (docs/specs/2026-06-23-papers-acquisition.md):
+    the OA-first fetcher CLI lives on aurora next to its Paperless sink.
+    `consumptionDirIsPublic` makes /var/lib/paperless/consume world-
+    writable so the operator (running papers-fetch as `nori`) can drop
+    PDFs into it — local-only dir on the always-on tailnet-fronted host;
+    the documents are the operator's own. allowGrayZone stays off.
+  */
+  nori.papersFetch = {
+    enable = true;
+    email = "philib.krogh@gmail.com";
+  };
+  services.paperless.consumptionDirIsPublic = true;
 
   /*
     Aurora doesn't proxy syncthing through Caddy (the sync.* lanRoute
@@ -139,9 +155,10 @@
     Aurora-side tmpfiles:
      - /var/backup for Pattern C2 prepareCommands (vaultwarden's sqlite
        VACUUM INTO, etc.).
-     - /mnt/family/library/{books,comics} owned by `media` group so
-       calibre-web + komga can write their initial empty-library state
-       (each runs as its own user, both join `media`). The library
+     - /mnt/family/library/{books,comics,manga} owned by `media` group
+       so calibre-web + komga + suwayomi can write their initial empty-
+       library state (each runs as its own user, all join `media`). The
+       library
        subvol root is created root:root by disko; without these the
        services restart-loop with "Invalid Calibre library" because
        their pre-start can't `mkdir -p` inside it. Mirrors the pattern
@@ -152,7 +169,9 @@
     "d /mnt/family/library            02775 root  media -"
     "d /mnt/family/library/books      02775 root  media -"
     "d /mnt/family/library/comics     02775 root  media -"
+    "d /mnt/family/library/manga      02775 root  media -"
     "d /mnt/family/library/music      02775 root  media -"
+    "d /mnt/family/library/papers     02775 root  media -"
   ];
 
   /*
