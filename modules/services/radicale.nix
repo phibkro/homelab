@@ -10,6 +10,7 @@ lib.mkMerge [
     nori.lanRoutes.calendar = {
       port = 5232;
       runsOn = "aurora";
+      exposeOnTailnet = true; # direct: CalDAV/CardDAV clients (phone calendar/contacts) connect to the server
       monitor.path = "/.web/";
       audience = "family";
       noAuthReason = "CalDAV/CardDAV clients can't follow forward-auth redirects (htpasswd-only)";

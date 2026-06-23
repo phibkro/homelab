@@ -14,6 +14,7 @@ lib.mkMerge [
     nori.lanRoutes.downloads = {
       port = 8083;
       runsOn = "workstation";
+      exposeOnTailnet = true; # direct: operator's torrent client connects to the WebUI/API
       monitor = { };
       audience = "operator";
       dashboard = {

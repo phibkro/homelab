@@ -19,6 +19,7 @@ lib.mkMerge [
     nori.lanRoutes.news = {
       port = 8087;
       runsOn = "aurora";
+      exposeOnTailnet = true; # direct: RSS reader apps use the Fever/Miniflux API directly
       monitor = {
         path = "/healthcheck";
       };

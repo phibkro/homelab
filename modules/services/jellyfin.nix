@@ -16,6 +16,7 @@ lib.mkMerge [
     nori.lanRoutes.media = {
       port = 8096;
       runsOn = "workstation";
+      exposeOnTailnet = true; # direct: media client apps (TV/phone) connect to the server, not via Caddy
       monitor = { };
       audience = "family";
       noAuthReason = "mobile/TV clients bypass cookie-based forward-auth; native SSO plugin has sharp historical edges";

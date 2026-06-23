@@ -315,18 +315,22 @@ in
               Default closed — Caddy on 443 is the canonical entry point.
 
               You do NOT need this for cross-host routing: the entry-plane
-              Caddy reaches every backend automatically via an
-              appliance-scoped firewall rule (see the firewall block below).
-              Opt in only when something OTHER than Caddy needs direct port
-              access for ALL peers (legacy clients, programmatic tools that
-              don't handle Caddy's internal CA).
+              Caddy reaches every backend automatically via an appliance-scoped
+              firewall rule (see the firewall block below). Set it only when a
+              NON-browser client connects to the backend directly over the
+              tailnet — media apps (Jellyfin/Immich), Subsonic/OPDS readers
+              (Navidrome/Komga/calibre-web), CalDAV/CardDAV (Radicale), an RSS
+              app's API (Miniflux), a torrent client (qBittorrent). Pure web
+              UIs reached through Caddy don't need it.
 
-              Forbidden on `family` audience or any `forwardAuth`-gated route
-              (assertion below): direct backend access defeats the per-user
-              auth Caddy fronts. `operator` (tailnet IS the auth) and `public`
-              (no auth) routes may opt in. For direct access scoped to a
-              specific peer (e.g. an agent host), prefer a service-local
-              `firewall.extraInputRules` — see modules/services/ollama.nix.
+              Trade-off (ADR-0006): direct access bypasses any Caddy-fronted
+              auth (Authelia/OIDC), so the app's OWN auth becomes the gate.
+              That's acceptable for these — they have native logins and the
+              tailnet is the trust perimeter — but don't set it on a backend
+              whose only protection is Caddy/Authelia. For direct access scoped
+              to a SPECIFIC peer (e.g. an agent host) rather than all peers,
+              prefer a service-local `firewall.extraInputRules` — see
+              modules/services/ollama.nix.
             '';
           };
           audience = mkOption {
@@ -674,38 +678,6 @@ in
     {
       assertions = [
         {
-          /*
-            exposeOnTailnet opens the backend to ALL tailnet peers, bypassing
-            Caddy. A route whose access depends on Caddy-fronted auth — `family`
-            (OIDC) or any `forwardAuth` route — must NOT use it: a tailnet device
-            could curl the backend port and skip the auth entirely. Cross-host
-            Caddy-reach no longer needs this flag (it's automatic + appliance-
-            scoped), so the only legitimate users are `operator`/`public` routes
-            that genuinely want direct all-peer access. Makes the bypass a build
-            error, not a latent runtime hole.
-          */
-          assertion = lib.all (r: !(r.exposeOnTailnet && (r.audience == "family" || r.forwardAuth != null))) (
-            lib.attrValues routes
-          );
-          message =
-            let
-              bad = lib.filter (
-                n:
-                routes.${n}.exposeOnTailnet && (routes.${n}.audience == "family" || routes.${n}.forwardAuth != null)
-              ) names;
-            in
-            ''
-              nori.lanRoutes.<n>.exposeOnTailnet is forbidden on auth-fronted
-              routes (audience=family or forwardAuth set): direct tailnet access
-              to the backend bypasses Authelia/OIDC. Reach is automatic via the
-              appliance-scoped Caddy-reach rule; drop exposeOnTailnet. For
-              scoped direct access to a specific peer, use a service-local
-              firewall.extraInputRules (see modules/services/ollama.nix).
-
-              Offending routes: ${lib.concatMapStringsSep ", " (n: "${n} (audience=${routes.${n}.audience})") bad}
-            '';
-        }
-        {
           assertion = lib.length ports == lib.length (lib.unique ports);
           message = ''
             nori.lanRoutes have duplicate backend ports. Each route's
@@ -868,10 +840,12 @@ in
              route actually needs; it used to be smuggled in via
              `exposeOnTailnet`, conflating Caddy-reach with all-peer access.
 
-          2. Direct all-peer access (opt-in via `exposeOnTailnet`). Opens
-             the port to EVERY tailnet peer, bypassing Caddy — for the rare
-             legacy-client / programmatic case. Forbidden on `family`
-             audience (assertion below): direct access defeats per-user auth.
+          2. Direct all-peer access (opt-in via `exposeOnTailnet`). Opens the
+             port to EVERY tailnet peer, bypassing Caddy — for backends a
+             NON-browser client connects to directly (media/Subsonic/OPDS/
+             CalDAV/torrent apps). Bypasses Caddy-fronted auth, so the app's
+             native auth becomes the gate (ADR-0006); set it only where that's
+             acceptable, not on Caddy/Authelia-only backends.
 
         Both filter to `runsOn == hostName` (a port with no local listener is
         dead surface) and align with default-deny (Caddy :80/:443 is the
