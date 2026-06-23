@@ -140,6 +140,13 @@
     "d /mnt/media/staging/music-flac 2775 root media - -"
   ];
 
+  # Syncthing's sandbox (nori.harden) binds only library + downloads by default,
+  # so the new staging dir is invisible inside the service namespace ("folder
+  # path missing"). Bind it RW so Syncthing can receive the phone's FLAC into it
+  # and propagate the ingest's deletes back. music-ingest reaches it via its own
+  # harden binds.
+  nori.harden.syncthing.binds = [ "/mnt/media/staging/music-flac" ];
+
   /*
     Defensive cap on user@1000.service. Calibrated against the
     2026-06-08 global-OOM event: a leak inside the user session climbed
