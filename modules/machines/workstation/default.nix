@@ -120,6 +120,26 @@
   # the operator's real workflow is SpotiFLAC-Mobile → Syncthing → mirror → phone.
   nori.musicMirror.enable = true;
 
+  # FLAC ingest (timer, sibling to music-mirror). The phone pushes new lossless
+  # FLAC into a transient Syncthing staging dir; this MOVEs complete, stable
+  # files into the master library and deletes the staging copy (a separate
+  # Syncthing folder propagates that delete back to the phone, freeing its FLAC).
+  # Staging is deliberately OUTSIDE ${library}: no backup intent, and the phone
+  # can never reach the master. See docs/runbooks/music-opus-mirror.md.
+  nori.musicIngest = {
+    enable = true;
+    stagingPath = "/mnt/media/staging/music-flac";
+  };
+
+  # Pre-create the staging tree. /mnt/media is root:root, so Syncthing (runs as
+  # nori, in `media`) can't mkdir under it. root:media 2775 (setgid) lets both
+  # Syncthing receive into it and the music-ingest user delete from it; new
+  # files inherit the media group.
+  systemd.tmpfiles.rules = [
+    "d /mnt/media/staging            0755 root root  - -"
+    "d /mnt/media/staging/music-flac 2775 root media - -"
+  ];
+
   /*
     Defensive cap on user@1000.service. Calibrated against the
     2026-06-08 global-OOM event: a leak inside the user session climbed
