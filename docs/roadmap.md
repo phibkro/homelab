@@ -27,6 +27,8 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 - **MemoryHigh caps on heavy services** — process-exporter now publishes `namedprocess_namegroup_memory_bytes{memtype="resident",groupname=…,host=…}` to pi VM for all three workhorse hosts (workstation, pavilion, aurora). Wait ≥7 days of data, identify the slowest-growing services per host, cap each via `systemd.services.<n>.serviceConfig.MemoryHigh = "…G"`. Premature to cap blindly. Sample query: `topk(10, max_over_time(namedprocess_namegroup_memory_bytes{memtype="resident"}[7d]) - min_over_time(namedprocess_namegroup_memory_bytes{memtype="resident"}[7d])) / 1024 / 1024`. Special interest: aurora `gunicorn` (immich-ml — PyTorch, known leak shape).
 
+- **Papers acquisition pipeline** — "tonic for papers", acquisition-first: search/paste-DOI + reading-list-sync → OA-first resolve (arXiv→Unpaywall→OpenAlex→Crossref) → fetch → Paperless-ngx (OCR + full-text + phone). Compose (Paperless sink + `paper-search-mcp` resolver); build only the thin fetcher. Design + decisions + build keyframes in `docs/specs/2026-06-23-papers-acquisition.md`. **Status:** spec'd 2026-06-23, build deferred to a fresh session. P0 = stand up Paperless-ngx as a homelab service module. (Sibling future-work: books → Readarr, comics → Mylar3, both \*arr drop-ins feeding existing calibre-web/komga.)
+
 ## Deferred (tracked, not currently worked)
 
 - **Mac is on x86_64-darwin EOL clock.** Confirmed 2026-06-15: **26.05 is the last nixpkgs stable supporting x86_64-darwin** (26.11 drops it). Determinate installer v3.12.2 was the last with x86_64-darwin (v3.12.3 dropped Intel). The Mac is currently pinned to 26.05 and works; "stay pinned indefinitely" is a valid stance until something else forces movement.
