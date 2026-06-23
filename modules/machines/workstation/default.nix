@@ -147,6 +147,13 @@
   # harden binds.
   nori.harden.syncthing.binds = [ "/mnt/media/staging/music-flac" ];
 
+  # Syncthing creates received dirs with its process umask; the default 0022
+  # leaves them group-unwritable (drwxr-sr-x), so the media-group music-ingest
+  # user can't unlink files from Syncthing-created staging subdirs (unlink needs
+  # WRITE on the parent dir, not the file). 0002 → group-writable trees, matching
+  # the media-group collaboration model (the library is already root:media 02775).
+  systemd.services.syncthing.serviceConfig.UMask = "0002";
+
   /*
     Defensive cap on user@1000.service. Calibrated against the
     2026-06-08 global-OOM event: a leak inside the user session climbed
