@@ -24,13 +24,18 @@
 #   MUSIC_INGEST_STAGING            required  transient Syncthing staging dir
 #   MUSIC_INGEST_LIBRARY            required  master library root (holds music/)
 #   MUSIC_INGEST_STABILITY_SECONDS  default 60   mtime-age stability window
-#   MUSIC_INGEST_GLOB               default *.flac   files considered for ingest
+#   MUSIC_INGEST_EXTENSIONS         default "flac jpg jpeg png webp"   file
+#       extensions (no dot, case-insensitive) considered for ingest. FLAC is
+#       the audio master; the image extensions carry album art (folder.jpg,
+#       cover.png, …) into the master alongside its FLAC. All ride the EXACT
+#       same stability/dedupe/conflict/crash-safe path — the guards key on
+#       relpath + blake3, so they're already file-type-agnostic.
 set -euo pipefail
 
 : "${MUSIC_INGEST_STAGING:?MUSIC_INGEST_STAGING (the Syncthing staging dir) is required}"
 : "${MUSIC_INGEST_LIBRARY:?MUSIC_INGEST_LIBRARY (the master library root) is required}"
 stability="${MUSIC_INGEST_STABILITY_SECONDS:-60}"
-glob="${MUSIC_INGEST_GLOB:-*.flac}"
+extensions="${MUSIC_INGEST_EXTENSIONS:-flac jpg jpeg png webp}"
 
 staging="$MUSIC_INGEST_STAGING"
 # music/ under the library root — same layout the FLAC→Opus mirror reads from
@@ -59,9 +64,23 @@ has_syncthing_tmp() {
   [ -e "$dir/.syncthing.$base.tmp" ] || [ -e "$dir/~syncthing~$base.tmp" ]
 }
 
-# Find every candidate FLAC under staging, skipping the .conflicts quarantine
-# and any Syncthing temp files themselves. -print0 / read -d '' to survive
-# spaces + unicode in artist/album/track names.
+# Build the find name-filter as a case-insensitive OR-group over the configured
+# extensions: ( -iname '*.flac' -o -iname '*.jpg' -o … ). -iname so 'Cover.JPG'
+# matches; the group is parenthesised so the -not -path exclusion ANDs across
+# the whole set, not just the last alternative.
+name_filter=()
+for ext in $extensions; do
+  name_filter+=(-o -iname "*.$ext")
+done
+name_filter[0]='('          # overwrite the leading -o with the opening paren
+name_filter+=(')')
+
+# Find every candidate file under staging. The `-not -path '*/.*'` drops any
+# file with a hidden path component, which in one rule (a) keeps art non-hidden
+# (skip `.cover.jpg`), (b) skips Syncthing's `.syncthing.*.tmp` / `~syncthing~`
+# temp files, and (c) excludes the `.conflicts/` quarantine — so a quarantined
+# file is never re-scanned. -print0 / read -d '' to survive spaces + unicode in
+# artist/album/track names.
 while IFS= read -r -d '' src; do
   rel="${src#"$staging"/}"
   base="$(basename "$src")"
@@ -118,7 +137,7 @@ while IFS= read -r -d '' src; do
   rm -f -- "$src"
   echo "music-ingest: ingested → $rel"
   ingested=$((ingested + 1))
-done < <(find "$staging" -type f -name "$glob" -not -path "$conflicts/*" -print0)
+done < <(find "$staging" -type f "${name_filter[@]}" -not -path '*/.*' -print0)
 
 echo "music-ingest: done — ingested=$ingested deduped=$deduped conflicted=$conflicted unstable=$unstable"
 # Conflicts are a loud-but-non-fatal operator-action signal; surface in the exit
