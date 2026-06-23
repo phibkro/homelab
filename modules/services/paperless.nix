@@ -65,7 +65,7 @@ lib.mkMerge [
         3. Log in → the consume dir (/var/lib/paperless/consume) is
            watched; anything dropped there is OCR'd + indexed.
         4. On phone: install the Paperless mobile app, point at
-           https://papers.nori.lan over the tailnet, log in.
+           https://papers.${config.nori.domain} over the tailnet, log in.
     */
     services.paperless = {
       enable = true;
@@ -78,12 +78,25 @@ lib.mkMerge [
       # Originals + archive land on the irreplaceable vault subvol.
       mediaDir = "${config.nori.fs.library.path}/papers";
 
+      # Declarative superuser: the module creates/updates `PAPERLESS_ADMIN_USER`
+      # with the password from this sops-decrypted file on each start (idempotent
+      # — only re-applies when the user:password state changes). Makes the login
+      # reproducible on a fresh DB instead of a manual `createsuperuser`. The
+      # password is the single source of truth here: deploying RESETS nori's
+      # password to whatever the sops secret holds.
+      passwordFile = config.sops.secrets.paperless-admin-password.path;
+
       settings = {
         PAPERLESS_OCR_LANGUAGE = "eng"; # academic papers; add "+nor" if needed
+        PAPERLESS_ADMIN_USER = "nori"; # matches the existing superuser
         PAPERLESS_URL = "https://papers.${config.nori.domain}";
-        # Trust the tailnet-fronted proxy host header (Caddy on pi).
-        PAPERLESS_ALLOWED_HOSTS = "papers.${config.nori.domain}";
-        PAPERLESS_CSRF_TRUSTED_ORIGINS = "https://papers.${config.nori.domain}";
+        # Primary host: the Caddy-on-pi proxied domain. Also accept aurora's
+        # own tailnet IP for DIRECT operator access when the pi entry plane is
+        # down or rebuilding — audience=operator means the tailnet IS the trust
+        # perimeter, so reaching the backend directly over the tailnet carries
+        # the same posture as the proxied route (just without Caddy's TLS).
+        PAPERLESS_ALLOWED_HOSTS = "papers.${config.nori.domain},${config.nori.hosts.aurora.tailnetIp}";
+        PAPERLESS_CSRF_TRUSTED_ORIGINS = "https://papers.${config.nori.domain},http://${config.nori.hosts.aurora.tailnetIp}:28981";
       };
     };
 
@@ -91,6 +104,15 @@ lib.mkMerge [
     # calibre-web); lets paperless write mediaDir under the 02775
     # root:media library subvol.
     users.users.paperless.extraGroups = [ "media" ];
+
+    # Admin password, sops-decrypted from the default secrets file
+    # (secrets/secrets.yaml — aurora is already a recipient). Add the
+    # `paperless-admin-password` key there before the next aurora deploy:
+    #   sops secrets/secrets.yaml   →   paperless-admin-password: <your-pw>
+    sops.secrets.paperless-admin-password = {
+      owner = "paperless";
+      mode = "0400";
+    };
 
     /*
       FS hardening — one entry per systemd unit (paperless is multi-unit:
