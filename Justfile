@@ -121,6 +121,22 @@ default: rebuild
       fi; \
     done
 
+# Build a remote host's config HERE and deploy the closure — the target
+# compiles NOTHING. Workstation has aarch64 emulation
+# (workstation/hardware.nix: boot.binfmt.emulatedSystems), so it builds pi's
+# aarch64 closure locally and copies store paths over. Contrast `just remote
+# pi rebuild`, which builds NATIVELY on the Pi 4 — a Caddy-with-plugins Go
+# build there drives load past 50 and starves the entry plane (Caddy + DNS),
+# taking down every *.${domain} route until it finishes. Always `push` to pi;
+# prefer it for aurora too. Activation runs via passwordless remote sudo.
+# Usage: just push <host> [extra nixos-rebuild args]
+@push host *args:
+    nixos-rebuild switch \
+      --flake .#{{host}} \
+      --target-host {{user}}@{{host}}.{{tailnet}} \
+      --sudo \
+      {{args}}
+
 # Build but don't activate.
 @build *args:
     nh os build . -H $(hostname) {{args}}
