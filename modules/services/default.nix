@@ -42,6 +42,7 @@ _: {
     ./jellyfin.nix
     ./komga.nix
     ./miniflux.nix
+    ./music-ingest.nix
     ./music-mirror.nix
     ./navidrome.nix
     ./ollama.nix
