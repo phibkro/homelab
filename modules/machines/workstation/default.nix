@@ -114,6 +114,12 @@
     btrbk-replica-target.enable = true; # P15 — receives btrfs send from aurora into MP510
   };
 
+  # FLAC→Opus library mirror (timer). Keeps ${library}/music-opus current from
+  # the lossless library so Syncthing can push the compressed tree to the phone.
+  # Standalone — independent of the (undeployed) tonic daemon. See ADR/plan:
+  # the operator's real workflow is SpotiFLAC-Mobile → Syncthing → mirror → phone.
+  nori.musicMirror.enable = true;
+
   /*
     Defensive cap on user@1000.service. Calibrated against the
     2026-06-08 global-OOM event: a leak inside the user session climbed

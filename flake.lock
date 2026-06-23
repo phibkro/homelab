@@ -976,8 +976,8 @@
         ]
       },
       "locked": {
-        "lastModified": 1782165160,
-        "narHash": "sha256-j7jpCQJ+G9mIyg18PglCwHPj94ws8NWUzgnr/Yn3VLE=",
+        "lastModified": 1782185803,
+        "narHash": "sha256-gDVN4kTOLuRbkkvrcb7QaLyr+H7R5Ho/3lUpe9o+Wvk=",
         "path": "/srv/share/projects/tonic",
         "type": "path"
       },
