@@ -138,33 +138,6 @@ let
     };
   };
 
-  # Variant D — functional check (not "test the test"): the firewall encodes
-  # BOTH exposure modes correctly. Evaluated AS workstation (the backend host),
-  # with two cross-host routes:
-  #   app    (Caddy-only, no exposeOnTailnet) → pi-scoped reach rule, NOT all-peer
-  #   direct (exposeOnTailnet = true)         → all-peer open (a KEEP service)
-  # This pins the post-ADR-0006 design: scoping is the default, direct access is
-  # opt-in per service for non-browser client apps.
-  fwConfig = mkConfig {
-    networking.hostName = lib.mkForce "workstation";
-    nori.lanRoutes.app = {
-      port = 8080;
-      runsOn = "workstation";
-      audience = "operator";
-    };
-    nori.lanRoutes.direct = {
-      port = 8081;
-      runsOn = "workstation";
-      audience = "family";
-      exposeOnTailnet = true;
-    };
-  };
-  fw = fwConfig.config.networking.firewall;
-  # pi's test tailnetIp is 100.0.0.1 (see mkConfig scaffolding).
-  caddyOnlyScopedToAppliance = lib.hasInfix "ip saddr 100.0.0.1 tcp dport 8080 accept" fw.extraInputRules;
-  caddyOnlyNotAllPeers = !(lib.elem 8080 fw.interfaces.tailscale0.allowedTCPPorts);
-  directIsAllPeers = lib.elem 8081 fw.interfaces.tailscale0.allowedTCPPorts;
-
   validResult = forceAssertions validConfig;
   duplicatePortResult = forceAssertions duplicatePortConfig;
   unknownRunsOnResult = forceAssertions unknownRunsOnConfig;
@@ -173,27 +146,15 @@ let
   duplicatePortFails = !duplicatePortResult.success;
   unknownRunsOnFails = !unknownRunsOnResult.success;
 in
-if
-  validPasses
-  && duplicatePortFails
-  && unknownRunsOnFails
-  && caddyOnlyScopedToAppliance
-  && caddyOnlyNotAllPeers
-  && directIsAllPeers
-then
-  "ok — route invariants fire (dup port, unknown runsOn) + Caddy-only is appliance-scoped while exposeOnTailnet opens all-peer"
+if validPasses && duplicatePortFails && unknownRunsOnFails then
+  "ok — route invariants fire on duplicate port + unknown runsOn"
 else
   throw ''
-    Route-invariant checks did not behave as expected.
-    valid baseline:            success=${toString validResult.success} (expected: true)
-    duplicate port:            success=${toString duplicatePortResult.success} (expected: false)
-    unknown runsOn:            success=${toString unknownRunsOnResult.success} (expected: false)
-    Caddy-only scoped to pi:   ${toString caddyOnlyScopedToAppliance} (expected: true)
-    Caddy-only NOT all-peer:   ${toString caddyOnlyNotAllPeers} (expected: true)
-    exposeOnTailnet → all-peer: ${toString directIsAllPeers} (expected: true)
+    Route-invariant assertions did not behave as expected.
+    valid baseline:        success=${toString validResult.success} (expected: true)
+    duplicate port:        success=${toString duplicatePortResult.success} (expected: false)
+    unknown runsOn:        success=${toString unknownRunsOnResult.success} (expected: false)
 
-    If an assertion flipped, a regression in
-    modules/infra/networking/default.nix dropped/changed an invariant.
-    If a scoping check flipped, the appliance-scoped Caddy-reach rule or the
-    exposeOnTailnet all-peer opening regressed.
+    If any of these flipped, a regression in
+    modules/infra/networking/default.nix dropped a module assertion.
   ''

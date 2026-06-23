@@ -26,6 +26,7 @@ _:
   nori.lanRoutes.hermes = {
     port = 9119;
     runsOn = "workstation";
+    exposeOnTailnet = true; # pi's Caddy proxies cross-host over tailnet
     audience = "operator";
     /*
       Hermes' dashboard binds to 127.0.0.1 and rejects any Host header

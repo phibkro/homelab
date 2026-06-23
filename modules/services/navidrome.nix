@@ -16,7 +16,7 @@ lib.mkMerge [
     nori.lanRoutes.audio = {
       port = 4533;
       runsOn = "aurora";
-      exposeOnTailnet = true; # direct: Subsonic client apps connect to the server
+      exposeOnTailnet = true;
       monitor = { };
       audience = "family";
       oidc = {

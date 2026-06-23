@@ -26,6 +26,7 @@ lib.mkMerge [
     nori.lanRoutes.vault = {
       port = 8222;
       runsOn = "aurora";
+      exposeOnTailnet = true;
       monitor = {
         path = "/alive";
       };
@@ -83,12 +84,10 @@ lib.mkMerge [
       config = {
         /*
           Network — Caddy at vault.<nori.domain> reverse-proxies to
-          the runsOn host. Bind 0.0.0.0 so the entry-plane Caddy can
-          reach this backend over the tailnet when runsOn ≠ Caddy host.
-          The appliance-scoped Caddy-reach rule (modules/infra/networking)
-          opens 8222 on tailscale0 to the appliance host ONLY — NOT all
-          peers, so a tailnet device can't curl 8222 and skip Authelia
-          (this route is audience=family / OIDC). LAN stays closed.
+          the runsOn host. Bind 0.0.0.0 so the proxy host (the one
+          running Caddy) can reach this backend over the tailnet when
+          runsOn ≠ proxy host. `exposeOnTailnet = true` on the route
+          opens 8222 on tailscale0; LAN stays closed.
         */
         DOMAIN = "https://vault.${config.nori.domain}";
         ROCKET_ADDRESS = "0.0.0.0";

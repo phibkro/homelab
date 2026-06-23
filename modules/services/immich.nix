@@ -40,7 +40,7 @@ lib.mkMerge [
     nori.lanRoutes.photos = {
       port = 2283;
       runsOn = "aurora";
-      exposeOnTailnet = true; # direct: Immich mobile app connects to the server
+      exposeOnTailnet = true;
       monitor = { };
       audience = "family";
       oidc = {

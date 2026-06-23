@@ -15,7 +15,7 @@ lib.mkMerge [
     nori.lanRoutes.comics = {
       port = 8085;
       runsOn = "aurora";
-      exposeOnTailnet = true; # direct: OPDS / manga reader apps connect to the server
+      exposeOnTailnet = true;
       monitor = { };
       audience = "family";
       /*

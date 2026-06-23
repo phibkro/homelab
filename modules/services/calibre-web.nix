@@ -16,7 +16,7 @@ lib.mkMerge [
     nori.lanRoutes.books = {
       port = 8084;
       runsOn = "aurora";
-      exposeOnTailnet = true; # direct: OPDS ebook readers connect to the server
+      exposeOnTailnet = true;
       monitor = { };
       audience = "family";
       /*

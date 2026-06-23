@@ -57,6 +57,7 @@ lib.mkMerge [
     nori.lanRoutes.filmder = {
       port = servePort;
       runsOn = "aurora";
+      exposeOnTailnet = true;
       audience = "public";
       monitor = { };
       dashboard = {

@@ -9,8 +9,7 @@
 ## What still works while pi is down
 
 - **Workstation Blocky secondary** still resolves `*.${nori.domain}` for LAN devices that talk to it directly (`192.168.1.181`). Useful while triaging — point Mac/phone at workstation manually if needed.
-- **Direct-client backends** (`exposeOnTailnet = true` — Jellyfin, Immich, Navidrome, Komga, Radicale, calibre-web, Miniflux, qBittorrent) stay **directly reachable** by tailnet peers while pi is down: their client apps connect to the backend port, not via Caddy. So media/photos/calendar/torrents keep working on a direct connection (use `http://<host-tailnet-ip>:<port>` if the app was pointed at the Caddy hostname).
-- **Caddy-only backends** (Vaultwarden, the *arr UIs, Grafana, dashboards) are NOT directly reachable — their tailnet port admits only the appliance (pi) for Caddy-reach (ADR-0006). With pi gone, reach them by SSH-tunnelling to the host and hitting `127.0.0.1:<port>`.
+- **Backend services on aurora/workstation** are reachable by direct tailnet IP + port (per `nori.lanRoutes.<X>.exposeOnTailnet`). Authelia-gated routes (`family` audience) bypass auth at this layer.
 - **Tailscale itself** keeps routing via DERP — pi is the subnet router but tailnet-to-tailnet still works without it.
 
 ## Triage

@@ -462,26 +462,11 @@ string
 
 
 
-Open the backend port to EVERY tailnet peer, bypassing Caddy.
-Default closed — Caddy on 443 is the canonical entry point.
-
-You do NOT need this for cross-host routing: the entry-plane
-Caddy reaches every backend automatically via an appliance-scoped
-firewall rule (see the firewall block below). Set it only when a
-NON-browser client connects to the backend directly over the
-tailnet — media apps (Jellyfin/Immich), Subsonic/OPDS readers
-(Navidrome/Komga/calibre-web), CalDAV/CardDAV (Radicale), an RSS
-app’s API (Miniflux), a torrent client (qBittorrent). Pure web
-UIs reached through Caddy don’t need it.
-
-Trade-off (ADR-0006): direct access bypasses any Caddy-fronted
-auth (Authelia/OIDC), so the app’s OWN auth becomes the gate.
-That’s acceptable for these — they have native logins and the
-tailnet is the trust perimeter — but don’t set it on a backend
-whose only protection is Caddy/Authelia. For direct access scoped
-to a SPECIFIC peer (e.g. an agent host) rather than all peers,
-prefer a service-local ` firewall.extraInputRules ` — see
-modules/services/ollama.nix.
+Open the backend port on the tailnet, bypassing Caddy.
+Default closed — Caddy on 443 is the canonical entry
+point. Opt in only when something needs direct port
+access (legacy clients, programmatic tools that don’t
+handle Caddy’s internal CA).
 
 
 

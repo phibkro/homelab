@@ -48,6 +48,7 @@ Apply these three changes:
 nori.lanRoutes.ops = {
   port = 3000;
   runsOn = "aurora";
+  exposeOnTailnet = true;
   audience = "operator";
   monitor.path = "/api/health";
   oidc = {

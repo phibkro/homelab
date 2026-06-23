@@ -32,6 +32,7 @@ lib.mkMerge [
       ai = {
         port = 11434;
         runsOn = "workstation";
+        exposeOnTailnet = true; # pi's Caddy proxies cross-host over tailnet
         monitor.path = "/api/tags";
       };
     };
@@ -49,22 +50,6 @@ lib.mkMerge [
       → /var/lib/ollama/models/ AFTER the service has started once (so
       the directory exists with correct ownership).
     */
-
-    /*
-      Agent-host direct access to the inference API. Pavilion (role=agent)
-      reaches ollama at :11434 directly over the tailnet — NOT via Caddy —
-      gated to ollama-only by the Tailscale ACL (tag:agent → workhorse:11434).
-      The host firewall must admit it by source IP: the appliance-scoped
-      Caddy-reach rule (modules/infra/networking) covers pi, not pavilion.
-      Scoped to agent-role hosts (from nori.hosts, no hardcoded 100.x) so it's
-      not an all-peer opening — that's why the `ai` route no longer needs
-      `exposeOnTailnet`.
-    */
-    networking.firewall.extraInputRules = lib.concatStringsSep "\n" (
-      map (ip: ''iifname "tailscale0" ip saddr ${ip} tcp dport 11434 accept'') (
-        lib.mapAttrsToList (_: h: h.tailnetIp) (lib.filterAttrs (_: h: h.role == "agent") config.nori.hosts)
-      )
-    );
 
     services.ollama = {
       enable = enabled;
