@@ -49,6 +49,15 @@ if [ ! -d "$staging" ]; then
 fi
 mkdir -p "$master"
 
+# Final-file mode that HONORS the process umask, computed once. mktemp creates
+# the temp at 0600 (owner-only) and the rename preserves that mode, so without
+# this the master files end up owner-readable only — defeating the unit's
+# UMask=0002 and locking out the media-GROUP readers (music-mirror, Navidrome,
+# the FLAC→Opus transcode). We reproduce what a normal create would yield:
+# 0666 masked by the umask (→ 0664 under UMask=0002). The umask stays the single
+# source of truth for the permission; we don't hardcode 0664.
+file_mode="$(printf '%o' $((0666 & ~$(umask))))"
+
 now="$(date +%s)"
 ingested=0 deduped=0 conflicted=0 unstable=0
 
@@ -130,6 +139,11 @@ while IFS= read -r -d '' src; do
   # cp then fsync the file AND its parent dir before the atomic rename, so a
   # crash can never expose a partially-written file at the final path.
   cp -- "$src" "$tmp"
+  # Honor the umask: mktemp made $tmp 0600 and rename preserves the mode, so set
+  # the umask-derived mode (0664 under UMask=0002) BEFORE the rename — the file
+  # is group-readable the instant it appears at its durable final path, never a
+  # window where a media-group reader sees it owner-only.
+  chmod "$file_mode" -- "$tmp"
   sync -- "$tmp"
   mv -f -- "$tmp" "$dst"
   sync -- "$(dirname "$dst")"

@@ -29,6 +29,9 @@ check() { # check <desc> <cond-cmd...>
   if "$@"; then echo "  ✓ $desc"; pass=$((pass + 1));
   else echo "  ✗ $desc"; fail=$((fail + 1)); fi
 }
+# True if <file> is group-readable (the 'g+r' bit set). The seam the fixture
+# previously missed: the master is read by the media GROUP, not the owner.
+group_readable() { local m; m="$(stat -c %A "$1")"; [ "${m:4:1}" = "r" ]; }
 
 # ---------------------------------------------------------------------------
 # Arrange the staging tree — one file per scenario.
@@ -90,11 +93,18 @@ art_conflict_master_before="$(cat "$master/Artist K/folder.jpg")"
 # Act
 # ---------------------------------------------------------------------------
 echo "=== RUN ==="
+# Run under umask 0002 — the live unit's UMask=0002. This makes the moved-file
+# mode deterministic (0664) so the group-read assertions below exercise the
+# real-deployment permission contract: the master is read by the media GROUP
+# (music-mirror, Navidrome), not just the owner. (umask is subshell-local.)
 set +e
-MUSIC_INGEST_STAGING="$staging" \
-MUSIC_INGEST_LIBRARY="$library" \
-MUSIC_INGEST_STABILITY_SECONDS=60 \
-  bash "$script"
+(
+  umask 0002
+  MUSIC_INGEST_STAGING="$staging" \
+  MUSIC_INGEST_LIBRARY="$library" \
+  MUSIC_INGEST_STABILITY_SECONDS=60 \
+    bash "$script"
+)
 rc=$?
 set -e
 echo "  (exit $rc — nonzero-on-conflict is by design)"
@@ -109,6 +119,12 @@ echo "=== ASSERT ==="
 # 1. stable → moved to master, gone from staging
 check "stable FLAC ingested into master"        test -f "$master/Artist A/Album/01 stable.flac"
 check "stable FLAC removed from staging"         test ! -e "$staging/Artist A/Album/01 stable.flac"
+# 1c. PERMISSION SEAM — the master is read by the media GROUP (music-mirror,
+# Navidrome), not the ingest owner. mktemp makes the temp 0600 and rename
+# preserves it; without the umask-honoring chmod the moved file is owner-only
+# and the FLAC→Opus transcode dies with PermissionError. Assert group-read.
+check "ingested FLAC is group-readable (media-group can read master)" \
+  group_readable "$master/Artist A/Album/01 stable.flac"
 
 # 2. syncthing temp sibling (both patterns) → left untouched in staging
 check "new-pattern temp-sibling file left in staging"  test -f "$staging/Artist B/02 transferring.flac"
@@ -149,6 +165,10 @@ check "stable art (folder.jpg) ingested into master"  test -f "$master/Artist A/
 check "stable art removed from staging"               test ! -e "$staging/Artist A/Album/folder.jpg"
 check "ingested art content correct" \
   bash -c '[ "$(cat "'"$master"'/Artist A/Album/folder.jpg")" = "JPEG-cover-A" ]'
+# 7a. PERMISSION SEAM (art) — art→opus is also read by the media-group mirror,
+# so art needs the same group-read as FLAC. Same root cause, same guard.
+check "ingested art is group-readable (media-group can read master art)" \
+  group_readable "$master/Artist A/Album/folder.jpg"
 # 7b. mixed-case extension matched (Cover.PNG)
 check "mixed-case art (Cover.PNG) ingested"           test -f "$master/Artist F/Album X/Cover.PNG"
 check "mixed-case art removed from staging"           test ! -e "$staging/Artist F/Album X/Cover.PNG"
