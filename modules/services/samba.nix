@@ -65,8 +65,12 @@ lib.mkMerge [
               Defense-in-depth: only Tailscale-range IPs may connect even
               if the firewall ever opens 445 elsewhere by accident.
               100.64.0.0/10 is the CGNAT range Tailscale assigns from.
+              192.168.240.0/24 is workstation's Waydroid container bridge —
+              the Android session reaches Samba over it for the local music
+              library (firewall opens :445 only on waydroid0, below). Inert
+              on aurora (no such bridge there).
             */
-            "hosts allow" = "100.64.0.0/10 127.0.0.1 ::1 fd7a:115c:a1e0::/48";
+            "hosts allow" = "100.64.0.0/10 192.168.240.0/24 127.0.0.1 ::1 fd7a:115c:a1e0::/48";
             "hosts deny" = "0.0.0.0/0";
 
             /*
