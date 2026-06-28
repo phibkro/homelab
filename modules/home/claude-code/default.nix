@@ -178,25 +178,7 @@ let
       surfaces only load when a project actually needs them.
     */
     allowManagedMcpServersOnly = true;
-    enableAllProjectMcpServers = false;
-    /*
-      Auto-trust these specific servers from project .mcp.json files —
-      no per-project trust prompt for the ones we always want. Project
-      .mcp.json declares the actual command + args; this just gates
-      which names are allowed to load.
-    */
-    enabledMcpjsonServers = [
-      "fetch"
-      "context7"
-      /*
-        tilth — code-navigation MCP. Allowed by name here; each project
-        opts in by declaring it in its .mcp.json:
-          { "mcpServers": { "tilth": { "command": "tilth", "args": ["--mcp"] } } }
-        Note: tilth uses --mcp as a flag on the root command, not a
-        subcommand (see upstream src/main.rs).
-      */
-      "tilth"
-    ];
+    enableAllProjectMcpServers = true;
 
     /*
       "user-invocable-only" hides the description from auto-loaded
@@ -293,46 +275,6 @@ let
       exec node /home/nori/.local/lib/node_modules/@earendil-works/pi-coding-agent/dist/cli.js "$@"
     '';
   };
-
-  claudeBox = pkgs.writeShellApplication {
-    name = "claude-box";
-    runtimeInputs = [
-      pagu-box
-      pkgs.claude-code
-    ];
-    text = ''
-      cd /srv/share/projects
-      exec pagu-box --profile=strict \
-        --ro-allow "$HOME/.config/git" \
-        --ro-allow "$HOME/.nix-profile" \
-        --ro-allow "$HOME/.local/state/nix" \
-        --ro-allow "$HOME/.deno" \
-        -- claude "$@"
-    '';
-  };
-
-  # opencode-box — same shape as claudeBox; bound state dir is
-  # ~/.config/opencode.
-  opencodeBox = pkgs.writeShellApplication {
-    name = "opencode-box";
-    runtimeInputs = [
-      pagu-box
-      pkgs.opencode
-    ];
-    text = ''
-      cd /srv/share/projects
-      mkdir -p "$HOME/.config/opencode"
-      exec pagu-box --profile=strict \
-        --allow "$HOME/.config/opencode" \
-        --ro-allow "$HOME/.config/git" \
-        --ro-allow "$HOME/.nix-profile" \
-        --ro-allow "$HOME/.local/state/nix" \
-        --env OPENROUTER_API_KEY \
-        --env GROQ_API_KEY \
-        --env OPENCODE_API_KEY \
-        -- opencode "$@"
-    '';
-  };
 in
 {
   home.packages = [
@@ -363,11 +305,6 @@ in
     pagu-box
     box
     piAgent
-  ]
-  # claude-box / opencode-box are bwrap-based; Linux-only.
-  ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [
-    claudeBox
-    opencodeBox
   ];
 
   /*
@@ -524,58 +461,6 @@ in
         };
       }
     ];
-
-  /*
-    Claude Code Remote Control — server-mode session so the Claude
-    mobile app + claude.ai/code can spawn fresh sessions against this
-    workstation. Outbound HTTPS only (no inbound ports); chat + tool
-    results flow through Anthropic's relay, not tailnet — the trade
-    for zero infra and off-tailnet access.
-
-    Runs INSIDE claude-box: a prompt-injected remote session inherits
-    the same blast-radius cap as a local one (no ~/.ssh, no sops keys,
-    no system mutate, no `git push`). Per-call permission policy comes
-    from settings.json `permissions.defaultMode = "auto"`.
-
-    Do NOT pass --dangerously-skip-permissions to `remote-control`: the
-    subcommand rejects that flag with "Unknown argument" and the unit
-    spins in a restart loop. The flag is interactive-`claude`-only.
-
-    First-time setup (manual one-shot, service won't start otherwise):
-      1. `claude` in a normal shell
-      2. `/login` + complete OAuth (API-key auth NOT supported here)
-      3. `systemctl --user enable --now claude-remote-control`
-    Inspect: `systemctl --user status claude-remote-control` /
-             `journalctl --user -fu claude-remote-control`. Session
-             name `workstation-*` appears in startup logs + claude.ai/code.
-
-    Linux-only: claudeBox is bwrap-based, systemd user services don't
-    exist on darwin. Mac equivalent (launchd) not wired yet.
-  */
-  systemd.user.services = lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
-    claude-remote-control = {
-      Unit = {
-        Description = "Claude Code Remote Control (multi-session bridge for phone/web)";
-        After = [ "network-online.target" ];
-        Wants = [ "network-online.target" ];
-      };
-      Service = {
-        Type = "exec";
-        WorkingDirectory = "/srv/share/projects";
-        ExecStart = "${claudeBox}/bin/claude-box remote-control --remote-control-session-name-prefix workstation --verbose";
-        Restart = "on-failure";
-        RestartSec = "10s";
-        /*
-          Cap restart loop so a chronic outage / bad creds don't burn CPU
-          in a tight retry spin — five tries in five minutes is enough to
-          surface the failure via `systemctl status`.
-        */
-        StartLimitIntervalSec = "300";
-        StartLimitBurst = "5";
-      };
-      Install.WantedBy = [ "default.target" ];
-    };
-  };
 
   /*
     Shared memory across /srv/share/projects/* namespaces. Claude Code
