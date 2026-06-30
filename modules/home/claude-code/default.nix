@@ -38,7 +38,34 @@ let
     inherit system;
     config.allowUnfree = true;
   };
-  claude-code-master = pkgsMaster.claude-code;
+
+  /*
+    nixpkgs-master lags upstream by ~1 day; 2.1.197 (Claude Sonnet 5
+    default, 1M context) shipped before nixpkgs picked it up. Override
+    version + src with the upstream manifest hashes so we don't wait.
+    Drop this block once nixpkgs-master carries ≥ 2.1.197 and revert
+    claude-code-master back to `pkgsMaster.claude-code`.
+  */
+  claude-code-upstream-version = "2.1.197";
+  claude-code-upstream-checksums = {
+    "x86_64-linux" = "f54e69cbc89b2da61a415700af7ff52a147e862517d4f1b0eecf768448cf7f83";
+    "aarch64-linux" = "fb48473c467c27615ac799a754f4ef0b68c363e4596cefbb59c3815d51a0cc8a";
+    "x86_64-darwin" = "5e8a57cc7a92377f0744fa4c79191cf93d4b26c79cb919b07a407511fed1be26";
+    "aarch64-darwin" = "8cc0c4d1e4eb1dca3b0cc92ab02ee3505de764e023f8c901761c167b72041fb8";
+  };
+  claude-code-upstream-platform-keys = {
+    "x86_64-linux" = "linux-x64";
+    "aarch64-linux" = "linux-arm64";
+    "x86_64-darwin" = "darwin-x64";
+    "aarch64-darwin" = "darwin-arm64";
+  };
+  claude-code-master = pkgsMaster.claude-code.overrideAttrs (_old: {
+    version = claude-code-upstream-version;
+    src = pkgsMaster.fetchurl {
+      url = "https://downloads.claude.ai/claude-code-releases/${claude-code-upstream-version}/${claude-code-upstream-platform-keys.${system}}/claude";
+      sha256 = claude-code-upstream-checksums.${system};
+    };
+  });
 
   /*
     tilth — MCP server for structural file navigation (tree-sitter

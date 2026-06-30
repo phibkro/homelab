@@ -215,6 +215,7 @@ in
       installed. Don't `home-manager switch` — use `just rebuild`.
     */
     pkgs.home-manager
+    pkgs.pulseaudio # pactl — PipeWire/PulseAudio sink/card/port inspection (e.g. fix jack desync after replug)
   ];
 
   # `deno install -g` drops shims here (e.g. the `pagu` command); put it on
