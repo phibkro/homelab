@@ -1,9 +1,9 @@
 ---
-name: ssot-scan
+name: refactor
 description: Scan a small, recent diff for Single-Source-of-Truth violations (duplicated literals, cross-file/cross-language duplicated facts, copy-pasted logic, stale comments) and Correct-by-Construction opportunities (runtime checks that could become structural guarantees), then recommend a fix using the generate > test > convention ladder. Use as the refactor step in red -> green -> refactor, right after a change goes green and before calling it done — scoped to what was just touched, not a whole-repo sweep. Single-pass, no subagents.
 ---
 
-# SSOT scan
+# Refactor: SSOT + Correct-by-Construction scan
 
 Reach for this right after tests go green, before moving on — the refactor step of
 red → green → refactor. Scoped to the diff you just produced, not a repo sweep (that's
