@@ -545,11 +545,59 @@
     echo "=== Tier 1 — config parse ==="
     out=$(hyprctl reload 2>&1) && [[ "$out" == "ok" ]] && echo "  ✓ reload" || { echo "  ✗ reload: $out"; fail=1; }
 
-    echo "=== Tier 2 — dispatcher smoke (paired toggles, net effect: zero) ==="
+    # `hyprctl dispatch` returning "ok" only proves the call parsed —
+    # it does NOT prove the right thing happened. The table-arg form
+    # `toggle_special({ name = "$tag" })` returned "ok" while silently
+    # toggling the bare unnamed special:special workspace instead of
+    # special:$tag (caught 2026-06-30, broke popup-term + all six tag
+    # binds for an unknown period). Tier 2 now reads back
+    # `.specialWorkspace.name` after each toggle so a future syntax/
+    # semantics regression fails loud instead of green-stubbing.
+    get_special() {
+      hyprctl monitors -j | nix shell nixpkgs#jq -c jq -r '.[] | select(.focused) | .specialWorkspace.name'
+    }
+
+    # NOTE: this list + Tier 3's `1 2 3 4 5 6` are hand-typed a fifth/
+    # sixth copy of the tag list that home.nix's `layerTags` now
+    # generates hyprland.lua + the layer-* scripts from (2026-07-01
+    # dedup pass). Left as a deliberate, named exception here rather
+    # than silently unfixed: wiring this test to the real source would
+    # mean promoting layerTags from a private home.nix `let` value to
+    # an actual exposed option so `just` could `nix eval` it — real
+    # cost for a gap that fails loud (a wrong/missing tag here is a
+    # visible test failure), not the silent-drift class of bug the
+    # generate rung exists to prevent elsewhere.
+    echo "=== Tier 2 — dispatcher correctness (paired toggles, net effect: zero) ==="
     for tag in browser term music notes comms files; do
-      check "toggle special:$tag (on)"  "hl.dsp.workspace.toggle_special({ name = \"$tag\" })"
-      check "toggle special:$tag (off)" "hl.dsp.workspace.toggle_special({ name = \"$tag\" })"
+      check "toggle special:$tag (on)" "hl.dsp.workspace.toggle_special(\"$tag\")"
+      shown=$(get_special)
+      [[ "$shown" == "special:$tag" ]] \
+        && echo "  ✓ special:$tag actually visible" \
+        || { echo "  ✗ special:$tag NOT visible after toggle — got: '$shown'"; fail=1; }
+
+      check "toggle special:$tag (off)" "hl.dsp.workspace.toggle_special(\"$tag\")"
+      shown=$(get_special)
+      [[ -z "$shown" ]] \
+        && echo "  ✓ special:$tag hidden again" \
+        || { echo "  ✗ special:$tag still shown after off-toggle — got: '$shown'"; fail=1; }
     done
+
+    echo "=== Tier 2b — layer-cycle correctness (wraps through all 6 tags) ==="
+    shown=$(get_special)
+    [[ -n "$shown" ]] && hyprctl dispatch "hl.dsp.workspace.toggle_special(\"''${shown#special:}\")" >/dev/null
+    for exp in browser term music notes comms files; do
+      layer-cycle next >/dev/null
+      shown=$(get_special)
+      [[ "$shown" == "special:$exp" ]] \
+        && echo "  ✓ cycle next -> $exp" \
+        || { echo "  ✗ cycle next expected special:$exp got '$shown'"; fail=1; }
+    done
+    layer-cycle next >/dev/null
+    shown=$(get_special)
+    [[ "$shown" == "special:browser" ]] \
+      && echo "  ✓ cycle wraps back to browser" \
+      || { echo "  ✗ wrap failed — got '$shown'"; fail=1; }
+    hyprctl dispatch "hl.dsp.workspace.toggle_special(\"browser\")" >/dev/null  # cleanup: hide
 
     echo "=== Tier 3 — bind registry introspection ==="
     # Pivoted away from live keypress synthesis after research:
@@ -582,11 +630,22 @@
         fail=1
       fi
     }
+    # Tags (layers) are the bare-SUPER surface (higher-frequency);
+    # workspaces are SUPER+CTRL — not SUPER+ALT, since ALT already means
+    # "window switching" in this config (ALT+TAB / SUPER+TAB below).
+    # Modmask bits: SHIFT=1, CTRL=4, ALT=8, LOGO/SUPER=64.
+    # SUPER+CTRL=68, SUPER+CTRL+SHIFT=69. Settled 2026-07-01.
     for tag_n in 1 2 3 4 5 6; do
-      check_bind "SUPER+ALT+$tag_n (toggle tag)"        72 "$tag_n"
-      check_bind "SUPER+ALT+SHIFT+$tag_n (move to tag)" 73 "$tag_n"
+      check_bind "SUPER+$tag_n (toggle tag)"        64 "$tag_n"
+      check_bind "SUPER+SHIFT+$tag_n (move to tag)" 65 "$tag_n"
+    done
+    for ws_n in 1 2 3 4 5 6 7 8 9; do
+      check_bind "SUPER+CTRL+$ws_n (switch workspace)"        68 "$ws_n"
+      check_bind "SUPER+CTRL+SHIFT+$ws_n (move to workspace)" 69 "$ws_n"
     done
     check_bind "SUPER+RETURN (popup-term)" 64 "RETURN"
+    check_bind "SUPER+ALT+TAB (cycle next)" 72 "TAB"
+    check_bind "SUPER+ALT+SHIFT+TAB (cycle prev)" 73 "TAB"
 
     echo
     if [[ "$fail" -eq 0 ]]; then

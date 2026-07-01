@@ -156,7 +156,277 @@ let
     if ! hyprctl clients | grep -q "com.mitchellh.ghostty.scratch"; then
       hyprctl dispatch 'hl.dsp.exec_cmd("ghostty --class=com.mitchellh.ghostty.scratch", { workspace = "special:term silent" })'
     fi
-    hyprctl dispatch 'hl.dsp.workspace.toggle_special({ name = "term" })'
+    hyprctl dispatch 'hl.dsp.workspace.toggle_special("term")'
+  '';
+
+  /*
+    layerTags — the SOLE source of the six special-workspace "tag"
+    names. hyprland.lua's `local tags = {...}` table is generated from
+    this list (via pkgs.replaceVars, see xdg.configFile below) rather
+    than hand-typed a second time; the bash scripts below interpolate
+    it directly since they're already Nix strings. Previously this
+    list was duplicated by hand in both places — caught during a
+    2026-07-01 code-smell pass alongside the repeated jq query and
+    notify-send calls below.
+  */
+  layerTags = [
+    {
+      key = "1";
+      name = "browser";
+    }
+    {
+      key = "2";
+      name = "term";
+    } # shares overlay with popup-term
+    {
+      key = "3";
+      name = "music";
+    }
+    {
+      key = "4";
+      name = "notes";
+    }
+    {
+      key = "5";
+      name = "comms";
+    }
+    {
+      key = "6";
+      name = "files";
+    }
+  ];
+
+  /*
+    Generated FROM layerTags, fed into hyprland.lua's `local tags =
+    {...}` table via pkgs.replaceVars (see xdg.configFile below) —
+    the hand-typed column alignment the old duplicate copy had is
+    gone, but there's exactly one place that knows the tag list now.
+  */
+  layerTagsLua = lib.concatMapStringsSep "\n    " (
+    t: "{ key = \"${t.key}\", name = \"${t.name}\" },"
+  ) layerTags;
+
+  /*
+    spacerClass — the SUPER+G glass-spacer's GTK application id.
+    Single source for both the spawn command (plain) and the
+    spacer-glass window_rule match (regex-escaped) in hyprland.lua,
+    fed in via pkgs.replaceVars. Previously typed twice, with two
+    different (and easy to desync) escapings.
+  */
+  spacerClass = "com.mitchellh.ghostty.spacer";
+  spacerClassEscaped = lib.replaceStrings [ "." ] [ "\\\\." ] spacerClass;
+
+  /*
+    currentLayer — QUERY only (CQS): prints the bare name of the
+    currently-shown special-workspace tag on the focused monitor, or
+    an empty string if none is shown. Was three independent
+    copy-pasted `hyprctl monitors -j | jq ...` pipelines (layer-cycle,
+    layer-toggle, layer-autohide); extracted so a future Hyprland JSON
+    schema change only needs fixing in one place.
+  */
+  currentLayer = pkgs.writeShellScriptBin "current-layer" ''
+    set -euo pipefail
+    hyprctl monitors -j \
+      | ${pkgs.jq}/bin/jq -r '.[] | select(.focused) | .specialWorkspace.name' \
+      | sed 's/^special://'
+  '';
+
+  /*
+    layer-announce — COMMAND only (CQS): the mako layer-osd popup
+    (capitalized name). Was copy-pasted in layer-cycle and layer-toggle.
+  */
+  layerAnnounce = pkgs.writeShellScriptBin "layer-announce" ''
+    set -euo pipefail
+    name="$1"
+    ${pkgs.libnotify}/bin/notify-send -a layer-osd "''${name^}"
+  '';
+
+  /*
+    layer-cycle — SUPER+ALT+TAB / SUPER+ALT+SHIFT+TAB step through the
+    six special-workspace "tags" (browser/term/music/notes/comms/files)
+    in order, wrapping. Reads the focused monitor's current special
+    workspace via `current-layer` and dispatches a direct `hl.dsp.focus`
+    jump to the next/prev tag — NOT toggle_special, since cycling must
+    always land on a *different* tag and a toggle could instead hide
+    it if Hyprland ever treats same-name re-toggle specially.
+  */
+  layerCycle = pkgs.writeShellScriptBin "layer-cycle" ''
+    set -euo pipefail
+    tags=(${lib.concatMapStringsSep " " (t: t.name) layerTags})
+    n=''${#tags[@]}
+
+    current="$(current-layer)"
+
+    idx=-1
+    for i in "''${!tags[@]}"; do
+      if [ "''${tags[$i]}" = "$current" ]; then
+        idx=$i
+        break
+      fi
+    done
+
+    case "''${1:-next}" in
+      next) next_idx=$(( (idx + 1) % n )) ;;
+      prev)
+        if [ "$idx" -eq -1 ]; then
+          next_idx=$(( n - 1 ))
+        else
+          next_idx=$(( (idx - 1 + n) % n ))
+        fi
+        ;;
+      *) echo "usage: layer-cycle [next|prev]" >&2; exit 1 ;;
+    esac
+
+    hyprctl dispatch "hl.dsp.focus({ workspace = \"special:''${tags[$next_idx]}\" })"
+    layer-announce "''${tags[$next_idx]}"
+  '';
+
+  /*
+    layer-toggle — the tags loop's SUPER+N bind calls this instead of
+    dispatching toggle_special directly, so showing a tag also
+    announces it (mako's app-name=layer-osd criteria, modules/home/
+    desktop/mako.nix). Only announces on SHOW, not on hide — checks
+    whether the tag actually ended up visible after the toggle, since
+    toggle_special() can go either direction depending on prior state.
+  */
+  layerToggle = pkgs.writeShellScriptBin "layer-toggle" ''
+    set -euo pipefail
+    name="$1"
+
+    hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$name\")" >/dev/null
+    shown="$(current-layer)"
+    if [ "$shown" = "$name" ]; then
+      layer-announce "$name"
+    fi
+  '';
+
+  /*
+    layer-autohide — daemon, started once at hyprland.start. A shown
+    special-workspace tag is an overlay on top of whatever regular
+    workspace is underneath; Hyprland doesn't auto-dismiss it when you
+    switch away (verified empirically 2026-07-01: `activespecial`
+    stays set after a `workspace>>` event). This closes that gap by
+    watching the live IPC event stream (.socket2.sock) for `workspace>>`
+    lines specifically — NOT `activewindow>>`, which also fires for
+    focus changes *within* the still-shown tag, and NOT `activespecial>>`,
+    which fires for tag-to-tag switches the operator chose on purpose.
+    `workspace>>` only fires on a *regular*-workspace change, which is
+    exactly "focused something on a lower layer".
+  */
+  layerAutohide = pkgs.writeShellScriptBin "layer-autohide" ''
+    set -euo pipefail
+    socat=${pkgs.socat}/bin/socat
+    sock="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
+
+    "$socat" -u "UNIX-CONNECT:$sock" - | while IFS= read -r line; do
+      case "$line" in
+        workspace\>\>*)
+          shown="$(current-layer)"
+          if [ -n "$shown" ]; then
+            hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$shown\")" >/dev/null
+          fi
+          ;;
+      esac
+    done
+  '';
+
+  /*
+    tile-ratio — SUPER+R fuzzel-picks a target split ratio for the
+    focused window. Two input modes:
+      - one of the listed presets -> ABSOLUTE target, a fraction of
+        monitor width (always lands at the same spot regardless of
+        starting size)
+      - anything else you type -> RELATIVE formula, a multiplier on
+        the CURRENT size ("2" -> current*2, "1/2" -> current*0.5)
+    `splitratio` (dwindle) is relative-delta-only — no "set to exact
+    ratio" mode exists (confirmed live 2026-07-01: `splitratio exact
+    0.33` errors `failed to parse "exact" as a delta`). So both modes
+    resolve to a target ratio first, then compute delta-from-current
+    and apply it. Exact for the common case (a top-level 2-window
+    split filling the screen); an approximation for deeper nested
+    splits, since dwindle ratios are relative to a window's immediate
+    split-sibling, not always the whole monitor — the second snap_once
+    pass corrects most of that residual error empirically rather than
+    trying to model the split tree.
+  */
+  tileRatio = pkgs.writeShellScriptBin "tile-ratio" ''
+        set -euo pipefail
+        fuzzel=${pkgs.fuzzel}/bin/fuzzel
+        jq=${pkgs.jq}/bin/jq
+        presets="1/2
+    1/3
+    2/3
+    1/4
+    3/4
+    1/5
+    2/5"
+
+        choice="$(printf '%s\n' "$presets" | "$fuzzel" --dmenu --prompt "ratio (pick=absolute, type=relative xN): ")"
+        [ -z "$choice" ] && exit 0
+
+        # "N" or "N/M" -> decimal.
+        parse_value() {
+          case "$1" in
+            */*) awk -F/ "{ print \$1 / \$2 }" <<< "$1" ;;
+            *)   echo "$1" ;;
+          esac
+        }
+
+        is_preset=false
+        while IFS= read -r p; do
+          [ "$p" = "$choice" ] && is_preset=true
+        done <<< "$presets"
+
+        mon_width=$(hyprctl monitors -j | "$jq" -r '.[] | select(.focused) | .width')
+        cur_width=$(hyprctl activewindow -j | "$jq" -r '.size[0]')
+        usable=$(awk "BEGIN { print $mon_width - 16 }")  # gaps_out=8, both sides
+
+        if [ "$is_preset" = true ]; then
+          target_ratio="$(parse_value "$choice")"
+        else
+          mult="$(parse_value "$choice")"
+          target_ratio=$(awk "BEGIN { print ($cur_width * $mult) / $usable }")
+        fi
+        # Clamp — an aggressive relative multiplier (e.g. "3") could ask
+        # for more than the screen has; splitratio on an out-of-range
+        # target just pins the other window to nothing, so keep both
+        # sides usable.
+        target_ratio=$(awk "BEGIN { t = $target_ratio; if (t < 0.05) t = 0.05; if (t > 0.95) t = 0.95; print t }")
+
+        # A fixed monitor-width-based delta formula only works for a
+        # top-level 2-window split. For a deeply nested window (3+ windows
+        # on the workspace) `splitratio`'s real effect is proportional to
+        # the LOCAL sibling-pair's extent, not the whole monitor — verified
+        # live 2026-07-01: a nested window stuck at 1618px (stable across
+        # 3 repeats, so NOT drifting — but undershooting a 1712px target,
+        # because the fixed-formula loop ran out of its iteration cap
+        # before correcting for the smaller real scale). Fix: calibrate
+        # empirically. Apply one small known probe delta, MEASURE the
+        # actual pixel effect (don't assume it), derive this window's real
+        # px-per-delta-unit for whatever split context it's actually in,
+        # then compute the exact delta needed from that measured slope.
+        # Works the same regardless of nesting depth since nothing here
+        # assumes a denominator — it's measured fresh every time.
+        target_width=$(awk "BEGIN { print $target_ratio * $usable }")
+
+        w_before=$(hyprctl activewindow -j | "$jq" -r '.size[0]')
+        probe=0.2
+        hyprctl dispatch "hl.dsp.layout(\"splitratio $probe\")" >/dev/null
+        sleep 0.05
+        w_after=$(hyprctl activewindow -j | "$jq" -r '.size[0]')
+        slope=$(awk "BEGIN { d = $w_after - $w_before; print (d == 0) ? 1 : d / $probe }")
+
+        i=0
+        while [ "$i" -lt 5 ]; do
+          cur_width=$(hyprctl activewindow -j | "$jq" -r '.size[0]')
+          diff=$(awk "BEGIN { print $target_width - $cur_width }")
+          close_enough=$(awk "BEGIN { d = $diff; if (d < 0) d = -d; print (d < 3) ? 1 : 0 }")
+          [ "$close_enough" = "1" ] && break
+          delta=$(awk "BEGIN { print $diff / $slope }")
+          hyprctl dispatch "hl.dsp.layout(\"splitratio $delta\")" >/dev/null
+          sleep 0.05
+          i=$((i + 1))
+        done
   '';
 in
 /**
@@ -183,6 +453,12 @@ in
     cheatsheet
     cmdMenu # SUPER+ESCAPE command menu (lock / night mode / reboot / power off)
     popupTerm # SUPER+RETURN togglable terminal (lazy-spawns its own ghostty)
+    currentLayer # query: bare name of the shown special-workspace tag, or empty
+    layerAnnounce # command: mako layer-osd popup for a tag name
+    layerCycle # SUPER+ALT+TAB / SUPER+ALT+SHIFT+TAB — step through special-workspace tags
+    layerToggle # SUPER+N tag toggle, announces via mako when shown
+    layerAutohide # daemon: hides the shown tag when focus moves to a regular workspace
+    tileRatio # SUPER+R — fuzzel-pick a split ratio for the focused window
     pkgs.gh # GitHub CLI — PR ops, gh auth, gh api …
     pkgs.nvtopPackages.nvidia # GPU monitor (NVIDIA-only build, smaller closure)
     pkgs.ncdu # interactive disk usage browser
@@ -215,6 +491,7 @@ in
       installed. Don't `home-manager switch` — use `just rebuild`.
     */
     pkgs.home-manager
+    pkgs.pulseaudio # pactl — PipeWire/PulseAudio sink/card/port inspection (e.g. fix jack desync after replug)
   ];
 
   # `deno install -g` drops shims here (e.g. the `pagu` command); put it on
@@ -293,7 +570,17 @@ in
     configType = "lua";
   };
 
-  # Hyprland reads this .lua exclusively (configType=lua above).
-  # Rollback = revert + rebuild; no runtime `rm + reload` shortcut.
-  xdg.configFile."hypr/hyprland.lua".source = ./hyprland.lua;
+  /*
+    Hyprland reads this .lua exclusively (configType=lua above).
+    Rollback = revert + rebuild; no runtime `rm + reload` shortcut.
+    Templated via replaceVars rather than a plain file copy — the tag
+    list and the spacer class name are generated in from the single
+    Nix-side sources above (layerTagsLua, spacerClass/Escaped) instead
+    of being hand-typed a second time directly in the .lua file. The
+    file is still a plain, directly-editable Lua file otherwise — only
+    the `@name@` markers are special, everything else edits normally.
+  */
+  xdg.configFile."hypr/hyprland.lua".source = pkgs.replaceVars ./hyprland.lua {
+    inherit layerTagsLua spacerClass spacerClassEscaped;
+  };
 }
