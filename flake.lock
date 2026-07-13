@@ -110,11 +110,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1783943169,
-        "narHash": "sha256-FZC4WkQMA0a0NotOC5tNu7jSy7Ao+YV4b7k2/lafWg8=",
+        "lastModified": 1783959424,
+        "narHash": "sha256-zgphuyOKxnmRQWL/hcKBojqEbXL7YE4xFcwY8t3CwcY=",
         "owner": "phibkro",
         "repo": "claudex",
-        "rev": "9c38d1447a84a727f674ddae982869b9448eba61",
+        "rev": "0cef97c8993d1f018ef9a4e07d3d10d78071f4c8",
         "type": "github"
       },
       "original": {
