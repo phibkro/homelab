@@ -69,6 +69,7 @@
     # VLC — codec-agnostic "does this file actually play" check outside
     # the editor (HEVC/H.265 phone footage included).
     pkgs.vlc
+    pkgs.mpv
 
     /**
       resolve-remux — batch-transcode camera clips (HEVC/H.264, often
