@@ -123,6 +123,21 @@ let
     '';
   };
 
+  modelAudit = pkgs.writeShellApplication {
+    name = "claudex-model-audit";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.gnused
+      pkgs.systemd
+    ];
+    text = ''
+      since="''${1:-15 minutes ago}"
+      journalctl --user -u claudex.service --since "$since" --no-pager \
+        | sed -nE 's/.*auth=codex-[^ ]+ provider=[^ ]+ model=([^ ]+).*/auth=codex-oauth model=\1/p' \
+        | sort -u
+    '';
+  };
+
   launcher = pkgs.writeShellApplication {
     name = "claudex";
     runtimeInputs = [
@@ -150,7 +165,11 @@ let
       fi
 
       key=$(tr -d '\n' < "''${XDG_STATE_HOME:-$HOME/.local/state}/claudex/api-key")
-      model="''${CLAUDEX_MODEL:-gpt-5.6-sol}"
+      opus="''${CLAUDEX_OPUS_MODEL:-gpt-5.6-sol}"
+      sonnet="''${CLAUDEX_SONNET_MODEL:-gpt-5.6-terra}"
+      haiku="''${CLAUDEX_HAIKU_MODEL:-gpt-5.6-luna}"
+      model="''${CLAUDEX_MODEL:-$opus}"
+      capabilities="effort,xhigh_effort,max_effort,thinking,adaptive_thinking,interleaved_thinking"
 
       # The gateway token must win over any API credential inherited from a
       # shell used for ordinary Claude API work.
@@ -158,10 +177,22 @@ let
       export ANTHROPIC_BASE_URL=${baseUrl}
       export ANTHROPIC_AUTH_TOKEN="$key"
       export ANTHROPIC_MODEL="$model"
-      export ANTHROPIC_DEFAULT_OPUS_MODEL="$model"
-      export ANTHROPIC_DEFAULT_SONNET_MODEL="$model"
-      export ANTHROPIC_DEFAULT_HAIKU_MODEL="$model"
-      export ANTHROPIC_SMALL_FAST_MODEL="$model"
+
+      export ANTHROPIC_DEFAULT_OPUS_MODEL="$opus"
+      export ANTHROPIC_DEFAULT_OPUS_MODEL_NAME="GPT-5.6 Sol"
+      export ANTHROPIC_DEFAULT_OPUS_MODEL_DESCRIPTION="Frontier OpenAI agentic coding model (Opus tier)"
+      export ANTHROPIC_DEFAULT_OPUS_MODEL_SUPPORTED_CAPABILITIES="$capabilities"
+
+      export ANTHROPIC_DEFAULT_SONNET_MODEL="$sonnet"
+      export ANTHROPIC_DEFAULT_SONNET_MODEL_NAME="GPT-5.6 Terra"
+      export ANTHROPIC_DEFAULT_SONNET_MODEL_DESCRIPTION="Balanced OpenAI agentic coding model (Sonnet tier)"
+      export ANTHROPIC_DEFAULT_SONNET_MODEL_SUPPORTED_CAPABILITIES="$capabilities"
+
+      export ANTHROPIC_DEFAULT_HAIKU_MODEL="$haiku"
+      export ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME="GPT-5.6 Luna"
+      export ANTHROPIC_DEFAULT_HAIKU_MODEL_DESCRIPTION="Fast OpenAI agentic coding model (Haiku tier)"
+      export ANTHROPIC_DEFAULT_HAIKU_MODEL_SUPPORTED_CAPABILITIES="$capabilities"
+      export ANTHROPIC_SMALL_FAST_MODEL="$haiku"
 
       exec claude "$@"
     '';
@@ -174,8 +205,11 @@ in
       init
       login
       status
+      modelAudit
       launcher
     ];
+
+    home.file.".claude/CLAUDEX_ACCEPTANCE.md".source = ./CLAUDEX_ACCEPTANCE.md;
 
     systemd.user.services.claudex = {
       Unit = {
