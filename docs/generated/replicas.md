@@ -6,10 +6,11 @@ regenerate: nix build .#docs-replicas
 
 # `nori.replicas` — generated reference
 
-Two-section artifact: module overview (RFC 145 doc-comments
-from the concern's `default.nix`) + per-option schema
-(`nixosOptionsDoc` over the eval'd options tree). The
-concern file's path is shown in the per-option "Declared by"
+Module overview comes from RFC 145 doc-comments in the concern's
+`default.nix`; the option schema comes from `nixosOptionsDoc`
+over the evaluated options tree. Concern-specific evaluated facts
+may follow as an additional generated section. The concern file's
+path is shown in the per-option "Declared by"
 lines below.
 
 

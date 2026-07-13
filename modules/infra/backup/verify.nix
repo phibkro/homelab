@@ -9,14 +9,14 @@ let
   /**
     Drill repo tiers — split so failures are isolated and cadence
     matches cost. The split surfaced 2026-06-07 after one user-data
-    red mask 17 GREEN service drills in the alert payload.
+    red mask the successful service drills in the alert payload.
 
     Workstation-only by data ownership — same gate as the sibling
     backup/restic.nix. Other hosts importing the bundle (pi, aurora)
     don't have the source data being restored here OR the
     restic-password sops secret this script consumes.
 
-    - `serviceRepos`  — the 17 service-state repos. Cheap (~few min
+    - `serviceRepos`  — active service-state repos. Cheap (~few min
                         total). Monthly drill cadence.
     - `userDataRepos` — user-data tier (irreplaceable personal state).
                         Heavy (~99 GiB, 30+ min). Quarterly cadence.
@@ -31,6 +31,7 @@ let
   activeRepos = lib.attrNames (lib.filterAttrs (_: cfg: cfg.include != null) config.nori.backups);
   userDataRepos = lib.filter (n: n == "user-data") activeRepos;
   serviceRepos = lib.filter (n: n != "user-data" && n != "media-irreplaceable") activeRepos;
+  serviceRepoCount = lib.length serviceRepos;
 
   /*
     Restore from the workstation-local MP510. The OneTouch formerly mounted
@@ -39,6 +40,22 @@ let
   */
   drillRepositoryRoot = "/mnt/backup-local";
   drillMountUnit = "mnt-backup\\x2dlocal.mount";
+
+  # Restore verification is maintenance work: contain its memory and yield
+  # CPU/disk to the desktop, SSH, and production services.
+  drillServiceConfig = timeout: {
+    Type = "oneshot";
+    User = "root";
+    Nice = 15;
+    CPUSchedulingPolicy = "batch";
+    IOSchedulingClass = "idle";
+    CPUWeight = 10;
+    IOWeight = 10;
+    MemoryHigh = "4G";
+    MemoryMax = "8G";
+    OOMPolicy = "stop";
+    TimeoutStartSec = timeout;
+  };
 in
 lib.mkIf (config.networking.hostName == "workstation") (
   let
@@ -114,7 +131,7 @@ lib.mkIf (config.networking.hostName == "workstation") (
       `restic check` confirms) but actually *restorable*. Three units
       by tier; cadence matches blast-radius and runtime cost:
 
-        restore-drill-services   — 17 service repos. Monthly. ~5 min.
+        restore-drill-services   — active service repos. Monthly.
                                    Cheap signal, runs often.
         restore-drill-user-data  — user-data tier. Quarterly. ~30 min.
                                    Irreplaceable personal state.
@@ -134,17 +151,13 @@ lib.mkIf (config.networking.hostName == "workstation") (
     ];
 
     systemd.services.restore-drill-services = {
-      description = "Monthly restore drill — service-state tier";
+      description = "Monthly restore drill — ${toString serviceRepoCount} service-state repositories";
       after = [ drillMountUnit ];
       requires = [ drillMountUnit ];
       unitConfig.OnFailure = [ "notify@restore-drill-services.service" ];
-      serviceConfig = {
-        Type = "oneshot";
-        User = "root";
-        # Service-state restores are quick (largest is jellyfin at ~1 GiB).
-        # Allow generous headroom for restic warm-cache + sample sha256.
-        TimeoutStartSec = "1h";
-      };
+      # Service-state restores are quick (largest is jellyfin at ~1 GiB).
+      # Allow generous headroom for restic warm-cache + sample sha256.
+      serviceConfig = drillServiceConfig "1h";
       environment.RESTIC_PASSWORD_FILE = config.sops.secrets.restic-password.path;
       script = drillScript serviceRepos;
     };
@@ -157,6 +170,11 @@ lib.mkIf (config.networking.hostName == "workstation") (
         # so monthly cadence gives faster signal on backup-side regression.
         OnCalendar = "Sun *-*-01..07 04:00:00";
         Persistent = true;
+        # Avoid a thundering start at calendar/boot/deployment boundaries.
+        # FixedRandomDelay keeps the chosen offset stable across restarts.
+        RandomizedDelaySec = "6h";
+        FixedRandomDelay = true;
+        AccuracySec = "15min";
       };
     };
 
@@ -165,12 +183,8 @@ lib.mkIf (config.networking.hostName == "workstation") (
       after = [ drillMountUnit ];
       requires = [ drillMountUnit ];
       unitConfig.OnFailure = [ "notify@restore-drill-user-data.service" ];
-      serviceConfig = {
-        Type = "oneshot";
-        User = "root";
-        # user-data is ~99 GiB; allow 4h for the restore + sample verify.
-        TimeoutStartSec = "4h";
-      };
+      # user-data is ~99 GiB; allow 4h for the restore + sample verify.
+      serviceConfig = drillServiceConfig "4h";
       environment.RESTIC_PASSWORD_FILE = config.sops.secrets.restic-password.path;
       script = drillScript userDataRepos;
     };
@@ -186,6 +200,9 @@ lib.mkIf (config.networking.hostName == "workstation") (
         */
         OnCalendar = "Sun *-01,04,07,10-01..07 05:00:00";
         Persistent = true;
+        RandomizedDelaySec = "6h";
+        FixedRandomDelay = true;
+        AccuracySec = "15min";
       };
     };
 
@@ -199,11 +216,7 @@ lib.mkIf (config.networking.hostName == "workstation") (
       after = [ drillMountUnit ];
       requires = [ drillMountUnit ];
       unitConfig.OnFailure = [ "notify@restore-drill-all.service" ];
-      serviceConfig = {
-        Type = "oneshot";
-        User = "root";
-        TimeoutStartSec = "12h";
-      };
+      serviceConfig = drillServiceConfig "12h";
       environment.RESTIC_PASSWORD_FILE = config.sops.secrets.restic-password.path;
       script = drillScript activeRepos;
     };

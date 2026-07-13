@@ -107,8 +107,8 @@ let
       '';
 
   /*
-    Minimal 2-section generator (module overview + per-option schema)
-    used by single-schema `nori.<X>` docs. The richer multi-section
+    Minimal generator (module overview + per-option schema + optional
+    evaluated appendix) used by single-schema `nori.<X>` docs. The richer multi-section
     generators (docs-lan-route, docs-topology, docs-capabilities)
     stay inline because their structure varies enough that a helper
     would over-fit.
@@ -117,6 +117,7 @@ let
       name        — `nori.<name>` registry to render
       moduleFile  — path to default.nix of the concern (for nixdoc)
       category    — kebab-case section anchor
+      appendix    — optional generated CommonMark appended after the schema
 
     Output: docs-${name} derivation; ./result is a CommonMark file
             matching docs/generated/${name}.md.
@@ -126,6 +127,7 @@ let
       name,
       moduleFile,
       category,
+      appendix ? "",
     }:
     let
       isOpt =
@@ -166,10 +168,11 @@ let
 
         # \`nori.${name}\` — generated reference
 
-        Two-section artifact: module overview (RFC 145 doc-comments
-        from the concern's \`default.nix\`) + per-option schema
-        (\`nixosOptionsDoc\` over the eval'd options tree). The
-        concern file's path is shown in the per-option "Declared by"
+        Module overview comes from RFC 145 doc-comments in the concern's
+        \`default.nix\`; the option schema comes from \`nixosOptionsDoc\`
+        over the evaluated options tree. Concern-specific evaluated facts
+        may follow as an additional generated section. The concern file's
+        path is shown in the per-option "Declared by"
         lines below.
 
         HEADER
@@ -185,6 +188,7 @@ let
             -e 's|\[<nixpkgs/\([^]]*\)>\](https://github\.com/[^)]*)|`\1`|g' \
             -e 's|\[\([^]]*\)\](file://[^)]*)|`\1`|g' \
             ${optionsDoc.optionsCommonMark} >> $out
+        printf '%s' ${lib.escapeShellArg appendix} >> $out
       '';
 in
 {
