@@ -47,6 +47,14 @@
   */
 
   /*
+    Root is ext4 from sd-image-aarch64; Pi has no ZFS root pool. Keep root
+    import disabled explicitly rather than inheriting NixOS's legacy `true`
+    default, which can import an unintended pool and now emits a data-loss
+    warning during every evaluation.
+  */
+  boot.zfs.forceImportRoot = false;
+
+  /*
     No swap on flash. zramSwap (compressed in-RAM) is the right
     alternative if memory pressure shows up; do NOT enable physical
     swap on USB flash — the wear gradient is steep.
