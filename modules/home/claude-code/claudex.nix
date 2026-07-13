@@ -194,7 +194,41 @@ let
       export ANTHROPIC_DEFAULT_HAIKU_MODEL_SUPPORTED_CAPABILITIES="$capabilities"
       export ANTHROPIC_SMALL_FAST_MODEL="$haiku"
 
-      exec claude "$@"
+      # Claude Code disables deferred ToolSearch for custom gateways. The
+      # Codex translator does not carry Anthropic tool_reference blocks, so
+      # expose the built-ins eagerly for ordinary sessions instead. `default`
+      # still follows the deferred set here; the explicit list is load-bearing.
+      # Keep CLI maintenance subcommands and explicit user overrides untouched.
+      eager_tools="Bash,Read,Edit,Write,Glob,Grep,Agent,Task,WebFetch,WebSearch,Skill,AskUserQuestion,NotebookEdit,TodoWrite,EnterPlanMode,ExitPlanMode,TaskCreate,TaskGet,TaskUpdate,TaskList"
+      case "''${1:-}" in
+        agents|auth|auto-mode|doctor|install|mcp|migrate|plugin|remote-control|setup-token|skill|telemetry|update|ultrareview|upgrade)
+          exec claude "$@"
+          ;;
+      esac
+      for arg in "$@"; do
+        case "$arg" in
+          --tools|--tools=*) exec claude "$@" ;;
+        esac
+      done
+      exec claude "$@" --tools "$eager_tools"
+    '';
+  };
+
+  acceptance = pkgs.writeShellApplication {
+    name = "claudex-acceptance";
+    runtimeInputs = [
+      launcher
+      pkgs.gawk
+    ];
+    text = ''
+      prompt=$(awk '
+        BEGIN { section = 0 }
+        /^## Prompt$/ { section = 1; next }
+        section && /^```text$/ { capture = 1; next }
+        capture && /^```$/ { exit }
+        capture { print }
+      ' ${./CLAUDEX_ACCEPTANCE.md})
+      exec claudex --print "$prompt"
     '';
   };
 in
@@ -207,6 +241,7 @@ in
       status
       modelAudit
       launcher
+      acceptance
     ];
 
     home.file.".claude/CLAUDEX_ACCEPTANCE.md".source = ./CLAUDEX_ACCEPTANCE.md;

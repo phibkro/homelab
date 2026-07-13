@@ -1,6 +1,12 @@
 # ClaudeX acceptance prompt
 
-Run this from a git repository with project MCP servers enabled. The test is deliberately read-only: do not approve any request to modify files or repository state.
+Run this from a git repository with project MCP servers enabled:
+
+```bash
+claudex-acceptance
+```
+
+The test is deliberately read-only: do not approve any request to modify files or repository state. The prompt is also included below for manual or adapted runs.
 
 After the session finishes, verify provider/model identity outside the model with:
 
@@ -10,7 +16,7 @@ claudex-model-audit "30 minutes ago"
 
 Expected model evidence when all three subagent aliases are exercised:
 
-```text
+```console
 auth=codex-oauth model=gpt-5.6-luna
 auth=codex-oauth model=gpt-5.6-sol
 auth=codex-oauth model=gpt-5.6-terra
