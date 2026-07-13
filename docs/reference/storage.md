@@ -113,12 +113,12 @@ Three-cadence ladder + the live test recipe.
 |---|---|---|
 | Weekly | `restic check` | Metadata-only integrity scan |
 | Monthly | `restic check --read-data-subset=10%` | Rolling sample; full repo covered ~every 10 months |
-| Monthly | `restore-drill-services.service` | 17 service repos restored from local MP510 `/mnt/backup-local` to `/var/restore-test/<svc>-<ts>/`, sha256-sample 20 files per repo. ~5 min wall |
+| Monthly | `restore-drill-services.service` | All active service-tier repos restored from local MP510 `/mnt/backup-local` to `/var/restore-test/<svc>-<ts>/`, sha256-sample 20 files per repo. ~5 min wall |
 | Quarterly | `restore-drill-user-data.service` | user-data tier restored from local MP510 (~99 GiB). ~30 min wall |
 | Manual | `restore-drill-all.service` | All repos incl. `media-irreplaceable`, restored from local MP510. Multi-hour |
 | Per-deploy | `just test-backups` | Runtime introspection: every unit's last snapshot ≤25h per target (see `docs/reference/runtime-tests.md`) |
 
-All failures alert via ntfy. The drill is the **real RTO measurement**, not the static check green light. Drill split into per-tier services 2026-06-07 so a user-data failure no longer masks 17 GREEN service-tier results.
+All failures alert via ntfy. The drill is the **real RTO measurement**, not the static check green light. Drill split into per-tier services 2026-06-07 so a user-data failure no longer masks the service-tier results.
 
 ## Backup intent abstraction (`nori.backups`)
 
