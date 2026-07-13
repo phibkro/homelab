@@ -100,6 +100,29 @@
         "type": "github"
       }
     },
+    "claudex": {
+      "inputs": {
+        "home-manager": [
+          "home-manager"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1783943169,
+        "narHash": "sha256-FZC4WkQMA0a0NotOC5tNu7jSy7Ao+YV4b7k2/lafWg8=",
+        "owner": "phibkro",
+        "repo": "claudex",
+        "rev": "9c38d1447a84a727f674ddae982869b9448eba61",
+        "type": "github"
+      },
+      "original": {
+        "owner": "phibkro",
+        "repo": "claudex",
+        "type": "github"
+      }
+    },
     "disko": {
       "inputs": {
         "nixpkgs": [
@@ -659,6 +682,7 @@
       "inputs": {
         "anthropics-skills": "anthropics-skills",
         "caveman": "caveman",
+        "claudex": "claudex",
         "disko": "disko",
         "flake-parts": "flake-parts",
         "hermes-agent": "hermes-agent",

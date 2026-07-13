@@ -174,6 +174,16 @@
     stacklit-src.flake = false;
 
     /*
+      ClaudeX — OpenAI Codex models behind Claude Code's harness. The
+      external flake owns the pinned proxy package, hardened user service,
+      model aliases, acceptance prompt, and audit commands. This repo only
+      enables its Home Manager module; runtime OAuth state remains mutable.
+    */
+    claudex.url = "github:phibkro/claudex";
+    claudex.inputs.nixpkgs.follows = "nixpkgs";
+    claudex.inputs.home-manager.follows = "home-manager";
+
+    /*
       pagu-box — cross-platform sandboxed launcher for any process.
       Pinned to the LOCAL checkout (path:) rather than github so the
       homelab picks up uncommitted operator edits without a push +

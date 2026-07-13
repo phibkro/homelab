@@ -306,7 +306,11 @@ let
   };
 in
 {
-  imports = [ ./claudex.nix ];
+  imports = [ inputs.claudex.homeManagerModules.default ];
+
+  # The public ClaudeX module is Linux/systemd-only today; keep the shared
+  # workstation+macbook Claude Code module importable on Darwin.
+  programs.claudex.enable = pkgs.stdenv.hostPlatform.isLinux;
 
   home.packages = [
     claude-code-master # Anthropic CLI; pulls Node closure (~300 MB). Overlaid from master — see let-binding.
