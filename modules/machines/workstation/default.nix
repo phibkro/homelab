@@ -219,11 +219,42 @@
     system slice, and a brief grace for terminating processes. Track
     the actual session footprint in process-exporter (ROADMAP #45) and
     tighten if normal heavy use stays well under.
+
+    SECOND CALIBRATION — the 2026-07-09 thrash-freeze: these caps alone
+    did NOT protect against it, because they bound RESIDENT memory only.
+    A concurrent agent fleet (7+ Claude Code sessions) reached ~39 GiB
+    working set; MemoryHigh throttled the slice by reclaiming into swap,
+    the 32 GiB swapfile (grown since 2026-06-08) absorbed everything, so
+    memory.current never crossed MemoryMax and NOTHING was killed —
+    instead swap filled to 47.6/47.6 GiB, PSI memory full-stall hit 22%,
+    and the desktop live-locked until a power-button shutdown. The two
+    additions close both halves of that gap:
+
+    MemorySwapMax = bounds the slice's SWAP separately (cgroup-v2
+                    memory.swap.max). When the slice has swapped 16 GiB,
+                    reclaim can no longer spill; resident then climbs to
+                    MemoryMax and the kernel kills INSIDE the slice —
+                    the same contained-kill story as before, restored.
+                    Worst-case slice footprint: 28 + 16 = 44 GiB, leaving
+                    system services (jellyfin swaps ~2 GiB) the rest.
+    oomd 50%      = the pressure backstop for the livelock case hard
+                    caps can miss: sustained memory-pressure ≥50% on the
+                    user slice kills the worst-offending cgroup before
+                    system-wide thrash (upstream mkDefault is 80% — the
+                    2026-07-09 event froze the desktop at ~22% system-wide
+                    full-stall, so 80% would never fire in practice).
+
+    If a legitimate workload trips these, the right response is fewer
+    concurrent agent sessions (or more RAM), not a bigger cap — the freeze
+    proved the marginal session is parked heap, not useful work.
   */
   systemd.services."user@".serviceConfig = {
     MemoryHigh = "24G";
     MemoryMax = "28G";
+    MemorySwapMax = "16G";
+    ManagedOOMMemoryPressureLimit = "50%";
   };
+  systemd.oomd.enableUserSlices = true;
 
   /*
     Station-side Gatus probes for non-HTTP services. HTTP services
