@@ -6,7 +6,7 @@ Switch pi's ntfy hub from `auth-default-access = read-write` (current) to `deny`
 
 Today any tailnet device can `POST https://alert.home.phibkro.org/<topic>` with arbitrary body and the operator's phone trusts the alert (because the topic on ntfy.sh side is one the operator subscribes to). Two compounding risks:
 
-1. **Pavilion runs agents in sandboxes** — claude-code, hermes worktrees. A compromised dependency in that scope can publish convincing-looking alerts ("RAID degraded — please run `<malicious command>` to recover"), conditioning the operator to act on spoofed instructions.
+1. **Pavilion runs agents in sandboxes** — Claude Code, Codex, and nixpkgs-agent worktrees. A compromised dependency in that scope can publish convincing-looking alerts ("RAID degraded — please run `<malicious command>` to recover"), conditioning the operator to act on spoofed instructions.
 2. **The local ntfy hub is on pi, on the tailnet** — the deny-by-default posture documented in NETWORK.md isn't load-bearing here; ntfy is the explicit exception.
 
 Today's two real publishers:

@@ -242,7 +242,7 @@ let
   /*
     `box` — homelab-wrapped pagu-box. Operator-specific policy lives
     here, not upstream: detects "strict + $PWD under the homelab repo"
-    and injects --pwd-ro so any sandboxed agent (hermes, pi, opencode)
+    and injects --pwd-ro so any sandboxed agent (pi, opencode, Claude)
     reads homelab config but can't edit it. Operator's own claude-code
     runs outside the sandbox and is unaffected.
   */

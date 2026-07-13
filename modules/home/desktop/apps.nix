@@ -117,6 +117,7 @@
     pkgs.discord
     pkgs.obsidian
     pkgs.zotero
+    pkgs.vscode
 
     # Archive-extraction backends — thunar-archive-plugin shells out to
     # these; without them on PATH, right-click → Extract silently no-ops.

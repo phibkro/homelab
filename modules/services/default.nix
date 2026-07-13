@@ -37,7 +37,6 @@ _: {
     ./filmder.nix
     ./glance.nix
     ./heim.nix
-    ./hermes.nix
     ./immich.nix
     ./jellyfin.nix
     ./komga.nix

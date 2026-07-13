@@ -163,8 +163,8 @@ let
       codename = "pavilion"; # hostname-equal — "pavilion" already evokes the polar/exploration theme
       hardware = "HP Pavilion g6 · AMD Athlon II · BIOS+GRUB · btrfs-rollback root (impermanence)";
       primaryJob = ''
-        Agent quarantine — hermes / nixpkgs-agent / sandboxed
-        claude work, headless. Planned weekly tertiary replica
+        Agent quarantine — nixpkgs-agent / sandboxed Claude and
+        Codex work, headless. Planned weekly tertiary replica
         of `/mnt/family/*` (P16).
       '';
     };

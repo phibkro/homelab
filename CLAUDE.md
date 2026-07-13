@@ -7,7 +7,7 @@ NixOS flake managing four NixOS hosts + a home-manager macbook:
 | **pi** | always-on appliance (aarch64) | HTTP entry plane (Caddy + Authelia + Blocky-authoritative), observability, alerting, Tailscale subnet+exit |
 | **aurora** | always-on family vault (x86_64) | `/mnt/family/*` irreplaceable data, family-tier service backends (vaultwarden, immich, calibre-web, komga, navidrome, …), OneTouch restic target |
 | **workstation** | sleep-friendly compute (x86_64) | Ollama, Jellyfin (NVENC), `*arr` stack + qBittorrent, `@downloads`, desktop. Cold replica of `/mnt/family/*` on MP510 |
-| **pavilion** | agent quarantine (x86_64) | hermes worktrees, weekly tertiary `/mnt/family/*` replica (planned) |
+| **pavilion** | agent quarantine (x86_64) | worktrees, weekly tertiary `/mnt/family/*` replica (planned) |
 | **macbook** | daily-driver laptop (intel x86_64) | standalone home-manager only — not under the flake's `nixosConfigurations` |
 
 The codebase splits along the PaaS lens: `modules/services/` holds **workloads** (vaultwarden, immich, jellyfin — what the operator USES); `modules/infra/` holds the **platform** (storage / networking / access / capabilities / observability / backup — HOW the system works). Universal infra (the platform layer + baseline OS bits) is imported by every host via `modules/machines/base/`. Three of the four NixOS hosts (pi, aurora, workstation) additionally import the workloads bundle (`modules/services/default.nix`); pavilion flat-imports just what it needs. Activation is per-service via `nori.services.<X>.enable`. See `docs/reference/module-authoring.md` for the convention.

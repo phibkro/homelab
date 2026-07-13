@@ -994,11 +994,9 @@ one of “http”, “https”
 Optional rewrite of the ` Host ` request header before
 forwarding to the upstream. By default Caddy forwards
 the original Host (the public ` <n>.nori.lan `), which
-most backends accept. Set this when the backend
-validates Host as a DNS-rebinding defence and rejects
-anything other than its bind address — Hermes’ dashboard
-is the canonical case: it binds to 127.0.0.1:9119 and
-rejects requests whose Host header isn’t a loopback name.
+most backends accept. Set this when a backend validates
+Host as a DNS-rebinding defence and only accepts the
+address on which it is bound.
 
 
 
@@ -1018,7 +1016,7 @@ null
 *Example:*
 
 ```nix
-"127.0.0.1:9119"
+"127.0.0.1:3000"
 ```
 
 *Declared by:*
@@ -1033,13 +1031,8 @@ null
 Optional rewrite of the ` Origin ` header before forwarding
 WebSocket / fetch upgrade requests. Paired companion to
 ` upstreamHostHeader `: apps that validate ` Host ` against
-their bind address as a DNS-rebinding defence usually
-run the same check on the WebSocket ` Origin ` field too
-(since FastAPI HTTP middleware doesn’t fire for WS
-upgrades, the check is re-implemented at the WS handler).
-Hermes’ embedded chat PTY is the canonical case —
-without this rewrite, the chat WebSocket upgrade refuses
-with ` origin_mismatch origin=https://… bound=127.0.0.1 `.
+their bind address as a DNS-rebinding defence may enforce
+the same policy on WebSocket ` Origin ` fields.
 
 
 
@@ -1059,7 +1052,7 @@ null
 *Example:*
 
 ```nix
-"http://127.0.0.1:9119"
+"http://127.0.0.1:3000"
 ```
 
 *Declared by:*

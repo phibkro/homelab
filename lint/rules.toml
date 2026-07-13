@@ -62,7 +62,7 @@ hashes live in sops as oidc-<n>-client-secret-hash.'''
 #
 # Brand-IS-identity exceptions stay function-named in the actual
 # tree: auth (Authelia), samba (SMB). Operator's own apps (filmder,
-# heim, hermes) are branded BY the operator — the brand IS the
+# heim) are branded BY the operator — the brand IS the
 # identity, not the upstream's choice.
 #
 # Promoted from prose 2026-06-16 — see docs/invariants.md §
@@ -84,7 +84,7 @@ the lanRoute key:
   miniflux    → news
 Brand names earn their place ONLY when the brand IS the identity
 (auth for Authelia, samba for SMB, or operator-shipped apps like
-filmder/heim/hermes).'''
+filmder/heim).'''
 
 # ── lanRoutes single-source-of-truth ────────────────────────────
 

@@ -59,19 +59,6 @@
     snappy-switcher.inputs.nixpkgs.follows = "nixpkgs";
 
     /*
-      hermes-agent — NousResearch's coding agent (uv2nix flake). We
-      consume `packages.default` (bare CLI) for interactive use inside
-      `box`; `messaging` / `full` variants available if we ever wire
-      Discord/Telegram or external memory providers.
-
-      No GitHub credential is plumbed into hermes by design — see the
-      security note in modules/home/claude-code/default.nix; operator-driven
-      claude-code remains the only path to commit/push.
-    */
-    hermes-agent.url = "github:NousResearch/hermes-agent";
-    hermes-agent.inputs.nixpkgs.follows = "nixpkgs";
-
-    /*
       ollama package overlaid from nixpkgs `release-26.05` (which
       carries 0.30.5 via backport of #527892 + #528150). The main
       `nixpkgs` input above tracks the `nixos-26.05` channel, which
@@ -692,18 +679,11 @@
                 "*/default.nix"
                 "modules/services/arr/shared.nix"
                 /*
-                  Route-only — declares nori.lanRoutes for the hermes
-                  daemon, which itself is a home-manager user service
-                  under home/hermes/. No NixOS-scope service, state, or
-                  hardening surface.
-                */
-                "modules/services/hermes.nix"
-                /*
                   CLI-only — packages the papers-fetch resolver onto
                   PATH (an operator runs it on demand). No daemon, no
                   port, no state, no systemd unit → nothing to harden or
                   back up. The Paperless sink it feeds carries both
-                  intents. Same no-service-surface rationale as hermes.
+                  intents.
                 */
                 "modules/services/papers-fetch.nix"
               ];
