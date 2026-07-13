@@ -31,6 +31,14 @@ let
   activeRepos = lib.attrNames (lib.filterAttrs (_: cfg: cfg.include != null) config.nori.backups);
   userDataRepos = lib.filter (n: n == "user-data") activeRepos;
   serviceRepos = lib.filter (n: n != "user-data" && n != "media-irreplaceable") activeRepos;
+
+  /*
+    Restore from the workstation-local MP510. The OneTouch formerly mounted
+    at /mnt/backup moved to aurora in the 2026-06 migration; workstation now
+    reaches that copy over SFTP, so mnt-backup.mount no longer exists.
+  */
+  drillRepositoryRoot = "/mnt/backup-local";
+  drillMountUnit = "mnt-backup\\x2dlocal.mount";
 in
 lib.mkIf (config.networking.hostName == "workstation") (
   let
@@ -62,7 +70,7 @@ lib.mkIf (config.networking.hostName == "workstation") (
           mkdir -p "$target"
           echo "──── [$repo] ────"
           echo "  restoring latest snapshot to $target"
-          if ! ${pkgs.restic}/bin/restic -r "/mnt/backup/$repo" restore latest \
+          if ! ${pkgs.restic}/bin/restic -r "${drillRepositoryRoot}/$repo" restore latest \
               --target "$target" >/dev/null 2>&1; then
             echo "  ✗ RESTORE FAILED"
             fail=1
@@ -127,8 +135,8 @@ lib.mkIf (config.networking.hostName == "workstation") (
 
     systemd.services.restore-drill-services = {
       description = "Monthly restore drill — service-state tier";
-      after = [ "mnt-backup.mount" ];
-      requires = [ "mnt-backup.mount" ];
+      after = [ drillMountUnit ];
+      requires = [ drillMountUnit ];
       unitConfig.OnFailure = [ "notify@restore-drill-services.service" ];
       serviceConfig = {
         Type = "oneshot";
@@ -154,8 +162,8 @@ lib.mkIf (config.networking.hostName == "workstation") (
 
     systemd.services.restore-drill-user-data = {
       description = "Quarterly restore drill — user-data tier (heavy)";
-      after = [ "mnt-backup.mount" ];
-      requires = [ "mnt-backup.mount" ];
+      after = [ drillMountUnit ];
+      requires = [ drillMountUnit ];
       unitConfig.OnFailure = [ "notify@restore-drill-user-data.service" ];
       serviceConfig = {
         Type = "oneshot";
@@ -188,8 +196,8 @@ lib.mkIf (config.networking.hostName == "workstation") (
     */
     systemd.services.restore-drill-all = {
       description = "Restore drill — full pass including media-irreplaceable";
-      after = [ "mnt-backup.mount" ];
-      requires = [ "mnt-backup.mount" ];
+      after = [ drillMountUnit ];
+      requires = [ drillMountUnit ];
       unitConfig.OnFailure = [ "notify@restore-drill-all.service" ];
       serviceConfig = {
         Type = "oneshot";
