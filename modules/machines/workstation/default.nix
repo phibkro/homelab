@@ -160,18 +160,12 @@
     btrbk-replica-target.enable = true; # P15 — receives btrfs send from aurora into MP510
   };
 
-  # FLAC→Opus library mirror (timer). Keeps ${library}/music-opus current from
-  # the lossless library so Syncthing can push the compressed tree to the phone.
-  # Standalone — independent of the (undeployed) tonic daemon. See ADR/plan:
-  # the operator's real workflow is SpotiFLAC-Mobile → Syncthing → mirror → phone.
-  nori.musicMirror.enable = true;
-
-  # FLAC ingest (timer, sibling to music-mirror). The phone pushes new lossless
+  # FLAC ingest timer. The phone pushes new lossless
   # FLAC into a transient Syncthing staging dir; this MOVEs complete, stable
   # files into the master library and deletes the staging copy (a separate
   # Syncthing folder propagates that delete back to the phone, freeing its FLAC).
   # Staging is deliberately OUTSIDE ${library}: no backup intent, and the phone
-  # can never reach the master. See docs/runbooks/music-opus-mirror.md.
+  # can never reach the master. See docs/runbooks/music-flac-ingest.md.
   nori.musicIngest = {
     enable = true;
     stagingPath = "/mnt/media/staging/music-flac";

@@ -39,8 +39,8 @@ API_USER_AGENT = "homelab-papers-fetch/1.0 (mailto:{email})"
 # Download UA: publisher CDNs serving the *actual* OA PDF (PeerJ, Elsevier's
 # OA mirror, MDPI, …) routinely 403 a bare library UA even for openly-licensed
 # files. A browser-like UA is the difference between a 403 and the PDF. This is
-# NOT gray-zone impersonation (cf. tonic ADR-0010): the OA index already told us
-# the file is openly licensed — we're only getting past a blunt UA filter.
+# not gray-zone impersonation: the OA index already told us the file is openly
+# licensed — we're only getting past a blunt UA filter, never credentialed access.
 DOWNLOAD_USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0"
 )

@@ -240,24 +240,6 @@
         "type": "github"
       }
     },
-    "flake-utils_2": {
-      "inputs": {
-        "systems": "systems_3"
-      },
-      "locked": {
-        "lastModified": 1731533236,
-        "narHash": "sha256-l0KFg5HjrsfsO/JpG+r7fRrqm12kzFHyUHqHCVpMMbI=",
-        "owner": "numtide",
-        "repo": "flake-utils",
-        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
-        "type": "github"
-      },
-      "original": {
-        "owner": "numtide",
-        "repo": "flake-utils",
-        "type": "github"
-      }
-    },
     "fromYaml": {
       "flake": false,
       "locked": {
@@ -581,13 +563,16 @@
       },
       "locked": {
         "lastModified": 1780910773,
-        "narHash": "sha256-4IorN2aNkDJAX6xQcP40q6RtxBUxpq5ND7Da8T1nLno=",
-        "path": "/srv/share/projects/pagu-box",
-        "type": "path"
+        "narHash": "sha256-b7LYzOMVKIDn1UVpMXT5Rs/WUnkivDZuBu8OPBRZp8E=",
+        "owner": "phibkro",
+        "repo": "pagu-box",
+        "rev": "8027e4705eaa51e86628ec46d3aa36ab01fbc93b",
+        "type": "github"
       },
       "original": {
-        "path": "/srv/share/projects/pagu-box",
-        "type": "path"
+        "owner": "phibkro",
+        "repo": "pagu-box",
+        "type": "github"
       }
     },
     "pyproject-build-systems": {
@@ -704,7 +689,6 @@
         "stylix": "stylix",
         "superpowers": "superpowers",
         "tilth": "tilth",
-        "tonic": "tonic",
         "zen-browser": "zen-browser"
       }
     },
@@ -893,21 +877,6 @@
         "type": "github"
       }
     },
-    "systems_3": {
-      "locked": {
-        "lastModified": 1681028828,
-        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
-        "owner": "nix-systems",
-        "repo": "default",
-        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nix-systems",
-        "repo": "default",
-        "type": "github"
-      }
-    },
     "tilth": {
       "inputs": {
         "nixpkgs": [
@@ -990,24 +959,6 @@
         "owner": "tinted-theming",
         "repo": "base16-zed",
         "type": "github"
-      }
-    },
-    "tonic": {
-      "inputs": {
-        "flake-utils": "flake-utils_2",
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1783053351,
-        "narHash": "sha256-Lj5FSi/PmRzDtbTtUtsSMqhF0JsMNZVTHsh8/11y/qU=",
-        "path": "/srv/share/projects/tonic",
-        "type": "path"
-      },
-      "original": {
-        "path": "/srv/share/projects/tonic",
-        "type": "path"
       }
     },
     "uv2nix": {

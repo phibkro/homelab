@@ -96,7 +96,7 @@ echo "=== RUN ==="
 # Run under umask 0002 — the live unit's UMask=0002. This makes the moved-file
 # mode deterministic (0664) so the group-read assertions below exercise the
 # real-deployment permission contract: the master is read by the media GROUP
-# (music-mirror, Navidrome), not just the owner. (umask is subshell-local.)
+# (for example Navidrome), not just the owner. (umask is subshell-local.)
 set +e
 (
   umask 0002
@@ -119,10 +119,10 @@ echo "=== ASSERT ==="
 # 1. stable → moved to master, gone from staging
 check "stable FLAC ingested into master"        test -f "$master/Artist A/Album/01 stable.flac"
 check "stable FLAC removed from staging"         test ! -e "$staging/Artist A/Album/01 stable.flac"
-# 1c. PERMISSION SEAM — the master is read by the media GROUP (music-mirror,
+# 1c. PERMISSION SEAM — the master is read by the media GROUP (for example
 # Navidrome), not the ingest owner. mktemp makes the temp 0600 and rename
-# preserves it; without the umask-honoring chmod the moved file is owner-only
-# and the FLAC→Opus transcode dies with PermissionError. Assert group-read.
+# preserves it; without the umask-honoring chmod the moved file is owner-only.
+# Assert group-read.
 check "ingested FLAC is group-readable (media-group can read master)" \
   group_readable "$master/Artist A/Album/01 stable.flac"
 

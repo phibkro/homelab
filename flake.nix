@@ -185,32 +185,12 @@
 
     /*
       pagu-box — cross-platform sandboxed launcher for any process.
-      Pinned to the LOCAL checkout (path:) rather than github so the
-      homelab picks up uncommitted operator edits without a push +
-      `flake update` cycle each iteration. pagu-box is operator-owned
-      and lives alongside the homelab; pinning local matches the dev
-      model. Flip to `github:phibkro/pagu-box` if someone else needs
-      to consume this flake on a machine without that checkout.
+      The public pin keeps this flake reproducible on fresh machines and
+      in CI. Develop pagu-box in its own checkout, push a reviewed commit,
+      then advance this lock deliberately.
     */
-    pagu-box.url = "path:/srv/share/projects/pagu-box";
+    pagu-box.url = "github:phibkro/pagu-box";
     pagu-box.inputs.nixpkgs.follows = "nixpkgs";
-
-    /*
-      Tonic — personal music-acquisition stack (Spotify URL paste →
-      Qobuz FLAC → Opus 128k → Syncthing to phone). Activates on
-      workstation only (the audio FS + the source-of-truth `music/`
-      tree live there). The module at modules/services/tonic.nix
-      consumes inputs.tonic.packages.<system>.{backend,pwa} as the
-      stable contract; tonic's own flake.nix exposes them.
-
-      Pinned to the LOCAL checkout (path:) rather than github since the
-      tonic repo is private + operator-owned. Same dev model as pagu-box
-      above — uncommitted operator edits flow through without push +
-      `flake update` cycle. Flip to `github:phibkro/tonic` if the repo
-      goes public or someone else needs to consume this flake.
-    */
-    tonic.url = "path:/srv/share/projects/tonic";
-    tonic.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =

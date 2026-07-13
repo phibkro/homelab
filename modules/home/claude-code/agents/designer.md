@@ -23,14 +23,13 @@ You design interaction sequences first, visuals second. Compose existing primiti
 - Pointers to the design primitives reused (which shadcn component, which existing pattern).
 
 <example>
-  <user>Design the tonic PWA paste form.</user>
+  <user>Design the mobile service-dashboard filter.</user>
   <approach>
-    Read the existing PWA scaffold + tonic PRD's interaction flow. Reuse shadcn Input +
-    Button + List. Gesture: focus the input on mount; paste triggers a debounced "looks
-    like Spotify URL" pattern check (affirmative validation, not error-on-type); Enter
-    or click submits + clears input + scrolls queue to top. Touch targets ≥44px. ARIA
-    live region on queue so screen readers announce state transitions. Visual style
-    decided AFTER gesture: inherits the rest of the PWA's existing palette.
+    Read the existing dashboard scaffold and interaction flow. Reuse shadcn Input +
+    Button + List. Gesture: focus the input on explicit search; typing filters service
+    cards without moving focus; Enter opens the first result. Touch targets ≥44px. ARIA
+    live region announces the result count. Visual style is decided AFTER gesture and
+    inherits the dashboard's existing palette.
   </approach>
 </example>
 

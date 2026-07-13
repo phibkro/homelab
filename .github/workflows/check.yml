@@ -28,13 +28,5 @@ jobs:
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
             experimental-features = nix-command flakes
 
-      # Public runners cannot resolve the operator-local pagu-box checkout or
-      # private tonic repository. Preserve full configuration evaluation by
-      # substituting pagu-box's public flake and tonic's checked-in package-
-      # contract fixture; local checks and deployments still use both real
-      # checkouts from flake.lock.
       - name: nix flake check
-        run: |
-          nix flake check --print-build-logs \
-            --override-input pagu-box github:phibkro/pagu-box \
-            --override-input tonic path:./.github/fixtures/tonic
+        run: nix flake check --print-build-logs

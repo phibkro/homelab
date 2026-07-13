@@ -39,7 +39,7 @@ extensions="${MUSIC_INGEST_EXTENSIONS:-flac jpg jpeg png webp}"
 
 staging="$MUSIC_INGEST_STAGING"
 # music/ under the library root — same layout the FLAC→Opus mirror reads from
-# (TONIC_MUSIC_ROOT = ${library}/music). Single source of truth for the layout.
+# The master is always ${library}/music: one source of truth for the layout.
 master="$MUSIC_INGEST_LIBRARY/music"
 conflicts="$staging/.conflicts"
 
@@ -52,8 +52,8 @@ mkdir -p "$master"
 # Final-file mode that HONORS the process umask, computed once. mktemp creates
 # the temp at 0600 (owner-only) and the rename preserves that mode, so without
 # this the master files end up owner-readable only — defeating the unit's
-# UMask=0002 and locking out the media-GROUP readers (music-mirror, Navidrome,
-# the FLAC→Opus transcode). We reproduce what a normal create would yield:
+# UMask=0002 and locking out media-group readers such as Navidrome. We
+# reproduce what a normal create would yield:
 # 0666 masked by the umask (→ 0664 under UMask=0002). The umask stays the single
 # source of truth for the permission; we don't hardcode 0664.
 file_mode="$(printf '%o' $((0666 & ~$(umask))))"

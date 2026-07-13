@@ -43,7 +43,6 @@ _: {
     ./komga.nix
     ./miniflux.nix
     ./music-ingest.nix
-    ./music-mirror.nix
     ./navidrome.nix
     ./ollama.nix
     ./open-webui.nix
@@ -54,7 +53,6 @@ _: {
     ./stremio.nix
     ./suwayomi.nix
     ./syncthing.nix
-    ./tonic.nix
     ./vaultwarden.nix
   ];
 }
