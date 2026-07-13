@@ -62,7 +62,9 @@ let
   claude-code-master = pkgsMaster.claude-code.overrideAttrs (_old: {
     version = claude-code-upstream-version;
     src = pkgsMaster.fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/${claude-code-upstream-version}/${claude-code-upstream-platform-keys.${system}}/claude";
+      url = "https://downloads.claude.ai/claude-code-releases/${claude-code-upstream-version}/${
+        claude-code-upstream-platform-keys.${system}
+      }/claude";
       sha256 = claude-code-upstream-checksums.${system};
     };
   });
@@ -304,6 +306,8 @@ let
   };
 in
 {
+  imports = [ ./claudex.nix ];
+
   home.packages = [
     claude-code-master # Anthropic CLI; pulls Node closure (~300 MB). Overlaid from master — see let-binding.
     pkgs.agent-browser # Persistent browser automation for AI agents
