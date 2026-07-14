@@ -558,11 +558,11 @@
     }
 
     # NOTE: this list + Tier 3's `1 2 3 4 5 6` are hand-typed a fifth/
-    # sixth copy of the tag list that home.nix's `layerTags` now
-    # generates hyprland.lua + the layer-* scripts from (2026-07-01
+    # sixth copy of the tag list that hypr-rice/default.nix's `layerTags`
+    # now generates hyprland.lua + the layer-* scripts from (2026-07-01
     # dedup pass). Left as a deliberate, named exception here rather
     # than silently unfixed: wiring this test to the real source would
-    # mean promoting layerTags from a private home.nix `let` value to
+    # mean promoting layerTags from a private module `let` value to
     # an actual exposed option so `just` could `nix eval` it — real
     # cost for a gap that fails loud (a wrong/missing tag here is a
     # visible test failure), not the silent-drift class of bug the

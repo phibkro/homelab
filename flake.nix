@@ -52,7 +52,7 @@
     /*
       snappy-switcher — Hyprland alt-tab overlay. Not in nixpkgs;
       upstream ships a flake. Bindings + daemon autostart live in
-      modules/machines/workstation/hyprland.lua (ALT+Tab MRU global, SUPER+Tab
+      modules/home/desktop/hypr-rice/hyprland.lua (ALT+Tab MRU global, SUPER+Tab
       workspace-local).
     */
     snappy-switcher.url = "github:OpalAayan/snappy-switcher";

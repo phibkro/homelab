@@ -7,7 +7,7 @@
       - System-level enables (Thunar's file:// handler, tumbler thumbnail
         daemon) live in modules/machines/desktop/apps.nix — those need NixOS
         module scope to wire xdg-mime + dbus.
-      - Hyprland config + binds live in modules/machines/workstation/hyprland.lua.
+      - Hyprland config + binds live in modules/home/desktop/hypr-rice/hyprland.lua.
       - Cross-platform tools (browsers, editors that also live on Mac)
         stay in modules/home/pc.nix or modules/home/core.nix.
   */
@@ -105,7 +105,7 @@
     /*
       snappy-switcher — Hyprland alt-tab overlay (pure C, Cairo/Pango,
       Wayland layer shell; no GTK/Electron). Upstream flake; binds and
-      daemon autostart live in modules/machines/workstation/hyprland.lua.
+      daemon autostart live in modules/home/desktop/hypr-rice/hyprland.lua.
     */
     inputs.snappy-switcher.packages.${pkgs.stdenv.hostPlatform.system}.default
     # ags — declarative widget framework (status bars, OSDs, popups);
