@@ -156,10 +156,10 @@ positive-integer := integer whose value is in 1..64
 WS               := one or more ASCII spaces or tabs
 weighted-row     := weight-expression (WS weight-expression)*
 weight-expression := positive-number | repeat
-repeat            := "repeat(" positive-number "," positive-integer ")"
+repeat            := "repeat(" WS? positive-number WS? "," WS? positive-integer WS? ")"
 ```
 
-`repeat` may appear with other weights, for example `1 repeat(2,3) 1`. Whitespace inside `repeat(...)`, signs, exponent notation, `.5`, and `1.` are rejected in v1. Raw input is limited to 4096 bytes; expansion is limited to 64 weights.
+`repeat` may appear with other weights, for example `1 repeat(2, 3) 1`. ASCII spaces or tabs are accepted around its weight/count comma; signs, exponent notation, `.5`, and `1.` are rejected in v1. Raw input is limited to 4096 bytes; expansion is limited to 64 weights.
 
 ### Area grid
 

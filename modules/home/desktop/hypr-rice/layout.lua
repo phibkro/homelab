@@ -47,6 +47,11 @@ local function parse_weights(expression)
         return nil, "weight expression must be at most 4096 bytes"
     end
 
+    expression = expression:gsub(
+        "repeat%([ \t]*(%d+%.?%d*)[ \t]*,[ \t]*(%d+)[ \t]*%)",
+        "repeat(%1,%2)"
+    )
+
     local expressions = tokens(expression)
     if not expressions then
         return nil, "invalid weight expression"

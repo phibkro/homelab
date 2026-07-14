@@ -22,7 +22,7 @@ local function test_weighted_rows_normalize_to_a_grid()
 end
 
 local function test_repeat_expands_inside_weighted_rows()
-    local grid = assert(layout.parse("1 repeat(2,3) 1"))
+    local grid = assert(layout.parse("1 repeat(2, 3) 1"))
 
     equal(#grid.columns, 5)
     equal(grid.columns[1], 1)
@@ -30,6 +30,9 @@ local function test_repeat_expands_inside_weighted_rows()
     equal(grid.columns[3], 2)
     equal(grid.columns[4], 2)
     equal(grid.columns[5], 1)
+
+    local spaced = assert(layout.parse("repeat( 1 ,\t2 )"))
+    equal(#spaced.columns, 2)
 end
 
 local function test_area_grids_normalize_named_rectangles_in_first_appearance_order()
@@ -75,7 +78,6 @@ local function test_malformed_empty_and_oversized_input_is_rejected()
         "1e2",
         "repeat(1,0)",
         "repeat(1,65)",
-        "repeat(1, 2)",
         "repeat(1,64) 1",
         "a b;",
         "a 1; a b",
