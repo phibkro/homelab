@@ -728,6 +728,12 @@
                 touch $out
               '';
 
+              hypr-rice-layout = pkgs.runCommandLocal "hypr-rice-layout" { nativeBuildInputs = [ pkgs.lua ]; } ''
+                lua ${./modules/home/desktop/hypr-rice/layout_test.lua} \
+                  ${./modules/home/desktop/hypr-rice/layout.lua}
+                touch $out
+              '';
+
               /*
                 Repo-convention enforcement (Reader+Writer applied to lint).
 
