@@ -11,9 +11,10 @@ let
 
   /*
     ---------------------------------------------------------------------
-    Bind data — single source of truth for the Hyprland config + the
-    SUPER+H cheatsheet. Records are built via the small constructor set
-    below; each carries:
+    Bind data — single source of truth for the SUPER+H cheatsheet.
+    riceCommandBindings additionally generate their Hyprland Lua lines,
+    so the spacer/ratio/layout command mapping cannot drift. Records are
+    built via the small constructor set below; each carries:
       mod     modifier prefix as Hyprland sees it ("$mod", "$mod SHIFT", "")
       key     key name; may be a template with {n} when `range` is set
       action  Hyprland dispatcher + arg; may also use {n}
@@ -236,6 +237,23 @@ let
       else
         hypr-layout "$choice"
       fi
+    '';
+  };
+
+  hyprLayoutLiveTest = pkgs.writeShellApplication {
+    name = "hypr-layout-live-test";
+    runtimeInputs = [
+      glassSpacer
+      hyprLayout
+      pkgs.coreutils
+      pkgs.ghostty
+      pkgs.hyprland
+      pkgs.jq
+      tileRatio
+    ];
+    text = ''
+      export HYPR_RICE_SPACER_CLASS=${lib.escapeShellArg spacerClass}
+      ${builtins.readFile ./hypr-layout-live-test.sh}
     '';
   };
 
@@ -477,6 +495,7 @@ in
     tileRatio # absolute focused-window ratio on Dwindle
     hyprLayout # strict, hex-encoded bridge into the native rice layout
     hyprLayoutMenu # SUPER+SHIFT+R — presets plus typed custom layout input
+    hyprLayoutLiveTest # explicit opt-in real-compositor journey
   ];
 
   # modules/home/desktop/hypr-lock.nix already owns hyprlock.settings.background

@@ -518,9 +518,11 @@
 # separate from `just test`: it launches real Ghostty clients and changes
 # their native Hyprland layout before exact address/PID cleanup.
 #
-# Explicit live journey: weighted row + area grid + target drift recovery.
+# Explicit live journey: visual identity, spacer, drift, special targeting,
+# and absolute focused-window ratios. The packaged command injects the same
+# spacer class used by the generated Hyprland rule.
 @test-hypr-layout-live:
-    bash modules/home/desktop/hypr-rice/hypr-layout-live-test.sh
+    hypr-layout-live-test
 
 # Smoke-test the Hyprland config we just deployed. Three tiers, each
 # catching a different class of regression:

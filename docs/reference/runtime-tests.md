@@ -36,8 +36,8 @@ One lever maxed = nice-to-have. Two = ship it. Three+ = required.
 
 | Recipe | Effect under test | Module |
 |---|---|---|
-| `just test-hypr` | Hyprland config, dispatchers, bind registry, and rejected `hypr-layout` inputs with unchanged workspace state | `modules/home/desktop/hypr-rice/` |
-| `HYPR_RICE_LIVE_TEST=1 just test-hypr-layout-live` | Explicit controlled-window journey: weighted row, area grid with an empty cell, equal-column drift fallback, and automatic resumption | `modules/home/desktop/hypr-rice/hypr-layout-live-test.sh` |
+| `just test-hypr` | Hyprland config, key/modifier registration, dispatcher smoke checks, and rejected `hypr-layout` inputs with unchanged workspace state | `modules/home/desktop/hypr-rice/` |
+| `HYPR_RICE_LIVE_TEST=1 just test-hypr-layout-live` | Explicit controlled-window journey: stable-ID visual ordering, real spacer target, drift/reinsertion/replacement, special-workspace targeting, and absolute focused ratios | `modules/home/desktop/hypr-rice/hypr-layout-live-test.sh` |
 | `just test-backups` | `nori.backups.<n>` → restic units exist + per-target snapshots ≤25h | `modules/infra/backup/default.nix` |
 | `just test-routes` | `nori.lanRoutes.<n>` → Caddy route + DNS + HTTPS reachable | `modules/infra/networking/default.nix` |
 | `just test-observability` | VM scrape targets up + process-exporter publishing + pi heartbeat <90s + zero failing gatus probes | `modules/infra/networking/gatus-probe.nix` + `modules/infra/observability/victoriametrics.nix` |
@@ -117,9 +117,12 @@ The composite `just test` is the right precondition gate for any
 deploy that touches `modules/infra/` or `home/`.
 
 The native layout geometry journey is intentionally outside that composite:
-`HYPR_RICE_LIVE_TEST=1 just test-hypr-layout-live` creates a uniquely named
-workspace and Ghostty class, then cleans the exact addresses/PIDs under
-`EXIT`, `INT`, and `TERM` traps. It prints a recovery command before mutation.
+`HYPR_RICE_LIVE_TEST=1 just test-hypr-layout-live` creates uniquely named
+regular/special workspaces and controlled Ghostty clients, including the actual
+`glass-spacer`. It cleans exact addresses/PIDs under `EXIT`, `INT`, and `TERM`,
+restores prior regular/special focus, reloads away dynamic test rules, and
+verifies no disposable selectors remain. It prints the unique selectors and
+each exact PID/address as they are created so interrupted cleanup is recoverable.
 
 ## Real catches, for posterity
 
@@ -128,7 +131,7 @@ Each test was motivated by an incident it would have caught:
 | Test | Real bug it caught (or would have) | When |
 |---|---|---|
 | `test-hypr` Tier 1+2 | popup-term silently broken since lua-mode migration (dispatcher syntax change) | 2026-06-07 |
-| `test-hypr` Tier 3 | "bind registered but pointing nowhere" class | future-proofing |
+| `test-hypr` Tier 3 + generated-Lua check | key/modifier registration drift; command mapping is generated because Lua dispatcher args are opaque to `hyprctl binds -j` | future-proofing |
 | `test-backups` Tier 2 | navidrome `-onetouch` race left snapshot 32h stale (fixed by flock) | 2026-06-07 (same session) |
 | `test-routes` Tier 1 | historic missing OIDC client during family-tier expansion | retroactive |
 | `test-observability` Tier 1 | pi VM ingesting empty `namedprocess_*` series (PTRACE cap missing) | 2026-06-07 (caught earlier in session) |
