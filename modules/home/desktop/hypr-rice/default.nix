@@ -242,6 +242,7 @@ let
 
   hyprLayoutLiveTest = pkgs.writeShellApplication {
     name = "hypr-layout-live-test";
+    excludeShellChecks = [ "SC2016" ];
     runtimeInputs = [
       glassSpacer
       hyprLayout

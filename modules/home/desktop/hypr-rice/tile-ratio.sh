@@ -92,6 +92,8 @@ load_focus() {
     return 1
   fi
 
+  # $id is a jq variable supplied by --argjson.
+  # shellcheck disable=SC2016
   if ! layout=$("$hyprctl_bin" -j workspaces | "$jq_bin" -r --argjson id "$focused_workspace_id" '.[] | select(.id == $id) | .tiledLayout' | head -n1); then
     fail 'could not query the focused window workspace'
     return 1
@@ -105,6 +107,8 @@ load_focus() {
     return 1
   fi
 
+  # $id is a jq variable supplied by --argjson.
+  # shellcheck disable=SC2016
   if ! monitor_width=$("$hyprctl_bin" -j monitors | "$jq_bin" -r --argjson id "$focused_monitor_id" '.[] | select(.id == $id) | .width' | head -n1); then
     fail 'could not query the focused monitor'
     return 1

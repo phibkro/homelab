@@ -222,7 +222,7 @@ launch_client() {
     return 1
   fi
 
-  addresses[$((${#addresses[@]} - 1))]=$address
+  addresses[${#addresses[@]} - 1]=$address
   printf '  mapped label=%s pid=%s address=%s class=%s workspace=%s\n' \
     "$label" "$pid" "$address" "$expected_class" "$workspace_name"
   REPLY=$address
@@ -468,7 +468,6 @@ for index in 1 2 3; do
   printf -v "content_${index}_address" '%s' "$REPLY"
 done
 launch_client 'glass-spacer' "$workspace" "$spacer_class" spacer
-spacer_address=$REPLY
 wait_until 'four controlled regular clients' workspace_client_count_is "$workspace" 4
 
 printf '%s\n' '=== capture address, opaque stableId, and row-major geometry ==='
