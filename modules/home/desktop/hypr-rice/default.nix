@@ -217,27 +217,7 @@ let
       pkgs.fuzzel
       hyprLayout
     ];
-    text = ''
-      set +e
-      choice="$(${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt "layout: " <<'EOF'
-      1 1
-      1 2 1
-      repeat(1,5)
-      a b; a d; c c
-      reset
-      EOF
-      )"
-      status=$?
-      set -e
-      [[ $status -eq 1 ]] && exit 0
-      [[ $status -eq 0 ]] || exit "$status"
-      [[ -n "$choice" ]] || exit 0
-      if [[ "$choice" == reset ]]; then
-        hypr-layout reset
-      else
-        hypr-layout "$choice"
-      fi
-    '';
+    text = builtins.readFile ./hypr-layout-menu.sh;
   };
 
   hyprLayoutLiveTest = pkgs.writeShellApplication {
