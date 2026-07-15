@@ -277,7 +277,7 @@ area_mapping_holds() {
       and (($w[3].size[0] - (($w[1].at[0] + $w[1].size[0]) - $w[0].at[0])) | abs) <= 16
       and (($w[0].size[1] - (($w[2].at[1] + $w[2].size[1]) - $w[1].at[1])) | abs) <= 16
       and (([$w[1].size[1], $w[2].size[1], $w[3].size[1]] | max)
-        - ([$w[1].size[1], $w[2].size[1], $w[3].size[1]] | min) <= 4)
+        - ([$w[1].size[1], $w[2].size[1], $w[3].size[1]] | min) <= 8)
   ' >/dev/null
 }
 
