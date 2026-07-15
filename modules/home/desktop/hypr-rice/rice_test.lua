@@ -7,6 +7,7 @@ local notices = {}
 local active_window
 local active_special
 local active_regular
+local active_monitor = {}
 
 local hl
 hl = {
@@ -17,7 +18,7 @@ hl = {
         end,
     },
     get_active_window = function() return active_window end,
-    get_active_monitor = function() return {} end,
+    get_active_monitor = function() return active_monitor end,
     get_active_special_workspace = function() return active_special end,
     get_active_workspace = function() return active_regular end,
     get_windows = function(filter)
@@ -39,6 +40,24 @@ hl = {
     end,
 }
 
+local next_stable_id = 1
+
+local function add_window(ws, x, y, overrides)
+    local window = {
+        workspace = ws,
+        monitor = active_monitor,
+        mapped = true,
+        floating = false,
+        hidden = false,
+        stable_id = next_stable_id,
+        at = { x = x or 0, y = y or 0 },
+    }
+    next_stable_id = next_stable_id + 1
+    for key, value in pairs(overrides or {}) do window[key] = value end
+    ws._windows[#ws._windows + 1] = window
+    return window
+end
+
 local function workspace(id, name, special, count, groups)
     local ws = {
         id = id,
@@ -48,9 +67,7 @@ local function workspace(id, name, special, count, groups)
         config_name = special and name or (id > 0 and tostring(id) or "name:" .. name),
         _windows = {},
     }
-    for _ = 1, count do
-        ws._windows[#ws._windows + 1] = { workspace = ws, mapped = true, floating = false }
-    end
+    for index = 1, count do add_window(ws, (index - 1) * 100, 0) end
     return ws
 end
 
@@ -72,10 +89,10 @@ local function rejects(fn, fragment)
     assert(tostring(err):find(fragment, 1, true), tostring(err))
 end
 
-local function target(ws)
+local function target(window)
     local placed
     return {
-        window = { workspace = ws },
+        window = window,
         place = function(_, box) placed = box end,
         placed = function() return placed end,
     }
@@ -116,7 +133,84 @@ assert(#rules == before, "group rejection mutated workspace rules")
 regular.groups = 0
 rejects(function() _G.hypr_rice_apply_hex("zz", "", "", "") end, "invalid hex")
 
-local a, b, c = target(regular), target(regular), target(regular)
+local ordered = workspace(8, "8", false, 0)
+local left = add_window(ordered, 0, 0, { stable_id = 30 })
+local middle = add_window(ordered, 100, 0, { stable_id = 10 })
+local right = add_window(ordered, 200, 0, { stable_id = 20 })
+ordered._windows = { right, left, middle }
+active_window = { workspace = ordered, monitor = active_monitor }
+active_special = nil
+assert(apply("1 2 1") == "ok")
+local right_target = target(right)
+local middle_target = target(middle)
+local left_target = target(left)
+registered.recalculate({
+    area = { x = 0, y = 0, w = 100, h = 40 },
+    targets = { right_target, middle_target, left_target },
+})
+assert(left_target.placed().x == 0 and left_target.placed().w == 25)
+assert(middle_target.placed().x == 25 and middle_target.placed().w == 50)
+assert(right_target.placed().x == 75 and right_target.placed().w == 25)
+
+registered.recalculate({
+    area = { x = 0, y = 0, w = 100, h = 40 },
+    targets = { left_target, right_target, middle_target },
+})
+assert(left_target.placed().x == 0 and middle_target.placed().x == 25 and right_target.placed().x == 75)
+
+right.at.x = 0
+left.at.x = 100
+middle.at.x = 200
+assert(apply("1 2 1") == "ok")
+registered.recalculate({
+    area = { x = 0, y = 0, w = 100, h = 40 },
+    targets = { left_target, middle_target, right_target },
+})
+assert(right_target.placed().x == 0 and left_target.placed().x == 25 and middle_target.placed().x == 75)
+
+local unknown = add_window(ordered, 300, 0, { stable_id = 40 })
+local unknown_target = target(unknown)
+registered.recalculate({
+    area = { x = 0, y = 0, w = 100, h = 40 },
+    targets = { unknown_target, left_target, right_target },
+})
+assert(right_target.placed().x == 0 and left_target.placed().x == 25 and unknown_target.placed().x == 75)
+
+local unconfirmed = workspace(9, "9", false, 3)
+active_window = { workspace = unconfirmed, monitor = active_monitor }
+assert(apply("1 2 1") == "ok")
+local unexpected_window = add_window(unconfirmed, 300, 0, { stable_id = 99 })
+local unconfirmed_a = target(unconfirmed._windows[1])
+local unconfirmed_b = target(unconfirmed._windows[2])
+local unexpected_target = target(unexpected_window)
+local notice_count = #notices
+registered.recalculate({
+    area = { x = 0, y = 0, w = 90, h = 40 },
+    targets = { unconfirmed_a, unconfirmed_b, unexpected_target },
+})
+assert(unconfirmed_a.placed().w == 30 and unexpected_target.placed().x == 60)
+assert(#notices == notice_count + 1)
+
+local invalid_capture = workspace(10, "10", false, 0)
+add_window(invalid_capture, 0, 0, { hidden = true })
+active_window = { workspace = invalid_capture, monitor = active_monitor }
+before = #rules
+rejects(function() apply("1") end, "hidden windows")
+assert(#rules == before)
+invalid_capture._windows[1].hidden = false
+invalid_capture._windows[1].stable_id = 0
+rejects(function() apply("1") end, "positive integer stable_id")
+assert(#rules == before)
+local duplicate = add_window(invalid_capture, 100, 0, { stable_id = 50 })
+invalid_capture._windows[1].stable_id = duplicate.stable_id
+rejects(function() apply("1 1") end, "unique stable_id")
+assert(#rules == before)
+
+active_window = nil
+active_regular = regular
+local a = target(regular._windows[1])
+local b = target(regular._windows[2])
+local c = target(regular._windows[3])
 registered.recalculate({
     area = { x = 0, y = 0, w = 120, h = 50 },
     targets = { a, b, c },
@@ -132,19 +226,21 @@ assert(a.placed().x == 10 and a.placed().w == 25)
 assert(b.placed().x == 35 and b.placed().w == 50)
 assert(c.placed().x == 85 and c.placed().w == 25)
 
-local d = target(regular)
+local replacement = add_window(regular, 300, 0)
+local d = target(replacement)
+local regular_notice_count = #notices
 registered.recalculate({
     area = { x = 0, y = 0, w = 120, h = 50 },
     targets = { a, b, c, d },
 })
 assert(a.placed().w == 30 and d.placed().x == 90)
-assert(#notices == 1)
-assert(notices[1].icon == "warning")
+assert(#notices == regular_notice_count + 1)
+assert(notices[#notices].icon == "warning")
 registered.recalculate({
     area = { x = 0, y = 0, w = 120, h = 50 },
     targets = { a, b, c, d },
 })
-assert(#notices == 1, "target drift notification was not throttled")
+assert(#notices == regular_notice_count + 1, "target drift notification was not throttled")
 
 registered.recalculate({
     area = { x = 0, y = 0, w = 120, h = 50 },
