@@ -45,7 +45,7 @@ hl.config({
 
     general = {
         gaps_in     = 4,
-        gaps_out    = 8,
+        gaps_out    = @gapsOut@,
         border_size = 0,  -- no hard border; focus via shadow-as-glow
         layout      = nativeLayout,
     },

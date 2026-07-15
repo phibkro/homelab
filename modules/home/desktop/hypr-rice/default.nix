@@ -5,6 +5,7 @@
 }:
 let
   nativeLayout = "dwindle";
+  gapsOut = 8;
   layoutCore = ./layout.lua;
   riceAdapter = ./rice.lua;
 
@@ -141,6 +142,22 @@ let
       "Power off")  confirm "Power off?" && systemctl poweroff ;;
     esac
   '';
+
+  tileRatio = pkgs.writeShellApplication {
+    name = "tile-ratio";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.fuzzel
+      pkgs.gawk
+      pkgs.hyprland
+      pkgs.jq
+      pkgs.libnotify
+    ];
+    text = ''
+      export TILE_RATIO_GAPS_OUT=${toString gapsOut}
+      ${builtins.readFile ./tile-ratio.sh}
+    '';
+  };
 
   hyprLayout = pkgs.writeShellApplication {
     name = "hypr-layout";
@@ -371,6 +388,7 @@ let
 
   generatedHyprlandLua = pkgs.replaceVars ./hyprland.lua {
     inherit
+      gapsOut
       layerTagsLua
       layoutCore
       nativeLayout
@@ -407,8 +425,9 @@ in
     layerCycle # SUPER+ALT+TAB / SUPER+ALT+SHIFT+TAB — step through special-workspace tags
     layerToggle # SUPER+N tag toggle, announces via mako when shown
     layerAutohide # daemon: hides the shown tag when focus moves to a regular workspace
+    tileRatio # absolute focused-window ratio on Dwindle
     hyprLayout # strict, hex-encoded bridge into the native rice layout
-    hyprLayoutMenu # SUPER+R — presets plus typed custom layout input
+    hyprLayoutMenu # SUPER+SHIFT+R — presets plus typed custom layout input
   ];
 
   # modules/home/desktop/hypr-lock.nix already owns hyprlock.settings.background

@@ -733,6 +733,9 @@
                   {
                     nativeBuildInputs = [
                       pkgs.bash
+                      pkgs.coreutils
+                      pkgs.gawk
+                      pkgs.jq
                       pkgs.lua
                     ];
                   }
@@ -744,9 +747,14 @@
                       ${./modules/home/desktop/hypr-rice/rice.lua}
                     bash ${./modules/home/desktop/hypr-rice/hypr-layout_test.sh} \
                       ${./modules/home/desktop/hypr-rice/hypr-layout.sh}
+                    bash ${./modules/home/desktop/hypr-rice/tile-ratio_test.sh} \
+                      ${./modules/home/desktop/hypr-rice/tile-ratio.sh}
                     luac -p ${./modules/home/desktop/hypr-rice/layout.lua}
                     luac -p ${./modules/home/desktop/hypr-rice/rice.lua}
                     bash -n ${./modules/home/desktop/hypr-rice/hypr-layout.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/hypr-layout_test.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/tile-ratio.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/tile-ratio_test.sh}
                     bash -n ${./modules/home/desktop/hypr-rice/hypr-layout-live-test.sh}
                     touch $out
                   '';
