@@ -134,46 +134,46 @@ end
 
 local function test_boxes_use_cumulative_edges_cover_the_workarea_and_skip_empty_cells()
     local row = assert(layout.parse("1 2 1"))
-    local boxes = assert(layout.boxes(row, { x = 10, y = 20, width = 100, height = 40 }))
+    local boxes = assert(layout.boxes(row, { x = 10, y = 20, w = 100, h = 40 }))
 
     equal(#boxes, 3)
     close(boxes[1].x, 10)
-    close(boxes[1].width, 25)
-    close(boxes[1].x + boxes[1].width, boxes[2].x, "first shared edge")
-    close(boxes[2].width, 50)
-    close(boxes[2].x + boxes[2].width, boxes[3].x, "second shared edge")
-    close(boxes[3].x + boxes[3].width, 110, "right workarea edge")
-    close(boxes[1].width + boxes[2].width + boxes[3].width, 100, "workarea coverage")
+    close(boxes[1].w, 25)
+    close(boxes[1].x + boxes[1].w, boxes[2].x, "first shared edge")
+    close(boxes[2].w, 50)
+    close(boxes[2].x + boxes[2].w, boxes[3].x, "second shared edge")
+    close(boxes[3].x + boxes[3].w, 110, "right workarea edge")
+    close(boxes[1].w + boxes[2].w + boxes[3].w, 100, "workarea coverage")
 
     local grid = assert(layout.parse("a b; a .; c c", {
         columns = "1 2",
         rows = "1 1 3",
     }))
-    boxes = assert(layout.boxes(grid, { x = 5, y = 7, width = 120, height = 100 }))
+    boxes = assert(layout.boxes(grid, { x = 5, y = 7, w = 120, h = 100 }))
 
     equal(#boxes, 3)
     equal(boxes[1].name, "a")
     close(boxes[1].x, 5)
     close(boxes[1].y, 7)
-    close(boxes[1].width, 40)
-    close(boxes[1].height, 40)
+    close(boxes[1].w, 40)
+    close(boxes[1].h, 40)
     equal(boxes[2].name, "b")
     close(boxes[2].x, 45)
-    close(boxes[2].height, 20)
+    close(boxes[2].h, 20)
     equal(boxes[3].name, "c")
     close(boxes[3].x, 5)
     close(boxes[3].y, 47)
-    close(boxes[3].width, 120)
-    close(boxes[3].height, 60)
+    close(boxes[3].w, 120)
+    close(boxes[3].h, 60)
 
     for index, box in ipairs(boxes) do
         assert(box.x >= 5 and box.y >= 7)
-        assert(box.x + box.width <= 125)
-        assert(box.y + box.height <= 107)
+        assert(box.x + box.w <= 125)
+        assert(box.y + box.h <= 107)
         for other_index = index + 1, #boxes do
             local other = boxes[other_index]
-            local overlap_width = math.min(box.x + box.width, other.x + other.width) - math.max(box.x, other.x)
-            local overlap_height = math.min(box.y + box.height, other.y + other.height) - math.max(box.y, other.y)
+            local overlap_width = math.min(box.x + box.w, other.x + other.w) - math.max(box.x, other.x)
+            local overlap_height = math.min(box.y + box.h, other.y + other.h) - math.max(box.y, other.y)
             assert(overlap_width <= 0 or overlap_height <= 0, box.name .. " overlaps " .. other.name)
         end
     end

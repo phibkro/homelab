@@ -728,11 +728,27 @@
                 touch $out
               '';
 
-              hypr-rice-layout = pkgs.runCommandLocal "hypr-rice-layout" { nativeBuildInputs = [ pkgs.lua ]; } ''
-                lua ${./modules/home/desktop/hypr-rice/layout_test.lua} \
-                  ${./modules/home/desktop/hypr-rice/layout.lua}
-                touch $out
-              '';
+              hypr-rice-layout =
+                pkgs.runCommandLocal "hypr-rice-layout"
+                  {
+                    nativeBuildInputs = [
+                      pkgs.bash
+                      pkgs.lua
+                    ];
+                  }
+                  ''
+                    lua ${./modules/home/desktop/hypr-rice/layout_test.lua} \
+                      ${./modules/home/desktop/hypr-rice/layout.lua}
+                    lua ${./modules/home/desktop/hypr-rice/rice_test.lua} \
+                      ${./modules/home/desktop/hypr-rice/layout.lua} \
+                      ${./modules/home/desktop/hypr-rice/rice.lua}
+                    bash ${./modules/home/desktop/hypr-rice/hypr-layout_test.sh} \
+                      ${./modules/home/desktop/hypr-rice/hypr-layout.sh}
+                    luac -p ${./modules/home/desktop/hypr-rice/layout.lua}
+                    luac -p ${./modules/home/desktop/hypr-rice/rice.lua}
+                    bash -n ${./modules/home/desktop/hypr-rice/hypr-layout.sh}
+                    touch $out
+                  '';
 
               /*
                 Repo-convention enforcement (Reader+Writer applied to lint).

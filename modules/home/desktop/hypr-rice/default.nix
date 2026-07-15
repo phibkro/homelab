@@ -4,6 +4,10 @@
   ...
 }:
 let
+  nativeLayout = "dwindle";
+  layoutCore = ./layout.lua;
+  riceAdapter = ./rice.lua;
+
   /*
     ---------------------------------------------------------------------
     Bind data — single source of truth for the Hyprland config + the
@@ -90,6 +94,7 @@ let
     (mkBind "V" "togglefloating," "toggle floating")
     (mkBind "F" "fullscreen," "fullscreen")
     (mkBind "S" "layoutmsg, togglesplit" "toggle split orientation")
+    (mkBindApp "R" "hypr-layout-menu" "workspace layout")
 
     # Focus — H/L claimed by cheatsheet/lock; J/K kept for vim down/up;
     # arrows cover all four directions.
@@ -136,6 +141,41 @@ let
       "Power off")  confirm "Power off?" && systemctl poweroff ;;
     esac
   '';
+
+  hyprLayout = pkgs.writeShellApplication {
+    name = "hypr-layout";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = builtins.readFile ./hypr-layout.sh;
+  };
+
+  hyprLayoutMenu = pkgs.writeShellApplication {
+    name = "hypr-layout-menu";
+    runtimeInputs = [
+      pkgs.fuzzel
+      hyprLayout
+    ];
+    text = ''
+      set +e
+      choice="$(${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt "layout: " <<'EOF'
+      1 1
+      1 2 1
+      repeat(1,5)
+      a b; a .; c c
+      reset
+      EOF
+      )"
+      status=$?
+      set -e
+      [[ $status -eq 1 ]] && exit 0
+      [[ $status -eq 0 ]] || exit "$status"
+      [[ -n "$choice" ]] || exit 0
+      if [[ "$choice" == reset ]]; then
+        hypr-layout reset
+      else
+        hypr-layout "$choice"
+      fi
+    '';
+  };
 
   /*
     SUPER+RETURN terminal — togglable/ephemeral, a special-workspace
@@ -427,6 +467,28 @@ let
           i=$((i + 1))
         done
   '';
+
+  generatedHyprlandLua = pkgs.replaceVars ./hyprland.lua {
+    inherit
+      layerTagsLua
+      layoutCore
+      nativeLayout
+      riceAdapter
+      spacerClass
+      spacerClassEscaped
+      ;
+  };
+
+  checkedHyprlandLua = pkgs.runCommandLocal "hyprland.lua" { } ''
+    ${pkgs.coreutils}/bin/cp ${generatedHyprlandLua} "$out"
+    ${pkgs.lua}/bin/luac -p "$out"
+    if ${pkgs.gnugrep}/bin/grep -Eq '@[A-Za-z0-9_]+@' "$out"; then
+      echo "generated Hyprland Lua contains unresolved template markers" >&2
+      exit 1
+    fi
+    ${pkgs.gnugrep}/bin/grep -Eq 'dofile\("/nix/store/[^\"]+/modules/home/desktop/hypr-rice/rice\.lua"\)' "$out"
+    ${pkgs.gnugrep}/bin/grep -Eq '"/nix/store/[^\"]+/modules/home/desktop/hypr-rice/layout\.lua"' "$out"
+  '';
 in
 {
   /*
@@ -444,7 +506,9 @@ in
     layerCycle # SUPER+ALT+TAB / SUPER+ALT+SHIFT+TAB — step through special-workspace tags
     layerToggle # SUPER+N tag toggle, announces via mako when shown
     layerAutohide # daemon: hides the shown tag when focus moves to a regular workspace
-    tileRatio # SUPER+R — fuzzel-pick a split ratio for the focused window
+    hyprLayout # strict, hex-encoded bridge into the native rice layout
+    hyprLayoutMenu # SUPER+R — presets plus typed custom layout input
+    tileRatio # retained temporarily until Task 16 runtime verification
   ];
 
   # modules/home/desktop/hypr-lock.nix already owns hyprlock.settings.background
@@ -480,7 +544,5 @@ in
     file is still a plain, directly-editable Lua file otherwise — only
     the `@name@` markers are special, everything else edits normally.
   */
-  xdg.configFile."hypr/hyprland.lua".source = pkgs.replaceVars ./hyprland.lua {
-    inherit layerTagsLua spacerClass spacerClassEscaped;
-  };
+  xdg.configFile."hypr/hyprland.lua".source = checkedHyprlandLua;
 }

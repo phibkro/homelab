@@ -5,6 +5,8 @@
 -- rollback requires reverting the source and rebuilding.
 
 local mod = "SUPER"
+local nativeLayout = "@nativeLayout@"
+dofile("@riceAdapter@")(hl, "@layoutCore@", nativeLayout)
 
 -- Named modifier-combo constants — collapses the repeated raw
 -- "SUPER + CTRL"/"SUPER + ALT" string concatenation this modifier
@@ -45,7 +47,7 @@ hl.config({
         gaps_in     = 4,
         gaps_out    = 8,
         border_size = 0,  -- no hard border; focus via shadow-as-glow
-        layout      = "dwindle",
+        layout      = nativeLayout,
     },
 
     decoration = {
@@ -130,7 +132,7 @@ hl.bind(mod .. " + SHIFT + E", hl.dsp.exit())
 hl.bind(mod .. " + V",         hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mod .. " + F",         hl.dsp.window.fullscreen())
 hl.bind(mod .. " + S",         hl.dsp.layout("togglesplit"))  -- dwindle
-hl.bind(mod .. " + R",         hl.dsp.exec_cmd("tile-ratio"))  -- fuzzel-pick a split ratio
+hl.bind(mod .. " + R",         hl.dsp.exec_cmd("hypr-layout-menu"))
 
 -- Focus movement (vim keys + arrow keys, both ways)
 hl.bind(mod .. " + j",     hl.dsp.focus({ direction = "down" }))

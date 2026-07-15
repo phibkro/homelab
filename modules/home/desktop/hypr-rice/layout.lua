@@ -215,8 +215,8 @@ local function track_edges(weights, origin, extent)
 end
 
 function M.boxes(grid, area)
-    local column_edges = track_edges(grid.columns, area.x, area.width)
-    local row_edges = track_edges(grid.rows, area.y, area.height)
+    local column_edges = track_edges(grid.columns, area.x, area.w)
+    local row_edges = track_edges(grid.rows, area.y, area.h)
     local boxes = {}
 
     for index, named_area in ipairs(grid.areas) do
@@ -226,8 +226,8 @@ function M.boxes(grid, area)
             name = named_area.name,
             x = column_edges[named_area.column],
             y = row_edges[named_area.row],
-            width = column_edges[right] - column_edges[named_area.column],
-            height = row_edges[bottom] - row_edges[named_area.row],
+            w = column_edges[right] - column_edges[named_area.column],
+            h = row_edges[bottom] - row_edges[named_area.row],
         }
     end
 
