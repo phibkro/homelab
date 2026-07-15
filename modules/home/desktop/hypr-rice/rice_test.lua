@@ -108,19 +108,20 @@ local special = workspace(-99, "special:notes", true, 3)
 local focused = workspace(-5, "named", false, 3)
 active_regular = regular
 active_special = special
-active_window = { workspace = focused }
+active_window = { workspace = focused, monitor = active_monitor }
 
 assert(apply("1 2 1") == "ok")
 assert(#rules == 1)
-assert(rules[1].workspace == "name:named")
+assert(rules[1].workspace == "special:notes")
 assert(rules[1].layout == "lua:rice")
 
-active_window = nil
-assert(apply("1 1 1") == "ok")
-assert(rules[#rules].workspace == "special:notes")
 active_special = nil
 assert(apply("1 1 1") == "ok")
+assert(rules[#rules].workspace == "name:named")
+active_window = { workspace = focused, monitor = {} }
+assert(apply("1 1 1") == "ok")
 assert(rules[#rules].workspace == "3")
+active_window = nil
 
 local before = #rules
 rejects(function() apply("1 1") end, "received 3 targets")
@@ -229,11 +230,18 @@ assert(c.placed().x == 85 and c.placed().w == 25)
 local replacement = add_window(regular, 300, 0)
 local d = target(replacement)
 local regular_notice_count = #notices
+active_special = special
 registered.recalculate({
     area = { x = 0, y = 0, w = 120, h = 50 },
     targets = { a, b, c, d },
 })
 assert(a.placed().w == 30 and d.placed().x == 90)
+assert(#notices == regular_notice_count, "background mismatch emitted a notification")
+active_special = nil
+registered.recalculate({
+    area = { x = 0, y = 0, w = 120, h = 50 },
+    targets = { a, b, c, d },
+})
 assert(#notices == regular_notice_count + 1)
 assert(notices[#notices].icon == "warning")
 registered.recalculate({
@@ -245,6 +253,31 @@ assert(#notices == regular_notice_count + 1, "target drift notification was not 
 registered.recalculate({
     area = { x = 0, y = 0, w = 120, h = 50 },
     targets = { a, b, c },
+})
+assert(a.placed().w == 30 and b.placed().w == 60 and c.placed().x == 90)
+
+regular.name = "renamed"
+registered.recalculate({
+    area = { x = 0, y = 0, w = 120, h = 50 },
+    targets = { c, a, b },
+})
+assert(a.placed().w == 30 and b.placed().w == 60 and c.placed().x == 90)
+
+local collision_special = workspace(3, "special:collision", true, 3)
+active_special = collision_special
+assert(apply("1 1 1") == "ok")
+local special_a = target(collision_special._windows[1])
+local special_b = target(collision_special._windows[2])
+local special_c = target(collision_special._windows[3])
+registered.recalculate({
+    area = { x = 0, y = 0, w = 120, h = 50 },
+    targets = { special_c, special_a, special_b },
+})
+assert(special_a.placed().x == 0 and special_b.placed().x == 40 and special_c.placed().x == 80)
+active_special = nil
+registered.recalculate({
+    area = { x = 0, y = 0, w = 120, h = 50 },
+    targets = { b, c, a },
 })
 assert(a.placed().w == 30 and b.placed().w == 60 and c.placed().x == 90)
 

@@ -24,15 +24,21 @@ return function(hl, layout_path, native_layout)
         workspace_state[ws_identity.kind][ws_identity.id] = state
     end
 
-    local function active_workspace()
-        local active_window = hl.get_active_window()
-        if active_window and active_window.workspace then
-            return active_window.workspace
-        end
+    local function same_identity(left, right)
+        return left and right and left.kind == right.kind and left.id == right.id
+    end
 
+    local function interaction_workspace()
         local monitor = hl.get_active_monitor()
+        if not monitor then return nil end
+
         local special = hl.get_active_special_workspace(monitor)
         if special then return special end
+
+        local active_window = hl.get_active_window()
+        if active_window and active_window.monitor == monitor and active_window.workspace then
+            return active_window.workspace
+        end
         return hl.get_active_workspace(monitor)
     end
 
@@ -112,6 +118,8 @@ return function(hl, layout_path, native_layout)
     end
 
     local function notify_mismatch(state, actual, detail)
+        if not same_identity(state.identity, identity(interaction_workspace())) then return end
+
         local now = os.time()
         if state.last_notice_at and now - state.last_notice_at < NOTICE_INTERVAL_SECONDS then
             return
@@ -222,7 +230,7 @@ return function(hl, layout_path, native_layout)
 
     _G.hypr_rice_apply_hex = function(action_hex, expression_hex, columns_hex, rows_hex)
         local action = decode_hex(action_hex)
-        local workspace = active_workspace()
+        local workspace = interaction_workspace()
         if not workspace then
             error("hypr-rice: no active workspace", 0)
         end
