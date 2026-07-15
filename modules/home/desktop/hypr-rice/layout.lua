@@ -125,28 +125,26 @@ local function parse_area_grid(expression, options)
         cells[row_index] = row
 
         for column_index, name in ipairs(row) do
-            if name ~= "." then
-                if not name:match("^[A-Za-z][A-Za-z0-9_-]*$") then
-                    return nil, "invalid area name"
+            if not name:match("^[A-Za-z][A-Za-z0-9_-]*$") then
+                return nil, "invalid area name"
+            end
+            local area = by_name[name]
+            if not area then
+                if #area_order == MAX_TRACKS then
+                    return nil, "area grid exceeds 64 named areas"
                 end
-                local area = by_name[name]
-                if not area then
-                    if #area_order == MAX_TRACKS then
-                        return nil, "area grid exceeds 64 named areas"
-                    end
-                    area = {
-                        name = name,
-                        row = row_index,
-                        column = column_index,
-                        row_end = row_index,
-                        column_end = column_index,
-                    }
-                    by_name[name] = area
-                    area_order[#area_order + 1] = area
-                else
-                    area.row_end = math.max(area.row_end, row_index)
-                    area.column_end = math.max(area.column_end, column_index)
-                end
+                area = {
+                    name = name,
+                    row = row_index,
+                    column = column_index,
+                    row_end = row_index,
+                    column_end = column_index,
+                }
+                by_name[name] = area
+                area_order[#area_order + 1] = area
+            else
+                area.row_end = math.max(area.row_end, row_index)
+                area.column_end = math.max(area.column_end, column_index)
             end
         end
     end

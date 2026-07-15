@@ -26,11 +26,11 @@ expect_eval() {
   [[ ${args[2]} == "$expected" ]]
 }
 
-run 'a b; a .; c c'
-expect_eval '_G.hypr_rice_apply_hex("6170706c79", "6120623b2061202e3b20632063", "", "")'
+run 'a b; a d; c c'
+expect_eval '_G.hypr_rice_apply_hex("6170706c79", "6120623b206120643b20632063", "", "")'
 
-run --columns '1 2' --rows 'repeat(1,3)' 'a b; a .; c c'
-expect_eval '_G.hypr_rice_apply_hex("6170706c79", "6120623b2061202e3b20632063", "312032", "72657065617428312c3329")'
+run --columns '1 2' --rows 'repeat(1,3)' 'a b; a d; c c'
+expect_eval '_G.hypr_rice_apply_hex("6170706c79", "6120623b206120643b20632063", "312032", "72657065617428312c3329")'
 
 run reset
 expect_eval '_G.hypr_rice_apply_hex("7265736574", "", "", "")'

@@ -177,7 +177,7 @@ let
       1 1
       1 2 1
       repeat(1,5)
-      a b; a .; c c
+      a b; a d; c c
       reset
       EOF
       )"

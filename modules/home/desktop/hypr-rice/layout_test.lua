@@ -36,23 +36,26 @@ local function test_repeat_expands_inside_weighted_rows()
 end
 
 local function test_area_grids_normalize_named_rectangles_in_first_appearance_order()
-    local grid = assert(layout.parse("a b; a .; c c"))
+    local grid = assert(layout.parse("a b; a d; c c"))
 
     equal(#grid.columns, 2)
     equal(grid.columns[1], 1)
     equal(grid.columns[2], 1)
     equal(#grid.rows, 3)
-    equal(#grid.areas, 3)
+    equal(#grid.areas, 4)
     equal(grid.areas[1].name, "a")
     equal(grid.areas[1].row, 1)
     equal(grid.areas[1].column, 1)
     equal(grid.areas[1].row_span, 2)
     equal(grid.areas[1].column_span, 1)
     equal(grid.areas[2].name, "b")
-    equal(grid.areas[3].name, "c")
-    equal(grid.areas[3].row, 3)
-    equal(grid.areas[3].column, 1)
-    equal(grid.areas[3].column_span, 2)
+    equal(grid.areas[3].name, "d")
+    equal(grid.areas[3].row, 2)
+    equal(grid.areas[3].column, 2)
+    equal(grid.areas[4].name, "c")
+    equal(grid.areas[4].row, 3)
+    equal(grid.areas[4].column, 1)
+    equal(grid.areas[4].column_span, 2)
 end
 
 local function rejected(expression, options)
@@ -82,6 +85,7 @@ local function test_malformed_empty_and_oversized_input_is_rejected()
         "a b;",
         "a 1; a b",
         "a @; a b",
+        "a b; a .; c c",
     }
 
     for _, expression in ipairs(invalid) do
@@ -109,17 +113,17 @@ local function test_inconsistent_and_non_rectangular_area_grids_are_rejected()
 end
 
 local function test_bad_track_weights_and_dimension_mismatches_are_rejected()
-    rejected("a b; a .; c c", { columns = "1" })
-    rejected("a b; a .; c c", { rows = "1 1" })
-    rejected("a b; a .; c c", { columns = "0 1" })
-    rejected("a b; a .; c c", { rows = "repeat(1,0) 1 1" })
+    rejected("a b; a d; c c", { columns = "1" })
+    rejected("a b; a d; c c", { rows = "1 1" })
+    rejected("a b; a d; c c", { columns = "0 1" })
+    rejected("a b; a d; c c", { rows = "repeat(1,0) 1 1" })
 end
 
 local function test_target_arity_must_match_normalized_areas()
-    local grid = assert(layout.parse("a b; a .; c c"))
-    assert(layout.validate_arity(grid, 3))
+    local grid = assert(layout.parse("a b; a d; c c"))
+    assert(layout.validate_arity(grid, 4))
 
-    local valid, err = layout.validate_arity(grid, 2)
+    local valid, err = layout.validate_arity(grid, 3)
     equal(valid, nil)
     if type(err) ~= "string" or err == "" then
         error("arity mismatch must return an error")
@@ -132,7 +136,7 @@ local function close(actual, expected, message)
     end
 end
 
-local function test_boxes_use_cumulative_edges_cover_the_workarea_and_skip_empty_cells()
+local function test_boxes_use_cumulative_edges_cover_the_workarea()
     local row = assert(layout.parse("1 2 1"))
     local boxes = assert(layout.boxes(row, { x = 10, y = 20, w = 100, h = 40 }))
 
@@ -145,13 +149,13 @@ local function test_boxes_use_cumulative_edges_cover_the_workarea_and_skip_empty
     close(boxes[3].x + boxes[3].w, 110, "right workarea edge")
     close(boxes[1].w + boxes[2].w + boxes[3].w, 100, "workarea coverage")
 
-    local grid = assert(layout.parse("a b; a .; c c", {
+    local grid = assert(layout.parse("a b; a d; c c", {
         columns = "1 2",
         rows = "1 1 3",
     }))
     boxes = assert(layout.boxes(grid, { x = 5, y = 7, w = 120, h = 100 }))
 
-    equal(#boxes, 3)
+    equal(#boxes, 4)
     equal(boxes[1].name, "a")
     close(boxes[1].x, 5)
     close(boxes[1].y, 7)
@@ -160,11 +164,16 @@ local function test_boxes_use_cumulative_edges_cover_the_workarea_and_skip_empty
     equal(boxes[2].name, "b")
     close(boxes[2].x, 45)
     close(boxes[2].h, 20)
-    equal(boxes[3].name, "c")
-    close(boxes[3].x, 5)
-    close(boxes[3].y, 47)
-    close(boxes[3].w, 120)
-    close(boxes[3].h, 60)
+    equal(boxes[3].name, "d")
+    close(boxes[3].x, 45)
+    close(boxes[3].y, 27)
+    close(boxes[3].w, 80)
+    close(boxes[3].h, 20)
+    equal(boxes[4].name, "c")
+    close(boxes[4].x, 5)
+    close(boxes[4].y, 47)
+    close(boxes[4].w, 120)
+    close(boxes[4].h, 60)
 
     for index, box in ipairs(boxes) do
         assert(box.x >= 5 and box.y >= 7)
@@ -180,7 +189,7 @@ local function test_boxes_use_cumulative_edges_cover_the_workarea_and_skip_empty
 end
 
 local function test_area_grids_accept_column_and_row_weight_expressions()
-    local grid = assert(layout.parse("a b; a .; c c", {
+    local grid = assert(layout.parse("a b; a d; c c", {
         columns = "1 2",
         rows = "repeat(1,2) 3",
     }))
@@ -200,5 +209,5 @@ test_malformed_empty_and_oversized_input_is_rejected()
 test_inconsistent_and_non_rectangular_area_grids_are_rejected()
 test_bad_track_weights_and_dimension_mismatches_are_rejected()
 test_target_arity_must_match_normalized_areas()
-test_boxes_use_cumulative_edges_cover_the_workarea_and_skip_empty_cells()
+test_boxes_use_cumulative_edges_cover_the_workarea()
 print("layout tests passed")
