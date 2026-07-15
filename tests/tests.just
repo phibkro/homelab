@@ -514,6 +514,14 @@
     echo "  $pass checks passed"
     [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
 
+# Destructive only inside a generated disposable workspace. This stays
+# separate from `just test`: it launches real Ghostty clients and changes
+# their native Hyprland layout before exact address/PID cleanup.
+#
+# Explicit live journey: weighted row + area grid + target drift recovery.
+@test-hypr-layout-live:
+    bash modules/home/desktop/hypr-rice/hypr-layout-live-test.sh
+
 # Smoke-test the Hyprland config we just deployed. Three tiers, each
 # catching a different class of regression:
 #
@@ -544,6 +552,8 @@
 
     echo "=== Tier 1 — config parse ==="
     out=$(hyprctl reload 2>&1) && [[ "$out" == "ok" ]] && echo "  ✓ reload" || { echo "  ✗ reload: $out"; fail=1; }
+    errors=$(hyprctl configerrors)
+    [[ -z "$errors" ]] && echo "  ✓ no config errors" || { echo "  ✗ config errors: $errors"; fail=1; }
 
     # `hyprctl dispatch` returning "ok" only proves the call parsed —
     # it does NOT prove the right thing happened. The table-arg form
@@ -644,8 +654,39 @@
       check_bind "SUPER+CTRL+SHIFT+$ws_n (move to workspace)" 69 "$ws_n"
     done
     check_bind "SUPER+RETURN (popup-term)" 64 "RETURN"
+    check_bind "SUPER+R (workspace layout)" 64 "R"
     check_bind "SUPER+ALT+TAB (cycle next)" 72 "TAB"
     check_bind "SUPER+ALT+SHIFT+TAB (cycle prev)" 73 "TAB"
+
+    echo "=== Tier 4 — rice bridge errors preserve workspace state ==="
+    before_rules=$(hyprctl -j workspacerules | nix shell nixpkgs#jq -c jq -S -c '.')
+    before_workspace=$(hyprctl -j activeworkspace | nix shell nixpkgs#jq -c jq -S -c '{id,name,tiledLayout,windows}')
+    expect_layout_error() {
+      local label="$1" fragment="$2"
+      shift 2
+      local output
+      if output=$(hypr-layout "$@" 2>&1); then
+        echo "  ✗ $label unexpectedly succeeded: $output"
+        fail=1
+        return
+      fi
+      if [[ "$output" == *"$fragment"* ]]; then
+        echo "  ✓ $label -> $output"
+      else
+        echo "  ✗ $label returned the wrong error: $output"
+        fail=1
+      fi
+    }
+    expect_layout_error "malformed grid" "complete rectangle" 'a a; a b'
+    printf -v oversized '%4097s' ''
+    oversized=${oversized// /1}
+    expect_layout_error "oversized input" "at most 4096 bytes" "$oversized"
+    expect_layout_error "injection-shaped input" "invalid area name" 'x"); error("boom'
+    after_rules=$(hyprctl -j workspacerules | nix shell nixpkgs#jq -c jq -S -c '.')
+    after_workspace=$(hyprctl -j activeworkspace | nix shell nixpkgs#jq -c jq -S -c '{id,name,tiledLayout,windows}')
+    [[ "$before_rules" == "$after_rules" && "$before_workspace" == "$after_workspace" ]] \
+      && echo "  ✓ workspace rules and active layout unchanged" \
+      || { echo "  ✗ invalid input mutated workspace state"; fail=1; }
 
     echo
     if [[ "$fail" -eq 0 ]]; then

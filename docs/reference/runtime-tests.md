@@ -36,13 +36,14 @@ One lever maxed = nice-to-have. Two = ship it. Three+ = required.
 
 | Recipe | Effect under test | Module |
 |---|---|---|
-| `just test-hypr` | Hyprland keybind registry — declared `hl.bind(...)` → `hyprctl binds -j` reflects every (modmask, key) tuple | `modules/home/desktop/hypr-rice/hyprland.lua` |
+| `just test-hypr` | Hyprland config, dispatchers, bind registry, and rejected `hypr-layout` inputs with unchanged workspace state | `modules/home/desktop/hypr-rice/` |
+| `HYPR_RICE_LIVE_TEST=1 just test-hypr-layout-live` | Explicit controlled-window journey: weighted row, area grid with an empty cell, equal-column drift fallback, and automatic resumption | `modules/home/desktop/hypr-rice/hypr-layout-live-test.sh` |
 | `just test-backups` | `nori.backups.<n>` → restic units exist + per-target snapshots ≤25h | `modules/infra/backup/default.nix` |
 | `just test-routes` | `nori.lanRoutes.<n>` → Caddy route + DNS + HTTPS reachable | `modules/infra/networking/default.nix` |
 | `just test-observability` | VM scrape targets up + process-exporter publishing + pi heartbeat <90s + zero failing gatus probes | `modules/infra/networking/gatus-probe.nix` + `modules/infra/observability/victoriametrics.nix` |
 | `just test-replicas` | `nori.replicas.<n>` → per-replica verifier oneshot succeeded within freshness budget on the target host (smoke-passes on empty registry) | `modules/infra/storage/replication.nix` |
 | `just test-authelia` | Authelia live ↔ `nori.lanRoutes.<n>.oidc` declarations: systemd active, /api/health OK, OIDC discovery issuer correct, /run/secrets/oidc-<n>-* present + non-empty for every declared OIDC route | `modules/infra/access/authelia.nix` + `modules/infra/networking/default.nix` |
-| `just test` | All of the above | composite |
+| `just test` | All non-destructive recipes above; the opt-in Ghostty geometry journey is intentionally excluded | composite |
 
 ## The architectural correlation worth knowing
 
@@ -114,6 +115,11 @@ Tests can be run against any generation. They're idempotent (paired
 toggles where applicable, snapshot freshness checks where state-only).
 The composite `just test` is the right precondition gate for any
 deploy that touches `modules/infra/` or `home/`.
+
+The native layout geometry journey is intentionally outside that composite:
+`HYPR_RICE_LIVE_TEST=1 just test-hypr-layout-live` creates a uniquely named
+workspace and Ghostty class, then cleans the exact addresses/PIDs under
+`EXIT`, `INT`, and `TERM` traps. It prints a recovery command before mutation.
 
 ## Real catches, for posterity
 

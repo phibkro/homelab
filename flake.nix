@@ -747,6 +747,7 @@
                     luac -p ${./modules/home/desktop/hypr-rice/layout.lua}
                     luac -p ${./modules/home/desktop/hypr-rice/rice.lua}
                     bash -n ${./modules/home/desktop/hypr-rice/hypr-layout.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/hypr-layout-live-test.sh}
                     touch $out
                   '';
 

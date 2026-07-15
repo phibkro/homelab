@@ -59,4 +59,12 @@ if [[ -z $hyprctl_bin || ! -x $hyprctl_bin ]]; then
 fi
 
 call="_G.hypr_rice_apply_hex(\"$(hex "$action")\", \"$(hex "$expression")\", \"$(hex "$columns")\", \"$(hex "$rows")\")"
-exec "$hyprctl_bin" -r eval "$call"
+if ! output=$("$hyprctl_bin" -r eval "$call" 2>&1); then
+  printf '%s\n' "$output" >&2
+  exit 1
+fi
+if [[ $output == error:* ]]; then
+  printf '%s\n' "$output" >&2
+  exit 1
+fi
+printf '%s\n' "$output"

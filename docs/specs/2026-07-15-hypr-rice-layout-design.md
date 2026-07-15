@@ -229,7 +229,7 @@ An empty cell does not own a size. Its row and column tracks size it. A hole the
 | L10 | Lua template substitution leaves no unresolved `@...@` markers. | Flake/build check. |
 | L11 | Grouped workspaces are rejected in v1. | Lua bridge preflight. |
 
-After activation, target-count drift keeps the workspace on `lua:rice`, places all current targets in equal columns, emits one throttled notification, and preserves the requested expression so it resumes automatically when arity matches. `hypr-layout reset` removes the rice workspace rule and returns to the configured native layout; Hyprland reflows a new native tree rather than restoring prior geometry. Optional/rest and group semantics require explicit future syntax.
+After activation, target-count drift keeps the workspace on `lua:rice`, places all current targets in equal columns, emits one throttled notification, and preserves the requested expression so it resumes automatically when arity matches. `hypr-layout reset` replaces the workspace's rice layout rule with the configured native layout; Hyprland reflows a new native tree rather than restoring prior geometry. Optional/rest and group semantics require explicit future syntax.
 
 ## Runtime integration
 
@@ -265,10 +265,10 @@ hypr-layout-menu
 ```
 
 - `hypr-layout` hex-encodes raw arguments and calls the global bridge through `hyprctl -r eval`; it never interpolates raw Fuzzel input into Lua source.
-- `hypr-layout reset` removes the rice rule for the selected workspace and returns it to the configured native layout, accepting native reflow.
+- `hypr-layout reset` replaces the selected workspace's rice layout rule with the configured native layout, accepting native reflow.
 - `hypr-layout-menu` offers presets through Fuzzel and accepts typed custom input.
 - `SUPER+R` launches `hypr-layout-menu`, replacing the current focused-window ratio picker.
-- Existing ratio presets are translated to whole-workspace forms where meaningful; `tile-ratio` remains available during the migration commit and is removed only after runtime verification.
+- Existing ratio presets are translated to whole-workspace forms where meaningful; the migration-only `tile-ratio` helper was removed after the native live journey passed.
 
 ## Extraction map
 
@@ -337,8 +337,8 @@ It requires a preview generation already active and:
 1. Generates a unique disposable workspace name and unique Ghostty class per run.
 2. Captures the active regular/special workspace plus matching client addresses and PIDs before mutation.
 3. Launches controlled clients with close confirmation disabled and installs `EXIT`, `INT`, and `TERM` cleanup traps.
-4. Applies `1 2 1` in a zero-gap, zero-border fixture workspace. It verifies observed boxes against the logical 1:2:1 boundaries with only downstream integer-rounding tolerance.
-5. Applies `a b; a .; c c`; verifies `a` spans two rows, `c` spans two columns, and the empty cell remains unassigned.
+4. Applies `1 2 1` and verifies the observed 1:2:1 client geometry with tolerance for Hyprland's configured gaps and downstream integer rounding rather than asserting impossible raw logical boxes.
+5. Applies `a b; a .; c c`; verifies `a` spans two rows, `c` spans two columns, and the right-middle empty cell remains unassigned after accounting for those gaps.
 6. Submits malformed, non-rectangular, grouped-workspace, and initial arity failures; verifies no rice state/rule mutation.
 7. Changes target count after activation; verifies equal-column fallback and automatic resumption when arity matches again.
 8. Cleans up by exact address/PID and returns focus to the captured workspace. A documented recovery command removes remnants after untrappable failure; it does not promise restoration of a destroyed native layout tree.

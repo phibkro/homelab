@@ -369,105 +369,6 @@ let
     done
   '';
 
-  /*
-    tile-ratio — SUPER+R fuzzel-picks a target split ratio for the
-    focused window. Two input modes:
-      - one of the listed presets -> ABSOLUTE target, a fraction of
-        monitor width (always lands at the same spot regardless of
-        starting size)
-      - anything else you type -> RELATIVE formula, a multiplier on
-        the CURRENT size ("2" -> current*2, "1/2" -> current*0.5)
-    `splitratio` (dwindle) is relative-delta-only — no "set to exact
-    ratio" mode exists (confirmed live 2026-07-01: `splitratio exact
-    0.33` errors `failed to parse "exact" as a delta`). So both modes
-    resolve to a target ratio first, then compute delta-from-current
-    and apply it. Exact for the common case (a top-level 2-window
-    split filling the screen); an approximation for deeper nested
-    splits, since dwindle ratios are relative to a window's immediate
-    split-sibling, not always the whole monitor — the second snap_once
-    pass corrects most of that residual error empirically rather than
-    trying to model the split tree.
-  */
-  tileRatio = pkgs.writeShellScriptBin "tile-ratio" ''
-        set -euo pipefail
-        fuzzel=${pkgs.fuzzel}/bin/fuzzel
-        jq=${pkgs.jq}/bin/jq
-        presets="1/2
-    1/3
-    2/3
-    1/4
-    3/4
-    1/5
-    2/5"
-
-        choice="$(printf '%s\n' "$presets" | "$fuzzel" --dmenu --prompt "ratio (pick=absolute, type=relative xN): ")"
-        [ -z "$choice" ] && exit 0
-
-        # "N" or "N/M" -> decimal.
-        parse_value() {
-          case "$1" in
-            */*) awk -F/ "{ print \$1 / \$2 }" <<< "$1" ;;
-            *)   echo "$1" ;;
-          esac
-        }
-
-        is_preset=false
-        while IFS= read -r p; do
-          [ "$p" = "$choice" ] && is_preset=true
-        done <<< "$presets"
-
-        mon_width=$(hyprctl monitors -j | "$jq" -r '.[] | select(.focused) | .width')
-        cur_width=$(hyprctl activewindow -j | "$jq" -r '.size[0]')
-        usable=$(awk "BEGIN { print $mon_width - 16 }")  # gaps_out=8, both sides
-
-        if [ "$is_preset" = true ]; then
-          target_ratio="$(parse_value "$choice")"
-        else
-          mult="$(parse_value "$choice")"
-          target_ratio=$(awk "BEGIN { print ($cur_width * $mult) / $usable }")
-        fi
-        # Clamp — an aggressive relative multiplier (e.g. "3") could ask
-        # for more than the screen has; splitratio on an out-of-range
-        # target just pins the other window to nothing, so keep both
-        # sides usable.
-        target_ratio=$(awk "BEGIN { t = $target_ratio; if (t < 0.05) t = 0.05; if (t > 0.95) t = 0.95; print t }")
-
-        # A fixed monitor-width-based delta formula only works for a
-        # top-level 2-window split. For a deeply nested window (3+ windows
-        # on the workspace) `splitratio`'s real effect is proportional to
-        # the LOCAL sibling-pair's extent, not the whole monitor — verified
-        # live 2026-07-01: a nested window stuck at 1618px (stable across
-        # 3 repeats, so NOT drifting — but undershooting a 1712px target,
-        # because the fixed-formula loop ran out of its iteration cap
-        # before correcting for the smaller real scale). Fix: calibrate
-        # empirically. Apply one small known probe delta, MEASURE the
-        # actual pixel effect (don't assume it), derive this window's real
-        # px-per-delta-unit for whatever split context it's actually in,
-        # then compute the exact delta needed from that measured slope.
-        # Works the same regardless of nesting depth since nothing here
-        # assumes a denominator — it's measured fresh every time.
-        target_width=$(awk "BEGIN { print $target_ratio * $usable }")
-
-        w_before=$(hyprctl activewindow -j | "$jq" -r '.size[0]')
-        probe=0.2
-        hyprctl dispatch "hl.dsp.layout(\"splitratio $probe\")" >/dev/null
-        sleep 0.05
-        w_after=$(hyprctl activewindow -j | "$jq" -r '.size[0]')
-        slope=$(awk "BEGIN { d = $w_after - $w_before; print (d == 0) ? 1 : d / $probe }")
-
-        i=0
-        while [ "$i" -lt 5 ]; do
-          cur_width=$(hyprctl activewindow -j | "$jq" -r '.size[0]')
-          diff=$(awk "BEGIN { print $target_width - $cur_width }")
-          close_enough=$(awk "BEGIN { d = $diff; if (d < 0) d = -d; print (d < 3) ? 1 : 0 }")
-          [ "$close_enough" = "1" ] && break
-          delta=$(awk "BEGIN { print $diff / $slope }")
-          hyprctl dispatch "hl.dsp.layout(\"splitratio $delta\")" >/dev/null
-          sleep 0.05
-          i=$((i + 1))
-        done
-  '';
-
   generatedHyprlandLua = pkgs.replaceVars ./hyprland.lua {
     inherit
       layerTagsLua
@@ -508,7 +409,6 @@ in
     layerAutohide # daemon: hides the shown tag when focus moves to a regular workspace
     hyprLayout # strict, hex-encoded bridge into the native rice layout
     hyprLayoutMenu # SUPER+R — presets plus typed custom layout input
-    tileRatio # retained temporarily until Task 16 runtime verification
   ];
 
   # modules/home/desktop/hypr-lock.nix already owns hyprlock.settings.background
