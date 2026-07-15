@@ -6,6 +6,8 @@ status: hardened-design
 
 # Hyprland rice extraction + layout shorthand
 
+> **Follow-up:** [`2026-07-15-hypr-rice-layout-follow-up-design.md`](./2026-07-15-hypr-rice-layout-follow-up-design.md) supersedes this delivery's shortcut assignment, native target-order mapping, workspace-selection order, workspace identity key, and structural `.` empty-cell semantics. This document remains authoritative for the extraction and original shorthand/runtime foundation.
+
 ## Context
 
 Before extraction, the workstation rice was split between the system desktop bundle, shared Home Manager desktop modules, `modules/machines/workstation/home.nix`, `modules/machines/workstation/hyprland.lua`, and `tests/tests.just`. The coherent Hyprland implementation was embedded in the workstation caller: bind data, helper commands, layer state, Lua templating, and the current focused-window `tile-ratio` command.
