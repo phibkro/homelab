@@ -40,18 +40,18 @@ let
   };
 
   /*
-    nixpkgs-master lags upstream by ~1 day; 2.1.197 (Claude Sonnet 5
-    default, 1M context) shipped before nixpkgs picked it up. Override
-    version + src with the upstream manifest hashes so we don't wait.
-    Drop this block once nixpkgs-master carries ≥ 2.1.197 and revert
-    claude-code-master back to `pkgsMaster.claude-code`.
+    nixpkgs-master lags upstream by ~1 day. Override version + src with
+    the upstream manifest hashes so resume and gateway compatibility fixes
+    do not wait for the package channel. Drop this block once nixpkgs-master
+    carries ≥ 2.1.210 and revert claude-code-master back to
+    `pkgsMaster.claude-code`.
   */
-  claude-code-upstream-version = "2.1.197";
+  claude-code-upstream-version = "2.1.210";
   claude-code-upstream-checksums = {
-    "x86_64-linux" = "f54e69cbc89b2da61a415700af7ff52a147e862517d4f1b0eecf768448cf7f83";
-    "aarch64-linux" = "fb48473c467c27615ac799a754f4ef0b68c363e4596cefbb59c3815d51a0cc8a";
-    "x86_64-darwin" = "5e8a57cc7a92377f0744fa4c79191cf93d4b26c79cb919b07a407511fed1be26";
-    "aarch64-darwin" = "8cc0c4d1e4eb1dca3b0cc92ab02ee3505de764e023f8c901761c167b72041fb8";
+    "x86_64-linux" = "e7d2ceb53ed4c2ced1fe7fc1c6331c98dc5f7b4c9b2722d9c5fa3dd5dff6f719";
+    "aarch64-linux" = "84feb193c1d91f3b5eba836ed47c0e4dee953195abba950917c3e101eff174e8";
+    "x86_64-darwin" = "892f2c878050d8829e67119328dd9768345fba18a58c169212b70597c9175c40";
+    "aarch64-darwin" = "1b471d62d1117482689d75447f5e050c640da717a5a3c91e6c13792450f8c662";
   };
   claude-code-upstream-platform-keys = {
     "x86_64-linux" = "linux-x64";
