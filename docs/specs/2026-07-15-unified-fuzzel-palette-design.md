@@ -1,7 +1,7 @@
 ---
 summary: Replace separate Fuzzel menus with one Raycast-like app-and-command palette generated from a typed Nix command registry.
 date: 2026-07-15
-status: hardened-design
+status: implemented
 ---
 
 # Unified Fuzzel command palette
