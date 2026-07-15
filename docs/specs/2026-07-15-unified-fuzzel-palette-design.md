@@ -1,14 +1,14 @@
 ---
 summary: Replace separate Fuzzel menus with one Raycast-like app-and-command palette generated from a typed Nix command registry.
 date: 2026-07-15
-status: review-draft
+status: hardened-design
 ---
 
 # Unified Fuzzel command palette
 
 ## Claim
 
-`SUPER+SPACE` becomes one searchable surface for installed applications and rice commands. A typed Nix registry generates private desktop entries, direct Hyprland bindings, cheatsheet rows, and test metadata. Fuzzel remains the application engine; the rice adds commands without reimplementing application discovery.
+`SUPER+SPACE` becomes one searchable surface for installed applications and rice commands. An internally evaluated Nix submodule registry generates private desktop entries, command-style direct bindings, cheatsheet rows, dispatcher cases, and test metadata. Fuzzel remains the application engine; the rice adds commands without reimplementing application discovery.
 
 ## Context
 
@@ -45,13 +45,13 @@ After activation:
 
 ### Included
 
-- Typed command registry in the internal rice module.
-- Private generated XDG desktop entries.
-- Unified Fuzzel wrapper and one-shot views.
-- Stable command-ID dispatcher.
+- Internally evaluated `attrsOf (submodule …)` command registry in the rice module.
+- Private generated XDG desktop-entry aggregate plus launch-environment trampoline.
+- Unified Fuzzel wrapper and one-shot command-category views.
+- Stable exact command-ID dispatcher.
 - Shared confirmation and failure reporting.
 - Registry projections for direct bindings, cheatsheet, palette, and test manifest.
-- Existing layout, ratio, special-space, system, help, and utility commands.
+- Existing layout, ratio, special-space, system, session, help, utility, and discoverable window commands.
 - Removal of obsolete/dangerous bindings and `cmd-menu`.
 - Non-interactive tests plus an isolated GUI journey.
 
@@ -68,65 +68,97 @@ After activation:
 
 ```mermaid
 flowchart LR
-  R[Typed Nix command registry] --> D[Private desktop entries]
-  R --> B[Direct Hyprland binds]
-  R --> C[Cheatsheet rows]
+  R[Internal typed command registry] --> I[makeDesktopItem derivations]
+  I --> J[symlinkJoin private data root]
+  R --> B[Command-style direct binds]
+  R --> C[Command cheatsheet rows]
   R --> M[Test manifest]
-  D --> P[rice-palette / Fuzzel]
-  A[Installed application desktop entries] --> P
-  P --> X[rice-command stable ID dispatcher]
+  J --> P[rice-palette / Fuzzel]
+  A[Existing XDG data roots] --> P
+  P --> L[launch-prefix environment trampoline]
+  L --> X[rice-command exact ID dispatcher]
   X --> H[Packaged helpers / Hyprland / systemd]
 ```
 
-Legend: the registry owns custom commands; Fuzzel and the XDG database remain authoritative for normal applications.
+Legend: native compositor binds remain a separate registry; this registry owns palette commands and command-style direct binds. Fuzzel and XDG remain authoritative for normal applications.
 
 ### Why private desktop entries
 
 The rejected alternative is a custom dmenu database that parses application desktop files and implements launching itself. That would duplicate Fuzzel's XDG discovery, field-code handling, icons, desktop actions, caching, and execution semantics.
 
-Instead, each palette command is generated with `pkgs.makeDesktopItem` into one store directory. `rice-palette` prepends only that directory to `XDG_DATA_DIRS` for its own Fuzzel invocation:
+Each command is one `pkgs.makeDesktopItem` derivation. `pkgs.symlinkJoin` aggregates their outputs into the exact XDG shape Fuzzel expects:
 
 ```text
-private command desktop entries + normal XDG application entries
-                              ↓
-                    Fuzzel application mode
+/nix/store/...-rice-private-applications/share
+└── applications/
+    ├── nori-rice-layout.custom.desktop
+    └── nori-rice-session.exit.desktop
 ```
 
-The private directory is referenced by the wrapper but is not installed through `xdg.dataFile` or another global application-directory projection. Other launchers therefore do not see these command entries.
+`rice-palette` prepends the aggregate's **`share` data root** to the prior `XDG_DATA_DIRS`; it never replaces the existing profile/system roots. If the variable was originally unset, the preserved suffix is `/usr/local/share:/usr/share`.
+
+Fuzzel launches selected desktop entries with its own environment. Therefore every invocation also uses `--launch-prefix` with a packaged argv trampoline that restores the original `XDG_DATA_DIRS`, removes palette bookkeeping variables, and `exec`s the selected argv without `eval` or `sh -c`.
+
+The aggregate is referenced by the wrapper's closure but is not installed through `home.packages`, `xdg.dataFile`, or `xdg.desktopEntries`. Other launchers do not discover it, and applications launched from the palette do not inherit it.
 
 ## Command registry
 
 ### Record shape
 
 ```text
+commands : attrsOf Command
+
+attrset key          stable exact ID
 Command
-├─ id              stable unique ID
-├─ label           visible category-prefixed name
-├─ category        layout | space | system | session | help | view | utility
-├─ description     cheatsheet/reference text
-├─ keywords        hidden search aliases
-├─ icon            freedesktop icon name
-├─ invocation      typed fixed command ID + fixed arguments
-├─ effect          launch | query | toggle | layout | window | session | destructive
-├─ confirmation    none | yes-no
-├─ palette         visible in unified search
-└─ directBinding   optional modifier/key
+├─ label             visible category-prefixed name
+├─ category          layout | space | window | system | session | help | view | utility
+├─ description       cheatsheet/reference text
+├─ keywords          hidden search aliases
+├─ icon              freedesktop icon name
+├─ executable        package/path plus fixed argv owned by the record
+├─ effect            launch | query | toggle | layout | window | session | destructive
+├─ palette           visible in unified search
+└─ directBinding     optional modifier/key for command-style binds
 ```
 
-The registry is data, not executable display text. Dynamic families such as special-space toggles are generated from the existing `layerTags` source.
+The registry is evaluated internally with `lib.evalModules` and `types.attrsOf (types.submodule …)`; it does not expose a generic Home Manager option. The attrset key makes duplicate IDs unrepresentable. IDs satisfy `^[a-z0-9]+([.-][a-z0-9]+)*$`; each fully specified action has one ID, for example `space.toggle.music`, never `space.toggle` plus a desktop-file argument.
+
+`effect = destructive` derives confirmation and forbids `directBinding`; confirmation is not a second independently maintained fact. Dynamic `space.toggle.<name>` records derive from the existing `layerTags` source rather than copying tag names.
 
 ### Structural constraints
 
 | ID | Constraint | Planned enforcement |
 |---|---|---|
-| C1 | Command IDs and desktop filenames are unique. | Nix assertion + manifest test. |
-| C2 | Category, effect, and confirmation use closed enums. | Nix enum validation. |
-| C3 | Every destructive command uses `yes-no`. | Nix assertion. |
-| C4 | `session.exit` has no direct binding. | Nix assertion + generated-Lua check. |
-| C5 | Palette invocation references a known stable command ID. | Dispatcher generation from registry. |
-| C6 | Fixed arguments are generated data, never parsed from labels. | Desktop-entry/dispatcher tests. |
-| C7 | Direct bindings and cheatsheet rows derive from the same record. | Projection tests. |
-| C8 | Private desktop entries are absent from global Home Manager application files. | Closure/path test. |
+| C1 | Attrset keys are valid namespaced IDs; desktop filenames derive as `nori-rice-<id>.desktop`. | Submodule assertion + manifest test. |
+| C2 | Category and effect use closed enums. | Submodule types. |
+| C3 | Destructive effect derives `yes-no` confirmation and forbids direct bindings. | Construction rule. |
+| C4 | Every desktop `Exec` is absolute `rice-command <exact-id>` with exactly one safe ID argument. | Generated desktop validation + dispatcher arity test. |
+| C5 | Palette invocation references a known registry key. | Dispatcher generation from keyed registry. |
+| C6 | Executable package/argv is registry data, never parsed from labels or duplicated in a dependency list. | Dispatcher/manifest projection tests. |
+| C7 | Command-style direct bindings and command cheatsheet rows derive from the same record. | Projection tests. |
+| C8 | Private entries are in the wrapper closure but absent from activated profile `share/applications`, `xdg.dataFile`, and `xdg.desktopEntries`. | Profile projection test. |
+| C9 | Normal apps inherit the original XDG environment, not the private overlay. | Launch-prefix trampoline test. |
+| C10 | Native compositor binds remain separately owned; palette window adapters do not force them through shell dispatch. | Registry boundary test/documented split. |
+
+### Projection graph
+
+```text
+layerTags
+└─ generated space command records
+
+commands : attrsOf Command
+├─ palette = true        → private desktop items
+├─ every record          → dispatcher cases
+├─ directBinding != null → generated Lua command binds
+├─ directBinding != null → command cheatsheet rows
+└─ every record          → generated test manifest
+
+native compositor-bind registry
+├─ generated/direct Lua native binds
+└─ native cheatsheet rows
+```
+
+The manifest is a projection, never a copied expected-command list. Native and command rows may render into one cheatsheet, but retain separate owners.
 
 ## Initial command set
 
@@ -135,14 +167,24 @@ Normal applications are discovered by Fuzzel and do not appear in this table.
 | Category | Palette commands | Direct binding after migration |
 |---|---|---|
 | Layout | `Layout: Presets…`, `Layout: Custom…`, `Layout: Reset`, `Layout: Focused Window Ratio…` | Ratio and workspace-layout shortcuts remain. |
-| Space | One toggle per `layerTags`, cycle next/previous, popup terminal | Existing high-frequency tag and popup bindings remain. |
-| System | `System: Lock`, `System: Toggle Night Mode`, `System: Reboot…`, `System: Power Off…` | Lock remains; old system-menu binding is removed. |
+| Space | One toggle per `layerTags`, cycle next/previous, popup terminal | Existing high-frequency tag and popup bindings remain native. |
+| Window | Close focused, fullscreen, toggle floating, toggle split, focus left/right/up/down | Existing low-latency native bindings remain; palette entries are dispatcher adapters verified against the same Hyprland action semantics. |
+| System | `System: Lock`, `System: Toggle Night Mode`, `System: Reboot…`, `System: Power Off…` | Lock remains as a command-style direct binding; old system-menu binding is removed. |
 | Session | `Session: Exit Hyprland…` | **No direct binding.** |
 | Help | `Help: Keyboard Shortcuts` | Old standalone help binding is removed. |
 | Utility | `Utility: Glass Spacer`, `Utility: Screenshot Region` | Existing direct bindings remain. |
 | View | `View: Frequent`, `View: Alphabetical`, `View: Browse Categories…` | None. |
 
-`cmd-menu` is deleted after its actions move into registry entries. Focused helpers remain reusable command boundaries: `hypr-layout-menu`, `hypr-layout`, `tile-ratio`, `hypr-cheatsheet`, `layer-toggle`, and `layer-cycle`.
+`cmd-menu` is deleted after its actions move into registry entries. Focused helpers remain reusable command boundaries, but participating helpers migrate to `writeShellApplication` with complete runtime inputs or absolute paths.
+
+The layout menu gains an explicit public interface so palette entries reach their named interaction directly:
+
+```text
+hypr-layout-menu presets
+hypr-layout-menu custom
+```
+
+`hypr-layout reset`, `tile-ratio`, `hypr-cheatsheet`, `layer-toggle`, and `layer-cycle` remain focused helpers. `tile-ratio` stops sending its own notification; helpers return stderr/status and the central dispatcher owns palette/direct-command failure notifications.
 
 ## Palette interaction
 
@@ -163,7 +205,7 @@ Session: Exit Hyprland…
 Help: Keyboard Shortcuts
 ```
 
-Keywords add aliases without changing the displayed name, for example `shutdown`, `quit`, `grid`, `ratio`, and special-space names.
+Keywords add aliases without changing the displayed name, for example `shutdown`, `quit`, `grid`, `ratio`, and special-space names. Every application-mode invocation explicitly sets `--fields=filename,name,generic,keywords`; Fuzzel 1.14.1 does not search `Keywords` by default. Internal categories stay in visible names and keywords, not the freedesktop `Categories=` field.
 
 ### One-shot views
 
@@ -171,13 +213,12 @@ Fuzzel cannot change sort order inside an open window. A view command closes the
 
 | View | Invocation behavior |
 |---|---|
-| Frequent | Default application mode with Fuzzel cache/relevance. |
-| Alphabetical | Same private XDG overlay with `--no-sort`. |
-| Browse Categories | Focused category picker. |
-| Applications category | Reopen Fuzzel without the private command overlay. |
+| Frequent | Reopen default application mode with Fuzzel cache/relevance. This intentionally increments the view entry's own history count. |
+| Alphabetical | Same overlay with `--no-sort --match-workers=0`: Fuzzel's title-ordered source with relevance sorting disabled. |
+| Browse Categories | Focused picker containing `Layout`, `Space`, `Window`, `System`, `Session`, `Help`, and `Utility`; `View` is excluded to prevent recursive navigation. |
 | Command category | Reopen unified Fuzzel with initial `--search 'Category:'`. |
 
-Views are not persisted. The next `SUPER+SPACE` always returns to Frequent/default.
+There is no Applications-only view: loading without private command IDs and writing the shared cache would erase command history. Applications remain available in every default/alphabetical unified view. Views are not persisted; the next `SUPER+SPACE` returns to Frequent/default.
 
 ### Focused secondary prompts
 
@@ -201,19 +242,24 @@ Every generated desktop entry calls one packaged dispatcher:
 
 ```text
 Exec=/nix/store/.../bin/rice-command layout.custom
-Exec=/nix/store/.../bin/rice-command space.toggle music
+Exec=/nix/store/.../bin/rice-command space.toggle.music
 Exec=/nix/store/.../bin/rice-command session.exit
 ```
 
-`rice-command` is generated from registry IDs and fixed arguments. Unknown IDs fail before execution.
+`rice-command` accepts exactly one safe namespaced ID. It rejects any other arity or unknown ID before execution. Each generated case maps to one Nix-owned executable package and fixed argv; desktop entries carry no generic arguments, shell fragments, or `%` field-code risk.
 
 ### Confirmation
 
 One helper owns all destructive confirmations:
 
-```text
-select command → Fuzzel No/Yes → execute only exact Yes
-```
+The shared helper invokes `No` then `Yes` with `--dmenu --only-match --index` and fails closed:
+
+| Result | Meaning |
+|---|---|
+| status `1` | Cancel; exit `0`. |
+| other nonzero | Propagate failure. |
+| status `0`, index `1` | Execute the allowlisted destructive ID. |
+| any other output | No mutation. |
 
 Required confirmation commands:
 
@@ -221,7 +267,7 @@ Required confirmation commands:
 - `system.poweroff`
 - `session.exit`
 
-`session.exit` invokes the Hyprland Lua dispatcher only after confirmation. The current `SUPER+SHIFT+E` binding is removed in the first behavioral commit.
+`session.exit` invokes the Hyprland Lua dispatcher only after confirmation. The first **activated generation** atomically includes the confirmed dispatcher case, private desktop entry, working palette, `SUPER+SPACE` migration, and removal of `SUPER+SHIFT+E`; no tested generation temporarily loses all designed exit access.
 
 ### Failure contract
 
@@ -229,12 +275,30 @@ Required confirmation commands:
 |---|---|
 | Palette/prompt/confirmation cancelled | Exit 0; no mutation. |
 | Fuzzel fails with status other than 0/1 | Fail nonzero. |
-| Unknown command ID or invalid fixed argument | Fail before invocation. |
+| Unknown command ID or invalid dispatcher arity | Fail before invocation. |
 | Runtime dependency unavailable | Fail before invocation. |
-| Command execution fails | Write stderr and send a Mako notification. |
-| User layout/ratio input invalid | Existing validated helper reports the error. |
+| Command execution fails | Dispatcher writes stderr and sends one Mako notification. |
+| User layout/ratio input invalid | Helper returns stderr/status; dispatcher owns notification. |
 
-Display labels, keywords, and user queries are never evaluated as shell commands. Runtime dependencies are explicit package inputs.
+Cancellation exits `0` and never notifies. Display labels, keywords, and user queries are never evaluated as shell commands. Runtime dependencies derive from executable package/argv records rather than a parallel dependency list. Participating PATH-dependent helpers are converted to `writeShellApplication` or absolute store references.
+
+### Dependency ownership
+
+| Boundary | Owned references |
+|---|---|
+| `rice-palette` | Fuzzel, private aggregate, launch trampoline |
+| Confirmation / failure | Fuzzel / libnotify |
+| Hyprland IPC actions | Hyprland (`hyprctl`) |
+| Power and night mode | systemd (`systemctl`) |
+| Lock | procps (`pidof`), Hyprlock |
+| Popup terminal | Hyprland, Ghostty, grep or a replacement query implementation |
+| Layer query | Hyprland, jq, sed |
+| Screenshot | grim, slurp, wl-clipboard |
+| Ratio helper | coreutils, Fuzzel, gawk, Hyprland, jq; no libnotify |
+| Layout helper | coreutils, Hyprland |
+| Cheatsheet | Fuzzel, generated text derivation |
+
+Global installation elsewhere in the desktop module is not dependency ownership.
 
 ## Binding migration
 
@@ -272,18 +336,22 @@ Generated Lua and bind-manifest checks enforce these facts because `hyprctl bind
 
 Add behavior tests for:
 
-1. Registry validation and unique IDs.
-2. Desktop-entry generation and `desktop-file-validate`.
-3. Private `XDG_DATA_DIRS` overlay construction.
-4. Frequent vs alphabetical Fuzzel arguments.
-5. Category-picker and initial-search behavior.
-6. Cancellation and empty-input no-op semantics.
-7. Confirmation policy and exact `Yes` requirement.
-8. Unknown command IDs and invalid fixed arguments.
-9. Notification plus stderr on execution failure.
-10. Generated bind/cheatsheet/manifest completeness.
-11. Absence of `SUPER+P`, `SUPER+H`, and `SUPER+SHIFT+E`.
-12. Presence of `SUPER+SPACE → rice-palette`.
+1. Internal submodule validation, namespaced IDs, and derived filenames.
+2. `makeDesktopItem` generation, `symlinkJoin` data-root shape, and `desktop-file-validate`.
+3. Private overlay prepends while preserving set/unset original `XDG_DATA_DIRS`.
+4. Launch-prefix trampoline restores environment and executes argv without shell evaluation.
+5. Explicit Fuzzel fields, Frequent, and strict Alphabetical arguments.
+6. Command-category picker and initial prefix search; no Applications-only path.
+7. Cancellation, empty-input, and Fuzzel status propagation.
+8. Confirmation status/index protocol and destructive direct-bind prohibition.
+9. Exact one-ID dispatcher arity, unknown IDs, and layer-tag-derived IDs.
+10. One central notification plus stderr on execution failure.
+11. Direct layout-menu `presets`/`custom` helper routing.
+12. Command bind/cheatsheet/manifest completeness and native-bind boundary.
+13. Private entries present in closure but absent from activated profile application projections.
+14. Absence of `SUPER+P`, `SUPER+H`, and `SUPER+SHIFT+E`.
+15. Presence of `SUPER+SPACE → rice-palette`.
+16. Window palette adapters target the intended focused window after Fuzzel exits.
 
 The flake check runs shell syntax, behavior tests, generated-desktop validation, and generated-Lua checks. Tests inject Fuzzel, Hyprland, systemd, notification, and command binaries; they never open UI.
 
@@ -291,35 +359,41 @@ The flake check runs shell syntax, behavior tests, generated-desktop validation,
 
 No verifier may open Fuzzel, move focus, or switch spaces in the operator's active session.
 
-Hardening must prove one isolation route before implementation is declared complete:
+Use Hyprland 0.55.4's upstream headless path rather than an uncertain nested fallback:
 
-1. **Preferred:** nested/headless Hyprland with its own display/socket and disposable XDG/cache directories.
-2. **Fallback:** separate TTY/login session explicitly authorized by the operator.
+```text
+HYPRLAND_HEADLESS_ONLY=1
+private HOME + XDG_RUNTIME_DIR(mode 0700) + XDG_CACHE/CONFIG/DATA_HOME
+minimal no-autostart Hyprland config
+clear inherited WAYLAND_DISPLAY, DISPLAY, HYPRLAND_INSTANCE_SIGNATURE,
+DBUS_SESSION_BUS_ADDRESS
+```
 
-The opt-in journey verifies:
+The harness identifies the instance by its PID/private runtime directory, creates a headless output through that instance, and launches Fuzzel only against its private `WAYLAND_DISPLAY`. Input uses a Wayland-scoped client such as `wtype`, never host-level `ydotool`; `grim` captures the private output.
 
-- normal applications and generated commands appear together;
-- category prefixes and keyword search find the intended command;
-- Frequent and Alphabetical launch with the intended sort arguments;
-- one harmless command executes through its stable ID;
+The opt-in journey uses one fixture application desktop entry plus the actual generated command aggregate and verifies:
+
+- fixture application and generated commands appear together;
+- category prefixes and keyword aliases find the intended command;
+- Frequent and Alphabetical use the intended Fuzzel arguments;
+- one harmless marker-file command executes through its stable ID;
+- a window action targets the fixture window after Fuzzel closes;
 - cancellation leaves no effect;
-- nested/session processes, cache, and temporary XDG data are removed.
+- private processes, socket, cache, output, and temporary XDG roots are removed.
 
-If the nested compositor cannot reproduce Fuzzel's application and input behavior, verification is blocked pending a separate-TTY run; it is not silently redirected to the active desktop.
+A separate TTY is emergency fallback only and requires explicit operator authorization. Verification is never redirected to the active desktop.
 
 ## Delivery sequence
 
-1. Commit this reviewed design.
-2. Harden command schema, private XDG visibility, Fuzzel sorting semantics, and isolated GUI feasibility.
-3. Add registry assertions and generated test manifest.
-4. Remove direct exit and move session control behind confirmation.
-5. Add stable dispatcher and shared confirmation/error helpers.
-6. Generate private desktop entries and `rice-palette` views.
-7. Migrate `SUPER+SPACE`, remove obsolete menu/help bindings, and delete `cmd-menu`.
-8. Add pure/build checks.
-9. Run the isolated GUI journey.
-10. Persist only after the isolated journey passes.
-11. Do not push without the repository push gate and explicit operator approval.
+1. Commit this hardened design.
+2. Add failing pure tests for the internal schema, exact-ID dispatcher, confirmation, XDG overlay/trampoline, desktop aggregate, views, and helper interfaces.
+3. Implement the registry projections, explicit dependency ownership, dispatcher, confirmation/failure boundary, private aggregate, launch trampoline, and palette wrapper without activating an intermediate generation.
+4. Migrate layout/space/window/system/session/help/utility/view actions and delete `cmd-menu`; keep native low-latency bind ownership separate.
+5. In the same first behavioral generation: bind `SUPER+SPACE` to the working palette, remove `SUPER+P`/`SUPER+H`, and remove `SUPER+SHIFT+E` only after confirmed `session.exit` exists.
+6. Pass pure checks and build the complete workstation closure.
+7. Run the headless Hyprland/Fuzzel journey against that exact closure.
+8. Activate and persist only after the isolated journey passes; verify the running generation and no config errors.
+9. Do not push without the repository push gate and explicit operator approval.
 
 ## Related designs
 
