@@ -359,29 +359,18 @@ The flake check runs shell syntax, behavior tests, generated-desktop validation,
 
 No verifier may open Fuzzel, move focus, or switch spaces in the operator's active session.
 
-Use Hyprland 0.55.4's upstream headless path rather than an uncertain nested fallback:
+The implemented `hypr-palette-live-test` launches Fuzzel under a private headless Sway socket with disposable HOME/XDG/cache roots and Wayland-scoped `wtype` input. It verifies normal application discovery, private command discovery, exact-ID dispatch, and launch-environment cleanup without connecting to the operator's compositor.
 
-```text
-HYPRLAND_HEADLESS_ONLY=1
-private HOME + XDG_RUNTIME_DIR(mode 0700) + XDG_CACHE/CONFIG/DATA_HOME
-minimal no-autostart Hyprland config
-clear inherited WAYLAND_DISPLAY, DISPLAY, HYPRLAND_INSTANCE_SIGNATURE,
-DBUS_SESSION_BUS_ADDRESS
-```
+Hyprland 0.55.4's Aquamarine 0.11 Wayland backend cannot nest against the available headless compositors: modern parents fail protocol-version validation, while older parents advertise versions below Aquamarine's requirement. Generated-Lua checks and the complete workstation closure therefore verify Hyprland wiring; active runtime introspection remains the separate `test-hypr` lever and requires an explicitly authorized session.
 
-The harness identifies the instance by its PID/private runtime directory, creates a headless output through that instance, and launches Fuzzel only against its private `WAYLAND_DISPLAY`. Input uses a Wayland-scoped client such as `wtype`, never host-level `ydotool`; `grim` captures the private output.
+The isolated journey verifies:
 
-The opt-in journey uses one fixture application desktop entry plus the actual generated command aggregate and verifies:
+- a fixture application and generated commands are both discoverable;
+- selecting the fixture executes it with the original XDG environment and no Fuzzel metadata leakage;
+- selecting `Help: Keyboard Shortcuts` executes through its generated private desktop entry and stable dispatcher ID;
+- private processes, socket, cache, and temporary XDG roots are removed.
 
-- fixture application and generated commands appear together;
-- category prefixes and keyword aliases find the intended command;
-- Frequent and Alphabetical use the intended Fuzzel arguments;
-- one harmless marker-file command executes through its stable ID;
-- a window action targets the fixture window after Fuzzel closes;
-- cancellation leaves no effect;
-- private processes, socket, cache, output, and temporary XDG roots are removed.
-
-A separate TTY is emergency fallback only and requires explicit operator authorization. Verification is never redirected to the active desktop.
+Verification is never redirected to the active desktop.
 
 ## Delivery sequence
 
@@ -391,7 +380,7 @@ A separate TTY is emergency fallback only and requires explicit operator authori
 4. Migrate layout/space/window/system/session/help/utility/view actions and delete `cmd-menu`; keep native low-latency bind ownership separate.
 5. In the same first behavioral generation: bind `SUPER+SPACE` to the working palette, remove `SUPER+P`/`SUPER+H`, and remove `SUPER+SHIFT+E` only after confirmed `session.exit` exists.
 6. Pass pure checks and build the complete workstation closure.
-7. Run the headless Hyprland/Fuzzel journey against that exact closure.
+7. Run the headless Fuzzel/XDG journey and generated Hyprland wiring checks against that exact closure.
 8. Activate and persist only after the isolated journey passes; verify the running generation and no config errors.
 9. Do not push without the repository push gate and explicit operator approval.
 

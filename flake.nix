@@ -749,6 +749,10 @@
                       ${./modules/home/desktop/hypr-rice/hypr-layout.sh}
                     bash ${./modules/home/desktop/hypr-rice/hypr-layout-menu_test.sh} \
                       ${./modules/home/desktop/hypr-rice/hypr-layout-menu.sh}
+                    bash ${./modules/home/desktop/hypr-rice/rice-launch_test.sh} \
+                      ${./modules/home/desktop/hypr-rice/rice-launch.sh}
+                    bash ${./modules/home/desktop/hypr-rice/rice-palette_test.sh} \
+                      ${./modules/home/desktop/hypr-rice/rice-palette.sh}
                     bash ${./modules/home/desktop/hypr-rice/tile-ratio_test.sh} \
                       ${./modules/home/desktop/hypr-rice/tile-ratio.sh}
                     luac -p ${./modules/home/desktop/hypr-rice/layout.lua}
@@ -757,6 +761,11 @@
                     bash -n ${./modules/home/desktop/hypr-rice/hypr-layout_test.sh}
                     bash -n ${./modules/home/desktop/hypr-rice/hypr-layout-menu.sh}
                     bash -n ${./modules/home/desktop/hypr-rice/hypr-layout-menu_test.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/rice-launch.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/rice-launch_test.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/rice-palette.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/rice-palette_test.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/hypr-palette-live-test.sh}
                     bash -n ${./modules/home/desktop/hypr-rice/tile-ratio.sh}
                     bash -n ${./modules/home/desktop/hypr-rice/tile-ratio_test.sh}
                     bash -n ${./modules/home/desktop/hypr-rice/hypr-layout-live-test.sh}

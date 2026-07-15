@@ -105,11 +105,8 @@ end)
 -- `toggle_special("term")` instead; verified working. See
 -- [[hyprland-lua-mode-dispatcher-syntax]].
 hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd("popup-term"))
-hl.bind(mod .. " + SPACE",  hl.dsp.exec_cmd("fuzzel"))
+hl.bind(mod .. " + SPACE",  hl.dsp.exec_cmd("rice-palette"))
 hl.bind(mod .. " + B",      hl.dsp.exec_cmd("zen-beta"))
-hl.bind(mod .. " + H",      hl.dsp.exec_cmd("hypr-cheatsheet"))
-hl.bind(mod .. " + L",      hl.dsp.exec_cmd("pidof hyprlock || hyprlock"))
-hl.bind(mod .. " + P",      hl.dsp.exec_cmd("cmd-menu"))
 -- Spacer — tiles like a real window (reserves a slot in the layout)
 -- but shows nothing; styled translucent+blurred ("glass") via the
 -- spacer-glass window_rule below rather than fully invisible, so it's
@@ -127,9 +124,8 @@ hl.bind(mod .. " + P",      hl.dsp.exec_cmd("cmd-menu"))
 @riceCommandBindsLua@
 
 -- Window management
-hl.bind(mod .. " + Q",         hl.dsp.window.close())
-hl.bind(mod .. " + SHIFT + E", hl.dsp.exit())
-hl.bind(mod .. " + V",         hl.dsp.window.float({ action = "toggle" }))
+hl.bind(mod .. " + Q", hl.dsp.window.close())
+hl.bind(mod .. " + V", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mod .. " + F",         hl.dsp.window.fullscreen())
 hl.bind(mod .. " + S",         hl.dsp.layout("togglesplit"))  -- dwindle
 
@@ -233,9 +229,8 @@ hl.window_rule({
 --     SUPER+2 just toggles visibility (no spawn).
 --
 -- Cheatsheet integration:
---   These binds are NOT yet in the SUPER+H cheatsheet (sourced from
---   keyBinds in modules/home/desktop/hypr-rice/default.nix). Add there if these
---   stick after a week of use.
+--   These generated tag binds remain separate from the Nix bind records;
+--   the unified palette exposes the same actions by name.
 ----------------------------------------------------------------------
 
 -- Generated from default.nix's `layerTags` (the sole source of the tag

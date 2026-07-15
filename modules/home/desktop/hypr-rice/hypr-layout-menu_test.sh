@@ -43,7 +43,7 @@ run() {
     LAYOUT_MENU_LAYOUT_CALLS="$layout_calls" \
     FUZZEL_BIN="$tmp/fuzzel" \
     HYPR_LAYOUT_BIN="$tmp/hypr-layout" \
-    bash "$script"
+    bash "$script" "$@"
 }
 
 layout_args() {
@@ -84,5 +84,22 @@ run
 responses '0|Custom…' '0|'
 run
 [[ ! -s $layout_calls ]]
+
+responses '0|repeat(1,5)'
+run presets
+layout_args
+[[ ${#captured[@]} -eq 1 && ${captured[0]} == 'repeat(1,5)' ]]
+
+responses '0|a b; c d'
+run custom
+layout_args
+[[ ${#captured[@]} -eq 1 && ${captured[0]} == 'a b; c d' ]]
+fuzzel_args
+[[ " ${menu_calls[*]} " == *' --prompt-only '* ]]
+
+if responses '0|anything' && run unknown 2>/dev/null; then
+  echo 'hypr-layout-menu accepted an unknown mode' >&2
+  exit 1
+fi
 
 echo 'hypr-layout-menu behavior tests passed'

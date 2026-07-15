@@ -6,7 +6,6 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 state=$tmp/state
 calls=$tmp/calls
-notifications=$tmp/notifications
 
 printf '#!%s\n' "$BASH" >"$tmp/hyprctl"
 cat >>"$tmp/hyprctl" <<'EOF'
@@ -68,14 +67,6 @@ exit "${TILE_RATIO_FUZZEL_STATUS:-0}"
 EOF
 chmod +x "$tmp/fuzzel"
 
-printf '#!%s\n' "$BASH" >"$tmp/notify-send"
-cat >>"$tmp/notify-send" <<'EOF'
-set -euo pipefail
-printf '%s\0' "$@" >>"$TILE_RATIO_NOTIFICATIONS"
-exit "${TILE_RATIO_NOTIFY_STATUS:-0}"
-EOF
-chmod +x "$tmp/notify-send"
-
 printf '#!%s\n' "$BASH" >"$tmp/sleep"
 cat >>"$tmp/sleep" <<'EOF'
 exit 0
@@ -84,15 +75,12 @@ chmod +x "$tmp/sleep"
 
 run() {
   : >"$calls"
-  : >"$notifications"
   printf '300' >"$state"
   rm -f "$state.count"
   TILE_RATIO_STATE="$state" \
     TILE_RATIO_CALLS="$calls" \
-    TILE_RATIO_NOTIFICATIONS="$notifications" \
     HYPRCTL_BIN="$tmp/hyprctl" \
     FUZZEL_BIN="$tmp/fuzzel" \
-    NOTIFY_SEND_BIN="$tmp/notify-send" \
     SLEEP_BIN="$tmp/sleep" \
     bash "$script" "$@"
 }
@@ -132,19 +120,14 @@ expect_width 492
 if TILE_RATIO_NO_WINDOW=1 run 1/2 >"$tmp/out" 2>"$tmp/err"; then exit 1; fi
 grep -q 'no mapped tiled focused window' "$tmp/err"
 expect_no_dispatch
-[[ -s $notifications ]]
 
 if TILE_RATIO_LAYOUT=lua:rice run 1/2 >"$tmp/out" 2>"$tmp/err"; then exit 1; fi
 grep -q 'hypr-layout reset' "$tmp/err"
 expect_no_dispatch
-[[ -s $notifications ]]
 
 if TILE_RATIO_LAYOUT=master run 1/2 >"$tmp/out" 2>"$tmp/err"; then exit 1; fi
 grep -q 'requires dwindle' "$tmp/err"
 expect_no_dispatch
-
-if TILE_RATIO_NOTIFY_STATUS=1 TILE_RATIO_LAYOUT=lua:rice run 1/2 >"$tmp/out" 2>"$tmp/err"; then exit 1; fi
-grep -q 'hypr-layout reset' "$tmp/err"
 
 if TILE_RATIO_ZERO_SLOPE=1 run 1/2 >"$tmp/out" 2>"$tmp/err"; then exit 1; fi
 grep -q 'probe produced no measurable width change' "$tmp/err"

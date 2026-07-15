@@ -11,7 +11,6 @@ usage() {
 
 hyprctl_bin=${HYPRCTL_BIN:-$(command -v hyprctl || true)}
 fuzzel_bin=${FUZZEL_BIN:-$(command -v fuzzel || true)}
-notify_send_bin=${NOTIFY_SEND_BIN:-$(command -v notify-send || true)}
 sleep_bin=${SLEEP_BIN:-$(command -v sleep || true)}
 jq_bin=${JQ_BIN:-$(command -v jq || true)}
 awk_bin=${AWK_BIN:-$(command -v awk || true)}
@@ -19,7 +18,6 @@ awk_bin=${AWK_BIN:-$(command -v awk || true)}
 for entry in \
   "hyprctl:$hyprctl_bin" \
   "fuzzel:$fuzzel_bin" \
-  "notify-send:$notify_send_bin" \
   "sleep:$sleep_bin" \
   "jq:$jq_bin" \
   "awk:$awk_bin"; do
@@ -32,9 +30,7 @@ for entry in \
 done
 
 fail() {
-  local message=$1
-  printf 'tile-ratio: %s\n' "$message" >&2
-  "$notify_send_bin" -a tile-ratio 'Tile ratio' "$message" >/dev/null 2>&1 || true
+  printf 'tile-ratio: %s\n' "$1" >&2
   return 1
 }
 

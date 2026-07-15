@@ -524,6 +524,13 @@
 @test-hypr-layout-live:
     hypr-layout-live-test
 
+# Runs Fuzzel against a private headless Sway socket. Hyprland 0.55.4's
+# Aquamarine nesting backend is protocol-incompatible with current headless
+# parents, so Hyprland bind/runtime checks remain separate. This journey never
+# connects to or mutates the operator's active desktop session.
+@test-hypr-palette-live:
+    hypr-palette-live-test
+
 # Smoke-test the Hyprland config we just deployed. Three tiers, each
 # catching a different class of regression:
 #
@@ -642,6 +649,17 @@
         fail=1
       fi
     }
+    check_no_bind() {
+      local label="$1" modmask="$2" key="$3"
+      hit=$(echo "$binds_json" | nix shell nixpkgs#jq -c jq --argjson m "$modmask" --arg k "$key" \
+        '[.[] | select(.modmask == $m and .key == $k)] | length')
+      if [[ "$hit" -eq 0 ]]; then
+        echo "  ✓ $label absent"
+      else
+        echo "  ✗ $label still registered (modmask=$modmask key=$key)"
+        fail=1
+      fi
+    }
     # Tags (layers) are the bare-SUPER surface (higher-frequency);
     # workspaces are SUPER+CTRL — not SUPER+ALT, since ALT already means
     # "window switching" in this config (ALT+TAB / SUPER+TAB below).
@@ -656,10 +674,14 @@
       check_bind "SUPER+CTRL+SHIFT+$ws_n (move to workspace)" 69 "$ws_n"
     done
     check_bind "SUPER+RETURN (popup-term)" 64 "RETURN"
+    check_bind "SUPER+SPACE (unified palette)" 64 "SPACE"
     check_bind "SUPER+R (focused ratio)" 64 "R"
     check_bind "SUPER+SHIFT+R (workspace layout)" 65 "R"
     check_bind "SUPER+ALT+TAB (cycle next)" 72 "TAB"
     check_bind "SUPER+ALT+SHIFT+TAB (cycle prev)" 73 "TAB"
+    check_no_bind "SUPER+P command menu" 64 "P"
+    check_no_bind "SUPER+H standalone help" 64 "H"
+    check_no_bind "SUPER+SHIFT+E immediate exit" 65 "E"
 
     echo "=== Tier 4 — rice bridge errors preserve workspace state ==="
     before_rules=$(hyprctl -j workspacerules | nix shell nixpkgs#jq -c jq -S -c '.')

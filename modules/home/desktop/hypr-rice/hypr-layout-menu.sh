@@ -24,17 +24,50 @@ choose() {
   printf '%s' "$output"
 }
 
-presets=$'1 1\n1 2 1\nrepeat(1,5)\na b; a d; c c\nCustom…\nreset'
-if ! choice=$(printf '%s\n' "$presets" | choose "$fuzzel_bin" --dmenu --only-match --prompt 'layout: '); then
-  exit 0
-fi
+preset_choices=$'1 1\n1 2 1\nrepeat(1,5)\na b; a d; c c'
+
+choose_preset() {
+  printf '%s\n' "$preset_choices" |
+    choose "$fuzzel_bin" --dmenu --only-match --prompt 'layout: '
+}
+
+choose_custom() {
+  choose "$fuzzel_bin" --dmenu --prompt-only 'layout expression: '
+}
+
+mode=${1:-menu}
+[[ $# -le 1 ]] || {
+  printf 'usage: hypr-layout-menu [menu|presets|custom]\n' >&2
+  exit 64
+}
+
+case $mode in
+  presets)
+    if ! choice=$(choose_preset); then
+      exit 0
+    fi
+    ;;
+  custom)
+    if ! choice=$(choose_custom); then
+      exit 0
+    fi
+    ;;
+  menu)
+    choices="$preset_choices"$'\nCustom…\nreset'
+    if ! choice=$(printf '%s\n' "$choices" | choose "$fuzzel_bin" --dmenu --only-match --prompt 'layout: '); then
+      exit 0
+    fi
+    if [[ $choice == 'Custom…' ]]; then
+      if ! choice=$(choose_custom); then
+        exit 0
+      fi
+    fi
+    ;;
+  *)
+    printf 'usage: hypr-layout-menu [menu|presets|custom]\n' >&2
+    exit 64
+    ;;
+esac
+
 [[ -n $choice ]] || exit 0
-
-if [[ $choice == 'Custom…' ]]; then
-  if ! choice=$(choose "$fuzzel_bin" --dmenu --prompt-only 'layout expression: '); then
-    exit 0
-  fi
-  [[ -n $choice ]] || exit 0
-fi
-
 "$hypr_layout_bin" "$choice"

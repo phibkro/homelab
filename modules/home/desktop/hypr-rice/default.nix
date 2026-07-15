@@ -11,7 +11,7 @@ let
 
   /*
     ---------------------------------------------------------------------
-    Bind data — single source of truth for the SUPER+H cheatsheet.
+    Bind data — single source of truth for the palette cheatsheet.
     riceCommandBindings additionally generate their Hyprland Lua lines,
     so the spacer/ratio/layout command mapping cannot drift. Records are
     built via the small constructor set below; each carries:
@@ -79,35 +79,397 @@ let
     in
     "${combo}  →  ${b.desc}";
 
-  riceCommandBindings = [
+  mkCommand =
+    attrs:
     {
-      key = "G";
-      shift = false;
-      command = "glass-spacer";
-      desc = "glass spacer";
+      description = attrs.label;
+      keywords = [ ];
+      icon = "system-run";
+      effect = "launch";
+      palette = true;
+      directBinding = null;
+      args = [ ];
     }
-    {
-      key = "R";
-      shift = false;
-      command = "tile-ratio";
-      desc = "focused window ratio";
-    }
-    {
-      key = "R";
-      shift = true;
-      command = "hypr-layout-menu";
-      desc = "workspace layout";
-    }
+    // attrs;
+
+  baseCommands = {
+    "layout.menu" = mkCommand {
+      label = "Layout: Workspace Menu…";
+      description = "workspace layout menu";
+      category = "layout";
+      executable = "${hyprLayoutMenu}/bin/hypr-layout-menu";
+      args = [ "menu" ];
+      palette = false;
+      directBinding = {
+        mod = "$mod SHIFT";
+        key = "R";
+      };
+    };
+    "layout.presets" = mkCommand {
+      label = "Layout: Presets…";
+      description = "choose a workspace layout preset";
+      category = "layout";
+      executable = "${hyprLayoutMenu}/bin/hypr-layout-menu";
+      args = [ "presets" ];
+      keywords = [ "grid" ];
+      icon = "view-grid-symbolic";
+      effect = "layout";
+    };
+    "layout.custom" = mkCommand {
+      label = "Layout: Custom…";
+      description = "enter a workspace layout expression";
+      category = "layout";
+      executable = "${hyprLayoutMenu}/bin/hypr-layout-menu";
+      args = [ "custom" ];
+      keywords = [ "grid" ];
+      icon = "view-grid-symbolic";
+      effect = "layout";
+    };
+    "layout.reset" = mkCommand {
+      label = "Layout: Reset";
+      description = "return the workspace to Dwindle";
+      category = "layout";
+      executable = "${hyprLayout}/bin/hypr-layout";
+      args = [ "reset" ];
+      keywords = [ "dwindle" ];
+      icon = "view-restore-symbolic";
+      effect = "layout";
+    };
+    "layout.ratio" = mkCommand {
+      label = "Layout: Focused Window Ratio…";
+      description = "focused window ratio";
+      category = "layout";
+      executable = "${tileRatio}/bin/tile-ratio";
+      keywords = [
+        "resize"
+        "fraction"
+        "percent"
+      ];
+      icon = "view-split-left-right-symbolic";
+      effect = "layout";
+      directBinding = {
+        mod = "$mod";
+        key = "R";
+      };
+    };
+
+    "space.popup-terminal" = mkCommand {
+      label = "Space: Toggle Popup Terminal";
+      description = "ghostty popup terminal";
+      category = "space";
+      executable = "${popupTerm}/bin/popup-term";
+      keywords = [
+        "scratchpad"
+        "term"
+      ];
+      icon = "utilities-terminal-symbolic";
+      effect = "toggle";
+    };
+    "space.cycle.next" = mkCommand {
+      label = "Space: Cycle Next";
+      description = "show the next special space";
+      category = "space";
+      executable = "${layerCycle}/bin/layer-cycle";
+      args = [ "next" ];
+      effect = "toggle";
+    };
+    "space.cycle.previous" = mkCommand {
+      label = "Space: Cycle Previous";
+      description = "show the previous special space";
+      category = "space";
+      executable = "${layerCycle}/bin/layer-cycle";
+      args = [ "prev" ];
+      effect = "toggle";
+    };
+
+    "window.close" = mkCommand {
+      label = "Window: Close Focused";
+      description = "close the focused window";
+      category = "window";
+      executable = "${pkgs.hyprland}/bin/hyprctl";
+      args = [
+        "dispatch"
+        "hl.dsp.window.close()"
+      ];
+      icon = "window-close-symbolic";
+      effect = "window";
+    };
+    "window.fullscreen" = mkCommand {
+      label = "Window: Toggle Fullscreen";
+      description = "toggle fullscreen for the focused window";
+      category = "window";
+      executable = "${pkgs.hyprland}/bin/hyprctl";
+      args = [
+        "dispatch"
+        "hl.dsp.window.fullscreen()"
+      ];
+      effect = "window";
+    };
+    "window.float" = mkCommand {
+      label = "Window: Toggle Floating";
+      description = "toggle floating for the focused window";
+      category = "window";
+      executable = "${pkgs.hyprland}/bin/hyprctl";
+      args = [
+        "dispatch"
+        ''hl.dsp.window.float({ action = "toggle" })''
+      ];
+      effect = "window";
+    };
+    "window.split" = mkCommand {
+      label = "Window: Toggle Split Direction";
+      description = "toggle Dwindle split direction";
+      category = "window";
+      executable = "${pkgs.hyprland}/bin/hyprctl";
+      args = [
+        "dispatch"
+        ''hl.dsp.layout("togglesplit")''
+      ];
+      effect = "window";
+    };
+    "window.focus.left" = mkCommand {
+      label = "Window: Focus Left";
+      description = "focus the window to the left";
+      category = "window";
+      executable = "${pkgs.hyprland}/bin/hyprctl";
+      args = [
+        "dispatch"
+        ''hl.dsp.focus({ direction = "left" })''
+      ];
+      effect = "window";
+    };
+    "window.focus.right" = mkCommand {
+      label = "Window: Focus Right";
+      description = "focus the window to the right";
+      category = "window";
+      executable = "${pkgs.hyprland}/bin/hyprctl";
+      args = [
+        "dispatch"
+        ''hl.dsp.focus({ direction = "right" })''
+      ];
+      effect = "window";
+    };
+    "window.focus.up" = mkCommand {
+      label = "Window: Focus Up";
+      description = "focus the window above";
+      category = "window";
+      executable = "${pkgs.hyprland}/bin/hyprctl";
+      args = [
+        "dispatch"
+        ''hl.dsp.focus({ direction = "up" })''
+      ];
+      effect = "window";
+    };
+    "window.focus.down" = mkCommand {
+      label = "Window: Focus Down";
+      description = "focus the window below";
+      category = "window";
+      executable = "${pkgs.hyprland}/bin/hyprctl";
+      args = [
+        "dispatch"
+        ''hl.dsp.focus({ direction = "down" })''
+      ];
+      effect = "window";
+    };
+
+    "system.lock" = mkCommand {
+      label = "System: Lock";
+      description = "lock screen";
+      category = "system";
+      executable = "${lockScreen}/bin/lock-screen";
+      keywords = [ "hyprlock" ];
+      icon = "system-lock-screen-symbolic";
+      directBinding = {
+        mod = "$mod";
+        key = "L";
+      };
+    };
+    "system.night-mode" = mkCommand {
+      label = "System: Toggle Night Mode";
+      description = "toggle Hyprsunset";
+      category = "system";
+      executable = "${nightMode}/bin/toggle-night-mode";
+      keywords = [
+        "hyprsunset"
+        "warm"
+      ];
+      icon = "weather-clear-night-symbolic";
+      effect = "toggle";
+    };
+    "system.reboot" = mkCommand {
+      label = "System: Reboot…";
+      description = "reboot the machine";
+      category = "system";
+      executable = "${pkgs.systemd}/bin/systemctl";
+      args = [ "reboot" ];
+      keywords = [ "restart" ];
+      icon = "system-reboot-symbolic";
+      effect = "destructive";
+    };
+    "system.poweroff" = mkCommand {
+      label = "System: Power Off…";
+      description = "power off the machine";
+      category = "system";
+      executable = "${pkgs.systemd}/bin/systemctl";
+      args = [ "poweroff" ];
+      keywords = [ "shutdown" ];
+      icon = "system-shutdown-symbolic";
+      effect = "destructive";
+    };
+    "session.exit" = mkCommand {
+      label = "Session: Exit Hyprland…";
+      description = "exit the Hyprland desktop session";
+      category = "session";
+      executable = "${pkgs.hyprland}/bin/hyprctl";
+      args = [
+        "dispatch"
+        "hl.dsp.exit()"
+      ];
+      keywords = [
+        "quit"
+        "logout"
+      ];
+      icon = "system-log-out-symbolic";
+      effect = "destructive";
+    };
+
+    "help.shortcuts" = mkCommand {
+      label = "Help: Keyboard Shortcuts";
+      description = "show the keyboard shortcut cheatsheet";
+      category = "help";
+      executable = "hypr-cheatsheet";
+      keywords = [
+        "bindings"
+        "keys"
+      ];
+      icon = "preferences-desktop-keyboard-shortcuts-symbolic";
+      effect = "query";
+    };
+
+    "utility.glass-spacer" = mkCommand {
+      label = "Utility: Glass Spacer";
+      description = "glass spacer";
+      category = "utility";
+      executable = "${glassSpacer}/bin/glass-spacer";
+      keywords = [
+        "empty"
+        "tile"
+      ];
+      icon = "window-new-symbolic";
+      directBinding = {
+        mod = "$mod";
+        key = "G";
+      };
+    };
+    "utility.screenshot-region" = mkCommand {
+      label = "Utility: Screenshot Region";
+      description = "copy a selected region to the clipboard";
+      category = "utility";
+      executable = "${regionScreenshot}/bin/screenshot-region";
+      keywords = [
+        "grim"
+        "slurp"
+        "clipboard"
+      ];
+      icon = "applets-screenshooter-symbolic";
+    };
+
+    "view.frequent" = mkCommand {
+      label = "View: Frequent";
+      description = "reopen the default relevance-ranked palette";
+      category = "view";
+      executable = "rice-palette";
+      args = [ "frequent" ];
+      icon = "document-open-recent-symbolic";
+      effect = "query";
+    };
+    "view.alphabetical" = mkCommand {
+      label = "View: Alphabetical";
+      description = "reopen the title-ordered palette";
+      category = "view";
+      executable = "rice-palette";
+      args = [ "alphabetical" ];
+      icon = "view-sort-ascending-symbolic";
+      effect = "query";
+    };
+    "view.categories" = mkCommand {
+      label = "View: Browse Categories…";
+      description = "choose a command category";
+      category = "view";
+      executable = "rice-palette";
+      args = [ "categories" ];
+      icon = "view-list-symbolic";
+      effect = "query";
+    };
+  };
+
+  layerCommands = builtins.listToAttrs (
+    map (
+      tag:
+      lib.nameValuePair "space.toggle.${tag.name}" (mkCommand {
+        label = "Space: Toggle ${tag.name}";
+        description = "toggle the ${tag.name} special space";
+        category = "space";
+        executable = "${layerToggle}/bin/layer-toggle";
+        args = [ tag.name ];
+        keywords = [
+          tag.name
+          "special workspace"
+        ];
+        icon = "view-paged-symbolic";
+        effect = "toggle";
+      })
+    ) layerTags
+  );
+
+  commands = baseCommands // layerCommands;
+  commandCategories = [
+    "layout"
+    "space"
+    "window"
+    "system"
+    "session"
+    "help"
+    "view"
+    "utility"
   ];
+  validCommandId = id: builtins.match "^[a-z0-9]+([.-][a-z0-9]+)*$" id != null;
+  validatedCommands =
+    assert lib.assertMsg (lib.all validCommandId (
+      builtins.attrNames commands
+    )) "invalid rice command ID";
+    assert lib.assertMsg (lib.all (command: builtins.elem command.category commandCategories) (
+      builtins.attrValues commands
+    )) "invalid rice command category";
+    assert lib.assertMsg (lib.all (
+      command: command.effect != "destructive" || command.directBinding == null
+    ) (builtins.attrValues commands)) "destructive rice commands cannot have direct bindings";
+    commands;
+
+  riceCommandBindings = lib.mapAttrsToList (
+    id: command:
+    command.directBinding
+    // {
+      inherit id;
+      command = "rice-command ${id}";
+      desc = command.description;
+    }
+  ) (lib.filterAttrs (_: command: command.directBinding != null) validatedCommands);
 
   riceCommandKeyBinds = map (
-    bind: mkBindAppMod (if bind.shift then "$mod SHIFT" else "$mod") bind.key bind.command bind.desc
+    bind: mkBindAppMod bind.mod bind.key bind.command bind.desc
   ) riceCommandBindings;
 
   riceCommandBindsLua = lib.concatMapStringsSep "\n" (
     bind:
     let
-      combo = if bind.shift then ''mod .. " + SHIFT + ${bind.key}"'' else ''mod .. " + ${bind.key}"'';
+      combo =
+        if bind.mod == "$mod SHIFT" then
+          ''mod .. " + SHIFT + ${bind.key}"''
+        else if bind.mod == "$mod" then
+          ''mod .. " + ${bind.key}"''
+        else
+          throw "unsupported generated rice command modifier: ${bind.mod}";
     in
     "hl.bind(${combo}, hl.dsp.exec_cmd(${builtins.toJSON bind.command}))"
   ) riceCommandBindings;
@@ -115,17 +477,11 @@ let
   keyBinds = [
     # Apps
     (mkBindApp "RETURN" "popup-term" "ghostty (toggle)")
-    (mkBindApp "SPACE" "fuzzel" "fuzzel (launcher)")
+    (mkBindApp "SPACE" "rice-palette" "applications and commands")
     (mkBindApp "B" "zen-beta" "zen (browser)")
-
-    # Help / session
-    (mkBindApp "H" "hypr-cheatsheet" "this cheatsheet")
-    (mkBindApp "L" "pidof hyprlock || hyprlock" "lock screen")
-    (mkBindApp "P" "cmd-menu" "command menu (lock / night / power)")
 
     # Window
     (mkBind "Q" "killactive," "close window")
-    (mkBindMod "$mod SHIFT" "E" "exit," "exit Hyprland")
     (mkBind "V" "togglefloating," "toggle floating")
     (mkBind "F" "fullscreen," "fullscreen")
     (mkBind "S" "layoutmsg, togglesplit" "toggle split orientation")
@@ -161,22 +517,189 @@ let
   cheatsheetText = lib.concatMapStringsSep "\n" cheatsheetLine (keyBinds ++ mouseBinds);
   cheatsheetFile = pkgs.writeText "hypr-cheatsheet.txt" cheatsheetText;
 
-  cheatsheet = pkgs.writeShellScriptBin "hypr-cheatsheet" ''
-    cat ${cheatsheetFile} | ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt "binds: " --width 64 --lines 24 >/dev/null
-  '';
+  cheatsheet = pkgs.writeShellApplication {
+    name = "hypr-cheatsheet";
+    runtimeInputs = [ pkgs.fuzzel ];
+    text = ''
+      fuzzel --dmenu --prompt 'binds: ' --width 64 --lines 24 <${cheatsheetFile} >/dev/null
+    '';
+  };
 
-  # fuzzel-driven system-action menu. Destructive entries gate behind
-  # a yes/no confirm.
-  cmdMenu = pkgs.writeShellScriptBin "cmd-menu" ''
-    fuzzel=${pkgs.fuzzel}/bin/fuzzel
-    confirm() { [ "$(printf 'No\nYes\n' | "$fuzzel" --dmenu --prompt "$1 ")" = "Yes" ]; }
-    case "$(printf 'Lock\nNight mode\nReboot\nPower off\n' | "$fuzzel" --dmenu --prompt "cmd: ")" in
-      "Lock")       pidof hyprlock || hyprlock ;;
-      "Night mode") systemctl --user is-active --quiet hyprsunset && systemctl --user stop hyprsunset || systemctl --user start hyprsunset ;;
-      "Reboot")     confirm "Reboot?"    && systemctl reboot ;;
-      "Power off")  confirm "Power off?" && systemctl poweroff ;;
-    esac
-  '';
+  lockScreen = pkgs.writeShellApplication {
+    name = "lock-screen";
+    runtimeInputs = [
+      pkgs.hyprlock
+      pkgs.procps
+    ];
+    text = ''
+      if ! pidof hyprlock >/dev/null; then
+        exec hyprlock
+      fi
+    '';
+  };
+
+  nightMode = pkgs.writeShellApplication {
+    name = "toggle-night-mode";
+    runtimeInputs = [ pkgs.systemd ];
+    text = ''
+      if systemctl --user is-active --quiet hyprsunset; then
+        systemctl --user stop hyprsunset
+      else
+        systemctl --user start hyprsunset
+      fi
+    '';
+  };
+
+  regionScreenshot = pkgs.writeShellApplication {
+    name = "screenshot-region";
+    runtimeInputs = [
+      pkgs.grim
+      pkgs.slurp
+      pkgs.wl-clipboard
+    ];
+    text = ''
+      set +e
+      geometry=$(slurp)
+      status=$?
+      set -e
+      [[ $status -eq 1 ]] && exit 0
+      [[ $status -eq 0 ]] || exit "$status"
+      [[ -n $geometry ]] || exit 0
+      grim -g "$geometry" - | wl-copy -t image/png
+    '';
+  };
+
+  riceCommandCases = lib.concatStringsSep "\n" (
+    lib.mapAttrsToList (
+      id: command:
+      let
+        invocation = lib.escapeShellArgs ([ command.executable ] ++ command.args);
+      in
+      if command.effect == "destructive" then
+        ''
+          ${lib.escapeShellArg id})
+            if confirm_command ${lib.escapeShellArg command.label}; then
+              run_command ${invocation}
+            else
+              status=$?
+              [[ $status -eq 1 ]] && exit 0
+              exit "$status"
+            fi
+            ;;
+        ''
+      else
+        ''
+          ${lib.escapeShellArg id})
+            run_command ${invocation}
+            ;;
+        ''
+    ) validatedCommands
+  );
+
+  riceCommand = pkgs.writeShellApplication {
+    name = "rice-command";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.fuzzel
+      pkgs.libnotify
+    ];
+    text = ''
+      if [[ $# -ne 1 ]]; then
+        printf 'usage: rice-command COMMAND_ID\n' >&2
+        exit 64
+      fi
+
+      fuzzel_bin=''${FUZZEL_BIN:-fuzzel}
+      notify_send_bin=''${NOTIFY_SEND_BIN:-notify-send}
+
+      run_command() {
+        local error_file status body
+        error_file=$(mktemp)
+        set +e
+        "$@" 2> >(tee "$error_file" >&2)
+        status=$?
+        set -e
+        if [[ $status -ne 0 ]]; then
+          body=$(<"$error_file")
+          "$notify_send_bin" -a rice-command 'Command failed' "''${body:-$1 exited with status $status}" || true
+        fi
+        rm -f "$error_file"
+        return "$status"
+      }
+
+      confirm_command() {
+        local label=$1 choice status
+        set +e
+        choice=$(printf 'No\nYes\n' | "$fuzzel_bin" --dmenu --only-match --index --prompt "$label ")
+        status=$?
+        set -e
+        [[ $status -eq 1 ]] && return 1
+        [[ $status -eq 0 ]] || return "$status"
+        case $choice in
+          0) return 1 ;;
+          1) return 0 ;;
+          *)
+            printf 'rice-command: invalid confirmation result: %s\n' "$choice" >&2
+            return 64
+            ;;
+        esac
+      }
+
+      case $1 in
+        ${riceCommandCases}
+        *)
+          printf 'rice-command: unknown command ID: %s\n' "$1" >&2
+          exit 64
+          ;;
+      esac
+    '';
+  };
+
+  privateDesktopItems = lib.mapAttrsToList (
+    id:
+    command@{ keywords, ... }:
+    pkgs.makeDesktopItem {
+      name = "nori-rice-${id}";
+      desktopName = command.label;
+      genericName = command.description;
+      comment = command.description;
+      exec = "${riceCommand}/bin/rice-command ${id}";
+      inherit (command) icon;
+      inherit keywords;
+    }
+  ) (lib.filterAttrs (_: command: command.palette) validatedCommands);
+
+  privateDesktopEntries = pkgs.symlinkJoin {
+    name = "rice-private-applications";
+    paths = privateDesktopItems;
+  };
+
+  riceLaunch = pkgs.writeShellApplication {
+    name = "rice-launch";
+    text = builtins.readFile ./rice-launch.sh;
+  };
+
+  ricePalette = pkgs.writeShellApplication {
+    name = "rice-palette";
+    runtimeInputs = [ pkgs.fuzzel ];
+    text = ''
+      export RICE_PRIVATE_DATA_DIR=${lib.escapeShellArg "${privateDesktopEntries}/share"}
+      export RICE_LAUNCH_PREFIX_BIN=${lib.escapeShellArg "${riceLaunch}/bin/rice-launch"}
+      ${builtins.readFile ./rice-palette.sh}
+    '';
+  };
+
+  hyprPaletteLiveTest = pkgs.writeShellApplication {
+    name = "hypr-palette-live-test";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.sway
+      pkgs.gnugrep
+      pkgs.wtype
+      ricePalette
+    ];
+    text = builtins.readFile ./hypr-palette-live-test.sh;
+  };
 
   glassSpacer = pkgs.writeShellApplication {
     name = "glass-spacer";
@@ -197,7 +720,6 @@ let
       pkgs.gawk
       pkgs.hyprland
       pkgs.jq
-      pkgs.libnotify
     ];
     text = ''
       export TILE_RATIO_GAPS_OUT=${toString gapsOut}
@@ -207,7 +729,10 @@ let
 
   hyprLayout = pkgs.writeShellApplication {
     name = "hypr-layout";
-    runtimeInputs = [ pkgs.coreutils ];
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.hyprland
+    ];
     text = builtins.readFile ./hypr-layout.sh;
   };
 
@@ -252,12 +777,20 @@ let
     Caught 2026-06-07 — popup-term had been broken since the lua
     migration but the failure mode is silent (exit 0).
   */
-  popupTerm = pkgs.writeShellScriptBin "popup-term" ''
-    if ! hyprctl clients | grep -q "com.mitchellh.ghostty.scratch"; then
-      hyprctl dispatch 'hl.dsp.exec_cmd("ghostty --class=com.mitchellh.ghostty.scratch", { workspace = "special:term silent" })'
-    fi
-    hyprctl dispatch 'hl.dsp.workspace.toggle_special("term")'
-  '';
+  popupTerm = pkgs.writeShellApplication {
+    name = "popup-term";
+    runtimeInputs = [
+      pkgs.ghostty
+      pkgs.gnugrep
+      pkgs.hyprland
+    ];
+    text = ''
+      if ! hyprctl clients | grep -q "com.mitchellh.ghostty.scratch"; then
+        hyprctl dispatch 'hl.dsp.exec_cmd("ghostty --class=com.mitchellh.ghostty.scratch", { workspace = "special:term silent" })'
+      fi
+      hyprctl dispatch 'hl.dsp.workspace.toggle_special("term")'
+    '';
+  };
 
   /*
     layerTags — the SOLE source of the six special-workspace "tag"
@@ -324,22 +857,32 @@ let
     layer-toggle, layer-autohide); extracted so a future Hyprland JSON
     schema change only needs fixing in one place.
   */
-  currentLayer = pkgs.writeShellScriptBin "current-layer" ''
-    set -euo pipefail
-    hyprctl monitors -j \
-      | ${pkgs.jq}/bin/jq -r '.[] | select(.focused) | .specialWorkspace.name' \
-      | sed 's/^special://'
-  '';
+  currentLayer = pkgs.writeShellApplication {
+    name = "current-layer";
+    runtimeInputs = [
+      pkgs.hyprland
+      pkgs.jq
+      pkgs.gnused
+    ];
+    text = ''
+      hyprctl monitors -j \
+        | jq -r '.[] | select(.focused) | .specialWorkspace.name' \
+        | sed 's/^special://'
+    '';
+  };
 
   /*
     layer-announce — COMMAND only (CQS): the mako layer-osd popup
     (capitalized name). Was copy-pasted in layer-cycle and layer-toggle.
   */
-  layerAnnounce = pkgs.writeShellScriptBin "layer-announce" ''
-    set -euo pipefail
-    name="$1"
-    ${pkgs.libnotify}/bin/notify-send -a layer-osd "''${name^}"
-  '';
+  layerAnnounce = pkgs.writeShellApplication {
+    name = "layer-announce";
+    runtimeInputs = [ pkgs.libnotify ];
+    text = ''
+      name="$1"
+      notify-send -a layer-osd "''${name^}"
+    '';
+  };
 
   /*
     layer-cycle — SUPER+ALT+TAB / SUPER+ALT+SHIFT+TAB step through the
@@ -350,36 +893,43 @@ let
     always land on a *different* tag and a toggle could instead hide
     it if Hyprland ever treats same-name re-toggle specially.
   */
-  layerCycle = pkgs.writeShellScriptBin "layer-cycle" ''
-    set -euo pipefail
-    tags=(${lib.concatMapStringsSep " " (t: t.name) layerTags})
-    n=''${#tags[@]}
+  layerCycle = pkgs.writeShellApplication {
+    name = "layer-cycle";
+    runtimeInputs = [
+      currentLayer
+      layerAnnounce
+      pkgs.hyprland
+    ];
+    text = ''
+      tags=(${lib.concatMapStringsSep " " (t: t.name) layerTags})
+      n=''${#tags[@]}
 
-    current="$(current-layer)"
+      current="$(current-layer)"
 
-    idx=-1
-    for i in "''${!tags[@]}"; do
-      if [ "''${tags[$i]}" = "$current" ]; then
-        idx=$i
-        break
-      fi
-    done
-
-    case "''${1:-next}" in
-      next) next_idx=$(( (idx + 1) % n )) ;;
-      prev)
-        if [ "$idx" -eq -1 ]; then
-          next_idx=$(( n - 1 ))
-        else
-          next_idx=$(( (idx - 1 + n) % n ))
+      idx=-1
+      for i in "''${!tags[@]}"; do
+        if [ "''${tags[$i]}" = "$current" ]; then
+          idx=$i
+          break
         fi
-        ;;
-      *) echo "usage: layer-cycle [next|prev]" >&2; exit 1 ;;
-    esac
+      done
 
-    hyprctl dispatch "hl.dsp.focus({ workspace = \"special:''${tags[$next_idx]}\" })"
-    layer-announce "''${tags[$next_idx]}"
-  '';
+      case "''${1:-next}" in
+        next) next_idx=$(( (idx + 1) % n )) ;;
+        prev)
+          if [ "$idx" -eq -1 ]; then
+            next_idx=$(( n - 1 ))
+          else
+            next_idx=$(( (idx - 1 + n) % n ))
+          fi
+          ;;
+        *) echo "usage: layer-cycle [next|prev]" >&2; exit 1 ;;
+      esac
+
+      hyprctl dispatch "hl.dsp.focus({ workspace = \"special:''${tags[$next_idx]}\" })"
+      layer-announce "''${tags[$next_idx]}"
+    '';
+  };
 
   /*
     layer-toggle — the tags loop's SUPER+N bind calls this instead of
@@ -389,16 +939,23 @@ let
     whether the tag actually ended up visible after the toggle, since
     toggle_special() can go either direction depending on prior state.
   */
-  layerToggle = pkgs.writeShellScriptBin "layer-toggle" ''
-    set -euo pipefail
-    name="$1"
+  layerToggle = pkgs.writeShellApplication {
+    name = "layer-toggle";
+    runtimeInputs = [
+      currentLayer
+      layerAnnounce
+      pkgs.hyprland
+    ];
+    text = ''
+      name="$1"
 
-    hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$name\")" >/dev/null
-    shown="$(current-layer)"
-    if [ "$shown" = "$name" ]; then
-      layer-announce "$name"
-    fi
-  '';
+      hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$name\")" >/dev/null
+      shown="$(current-layer)"
+      if [ "$shown" = "$name" ]; then
+        layer-announce "$name"
+      fi
+    '';
+  };
 
   /*
     layer-autohide — daemon, started once at hyprland.start. A shown
@@ -413,22 +970,28 @@ let
     `workspace>>` only fires on a *regular*-workspace change, which is
     exactly "focused something on a lower layer".
   */
-  layerAutohide = pkgs.writeShellScriptBin "layer-autohide" ''
-    set -euo pipefail
-    socat=${pkgs.socat}/bin/socat
-    sock="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
+  layerAutohide = pkgs.writeShellApplication {
+    name = "layer-autohide";
+    runtimeInputs = [
+      currentLayer
+      pkgs.hyprland
+      pkgs.socat
+    ];
+    text = ''
+      sock="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
 
-    "$socat" -u "UNIX-CONNECT:$sock" - | while IFS= read -r line; do
-      case "$line" in
-        workspace\>\>*)
-          shown="$(current-layer)"
-          if [ -n "$shown" ]; then
-            hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$shown\")" >/dev/null
-          fi
-          ;;
-      esac
-    done
-  '';
+      socat -u "UNIX-CONNECT:$sock" - | while IFS= read -r line; do
+        case "$line" in
+          workspace\>\>*)
+            shown="$(current-layer)"
+            if [ -n "$shown" ]; then
+              hyprctl dispatch "hl.dsp.workspace.toggle_special(\"$shown\")" >/dev/null
+            fi
+            ;;
+        esac
+      done
+    '';
+  };
 
   generatedHyprlandLua = pkgs.replaceVars ./hyprland.lua {
     inherit
@@ -451,21 +1014,25 @@ let
     fi
     ${pkgs.gnugrep}/bin/grep -Eq 'dofile\("/nix/store/[^\"]+/modules/home/desktop/hypr-rice/rice\.lua"\)' "$out"
     ${pkgs.gnugrep}/bin/grep -Eq '"/nix/store/[^\"]+/modules/home/desktop/hypr-rice/layout\.lua"' "$out"
-    ${pkgs.gnugrep}/bin/grep -Fq 'hl.bind(mod .. " + G", hl.dsp.exec_cmd("glass-spacer"))' "$out"
-    ${pkgs.gnugrep}/bin/grep -Fq 'hl.bind(mod .. " + R", hl.dsp.exec_cmd("tile-ratio"))' "$out"
-    ${pkgs.gnugrep}/bin/grep -Fq 'hl.bind(mod .. " + SHIFT + R", hl.dsp.exec_cmd("hypr-layout-menu"))' "$out"
+    ${pkgs.gnugrep}/bin/grep -Fq 'hl.bind(mod .. " + G", hl.dsp.exec_cmd("rice-command utility.glass-spacer"))' "$out"
+    ${pkgs.gnugrep}/bin/grep -Fq 'hl.bind(mod .. " + R", hl.dsp.exec_cmd("rice-command layout.ratio"))' "$out"
+    ${pkgs.gnugrep}/bin/grep -Fq 'hl.bind(mod .. " + SHIFT + R", hl.dsp.exec_cmd("rice-command layout.menu"))' "$out"
+    ${pkgs.gnugrep}/bin/grep -Fq 'hl.bind(mod .. " + L", hl.dsp.exec_cmd("rice-command system.lock"))' "$out"
+    ${pkgs.gnugrep}/bin/grep -Fq 'hl.bind(mod .. " + SPACE",  hl.dsp.exec_cmd("rice-palette"))' "$out"
+    ! ${pkgs.gnugrep}/bin/grep -Fq 'SHIFT + E' "$out"
+    ! ${pkgs.gnugrep}/bin/grep -Fq 'cmd-menu' "$out"
+    ! ${pkgs.gnugrep}/bin/grep -Fq 'hypr-cheatsheet"))' "$out"
   '';
 in
 {
-  /*
-    Cheatsheet on PATH. Referenced by SUPER+H as `hypr-cheatsheet`
-    (name, not store path) — avoids the cycle where the binding's
-    store path would depend on the cheatsheet text which depends on
-    the bindings.
-  */
+  # `hypr-cheatsheet` and `rice-palette` stay on PATH because their
+  # command records would otherwise form a store-reference cycle through
+  # the generated desktop aggregate.
   home.packages = [
     cheatsheet
-    cmdMenu # SUPER+P command menu (lock / night mode / reboot / power off)
+    riceCommand # stable command-ID dispatcher and destructive confirmation boundary
+    ricePalette # SUPER+SPACE unified applications + rice commands
+    hyprPaletteLiveTest # explicit isolated headless compositor journey
     popupTerm # SUPER+RETURN togglable terminal (lazy-spawns its own ghostty)
     glassSpacer # SUPER+G tiled blank glass target
     currentLayer # query: bare name of the shown special-workspace tag, or empty
