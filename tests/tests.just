@@ -619,11 +619,11 @@
     #   * `ydotool` (uinput-level) would work but needs daemon +
     #     /dev/uinput perms + extra setup; not worth the complexity.
     #
-    # Static introspection via `hyprctl binds -j` is strictly better:
-    # deterministic, layout-independent, runs in <100ms, catches the
-    # "I changed my mod combo and forgot to update lua" class of bug
-    # that keypress synthesis would also catch — and a few that it
-    # wouldn't (binds registered but pointing nowhere).
+    # `hyprctl binds -j` is deterministic and layout-independent, but Lua
+    # dispatchers are opaque (`dispatcher=__lua`), so this tier verifies
+    # only key/modifier registration. Command-to-key correctness is
+    # structural: default.nix generates the corresponding Lua bind lines
+    # from the same records used by the cheatsheet.
     #
     # Modmask bits: SHIFT=1, CTRL=4, ALT=8, LOGO/SUPER=64
     # SUPER+ALT = 64+8 = 72.
@@ -654,7 +654,8 @@
       check_bind "SUPER+CTRL+SHIFT+$ws_n (move to workspace)" 69 "$ws_n"
     done
     check_bind "SUPER+RETURN (popup-term)" 64 "RETURN"
-    check_bind "SUPER+R (workspace layout)" 64 "R"
+    check_bind "SUPER+R (focused ratio)" 64 "R"
+    check_bind "SUPER+SHIFT+R (workspace layout)" 65 "R"
     check_bind "SUPER+ALT+TAB (cycle next)" 72 "TAB"
     check_bind "SUPER+ALT+SHIFT+TAB (cycle prev)" 73 "TAB"
 

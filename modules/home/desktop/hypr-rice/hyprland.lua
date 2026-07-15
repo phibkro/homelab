@@ -124,7 +124,7 @@ hl.bind(mod .. " + P",      hl.dsp.exec_cmd("cmd-menu"))
 -- (found 2026-07-01 debugging why `hl.dsp.window.close()` reported
 -- "ok" but the window never disappeared — had to kill the PID
 -- directly to confirm this was the cause).
-hl.bind(mod .. " + G",      hl.dsp.exec_cmd("ghostty --class=@spacerClass@ --cursor-style-blink=false --confirm-close-surface=false -e sleep infinity"))
+@riceCommandBindsLua@
 
 -- Window management
 hl.bind(mod .. " + Q",         hl.dsp.window.close())
@@ -132,7 +132,6 @@ hl.bind(mod .. " + SHIFT + E", hl.dsp.exit())
 hl.bind(mod .. " + V",         hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mod .. " + F",         hl.dsp.window.fullscreen())
 hl.bind(mod .. " + S",         hl.dsp.layout("togglesplit"))  -- dwindle
-hl.bind(mod .. " + R",         hl.dsp.exec_cmd("hypr-layout-menu"))
 
 -- Focus movement (vim keys + arrow keys, both ways)
 hl.bind(mod .. " + j",     hl.dsp.focus({ direction = "down" }))

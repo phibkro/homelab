@@ -78,6 +78,39 @@ let
     in
     "${combo}  →  ${b.desc}";
 
+  riceCommandBindings = [
+    {
+      key = "G";
+      shift = false;
+      command = "glass-spacer";
+      desc = "glass spacer";
+    }
+    {
+      key = "R";
+      shift = false;
+      command = "tile-ratio";
+      desc = "focused window ratio";
+    }
+    {
+      key = "R";
+      shift = true;
+      command = "hypr-layout-menu";
+      desc = "workspace layout";
+    }
+  ];
+
+  riceCommandKeyBinds = map (
+    bind: mkBindAppMod (if bind.shift then "$mod SHIFT" else "$mod") bind.key bind.command bind.desc
+  ) riceCommandBindings;
+
+  riceCommandBindsLua = lib.concatMapStringsSep "\n" (
+    bind:
+    let
+      combo = if bind.shift then ''mod .. " + SHIFT + ${bind.key}"'' else ''mod .. " + ${bind.key}"'';
+    in
+    "hl.bind(${combo}, hl.dsp.exec_cmd(${builtins.toJSON bind.command}))"
+  ) riceCommandBindings;
+
   keyBinds = [
     # Apps
     (mkBindApp "RETURN" "popup-term" "ghostty (toggle)")
@@ -95,8 +128,9 @@ let
     (mkBind "V" "togglefloating," "toggle floating")
     (mkBind "F" "fullscreen," "fullscreen")
     (mkBind "S" "layoutmsg, togglesplit" "toggle split orientation")
-    (mkBindApp "R" "hypr-layout-menu" "workspace layout")
-
+  ]
+  ++ riceCommandKeyBinds
+  ++ [
     # Focus — H/L claimed by cheatsheet/lock; J/K kept for vim down/up;
     # arrows cover all four directions.
     (mkBind "j" "movefocus, d" "focus down (vim)")
@@ -142,6 +176,17 @@ let
       "Power off")  confirm "Power off?" && systemctl poweroff ;;
     esac
   '';
+
+  glassSpacer = pkgs.writeShellApplication {
+    name = "glass-spacer";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.ghostty
+    ];
+    text = ''
+      exec ghostty --class=${lib.escapeShellArg spacerClass} --cursor-style-blink=false --confirm-close-surface=false -e sleep infinity
+    '';
+  };
 
   tileRatio = pkgs.writeShellApplication {
     name = "tile-ratio";
@@ -393,7 +438,7 @@ let
       layoutCore
       nativeLayout
       riceAdapter
-      spacerClass
+      riceCommandBindsLua
       spacerClassEscaped
       ;
   };
@@ -407,6 +452,9 @@ let
     fi
     ${pkgs.gnugrep}/bin/grep -Eq 'dofile\("/nix/store/[^\"]+/modules/home/desktop/hypr-rice/rice\.lua"\)' "$out"
     ${pkgs.gnugrep}/bin/grep -Eq '"/nix/store/[^\"]+/modules/home/desktop/hypr-rice/layout\.lua"' "$out"
+    ${pkgs.gnugrep}/bin/grep -Fq 'hl.bind(mod .. " + G", hl.dsp.exec_cmd("glass-spacer"))' "$out"
+    ${pkgs.gnugrep}/bin/grep -Fq 'hl.bind(mod .. " + R", hl.dsp.exec_cmd("tile-ratio"))' "$out"
+    ${pkgs.gnugrep}/bin/grep -Fq 'hl.bind(mod .. " + SHIFT + R", hl.dsp.exec_cmd("hypr-layout-menu"))' "$out"
   '';
 in
 {
@@ -420,6 +468,7 @@ in
     cheatsheet
     cmdMenu # SUPER+P command menu (lock / night mode / reboot / power off)
     popupTerm # SUPER+RETURN togglable terminal (lazy-spawns its own ghostty)
+    glassSpacer # SUPER+G tiled blank glass target
     currentLayer # query: bare name of the shown special-workspace tag, or empty
     layerAnnounce # command: mako layer-osd popup for a tag name
     layerCycle # SUPER+ALT+TAB / SUPER+ALT+SHIFT+TAB — step through special-workspace tags
