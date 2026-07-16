@@ -1,7 +1,10 @@
 {
   description = "nori infrastructure (NixOS) — workstation and future lab hosts";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
+    # Linux hosts track the rolling channel; the Intel Mac remains on the
+    # final release line that supports x86_64-darwin (ADR-0006).
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs-stable.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
 
     /*
@@ -32,14 +35,13 @@
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
 
     /*
-      Per-user config (desktop phase). Pinned to release-26.05 to match
-      nixpkgs. Mac homeConfiguration rides this too — 26.05 was
-      announced as the LAST nixpkgs release supporting Intel Mac
-      (x86_64-darwin), so this pin is the natural Mac end-of-line:
-      either keep 26.05 indefinitely or migrate Mac off nixpkgs.
+      Linux Home Manager follows unstable with the NixOS hosts. Intel Mac
+      stays on the matching 26.05 pair, the final x86_64-darwin release.
     */
-    home-manager.url = "github:nix-community/home-manager/release-26.05";
+    home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    home-manager-darwin.url = "github:nix-community/home-manager/release-26.05";
+    home-manager-darwin.inputs.nixpkgs.follows = "nixpkgs-stable";
 
     /*
       Zen browser. Not in nixpkgs; consumed via upstream community flake.
@@ -59,22 +61,12 @@
     snappy-switcher.inputs.nixpkgs.follows = "nixpkgs";
 
     /*
-      ollama package overlaid from nixpkgs `release-26.05` (which
-      carries 0.30.5 via backport of #527892 + #528150). The main
-      `nixpkgs` input above tracks the `nixos-26.05` channel, which
-      currently lags behind release-26.05 on ollama. Drop this input
-      + the `services.ollama.package` override in
-      modules/services/ollama.nix when the channel catches up.
-    */
-    nixpkgs-ollama.url = "github:NixOS/nixpkgs/release-26.05";
-
-    /*
       Stylix — single-input system-wide theming. Same
       Reader+collected-Writer shape as the lab's `nori.<X>` effect
       family — fits cleanly. Workstation imports the NixOS module
       via modules/machines/desktop/stylix.nix.
     */
-    stylix.url = "github:danth/stylix/release-26.05";
+    stylix.url = "github:danth/stylix";
     stylix.inputs.nixpkgs.follows = "nixpkgs";
 
     /*
@@ -155,10 +147,21 @@
     */
     tilth.url = "github:jahala/tilth";
     tilth.inputs.nixpkgs.follows = "nixpkgs";
+    tilth-darwin.url = "github:jahala/tilth";
+    tilth-darwin.inputs.nixpkgs.follows = "nixpkgs-stable";
     rtk-src.url = "github:rtk-ai/rtk";
     rtk-src.flake = false;
     stacklit-src.url = "github:glincker/stacklit";
     stacklit-src.flake = false;
+
+    /*
+      Herdr — terminal multiplexer + socket control plane for coding agents.
+      The package and its Claude skill let a first-party Fable lead dispatch
+      external Codex CLI workers without pretending one Claude Code process
+      can switch provider endpoints per subagent.
+    */
+    herdr.url = "github:ogulcancelik/herdr/v0.7.4";
+    herdr.inputs.nixpkgs.follows = "nixpkgs";
 
     /*
       ClaudeX — OpenAI Codex models behind Claude Code's harness. The
@@ -178,6 +181,8 @@
     */
     pagu-box.url = "github:phibkro/pagu-box";
     pagu-box.inputs.nixpkgs.follows = "nixpkgs";
+    pagu-box-darwin.url = "github:phibkro/pagu-box";
+    pagu-box-darwin.inputs.nixpkgs.follows = "nixpkgs-stable";
   };
 
   outputs =
@@ -708,6 +713,7 @@
               homePackageNamed =
                 name:
                 builtins.head (builtins.filter (package: lib.getName package == name) workstationHome.packages);
+              agentDispatchPackage = homePackageNamed "agent-dispatch";
               riceCommandPackage = homePackageNamed "rice-command";
               ricePalettePackage = homePackageNamed "rice-palette";
               confirmationNo = pkgs.writeShellScript "rice-confirm-no" ''
@@ -739,8 +745,22 @@
                 touch $out
               '';
 
+              agent-dispatch =
+                pkgs.runCommandLocal "agent-dispatch-test"
+                  {
+                    nativeBuildInputs = [ pkgs.util-linux ];
+                  }
+                  ''
+                    test -x ${agentDispatchPackage}/bin/agent-dispatch
+                    ${pkgs.bash}/bin/bash ${./modules/home/agent-dispatch_test.sh} \
+                      ${./modules/home/agent-dispatch.sh}
+                    touch $out
+                  '';
+
               format = pkgs.runCommandLocal "format" { } ''
-                ${pkgs.nixfmt-tree}/bin/treefmt --ci --tree-root ${./.}
+                cp -R --no-preserve=mode ${./.} source
+                chmod -R u+w source
+                ${pkgs.nixfmt-tree}/bin/treefmt --ci --tree-root "$PWD/source"
                 touch $out
               '';
 

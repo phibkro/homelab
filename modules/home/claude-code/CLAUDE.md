@@ -119,3 +119,6 @@ After a significant step, restate: done / verified / left. Lost the thread → s
 
 ### Tooling is a `nix shell` away
 Almost any tool is available ad-hoc: `nix shell nixpkgs#<pkg> -c <cmd>` (e.g. `nix shell nixpkgs#jq -c jq .`) or `nix run nixpkgs#<pkg> -- <args>`. "command not found" on PATH is rarely a dead end; reach for nixpkgs first (node, pnpm, ripgrep, jq, shellcheck, …). Inside a project, prefer its own dev shell (`nix develop`, or direnv auto-loads from `.envrc`): it pins the exact toolchain via the project's `flake.lock`.
+
+### Cross-provider delegation
+Claude Code's native subagents share this process's provider endpoint. On the Linux workstation, delegate to Codex with `agent-dispatch codex ...`; never invoke `codex` directly from an agent. The dispatcher permits two delegated workers and depth two (lead → worker → reviewer), then fails loud. Every child enters pagu-box `strict`; sandbox access may only narrow, never widen. A read-only parent stays read-only and a network-denied parent cannot launch a cloud child. When running inside Herdr (`HERDR_ENV=1`), use the Herdr skill to place each dispatched worker in an observable pane or isolated worktree. The stable Intel Mac does not install this cross-provider runtime.

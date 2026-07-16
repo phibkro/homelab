@@ -7,10 +7,9 @@
   (utm, ghostty) and GUI casks that need full Spotlight
   integration / system-services (mactex, docker-desktop, etc).
 
-  Channel: rides the flake's `nixpkgs` (unstable) input shared with
-  the NixOS hosts. Pin a separate `nixpkgs-darwin` follow when 26.05
-  stable ships — and note 26.05 is announced as the LAST nixpkgs
-  release supporting x86_64-darwin (release-notes link in flake.nix).
+  Channel: pinned to the flake's separate `nixpkgs-stable` 26.05 input,
+  the final nixpkgs release supporting x86_64-darwin. Linux hosts track
+  unstable independently (ADR-0006).
 
   Iteration:
     home-manager switch -b hm-backup --flake ~/Documents/nix-migration#macbook
@@ -30,7 +29,7 @@
 {
   imports = [
     ../../home/pc.nix
-    inputs.pagu-box.homeManagerModules.default
+    inputs.pagu-box-darwin.homeManagerModules.default
   ];
 
   /*
