@@ -8,6 +8,7 @@ _: {
   imports = [
     ./apps.nix
     ./hypr-lock.nix
+    ./hypr-rice
     ./hyprsunset.nix
     ./mako.nix
     ./waybar.nix

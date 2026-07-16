@@ -1,10 +1,12 @@
 -- ~/.config/hypr/hyprland.lua
--- Translated from machines/workstation/home.nix's
+-- Translated from modules/home/desktop/hypr-rice/default.nix's
 -- wayland.windowManager.hyprland.settings tree.
--- Hyprland 0.55+ format. If broken, rm this file and Hyprland falls
--- back to the still-rendered hyprland.conf.
+-- Hyprland 0.55+ format. configType = "lua" makes this authoritative;
+-- rollback requires reverting the source and rebuilding.
 
 local mod = "SUPER"
+local nativeLayout = "@nativeLayout@"
+dofile("@riceAdapter@")(hl, "@layoutCore@", nativeLayout)
 
 -- Named modifier-combo constants — collapses the repeated raw
 -- "SUPER + CTRL"/"SUPER + ALT" string concatenation this modifier
@@ -43,9 +45,9 @@ hl.config({
 
     general = {
         gaps_in     = 4,
-        gaps_out    = 8,
+        gaps_out    = @gapsOut@,
         border_size = 0,  -- no hard border; focus via shadow-as-glow
-        layout      = "dwindle",
+        layout      = nativeLayout,
     },
 
     decoration = {
@@ -64,9 +66,8 @@ hl.config({
 hl.on("hyprland.start", function()
     -- Refresh dbus activation env + bounce hyprland-session.target so
     -- waybar/hypridle/mako pick up DISPLAY/WAYLAND_DISPLAY etc.
-    -- NOTE: using bare command name relies on PATH. When this lua is
-    -- promoted into home-manager, swap to ${pkgs.dbus}/bin/... so the
-    -- nix-store path is pinned (matching the hyprland.conf rendering).
+    -- NOTE: using the bare command name relies on PATH; pinning the
+    -- dbus executable to its nix-store path remains deferred.
     hl.exec_cmd("dbus-update-activation-environment --systemd DISPLAY HYPRLAND_INSTANCE_SIGNATURE WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE && systemctl --user stop hyprland-session.target && systemctl --user start hyprland-session.target")
     hl.exec_cmd("systemctl --user start hyprpolkitagent")
     -- These two were `exec-once=[workspace 1 silent] zeditor` in hyprlang.
@@ -80,7 +81,7 @@ hl.on("hyprland.start", function()
     -- the alt+tab overlay shows up instantly on first press.
     hl.exec_cmd("snappy-switcher --daemon")
     -- layer-autohide daemon — hides a shown special-workspace tag when
-    -- focus moves to a regular workspace. See home.nix for the script.
+    -- focus moves to a regular workspace. See default.nix for the script.
     hl.exec_cmd("layer-autohide")
 end)
 
@@ -104,11 +105,8 @@ end)
 -- `toggle_special("term")` instead; verified working. See
 -- [[hyprland-lua-mode-dispatcher-syntax]].
 hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd("popup-term"))
-hl.bind(mod .. " + SPACE",  hl.dsp.exec_cmd("fuzzel"))
+hl.bind(mod .. " + SPACE",  hl.dsp.exec_cmd("rice-palette"))
 hl.bind(mod .. " + B",      hl.dsp.exec_cmd("zen-beta"))
-hl.bind(mod .. " + H",      hl.dsp.exec_cmd("hypr-cheatsheet"))
-hl.bind(mod .. " + L",      hl.dsp.exec_cmd("pidof hyprlock || hyprlock"))
-hl.bind(mod .. " + P",      hl.dsp.exec_cmd("cmd-menu"))
 -- Spacer — tiles like a real window (reserves a slot in the layout)
 -- but shows nothing; styled translucent+blurred ("glass") via the
 -- spacer-glass window_rule below rather than fully invisible, so it's
@@ -123,15 +121,13 @@ hl.bind(mod .. " + P",      hl.dsp.exec_cmd("cmd-menu"))
 -- (found 2026-07-01 debugging why `hl.dsp.window.close()` reported
 -- "ok" but the window never disappeared — had to kill the PID
 -- directly to confirm this was the cause).
-hl.bind(mod .. " + G",      hl.dsp.exec_cmd("ghostty --class=@spacerClass@ --cursor-style-blink=false --confirm-close-surface=false -e sleep infinity"))
+@riceCommandBindsLua@
 
 -- Window management
-hl.bind(mod .. " + Q",         hl.dsp.window.close())
-hl.bind(mod .. " + SHIFT + E", hl.dsp.exit())
-hl.bind(mod .. " + V",         hl.dsp.window.float({ action = "toggle" }))
+hl.bind(mod .. " + Q", hl.dsp.window.close())
+hl.bind(mod .. " + V", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mod .. " + F",         hl.dsp.window.fullscreen())
 hl.bind(mod .. " + S",         hl.dsp.layout("togglesplit"))  -- dwindle
-hl.bind(mod .. " + R",         hl.dsp.exec_cmd("tile-ratio"))  -- fuzzel-pick a split ratio
 
 -- Focus movement (vim keys + arrow keys, both ways)
 hl.bind(mod .. " + j",     hl.dsp.focus({ direction = "down" }))
@@ -233,15 +229,14 @@ hl.window_rule({
 --     SUPER+2 just toggles visibility (no spawn).
 --
 -- Cheatsheet integration:
---   These binds are NOT yet in the SUPER+H cheatsheet (sourced from
---   keyBinds in machines/workstation/home.nix). Add there if these
---   stick after a week of use.
+--   These generated tag binds remain separate from the Nix bind records;
+--   the unified palette exposes the same actions by name.
 ----------------------------------------------------------------------
 
--- Generated from home.nix's `layerTags` (the sole source of the tag
+-- Generated from default.nix's `layerTags` (the sole source of the tag
 -- list) via pkgs.replaceVars — was hand-typed here AND in layer-cycle's
 -- bash array; two copies of the same fact drifting apart is exactly
--- what home.nix's own header comment names as the failure this file's
+-- what default.nix's own header comment names as the failure this file's
 -- bind-record system already exists to avoid elsewhere.
 local tags = {
     @layerTagsLua@
@@ -250,7 +245,7 @@ local tags = {
 for _, t in ipairs(tags) do
     -- Toggle tag visibility (bare SUPER+N — layers are the bare-SUPER
     -- surface, workspaces are SUPER+CTRL, see the workspace loop above).
-    -- Routed through `layer-toggle` (home.nix) rather than dispatching
+    -- Routed through `layer-toggle` (default.nix) rather than dispatching
     -- toggle_special directly — it announces the tag via mako when the
     -- toggle results in it being shown. Positional-string arg to
     -- toggle_special inside that script — the `{ name = t.name }` table
@@ -263,7 +258,7 @@ for _, t in ipairs(tags) do
 end
 
 -- Step through the tags in order (SUPER+ALT+TAB / SUPER+ALT+SHIFT+TAB),
--- wrapping. `layer-cycle` (machines/workstation/home.nix) tracks which
+-- wrapping. `layer-cycle` (modules/home/desktop/hypr-rice/default.nix) tracks which
 -- tag is currently shown via `hyprctl monitors -j` and jumps to the
 -- next/prev one — a plain toggle can't do this since cycling must
 -- always land on a *different* tag, not flip the current one off.
