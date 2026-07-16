@@ -1,7 +1,7 @@
 ---
 summary: Extract the workstation Hyprland rice into an internal opinionated Home Manager module and replace the focused-window ratio command with a strict shorthand that drives a native Hyprland Lua custom layout.
 date: 2026-07-15
-status: hardened-design
+status: implemented
 ---
 
 # Hyprland rice extraction + layout shorthand

@@ -422,7 +422,6 @@ let
     ) layerTags
   );
 
-  commands = baseCommands // layerCommands;
   commandCategories = [
     "layout"
     "space"
@@ -433,18 +432,78 @@ let
     "view"
     "utility"
   ];
+  commandEffects = [
+    "launch"
+    "query"
+    "toggle"
+    "layout"
+    "window"
+    "session"
+    "destructive"
+  ];
+  directBindingType = lib.types.submodule {
+    options = {
+      mod = lib.mkOption {
+        type = lib.types.enum [
+          "$mod"
+          "$mod SHIFT"
+        ];
+      };
+      key = lib.mkOption { type = lib.types.str; };
+    };
+  };
+  commandType = lib.types.submodule {
+    options = {
+      label = lib.mkOption { type = lib.types.str; };
+      description = lib.mkOption { type = lib.types.str; };
+      category = lib.mkOption { type = lib.types.enum commandCategories; };
+      keywords = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+      };
+      icon = lib.mkOption {
+        type = lib.types.str;
+        default = "system-run";
+      };
+      executable = lib.mkOption { type = lib.types.str; };
+      args = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [ ];
+      };
+      effect = lib.mkOption {
+        type = lib.types.enum commandEffects;
+        default = "launch";
+      };
+      palette = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+      };
+      directBinding = lib.mkOption {
+        type = lib.types.nullOr directBindingType;
+        default = null;
+      };
+    };
+  };
+  commandRegistry = lib.evalModules {
+    modules = [
+      {
+        options.commands = lib.mkOption {
+          type = lib.types.attrsOf commandType;
+        };
+        config.commands = baseCommands // layerCommands;
+      }
+    ];
+  };
   validCommandId = id: builtins.match "^[a-z0-9]+([.-][a-z0-9]+)*$" id != null;
   validatedCommands =
     assert lib.assertMsg (lib.all validCommandId (
-      builtins.attrNames commands
+      builtins.attrNames commandRegistry.config.commands
     )) "invalid rice command ID";
-    assert lib.assertMsg (lib.all (command: builtins.elem command.category commandCategories) (
-      builtins.attrValues commands
-    )) "invalid rice command category";
-    assert lib.assertMsg (lib.all (
-      command: command.effect != "destructive" || command.directBinding == null
-    ) (builtins.attrValues commands)) "destructive rice commands cannot have direct bindings";
-    commands;
+    assert lib.assertMsg (lib.all
+      (command: command.effect != "destructive" || command.directBinding == null)
+      (builtins.attrValues commandRegistry.config.commands)
+    ) "destructive rice commands cannot have direct bindings";
+    commandRegistry.config.commands;
 
   riceCommandBindings = lib.mapAttrsToList (
     id: command:
@@ -655,6 +714,19 @@ let
     '';
   };
 
+  commandManifestPackage = pkgs.writeTextDir "share/rice/commands.json" (
+    builtins.toJSON (
+      lib.mapAttrs (_: command: {
+        inherit (command)
+          category
+          directBinding
+          effect
+          palette
+          ;
+      }) validatedCommands
+    )
+  );
+
   privateDesktopItems = lib.mapAttrsToList (
     id:
     command@{ keywords, ... }:
@@ -662,7 +734,6 @@ let
       name = "nori-rice-${id}";
       desktopName = command.label;
       genericName = command.description;
-      comment = command.description;
       exec = "${riceCommand}/bin/rice-command ${id}";
       inherit (command) icon;
       inherit keywords;
@@ -671,7 +742,7 @@ let
 
   privateDesktopEntries = pkgs.symlinkJoin {
     name = "rice-private-applications";
-    paths = privateDesktopItems;
+    paths = privateDesktopItems ++ [ commandManifestPackage ];
   };
 
   riceLaunch = pkgs.writeShellApplication {

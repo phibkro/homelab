@@ -703,6 +703,22 @@
               */
               lintLib = import ./lint { inherit lib pkgs; };
               lintRules = (builtins.fromTOML (builtins.readFile ./lint/rules.toml)).rules;
+
+              workstationHome = inputs.self.nixosConfigurations.workstation.config.home-manager.users.nori.home;
+              homePackageNamed =
+                name:
+                builtins.head (builtins.filter (package: lib.getName package == name) workstationHome.packages);
+              riceCommandPackage = homePackageNamed "rice-command";
+              ricePalettePackage = homePackageNamed "rice-palette";
+              confirmationNo = pkgs.writeShellScript "rice-confirm-no" ''
+                printf '0'
+              '';
+              confirmationCancel = pkgs.writeShellScript "rice-confirm-cancel" ''
+                exit 1
+              '';
+              confirmationInvalid = pkgs.writeShellScript "rice-confirm-invalid" ''
+                printf '9'
+              '';
             in
             {
               # cd into the source so statix picks up `statix.toml` (looked up
@@ -769,6 +785,71 @@
                     bash -n ${./modules/home/desktop/hypr-rice/tile-ratio.sh}
                     bash -n ${./modules/home/desktop/hypr-rice/tile-ratio_test.sh}
                     bash -n ${./modules/home/desktop/hypr-rice/hypr-layout-live-test.sh}
+                    touch $out
+                  '';
+
+              hypr-rice-palette-projection =
+                pkgs.runCommandLocal "hypr-rice-palette-projection"
+                  {
+                    nativeBuildInputs = [
+                      pkgs.desktop-file-utils
+                      pkgs.jq
+                    ];
+                  }
+                  ''
+                    palette_script=${ricePalettePackage}/bin/rice-palette
+                    dispatcher=${riceCommandPackage}/bin/rice-command
+                    private_data_root=$(grep -m1 '^export RICE_PRIVATE_DATA_DIR=' "$palette_script" | cut -d= -f2-)
+                    applications="$private_data_root/applications"
+                    manifest="$private_data_root/rice/commands.json"
+
+                    test -f "$manifest"
+                    test -d "$applications"
+
+                    for desktop in "$applications"/nori-rice-*.desktop; do
+                      desktop-file-validate "$desktop"
+                      id=''${desktop##*/nori-rice-}
+                      id=''${id%.desktop}
+                      grep -Fxq "Exec=$dispatcher $id" "$desktop"
+                      jq -e --arg id "$id" '.[$id].palette == true' "$manifest" >/dev/null
+                    done
+
+                    desktop_count=$(find "$applications" -maxdepth 1 -name 'nori-rice-*.desktop' | wc -l)
+                    manifest_palette_count=$(jq '[to_entries[] | select(.value.palette)] | length' "$manifest")
+                    test "$desktop_count" -eq "$manifest_palette_count"
+
+                    jq -e '
+                      all(to_entries[];
+                        (.key | test("^[a-z0-9]+([.-][a-z0-9]+)*$")) and
+                        (.value.effect != "destructive" or .value.directBinding == null)
+                      )
+                    ' "$manifest" >/dev/null
+
+                    generated_lua=${workstationHome.activationPackage}/home-files/.config/hypr/hyprland.lua
+                    jq -r 'to_entries[] | select(.value.directBinding != null) | .key' "$manifest" \
+                      | while IFS= read -r id; do
+                          grep -Fq "rice-command $id" "$generated_lua"
+                        done
+
+                    if find ${workstationHome.activationPackage}/home-path/share/applications \
+                      -maxdepth 1 -name 'nori-rice-*.desktop' -print -quit | grep -q .; then
+                      echo 'private rice desktop entries leaked into the activated profile' >&2
+                      exit 1
+                    fi
+
+                    set +e
+                    "$dispatcher" >/dev/null 2>&1
+                    test "$?" -eq 64
+                    "$dispatcher" unknown.command >/dev/null 2>&1
+                    test "$?" -eq 64
+                    FUZZEL_BIN=${confirmationNo} "$dispatcher" system.reboot
+                    test "$?" -eq 0
+                    FUZZEL_BIN=${confirmationCancel} "$dispatcher" system.poweroff
+                    test "$?" -eq 0
+                    FUZZEL_BIN=${confirmationInvalid} "$dispatcher" session.exit >/dev/null 2>&1
+                    test "$?" -eq 64
+                    set -e
+
                     touch $out
                   '';
 

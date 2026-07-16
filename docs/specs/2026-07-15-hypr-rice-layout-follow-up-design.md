@@ -1,7 +1,7 @@
 ---
 summary: Separate focused-window sizing from workspace layouts, make layout assignment identity-stable and special-workspace-correct, and define the boundary of a future workspace/layout manager.
 date: 2026-07-15
-status: hardened-design
+status: implemented
 supersedes:
   - 2026-07-15-hypr-rice-layout-design.md#commands
   - 2026-07-15-hypr-rice-layout-design.md#target-order

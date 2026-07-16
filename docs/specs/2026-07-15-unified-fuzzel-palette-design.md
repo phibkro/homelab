@@ -246,7 +246,7 @@ Exec=/nix/store/.../bin/rice-command space.toggle.music
 Exec=/nix/store/.../bin/rice-command session.exit
 ```
 
-`rice-command` accepts exactly one safe namespaced ID. It rejects any other arity or unknown ID before execution. Each generated case maps to one Nix-owned executable package and fixed argv; desktop entries carry no generic arguments, shell fragments, or `%` field-code risk.
+`rice-command` accepts exactly one safe namespaced ID. It rejects any other arity or unknown ID before execution. Desktop entries carry no generic arguments, shell fragments, or `%` field-code risk. Action helpers use Nix-owned executable paths; `help.shortcuts` and `view.*` intentionally use profile-PATH names to break the otherwise cyclic store graph `dispatcher → palette/cheatsheet → generated entries/binds → dispatcher`. Both packages are installed by the same Home Manager generation, and the projection check plus headless journey cover this exception.
 
 ### Confirmation
 
@@ -258,8 +258,9 @@ The shared helper invokes `No` then `Yes` with `--dmenu --only-match --index` an
 |---|---|
 | status `1` | Cancel; exit `0`. |
 | other nonzero | Propagate failure. |
+| status `0`, index `0` | Explicit No; exit `0`. |
 | status `0`, index `1` | Execute the allowlisted destructive ID. |
-| any other output | No mutation. |
+| status `0`, any other output | Fail nonzero without mutation. |
 
 Required confirmation commands:
 
