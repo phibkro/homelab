@@ -62,7 +62,7 @@ in
       {
         caddy = "critical";
         ollama = "heavy";
-        hermes-dashboard = "decorative";
+        glance = "decorative";
       }
     '';
     description = ''

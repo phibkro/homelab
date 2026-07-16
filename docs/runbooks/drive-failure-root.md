@@ -94,7 +94,7 @@ Pick by what you need first:
 
 | Repo | Why early |
 |---|---|
-| `user-data` | `/home/nori`, `/srv/share`, `/srv/nori`, hermes state, secrets/age |
+| `user-data` | `/home/nori`, `/srv/share`, `/srv/nori`, agent state, secrets/age |
 | `media-irreplaceable` | Pre-roll for `@photos`, `@home-videos`, `@projects` |
 | `vaultwarden`, `immich`, etc. | Service state (run `just test-backups` to confirm freshness post-restore) |
 

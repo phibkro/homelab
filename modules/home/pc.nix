@@ -18,6 +18,5 @@ _:
   imports = [
     ./core.nix
     ./claude-code # CLI + settings.json + skills (~300 MB Node closure)
-    ./hermes # Hermes Agent CLI (Linux-only; skips cleanly on Mac)
   ];
 }

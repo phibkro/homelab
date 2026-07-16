@@ -514,6 +514,23 @@
     echo "  $pass checks passed"
     [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
 
+# Destructive only inside a generated disposable workspace. This stays
+# separate from `just test`: it launches real Ghostty clients and changes
+# their native Hyprland layout before exact address/PID cleanup.
+#
+# Explicit live journey: visual identity, spacer, drift, special targeting,
+# and absolute focused-window ratios. The packaged command injects the same
+# spacer class used by the generated Hyprland rule.
+@test-hypr-layout-live:
+    hypr-layout-live-test
+
+# Runs Fuzzel against a private headless Sway socket. Hyprland 0.55.4's
+# Aquamarine nesting backend is protocol-incompatible with current headless
+# parents, so Hyprland bind/runtime checks remain separate. This journey never
+# connects to or mutates the operator's active desktop session.
+@test-hypr-palette-live:
+    hypr-palette-live-test
+
 # Smoke-test the Hyprland config we just deployed. Three tiers, each
 # catching a different class of regression:
 #
@@ -544,12 +561,62 @@
 
     echo "=== Tier 1 — config parse ==="
     out=$(hyprctl reload 2>&1) && [[ "$out" == "ok" ]] && echo "  ✓ reload" || { echo "  ✗ reload: $out"; fail=1; }
+    errors=$(hyprctl configerrors)
+    [[ -z "$errors" ]] && echo "  ✓ no config errors" || { echo "  ✗ config errors: $errors"; fail=1; }
 
-    echo "=== Tier 2 — dispatcher smoke (paired toggles, net effect: zero) ==="
+    # `hyprctl dispatch` returning "ok" only proves the call parsed —
+    # it does NOT prove the right thing happened. The table-arg form
+    # `toggle_special({ name = "$tag" })` returned "ok" while silently
+    # toggling the bare unnamed special:special workspace instead of
+    # special:$tag (caught 2026-06-30, broke popup-term + all six tag
+    # binds for an unknown period). Tier 2 now reads back
+    # `.specialWorkspace.name` after each toggle so a future syntax/
+    # semantics regression fails loud instead of green-stubbing.
+    get_special() {
+      hyprctl monitors -j | nix shell nixpkgs#jq -c jq -r '.[] | select(.focused) | .specialWorkspace.name'
+    }
+
+    # NOTE: this list + Tier 3's `1 2 3 4 5 6` are hand-typed a fifth/
+    # sixth copy of the tag list that hypr-rice/default.nix's `layerTags`
+    # now generates hyprland.lua + the layer-* scripts from (2026-07-01
+    # dedup pass). Left as a deliberate, named exception here rather
+    # than silently unfixed: wiring this test to the real source would
+    # mean promoting layerTags from a private module `let` value to
+    # an actual exposed option so `just` could `nix eval` it — real
+    # cost for a gap that fails loud (a wrong/missing tag here is a
+    # visible test failure), not the silent-drift class of bug the
+    # generate rung exists to prevent elsewhere.
+    echo "=== Tier 2 — dispatcher correctness (paired toggles, net effect: zero) ==="
     for tag in browser term music notes comms files; do
-      check "toggle special:$tag (on)"  "hl.dsp.workspace.toggle_special({ name = \"$tag\" })"
-      check "toggle special:$tag (off)" "hl.dsp.workspace.toggle_special({ name = \"$tag\" })"
+      check "toggle special:$tag (on)" "hl.dsp.workspace.toggle_special(\"$tag\")"
+      shown=$(get_special)
+      [[ "$shown" == "special:$tag" ]] \
+        && echo "  ✓ special:$tag actually visible" \
+        || { echo "  ✗ special:$tag NOT visible after toggle — got: '$shown'"; fail=1; }
+
+      check "toggle special:$tag (off)" "hl.dsp.workspace.toggle_special(\"$tag\")"
+      shown=$(get_special)
+      [[ -z "$shown" ]] \
+        && echo "  ✓ special:$tag hidden again" \
+        || { echo "  ✗ special:$tag still shown after off-toggle — got: '$shown'"; fail=1; }
     done
+
+    echo "=== Tier 2b — layer-cycle correctness (wraps through all 6 tags) ==="
+    shown=$(get_special)
+    [[ -n "$shown" ]] && hyprctl dispatch "hl.dsp.workspace.toggle_special(\"''${shown#special:}\")" >/dev/null
+    for exp in browser term music notes comms files; do
+      layer-cycle next >/dev/null
+      shown=$(get_special)
+      [[ "$shown" == "special:$exp" ]] \
+        && echo "  ✓ cycle next -> $exp" \
+        || { echo "  ✗ cycle next expected special:$exp got '$shown'"; fail=1; }
+    done
+    layer-cycle next >/dev/null
+    shown=$(get_special)
+    [[ "$shown" == "special:browser" ]] \
+      && echo "  ✓ cycle wraps back to browser" \
+      || { echo "  ✗ wrap failed — got '$shown'"; fail=1; }
+    hyprctl dispatch "hl.dsp.workspace.toggle_special(\"browser\")" >/dev/null  # cleanup: hide
 
     echo "=== Tier 3 — bind registry introspection ==="
     # Pivoted away from live keypress synthesis after research:
@@ -561,11 +628,11 @@
     #   * `ydotool` (uinput-level) would work but needs daemon +
     #     /dev/uinput perms + extra setup; not worth the complexity.
     #
-    # Static introspection via `hyprctl binds -j` is strictly better:
-    # deterministic, layout-independent, runs in <100ms, catches the
-    # "I changed my mod combo and forgot to update lua" class of bug
-    # that keypress synthesis would also catch — and a few that it
-    # wouldn't (binds registered but pointing nowhere).
+    # `hyprctl binds -j` is deterministic and layout-independent, but Lua
+    # dispatchers are opaque (`dispatcher=__lua`), so this tier verifies
+    # only key/modifier registration. Command-to-key correctness is
+    # structural: default.nix generates the corresponding Lua bind lines
+    # from the same records used by the cheatsheet.
     #
     # Modmask bits: SHIFT=1, CTRL=4, ALT=8, LOGO/SUPER=64
     # SUPER+ALT = 64+8 = 72.
@@ -582,11 +649,69 @@
         fail=1
       fi
     }
+    check_no_bind() {
+      local label="$1" modmask="$2" key="$3"
+      hit=$(echo "$binds_json" | nix shell nixpkgs#jq -c jq --argjson m "$modmask" --arg k "$key" \
+        '[.[] | select(.modmask == $m and .key == $k)] | length')
+      if [[ "$hit" -eq 0 ]]; then
+        echo "  ✓ $label absent"
+      else
+        echo "  ✗ $label still registered (modmask=$modmask key=$key)"
+        fail=1
+      fi
+    }
+    # Tags (layers) are the bare-SUPER surface (higher-frequency);
+    # workspaces are SUPER+CTRL — not SUPER+ALT, since ALT already means
+    # "window switching" in this config (ALT+TAB / SUPER+TAB below).
+    # Modmask bits: SHIFT=1, CTRL=4, ALT=8, LOGO/SUPER=64.
+    # SUPER+CTRL=68, SUPER+CTRL+SHIFT=69. Settled 2026-07-01.
     for tag_n in 1 2 3 4 5 6; do
-      check_bind "SUPER+ALT+$tag_n (toggle tag)"        72 "$tag_n"
-      check_bind "SUPER+ALT+SHIFT+$tag_n (move to tag)" 73 "$tag_n"
+      check_bind "SUPER+$tag_n (toggle tag)"        64 "$tag_n"
+      check_bind "SUPER+SHIFT+$tag_n (move to tag)" 65 "$tag_n"
+    done
+    for ws_n in 1 2 3 4 5 6 7 8 9; do
+      check_bind "SUPER+CTRL+$ws_n (switch workspace)"        68 "$ws_n"
+      check_bind "SUPER+CTRL+SHIFT+$ws_n (move to workspace)" 69 "$ws_n"
     done
     check_bind "SUPER+RETURN (popup-term)" 64 "RETURN"
+    check_bind "SUPER+SPACE (unified palette)" 64 "SPACE"
+    check_bind "SUPER+R (focused ratio)" 64 "R"
+    check_bind "SUPER+SHIFT+R (workspace layout)" 65 "R"
+    check_bind "SUPER+ALT+TAB (cycle next)" 72 "TAB"
+    check_bind "SUPER+ALT+SHIFT+TAB (cycle prev)" 73 "TAB"
+    check_no_bind "SUPER+P command menu" 64 "P"
+    check_no_bind "SUPER+H standalone help" 64 "H"
+    check_no_bind "SUPER+SHIFT+E immediate exit" 65 "E"
+
+    echo "=== Tier 4 — rice bridge errors preserve workspace state ==="
+    before_rules=$(hyprctl -j workspacerules | nix shell nixpkgs#jq -c jq -S -c '.')
+    before_workspace=$(hyprctl -j activeworkspace | nix shell nixpkgs#jq -c jq -S -c '{id,name,tiledLayout,windows}')
+    expect_layout_error() {
+      local label="$1" fragment="$2"
+      shift 2
+      local output
+      if output=$(hypr-layout "$@" 2>&1); then
+        echo "  ✗ $label unexpectedly succeeded: $output"
+        fail=1
+        return
+      fi
+      if [[ "$output" == *"$fragment"* ]]; then
+        echo "  ✓ $label -> $output"
+      else
+        echo "  ✗ $label returned the wrong error: $output"
+        fail=1
+      fi
+    }
+    expect_layout_error "malformed grid" "complete rectangle" 'a a; a b'
+    printf -v oversized '%4097s' ''
+    oversized=${oversized// /1}
+    expect_layout_error "oversized input" "at most 4096 bytes" "$oversized"
+    expect_layout_error "injection-shaped input" "invalid area name" 'x"); error("boom'
+    after_rules=$(hyprctl -j workspacerules | nix shell nixpkgs#jq -c jq -S -c '.')
+    after_workspace=$(hyprctl -j activeworkspace | nix shell nixpkgs#jq -c jq -S -c '{id,name,tiledLayout,windows}')
+    [[ "$before_rules" == "$after_rules" && "$before_workspace" == "$after_workspace" ]] \
+      && echo "  ✓ workspace rules and active layout unchanged" \
+      || { echo "  ✗ invalid input mutated workspace state"; fail=1; }
 
     echo
     if [[ "$fail" -eq 0 ]]; then

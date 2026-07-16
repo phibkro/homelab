@@ -38,7 +38,36 @@ let
     inherit system;
     config.allowUnfree = true;
   };
-  claude-code-master = pkgsMaster.claude-code;
+
+  /*
+    nixpkgs-master lags upstream by ~1 day. Override version + src with
+    the upstream manifest hashes so resume and gateway compatibility fixes
+    do not wait for the package channel. Drop this block once nixpkgs-master
+    carries ≥ 2.1.210 and revert claude-code-master back to
+    `pkgsMaster.claude-code`.
+  */
+  claude-code-upstream-version = "2.1.210";
+  claude-code-upstream-checksums = {
+    "x86_64-linux" = "e7d2ceb53ed4c2ced1fe7fc1c6331c98dc5f7b4c9b2722d9c5fa3dd5dff6f719";
+    "aarch64-linux" = "84feb193c1d91f3b5eba836ed47c0e4dee953195abba950917c3e101eff174e8";
+    "x86_64-darwin" = "892f2c878050d8829e67119328dd9768345fba18a58c169212b70597c9175c40";
+    "aarch64-darwin" = "1b471d62d1117482689d75447f5e050c640da717a5a3c91e6c13792450f8c662";
+  };
+  claude-code-upstream-platform-keys = {
+    "x86_64-linux" = "linux-x64";
+    "aarch64-linux" = "linux-arm64";
+    "x86_64-darwin" = "darwin-x64";
+    "aarch64-darwin" = "darwin-arm64";
+  };
+  claude-code-master = pkgsMaster.claude-code.overrideAttrs (_old: {
+    version = claude-code-upstream-version;
+    src = pkgsMaster.fetchurl {
+      url = "https://downloads.claude.ai/claude-code-releases/${claude-code-upstream-version}/${
+        claude-code-upstream-platform-keys.${system}
+      }/claude";
+      sha256 = claude-code-upstream-checksums.${system};
+    };
+  });
 
   /*
     tilth — MCP server for structural file navigation (tree-sitter
@@ -213,7 +242,7 @@ let
   /*
     `box` — homelab-wrapped pagu-box. Operator-specific policy lives
     here, not upstream: detects "strict + $PWD under the homelab repo"
-    and injects --pwd-ro so any sandboxed agent (hermes, pi, opencode)
+    and injects --pwd-ro so any sandboxed agent (pi, opencode, Claude)
     reads homelab config but can't edit it. Operator's own claude-code
     runs outside the sandbox and is unaffected.
   */
@@ -277,6 +306,12 @@ let
   };
 in
 {
+  imports = [ inputs.claudex.homeManagerModules.default ];
+
+  # The public ClaudeX module is Linux/systemd-only today; keep the shared
+  # workstation+macbook Claude Code module importable on Darwin.
+  programs.claudex.enable = pkgs.stdenv.hostPlatform.isLinux;
+
   home.packages = [
     claude-code-master # Anthropic CLI; pulls Node closure (~300 MB). Overlaid from master — see let-binding.
     pkgs.agent-browser # Persistent browser automation for AI agents

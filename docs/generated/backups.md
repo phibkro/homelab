@@ -6,10 +6,11 @@ regenerate: nix build .#docs-backups
 
 # `nori.backups` — generated reference
 
-Two-section artifact: module overview (RFC 145 doc-comments
-from the concern's `default.nix`) + per-option schema
-(`nixosOptionsDoc` over the eval'd options tree). The
-concern file's path is shown in the per-option "Declared by"
+Module overview comes from RFC 145 doc-comments in the concern's
+`default.nix`; the option schema comes from `nixosOptionsDoc`
+over the evaluated options tree. Concern-specific evaluated facts
+may follow as an additional generated section. The concern file's
+path is shown in the per-option "Declared by"
 lines below.
 
 Backup concern — schema + collection + adapter wiring.
@@ -382,3 +383,22 @@ string
  - `modules/infra/backup`
 
 
+
+## Evaluated workstation jobs
+
+Generated from the evaluated `nori.backups` registry. Counts and membership
+therefore change with configuration instead of being duplicated in prose.
+
+| Job | Tier | Effective targets | Include paths |
+|---|---|---|---|
+| `bazarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/bazarr` |
+| `jellyfin` | `service` | `mp510`<br>`onetouch` | `/var/lib/jellyfin` |
+| `jellyseerr` | `service` | `mp510`<br>`onetouch` | `/var/lib/private/jellyseerr` |
+| `lidarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/lidarr` |
+| `media-irreplaceable` | `irreplaceable` | `onetouch` | `/mnt/media/archive`<br>`/mnt/media/home-videos`<br>`/mnt/media/library`<br>`/mnt/media/photos`<br>`/mnt/media/projects`<br>`/var/lib/immich/backups` |
+| `prowlarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/private/prowlarr` |
+| `qbittorrent` | `service` | `mp510`<br>`onetouch` | `/var/lib/qBittorrent` |
+| `radarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/radarr` |
+| `sonarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/sonarr` |
+| `stremio` | `service` | `mp510`<br>`onetouch` | `/var/lib/stremio` |
+| `user-data` | `user` | `mp510`<br>`onetouch` | `/home`<br>`/srv/nori`<br>`/srv/share` |

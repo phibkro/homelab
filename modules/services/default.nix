@@ -37,13 +37,11 @@ _: {
     ./filmder.nix
     ./glance.nix
     ./heim.nix
-    ./hermes.nix
     ./immich.nix
     ./jellyfin.nix
     ./komga.nix
     ./miniflux.nix
     ./music-ingest.nix
-    ./music-mirror.nix
     ./navidrome.nix
     ./ollama.nix
     ./open-webui.nix
@@ -54,7 +52,6 @@ _: {
     ./stremio.nix
     ./suwayomi.nix
     ./syncthing.nix
-    ./tonic.nix
     ./vaultwarden.nix
   ];
 }

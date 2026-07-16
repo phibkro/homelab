@@ -1,6 +1,6 @@
 # Tailscale ACL — snapshot + recovery
 
-The Tailscale ACL (`acls.tailscale.com` JSON config) is the gate for every operator-tier service in the homelab — qBittorrent, *arr stack, ollama, hermes, Grafana, Beszel, VictoriaMetrics, ntfy, all the operator-audience routes. "Tailnet IS the auth perimeter" only holds if the ACL config behind it is correct, current, and recoverable.
+The Tailscale ACL (`acls.tailscale.com` JSON config) is the gate for every operator-tier service in the homelab — qBittorrent, *arr stack, Ollama, Grafana, Beszel, VictoriaMetrics, ntfy, and all other operator-audience routes. "Tailnet IS the auth perimeter" only holds if the ACL config behind it is correct, current, and recoverable.
 
 Today the ACL lives **only** in the Tailscale admin UI (`login.tailscale.com/admin/acls/file`). Lose admin access or fat-finger the editor and the homelab's auth posture is gone with no second copy.
 
@@ -50,7 +50,7 @@ curl -s -u "${API_KEY}:" \
 Cross-reference against the JSON to make sure these intents are still encoded:
 
 - **SSH ACL: `action: accept`** for all tag:operator → tag:operator paths (eliminates per-session reauth dance; see [[just-remote-tailnet-hostnames]]).
-- **`tag:agent` quarantine** — pavilion's tag, restricted to ollama (workstation:11434) + outbound :443. Verify pavilion CANNOT reach `workstation:9119` (hermes) — that's the load-bearing assumption documented in `modules/home/hermes/default.nix` and NETWORK.md.
+- **`tag:agent` quarantine** — pavilion's tag, restricted to Ollama (`workstation:11434`) + outbound `:443`. Verify pavilion CANNOT reach privileged-host SSH (`workstation:22`); the agent role must not gain an operator path.
 - **`tag:family` member tags** — phones + tablets join with this tag; their access scope is the family-tier subset of routes.
 - **Per-host subnet/exit-node approvals** — pi is the subnet router + exit node; these need re-approval in admin UI on every key rotation.
 

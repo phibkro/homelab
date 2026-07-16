@@ -4,7 +4,7 @@ Switch Grafana from anonymous-Admin (current) to Authelia OIDC. Wave-2 deep-clea
 
 ## Why this is different from other operator-tier services
 
-Most operator-audience services (qBittorrent, *arr, ollama, hermes) deliberately rely on tailnet membership as the auth perimeter — layering Authelia on top would duplicate the network gate and make Authelia uptime load-bearing for routine operator workflows.
+Most operator-audience services (qBittorrent, *arr, Ollama) deliberately rely on tailnet membership as the auth perimeter — layering Authelia on top would duplicate the network gate and make Authelia uptime load-bearing for routine operator workflows.
 
 Grafana's blast radius is higher:
 

@@ -72,7 +72,7 @@ in
       }
       {
         # Structural guard against the contamination incident (runbook
-        # music-opus-mirror.md): staging nested inside the master would let the
+        # music-flac-ingest.md): staging nested inside the master would let the
         # phone's deletes reach the master. Keep them disjoint.
         assertion = !(lib.hasPrefix "${libraryPath}/music/" "${cfg.stagingPath}/");
         message = "nori.musicIngest.stagingPath (${cfg.stagingPath}) must NOT be inside the master ${libraryPath}/music — the master must never be deletable via the staging Syncthing folder.";
@@ -81,7 +81,7 @@ in
 
     # Dedicated system user; `media` group is load-bearing — library/music is
     # root:media 02775, so a media-group user creates the temp file + renames
-    # into the tree without owning it. Mirrors music-mirror.nix.
+    # into the tree without owning it.
     users.users.music-ingest = {
       isSystemUser = true;
       group = "music-ingest";
@@ -105,8 +105,8 @@ in
         Group = "music-ingest";
         ExecStart = "${ingestScript}/bin/music-ingest";
         # Group-writable output (0775 dirs / 0664 files) so the ingested FLAC is
-        # readable+writable by the rest of the media group (Navidrome, the Opus
-        # mirror, an operator). Mirrors music-mirror's UMask.
+        # readable+writable by the rest of the media group (Navidrome and
+        # operators).
         UMask = "0002";
         # exit 3 = "conflict quarantined, operator action needed" — surface it
         # so an OnFailure→ntfy alert fires, but don't treat the other ingested
@@ -132,7 +132,7 @@ in
 
     # Default-deny FS hardening. RW BOTH the master library (atomic move target)
     # AND the staging dir (the job deletes from it). Same bind shape as
-    # music-mirror.nix / syncthing.nix.
+    # syncthing.nix.
     nori.harden.music-ingest.binds = [
       libraryPath
       cfg.stagingPath

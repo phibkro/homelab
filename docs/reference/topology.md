@@ -29,7 +29,7 @@ content that doesn't fit one extraction site.
 | Heartbeat / dead-man-switch (healthchecks.io ping) | pi | SPOF mitigation — see `modules/infra/observability/heartbeat.nix` |
 | DNS authoritative for `*.${nori.domain}` (Blocky self-hosted) | pi | ADR-0003 prerequisite for the LE wildcard issuance (ADR-0004). Workstation's Blocky stays as a secondary self-hosted forwarder for LAN-side resilience if pi is down |
 | Network plumbing (subnet router + exit node) | pi | Appliance role; opt-in per device for exit node |
-| Agent quarantine (hermes-agent CLI + dashboard) | pavilion | Sandboxed; pavilion's impermanence root makes pollution self-healing |
+| Agent quarantine (sandboxed Claude, Codex, and nixpkgs-agent work) | pavilion | Pavilion's impermanence root makes pollution self-healing |
 | Process metrics (`node-exporter` + `process-exporter`) | workstation + pavilion + aurora | Pi VM scrapes each; per-process RSS for leak hunts |
 | Host-level high-level metrics (`beszel-agent`) | workstation + pavilion + aurora | Pi's Beszel hub aggregates per-host |
 | OnFailure → ntfy notifier (`ntfy-notify`) | workstation + pi + aurora | Per-host so the alert source is unambiguous and aurora-side unit failures (restic, btrbk, postgres dumps) page the operator without depending on workstation being awake |
@@ -52,7 +52,6 @@ Blocky stays pure-forwarder.
 | VictoriaLogs | pi | `logs.${nori.domain}` | `modules/infra/observability/vector.nix` ships journald |
 | VictoriaMetrics | pi | `tsdb.${nori.domain}` (Grafana datasource) | `modules/infra/observability/node-exporter.nix` scraped from pi |
 | immich-ml | aurora | n/a (RPC only) | `modules/services/immich.nix` (workstation) — `IMMICH_MACHINE_LEARNING_URL` |
-| hermes-agent | pavilion (planned) → currently workstation | `hermes.${nori.domain}` | `modules/home/hermes/default.nix` (PCs) |
 
 Add another via `/relocate-to-pi` skill. Precedents above.
 

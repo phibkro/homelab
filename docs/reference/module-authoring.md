@@ -21,7 +21,6 @@ home/                              home-manager modules — user-space
   core.nix                         cross-platform CLI baseline
   pc.nix                           operator-PC tier — heavy closures
   claude-code/                     CLI + skills/ + settings.json
-  hermes/                          Hermes Agent CLI (Linux-only)
 modules/
   machines/                        nixosConfigurations factory
     default.nix                    enumeration + mkHost + identityFor
@@ -52,8 +51,8 @@ modules/
     <workload>.nix                 vaultwarden, navidrome, immich,
                                    ollama, jellyfin, calibre-web,
                                    komga, radicale, miniflux,
-                                   glance, heim, filmder, hermes,
-                                   open-webui, stremio, syncthing,
+                                   glance, heim, filmder, open-webui,
+                                   stremio, syncthing,
                                    samba
     arr/                           coupled cluster — Sonarr/Radarr/
                                    Lidarr/Bazarr/Jellyseerr/Prowlarr/

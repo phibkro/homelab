@@ -63,8 +63,8 @@ in
     with Crossref turning a free-text title into a DOI first. No gray-zone
     registries (Sci-Hub/Anna's) — the `allowGrayZone` flag exists only to
     surface the opt-in posture; the resolver raises if it's flipped (the
-    legal chain is the whole product). cf. tonic ADR-0010 (no scraped
-    creds / UA impersonation) — the only UA trick here is a browser UA on
+    legal chain is the whole product). No scraped credentials or user-agent
+    impersonation is permitted; the only browser UA here is on
     the *download* of an already-OA-licensed PDF past blunt publisher
     filters, not credentialed access.
 

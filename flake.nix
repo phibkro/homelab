@@ -52,24 +52,11 @@
     /*
       snappy-switcher — Hyprland alt-tab overlay. Not in nixpkgs;
       upstream ships a flake. Bindings + daemon autostart live in
-      modules/machines/workstation/hyprland.lua (ALT+Tab MRU global, SUPER+Tab
+      modules/home/desktop/hypr-rice/hyprland.lua (ALT+Tab MRU global, SUPER+Tab
       workspace-local).
     */
     snappy-switcher.url = "github:OpalAayan/snappy-switcher";
     snappy-switcher.inputs.nixpkgs.follows = "nixpkgs";
-
-    /*
-      hermes-agent — NousResearch's coding agent (uv2nix flake). We
-      consume `packages.default` (bare CLI) for interactive use inside
-      `box`; `messaging` / `full` variants available if we ever wire
-      Discord/Telegram or external memory providers.
-
-      No GitHub credential is plumbed into hermes by design — see the
-      security note in modules/home/claude-code/default.nix; operator-driven
-      claude-code remains the only path to commit/push.
-    */
-    hermes-agent.url = "github:NousResearch/hermes-agent";
-    hermes-agent.inputs.nixpkgs.follows = "nixpkgs";
 
     /*
       ollama package overlaid from nixpkgs `release-26.05` (which
@@ -174,33 +161,23 @@
     stacklit-src.flake = false;
 
     /*
-      pagu-box — cross-platform sandboxed launcher for any process.
-      Pinned to the LOCAL checkout (path:) rather than github so the
-      homelab picks up uncommitted operator edits without a push +
-      `flake update` cycle each iteration. pagu-box is operator-owned
-      and lives alongside the homelab; pinning local matches the dev
-      model. Flip to `github:phibkro/pagu-box` if someone else needs
-      to consume this flake on a machine without that checkout.
+      ClaudeX — OpenAI Codex models behind Claude Code's harness. The
+      external flake owns the pinned proxy package, hardened user service,
+      model aliases, acceptance prompt, and audit commands. This repo only
+      enables its Home Manager module; runtime OAuth state remains mutable.
     */
-    pagu-box.url = "path:/srv/share/projects/pagu-box";
-    pagu-box.inputs.nixpkgs.follows = "nixpkgs";
+    claudex.url = "github:phibkro/claudex";
+    claudex.inputs.nixpkgs.follows = "nixpkgs";
+    claudex.inputs.home-manager.follows = "home-manager";
 
     /*
-      Tonic — personal music-acquisition stack (Spotify URL paste →
-      Qobuz FLAC → Opus 128k → Syncthing to phone). Activates on
-      workstation only (the audio FS + the source-of-truth `music/`
-      tree live there). The module at modules/services/tonic.nix
-      consumes inputs.tonic.packages.<system>.{backend,pwa} as the
-      stable contract; tonic's own flake.nix exposes them.
-
-      Pinned to the LOCAL checkout (path:) rather than github since the
-      tonic repo is private + operator-owned. Same dev model as pagu-box
-      above — uncommitted operator edits flow through without push +
-      `flake update` cycle. Flip to `github:phibkro/tonic` if the repo
-      goes public or someone else needs to consume this flake.
+      pagu-box — cross-platform sandboxed launcher for any process.
+      The public pin keeps this flake reproducible on fresh machines and
+      in CI. Develop pagu-box in its own checkout, push a reviewed commit,
+      then advance this lock deliberately.
     */
-    tonic.url = "path:/srv/share/projects/tonic";
-    tonic.inputs.nixpkgs.follows = "nixpkgs";
+    pagu-box.url = "github:phibkro/pagu-box";
+    pagu-box.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
@@ -702,18 +679,11 @@
                 "*/default.nix"
                 "modules/services/arr/shared.nix"
                 /*
-                  Route-only — declares nori.lanRoutes for the hermes
-                  daemon, which itself is a home-manager user service
-                  under home/hermes/. No NixOS-scope service, state, or
-                  hardening surface.
-                */
-                "modules/services/hermes.nix"
-                /*
                   CLI-only — packages the papers-fetch resolver onto
                   PATH (an operator runs it on demand). No daemon, no
                   port, no state, no systemd unit → nothing to harden or
                   back up. The Paperless sink it feeds carries both
-                  intents. Same no-service-surface rationale as hermes.
+                  intents.
                 */
                 "modules/services/papers-fetch.nix"
               ];
@@ -733,6 +703,22 @@
               */
               lintLib = import ./lint { inherit lib pkgs; };
               lintRules = (builtins.fromTOML (builtins.readFile ./lint/rules.toml)).rules;
+
+              workstationHome = inputs.self.nixosConfigurations.workstation.config.home-manager.users.nori.home;
+              homePackageNamed =
+                name:
+                builtins.head (builtins.filter (package: lib.getName package == name) workstationHome.packages);
+              riceCommandPackage = homePackageNamed "rice-command";
+              ricePalettePackage = homePackageNamed "rice-palette";
+              confirmationNo = pkgs.writeShellScript "rice-confirm-no" ''
+                printf '0'
+              '';
+              confirmationCancel = pkgs.writeShellScript "rice-confirm-cancel" ''
+                exit 1
+              '';
+              confirmationInvalid = pkgs.writeShellScript "rice-confirm-invalid" ''
+                printf '9'
+              '';
             in
             {
               # cd into the source so statix picks up `statix.toml` (looked up
@@ -757,6 +743,115 @@
                 ${pkgs.nixfmt-tree}/bin/treefmt --ci --tree-root ${./.}
                 touch $out
               '';
+
+              hypr-rice-layout =
+                pkgs.runCommandLocal "hypr-rice-layout"
+                  {
+                    nativeBuildInputs = [
+                      pkgs.bash
+                      pkgs.coreutils
+                      pkgs.gawk
+                      pkgs.jq
+                      pkgs.lua
+                    ];
+                  }
+                  ''
+                    lua ${./modules/home/desktop/hypr-rice/layout_test.lua} \
+                      ${./modules/home/desktop/hypr-rice/layout.lua}
+                    lua ${./modules/home/desktop/hypr-rice/rice_test.lua} \
+                      ${./modules/home/desktop/hypr-rice/layout.lua} \
+                      ${./modules/home/desktop/hypr-rice/rice.lua}
+                    bash ${./modules/home/desktop/hypr-rice/hypr-layout_test.sh} \
+                      ${./modules/home/desktop/hypr-rice/hypr-layout.sh}
+                    bash ${./modules/home/desktop/hypr-rice/hypr-layout-menu_test.sh} \
+                      ${./modules/home/desktop/hypr-rice/hypr-layout-menu.sh}
+                    bash ${./modules/home/desktop/hypr-rice/rice-launch_test.sh} \
+                      ${./modules/home/desktop/hypr-rice/rice-launch.sh}
+                    bash ${./modules/home/desktop/hypr-rice/rice-palette_test.sh} \
+                      ${./modules/home/desktop/hypr-rice/rice-palette.sh}
+                    bash ${./modules/home/desktop/hypr-rice/tile-ratio_test.sh} \
+                      ${./modules/home/desktop/hypr-rice/tile-ratio.sh}
+                    luac -p ${./modules/home/desktop/hypr-rice/layout.lua}
+                    luac -p ${./modules/home/desktop/hypr-rice/rice.lua}
+                    bash -n ${./modules/home/desktop/hypr-rice/hypr-layout.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/hypr-layout_test.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/hypr-layout-menu.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/hypr-layout-menu_test.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/rice-launch.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/rice-launch_test.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/rice-palette.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/rice-palette_test.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/hypr-palette-live-test.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/tile-ratio.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/tile-ratio_test.sh}
+                    bash -n ${./modules/home/desktop/hypr-rice/hypr-layout-live-test.sh}
+                    touch $out
+                  '';
+
+              hypr-rice-palette-projection =
+                pkgs.runCommandLocal "hypr-rice-palette-projection"
+                  {
+                    nativeBuildInputs = [
+                      pkgs.desktop-file-utils
+                      pkgs.jq
+                    ];
+                  }
+                  ''
+                    palette_script=${ricePalettePackage}/bin/rice-palette
+                    dispatcher=${riceCommandPackage}/bin/rice-command
+                    private_data_root=$(grep -m1 '^export RICE_PRIVATE_DATA_DIR=' "$palette_script" | cut -d= -f2-)
+                    applications="$private_data_root/applications"
+                    manifest="$private_data_root/rice/commands.json"
+
+                    test -f "$manifest"
+                    test -d "$applications"
+
+                    for desktop in "$applications"/nori-rice-*.desktop; do
+                      desktop-file-validate "$desktop"
+                      id=''${desktop##*/nori-rice-}
+                      id=''${id%.desktop}
+                      grep -Fxq "Exec=$dispatcher $id" "$desktop"
+                      jq -e --arg id "$id" '.[$id].palette == true' "$manifest" >/dev/null
+                    done
+
+                    desktop_count=$(find "$applications" -maxdepth 1 -name 'nori-rice-*.desktop' | wc -l)
+                    manifest_palette_count=$(jq '[to_entries[] | select(.value.palette)] | length' "$manifest")
+                    test "$desktop_count" -eq "$manifest_palette_count"
+
+                    jq -e '
+                      all(to_entries[];
+                        (.key | test("^[a-z0-9]+([.-][a-z0-9]+)*$")) and
+                        (.value.effect != "destructive" or .value.directBinding == null)
+                      )
+                    ' "$manifest" >/dev/null
+
+                    generated_lua=${workstationHome.activationPackage}/home-files/.config/hypr/hyprland.lua
+                    jq -r 'to_entries[] | select(.value.directBinding != null) | .key' "$manifest" \
+                      | while IFS= read -r id; do
+                          grep -Fq "rice-command $id" "$generated_lua"
+                        done
+
+                    if find ${workstationHome.activationPackage}/home-path/share/applications \
+                      -maxdepth 1 -name 'nori-rice-*.desktop' -print -quit | grep -q .; then
+                      echo 'private rice desktop entries leaked into the activated profile' >&2
+                      exit 1
+                    fi
+
+                    set +e
+                    "$dispatcher" >/dev/null 2>&1
+                    test "$?" -eq 64
+                    "$dispatcher" unknown.command >/dev/null 2>&1
+                    test "$?" -eq 64
+                    FUZZEL_BIN=${confirmationNo} "$dispatcher" system.reboot
+                    test "$?" -eq 0
+                    FUZZEL_BIN=${confirmationCancel} "$dispatcher" system.poweroff
+                    test "$?" -eq 0
+                    FUZZEL_BIN=${confirmationInvalid} "$dispatcher" session.exit >/dev/null 2>&1
+                    test "$?" -eq 64
+                    set -e
+
+                    touch $out
+                  '';
 
               /*
                 Repo-convention enforcement (Reader+Writer applied to lint).
