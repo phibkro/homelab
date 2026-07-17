@@ -9,6 +9,7 @@
   flake.homeConfigurations =
     (import ../modules/home {
       inherit inputs;
-      inherit (inputs) nixpkgs home-manager;
+      nixpkgs = inputs.nixpkgs-stable;
+      home-manager = inputs.home-manager-darwin;
     }).homeConfigurations;
 }

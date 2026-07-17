@@ -21,6 +21,9 @@
 
 let
   inherit (pkgs.stdenv.hostPlatform) system;
+  isIntelDarwin = system == "x86_64-darwin";
+  paguBoxInput = if isIntelDarwin then inputs.pagu-box-darwin else inputs.pagu-box;
+  tilthInput = if isIntelDarwin then inputs.tilth-darwin else inputs.tilth;
 
   /*
     claude-code overlaid from nixpkgs-master — channel ships 2.1.148 while
@@ -82,7 +85,7 @@ let
     binary; without this, all 17 git-shelling tests fail with
     `failed to run git: NotFound`.
   */
-  tilth = inputs.tilth.packages.${system}.default.overrideAttrs (old: {
+  tilth = tilthInput.packages.${system}.default.overrideAttrs (old: {
     nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ pkgs.git ];
   });
 
@@ -237,7 +240,7 @@ let
     claude-box / opencode-box just set cwd and forward args; the strict
     profile + --ro-allow list IS the security boundary.
   */
-  pagu-box = inputs.pagu-box.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  pagu-box = paguBoxInput.packages.${system}.default;
 
   /*
     `box` — homelab-wrapped pagu-box. Operator-specific policy lives
@@ -495,6 +498,13 @@ in
           recursive = true;
         };
       }
+      /*
+        Herdr's own control-plane contract. Herdr is installed only on the
+        Linux workstation; the Intel Mac's stable package set stays isolated.
+      */
+      (lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+        ".claude/skills/herdr/SKILL.md".source = "${inputs.herdr}/SKILL.md";
+      })
     ];
 
   /*

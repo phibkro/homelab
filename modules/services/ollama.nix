@@ -2,7 +2,6 @@
   config,
   lib,
   pkgs,
-  inputs,
   ...
 }:
 
@@ -54,25 +53,11 @@ lib.mkMerge [
     services.ollama = {
       enable = enabled;
       /*
-        CUDA-enabled package, pulled from nixpkgs `release-26.05`
-        (input `nixpkgs-ollama` in ../../flake.nix), which now carries
-        ollama 0.30.5 via backport. The bump is needed for mxfp8 /
-        nvfp4 quants — the `nixos-26.05` channel still ships 0.24.0
-        (HTTP 412 on those quants). Revert to `pkgs.ollama-cuda` once
-        the channel flows past the backport; the input goes with it.
-
-        `legacyPackages` evaluates with default (allowUnfree=false,
-        cudaSupport=false), which rejects ollama-cuda's CUDA closure —
-        import the fork's nixpkgs ourselves with our config to bypass.
+        CUDA-enabled package from the host's unstable nixpkgs. Unstable
+        carries the mxfp8 / nvfp4-capable Ollama line directly, so the
+        release-channel package fork is no longer needed.
       */
-      package =
-        (import inputs.nixpkgs-ollama {
-          system = pkgs.stdenv.hostPlatform.system;
-          config = {
-            allowUnfree = true;
-            cudaSupport = true;
-          };
-        }).ollama-cuda;
+      package = pkgs.ollama-cuda;
       host = "0.0.0.0";
       port = 11434;
       openFirewall = false;

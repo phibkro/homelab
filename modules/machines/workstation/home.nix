@@ -1,8 +1,21 @@
 {
   config,
+  inputs,
   pkgs,
   ...
 }:
+
+let
+  agentDispatch = pkgs.writeShellApplication {
+    name = "agent-dispatch";
+    runtimeInputs = [
+      inputs.pagu-box.packages.${pkgs.stdenv.hostPlatform.system}.default
+      pkgs.coreutils
+      pkgs.util-linux
+    ];
+    text = builtins.readFile ../../home/agent-dispatch.sh;
+  };
+in
 /**
   Pure home-manager module — same shape as every other
   modules/machines/<n>/home.nix. The home-manager-as-NixOS-module wrapper
@@ -27,7 +40,14 @@
     pkgs.lazysql # SQL TUI (Immich pg, Open WebUI sqlite, etc.)
     pkgs.nix-tree # interactive Nix dependency-graph viewer
     pkgs.nvd # diff between NixOS generations
-    pkgs.handbrake # GUI video transcoder (GTK). Mac counterpart is a brew cask — broken on x86_64-darwin in nixpkgs; see modules/machines/macbook/home.nix.
+    /*
+      Unstable HandBrake 1.11.1 currently carries an ffmpeg 8 patch that no
+      longer applies (`A01-mov-read-name-track-tag-written-by-movenc.patch`).
+      Keep this one leaf on 26.05 until the unstable derivation is repaired;
+      the host/module graph still follows unstable (ADR-0006). Mac counterpart
+      remains a brew cask; see modules/machines/macbook/home.nix.
+    */
+    inputs.nixpkgs-stable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.handbrake
     /*
       pkgs.deno: TS/JS runtime + the security sandbox for `pagu` (the local
       capability-gated agent in the gitignored ./pagu repo). pagu runs on
@@ -51,6 +71,9 @@
     */
     pkgs.home-manager
     pkgs.pulseaudio # pactl — PipeWire/PulseAudio sink/card/port inspection (e.g. fix jack desync after replug)
+    pkgs.codex # first-party OpenAI CLI; uses Codex OAuth independently of Claude
+    inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default
+    agentDispatch # bounded, capability-monotone cross-provider subprocess entry point
   ];
   # `deno install -g` drops shims here (e.g. the `pagu` command); put it on
   # PATH so they're runnable from a bare shell.
@@ -102,6 +125,20 @@
       "Downloads" = link "/srv/nori/Downloads";
       "Desktop" = link "/srv/nori/Desktop";
       "Projects" = link "/srv/nori/Projects";
+
+      # Codex's user-level instruction root. Project AGENTS.md files can refine
+      # it, but may not widen the global recursion/concurrency boundary.
+      ".codex/AGENTS.md".text = ''
+        # Cross-provider delegation
+
+        To delegate to Claude Code, use `agent-dispatch claude ...`; never
+        invoke `claude` directly from an agent. The dispatcher permits two
+        delegated workers and depth two (lead → worker → reviewer), then fails
+        loud. Every child enters pagu-box `strict`; sandbox access may only
+        narrow, never widen. A read-only parent stays read-only and a
+        network-denied parent cannot launch a cloud child. In Herdr, use
+        panes/worktrees so work remains observable.
+      '';
     };
 
 }
