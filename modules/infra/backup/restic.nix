@@ -71,7 +71,15 @@ let
         in
         ''
           echo ${lib.escapeShellArg "[${jobName} @ ${target}] restic check ${flags} (${repo})"}
-          if ( ${envPrefix}${pkgs.restic}/bin/restic ${extraOpts} -r ${lib.escapeShellArg repo} check ${flags} ); then
+          if (
+            # Self-heal a stale exclusive lock left by a prior aborted check
+            # (a reboot mid-run, an OOM). `restic unlock` only removes locks
+            # older than 30min, so a concurrent run is untouched. Same rationale
+            # as the backup units' pre-unlock — but INSIDE the check so it's
+            # structural, not a separate ExecStartPre that could drift.
+            ${envPrefix}${pkgs.restic}/bin/restic ${extraOpts} -r ${lib.escapeShellArg repo} unlock >/dev/null 2>&1 || true
+            ${pkgs.restic}/bin/restic ${extraOpts} -r ${lib.escapeShellArg repo} check ${flags}
+          ); then
             :
           else
             echo ${lib.escapeShellArg "[${jobName} @ ${target}] FAILED"}
