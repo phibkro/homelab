@@ -35,54 +35,61 @@ let
     ) activeJobs
   );
 
-  checkCalls = lib.concatMapStringsSep "\n" (
-    {
-      jobName,
-      target,
-      tgt,
-    }:
-    lib.concatStringsSep " " (
-      [
-        "check_repo"
-        (lib.escapeShellArg jobName)
-        (lib.escapeShellArg target)
-        (lib.escapeShellArg "${tgt.repository}/${jobName}")
-        (lib.escapeShellArg (if tgt.environmentFile == null then "-" else toString tgt.environmentFile))
-      ]
-      ++ map (o: "-o ${lib.escapeShellArg o}") tgt.extraOptions
-    )
-  ) activePairs;
-
   /*
     `checkArgs` are the per-cadence `restic check` flags (none weekly,
     --read-data-subset monthly). Failures accumulate rather than
     short-circuit so a corrupt repo can't hide rot in the others.
+
+    extraOptions are interpolated RAW, not escapeShellArg'd: the
+    `sftp.command='ssh …'` value carries shell-quotes meant to be STRIPPED
+    by the parser — systemd's ExecStart strips them for the backup units,
+    so a bash check script must too. Escaping preserved them literally, so
+    restic tried to fork/exec the whole `ssh -o … -s sftp` string as one
+    binary ("no such file or directory"). One inline restic call per pair
+    (rather than a `"$@"`-forwarding function) keeps the quoting identical
+    to the backups. Verified against the real aurora handshake 2026-07-18
+    — the seam a disposable clone couldn't reach.
   */
   mkCheckScript =
     checkArgs:
     let
       flags = lib.concatStringsSep " " checkArgs;
+      pairCall =
+        {
+          jobName,
+          target,
+          tgt,
+        }:
+        let
+          repo = "${tgt.repository}/${jobName}";
+          extraOpts = lib.concatMapStringsSep " " (o: "-o ${o}") tgt.extraOptions;
+          # environmentFile sourced inside the per-pair subshell so one
+          # target's credentials never leak into the next invocation.
+          envPrefix = lib.optionalString (
+            tgt.environmentFile != null
+          ) "set -a; . ${lib.escapeShellArg (toString tgt.environmentFile)}; set +a; ";
+        in
+        ''
+          echo ${lib.escapeShellArg "[${jobName} @ ${target}] restic check ${flags} (${repo})"}
+          if (
+            # Self-heal a stale exclusive lock left by a prior aborted check
+            # (a reboot mid-run, an OOM). `restic unlock` only removes locks
+            # older than 30min, so a concurrent run is untouched. Same rationale
+            # as the backup units' pre-unlock — but INSIDE the check so it's
+            # structural, not a separate ExecStartPre that could drift.
+            ${envPrefix}${pkgs.restic}/bin/restic ${extraOpts} -r ${lib.escapeShellArg repo} unlock >/dev/null 2>&1 || true
+            ${pkgs.restic}/bin/restic ${extraOpts} -r ${lib.escapeShellArg repo} check ${flags}
+          ); then
+            :
+          else
+            echo ${lib.escapeShellArg "[${jobName} @ ${target}] FAILED"}
+            fail=1
+          fi
+        '';
     in
     ''
       fail=0
-
-      # $4 is the target's environmentFile, or "-" when it has none.
-      # Sourced inside the subshell so one target's credentials never
-      # leak into the next target's restic invocation.
-      check_repo() {
-        local job="$1" target="$2" repo="$3" envfile="$4"
-        shift 4
-        echo "[$job @ $target] restic check ${flags} ($repo)"
-        if ( if [ "$envfile" != "-" ]; then set -a; . "$envfile"; set +a; fi
-             exec ${pkgs.restic}/bin/restic "$@" -r "$repo" check ${flags} ); then
-          return 0
-        fi
-        echo "[$job @ $target] FAILED"
-        fail=1
-      }
-
-      ${checkCalls}
-
+      ${lib.concatMapStringsSep "\n" pairCall activePairs}
       exit $fail
     '';
 in

@@ -641,7 +641,12 @@ in
           { jobName, target, ... }:
           let
             tgt = config.nori.backupTargets.${target};
-            resticOpts = lib.concatStringsSep " " (map (o: "-o ${lib.escapeShellArg o}") tgt.extraOptions);
+            # RAW, not escapeShellArg'd: the sftp.command value carries
+            # shell-quotes meant to be stripped (see restic.nix mkCheckScript).
+            # Escaping preserved them literally, so this pre-unlock silently
+            # no-op'd for SFTP targets (masked by `2>/dev/null || true`) —
+            # leaving exactly the stale locks it exists to clear.
+            resticOpts = lib.concatStringsSep " " (map (o: "-o ${o}") tgt.extraOptions);
             preUnlockScript = pkgs.writeShellScript "restic-${jobName}-${target}-pre-unlock" ''
               ${pkgs.restic}/bin/restic ${resticOpts} unlock 2>/dev/null || true
             '';
