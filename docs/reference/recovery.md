@@ -36,6 +36,7 @@ Each runbook is the step-by-step for one failure class. Initial outlines:
 | `pi-failure.md` | Pi unreachable / hardware dead | Swap to spare USB SSD with current flake → boot → verify Blocky + Tailscale come up → router DHCP unaffected (workstation is secondary DNS) |
 | `storage-full.md` | Disk pressure | Find what filled up; library is reflinked (not duplicated) — see `.claude/skills/gotcha-arr-reflinks-not-hardlinks/` |
 | `tailscale-acl.md` | Tailscale admin UI ACL recovery | Live ACL lives only in admin UI; this snapshots `tailscale-acl.json` for editor-regression + account-loss recovery |
+| `agent-fix-on-failure.md` | An armed backup/check unit fails (`nori.agentFix`) | Recovery window survives → boxed agent diagnoses + opens a PR (draft if unfixed). Find the run at `journalctl -u agent-fix@<unit>` and resume its conversation via `claude --resume` (handle in the PR body) to steer + merge |
 
 ## Forward-direction runbooks (not recovery)
 

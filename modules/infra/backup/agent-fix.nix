@@ -30,14 +30,18 @@
     4. the BOXED agent (agent-dispatch, pagu-box strict) only EDITS files +
        writes an incident report. It has model access but NO push/deploy —
        the sandbox blocks gh/ssh/secrets. It cannot reach origin.
-    5. the UN-BOXED orchestrator validates the result with `nix flake check`
-       — the fix is proven green before a PR can exist; the agent's claim is
-       never trusted. A failing check alerts and stops (nothing pushed).
-    6. only then does the orchestrator push the branch + `gh pr create`.
-       The AI never held the push credential; a deterministic relay did.
+    5. the UN-BOXED orchestrator ALWAYS pushes the branch + `gh pr create` —
+       a fire is a real failure and a started thread to fix it, whether or not
+       the agent nailed it. The AI never held the push credential; a
+       deterministic relay did. `nix flake check` decides draft (fails) vs
+       ready (passes), never whether the PR exists; if the agent produced
+       nothing, a stub incident report is committed so the thread still opens.
+    6. the PR body carries a handle to RESUME the agent's conversation
+       (`claude --resume <id>`, un-boxed) + the journal command, so the
+       operator can pick up the thread and give feedback.
 
-  The operator reviews + merges → deploy. The agent never rebuilds the
-  live system.
+  The operator reviews + steers + merges → deploy. The agent never rebuilds
+  the live system. Runbook: docs/runbooks/agent-fix-on-failure.md.
 */
 
 let
@@ -138,36 +142,83 @@ let
       cd "$work"
       AGENT_DISPATCH_DEPTH=0 agent-dispatch ${cfg.provider} -- ${providerInvoke} || true
 
-      # 6. relay — did the agent change anything?
+      # 6. relay — ALWAYS open a PR. A fire means a real unit failure AND a
+      #    started thread to fix it, whether or not the agent nailed the fix:
+      #    the PR is the durable indicator + carries the diagnosis, the (partial)
+      #    fix, and a handle to RESUME the agent's conversation. Validation only
+      #    decides draft vs ready — it never suppresses the PR.
       git -C "$work" add -A
       if git -C "$work" diff --cached --quiet; then
-        ${config.nori.alerts.command} --audience agents --severity urgent --category fix-agent \
-          --title "fix-agent: no change for $UNIT — needs you" \
-          --body "Agent produced no edit. Context + journal left in $work."
-        exit 0
+        # No edit and no report (auth failure / crash / early give-up). Stub one
+        # so the thread still exists.
+        mkdir -p "$work/$(dirname "$report")"
+        {
+          echo "---"
+          echo "summary: fix-agent produced no output for $UNIT — manual thread required"
+          echo "---"
+          echo
+          echo "# $UNIT failed — fix-agent could not act"
+          echo
+          echo "The dispatched agent produced no edit and no report (likely an auth"
+          echo "failure, a crash, or an early give-up). Pick up the thread manually"
+          echo "using the resume instructions in the PR body."
+        } > "$work/$report"
+        git -C "$work" add -A
       fi
-      git -C "$work" commit -q -m "fix($UNIT): automated fix-agent proposal
+      git -C "$work" commit -q -m "fix($UNIT): fix-agent proposal — see incident report"
 
-      See $report."
-
-      # 7. deterministic validation — prove it green BEFORE a PR exists.
-      if ! nix flake check "$work" 2>&1 | tail -c 2000; then
-        ${config.nori.alerts.command} --audience agents --severity urgent --category fix-agent \
-          --title "fix-agent: proposed fix for $UNIT fails flake check" \
-          --body "Branch $branch left at $work for review; nothing pushed."
-        exit 0
+      # 7. validate — INFORMATIONAL (draft vs ready), no longer a gate on the PR.
+      if nix flake check "$work" >/dev/null 2>&1; then
+        check_status="passes nix flake check"
+        draft_flag=()
+      else
+        check_status="FAILS nix flake check — needs a human"
+        draft_flag=(--draft)
       fi
 
-      # 8. push + open the PR from the clone (origin was already repointed at
-      #    the real remote in step 4); the operator's working clone is never
-      #    touched.
+      # 8. resume handle — the boxed agent's session persisted to the real
+      #    ~/.claude (agent-dispatch binds it via pagu-box --claude). Claude keys
+      #    sessions by cwd, slugged '/' -> '-'; one .jsonl per run.
+      slug="$(printf '%s' "$work" | sed 's#/#-#g')"
+      session_id=""
+      for f in "$HOME/.claude/projects/$slug"/*.jsonl; do
+        [ -e "$f" ] || continue
+        session_id="$(basename "$f" .jsonl)"
+      done
+      [ -n "$session_id" ] || session_id="(none — see the journal)"
+
+      # 9. push + open the PR (draft when it doesn't pass flake check). origin
+      #    was repointed at the real remote in step 4.
       git -C "$work" push -q -u origin "$branch"
-      pr="$(gh pr create --base main --head "$branch" \
-        --title "fix($UNIT): automated fix-agent proposal" \
-        --body-file "$work/$report" 2>&1 | tail -1 || true)"
+      pr="$(gh pr create "''${draft_flag[@]}" --base main --head "$branch" \
+        --title "fix($UNIT): fix-agent proposal" \
+        --body "$(cat <<PRBODY
+      Automated fix-agent proposal for a failed unit — opened whether or not the
+      fix is complete, because the failure itself needs a thread.
+
+      Unit:       $UNIT on $(uname -n) ($result)
+      Validation: $check_status
+      Provider:   ${cfg.provider}
+
+      ## Pick up the thread
+
+      Resume the agent's conversation (runs un-boxed, as you) to review its
+      reasoning and give feedback:
+
+          cd $work
+          claude --resume $session_id
+
+      Full run log:
+
+          journalctl -u agent-fix@$UNIT.service
+
+      Diagnosis + fix are in this PR's diff (incident report: $report).
+      Runbook: docs/runbooks/agent-fix-on-failure.md
+      PRBODY
+      )" 2>&1 | tail -1 || true)"
 
       ${config.nori.alerts.command} --audience agents --severity warning --category fix-agent \
-        --title "fix-agent: PR opened for $UNIT" \
+        --title "fix-agent: PR for $UNIT — $check_status" \
         --body "$pr"
     '';
   };
