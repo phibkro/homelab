@@ -83,6 +83,28 @@ ntfy (agent topic): "fix-agent opened PR #N for <unit> — review"
 operator reviews → merge → deploy
 ```
 
+### Load-bearing findings (from reading the primitives)
+
+Reuse `agent-dispatch` (modules/home/agent-dispatch.sh) rather than invoking
+claude/codex directly — it already provides the "boxed agent WITH model
+access" primitive, bounded depth + slots. Two constraints it imposes shape
+the design and resolve the spec's open questions:
+
+- **Worktree must live OUTSIDE `/srv/share/projects/homelab`.** agent-dispatch
+  forces read-only whenever `$PWD` is under that prefix ("inspect the
+  canonical homelab, never edit it"). Put the fix worktree elsewhere
+  (e.g. `/srv/nori/agent-fix/<unit>-<ts>`) so delegated writes are allowed.
+- **The AI never holds push/deploy creds — by construction (resolves Q2).**
+  pagu-box strict blocks gh/ssh/secrets, so the boxed agent can *edit +
+  commit locally* but cannot push. Split the flow: the boxed agent proposes
+  (commit on a branch in the worktree); a **deterministic relay** (the outer
+  `agent-fix@` oneshot, un-boxed `nori`, already has gh auth) does the
+  `git push` + `gh pr create`. No gh token goes into the sandbox at all.
+
+Backup unit names to wire `OnFailure = [ "agent-fix@<unit>.service" ]` onto
+(they already carry `notify@`): `restic-backups-<job>-<target>`,
+`restic-check-weekly`, `restic-check-monthly`, `btrbk-root`, `btrbk-media`.
+
 ### Component breakdown
 
 | Piece | Home | Notes |
@@ -99,9 +121,9 @@ operator reviews → merge → deploy
 
 1. **Provider usage signal** — does either harness expose a real quota /
    usage endpoint locally? If not, v1 ships the 429-proxy and says so.
-2. **gh credential in-sandbox** — pagu-box `strict` blocks `~/.ssh` + gh
-   auth (by design). PR creation needs a narrowly-scoped token bound into
-   the fix-agent's sandbox only. Design the minimum capability.
+2. ~~gh credential in-sandbox~~ **RESOLVED** — don't put gh in the sandbox.
+   Boxed agent commits locally (no push); the outer deterministic relay
+   (un-boxed nori) pushes + opens the PR. See Load-bearing findings.
 3. **Prompt contract** — what makes an agent reliably fix a restic/btrbk
    failure vs. flail? Seed with the recovery runbooks
    (`docs/runbooks/`, `.claude/skills/restore-*`).
