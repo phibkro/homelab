@@ -5,6 +5,13 @@
 }:
 
 {
+  # notify@ + the infra channel/route below emit through nori.alerts, so the
+  # bus travels with this producer. Self-contained: a consumer that imports
+  # notify.nix directly (the e2e nixosTests) gets nori-alert + the option too,
+  # not just when reached via observability/default.nix. Duplicate import via
+  # that aggregator is deduped by path.
+  imports = [ ../alerts.nix ];
+
   /*
     Both knobs default to production shape; the e2e nixosTest
     (tests/e2e-pi-smoke.nix) overrides them to point at a stub
