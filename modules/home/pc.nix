@@ -18,5 +18,6 @@ _:
   imports = [
     ./core.nix
     ./claude-code # CLI + settings.json + skills (~300 MB Node closure)
+    ./agent-notify # nori.agentNotify — phone push when a harness halts (opt-in per host)
   ];
 }

@@ -35,6 +35,7 @@ _:
 */
 {
   imports = [
+    ./alerts.nix
     ./gatus.nix
     ./victoriametrics.nix
     ./victorialogs/default.nix

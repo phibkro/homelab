@@ -1,11 +1,17 @@
 {
   config,
   lib,
-  pkgs,
   ...
 }:
 
 {
+  # notify@ + the infra channel/route below emit through nori.alerts, so the
+  # bus travels with this producer. Self-contained: a consumer that imports
+  # notify.nix directly (the e2e nixosTests) gets nori-alert + the option too,
+  # not just when reached via observability/default.nix. Duplicate import via
+  # that aggregator is deduped by path.
+  imports = [ ../alerts.nix ];
+
   /*
     Both knobs default to production shape; the e2e nixosTest
     (tests/e2e-pi-smoke.nix) overrides them to point at a stub
@@ -79,6 +85,18 @@
         mode = "0444";
       };
 
+      /*
+        The operator's infra channel — defined here, alongside the secret
+        that backs it. Every host that alerts imports this module, so the
+        `operator` audience resolves everywhere. baseUrl reuses the
+        ntfyNotify knob so the e2e stub override still redirects delivery.
+      */
+      nori.alerts.channels.infra = {
+        topicSecret = config.sops.secrets.ntfy-channel.path;
+        baseUrl = config.nori.observability.ntfyNotify.baseUrl;
+      };
+      nori.alerts.routes.operator = [ "infra" ];
+
       systemd.services."notify@" = {
         description = "Send ntfy urgent alert for failed unit %i (after recovery window)";
         scriptArgs = "%i";
@@ -106,17 +124,16 @@
                 # Last 8 lines / 800 chars fits ntfy's body limit without truncation.
                 TAIL="$(journalctl -u "$UNIT" -n 8 --no-pager 2>&1 | tail -c 800)"
 
-                CHANNEL=$(cat ${config.sops.secrets.ntfy-channel.path})
-                ${pkgs.curl}/bin/curl -fsS \
-                  -H "Title: ${config.networking.hostName}: $UNIT still failed after recovery window" \
-                  -H "Priority: urgent" \
-                  -H "Tags: warning,rotating_light" \
-                  --data-binary "$UNIT is still in failed state on ${config.networking.hostName} after the OnFailure recovery window. Recent journal:
+                ${config.nori.alerts.command} \
+                  --audience operator \
+                  --severity urgent \
+                  --category service-failure \
+                  --title "${config.networking.hostName}: $UNIT still failed after recovery window" \
+                  --body "$UNIT is still in failed state on ${config.networking.hostName} after the OnFailure recovery window. Recent journal:
 
           $TAIL
 
-          Diagnose: journalctl -u $UNIT" \
-                  "${config.nori.observability.ntfyNotify.baseUrl}/$CHANNEL" || true
+          Diagnose: journalctl -u $UNIT" || true
         '';
         serviceConfig = {
           Type = "oneshot";

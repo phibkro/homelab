@@ -37,16 +37,9 @@
         guaranteed to fire on the VM's underlying filesystem.
       '';
     };
-    baseUrl = lib.mkOption {
-      type = lib.types.str;
-      default = "https://ntfy.sh";
-      description = ''
-        Base URL the disk-alert script POSTs to. Channel name from
-        sops appended as a path segment. Production points at ntfy.sh
-        (where the operator's mobile app subscribes); tests redirect
-        to an in-VM stub receiver.
-      '';
-    };
+    # Delivery (channel + baseUrl) now lives on nori.alerts; disk-alert
+    # just emits an `operator` alert. Tests override the infra channel's
+    # baseUrl via nori.observability.ntfyNotify.baseUrl.
   };
 
   config = lib.mkMerge [
@@ -68,44 +61,35 @@
         This module is the early-warning that catches that class of
         problem before services break.
 
-        Why a separate posting script rather than reusing notify@: the
-        template's message format is fixed to "Unit X failed on host"
-        which is wrong for a disk-usage event. The curl-to-ntfy.sh
-        pattern itself is shared with notify.nix.
+        It emits through nori.alerts (`operator` audience) — the same
+        emit-point notify@ uses. The event differs (a disk threshold, not
+        a unit failure) but the delivery path is one construct now.
       */
 
       systemd.services.disk-alert = {
         description = "Check disk free space and alert via ntfy if low";
         serviceConfig = {
           Type = "oneshot";
-          User = "root"; # reads /run/secrets/ntfy-channel (mode 0444)
+          User = "root"; # nori-alert reads /run/secrets/ntfy-channel (mode 0444)
         };
         unitConfig.OnFailure = [ "notify@disk-alert.service" ];
-        path = [
-          pkgs.coreutils
-          pkgs.curl
-        ];
+        path = [ pkgs.coreutils ];
         script = ''
           set -eu
-          CHANNEL=$(cat ${config.sops.secrets.ntfy-channel.path})
 
           df --output=target,pcent ${lib.concatStringsSep " " config.nori.observability.diskAlert.mountpoints} \
             | tail -n +2 \
             | while read -r mount pct_raw; do
                 pct=''${pct_raw%\%}
-                if [ "$pct" -ge ${toString config.nori.observability.diskAlert.criticalThresholdPct} ]; then
-                  level=critical
-                  prio=urgent
-                  tags="rotating_light,sos"
-                else
+                if [ "$pct" -lt ${toString config.nori.observability.diskAlert.criticalThresholdPct} ]; then
                   continue
                 fi
-                curl -fsS \
-                  -H "Title: ${config.networking.hostName}: disk $level ($mount $pct%)" \
-                  -H "Priority: $prio" \
-                  -H "Tags: $tags" \
-                  -d "Filesystem $mount on ${config.networking.hostName} is $pct% used. See docs/runbooks/storage-full.md." \
-                  "${config.nori.observability.diskAlert.baseUrl}/$CHANNEL" || true
+                ${config.nori.alerts.command} \
+                  --audience operator \
+                  --severity urgent \
+                  --category disk \
+                  --title "${config.networking.hostName}: disk critical ($mount $pct%)" \
+                  --body "Filesystem $mount on ${config.networking.hostName} is $pct% used. See docs/runbooks/storage-full.md." || true
               done
         '';
       };
