@@ -92,6 +92,27 @@
   nori.agentFix.enable = true;
 
   /*
+    CI-only stub for davinci-resolve. It's unfree → not on cache.nixos.org →
+    every `nix flake check` in CI rebuilds a multi-GB binary repackage
+    (fetch + autoPatchelf over GBs, ~40 min), right at the GitHub runner's
+    disk/time limit — the 2026-07-18 SIGTERM (143) that killed a PR run.
+
+    Pure eval sees getEnv "" → the real package, so local `just rebuild` and
+    local `nix flake check` are UNAFFECTED. Only CI opts in, via
+    `HOMELAB_CI=1 nix flake check --impure` (see .github/workflows/check.yml):
+    then davinci-resolve becomes a no-op shim, the workstation toplevel builds
+    in minutes, and CI keeps build-coverage of everything except this one
+    proprietary blob. Tradeoff: the impurity is contained to the CI flag; the
+    only lost coverage is "does davinci's binary repackage build", which is a
+    stable upstream concern local rebuild catches before deploy.
+  */
+  nixpkgs.overlays = lib.optionals (builtins.getEnv "HOMELAB_CI" == "1") [
+    (_final: prev: {
+      davinci-resolve = prev.writeShellScriptBin "davinci-resolve" "exit 0";
+    })
+  ];
+
+  /*
     Waydroid — Android (LineageOS) in an LXC container, integrated with
     the Wayland (Hyprland) session. Runs Android-only apps (Symfonium, and
     anything else gated behind Google-Play licensing) at near-native speed
