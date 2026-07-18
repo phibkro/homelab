@@ -62,6 +62,19 @@
   users.users.nori.extraGroups = [ "media" ];
 
   /*
+    ntfy topic for agent-attention pushes (home-manager: nori.agentNotify).
+    Separate secret from the infra `ntfy-channel` so "an agent halted and
+    needs you" is its own phone subscription + priority, not mixed with
+    "a service is down". owner nori + mode 0400: only the operator's
+    interactive agents read it (agent-notify runs as nori), unlike the
+    world-readable infra channel that system alert units share.
+  */
+  sops.secrets.ntfy-agents-channel = {
+    owner = "nori";
+    mode = "0400";
+  };
+
+  /*
     Waydroid — Android (LineageOS) in an LXC container, integrated with
     the Wayland (Hyprland) session. Runs Android-only apps (Symfonium, and
     anything else gated behind Google-Play licensing) at near-native speed

@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   lib,
   pkgs,
@@ -228,6 +229,38 @@ let
     statusLine = {
       type = "command";
       command = "${statuslineScript}";
+    };
+  }
+  // lib.optionalAttrs config.nori.agentNotify.enable {
+    /*
+      Phone push on every execution-stopping event (nori.agentNotify).
+        Stop         — the turn ended.
+        Notification — Claude needs permission, or has been waiting on input
+                       (covers a pending question).
+      Together they cover "an agent halted and needs you". One shared
+      entrypoint fans out to ntfy — see modules/home/agent-notify.nix.
+    */
+    hooks = {
+      Stop = [
+        {
+          hooks = [
+            {
+              type = "command";
+              command = "${config.nori.agentNotify.command} claude stop";
+            }
+          ];
+        }
+      ];
+      Notification = [
+        {
+          hooks = [
+            {
+              type = "command";
+              command = "${config.nori.agentNotify.command} claude notification";
+            }
+          ];
+        }
+      ];
     };
   };
 

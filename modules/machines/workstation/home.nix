@@ -15,6 +15,23 @@ let
     ];
     text = builtins.readFile ../../home/agent-dispatch.sh;
   };
+
+  /*
+    Wrap the first-party Codex CLI to fire an ntfy ping on turn-complete
+    (nori.agentNotify). `-c` is a global override parsed as TOML, so this
+    injects `notify` at launch WITHOUT touching ~/.codex/config.toml — which
+    Codex rewrites at runtime (trust levels, NUX) and so can't be a read-only
+    store symlink. Codex's `notify` currently fires on agent-turn-complete;
+    permission/question coverage waits on its `[[hooks]]` lifecycle system.
+  */
+  codexNotify = pkgs.writeShellApplication {
+    name = "codex";
+    text = ''
+      exec ${pkgs.codex}/bin/codex \
+        -c notify='["${config.nori.agentNotify.command}","codex","stop"]' \
+        "$@"
+    '';
+  };
 in
 /**
   Pure home-manager module — same shape as every other
@@ -71,10 +88,15 @@ in
     */
     pkgs.home-manager
     pkgs.pulseaudio # pactl — PipeWire/PulseAudio sink/card/port inspection (e.g. fix jack desync after replug)
-    pkgs.codex # first-party OpenAI CLI; uses Codex OAuth independently of Claude
+    codexNotify # first-party Codex CLI, wrapped to ntfy-ping on turn-complete (nori.agentNotify)
     inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default
     agentDispatch # bounded, capability-monotone cross-provider subprocess entry point
   ];
+
+  # Phone push when any operator agent halts (Claude Stop/Notification hooks +
+  # the Codex notify wrapper above). The topic secret is provisioned by the
+  # workstation system config; see modules/machines/workstation/default.nix.
+  nori.agentNotify.enable = true;
   # `deno install -g` drops shims here (e.g. the `pagu` command); put it on
   # PATH so they're runnable from a bare shell.
   home.sessionPath = [ "$HOME/.deno/bin" ];
