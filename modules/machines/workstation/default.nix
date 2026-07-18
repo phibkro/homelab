@@ -82,14 +82,20 @@
   nori.alerts.routes.agents = [ "agents" ];
 
   /*
-    Fix-agent: deployed DISARMED. The agent-fix@ template + its script are
-    built and dry-runnable (`systemctl start agent-fix@restic-check-weekly`),
-    but units = [] means nothing auto-triggers it yet. Arm it after a manual
-    dry run by listing units, e.g.:
-      nori.agentFix.units = [ "restic-check-weekly" "btrbk-media" ];
+    Fix-agent: ARMED on backup verification + snapshot units. A real failure
+    (surviving the recovery window) OnFailure-dispatches a boxed agent that
+    diagnoses, fixes on an origin/main clone, validates with `nix flake check`,
+    and opens a PR — PR-only, never deploys. Dry-run validated 2026-07-18 (it
+    found + fixed the SFTP restic-check bug this same PR carries).
     Design: docs/specs/2026-07-18-agent-fix-on-failure-design.md.
   */
   nori.agentFix.enable = true;
+  nori.agentFix.units = [
+    "restic-check-weekly"
+    "restic-check-monthly"
+    "btrbk-root"
+    "btrbk-media"
+  ];
 
   /*
     Waydroid — Android (LineageOS) in an LXC container, integrated with
