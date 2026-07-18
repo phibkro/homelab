@@ -7,23 +7,84 @@
 
 let
   /*
-    Shared shell-side iteration helper: emit one
-    "<job> <target> <repoPath>" line per (job, target) pair. The weekly
-    + monthly check scripts read this via a heredoc and loop over
-    them, so the bash side knows nothing about Nix attribute sets.
+    Shared (job, target) iteration for the weekly + monthly check
+    scripts: emit one `check_repo` call per pair, carrying the
+    target's TRANSPORT config alongside the repo path — the `-o`
+    flags from `extraOptions` and the `environmentFile`, if any.
+
+    Load-bearing: the generated backup units inherit `extraOptions` +
+    `environmentFile` from the target (modules/infra/backup/default.nix
+    § services.restic.backups), so a check that omits them speaks a
+    different transport than the backup that wrote the repo. For the
+    `onetouch` SFTP target that meant bare `ssh restic@aurora` with no
+    identity file and no pinned known_hosts → "Permission denied
+    (publickey)" every Sunday, while the backups themselves stayed
+    green. See docs/reports/20260718-115850-restic-check-weekly-failure.md.
   */
   activeJobs = lib.filterAttrs (_: cfg: cfg.include != null) config.nori.backups;
-  pairsShell = lib.concatStringsSep "\n" (
-    lib.flatten (
-      lib.mapAttrsToList (
-        jobName: cfg:
-        let
-          targets = if cfg.targets == null then lib.attrNames config.nori.backupTargets else cfg.targets;
-        in
-        map (t: "${jobName} ${t} ${config.nori.backupTargets.${t}.repository}/${jobName}") targets
-      ) activeJobs
-    )
+  activePairs = lib.flatten (
+    lib.mapAttrsToList (
+      jobName: cfg:
+      let
+        targets = if cfg.targets == null then lib.attrNames config.nori.backupTargets else cfg.targets;
+      in
+      map (target: {
+        inherit jobName target;
+        tgt = config.nori.backupTargets.${target};
+      }) targets
+    ) activeJobs
   );
+
+  checkCalls = lib.concatMapStringsSep "\n" (
+    {
+      jobName,
+      target,
+      tgt,
+    }:
+    lib.concatStringsSep " " (
+      [
+        "check_repo"
+        (lib.escapeShellArg jobName)
+        (lib.escapeShellArg target)
+        (lib.escapeShellArg "${tgt.repository}/${jobName}")
+        (lib.escapeShellArg (if tgt.environmentFile == null then "-" else toString tgt.environmentFile))
+      ]
+      ++ map (o: "-o ${lib.escapeShellArg o}") tgt.extraOptions
+    )
+  ) activePairs;
+
+  /*
+    `checkArgs` are the per-cadence `restic check` flags (none weekly,
+    --read-data-subset monthly). Failures accumulate rather than
+    short-circuit so a corrupt repo can't hide rot in the others.
+  */
+  mkCheckScript =
+    checkArgs:
+    let
+      flags = lib.concatStringsSep " " checkArgs;
+    in
+    ''
+      fail=0
+
+      # $4 is the target's environmentFile, or "-" when it has none.
+      # Sourced inside the subshell so one target's credentials never
+      # leak into the next target's restic invocation.
+      check_repo() {
+        local job="$1" target="$2" repo="$3" envfile="$4"
+        shift 4
+        echo "[$job @ $target] restic check ${flags} ($repo)"
+        if ( if [ "$envfile" != "-" ]; then set -a; . "$envfile"; set +a; fi
+             exec ${pkgs.restic}/bin/restic "$@" -r "$repo" check ${flags} ); then
+          return 0
+        fi
+        echo "[$job @ $target] FAILED"
+        fail=1
+      }
+
+      ${checkCalls}
+
+      exit $fail
+    '';
 in
 /*
   The cross-cutting infrastructure here — backup targets registry,
@@ -157,20 +218,7 @@ lib.mkIf (config.networking.hostName == "workstation") {
       User = "root";
     };
     environment.RESTIC_PASSWORD_FILE = config.sops.secrets.restic-password.path;
-    script = ''
-      fail=0
-      while read job target repo; do
-        [ -z "$job" ] && continue
-        echo "[$job @ $target] restic check ($repo)"
-        if ! ${pkgs.restic}/bin/restic -r "$repo" check; then
-          echo "[$job @ $target] FAILED"
-          fail=1
-        fi
-      done <<'EOF'
-      ${pairsShell}
-      EOF
-      exit $fail
-    '';
+    script = mkCheckScript [ ];
   };
 
   systemd.timers.restic-check-weekly = {
@@ -190,20 +238,7 @@ lib.mkIf (config.networking.hostName == "workstation") {
       User = "root";
     };
     environment.RESTIC_PASSWORD_FILE = config.sops.secrets.restic-password.path;
-    script = ''
-      fail=0
-      while read job target repo; do
-        [ -z "$job" ] && continue
-        echo "[$job @ $target] restic check --read-data-subset=10% ($repo)"
-        if ! ${pkgs.restic}/bin/restic -r "$repo" check --read-data-subset=10%; then
-          echo "[$job @ $target] FAILED"
-          fail=1
-        fi
-      done <<'EOF'
-      ${pairsShell}
-      EOF
-      exit $fail
-    '';
+    script = mkCheckScript [ "--read-data-subset=10%" ];
   };
 
   systemd.timers.restic-check-monthly = {
