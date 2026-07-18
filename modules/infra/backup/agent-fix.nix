@@ -96,7 +96,19 @@ let
       rm -rf "$work"
       mkdir -p "$work_root"
       git clone --quiet --local --no-hardlinks "$repo" "$work"
-      git -C "$work" checkout -q -b "$branch"
+      # Base the fix on the DEPLOYED main, never the operator's working HEAD
+      # or uncommitted state. Re-point origin at the real remote (its push
+      # URL — ssh — serves both this fetch and the later push) and branch
+      # off origin/main; fall back to the clone HEAD only if main is
+      # unreachable (fail loud, don't silently base on scratch).
+      origin_url="$(git -C "$repo" remote get-url --push origin)"
+      git -C "$work" remote set-url origin "$origin_url"
+      if git -C "$work" fetch --quiet origin main; then
+        git -C "$work" checkout -q -B "$branch" origin/main
+      else
+        echo "agent-fix: could not fetch origin/main; basing on $repo HEAD" >&2
+        git -C "$work" checkout -q -b "$branch"
+      fi
       git -C "$work" config user.name "homelab fix-agent"
       git -C "$work" config user.email "fix-agent@localhost"
 
@@ -146,10 +158,9 @@ let
         exit 0
       fi
 
-      # 8. push + open the PR from the clone (origin's push URL from $repo);
-      #    the operator's working clone is never touched.
-      push_url="$(git -C "$repo" remote get-url --push origin)"
-      git -C "$work" remote set-url origin "$push_url"
+      # 8. push + open the PR from the clone (origin was already repointed at
+      #    the real remote in step 4); the operator's working clone is never
+      #    touched.
       git -C "$work" push -q -u origin "$branch"
       pr="$(gh pr create --base main --head "$branch" \
         --title "fix($UNIT): automated fix-agent proposal" \
