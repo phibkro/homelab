@@ -15,12 +15,14 @@
   is nori.alerts' job, not this script's; this is just the event→alert
   mapper, so there's a single delivery construct across every producer.
 
-  Wiring (unchanged interface): Claude Code Stop/Notification hooks and the
-  Codex notify wrapper call `agent-notify <harness> <event>`. The `agents`
-  audience routes to the agents ntfy topic — defined by the host that runs
-  the fleet (modules/machines/workstation/default.nix), since that's where
-  the topic secret and nori-alert live. On a host without nori.alerts (or
-  macbook) the enable stays off.
+  Wiring (unchanged interface): every harness calls `agent-notify <harness>
+  <event>` from its native hook surface — Claude Code Stop/Notification
+  hooks, the Codex notify wrapper, an OpenCode plugin, and a Pi extension
+  (the last two are the .ts files beside this module, dropped via home.file
+  below). The `agents` audience routes to the agents ntfy topic — defined by
+  the host that runs the fleet (modules/machines/workstation/default.nix),
+  since that's where the topic secret and nori-alert live. On a host without
+  nori.alerts (or macbook) the enable stays off.
 */
 
 let
@@ -101,5 +103,16 @@ in
 
   config = lib.mkIf cfg.enable {
     home.packages = [ agent-notify ];
+
+    # OpenCode + Pi legs — pure file drops. Neither self-mutates its config
+    # (config and mutable state live on separate roots), so read-only store
+    # symlinks are safe. Inert when the harness isn't installed; each just
+    # calls `agent-notify` (on PATH) on a halt event.
+    #   OpenCode: one `event` hook, switched on session.idle / permission.v2
+    #             .asked / question.v2.asked.
+    #   Pi:       `agent_settled` (its "won't continue on its own" signal;
+    #             no built-in permission/question prompt — stop-only, like Codex).
+    home.file.".config/opencode/plugin/agent-notify.ts".source = ./opencode-plugin.ts;
+    home.file.".pi/agent/extensions/agent-notify.ts".source = ./pi-extension.ts;
   };
 }
