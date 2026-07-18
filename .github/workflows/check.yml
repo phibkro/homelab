@@ -29,4 +29,9 @@ jobs:
             experimental-features = nix-command flakes
 
       - name: nix flake check
-        run: nix flake check --print-build-logs
+        # HOMELAB_CI=1 + --impure activate the CI-only davinci-resolve stub
+        # (modules/machines/workstation/default.nix): the unfree, uncached
+        # multi-GB binary repackage would otherwise rebuild every run (~40 min,
+        # and it SIGTERM'd a run at the runner's disk/time limit on 2026-07-18).
+        # Local `just rebuild` / `nix flake check` stay pure → real package.
+        run: HOMELAB_CI=1 nix flake check --impure --print-build-logs
