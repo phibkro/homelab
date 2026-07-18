@@ -30,6 +30,7 @@ let
 in
 {
   imports = [
+    ./agent-fix.nix
     ./btrbk.nix
     ./btrbk-replication.nix
     ./btrbk-replica-target.nix

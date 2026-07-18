@@ -82,6 +82,16 @@
   nori.alerts.routes.agents = [ "agents" ];
 
   /*
+    Fix-agent: deployed DISARMED. The agent-fix@ template + its script are
+    built and dry-runnable (`systemctl start agent-fix@restic-check-weekly`),
+    but units = [] means nothing auto-triggers it yet. Arm it after a manual
+    dry run by listing units, e.g.:
+      nori.agentFix.units = [ "restic-check-weekly" "btrbk-media" ];
+    Design: docs/specs/2026-07-18-agent-fix-on-failure-design.md.
+  */
+  nori.agentFix.enable = true;
+
+  /*
     Waydroid — Android (LineageOS) in an LXC container, integrated with
     the Wayland (Hyprland) session. Runs Android-only apps (Symfonium, and
     anything else gated behind Google-Play licensing) at near-native speed
