@@ -74,6 +74,13 @@
     mode = "0400";
   };
 
+  # The agents channel + route: agent-notify emits `--audience agents`,
+  # this maps it to the dedicated topic. Defined here (not in the shared
+  # home module) because the secret + nori-alert live at the system layer
+  # on the host that runs the fleet.
+  nori.alerts.channels.agents.topicSecret = config.sops.secrets.ntfy-agents-channel.path;
+  nori.alerts.routes.agents = [ "agents" ];
+
   /*
     Waydroid — Android (LineageOS) in an LXC container, integrated with
     the Wayland (Hyprland) session. Runs Android-only apps (Symfonium, and
