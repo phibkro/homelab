@@ -79,6 +79,7 @@ lib.genAttrs
   navidrome = import ../modules/services/navidrome/manifest.nix;
   node-exporter = import ../modules/infra/observability/node-exporter/manifest.nix;
   nvidia-gpu-exporter = import ../modules/infra/observability/nvidia-gpu-exporter/manifest.nix;
+  ntfy-server = import ../modules/infra/observability/ntfy/manifests/server.nix;
   ollama = import ../modules/services/ollama/manifest.nix;
   open-webui = import ../modules/services/open-webui/manifest.nix;
   paperless = import ../modules/services/paperless/manifest.nix;
@@ -93,4 +94,6 @@ lib.genAttrs
   suwayomi = import ../modules/services/suwayomi/manifest.nix;
   syncthing = import ../modules/services/syncthing/manifest.nix;
   vaultwarden = import ../modules/services/vaultwarden/manifest.nix;
+  victorialogs-server = import ../modules/infra/observability/victorialogs/manifest.nix;
+  victoriametrics = import ../modules/infra/observability/victoriametrics/manifest.nix;
 }

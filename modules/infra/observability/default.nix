@@ -17,7 +17,7 @@ _:
                                (consumes per-route monitors
                                declared via
                                `modules/infra/networking/default.nix`)
-   - `victoriametrics.nix`     metrics TSDB
+   - `victoriametrics/`        metrics TSDB
    - `victorialogs/`           logs index (server + bundle)
    - `grafana.nix`             dashboards UI
    - `grafana-dashboards/`     dashboard sources
@@ -36,8 +36,6 @@ _:
 {
   imports = [
     ./alerts.nix
-    ./victoriametrics.nix
-    ./victorialogs/default.nix
     ./ntfy/notify.nix
     ./vector.nix
   ];

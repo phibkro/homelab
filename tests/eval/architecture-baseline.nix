@@ -135,6 +135,7 @@ let
       "pi"
       "pavilion"
     ];
+    beszel-hub = [ "pi" ];
     calibre-web = [ "aurora" ];
     disk-alert = [ "workstation" ];
     filmder = [ "aurora" ];
@@ -162,6 +163,7 @@ let
       "workstation"
       "aurora"
     ];
+    ntfy-server = [ "pi" ];
     ollama = [ "workstation" ];
     open-webui = [ "workstation" ];
     paperless = [ "aurora" ];
@@ -182,9 +184,18 @@ let
       "aurora"
     ];
     vaultwarden = [ "aurora" ];
+    victorialogs-server = [ "pi" ];
+    victoriametrics = [ "pi" ];
   };
 
-  hasMigratedRuntime = workloadName: host: builtins.hasAttr workloadName host.config.nori.backups;
+  runtimeEvidenceNames = {
+    beszel-hub = "beszel";
+    ntfy-server = "ntfy";
+    victorialogs-server = "victorialogs";
+  };
+  runtimeEvidenceName = workloadName: runtimeEvidenceNames.${workloadName} or workloadName;
+  hasMigratedRuntime =
+    workloadName: host: builtins.hasAttr (runtimeEvidenceName workloadName) host.config.nori.backups;
   runtimePlacementCorrect = lib.all (
     workloadName:
     lib.all
@@ -204,6 +215,7 @@ let
   migratedCatalogEndpoints = {
     bazarr.subtitles = "workstation";
     beszel-hub.metrics = "pi";
+    ntfy-server.alert = "pi";
     calibre-web.books = "aurora";
     filmder.filmder = "aurora";
     glance.home = "aurora";
@@ -227,6 +239,8 @@ let
     stremio.stremio = "workstation";
     suwayomi.manga = "aurora";
     syncthing.sync = "workstation";
+    victorialogs-server.logs = "pi";
+    victoriametrics.tsdb = "pi";
     vaultwarden.vault = "aurora";
   };
   catalogVisibleEverywhere =

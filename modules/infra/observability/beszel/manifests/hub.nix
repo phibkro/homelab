@@ -1,5 +1,6 @@
 {
   kind = "service";
+  runtimeModule = ../hub.nix;
   tags = [
     "observability"
     "stateful"

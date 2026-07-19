@@ -49,20 +49,6 @@
         "observability"
         "alerting"
       ];
-
-      /*
-        Caddy-gated so the Pi (no Caddy, runs the ntfy server itself)
-        doesn't register a route pointing at its own backend. Host coupling
-        lives in nori.hosts (see modules/infra/hosts.nix).
-      */
-      nori.lanRoutes = lib.mkIf config.services.caddy.enable {
-        alert = {
-          port = 8081;
-          runsOn = "pi";
-          monitor.path = "/v1/health";
-          audience = "operator";
-        };
-      };
     }
     (lib.mkIf config.nori.services.ntfy-notify.enabled {
       /**

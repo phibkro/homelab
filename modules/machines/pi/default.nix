@@ -29,23 +29,11 @@
     ../base
 
     /*
-      Full service bundle. Post P2/P3 wrap + P1b route lift, importing
-      the bundle does NOT activate services — each module's body is
-      gated on `nori.services.<X>.enabled`. Routes are declared at
-      import time so pi's Caddy (when enabled below) gets the complete
-      `*.${nori.domain}` map without per-route stubs.
+      Temporary compatibility bundle for workloads not yet migrated. The
+      machine factory selects migrated runtime modules from the pure inventory
+      and projects the complete endpoint catalog to every host.
     */
     ../../services
-
-    /*
-      Appliance-specialty modules that live outside the bundle (the
-      bundle covers what workstation runs; these are pi-side service
-      halves of the workhorse/appliance splits, plus pi's heartbeat).
-    */
-    ../../infra/observability/beszel/hub.nix
-    ../../infra/observability/ntfy/server.nix
-    ../../infra/observability/victorialogs/server.nix
-    ../../infra/observability/victoriametrics.nix
 
     ./hardware.nix
     inputs.home-manager.nixosModules.home-manager
