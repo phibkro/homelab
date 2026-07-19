@@ -60,6 +60,10 @@ lib.genAttrs
   })
 // {
   calibre-web = import ../modules/services/calibre-web/manifest.nix;
+  filmder = import ../modules/services/filmder/manifest.nix;
+  glance = import ../modules/services/glance/manifest.nix;
+  grafana = import ../modules/infra/observability/grafana/manifest.nix;
+  heim = import ../modules/services/heim/manifest.nix;
   immich = import ../modules/services/immich/manifest.nix;
   jellyfin = import ../modules/services/jellyfin/manifest.nix;
   komga = import ../modules/services/komga/manifest.nix;

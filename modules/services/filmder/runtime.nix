@@ -1,0 +1,162 @@
+{
+  config,
+  inputs,
+  lib,
+  pkgs,
+  ...
+}:
+
+/*
+  filmder — TMDB-backed movie browser. Static Vite + React build.
+
+  Internet-public exposure was prototyped via Tailscale Funnel (Phase
+  A1) and reverted — the LAN-only shape keeps tailnet-IS-the-perimeter
+  uncomplicated. To re-enable, see
+  `memory/reference/tailscale_funnel_implementation.md`.
+
+  ── Build/deploy shape ─────────────────────────────────────────────
+  Build is an *activation-time systemd oneshot* rather than a Nix
+  flake build, because filmder's TMDB token is read at *build time*
+  by Vite and embedded into the JS bundle (`import.meta.env.VITE_*`).
+  Nix's hermetic build sandbox can't read /run/secrets/X, so the
+  clean `nix build → /nix/store/<hash>-filmder` path doesn't apply.
+  Activation-time build with the secret read in the script is the
+  pragmatic compromise.
+
+  ── Trigger ──────────────────────────────────────────────────────
+  `filmder-build.service` is a oneshot but NOT in `wantedBy` — every
+  nixos-rebuild would otherwise re-run install + build, wasteful on
+  no-op rebuilds. Operator triggers via `just deploy-app filmder`.
+  The serve unit auto-starts; before first build it serves 404s until
+  the operator runs the deploy script once.
+
+  ── Tooling: bun, not npm ────────────────────────────────────────
+  Drop-in replacement for `npm ci && npm run build`. Bonus side-effect:
+  bun handles native-module postinstall internally (no shelling to
+  `sh`), so the `bash`-on-systemd-path workaround that npm needed
+  (@swc/core spawns `sh` for platform detection) goes away.
+*/
+
+let
+  inherit (config.sops) secrets;
+  filmderRepo = "https://github.com/phibkro/filmder.git";
+  servePort = 9092;
+in
+{
+  sops.secrets.tmdb-token = {
+    sopsFile = inputs.self + "/secrets/apps.yaml";
+    owner = "filmder";
+    mode = "0400";
+  };
+
+  users.users.filmder = {
+    isSystemUser = true;
+    group = "filmder";
+    home = "/var/lib/filmder";
+    description = "filmder build + serve user";
+  };
+  users.groups.filmder = { };
+
+  systemd.services.filmder-build = {
+    description = "Build filmder static site (manual trigger via `just deploy-app filmder`)";
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+
+    path = with pkgs; [
+      git
+      bun
+    ];
+
+    serviceConfig = {
+      Type = "oneshot";
+      User = "filmder";
+      Group = "filmder";
+
+      # systemd-managed state dir — exposes $STATE_DIRECTORY to the
+      # script. Created with mode 0750, owned by filmder:filmder.
+      StateDirectory = "filmder";
+      StateDirectoryMode = "0750";
+      WorkingDirectory = "/var/lib/filmder";
+    };
+
+    script = ''
+      set -euo pipefail
+
+      # 1. Pull or clone source.
+      if [ ! -d src/.git ]; then
+        rm -rf src
+        git clone --depth 1 ${filmderRepo} src
+      else
+        git -C src fetch --depth 1 origin main
+        git -C src reset --hard origin/main
+      fi
+
+      cd src
+
+      # 2. Skip rebuild if dist already matches HEAD. Force a fresh # multi-line: ok
+      #    build via:
+      #      sudo rm /var/lib/filmder/.last-built-commit && just deploy-app filmder
+      CURRENT_COMMIT=$(git rev-parse HEAD)
+      SENTINEL="$STATE_DIRECTORY/.last-built-commit"
+      if [ -f "$SENTINEL" ] && [ "$(cat "$SENTINEL")" = "$CURRENT_COMMIT" ] && [ -d "$STATE_DIRECTORY/dist" ]; then
+        echo "filmder already built for commit $CURRENT_COMMIT — skipping"
+        exit 0
+      fi
+
+      # 3. Inject the TMDB token. sops stores the raw v4 read-access # multi-line: ok
+      #    JWT; filmder uses the env var as the full Authorization
+      #    header value verbatim, so we prepend `Bearer ` here. Other
+      #    consumers of `tmdb-token` get the raw value and format
+      #    their own header — secret stays convention-free in sops.
+      export VITE_API_READ_ACCESS_TOKEN="Bearer $(cat ${secrets.tmdb-token.path})"
+
+      # 4. Build.
+      bun install
+      bun run build
+
+      # 5. Atomic publish: write to staging, swap, clean up.
+      rm -rf "$STATE_DIRECTORY/dist.new"
+      cp -r dist "$STATE_DIRECTORY/dist.new"
+      if [ -d "$STATE_DIRECTORY/dist" ]; then
+        mv "$STATE_DIRECTORY/dist" "$STATE_DIRECTORY/dist.old"
+      fi
+      mv "$STATE_DIRECTORY/dist.new" "$STATE_DIRECTORY/dist"
+      rm -rf "$STATE_DIRECTORY/dist.old"
+
+      # 6. Record the built commit.
+      echo "$CURRENT_COMMIT" > "$SENTINEL"
+    '';
+  };
+
+  # Static-file server fronting /var/lib/filmder/dist; Caddy reverse-
+  # proxies `https://filmder.nori.lan` → here.
+  systemd.services.filmder-serve = {
+    description = "Serve filmder static files for Caddy reverse-proxy";
+    after = [ "filmder-build.service" ];
+    wantedBy = [ "multi-user.target" ];
+
+    serviceConfig = {
+      Type = "simple";
+      User = "filmder";
+      Group = "filmder";
+      ExecStart = lib.concatStringsSep " " [
+        "${pkgs.darkhttpd}/bin/darkhttpd"
+        "/var/lib/filmder/dist"
+        "--addr 0.0.0.0"
+        "--port ${toString servePort}"
+        "--no-listing"
+      ];
+      Restart = "on-failure";
+      RestartSec = 5;
+    };
+  };
+
+  nori.harden.filmder-build = {
+    binds = [ "/var/lib/filmder" ];
+  };
+  nori.harden.filmder-serve = {
+    readOnlyBinds = [ "/var/lib/filmder" ];
+  };
+
+  nori.backups.filmder.skip = "stateless static site, rebuilt from public GitHub source + sops token";
+}

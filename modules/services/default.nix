@@ -36,9 +36,6 @@ _: {
     ./arr
 
     # Loose services
-    ./filmder.nix
-    ./glance.nix
-    ./heim.nix
     # Jellyfin is inventory-selected from jellyfin/manifest.nix.
     ./music-ingest.nix
     ./ollama.nix

@@ -129,6 +129,10 @@ let
 
   migratedRuntimePlacements = {
     calibre-web = "aurora";
+    filmder = "aurora";
+    glance = "aurora";
+    grafana = "aurora";
+    heim = "aurora";
     immich = "aurora";
     jellyfin = "workstation";
     komga = "aurora";
@@ -159,6 +163,10 @@ let
 
   migratedCatalogEndpoints = {
     calibre-web.books = "aurora";
+    filmder.filmder = "aurora";
+    glance.home = "aurora";
+    grafana.ops = "aurora";
+    heim.heim = "aurora";
     immich.photos = "aurora";
     jellyfin.media = "workstation";
     komga.comics = "aurora";

@@ -39,7 +39,6 @@ _:
     ./gatus.nix
     ./victoriametrics.nix
     ./victorialogs/default.nix
-    ./grafana.nix
     ./beszel/agent.nix
     ./ntfy/notify.nix
     ./node-exporter.nix
