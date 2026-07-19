@@ -27,8 +27,6 @@ let
 in
 {
   options.nori.musicIngest = {
-    enable = lib.mkEnableOption "timer-driven MOVE of stable FLAC from a Syncthing staging dir into the master music library";
-
     stagingPath = lib.mkOption {
       type = lib.types.str;
       # No default — the caller declares the Syncthing staging dir. A surprising
@@ -64,7 +62,7 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable {
+  config = {
     assertions = [
       {
         assertion = config.nori.fs ? library;

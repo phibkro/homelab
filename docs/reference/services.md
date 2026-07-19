@@ -10,15 +10,14 @@ Native NixOS modules first, containers as fallback, no orchestration layer. Plac
 
 ## Catalog
 
-The live catalog is the `nori.services` + `nori.lanRoutes` registries across the modules bundle, not this doc. Enumerating in prose drifts the moment anything moves between hosts; query the source instead:
+The live catalog is the pure inventory projection, not this doc. Enumerating in prose drifts the moment anything moves between hosts; query the source instead:
 
 ```bash
-# Per-host: what's enabled
-nix eval .#nixosConfigurations.<host>.config.nori.services \
-  --apply 'with builtins; attrNames (lib.filterAttrs (_: s: s.enabled) it)'
+# Per-host: selected workloads
+nix eval .#nixosConfigurations.<host>.config.nori.inventory.currentWorkloads
 
-# Module catalogue — every service module the bundle knows about:
-ls modules/services/
+# Global public-safe workload catalog (placement, tags, endpoints):
+nix eval .#nixosConfigurations.<host>.config.nori.inventory.workloads
 
 # Where each route's backend runs (the placement decisions):
 nix eval .#nixosConfigurations.workstation.config.nori.lanRoutes \

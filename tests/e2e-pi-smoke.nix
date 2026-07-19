@@ -63,7 +63,6 @@ pkgs.testers.runNixOSTest {
 
         # Infra schemas the homelab blocky module reads through.
         ../modules/infra/hosts.nix
-        ../modules/infra/placement.nix
         ../modules/infra/capabilities
         ../modules/infra/storage # nori.fs (consumed by backup/btrbk)
         ../modules/infra/backup

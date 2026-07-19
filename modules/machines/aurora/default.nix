@@ -38,14 +38,7 @@
 
     ../base
 
-    /*
-      Full services bundle. Importing does NOT activate services —
-      each module's body is gated on `nori.services.<X>.enabled`,
-      while routes are declared unconditionally. Enabling a service
-      on aurora is a one-line edit per service (see `nori.services`
-      below).
-    */
-    ../../services
+    ../../compat/papers-fetch-system-cli.nix
 
     # Notably absent:
     #   modules/machines/desktop/default.nix — headless
@@ -64,47 +57,6 @@
   };
 
   /*
-    Service-placement registry. Pre-existing aurora services + the
-    ADR-0002 P8 family-tier services standing up empty. Per the
-    ADR-0003 addendum, runsOn (per route) stays at "workstation" until
-    state is migrated and the backend is bound for cross-host proxy.
-    Aurora's family-tier services initialize empty databases here; the
-    operator runs the state migration (dump on workstation, sftp,
-    restore on aurora) before flipping runsOn + Tailscale split-DNS.
-  */
-  nori.services = {
-    node-exporter.enable = true;
-    nvidia-gpu-exporter.enable = true;
-    restic-target.enable = true;
-    ntfy-notify.enable = true; # OnFailure → notify@ alerts for aurora-side units
-    beszel-agent.enable = true; # high-level metrics → pi's Beszel hub
-
-    /*
-      P8 family-tier — small, sqlite-only services standing up empty.
-      State migration + cutover are operator-driven per service; see
-      the runbook in the P8 bellwether commit (e76907b). Postgres-
-      backed services (immich, miniflux) are deferred — each is its
-      own data + bootstrap exercise.
-    */
-    vaultwarden.enable = true; # bellwether
-    radicale.enable = true; # CalDAV / CardDAV (sqlite)
-    calibre-web.enable = true; # books (sqlite + library/books read)
-    komga.enable = true; # comics + manga (sqlite + library/{comics,manga} read)
-    suwayomi.enable = true; # manga acquisition (sqlite + library/manga write → komga)
-    paperless.enable = true; # document archive (postgres + library/papers originals)
-    glance.enable = true; # dashboard (stateless, reads lanRoutes)
-    heim.enable = true; # operator portfolio (stateless serve, github build)
-    immich.enable = true; # photos (postgres + redis + ML co-located)
-    miniflux.enable = true; # RSS reader (postgres — shares immich's instance)
-    filmder.enable = true; # personal-app (stateless serve, github build)
-    grafana.enable = true; # observability frontend (sessions ephemeral; pi VM/logs over tailnet)
-    samba.enable = true; # /mnt/family/* shares for family bookmarks
-    navidrome.enable = true; # music (sqlite + library/music read)
-    btrbk-replication.enable = true; # P15 — nightly send to workstation MP510
-    syncthing.enable = true; # phone-to-library music sync (SpotiFlac path)
-  };
-
-  /*
     Papers acquisition (docs/specs/2026-06-23-papers-acquisition.md):
     the OA-first fetcher CLI lives on aurora next to its Paperless sink.
     `consumptionDirIsPublic` makes /var/lib/paperless/consume world-
@@ -113,7 +65,6 @@
     the documents are the operator's own. allowGrayZone stays off.
   */
   nori.papersFetch = {
-    enable = true;
     email = "philib.krogh@gmail.com";
   };
   services.paperless.consumptionDirIsPublic = true;

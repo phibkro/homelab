@@ -48,7 +48,6 @@ let
   homelabBundle = [
     inputs.sops-nix.nixosModules.sops
     ../modules/infra/hosts.nix
-    ../modules/infra/placement.nix
     ../modules/infra/capabilities
     ../modules/infra/storage
     ../modules/infra/backup

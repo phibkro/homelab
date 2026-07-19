@@ -32,6 +32,7 @@ lib.genAttrs
     "komga"
     "lidarr"
     "miniflux"
+    "music-ingest"
     "navidrome"
     "node-exporter"
     "ntfy-notify"
@@ -81,6 +82,7 @@ lib.genAttrs
   komga = import ../modules/services/komga/manifest.nix;
   lidarr = import ../modules/services/arr/manifests/lidarr.nix;
   miniflux = import ../modules/services/miniflux/manifest.nix;
+  music-ingest = import ../modules/services/music-ingest/manifest.nix;
   navidrome = import ../modules/services/navidrome/manifest.nix;
   node-exporter = import ../modules/infra/observability/node-exporter/manifest.nix;
   nvidia-gpu-exporter = import ../modules/infra/observability/nvidia-gpu-exporter/manifest.nix;

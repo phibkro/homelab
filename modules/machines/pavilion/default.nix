@@ -40,9 +40,9 @@
      appliance/agent allowed from privileged only.
 
   ── Imports ────────────────────────────────────────────────────────
-  Flat imports per the homelab convention: pull only what this host
-  needs, NOT modules/services/default.nix. Most service modules
-  (Caddy, Authelia, Jellyfin, the *arr stack) make no sense here.
+  Inventory profiles select only the observability runtimes this host needs.
+  Caddy, Authelia, Jellyfin, and the acquisition stack are absent because no
+  selected profile or host deviation places them here.
 */
 
 {
@@ -53,22 +53,8 @@
 
     ../base # base + users + sops + tailscale + lib options
 
-    /*
-      Notably absent:
-        modules/services/default.nix    — no LAN services
-        modules/machines/desktop/default.nix   — headless
-    */
-
     ./hardware.nix
   ];
-
-  /*
-    Legacy placement mirrors retained until the Phase 3 cutover. The pure
-    inventory selects both observability agents for pavilion; LAN services
-    intentionally remain absent.
-  */
-  nori.services.node-exporter.enable = true;
-  nori.services.beszel-agent.enable = true; # high-level metrics → pi's Beszel hub
 
   # ── home-manager-as-NixOS-module ──────────────────────────────────
   home-manager = {

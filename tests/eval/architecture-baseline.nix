@@ -7,10 +7,9 @@
 /**
   Behavior baseline for the concern-oriented architecture migration.
 
-  This test deliberately describes behavior, not implementation paths. During
-  the migration `actualWorkloads` will switch from the legacy
-  `nori.services.<name>.enabled` registry to resolved `nori.inventory`
-  placement, while this expected projection remains unchanged.
+  This test deliberately describes behavior, not implementation paths. The
+  expected projection pins resolved inventory placement after retirement of
+  the legacy service activation registry.
 
   The route fingerprint covers the cross-host fields most likely to drift when
   catalog declarations move out of runtime modules. Rich adapter behavior is
@@ -19,19 +18,6 @@
 
 let
   hosts = inputs.self.nixosConfigurations;
-
-  enabledWorkloads =
-    hostName:
-    lib.attrNames (
-      lib.filterAttrs (_: workload: workload.enabled) hosts.${hostName}.config.nori.services
-    );
-
-  legacyWorkloads = lib.genAttrs [
-    "workstation"
-    "aurora"
-    "pi"
-    "pavilion"
-  ] enabledWorkloads;
 
   actualWorkloads = lib.mapAttrs (_: host: host.config.nori.inventory.currentWorkloads) hosts;
 
@@ -46,6 +32,7 @@ let
       "jellyfin"
       "jellyseerr"
       "lidarr"
+      "music-ingest"
       "node-exporter"
       "ntfy-notify"
       "nvidia-gpu-exporter"
@@ -161,6 +148,7 @@ let
     komga = [ "aurora" ];
     lidarr = [ "workstation" ];
     miniflux = [ "aurora" ];
+    music-ingest = [ "workstation" ];
     navidrome = [ "aurora" ];
     node-exporter = [
       "workstation"
@@ -287,6 +275,21 @@ let
         hosts.${hostName}.config.nori.inventory.workloads.ollama.active
         && !hosts.${hostName}.config.nori.inventory.workloads.open-webui.active
         && hosts.${hostName}.config.nori.inventory.workloads.open-webui.endpoints == { }
+      )
+      [
+        "workstation"
+        "aurora"
+        "pi"
+        "pavilion"
+      ];
+
+  papersFetchCompatibility =
+    lib.all
+      (
+        hostName:
+        lib.any (
+          package: lib.getName package == "papers-fetch"
+        ) hosts.${hostName}.config.environment.systemPackages == (hostName == "aurora")
       )
       [
         "workstation"
@@ -568,34 +571,31 @@ let
     };
   };
 
-  inventoryMatchesLegacy = actualWorkloads == legacyWorkloads;
   workloadsMatch = actualWorkloads == expectedWorkloads;
   routesMatch = actualRoutes == expectedRoutes;
 in
 if
-  inventoryMatchesLegacy
-  && workloadsMatch
+  workloadsMatch
   && routesMatch
   && runtimePlacementCorrect
   && catalogVisibleEverywhere
   && lifecycleStateCorrect
+  && papersFetchCompatibility
 then
   "ok — architecture workload placement + route behavior baseline unchanged"
 else
   throw ''
     Architecture behavior baseline changed.
 
-    Inventory matches legacy:   ${toString inventoryMatchesLegacy}
     Workload placement matches: ${toString workloadsMatch}
     Route fingerprints match:   ${toString routesMatch}
     Migrated runtime placement: ${toString runtimePlacementCorrect}
     Migrated catalog global:    ${toString catalogVisibleEverywhere}
     Lifecycle state correct:    ${toString lifecycleStateCorrect}
+    Papers-fetch compatibility: ${toString papersFetchCompatibility}
 
     Expected workloads: ${builtins.toJSON expectedWorkloads}
     Inventory workloads: ${builtins.toJSON actualWorkloads}
-    Legacy workloads:    ${builtins.toJSON legacyWorkloads}
-
     Expected routes: ${builtins.toJSON expectedRoutes}
     Actual routes:   ${builtins.toJSON actualRoutes}
 

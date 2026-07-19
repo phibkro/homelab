@@ -28,13 +28,6 @@
 
     ../base
 
-    /*
-      Temporary compatibility bundle for workloads not yet migrated. The
-      machine factory selects migrated runtime modules from the pure inventory
-      and projects the complete endpoint catalog to every host.
-    */
-    ../../services
-
     ./hardware.nix
     inputs.home-manager.nixosModules.home-manager
   ];
@@ -50,27 +43,6 @@
     extraSpecialArgs = { inherit inputs; };
     backupFileExtension = "hm-backup";
     users.nori.imports = [ ./home.nix ];
-  };
-
-  /*
-    Pi runs the network-appliance + observability set AND the HTTP
-    entry-plane trio (Caddy + Authelia + Blocky-authoritative) per
-    ADR-0003. Pi's Caddy holds an LE wildcard cert for `*.${nori.domain}`
-    — same as workstation's. Which Caddy clients actually hit is
-    decided by `nori.lanIp` (today: workstation; post-cutover: pi).
-  */
-  nori.services = {
-    gatus.enable = true;
-    beszel-hub.enable = true;
-    beszel-agent.enable = true;
-    ntfy-server.enable = true;
-    ntfy-notify.enable = true;
-    victorialogs-server.enable = true;
-    victoriametrics.enable = true;
-    heartbeat.enable = true;
-    blocky.enable = true;
-    caddy.enable = true;
-    authelia.enable = true;
   };
 
   # Blocky authoritative on pi: serves the customDNS map derived from

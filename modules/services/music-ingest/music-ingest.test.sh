@@ -4,7 +4,7 @@
 # dir wiped on exit. Tests encode WHY (the invariant), not WHAT (the impl).
 #
 # Run:  b3sum and coreutils on PATH (nix develop, or `nix shell nixpkgs#b3sum`):
-#         bash modules/services/music-ingest.test.sh
+#         bash modules/services/music-ingest/music-ingest.test.sh
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

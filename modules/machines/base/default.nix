@@ -40,7 +40,6 @@
     ../../infra/observability
 
     # Top-level policies + leaf config.
-    ../../infra/placement.nix
     ../../infra/restart-policy.nix
     ../../infra/tailnet-appliance.nix
     ../../infra/motd.nix # codename banner + live MOTD on login

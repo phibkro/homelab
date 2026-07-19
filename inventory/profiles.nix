@@ -26,6 +26,7 @@
       "jellyfin"
       "jellyseerr"
       "lidarr"
+      "music-ingest"
       "ollama"
       "open-webui"
       "prowlarr"

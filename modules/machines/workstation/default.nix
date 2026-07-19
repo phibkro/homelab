@@ -17,7 +17,6 @@
     inputs.home-manager.nixosModules.home-manager
 
     ../base # base + users + sops + tailscale + lib options
-    ../../services # every server module (HTTP, *arr, backup, …)
     ../desktop # Hyprland + greetd + audio + bars + apps + gaming
 
     ./hardware.nix
@@ -163,65 +162,6 @@
   # Scoped to waydroid0; Samba's hosts-allow gates the 240.x subnet (samba.nix).
   networking.firewall.interfaces.waydroid0.allowedTCPPorts = [ 445 ];
 
-  /*
-    Temporary legacy service-placement mirror. Pure inventory profiles and
-    host additions are now authoritative; these flags remain only so the
-    migration baseline can prove both models resolve the same workloads until
-    the registry is removed at the end of Phase 3. Do not move a migrated
-    workload by changing this block.
-
-    Workstation is the workhorse — it runs the GPU /
-    compute / acquisition layer (arr stack, qBittorrent, Jellyfin,
-    Ollama, Open WebUI, Stremio, Syncthing, observability agents).
-    Family-tier serving (Immich, Navidrome, Calibre-web, Komga,
-    Vaultwarden, etc.) lives on aurora; the HTTP entry plane (Caddy,
-    Authelia, Blocky-authoritative) lives on pi. Placement changes belong in
-    inventory/profiles.nix or an explicit inventory/hosts.nix deviation and
-    require behavior review.
-  */
-  nori.services = {
-    # arr stack + qBit (media-server)
-    bazarr.enable = true;
-    jellyseerr.enable = true;
-    lidarr.enable = true;
-    prowlarr.enable = true;
-    qbittorrent.enable = true;
-    radarr.enable = true;
-    recyclarr.enable = true;
-    sonarr.enable = true;
-    # Family-tier + network appliance + media-reader
-    authelia.enable = false; # pi entry plane post-P12; pi's authelia is the SSO instance
-    blocky.enable = true;
-    caddy.enable = false; # pi entry plane post-P12; pi's caddy fronts every route via runsOn
-    calibre-web.enable = false;
-    filmder.enable = false;
-    glance.enable = false;
-    heim.enable = false;
-    immich.enable = false;
-    jellyfin.enable = true;
-    komga.enable = false;
-    miniflux.enable = false;
-    navidrome.enable = false;
-    open-webui.enable = true;
-    radicale.enable = false;
-    samba.enable = true;
-    stremio.enable = true;
-    syncthing.enable = true;
-    vaultwarden.enable = false;
-    # GPU-bound
-    ollama.enable = true;
-    # Observability + alerting
-    beszel-agent.enable = true;
-    disk-alert.enable = true;
-    gatus.enable = true;
-    grafana.enable = false;
-    node-exporter.enable = true;
-    nvidia-gpu-exporter.enable = true;
-    ntfy-notify.enable = true;
-    # Backup
-    btrbk-replica-target.enable = true; # P15 — receives btrfs send from aurora into MP510
-  };
-
   # FLAC ingest timer. The phone pushes new lossless
   # FLAC into a transient Syncthing staging dir; this MOVEs complete, stable
   # files into the master library and deletes the staging copy (a separate
@@ -229,7 +169,6 @@
   # Staging is deliberately OUTSIDE ${library}: no backup intent, and the phone
   # can never reach the master. See docs/runbooks/music-flac-ingest.md.
   nori.musicIngest = {
-    enable = true;
     stagingPath = "/mnt/media/staging/music-flac";
   };
 
