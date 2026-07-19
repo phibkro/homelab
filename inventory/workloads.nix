@@ -69,8 +69,11 @@ lib.genAttrs
   komga = import ../modules/services/komga/manifest.nix;
   miniflux = import ../modules/services/miniflux/manifest.nix;
   navidrome = import ../modules/services/navidrome/manifest.nix;
+  ollama = import ../modules/services/ollama/manifest.nix;
+  open-webui = import ../modules/services/open-webui/manifest.nix;
   paperless = import ../modules/services/paperless/manifest.nix;
   radicale = import ../modules/services/radicale/manifest.nix;
+  stremio = import ../modules/services/stremio/manifest.nix;
   suwayomi = import ../modules/services/suwayomi/manifest.nix;
   vaultwarden = import ../modules/services/vaultwarden/manifest.nix;
 }

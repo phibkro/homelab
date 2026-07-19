@@ -100,6 +100,7 @@ let
     name: workload:
     removeAttrs workload [ "runtimeModule" ]
     // {
+      active = workload.active or true;
       hosts = hostsForWorkload name;
       profiles = profilesForWorkload name;
       endpoints = resolvedEndpointsFor name;

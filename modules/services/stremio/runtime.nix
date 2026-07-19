@@ -1,6 +1,4 @@
 {
-  config,
-  lib,
   pkgs,
   ...
 }:
@@ -39,70 +37,50 @@ let
     url = "https://dl.strem.io/server/v${version}/desktop/server.js";
     sha256 = "04xcishc3hw9iq7z29igc1083flwhp7ynz07n9gb7ry643fz69x5";
   };
-  servePort = 11470;
 in
-lib.mkMerge [
-  {
-    nori.services.stremio.tags = [ "media-server" ];
+{
+  users.users.stremio = {
+    isSystemUser = true;
+    group = "stremio";
+    home = "/var/lib/stremio";
+    description = "Stremio Server";
+  };
+  users.groups.stremio = { };
 
-    nori.lanRoutes.stremio = {
-      port = servePort;
-      runsOn = "workstation";
-      exposeOnTailnet = true; # pi's Caddy proxies cross-host over tailnet
-      audience = "operator";
-      monitor = { };
-      dashboard = {
-        title = "Stremio";
-        icon = "si:stremio";
-        group = "Consume";
-        description = "Streaming backend (pair via web.stremio.com)";
-      };
-    };
-  }
-  (lib.mkIf config.nori.services.stremio.enabled {
-    users.users.stremio = {
-      isSystemUser = true;
-      group = "stremio";
-      home = "/var/lib/stremio";
-      description = "Stremio Server";
-    };
-    users.groups.stremio = { };
+  systemd.services.stremio = {
+    description = "Stremio Server (streaming backend for Stremio clients)";
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+    wantedBy = [ "multi-user.target" ];
 
-    systemd.services.stremio = {
-      description = "Stremio Server (streaming backend for Stremio clients)";
-      after = [ "network-online.target" ];
-      wants = [ "network-online.target" ];
-      wantedBy = [ "multi-user.target" ];
-
-      environment = {
-        APP_PATH = "/var/lib/stremio";
-        HOME = "/var/lib/stremio";
-        NO_CORS = "1";
-      };
-
-      serviceConfig = {
-        Type = "simple";
-        User = "stremio";
-        Group = "stremio";
-        StateDirectory = "stremio";
-        StateDirectoryMode = "0750";
-        WorkingDirectory = "/var/lib/stremio";
-
-        ExecStart = "${pkgs.nodejs}/bin/node ${serverJs}";
-        Restart = "on-failure";
-        RestartSec = 5;
-      };
+    environment = {
+      APP_PATH = "/var/lib/stremio";
+      HOME = "/var/lib/stremio";
+      NO_CORS = "1";
     };
 
-    nori.harden.stremio = {
-      binds = [ "/var/lib/stremio" ];
-    };
+    serviceConfig = {
+      Type = "simple";
+      User = "stremio";
+      Group = "stremio";
+      StateDirectory = "stremio";
+      StateDirectoryMode = "0750";
+      WorkingDirectory = "/var/lib/stremio";
 
-    # Service tier — losing the cert/identifier just forces a re-pair, but
-    # the dir is tiny so it's free to back up.
-    nori.backups.stremio = {
-      include = [ "/var/lib/stremio" ];
-      tier = "service";
+      ExecStart = "${pkgs.nodejs}/bin/node ${serverJs}";
+      Restart = "on-failure";
+      RestartSec = 5;
     };
-  })
-]
+  };
+
+  nori.harden.stremio = {
+    binds = [ "/var/lib/stremio" ];
+  };
+
+  # Service tier — losing the cert/identifier just forces a re-pair, but
+  # the dir is tiny so it's free to back up.
+  nori.backups.stremio = {
+    include = [ "/var/lib/stremio" ];
+    tier = "service";
+  };
+}

@@ -138,8 +138,11 @@ let
     komga = "aurora";
     miniflux = "aurora";
     navidrome = "aurora";
+    ollama = "workstation";
+    open-webui = "workstation";
     paperless = "aurora";
     radicale = "aurora";
+    stremio = "workstation";
     suwayomi = "aurora";
     vaultwarden = "aurora";
   };
@@ -172,8 +175,10 @@ let
     komga.comics = "aurora";
     miniflux.news = "aurora";
     navidrome.audio = "aurora";
+    ollama.ai = "workstation";
     paperless.papers = "aurora";
     radicale.calendar = "aurora";
+    stremio.stremio = "workstation";
     suwayomi.manga = "aurora";
     vaultwarden.vault = "aurora";
   };
@@ -189,6 +194,21 @@ let
             == migratedCatalogEndpoints.${workloadName}.${endpointName}
           ) (lib.attrNames migratedCatalogEndpoints.${workloadName})
         ) (lib.attrNames migratedCatalogEndpoints)
+      )
+      [
+        "workstation"
+        "aurora"
+        "pi"
+        "pavilion"
+      ];
+
+  lifecycleStateCorrect =
+    lib.all
+      (
+        hostName:
+        hosts.${hostName}.config.nori.inventory.workloads.ollama.active
+        && !hosts.${hostName}.config.nori.inventory.workloads.open-webui.active
+        && hosts.${hostName}.config.nori.inventory.workloads.open-webui.endpoints == { }
       )
       [
         "workstation"
@@ -480,6 +500,7 @@ if
   && routesMatch
   && runtimePlacementCorrect
   && catalogVisibleEverywhere
+  && lifecycleStateCorrect
 then
   "ok — architecture workload placement + route behavior baseline unchanged"
 else
@@ -491,6 +512,7 @@ else
     Route fingerprints match:   ${toString routesMatch}
     Migrated runtime placement: ${toString runtimePlacementCorrect}
     Migrated catalog global:    ${toString catalogVisibleEverywhere}
+    Lifecycle state correct:    ${toString lifecycleStateCorrect}
 
     Expected workloads: ${builtins.toJSON expectedWorkloads}
     Inventory workloads: ${builtins.toJSON actualWorkloads}

@@ -38,11 +38,8 @@ _: {
     # Loose services
     # Jellyfin is inventory-selected from jellyfin/manifest.nix.
     ./music-ingest.nix
-    ./ollama.nix
-    ./open-webui.nix
     ./papers-fetch.nix
     ./samba.nix
-    ./stremio.nix
     ./syncthing.nix
   ];
 }

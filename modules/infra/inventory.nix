@@ -47,6 +47,11 @@ let
   workloadType = types.submodule {
     options = {
       kind = mkOption { type = types.enum [ "service" ]; };
+      active = mkOption {
+        type = types.bool;
+        default = true;
+        description = "Whether the placed workload currently realizes its user-facing runtime and endpoints.";
+      };
       tags = mkOption {
         type = types.listOf types.str;
         default = [ ];
