@@ -10,6 +10,15 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 ## Outstanding (actionable)
 
+- **Concern-oriented architecture simplification.** Split globally visible
+  workload metadata from host-local runtime realization; compose hosts and
+  Home Manager environments through explicit typed profiles; derive routing,
+  deployment, status, dashboards, and future onboarding views from one
+  secret-free inventory. Governing design and phased verification contract:
+  `docs/specs/2026-07-19-architecture-simplification-design.md`. Implementation
+  branch: `feat/architecture-simplification`; production activation remains
+  operator-gated until the complete migration PR is reviewed.
+
 - **Aurora migration — workstation-as-compute / aurora-as-family-vault.** Reorganises hosts to let workstation sleep when no GPU/transcode/bulk-storage workload is active and to give irreplaceable media a 3-copy replication posture. Full delta table, phase ordering, validation gates, and reversibility ladder in `docs/plans/2026-06-11-aurora-migration.md`. **Progress (2026-06-16):** P1–P15 ✓ landed (foundation + aurora bootstrap + data move + service-state migration + entry-plane flip + nightly btrbk replication aurora → workstation MP510 live since 2877267). P18 (s2idle resume hang) fixed b77b030; P19 ✓ landed end-to-end (pi `wakeonlan` sender 3674d89 + operator-verified magic-packet test 2026-06-16); P20 partially landed (PipeWire idle inhibit + hibernate setup + hypridle removal — manual triggers only). **Outstanding:** P20 hypridle re-enable (gated on operator verifying suspend works post-reboot). P16 pavilion tertiary replica future-work; P17 Hetzner explicitly rejected per ADR-0002.
 
 - **Sunshine remote-desktop pairing.** Deployed (`modules/machines/desktop/sunshine.nix`); NVENC builds confirmed (`h264/hevc/av1_nvenc`). Outstanding: one-time Moonlight pairing.
@@ -87,4 +96,3 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 - **Cross-host maintenance coordination for Gatus (G3).** Each Gatus instance has a 60s warmup via timer-driven activation (`gatus.timer` with `OnBootSec=60s` + `OnUnitInactiveSec=60s`, landed 2026-06-15 95dae3d in `modules/infra/observability/gatus.nix` after the earlier `ExecStartPre = sleep 60` approach was found to gate the boot critical path) — local probes don't alert on services that are still restarting after a `just rebuild`. But *another* host's Gatus probing the rebuilding one still fires (e.g. workstation's Gatus probing pi while pi rebuilds — once workstation grows its own instance). The correct shape: a per-host maintenance flag readable across hosts (HTTP endpoint or shared file) that every Gatus consults before alerting. Either a Gatus extension/fork that supports flag-based silencing, or a thin sidecar that mutates Gatus's alerting provider config at rebuild start/stop. **Trigger to revisit:** when a second Gatus instance lands on the homelab, or when cross-host probe flapping during rebuilds becomes annoying enough to outweigh the build cost.
 
 - **Network-layer DNS/egress policy.** The correct layer for "force all LAN egress through Blocky and block public-resolver fall-throughs" is a real router (OPNsense/OpenWRT/pfSense) behind a bridge-mode modem, with nftables PREROUTING REDIRECT on :53 and a DoH-IP blocklist on the WAN-facing side. Today the Genexis ISP modem doesn't bridge-mode and a real router isn't budgeted, so the same policy is enforced one layer lower at `modules/infra/tailnet-appliance.nix` (pi-as-tailnet-exit-node DNAT). Limits documented in that file's header: only catches devices routing through pi, can't help LAN-only hardcoded-DNS devices, and DoH egress to non-listed IPs slips through. When a real router lands, this effect goes away; the same `nori.tailnet.appliances` registry drives the router's nftables generator instead. **Trigger to revisit:** ISP allowing Genexis bridge mode *or* a competent router (~$200) enters the budget.
-
