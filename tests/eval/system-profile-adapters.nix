@@ -25,6 +25,7 @@ let
     restic = hostsSelecting ../../modules/infra/backup/restic.nix;
     restore-drill = hostsSelecting ../../modules/infra/backup/verify.nix;
     tailnet-appliance = hostsSelecting ../../modules/infra/tailnet-appliance.nix;
+    entry-plane-role = hostsSelecting ../../modules/profiles/entry-plane.nix;
   };
 
   expected = {
@@ -38,6 +39,7 @@ let
     restic = [ "workstation" ];
     restore-drill = [ "workstation" ];
     tailnet-appliance = [ "pi" ];
+    entry-plane-role = [ "pi" ];
   };
 in
 if actual == expected then

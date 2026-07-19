@@ -82,7 +82,10 @@
 
   entry-plane = {
     description = "Always-on HTTP, DNS, identity, alert, and metrics hub";
-    systemModules = [ ../modules/infra/tailnet-appliance.nix ];
+    systemModules = [
+      ../modules/infra/tailnet-appliance.nix
+      ../modules/profiles/entry-plane.nix
+    ];
     workloads = [
       "authelia"
       "beszel-hub"
