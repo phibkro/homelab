@@ -121,7 +121,7 @@ just query-logs 'unit:restic-backups-* "snapshot " | tail 5'
 
 ## Where things live
 
-- Pi daemon module: `modules/infra/observability/victorialogs/server.nix`
+- Pi daemon module: `modules/infra/observability/victorialogs/runtime.nix`
 - Workstation/pi shipper: `modules/infra/observability/vector.nix`
-- Caddy route + Gatus monitor + Glance entry: `modules/infra/observability/victorialogs/default.nix`
-- Grafana datasource: `modules/infra/observability/grafana.nix` (`ops.nori.lan` → "VictoriaLogs")
+- Caddy route + Gatus monitor + Glance entry: `modules/infra/observability/victorialogs/manifest.nix`
+- Grafana datasource: `modules/infra/observability/grafana/runtime.nix` (`ops.home.phibkro.org` → "VictoriaLogs")

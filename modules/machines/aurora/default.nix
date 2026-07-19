@@ -172,7 +172,7 @@
     so only the host that owns the backend opens the port.
 
     SSH (22) is opened by services.openssh.openFirewall (global, default
-    true). Samba (445) is opened by modules/services/samba.nix on the
+    true). Samba (445) is opened by modules/services/samba/runtime.nix on the
     tailnet interface. immich-machine-learning (3003) stays loopback-
     only — post-P11 immich-server is co-located here and reaches ML
     via 127.0.0.1:3003 (forced below).

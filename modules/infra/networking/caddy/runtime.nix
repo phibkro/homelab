@@ -28,7 +28,7 @@ in
     certs/week — we have ~30 vhosts so single rebuild is fine but
     don't churn the cert config in a loop.
 
-    DNS path: Blocky's customDNS (modules/infra/networking/blocky.nix) maps
+    DNS path: Blocky's customDNS (modules/infra/networking/blocky/runtime.nix) maps
     each *.<nori.domain> to nori.lanIp (workstation today, pi post
     ADR-0003 pivot). LAN clients hit Caddy directly; off-LAN tailnet
     clients reach the same address via pi's subnet route advertisement

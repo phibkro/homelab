@@ -70,7 +70,7 @@ in
 
     Not a service: no daemon, no port, no state. Just a CLI on PATH (P2's
     search front-end + P3's reading-list sync are deferred per the spec).
-    The Paperless sink (modules/services/paperless.nix) owns everything
+    The Paperless sink (modules/services/paperless/runtime.nix) owns everything
     downstream of the consume dir.
 
     Usage (on the host where Paperless runs, or any host sharing the

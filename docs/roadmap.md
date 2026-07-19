@@ -17,7 +17,11 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
   secret-free inventory. Governing design and phased verification contract:
   `docs/specs/2026-07-19-architecture-simplification-design.md`. Implementation
   branch: `feat/architecture-simplification`; production activation remains
-  operator-gated until the complete migration PR is reviewed.
+  operator-gated until the complete migration PR is reviewed. **Implementation
+  status (2026-07-20):** all seven migration phases are implemented on the
+  branch, including machine-readable inventory, deployment planning, canonical
+  music/artifact contracts, status/portal projections, and current-truth docs.
+  Remaining work is the final whole-branch verification and operator PR review.
 
 - **Aurora migration — workstation-as-compute / aurora-as-family-vault.** Reorganises hosts to let workstation sleep when no GPU/transcode/bulk-storage workload is active and to give irreplaceable media a 3-copy replication posture. Full delta table, phase ordering, validation gates, and reversibility ladder in `docs/plans/2026-06-11-aurora-migration.md`. **Progress (2026-06-16):** P1–P15 ✓ landed (foundation + aurora bootstrap + data move + service-state migration + entry-plane flip + nightly btrbk replication aurora → workstation MP510 live since 2877267). P18 (s2idle resume hang) fixed b77b030; P19 ✓ landed end-to-end (pi `wakeonlan` sender 3674d89 + operator-verified magic-packet test 2026-06-16); P20 partially landed (PipeWire idle inhibit + hibernate setup + hypridle removal — manual triggers only). **Outstanding:** P20 hypridle re-enable (gated on operator verifying suspend works post-reboot). P16 pavilion tertiary replica future-work; P17 Hetzner explicitly rejected per ADR-0002.
 
@@ -44,6 +48,15 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
   - ⚠ **Process note:** the two build ICs were dispatched with `isolation: "worktree"` but landed on `main` sharing one tree (isolation didn't take) — caught before commit, untangled by hand. Verify worktree isolation actually engaged before parallel same-repo dispatches.
 
 ## Deferred (tracked, not currently worked)
+
+- **Public status and authenticated family portal frontends.** The inventory now
+  emits minimal `status-json` and access-tiered `portal-json` packages with no
+  topology or secret fields. Build the actual public status page, planned
+  maintenance workflow, authenticated capability filtering, registration guide,
+  and generated walkthroughs as a follow-up product. This migration deliberately
+  supplies the governed data contract only; it does not expose a new internet
+  surface or choose a frontend stack. **Trigger:** architecture migration merged
+  and public-exposure design approved.
 
 - **Mac is on x86_64-darwin EOL clock.** Confirmed 2026-06-15: **26.05 is the last nixpkgs stable supporting x86_64-darwin** (26.11 drops it). Determinate installer v3.12.2 was the last with x86_64-darwin (v3.12.3 dropped Intel). The Mac is currently pinned to 26.05 and works; "stay pinned indefinitely" is a valid stance until something else forces movement.
 

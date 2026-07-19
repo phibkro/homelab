@@ -210,8 +210,8 @@ The canonical "add a new homelab service" flow (combining
                      `config.services.<service>.<important-option>` =
                      the expected default OR a specific value.
 
-2.  Make module      write modules/services/<service>.nix with just
-                     enough to make the eval succeed.
+2.  Make workload    write manifest.nix + runtime.nix with just enough
+                     to make the eval succeed.
 
 3.  GREEN at layer 1  nix-instantiate --eval passes.
 

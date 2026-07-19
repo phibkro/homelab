@@ -118,7 +118,7 @@ Caveat: visual structure that simply enumerates code literals
 (filenames, attribute keys, subvol names that appear verbatim in the
 file) IS derived-list paraphrase and should still go.
 
-Worked example (from modules/services/arr/default.nix in 3e985ec):
+Worked historical example (from the Arr cluster before manifest extraction):
 the 7-bullet cross-coupling list was collapsed to a paragraph during
 the audit; the restoration commit put the bullets back because
 "services that know about each other" is a canonical visual-set case.
@@ -141,7 +141,7 @@ Naming convention by tree:
 | `docs/runbooks/`, `decisions/`    | lower-kebab-case (procedural / numbered)                                  |
 | `.claude/skills/<name>/SKILL.md`  | lower-kebab-case; verb-object or `gotcha-<technology>-<symptom>`          |
 | `scripts/*.sh`                    | lower-kebab-case; verb-object or noun-prefix-procedural                   |
-| `modules/services/<svc>.nix`     | lower-kebab-case; service name                                            |
+| `modules/services/<svc>/`        | lower-kebab-case; `manifest.nix` + `runtime.nix`                          |
 
 ### 3. Recipe / skill names
 

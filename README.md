@@ -30,11 +30,14 @@ All HTTP services live behind Caddy at `https://<name>.home.phibkro.org`, LE-sig
 
 Resolution path: Blocky on pi is authoritative for `*.home.phibkro.org` on the LAN/tailnet (resolves to pi's LAN IP — Caddy's vhost). Public DNS for the same names has no A records, so the homelab is unreachable from the internet. LAN clients hit Caddy directly with no tailnet hop. Off-LAN tailnet clients reach the same address via pi's subnet-route advertisement (`192.168.1.0/24`); needs `--accept-routes` on the client. Tailnet DNS comes from pi's Blocky (Tailscale admin console → DNS → custom nameserver = `100.100.71.3`); LAN-only devices need their DNS pointed at pi's LAN IP (`192.168.1.225`).
 
-The live inventory is the `nori.lanRoutes` attrset on whichever host runs Caddy (pi). Static lists drift; query the source of truth:
+The live catalog is compiled from the secret-free manifests in `inventory/` and
+injected into every NixOS host as `nori.inventory`. Static lists drift; query or
+build a projection of the source of truth:
 
 ```bash
-ssh nori@pi.saola-matrix.ts.net \
-  'nix eval --raw /run/current-system/etc/nixos -A config.nori.lanRoutes --apply builtins.attrNames'
+nix build .#inventory-json --no-link --print-out-paths
+nix build .#status-json --no-link --print-out-paths
+nix build .#portal-json --no-link --print-out-paths
 ```
 
 Background services not exposed via Caddy:
@@ -65,6 +68,9 @@ just remote workstation rebuild
 nix flake check     # eval + statix + deadnix + format + repo-specific guards
 nix fmt             # auto-format
 
+# See which builds and activations a change would affect (read-only)
+just plan-deploy origin/main
+
 # Edit secrets (sops opens $EDITOR on the decrypted YAML)
 sops secrets/secrets.yaml
 ```
@@ -85,39 +91,26 @@ Adding a new rule: `docs/invariants.md` § decision tree.
 
 ## Repo shape
 
-```
-flake.nix flake.lock         # entry, inputs, host registry, checks
-CLAUDE.md                    # routing + hard rules + bias + how-to-operate
-Justfile                     # local-by-default commands; `just remote <host> <cmd>` wraps any
-machines/
-  pi/  aurora/  workstation/ # NixOS hosts under nixosConfigurations
-  pavilion/
-  macbook/                   # Intel Mac, standalone home-manager only
+```text
+flake.nix flake.lock         # inputs and thin flake-parts composition
+flake-parts/                 # checks, packages, apps, dev shell, host outputs
+inventory/                   # pure hosts, profiles, workload manifests, datasets, site
 modules/
-  common/                    # cross-host system baseline
-  effects/                   # cross-cutting `nori.<X>` declarative options
-  services/                  # one file per service module
-  desktop/                   # "this host has a graphical session"
-  dev/                       # dev-shell fragments + composer
-home/
-  claude-code/               # operator's global Claude config (skills, settings, SOUL.md)
-  desktop/                   # home-manager desktop fragments
-  core.nix pc.nix            # shared interactive-user baseline
-scripts/
-  checks/                    # bodies for the flake-check derivations
-  generate-oidc-key.sh       # ad-hoc operator scripts
-secrets/
-  secrets.yaml apps.yaml     # sops-encrypted, committed
-.sops.yaml                   # sops policy (recipients + path patterns)
+  machines/                  # NixOS factory plus hardware/storage realizations
+  profiles/                  # reusable system capability compositions
+  services/                  # manifest/runtime workload pairs; arr remains one coupled cluster
+  infra/                     # typed platform effects and their adapters
+  home/                      # Home Manager capabilities, profiles, agent tooling, rice
+tests/                       # evaluation, VM, fixtures, and operator-triggered tests
+scripts/                     # checks, deployment planning, and operator utilities
+secrets/                     # sops-encrypted values; never part of inventory projections
 docs/
-  glossary.md  invariants.md # mandatory: vocab + load-bearing claims
-  roadmap.md                 # forward plan
-  reference/                 # topic-triggered: topology, storage, network, services, …
-  decisions/                 # ADRs (0000 = rationales meta-index)
-  plans/  specs/  reports/   # multi-phase forward work / design specs / after-action narratives
-  runbooks/                  # per-incident recovery procedures
-  installs/                  # bare-metal + VM bring-up + agent-onboarding test
-.claude/skills/              # procedure skills + gotcha skills (load on demand)
+  glossary.md invariants.md  # vocabulary and enforced load-bearing claims
+  roadmap.md                 # outcome backlog
+  specs/ decisions/          # accepted designs and durable decisions
+  reference/ runbooks/       # current truth and executable operations
+  plans/ reports/            # retained execution plans and retrospectives
+.claude/skills/              # repository-managed procedures and gotchas
 ```
 
 ## Status

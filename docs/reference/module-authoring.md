@@ -11,142 +11,163 @@ Repository-wide patterns for *writing* modules. Rules and how they're checked li
 ## Repository structure
 
 ```
-flake.nix                          dep injection + thin output wiring
-flake.lock                         Pinned 26.05 revision; reproducibility
-machines/                          per-host NixOS system config
-  workstation/  pi/  pavilion/     NixOS hosts (default + hardware +
-  aurora/                          disko + home.nix)
-  macbook/                         standalone home-manager (no NixOS)
-home/                              home-manager modules — user-space
-  core.nix                         cross-platform CLI baseline
-  pc.nix                           operator-PC tier — heavy closures
-  claude-code/                     CLI + skills/ + settings.json
+flake.nix                          inputs + thin flake-parts composition
+flake-parts/                       output concerns: machines, homes, packages,
+                                   checks, formatter, dev shell
+inventory/                         pure pre-module control plane
+  hosts.nix                        identity, profiles, local deviations
+  profiles.nix                     explicit reusable system compositions
+  workloads.nix                    manifest aggregation
+  datasets.nix                     authoritative shared-data contracts
+  site.nix                         canonical and deprecated namespaces
+  default.nix                      compiler + public-safe projections
 modules/
-  machines/                        nixosConfigurations factory
-    default.nix                    enumeration + mkHost + identityFor
-                                   + hostRegistry
-  home/                            homeConfigurations factory
-    default.nix                    macbook (standalone home-manager)
-  common/                          universal — every host imports
-    base.nix · users.nix ·         baseline OS bits + the infra layer
-    sops.nix · tailscale.nix       (imports of ../infra/<concern>/)
+  machines/                        NixOS factory + host realizations
+    default.nix                    inventory-backed mkHost
+    base/ desktop/                 reusable low-level system modules
+    <host>/                        hardware, storage, local deviations, home
+  profiles/                        reusable system capability adapters
   infra/                           PaaS platform — the hosting layer
-    backup/                        nori.backups schema + restic +
-                                   btrbk + verify adapters
-    storage/                       nori.fs + nori.replicas
-    networking/                    nori.lanRoutes + Caddy + Blocky
-    access/                        Authelia (audience IAM)
-    capabilities/                  nori.harden + nori.gpu (what a
-                                   service can DO on the machine)
-    observability/                 Gatus + Victoria* + Beszel + ntfy
-                                   + exporters + Grafana + vector
-                                   + heartbeat + disk-alert
-    hosts.nix                      nori.hosts schema (registry)
-    placement.nix                  role × backup compatibility
-    resource-tiers.nix             memory-tier defaults
-    restart-policy.nix             systemd restart defaults
-    tailnet-appliance.nix          appliance hardening defaults
-    motd.nix                       codename banner + live MOTD
-  services/                        workloads — what the operator runs
-    <workload>.nix                 vaultwarden, navidrome, immich,
-                                   ollama, jellyfin, calibre-web,
-                                   komga, radicale, miniflux,
-                                   glance, heim, filmder, open-webui,
-                                   stremio, syncthing,
-                                   samba
-    arr/                           coupled cluster — Sonarr/Radarr/
-                                   Lidarr/Bazarr/Jellyseerr/Prowlarr/
-                                   qBittorrent (cross-reference via
-                                   API + shared media group)
-    default.nix                    workload bundle aggregator
-  desktop/                         GUI session — Hyprland, Stylix, …
-  dev/                             dev-shell fragments (mkDevShell)
-  lint/                            code-quality dispatcher
+    inventory.nix                  typed injected inventory projection
+    backup/ storage/ networking/   collected intent + runtime adapters
+    access/ observability/
+    capabilities/                  service filesystem/GPU capabilities
+    hosts.nix                      compatibility host identity projection
+  services/                        hosted workloads
+    <workload>/manifest.nix        pure catalog + endpoint metadata
+    <workload>/runtime.nix         local NixOS realization + effects
+    arr/                           intentionally coupled acquisition cluster
+  home/                            Home Manager capabilities and profiles
+    profiles/core.nix              smallest interactive-user baseline
+    profiles/development/          global and security-sensitive agent tools
+    profiles/desktop/              session, productivity, communication, research
+    profiles/creative/             audio and video capabilities
+    desktop/hypr-rice/             public option + private rice runtime/tests
+tests/                             eval, fixtures, VM/e2e, runtime recipes
+scripts/                           checks, deployment planner, operator tools
 secrets/
-  secrets.yaml · apps.yaml ·       sops-encrypted
-  .sops.yaml
+  secrets.yaml · apps.yaml         sops-encrypted; excluded from projections
 docs/
-  decisions/                       ADRs — hard-to-reverse choices
-  runbooks/                        per-failure recovery
-  reference/                       tier-2 reference docs
-  plans/ · reports/ · specs/       forward-looking + retrospective
+  roadmap.md                       outcome backlog
+  specs/ · decisions/              accepted designs + durable rationale
+  reference/ · runbooks/           current truth + executable operations
+  plans/ · reports/                retained plans + retrospective evidence
 .claude/
   skills/                          procedure skills (load on demand)
 ```
 
 **Layout principle (PaaS lens):** the homelab IS a hosting provider for self-hosted family-tier services. The split mirrors what a PaaS layers:
 
-- `modules/services/` — **workloads** (what the operator USES: vaultwarden, immich, jellyfin, …). User-facing applications consuming the platform.
+- `inventory/` — **control plane**: secret-free identity, placement, manifests,
+  datasets, and projections evaluated before the NixOS fixed point.
+- `modules/services/` — **workloads**: pure manifests plus local runtime
+  realizations for applications consuming the platform.
 - `modules/infra/` — **platform** (HOW the system works: storage, networking, access control, observability, backup, capabilities). The hosting layer.
-- `modules/machines/` — composition (per-host module list + identity).
-- `modules/home/` + `home/` — home-manager (user-space + standalone Mac).
-- `modules/machines/base/` — universal NixOS bits + imports of the infra layer.
+- `modules/profiles/` — **system compositions** selected explicitly by inventory.
+- `modules/machines/` — **realizations**: hardware, storage, local deviations,
+  and the inventory-backed configuration factory.
+- `modules/home/` — **user capabilities** and standalone/NixOS Home Manager
+  compositions.
 
-Workloads in `services/` depend on infra concerns; infra concerns depend on `machines/` (the hosts they run on). No upward dependencies; no cycles.
+Dependency direction is inventory → platform/profile selection → realization.
+Runtime modules write narrow local effects such as `nori.backups` and
+`nori.harden`; cross-host consumers read the injected inventory rather than
+importing every runtime.
 
-## Configuration derivation from layout
+## Configuration derivation from inventory
 
-The flake derives configurations from the directory structure:
+`inventory/hosts.nix` explicitly enumerates every NixOS and standalone Home
+Manager target. `modules/machines/default.nix` compiles profile modules and
+selected workload runtimes before calling `lib.nixosSystem`; it never chooses
+imports from `config` or descriptive tags.
 
-| Detected | Produces |
+| Inventory kind | Produces |
 |---|---|
-| `modules/machines/<n>/default.nix` | `nixosConfigurations.<n>` (NixOS host) |
-| `modules/machines/<n>/home.nix` without `default.nix` | `homeConfigurations.<n>` (e.g. Mac; activated via standalone home-manager) |
-| NixOS hosts that have `home.nix` | Activate via `home-manager-as-NixOS-module` inside their own `default.nix` |
+| `kind = "nixos"` | `nixosConfigurations.<name>` plus an ordered deployment target |
+| `kind = "home-manager"` | `homeConfigurations.<name>` plus a build-only deployment target |
 
-`modules/machines/<n>/home.nix` is a **pure home-manager module** regardless of the host's OS. Same file shape across NixOS + standalone — no platform-specific module conventions inside `home.nix`.
-
-`modules/home/core.nix` is the shared user-scope baseline imported by every machine's `home.nix` via `imports = [ ../../home/core.nix ]`. <!-- path-coherence: skip — illustrative import string (quoted as it appears in machines/*/home.nix, not resolved from this doc's location) --> Cross-platform CLI + identity (starship, programs.git, comma, sops/age/claude-code, just/ripgrep/tmux).
+Every NixOS host gets the same shared Home Manager wrapper from the factory and
+imports its declared `homeModule`. Standalone entries use
+`modules/home/default.nix`. Host home files remain ordinary Home Manager modules
+on both operating systems.
 
 ## Concerns compose host identity
 
-`modules/<concern>/` directories represent host roles. A host's identity is the sum of which concerns it imports plus its hardware:
+Host identity is the explicit sum of inventory profiles, selected workloads,
+hardware/storage realization, and genuine local deviations:
 
 | Concern | What it adds | Imported by |
 |---|---|---|
-| `common/` | Universal infra: base, users, Tailscale, sops + the `effects/` interface options | every host |
-| `services/` | *This host serves things*: Caddy, Authelia, *arr, backups, media, monitoring | pi (whole bundle for the entry plane); aurora (whole bundle for family-tier backends); workstation (whole bundle for compute-side services) |
-| `desktop/` | *This host has a graphical session*: Hyprland, greetd, audio | workstation; future `nori-laptop` |
-| `effects/` | Reader + Writer interface options | imported by `common/`; populated by hosts (Reader) and services (Writer) |
+| inventory profile | Reusable system modules and workload identifiers | hosts selecting that capability |
+| workload manifest | Global ID, tags, endpoints, audience, artifact contract | inventory and presentation/deployment consumers |
+| workload runtime | Units, secrets, hardening, backup and local effects | selected placement hosts only |
+| machine realization | Hardware, disks, boot, host-specific overrides | one physical host |
+| Home capability profile | Composable operator tools and desktop/product capabilities | selected home modules |
 
-A typical NixOS host file (workstation, post-Phase-6):
+A typical host inventory entry:
 
 <!-- path-coherence: skip-block — illustrative fenced example; ./hardware.nix and ./disko.nix are siblings of the host file shown in the comment header (modules/machines/workstation/), not this doc -->
 
 ```nix
-# modules/machines/workstation/default.nix
-imports = [
-  inputs.disko.nixosModules.disko
-  inputs.home-manager.nixosModules.home-manager
-
-  ../base       # base + users + sops + tailscale + lib options
-  ../../services # every server module (HTTP, *arr, backup, …)
-  ../desktop    # Hyprland + greetd + audio + bars + apps + gaming
-
-  ./hardware.nix
-  ./disko.nix
-];
+# inventory/hosts.nix
+workstation = {
+  kind = "nixos";
+  systemModule = ../modules/machines/workstation;
+  homeModule = ../modules/machines/workstation/home.nix;
+  profiles = [ "base" "desktop" "media-compute" "observability-agent" ];
+  workloads = [ "gatus" "disk-alert" ]; # genuine deviations only
+  identity = { /* public-safe topology */ };
+};
 ```
 
 <!-- path-coherence: end-skip -->
 
-Reading this answers "what kind of machine is `workstation`?" at a glance. `pi` lives as `common +` *flat imports of specific server modules* (Blocky, Gatus, Beszel hub+agent, ntfy server+notify) — the bundle import is too coarse for the appliance role.
+`inventory/profiles.nix` is the reviewed composition surface. Tags describe and
+support queries; they never deploy a runtime.
 
 ### Coupling vs categorization
 
-**Within `modules/services/`, folders signal coupling, not categorization.** Tightly-coupled clusters get their own folder + `default.nix`:
+Within `modules/services/`, folders usually own one manifest/runtime pair.
+Additional nesting signals real implementation coupling, not a loose category:
 
 | Cluster | Coupling |
 |---|---|
 | `arr/` | Sonarr/Radarr/Lidarr/Bazarr/Jellyseerr/Prowlarr/qBittorrent — reference each other via API; share `/mnt/media/streaming` via the `media` group + `arr/shared.nix` tmpfiles |
-| `backup/` | `restic.nix` + `verify.nix` + `btrbk.nix` — share `/mnt/backup`, the `restic-password` sops secret, the `notify@` failure pipeline |
-| `beszel/`, `ntfy/` | Cross-host split-module pattern |
+| single workload directory | `manifest.nix` is global and pure; `runtime.nix` is placement-local |
 
-Loose services that just happen to be in the same conceptual area (Beszel, Gatus, Glance, ntfy — all observability-shaped but mutually independent) stay flat at `server/`'s top level.
+Infrastructure-owned daemons such as Caddy, Blocky, exporters, and alerting keep
+their manifests next to their platform adapter. The compiler aggregates both
+locations explicitly in `inventory/workloads.nix`.
 
-## Service module template
+## Workload manifest and runtime template
 
-A service module owns *everything* about its service in one file. No fan-out.
+The manifest is safe to evaluate on every host and in CI/documentation. It must
+contain no secret values, host-local state, or NixOS `config` dependency.
+
+<!-- path-coherence: skip-block — illustrative workload paths -->
+
+```nix
+# modules/services/example/manifest.nix
+{
+  kind = "service";
+  runtimeModule = ./runtime.nix;
+  tags = [ "family-tier" ];
+  endpoints.example = {
+    port = 1234;
+    audience = "family";
+    noAuthReason = "Native clients use service accounts";
+    monitor = { };
+    dashboard = {
+      title = "Example";
+      description = "What family members use it for";
+      group = "Consume";
+      icon = "example";
+    };
+  };
+}
+```
+
+The runtime owns local implementation and collected effects:
 
 ```nix
 { config, lib, pkgs, ... }:
@@ -164,24 +185,20 @@ A service module owns *everything* about its service in one file. No fan-out.
     # protectHome = null;  # rare: only when upstream's value is opinionated (e.g. syncthing)
   };
 
-  # LAN exposure — auto-generates Caddy vhost + Blocky DNS + Gatus monitor
-  nori.lanRoutes.<short-name> = {
-    port = N;
-    monitor = { };  # or .path = "/health" if non-default
-  };
-
   # Backup intent (required — `every-service-has-backup-intent` flake check)
   nori.backups.<service>.include = [ "/var/lib/<service>" ];
   # or for stateless / re-derivable services:
   # nori.backups.<service>.skip = "<reason>";
 
   # SQLite-backed services: use Pattern C2 (VACUUM INTO + flock)
-  # See modules/services/navidrome.nix for canonical impl + SERVICES.md § Pattern C2.
-
-  # Optional: open backend port directly on tailnet (default: closed)
-  # nori.lanRoutes.<short-name>.exposeOnTailnet = true;
+  # See modules/services/navidrome/runtime.nix for canonical implementation.
 }
 ```
+
+Add the manifest to `inventory/workloads.nix`, then place its identifier in one
+explicit profile or host deviation. Never activate from a tag or directory scan.
+
+<!-- path-coherence: end-skip -->
 
 **After landing:**
 
@@ -300,20 +317,25 @@ Packages and config live at one of four scopes. Pick the **lowest** scope that g
 | Scope | Where | Audience | Examples |
 |---|---|---|---|
 | **System floor** | `modules/machines/base/base.nix` `environment.systemPackages` | Every host (incl. pi, which has no home-manager); root, sshd, system services | `bat curl dig fd git htop just ripgrep tmux tree vim wget` |
-| **System desktop** | `modules/machines/desktop/apps.nix` `environment.systemPackages` + `fonts.packages` | Workstation Linux desktop session — Hyprland-invoked apps, GUI clients, fonts | `ghostty fuzzel hyprpaper zen bitwarden-desktop zed-editor davinci-resolve nerd-fonts.jetbrains-mono` |
-| **User core** | `modules/home/core.nix` `home.packages` + `programs.<x>` | Every interactive machine where nori is the operator | `comma starship programs.git age sops claude-code` |
+| **System desktop** | `modules/machines/desktop/` | System/session integration, display manager, drivers, audio, fonts | Hyprland, greetd, PipeWire, Stylix, Sunshine |
+| **User core** | `modules/home/profiles/core.nix` | Every interactive machine where nori is the operator | starship, Git, direnv, common CLI baseline |
+| **User capability** | `modules/home/profiles/{desktop,creative,development}/` | Homes selecting a coherent reusable capability | communication, research, video, audio, global development, agentic tools |
 | **Per-machine user** | `modules/machines/<host>/home.nix` `home.packages` | One specific machine | workstation: `nvtop` (NVIDIA), `compsize` (btrfs), Hyprland binds; Mac: `bun pnpm ffmpeg`, `home.file."Library/Fonts/..."` |
 
 Decision rules:
 
 - Needed by root / system services / pi? → **system floor**
-- Coupled to the Linux desktop session (Hyprland binds, fontconfig, GUI launchers)? → **system desktop**
+- Required to create the Linux graphical system/session? → **system desktop**
 - Interactive operator tool, every machine? → **user core**
+- Reusable user-facing function with its own security or product concern? → **user capability**
 - Machine-specific? → **per-machine user**
 
 Acceptable cross-scope overlap: `git` lives in both `base.nix` (for root + Nix's flake operations) and `core.nix` `programs.git` (for the operator's per-user config). Both load-bearing.
 
-What does NOT belong in `core.nix`: anything platform-specific (NVIDIA tools, Wayland-only programs, Linux fontconfig). Cross-platform CLI only — if the tool doesn't build on `x86_64-darwin`, it's not core.
+What does NOT belong in the core profile: anything platform-specific (NVIDIA
+tools, Wayland-only programs, Linux fontconfig), creative suites, or coding-agent
+runtimes. Agent runtimes and sandbox policy are a separate security-sensitive
+capability.
 
 ## Dev shells
 
@@ -329,6 +351,7 @@ just <recipe> [<host>]        # all recipes accept optional host arg
 just show-status                   # failed units + disk + restic/btrbk timer summary
 just show-logs <unit>              # last 50 journal lines
 just check                    # nix flake check
+just plan-deploy origin/main  # read-only affected-host/build plan
 just deploy                   # git push + nh os switch from origin (no rsync)
 just rollback                 # previous generation
 just backup <repo>            # immediately run restic-backups-<repo>
@@ -373,8 +396,8 @@ Detailed step-by-step in `docs/installs/baremetal.md`. `nixos-anywhere` is the f
 |---|---|
 | Conventional Commits | `type(scope): summary` |
 | Body | Explain *why* and what was tried |
-| Co-authored attribution | `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>` on agent-driven commits |
+| Attribution | Follow the active agent/provider policy; do not invent a co-author |
 | Formatter | `nixfmt` (set as the flake formatter) |
 | Linter | `statix` (anti-patterns) + `deadnix` (unused bindings) |
 | Pre-commit | `.githooks/pre-commit` runs `nix flake check`; skips gracefully if nix isn't on PATH (Mac case); CI catches the skipped commits |
-| Branching | Commit directly to `main`. Solo-with-agents; no feature branches (see ADR-0001) |
+| Branching | Small routine changes may remain atomic on `main`; multi-phase or high-blast-radius migrations use a worktree branch and operator-reviewed PR |

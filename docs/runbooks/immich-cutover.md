@@ -108,7 +108,7 @@ sudo -u postgres psql immich -c "SELECT count(*) FROM assets; SELECT count(*) FR
 
 ### 5. Nix flip (one commit)
 
-Edit `modules/services/immich.nix`:
+Edit `modules/services/immich/manifest.nix`:
 - `nori.lanRoutes.photos.runsOn = "aurora";`
 - `host = "0.0.0.0";` (or pass `IMMICH_HOST = "0.0.0.0"`)
 
@@ -172,7 +172,7 @@ same way (drop + create + gunzip | psql + ownership fix), restart.
 - `docs/plans/2026-06-11-aurora-migration.md` § P11
 - `[[postgres-ownership-after-dump-restore]]` memory entry (the
   ALTER OWNER trap)
-- `modules/services/immich.nix`
+- `modules/services/immich/manifest.nix` and `modules/services/immich/runtime.nix`
 - Prior cutovers: `bdda421` (vaultwarden bellwether), `ba4e49f`
   (miniflux PG migration — first time the ownership trap was caught
   in this repo)

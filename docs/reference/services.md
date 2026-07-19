@@ -13,10 +13,17 @@ Native NixOS modules first, containers as fallback, no orchestration layer. Plac
 The live catalog is the pure inventory projection, not this doc. Enumerating in prose drifts the moment anything moves between hosts; query the source instead:
 
 ```bash
-# Per-host: selected workloads
+# Complete public-safe inventory as JSON
+nix build .#inventory-json --no-link --print-out-paths
+
+# Presentation-only projections for future frontends
+nix build .#status-json --no-link --print-out-paths
+nix build .#portal-json --no-link --print-out-paths
+
+# Per-host selected workloads
 nix eval .#nixosConfigurations.<host>.config.nori.inventory.currentWorkloads
 
-# Global public-safe workload catalog (placement, tags, endpoints):
+# Global public-safe workload catalog (placement, tags, endpoints)
 nix eval .#nixosConfigurations.<host>.config.nori.inventory.workloads
 
 # Where each route's backend runs (the placement decisions):
@@ -29,6 +36,12 @@ nix eval .#nixosConfigurations.workstation.config.nori.lanRoutes \
 ```
 
 Cross-host services use the split-module pattern (`docs/reference/topology.md` § cross-host services).
+
+Every independently placed workload has a pure `manifest.nix` and a local
+`runtime.nix`. The manifest owns catalog, endpoint, audience, and presentation
+metadata; the runtime owns upstream service configuration, secrets, units,
+hardening, backup intent, and host-local effects. The inventory compiler imports
+only the runtimes selected by explicit host profiles.
 
 ### About Immich's Postgres
 
@@ -97,7 +110,7 @@ services.postgresqlBackup = {
 | sqlite3 CLI's `.backup` ignores `busy_timeout` (hard-coded ~2.5s retry) → "database is locked" on the first concurrent writer | Use `VACUUM INTO` + `PRAGMA busy_timeout` (regular SQL, honours the pragma) | [[sqlite-backup-vacuum-into]] |
 | `-onetouch` + `-mp510` restic units fire same minute → both run `prepareCommand` → race on `.tmp` → "table … already exists" | Wrap rm/sqlite/mv in `flock` (file-descriptor form, subshell-scoped) | [[pattern-c2-sqlite-race-flock]] |
 
-Canonical impl — `modules/services/navidrome.nix`:
+Canonical implementation: `modules/services/navidrome/runtime.nix`.
 
 ```nix
 nori.backups.navidrome = {
@@ -208,4 +221,9 @@ Email digest deferred. When it lands: Gmail SMTP with app password (sufficient f
 
 Naming convention: agnostic (`tmdb-token`, not `filmder-tmdb-token`) when multiple projects could plausibly share the same key.
 
-Live worked example: `modules/services/filmder.nix` — sops decrypt → systemd build oneshot (manual trigger via `just deploy-app filmder`, sentinel-skip on idempotent rebuilds, `bun install + bun run build`) → atomic publish to `/var/lib/<n>/dist` → darkhttpd-on-port → `nori.lanRoutes` for `<n>.${nori.domain}`. Internet-public exposure prototyped via Tailscale Funnel and reverted; reference preserved in `memory/reference/tailscale_funnel_implementation.md`.
+Live worked example: `modules/services/filmder/manifest.nix` declares its
+endpoint and governed `legacy-host-build` artifact contract;
+`modules/services/filmder/runtime.nix` consumes that contract for the systemd
+build and serving realization. Filmder and Heim are the only mutable-source
+exceptions. Their manifests name an owner, reason, removal trigger, and test;
+new product deployments should consume immutable artifacts instead.

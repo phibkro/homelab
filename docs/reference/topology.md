@@ -51,8 +51,8 @@ Blocky stays pure-forwarder.
 | Beszel | pi | `metrics.${nori.domain}` | `modules/infra/observability/beszel/agent.nix` everywhere |
 | ntfy | pi | `alert.${nori.domain}` | `modules/infra/observability/ntfy/notify.nix` everywhere |
 | VictoriaLogs | pi | `logs.${nori.domain}` | `modules/infra/observability/vector.nix` ships journald |
-| VictoriaMetrics | pi | `tsdb.${nori.domain}` (Grafana datasource) | `modules/infra/observability/node-exporter.nix` scraped from pi |
-| immich-ml | aurora | n/a (RPC only) | `modules/services/immich.nix` (workstation) — `IMMICH_MACHINE_LEARNING_URL` |
+| VictoriaMetrics | pi | `tsdb.${nori.domain}` (Grafana datasource) | `modules/infra/observability/node-exporter/runtime.nix` scraped from pi |
+| immich-ml | aurora | n/a (RPC only) | `modules/services/immich/runtime.nix` — `IMMICH_MACHINE_LEARNING_URL` |
 
 Add another via `/relocate-to-pi` skill. Precedents above.
 

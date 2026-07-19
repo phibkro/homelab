@@ -802,6 +802,56 @@ Phase 3 steering constraints:
   manifest fields, directory discovery, or rename-only churn into migration
   commits.
 
+### 2026-07-20 — implementation boundary review
+
+The migration completed the agreed internal architecture without adding a new
+orchestration framework or widening production exposure:
+
+- every workload has an explicitly aggregated pure manifest and selected local
+  runtime; the legacy service registry, tag activation, and bundle imports are
+  gone;
+- system and Home Manager capabilities compose through explicit profiles, with
+  the rice exposed through one policy-level option and its runtime private;
+- MacBook and all NixOS hosts share one inventory while preserving distinct
+  build/activation semantics;
+- music owns one canonical FLAC dataset contract with on-demand Opus/MP3 and no
+  persistent derivative;
+- Filmder and Heim are the only governed mutable artifact exceptions;
+- deployment, public-safe inventory, status, and portal packages derive from
+  the same control plane;
+- the canonical and deprecated service domains now have one pure source; Glance
+  no longer emits deprecated bookmarks.
+
+Accepted deviations and scope decisions:
+
+- **D6 — no `docs/work/active/` tree:** roadmap + one accepted spec already form
+  the active-work control surface. A second tree would duplicate state.
+- **D7 — presentation contract is deliberately minimal:** status and portal JSON
+  are data products, not frontend implementations. Public hosting,
+  registration UX, maintenance announcements, and generated walkthroughs stay
+  separately operator-gated.
+- **D8 — compatibility route interface remains:** `nori.lanRoutes` is still the
+  typed platform adapter input, but its values are compiled from manifests. A
+  rename would add churn without changing dependency direction.
+- **D9 — direct pure-site reads in adapters:** isolated VM modules do not inject
+  the full inventory projection, so Caddy and Blocky read `inventory/site.nix`
+  directly while `nori.inventory.site` remains available to consumers. This
+  preserves one source without coupling test fixtures to the full factory.
+
+### 2026-07-20 — final Fable 5 review
+
+The read-only advisor returned **SHIP conditional on one runbook fix and final
+build evidence**. It independently ran `nix flake check path:. --no-build`
+successfully and found no architectural violation, scope creep, or
+secret/exposure regression. Its only blocker was the Pi-failure runbook still
+describing failover through the removed service registry.
+
+The blocker is resolved by making `site.entryPlaneHost` the shared endpoint/LAN
+identity, asserting it matches the sole host selecting the `entry-plane`
+profile, and rewriting the runbook as two reviewed inventory edits. Stale
+workload-phase and topology-generation prose identified by the advisor was also
+updated. Build-level host and VM evidence remains the final release gate.
+
 ## Alternatives rejected
 
 ### Keep importing all service modules and improve gate discipline

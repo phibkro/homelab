@@ -1,68 +1,57 @@
-# docs/
+# Documentation map
 
-Reference for this homelab. Three read modes — the first is mandatory
-at session start; the rest is reached on demand.
+The documentation has one lifecycle per kind of knowledge. Current behavior
+belongs in reference or generated docs; future outcomes belong in the roadmap;
+an accepted change contract belongs in a spec; hard-to-reverse rationale belongs
+in an ADR; operational recovery belongs in a runbook.
 
-Filenames encode the topic; the `USE WHEN` column matches the
-project's skill/memory trigger convention.
+## Start here
 
-Same tables live in the root `CLAUDE.md`; this file mirrors them for
-agents that land in `docs/` without that context.
-
-## Read on session start (mandatory)
-
-Without these, the agent doesn't know what it doesn't know — every
-other doc reads as undefined jargon, and load-bearing claims get
-silently broken.
-
-| Doc | USE WHEN |
+| Document | Use when |
 |---|---|
-| `GLOSSARY.md`   | always, first — establishes vocabulary (`nori.<X>` family, audience, fate-sharing, value tiers). Every other doc references these |
-| `INVARIANTS.md` | always, second — the drift register: load-bearing claims tagged by enforcement rung |
+| `glossary.md` | Establishing the repository vocabulary and concern boundaries |
+| `invariants.md` | Changing a load-bearing claim or deciding how it should be enforced |
+| `roadmap.md` | Choosing the next outcome or recording explicitly deferred work |
+| `reference/module-authoring.md` | Adding or restructuring inventory, profiles, modules, or workloads |
+| `reference/services.md` | Adding a service, backup policy, hardening, or observability |
+| `reference/deployment.md` | Planning, building, reviewing, or activating a change |
+| `reference/topology.md` | Placing a workload or reasoning about host roles and failure domains |
+| `reference/network.md` | Changing routes, DNS, Caddy, Tailscale, audiences, or authentication |
+| `reference/storage.md` | Changing filesystems, datasets, snapshots, replication, or backups |
+| `reference/agentic-workflow.md` | Changing agent tooling, hooks, delegation, or safety policy |
+| `reference/runtime-tests.md` | Adding an operator-triggered integration or runtime test |
+| `reference/recovery.md` | Diagnosing an outage or selecting a recovery runbook |
 
-## Topic-triggered reference
+The remaining topic references are discoverable by their lowercase filenames in
+`reference/`. Generated documents in `generated/` are committed projections of
+Nix declarations; edit their source comments or inventory, then regenerate.
 
-Reach on demand when the USE-WHEN trigger fires. Filenames encode the
-topic so `ls` is enough to find the right one.
+## Document lifecycle
 
-| Doc | USE WHEN |
-|---|---|
-| `SKILL_INDEX.md`          | looking for a `/<skill-name>` that matches your intent — recurring procedures live as skills, not prose                              |
-| `ROADMAP.md`              | considering deferring work, checking what's queued, or wondering whether something is already planned                                |
-| `TOPOLOGY.md`             | placing a service across hosts, sizing caps, or reasoning about workhorse/appliance/agent roles                                      |
-| `STORAGE.md`              | touching btrfs subvolumes, `nori.fs.<X>`, snapshot/backup policy, or value-tier classifications                                      |
-| `NETWORK.md`              | adding a `nori.lanRoutes` entry, picking an audience, or working with Caddy + Authelia + DNS                                         |
-| `SERVICES.md`             | adding a service module, picking a backup pattern (A/B/C), or wiring observability                                                   |
-| `MODULE_AUTHORING.md`     | writing a new module — template, sops conventions, packages-by-scope, dev workflow                                                   |
-| `DOCUMENTATION_WRITING.md`| writing/auditing comments + prose — earns-rent taxonomy, anti-patterns, the agent-imitation loop                                     |
-| `RECOVERY.md`             | something is broken or you're planning recovery — RTO targets, runbook index, permanent constraints                                  |
-| `RUNTIME_TESTS.md`        | adding a `just test-<X>` lever or auditing whether an infra concern ships with one                                                   |
-| `RATIONALES.md`           | wondering "why was X chosen?" before re-litigating a design decision                                                                 |
-| `PROJECTS.md`             | orchestrating work across the several projects on this machine (homelab, occupational-health, pagu, bang-lang, …)                    |
-| `capacity-baseline.md`    | sizing a new service against current RAM/disk/CPU baselines per host                                                                 |
+| Location | Owns | Does not own |
+|---|---|---|
+| `roadmap.md` | Outcome-level backlog and named deferrals | Detailed implementation steps or completed-work history |
+| `specs/` | Accepted problem, design, constraints, and verification contract | Live operational truth after the change lands |
+| `decisions/` | Durable rationale for costly-to-reverse decisions | Routine implementation detail |
+| `reference/` | Current architecture and authoring guidance | Aspirational future state |
+| `runbooks/` | Executable incident, maintenance, and recovery procedures | Design rationale |
+| `plans/` | Retained multi-phase execution plans with historical value | Canonical current status |
+| `reports/` | Retrospectives, audits, evidence, and migration outcomes | Forward work |
+| `installs/` | Machine and agent onboarding procedures | General module authoring |
 
-## Drill-down
+This repository deliberately does not add `docs/work/active/`: the existing
+roadmap plus one accepted spec per substantial outcome already provides the same
+control surface. Adding a second active-work tree would duplicate status.
 
-Pulled in only when a parent doc cross-refs it. Not reached
-opportunistically.
+## Adding or updating documentation
 
-| Path | USE WHEN |
-|---|---|
-| `decisions/`               | per-ADR for each hard-to-revisit choice. `0001-agentic-homelab-practices.md` is the meta-ADR — read when philosophy comes up    |
-| `superpowers/reports/`     | catching up on how a multi-week arc actually landed — commit-grouped narrative companion to a plan in `superpowers/plans/`      |
-| `runbooks/`                | per-incident recovery procedures (drive failure, USB enumeration, network split)                                                |
-| `baremetal-install.md`     | bringing up a fresh NixOS host via nixos-anywhere                                                                               |
-| `vm-install.md`            | bringing up a NixOS VM (testing, throwaway environments)                                                                        |
-| `agent-onboarding-test.md` | validating a new agent's orientation against a small fixed task                                                                 |
+1. Put the fact in the narrowest existing document whose lifecycle matches it.
+2. Prefer a generated projection when the fact already exists in inventory or
+   evaluated Nix configuration.
+3. Add a new document only when it has a distinct trigger and owner.
+4. Link it from this map when it is a primary entry point.
+5. Run `nix flake check`; generated-doc freshness and path-coherence checks are
+   part of the gate.
 
-## Adding a doc
-
-1. Pick a read mode — mandatory, triggered, or drill-down. If you can't,
-   the doc probably belongs in an existing one.
-2. Topic-encoding filename (UPPER_SNAKE_CASE for top-level reference;
-   lower-kebab-case for procedural how-tos under drill-down).
-3. Write a USE-WHEN row for this `README.md` AND the matching table in
-   root `CLAUDE.md`. If the trigger phrase is hard to write, the doc's
-   purpose isn't sharp enough yet.
-4. Lead by example per `DOCUMENTATION_WRITING.md`: tables + lists +
-   visual shortcuts; prose only as connective tissue.
+For prose conventions and generated-document mechanics, see
+`reference/documentation-writing.md`.

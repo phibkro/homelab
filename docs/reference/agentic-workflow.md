@@ -232,6 +232,11 @@ Same principle as `docs/invariants.md` § "When to add a rule" applied to commit
 
 ### Local hooks today
 
+- **Repository post-edit hook** — `.claude/settings.json` and
+  `.codex/hooks.json` both invoke `tools/hooks/post-edit-nix.sh` after Edit/Write.
+  It extracts touched `.nix` files from native edits or patches, rejects paths
+  outside the repository, runs the project `nix fmt` only on those files, and
+  returns targeted Statix/deadnix diagnostics when those tools are available.
 - **`.githooks/pre-commit`** — runs `nix flake check` on staged `.nix` changes; skips gracefully if `nix` isn't on PATH.
 - **`.githooks/commit-msg`** — enforces Conventional Commits v1.0.0 on the subject line. Hand-rolled bash; pinned to spec v1.0.0; escalation to `nix shell nixpkgs#commitlint-rs` if regex outgrows itself. Bypass with `--no-verify`.
 
@@ -239,13 +244,19 @@ Enable once per clone: `git config core.hooksPath .githooks`.
 
 ## Branching + PRs
 
-ADR-0001 rejected feature branches on the no-humans-to-coordinate axis. ADR-0005 revisits on the operator-cognitive-load + blast-radius axis and concludes:
+ADR-0001 rejected feature branches as a universal ceremony on the
+no-humans-to-coordinate axis. The architecture simplification migration showed
+that branch choice is instead a blast-radius and review-surface decision:
 
 - **Default: commits on `main`.** Atomic per-axis commits + per-commit-revert as the reversibility ladder. The 2026-06-16 docs sweep used this shape across 17 commits with no incident.
-- **Worktrees for non-routine refactors.** Per existing CLAUDE.md guidance, reserved for risky structural moves where out-of-tree review pays off. Skill: `using-git-worktrees`.
-- **PRs (= GitHub-style review) not used.** Solo-with-agent doesn't benefit from the GitHub review surface; the PR-review-as-Reporting phase happens in-session before push. Push gate per CLAUDE.md is the operator's manual review.
+- **Worktree branches for non-routine refactors.** Use them when a migration
+  spans many independently green commits, needs whole-diff review, or must not
+  mingle with production-ready changes.
+- **PRs are an optional operator review boundary.** A substantial migration may
+  culminate in a PR even in a solo repository; activation remains separate and
+  operator-gated. Routine changes still use the in-session reporting/push gate.
 
-No structural change from current practice; this is the codification of what already works.
+The unit is a `change` or `feature` until a branch is actually published as a PR.
 
 ## Documentation as transmission medium
 
