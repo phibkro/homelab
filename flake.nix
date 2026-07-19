@@ -421,7 +421,7 @@
 
                   §2  Topology registry schema — nixosOptionsDoc reference for
                       `nori.hosts.<name>.*` option fields. Tells you what an
-                      identityFor entry must declare.
+                      `inventory/hosts.nix` identity entry must declare.
 
                 §1 is built from VALUES (config.nori.hosts.workstation.hardware
                 etc.); §2 is built from the OPTIONS tree. nixosOptionsDoc handles
@@ -536,8 +536,8 @@
 
                     # Topology — generated reference
 
-                    Auto-derived from `nori.hosts` schema + `identityFor` values
-                    in `modules/machines/default.nix`. Do not hand-edit; the
+                    Auto-derived from the `nori.hosts` schema + values in
+                    `inventory/hosts.nix`. Do not hand-edit; the
                     hand-curated overview lives at `docs/reference/topology.md`
                     (kept parallel for the generated-vs-handwritten coverage
                     experiment).
@@ -559,9 +559,8 @@
 
                     ## Registry schema (`nori.hosts.<name>.*`)
 
-                    What an `identityFor` entry must declare to satisfy the schema.
-                    Schema lives in `modules/infra/hosts.nix`; values live in
-                    `modules/machines/default.nix`.
+                    What an `inventory/hosts.nix` identity entry must declare to
+                    satisfy the schema. Schema lives in `modules/infra/hosts.nix`.
 
                     SCHEMA_HEADER
                     # See docs-lan-route for the GFM-cleanup rationale.

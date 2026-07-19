@@ -18,7 +18,7 @@
      interpret.
 
   Topology: the `nori.hosts` registry is populated in
-  `modules/machines/default.nix`'s `identityFor` (single source of
+  `inventory/hosts.nix` (single source of
   truth — every host evals the same topology). The schema lives at
   `modules/infra/hosts.nix`.
 */
@@ -31,6 +31,7 @@
 
     # Infra layer — the PaaS concerns + their schemas.
     ../../infra/hosts.nix
+    ../../infra/inventory.nix
     ../../infra/storage
     ../../infra/networking
     ../../infra/access

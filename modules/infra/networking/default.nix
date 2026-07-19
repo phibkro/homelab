@@ -184,7 +184,7 @@ in
           nori.lanIp: cannot pick a default — expected exactly one workhorse
           host with a non-null lanIp in the registry, found ${toString (lib.length names)}
           (${lib.concatStringsSep ", " names}). Set nori.lanIp explicitly,
-          or update the host registry (flake.nix identityFor).
+          or update the host registry (`inventory/hosts.nix`).
         '';
     defaultText = lib.literalExpression ''
       # the unique workhorse-with-lanIp from config.nori.hosts;

@@ -349,7 +349,7 @@
     {
       assertion = config.nori.hosts.${config.networking.hostName}.role == "workhorse";
       message =
-        "aurora's role must be 'workhorse' in flake.nix identityFor. "
+        "aurora's role must be 'workhorse' in inventory/hosts.nix. "
         + "(Currently classified workhorse despite the single-service "
         + "footprint; promote to a dedicated `compute` role on the "
         + "third single-GPU-peer host — rule of three.)";

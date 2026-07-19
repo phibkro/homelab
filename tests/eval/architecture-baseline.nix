@@ -26,12 +26,14 @@ let
       lib.filterAttrs (_: workload: workload.enabled) hosts.${hostName}.config.nori.services
     );
 
-  actualWorkloads = lib.genAttrs [
+  legacyWorkloads = lib.genAttrs [
     "workstation"
     "aurora"
     "pi"
     "pavilion"
   ] enabledWorkloads;
+
+  actualWorkloads = lib.mapAttrs (_: host: host.config.nori.inventory.currentWorkloads) hosts;
 
   expectedWorkloads = {
     workstation = [
@@ -398,20 +400,23 @@ let
     };
   };
 
+  inventoryMatchesLegacy = actualWorkloads == legacyWorkloads;
   workloadsMatch = actualWorkloads == expectedWorkloads;
   routesMatch = actualRoutes == expectedRoutes;
 in
-if workloadsMatch && routesMatch then
+if inventoryMatchesLegacy && workloadsMatch && routesMatch then
   "ok — architecture workload placement + route behavior baseline unchanged"
 else
   throw ''
     Architecture behavior baseline changed.
 
+    Inventory matches legacy:   ${toString inventoryMatchesLegacy}
     Workload placement matches: ${toString workloadsMatch}
     Route fingerprints match:   ${toString routesMatch}
 
     Expected workloads: ${builtins.toJSON expectedWorkloads}
-    Actual workloads:   ${builtins.toJSON actualWorkloads}
+    Inventory workloads: ${builtins.toJSON actualWorkloads}
+    Legacy workloads:    ${builtins.toJSON legacyWorkloads}
 
     Expected routes: ${builtins.toJSON expectedRoutes}
     Actual routes:   ${builtins.toJSON actualRoutes}

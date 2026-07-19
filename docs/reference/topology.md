@@ -1,15 +1,16 @@
 ---
-summary: Cross-module topology synthesis — service placement decisions, the split-module pattern for cross-host services, resource caps, operator facts. The single-module narrative (host roles, topology graph, the tier principle, per-host hardware posture) lives in `docs/generated/topology.md`, extracted from `modules/machines/default.nix` and each host's `hardware.nix`. GPU access pattern moved to `docs/generated/capabilities.md`.
+summary: Cross-module topology synthesis — inventory-resolved placement decisions, the split-module pattern for cross-host services, resource caps, and operator facts. Generated host identity, topology, and hardware posture live in `docs/generated/topology.md`.
 ---
 
 # Topology — cross-module synthesis
 
-The single-module narrative (topology graph, the
-service-implicit-until-lan-route'd tier principle, the `nori.hosts`
-schema + hosts-at-a-glance table, per-host hardware posture) lives in
-[`docs/generated/topology.md`](../generated/topology.md), extracted
-from `modules/machines/default.nix` + each host's `hardware.nix`. The
-GPU access pattern moved to
+The pure inventory supplies host identity, explicit profiles, and intended
+workload placement before NixOS evaluation. The generated topology graph,
+`nori.hosts` compatibility schema, hosts-at-a-glance table, and per-host
+hardware posture live in
+[`docs/generated/topology.md`](../generated/topology.md), extracted from the
+inventory-backed machine factory + each host's `hardware.nix`. The GPU access
+pattern lives in
 [`docs/generated/capabilities.md`](../generated/capabilities.md)
 alongside the `nori.gpu` schema. This file keeps the cross-module
 content that doesn't fit one extraction site.
@@ -75,6 +76,8 @@ Add another via `/relocate-to-pi` skill. Precedents above.
 See `/add-host`. Short version:
 
 1. Create `modules/machines/<name>/` (folder name = `networking.hostName` — injected, don't redeclare).
-2. Add the new entry to BOTH `nixosMachines` AND `identityFor` in `modules/machines/default.nix`. The key-set assertion fails eval if either is missing.
+2. Add one entry to `inventory/hosts.nix`: its realization module, profiles,
+   direct workload deviations, and public identity. The inventory compiler
+   validates every profile/workload reference before NixOS evaluation.
 3. **Add the new host's age public key** (derived from its SSH host key via `ssh-to-age`) to `.sops.yaml` and run `sops updatekeys secrets/secrets.yaml` to re-encrypt existing secrets so the new host can decrypt them. Without this, sops secrets are unreachable on first boot.
 4. First boot → `tailscale up` → approve in admin console for subnet route / exit node if applicable.

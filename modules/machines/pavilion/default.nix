@@ -306,7 +306,7 @@
     {
       assertion = config.nori.hosts.${config.networking.hostName}.role == "agent";
       message =
-        "pavilion's role must be 'agent' in flake.nix identityFor "
+        "pavilion's role must be 'agent' in inventory/hosts.nix "
         + "(otherwise the impermanence/no-backup posture is silently "
         + "wrong)";
     }

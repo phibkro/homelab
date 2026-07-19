@@ -12,7 +12,7 @@
   # declaring harden/backup intent here would be dishonest.
   #
   # The vlogs-host coupling lives in the nori.hosts registry — if
-  # VictoriaLogs ever relocates, update flake.nix `identityFor`
+  # VictoriaLogs ever relocates, update `inventory/hosts.nix`
   # instead of this file.
   nori.lanRoutes = lib.mkIf config.services.caddy.enable {
     logs = {

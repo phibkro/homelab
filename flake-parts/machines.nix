@@ -7,10 +7,15 @@
   rationale.
 */
 { inputs, ... }:
+let
+  machines = import ../modules/machines {
+    inherit (inputs.nixpkgs) lib;
+    inherit inputs;
+  };
+in
 {
-  flake.nixosConfigurations =
-    (import ../modules/machines {
-      inherit (inputs.nixpkgs) lib;
-      inherit inputs;
-    }).nixosConfigurations;
+  flake = {
+    inherit (machines) nixosConfigurations;
+    lib.noriInventory = machines.inventory.public;
+  };
 }
