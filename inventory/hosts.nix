@@ -102,6 +102,7 @@
       "base"
       "family-vault"
       "log-forwarder"
+      "research"
       "observability-agent"
     ];
     workloads = [

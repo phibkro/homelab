@@ -34,8 +34,6 @@
   imports = [
     inputs.disko.nixosModules.disko
 
-    ../../compat/papers-fetch-system-cli.nix
-
     # Notably absent:
     #   modules/machines/desktop/default.nix — headless
 
@@ -43,19 +41,6 @@
     ./disko-onetouch.nix
     ./disko-family.nix
   ];
-
-  /*
-    Papers acquisition (docs/specs/2026-06-23-papers-acquisition.md):
-    the OA-first fetcher CLI lives on aurora next to its Paperless sink.
-    `consumptionDirIsPublic` makes /var/lib/paperless/consume world-
-    writable so the operator (running papers-fetch as `nori`) can drop
-    PDFs into it — local-only dir on the always-on tailnet-fronted host;
-    the documents are the operator's own. allowGrayZone stays off.
-  */
-  nori.papersFetch = {
-    email = "philib.krogh@gmail.com";
-  };
-  services.paperless.consumptionDirIsPublic = true;
 
   /*
     Aurora doesn't proxy syncthing through Caddy (the sync.* lanRoute

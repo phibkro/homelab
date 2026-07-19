@@ -685,14 +685,6 @@
                 "*/manifests/*.nix"
                 "modules/services/arr/runtime.nix"
                 "modules/services/arr/shared.nix"
-                /*
-                  CLI-only — packages the papers-fetch resolver onto
-                  PATH (an operator runs it on demand). No daemon, no
-                  port, no state, no systemd unit → nothing to harden or
-                  back up. The Paperless sink it feeds carries both
-                  intents.
-                */
-                "modules/services/papers-fetch.nix"
               ];
               /**
                 Generate a `case` glob from a list of patterns, joined with

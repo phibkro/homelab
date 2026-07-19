@@ -34,6 +34,12 @@
     workloads = [ ];
   };
 
+  research = {
+    description = "Operator research acquisition tools colocated with their data sink";
+    systemModules = [ ../modules/profiles/research.nix ];
+    workloads = [ ];
+  };
+
   media-compute = {
     description = "GPU media serving, acquisition, and operator AI";
     systemModules = [ ];

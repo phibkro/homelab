@@ -80,8 +80,6 @@ in
       papers-fetch "Attention is all you need"     # title → Crossref → DOI
   */
   options.nori.papersFetch = {
-    enable = lib.mkEnableOption "the OA-first papers fetcher CLI (papers-fetch)";
-
     consumeDir = lib.mkOption {
       type = lib.types.str;
       default = "${config.services.paperless.consumptionDir}";
@@ -117,7 +115,7 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable {
+  config = {
     assertions = [
       {
         assertion = cfg.email != "";
