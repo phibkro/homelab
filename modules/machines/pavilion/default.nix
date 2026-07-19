@@ -54,14 +54,6 @@
     ../base # base + users + sops + tailscale + lib options
 
     /*
-      Per-process RSS + system metrics → pi VictoriaMetrics. Imported
-      file-by-file (not the whole services/ bundle) since pavilion has
-      no LAN services. Catches agent-process leaks before they OOM.
-    */
-    ../../infra/observability/node-exporter.nix
-    ../../infra/observability/beszel/agent.nix # aggregate dashboard → pi's Beszel hub
-
-    /*
       Notably absent:
         modules/services/default.nix    — no LAN services
         modules/machines/desktop/default.nix   — headless
@@ -71,9 +63,9 @@
   ];
 
   /*
-    Service-placement registry (aurora migration P3). Reproduces today's
-    pavilion activation set — node-exporter only. Pavilion is the
-    agent quarantine; LAN services intentionally don't run here.
+    Legacy placement mirrors retained until the Phase 3 cutover. The pure
+    inventory selects both observability agents for pavilion; LAN services
+    intentionally remain absent.
   */
   nori.services.node-exporter.enable = true;
   nori.services.beszel-agent.enable = true; # high-level metrics → pi's Beszel hub

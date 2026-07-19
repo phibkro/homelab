@@ -60,6 +60,8 @@ lib.genAttrs
   })
 // {
   bazarr = import ../modules/services/arr/manifests/bazarr.nix;
+  beszel-agent = import ../modules/infra/observability/beszel/manifests/agent.nix;
+  beszel-hub = import ../modules/infra/observability/beszel/manifests/hub.nix;
   calibre-web = import ../modules/services/calibre-web/manifest.nix;
   filmder = import ../modules/services/filmder/manifest.nix;
   glance = import ../modules/services/glance/manifest.nix;
@@ -72,6 +74,8 @@ lib.genAttrs
   lidarr = import ../modules/services/arr/manifests/lidarr.nix;
   miniflux = import ../modules/services/miniflux/manifest.nix;
   navidrome = import ../modules/services/navidrome/manifest.nix;
+  node-exporter = import ../modules/infra/observability/node-exporter/manifest.nix;
+  nvidia-gpu-exporter = import ../modules/infra/observability/nvidia-gpu-exporter/manifest.nix;
   ollama = import ../modules/services/ollama/manifest.nix;
   open-webui = import ../modules/services/open-webui/manifest.nix;
   paperless = import ../modules/services/paperless/manifest.nix;

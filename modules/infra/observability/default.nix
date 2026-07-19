@@ -25,8 +25,8 @@ _:
                                split-module)
    - `ntfy/`                   alert channel (server + per-host
                                notify@ client)
-   - `node-exporter.nix`       Linux metrics exporter
-   - `nvidia-gpu-exporter.nix` GPU metrics
+   - `node-exporter/`          Linux metrics exporter
+   - `nvidia-gpu-exporter/`    GPU metrics
    - `vector.nix`              journald → VictoriaLogs shipper
                                (was modules/infra/observability/vector.nix)
    - `heartbeat.nix`           dead-man-switch ping →
@@ -39,10 +39,7 @@ _:
     ./gatus.nix
     ./victoriametrics.nix
     ./victorialogs/default.nix
-    ./beszel/agent.nix
     ./ntfy/notify.nix
-    ./node-exporter.nix
-    ./nvidia-gpu-exporter.nix
     ./vector.nix
     ./heartbeat.nix
     ./disk-alert.nix

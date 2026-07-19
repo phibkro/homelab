@@ -16,13 +16,11 @@ lib.mkMerge [
       forensics ("what was CPU/mem doing right before the freeze?").
       Migrated from station 2026-04-29 (commit b4499ee).
 
-      https://metrics.nori.lan vhost is declared in ./agent.nix (gated
-      on Caddy presence so Pi doesn't try to proxy to itself).
-
-      OIDC SSO via Authelia is deferred — hub-side OAuth wiring not yet
-      plumbed. USER_CREATION=true is set in advance so first OIDC login
-      auto-provisions; DISABLE_PASSWORD_AUTH stays off, keeping the
-      local-password fallback as recovery.
+      The canonical metrics endpoint and Authelia client declaration live in
+      manifests/hub.nix. PocketBase still requires the operator to paste the
+      generated client secret into the users collection's OAuth2 settings;
+      USER_CREATION=true lets the first OIDC login auto-provision while local
+      password auth remains available as recovery.
     */
 
     services.beszel.hub = {

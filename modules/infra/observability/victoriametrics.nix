@@ -77,7 +77,7 @@ lib.mkMerge [
           }
           /*
             System + per-process metrics from each host's node-exporter
-            and process-exporter (modules/infra/observability/node-exporter.nix).
+            and process-exporter (modules/infra/observability/node-exporter/).
             Single static_configs block per kind, one label per target,
             so the {host=...} dimension carries the dispatch.
           */
@@ -121,7 +121,7 @@ lib.mkMerge [
           }
           /*
             GPU power + utilisation from nvidia-gpu-exporter (modules/
-            services/nvidia-gpu-exporter.nix). Only hosts with NVIDIA
+            infra/observability/nvidia-gpu-exporter/). Only hosts with NVIDIA
             devices run the exporter; pavilion + pi silently absent.
           */
           {

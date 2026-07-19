@@ -129,6 +129,12 @@ let
 
   migratedRuntimePlacements = {
     bazarr = [ "workstation" ];
+    beszel-agent = [
+      "workstation"
+      "aurora"
+      "pi"
+      "pavilion"
+    ];
     calibre-web = [ "aurora" ];
     filmder = [ "aurora" ];
     glance = [ "aurora" ];
@@ -141,6 +147,15 @@ let
     lidarr = [ "workstation" ];
     miniflux = [ "aurora" ];
     navidrome = [ "aurora" ];
+    node-exporter = [
+      "workstation"
+      "aurora"
+      "pavilion"
+    ];
+    nvidia-gpu-exporter = [
+      "workstation"
+      "aurora"
+    ];
     ollama = [ "workstation" ];
     open-webui = [ "workstation" ];
     paperless = [ "aurora" ];
@@ -182,6 +197,7 @@ let
 
   migratedCatalogEndpoints = {
     bazarr.subtitles = "workstation";
+    beszel-hub.metrics = "pi";
     calibre-web.books = "aurora";
     filmder.filmder = "aurora";
     glance.home = "aurora";
