@@ -238,7 +238,7 @@ let
         Notification — Claude needs permission, or has been waiting on input
                        (covers a pending question).
       Together they cover "an agent halted and needs you". One shared
-      entrypoint fans out to ntfy — see modules/home/agent-notify.nix.
+      entrypoint fans out to ntfy — see modules/home/agent-notify/default.nix.
     */
     hooks = {
       Stop = [
