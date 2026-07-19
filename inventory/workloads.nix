@@ -59,5 +59,10 @@ lib.genAttrs
     kind = "service";
   })
 // {
+  calibre-web = import ../modules/services/calibre-web/manifest.nix;
+  immich = import ../modules/services/immich/manifest.nix;
   jellyfin = import ../modules/services/jellyfin/manifest.nix;
+  komga = import ../modules/services/komga/manifest.nix;
+  miniflux = import ../modules/services/miniflux/manifest.nix;
+  navidrome = import ../modules/services/navidrome/manifest.nix;
 }

@@ -1,0 +1,26 @@
+{
+  kind = "service";
+  runtimeModule = ./runtime.nix;
+  tags = [
+    "family-tier"
+    "media-reader"
+    "stateful"
+  ];
+
+  endpoints.photos = {
+    port = 2283;
+    exposeOnTailnet = true;
+    monitor = { };
+    audience = "family";
+    oidc = {
+      clientName = "Immich";
+      redirectPath = "/auth/login";
+    };
+    dashboard = {
+      title = "Immich";
+      icon = "si:immich";
+      group = "Consume";
+      description = "Photo library + face recognition";
+    };
+  };
+}

@@ -36,16 +36,11 @@ _: {
     ./arr
 
     # Loose services
-    ./calibre-web.nix
     ./filmder.nix
     ./glance.nix
     ./heim.nix
-    ./immich.nix
     # Jellyfin is inventory-selected from jellyfin/manifest.nix.
-    ./komga.nix
-    ./miniflux.nix
     ./music-ingest.nix
-    ./navidrome.nix
     ./ollama.nix
     ./open-webui.nix
     ./paperless.nix

@@ -127,20 +127,52 @@ let
 
   actualRoutes = lib.mapAttrs (_: routeFingerprint) hosts.pi.config.nori.lanRoutes;
 
-  hasJellyfinRuntime =
-    host: host.config.nori.harden ? jellyfin && host.config.nori.backups ? jellyfin;
-  runtimePlacementCorrect =
-    hasJellyfinRuntime hosts.workstation
-    && lib.all (hostName: !(hasJellyfinRuntime hosts.${hostName})) [
-      "aurora"
-      "pi"
-      "pavilion"
-    ];
+  migratedRuntimePlacements = {
+    calibre-web = "aurora";
+    immich = "aurora";
+    jellyfin = "workstation";
+    komga = "aurora";
+    miniflux = "aurora";
+    navidrome = "aurora";
+  };
+
+  hasMigratedRuntime = workloadName: host: builtins.hasAttr workloadName host.config.nori.backups;
+  runtimePlacementCorrect = lib.all (
+    workloadName:
+    lib.all
+      (
+        hostName:
+        hasMigratedRuntime workloadName hosts.${hostName}
+        == (hostName == migratedRuntimePlacements.${workloadName})
+      )
+      [
+        "workstation"
+        "aurora"
+        "pi"
+        "pavilion"
+      ]
+  ) (lib.attrNames migratedRuntimePlacements);
+
+  migratedCatalogEndpoints = {
+    calibre-web.books = "aurora";
+    immich.photos = "aurora";
+    jellyfin.media = "workstation";
+    komga.comics = "aurora";
+    miniflux.news = "aurora";
+    navidrome.audio = "aurora";
+  };
   catalogVisibleEverywhere =
     lib.all
       (
         hostName:
-        hosts.${hostName}.config.nori.inventory.workloads.jellyfin.endpoints.media.runsOn == "workstation"
+        lib.all (
+          workloadName:
+          lib.all (
+            endpointName:
+            hosts.${hostName}.config.nori.inventory.workloads.${workloadName}.endpoints.${endpointName}.runsOn
+            == migratedCatalogEndpoints.${workloadName}.${endpointName}
+          ) (lib.attrNames migratedCatalogEndpoints.${workloadName})
+        ) (lib.attrNames migratedCatalogEndpoints)
       )
       [
         "workstation"
@@ -441,8 +473,8 @@ else
     Inventory matches legacy:   ${toString inventoryMatchesLegacy}
     Workload placement matches: ${toString workloadsMatch}
     Route fingerprints match:   ${toString routesMatch}
-    Jellyfin runtime placement: ${toString runtimePlacementCorrect}
-    Jellyfin catalog global:    ${toString catalogVisibleEverywhere}
+    Migrated runtime placement: ${toString runtimePlacementCorrect}
+    Migrated catalog global:    ${toString catalogVisibleEverywhere}
 
     Expected workloads: ${builtins.toJSON expectedWorkloads}
     Inventory workloads: ${builtins.toJSON actualWorkloads}
