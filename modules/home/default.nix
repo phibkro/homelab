@@ -2,6 +2,7 @@
   inputs,
   nixpkgs,
   home-manager,
+  standaloneHomes,
 }:
 
 /**
@@ -13,24 +14,16 @@
 
   Activate with `home-manager switch --flake .#<name>`.
 */
-let
-  # Mac pkgs with allowUnfree so claude-code (unfree license) resolves.
-  # Same pattern as `pkgsUnfree` in flake.nix for the dev shell.
-  darwinPkgs = import nixpkgs {
-    system = "x86_64-darwin";
-    config.allowUnfree = true;
-  };
-in
 {
-  homeConfigurations.macbook = home-manager.lib.homeManagerConfiguration {
-    pkgs = darwinPkgs;
-    /**
-      Pass `inputs` to home-manager modules so `home/claude-code/`
-      can reach the third-party-skill flake inputs (superpowers,
-      caveman, anthropics-skills). Workstation gets the same via
-      `extraSpecialArgs` in its NixOS-side home-manager wrapper.
-    */
-    extraSpecialArgs = { inherit inputs; };
-    modules = [ ../machines/macbook/home.nix ];
-  };
+  homeConfigurations = builtins.mapAttrs (
+    _name: host:
+    home-manager.lib.homeManagerConfiguration {
+      pkgs = import nixpkgs {
+        system = host.homeSystem;
+        config.allowUnfree = true;
+      };
+      extraSpecialArgs = { inherit inputs; };
+      modules = [ host.homeModule ];
+    }
+  ) standaloneHomes;
 }

@@ -16,6 +16,7 @@ let
   datasets = import ./datasets.nix;
 
   hostNames = lib.attrNames hosts;
+  nixosHostNames = lib.attrNames (lib.filterAttrs (_: host: host.kind == "nixos") hosts);
   profileNames = lib.attrNames profiles;
   workloadNames = lib.attrNames workloadCatalog;
 
@@ -136,7 +137,7 @@ let
     name: host:
     host.identity
     // {
-      inherit (host) profiles;
+      inherit (host) kind profiles;
       workloads = workloadsFor name;
     }
   ) hosts;
@@ -197,6 +198,7 @@ assert lib.assertMsg (invalidArtifactWorkloads == { })
       systemModulesFor
       runtimeModulesFor
       lanRoutes
+      nixosHostNames
       ;
   };
 }

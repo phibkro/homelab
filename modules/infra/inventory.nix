@@ -12,7 +12,10 @@ let
   inherit (lib) mkOption types;
 
   identityOptions = {
-    tailnetIp = mkOption { type = types.str; };
+    tailnetIp = mkOption {
+      type = types.nullOr types.str;
+      default = null;
+    };
     lanIp = mkOption {
       type = types.nullOr types.str;
       default = null;
@@ -22,6 +25,7 @@ let
         "workhorse"
         "appliance"
         "agent"
+        "client"
       ];
     };
     roleOneLiner = mkOption { type = types.str; };
@@ -32,6 +36,12 @@ let
 
   hostType = types.submodule {
     options = identityOptions // {
+      kind = mkOption {
+        type = types.enum [
+          "nixos"
+          "home-manager"
+        ];
+      };
       profiles = mkOption { type = types.listOf types.str; };
       workloads = mkOption { type = types.listOf types.str; };
     };

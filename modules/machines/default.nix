@@ -47,12 +47,13 @@
 let
   inventory = import ../../inventory { inherit lib; };
   hosts = inventory.internal.hosts;
+  nixosHosts = lib.filterAttrs (_: host: host.kind == "nixos") hosts;
+  homeManagerHosts = lib.filterAttrs (_: host: host.kind == "home-manager") hosts;
 
-  hostRegistry = lib.mapAttrs (_: host: host.identity) hosts;
-
-  standaloneHomes = {
-    macbook = ./macbook/home.nix;
-  };
+  hostRegistry = lib.mapAttrs (_: host: host.identity) nixosHosts;
+  standaloneHomes = lib.mapAttrs (_: host: {
+    inherit (host) homeModule homeSystem;
+  }) homeManagerHosts;
 
   mkHost =
     name: host:
@@ -83,6 +84,6 @@ let
     };
 in
 {
-  nixosConfigurations = lib.mapAttrs mkHost hosts;
+  nixosConfigurations = lib.mapAttrs mkHost nixosHosts;
   inherit standaloneHomes inventory;
 }

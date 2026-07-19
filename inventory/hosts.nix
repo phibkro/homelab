@@ -8,6 +8,7 @@
 */
 {
   workstation = {
+    kind = "nixos";
     systemModule = ../modules/machines/workstation;
     homeModule = ../modules/machines/workstation/home.nix;
     profiles = [
@@ -44,6 +45,7 @@
   };
 
   pi = {
+    kind = "nixos";
     systemModule = ../modules/machines/pi;
     homeModule = ../modules/machines/pi/home.nix;
     profiles = [
@@ -71,6 +73,7 @@
   };
 
   pavilion = {
+    kind = "nixos";
     systemModule = ../modules/machines/pavilion;
     homeModule = ../modules/machines/pavilion/home.nix;
     profiles = [
@@ -96,6 +99,7 @@
   };
 
   aurora = {
+    kind = "nixos";
     systemModule = ../modules/machines/aurora;
     homeModule = ../modules/machines/aurora/home.nix;
     profiles = [
@@ -124,6 +128,27 @@
         Grafana). Samba shares for `/mnt/family/*`. OneTouch
         restic vault. Always-on so it survives workstation's
         sleep / outage.
+      '';
+    };
+  };
+
+  macbook = {
+    kind = "home-manager";
+    homeSystem = "x86_64-darwin";
+    homeModule = ../modules/machines/macbook/home.nix;
+    profiles = [ ];
+    workloads = [ ];
+    identity = {
+      tailnetIp = null;
+      lanIp = null;
+      role = "client";
+      roleOneLiner = "portable operator client";
+      codename = "macbook";
+      hardware = "Intel MacBook · x86_64-darwin · standalone Home Manager";
+      primaryJob = ''
+        Portable operator console for reviewing, administering, and
+        consuming homelab services over Tailscale. Home Manager follows
+        the final x86_64-darwin release line independently of Linux hosts.
       '';
     };
   };
