@@ -20,7 +20,7 @@ _: {
 
       /*
         Layer OSD ("which special-workspace tag is now showing" —
-        modules/home/desktop/hypr-rice/default.nix's layer-toggle/layer-cycle
+        modules/home/desktop/hypr-rice/runtime.nix's layer-toggle/layer-cycle
         scripts send `notify-send -a layer-osd`). Scoped to this one
         app-name so regular notifications keep the corner/5s default;
         only this criteria gets the center/fast-timeout toast treatment.

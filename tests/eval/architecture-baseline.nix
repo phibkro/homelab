@@ -315,6 +315,10 @@ let
         "pavilion"
       ];
 
+  riceInterfaceCorrect =
+    hosts.workstation.config.home-manager.users.nori.nori.hyprRice.enable
+    && hosts.workstation.config.home-manager.users.nori.wayland.windowManager.hyprland.enable;
+
   expectedRoutes = {
     ai = {
       port = 11434;
@@ -600,6 +604,7 @@ if
   && papersFetchCompatibility
   && systemProfileRealizationCorrect
   && homeManagerRealizationCorrect
+  && riceInterfaceCorrect
 then
   "ok — architecture workload placement + route behavior baseline unchanged"
 else
@@ -614,6 +619,7 @@ else
     Papers-fetch compatibility: ${toString papersFetchCompatibility}
     System profile realization: ${toString systemProfileRealizationCorrect}
     Home Manager realization:   ${toString homeManagerRealizationCorrect}
+    Rice interface realization: ${toString riceInterfaceCorrect}
 
     Expected workloads: ${builtins.toJSON expectedWorkloads}
     Inventory workloads: ${builtins.toJSON actualWorkloads}

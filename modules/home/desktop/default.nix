@@ -14,4 +14,6 @@ _: {
     ./waybar.nix
     ./wayland-pipewire-idle-inhibit.nix
   ];
+
+  nori.hyprRice.enable = true;
 }

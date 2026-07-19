@@ -116,7 +116,7 @@
       Per-target opt-outs at NixOS scope go here when needed. Targets
       that live at home-manager scope (hyprlock, alacritty, etc.) opt
       out from the home-manager config instead — see
-      modules/home/desktop/hypr-rice/default.nix `stylix.targets.<X>.enable`.
+      modules/home/desktop/hypr-rice/runtime.nix `stylix.targets.<X>.enable`.
     */
 
   };
