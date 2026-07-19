@@ -10,7 +10,7 @@ let
     `config.nori.lanRoutes`. Each service module declares a
     `dashboard = { ... }` block on its own lanRoute (schema in
     modules/infra/networking/default.nix); URL is derived from the route name
-    as `https://<n>.nori.lan`, so URL drift is impossible.
+    against the canonical inventory-backed domain, so URL drift is impossible.
   */
   dashed = lib.filterAttrs (_: r: r.dashboard != null) config.nori.lanRoutes;
 
@@ -30,20 +30,21 @@ let
 
   toBookmarkLink = name: r: {
     inherit (r.dashboard) title icon description;
-    url = "https://${name}.nori.lan";
+    url = "https://${name}.${config.nori.domain}";
   };
 
   inGroup = g: lib.filterAttrs (_: r: r.dashboard.group == g) dashed;
 in
 {
   /*
-    Glance — family-facing landing page at home.nori.lan.
+    Glance — family-facing landing page at
+    `home.${config.nori.domain}`.
 
     Three-column layout (small | full | small) — desktop side-by-side,
     phone stacks as scrollable sections.
 
       Status   (col 1, small)  observational — calendar, weather, host stats
-      Apps     (col 2, full)   navigation — grouped bookmarks for *.nori.lan
+      Apps     (col 2, full)   navigation — grouped service bookmarks
       Read     (col 3, small)  consumption — Twitch live-state, RSS
 
     Cross-host stats (Pi) and service uptime monitoring intentionally

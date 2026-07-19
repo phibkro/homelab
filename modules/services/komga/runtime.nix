@@ -14,7 +14,7 @@
     the settings.server.port submodule.
 
     First-run setup:
-      1. Visit https://comics.nori.lan
+      1. Visit https://comics.home.phibkro.org
       2. Create the first user (becomes admin) on the registration form
       3. Libraries → Add Library →
            Name: Comics

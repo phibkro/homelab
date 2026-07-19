@@ -28,7 +28,7 @@
     full-text index + metadata want a real RDBMS at archive scale.
 
     First-run setup:
-      1. Visit https://papers.nori.lan
+      1. Visit https://papers.home.phibkro.org
       2. paperless-manage createsuperuser  (on aurora, as the
          paperless user) — or set settings.PAPERLESS_ADMIN_USER +
          a passwordFile. No superuser is auto-created without one.

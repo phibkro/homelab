@@ -14,20 +14,20 @@ _:
            oidc-requests-client-secret: '<raw>'
            oidc-requests-client-secret-hash: '<hash>'
       3. just rebuild
-      4. Visit https://requests.nori.lan
+      4. Visit https://requests.home.phibkro.org
       5. First-time wizard: set up sign-in method
            Pick "Local accounts" or "Jellyfin" — either works alongside
            OIDC. Create a master admin first (recovery path if Authelia
            is ever down).
       6. Settings → General → OpenID Connect:
-           Issuer URL:   https://auth.nori.lan
+           Issuer URL:   https://auth.home.phibkro.org
            Client ID:    requests
            Client Secret: paste raw secret from
                           /run/secrets/oidc-requests-client-secret
                           (cat it on the host)
            Scopes:       openid email profile
            Save. The redirect URI in Authelia (auto-set by lan-route) is
-           https://requests.nori.lan/login/oidc-callback — must match
+           https://requests.home.phibkro.org/login/oidc-callback — must match
            whatever Jellyseerr actually uses; tweak the lanRoute
            `oidc.redirectPath` below if Jellyseerr's docs say otherwise.
       7. Add Sonarr → URL http://localhost:8989, paste API key, default

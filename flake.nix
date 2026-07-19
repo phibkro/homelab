@@ -1288,6 +1288,20 @@
                 '';
 
               /**
+                Future status and onboarding catalogs expose the minimum
+                presentation policy and no internal topology.
+              */
+              eval-presentations =
+                let
+                  result = import ./tests/eval/presentations.nix {
+                    inherit pkgs lib inputs;
+                  };
+                in
+                pkgs.runCommandLocal "eval-presentations" { } ''
+                  echo ${lib.escapeShellArg result} > $out
+                '';
+
+              /**
                 System adapters must be selected only by explicit profiles.
               */
               eval-system-profile-adapters =

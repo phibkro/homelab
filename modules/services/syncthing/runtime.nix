@@ -11,13 +11,13 @@
 
     Ports:
       8384  WebUI (localhost-only by default; Caddy proxies via
-            sync.nori.lan)
+            sync.home.phibkro.org)
       22000 TCP/UDP peer protocol — opened on tailscale0 below so
             other tailnet devices can connect directly
       21027 UDP local discovery — LAN only, default-deny tailnet OK
 
     First-run:
-      1. Visit https://sync.nori.lan — Syncthing web UI shows the
+      1. Visit https://sync.home.phibkro.org — Syncthing web UI shows the
          device's ID. No login required by default; access is gated by
          tailnet trust + Caddy. Optionally set Settings → GUI → user/pass.
       2. On other devices (Mac, phone, future laptop): install

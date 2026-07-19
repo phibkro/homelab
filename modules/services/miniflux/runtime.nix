@@ -12,7 +12,7 @@
            oidc-news-client-secret-hash: '<hash from just generate-oidc-key>'
            miniflux-admin-password:      '<10+ chars; first-login fallback>'
       3. just rebuild
-      4. https://news.nori.lan → click "Continue with Authelia". OIDC
+      4. https://news.home.phibkro.org → click "Continue with Authelia". OIDC
          auto-creates the matching miniflux account on first SSO via
          OAUTH2_USER_CREATION=1; first user in is the admin.
       5. The `admin` account from miniflux-admin-password is the

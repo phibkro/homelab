@@ -9,6 +9,12 @@
       deploymentIndex = pkgs.writeText "homelab-deployment-index.json" (
         builtins.toJSON inputs.self.lib.noriDeployment
       );
+      statusCatalog = pkgs.writeText "homelab-status.json" (
+        builtins.toJSON inputs.self.lib.noriInventory.status
+      );
+      portalCatalog = pkgs.writeText "homelab-portal.json" (
+        builtins.toJSON inputs.self.lib.noriInventory.portal
+      );
       deploymentPlan = pkgs.writeShellApplication {
         name = "deployment-plan";
         runtimeInputs = [
@@ -23,6 +29,8 @@
     in
     {
       packages.inventory-json = publicInventory;
+      packages.status-json = statusCatalog;
+      packages.portal-json = portalCatalog;
       packages.deployment-plan = deploymentPlan;
       apps.deployment-plan = {
         type = "app";

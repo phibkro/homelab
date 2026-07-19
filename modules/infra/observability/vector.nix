@@ -17,7 +17,7 @@
     pi: workstation is the producer, pi is the durable observer.
     Direct tailnet HTTP to pi:9428, NOT via Caddy — write-path
     shouldn't traverse Caddy (would make Caddy a SPoF for ingest;
-    human-facing UI at https://logs.nori.lan stays via Caddy).
+    human-facing UI at https://logs.home.phibkro.org stays via Caddy).
 
     Pi ships its own journald too. Pi-to-pi over loopback-via-tailnet
     works fine and is the easiest way to keep pi's own service

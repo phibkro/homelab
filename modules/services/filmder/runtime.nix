@@ -131,7 +131,7 @@ in
   };
 
   # Static-file server fronting /var/lib/filmder/dist; Caddy reverse-
-  # proxies `https://filmder.nori.lan` → here.
+  # proxies `https://filmder.home.phibkro.org` → here.
   systemd.services.filmder-serve = {
     description = "Serve filmder static files for Caddy reverse-proxy";
     after = [ "filmder-build.service" ];

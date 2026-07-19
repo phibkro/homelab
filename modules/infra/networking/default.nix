@@ -83,11 +83,9 @@
   name, Authelia cookie domain + issuer URL, and OIDC redirect URI
   reads from it.
 
-  Transitional `*.nori.lan` redirect: pi's Caddy still serves
-  `*.nori.lan` (Caddy internal CA) and 301-redirects to the same
-  path under `home.phibkro.org`. Drop this block from `caddy.nix` +
-  the parallel entries in `blocky` customDNS once family bookmarks
-  have migrated.
+  Transitional domains declared by `nori.inventory.site.deprecatedDomains`
+  remain in Blocky and receive an HTTP 301 from Caddy to the canonical domain.
+  Remove a domain from inventory once family bookmarks have migrated.
 
   ## Naming: function over brand
 
@@ -98,6 +96,7 @@
   `lint.functionNamedSubdomains` TOML rule.
 */
 let
+  site = import ../../../inventory/site.nix;
   inherit (lib)
     mkOption
     types
@@ -141,7 +140,7 @@ in
 
   options.nori.domain = mkOption {
     type = types.str;
-    default = "home.phibkro.org";
+    default = (import ../../../inventory/site.nix).domain;
     description = ''
       Parent DNS domain for the homelab's `*.<domain>` services.
       Single source of truth: vhost names, Authelia cookie domain,
@@ -189,7 +188,7 @@ in
       # eval-fails if zero or more than one matches.
     '';
     description = ''
-      LAN IP that *.nori.lan names resolve to. Derived from the
+      LAN IP that service-domain names resolve to. Derived from the
       nori.hosts registry as "the unique host with role=workhorse
       and a non-null lanIp" (see modules/infra/hosts.nix). When
       a future second workhorse with a static LAN lease lands, the
@@ -208,14 +207,14 @@ in
 
       Consumers: Blocky's forwarder mode (modules/infra/networking/blocky.nix)
       and the Blocky DNS generator below. Both want a single "where
-      does *.nori.lan live" address.
+      does the service namespace live" address.
     '';
   };
 
   options.nori.lanRoutes = mkOption {
     default = { };
     description = ''
-      Services to expose under *.nori.lan via Caddy reverse proxy +
+      Services to expose under the canonical domain via Caddy reverse proxy +
       Blocky DNS. Attribute name = subdomain; value declares the
       backend.
     '';
@@ -280,7 +279,7 @@ in
             description = ''
               Optional rewrite of the `Host` request header before
               forwarding to the upstream. By default Caddy forwards
-              the original Host (the public `<n>.nori.lan`), which
+              the original Host (the canonical `<n>.<domain>`), which
               most backends accept. Set this when a backend validates
               Host as a DNS-rebinding defence and only accepts the
               address on which it is bound.
@@ -416,9 +415,9 @@ in
             default = null;
             description = ''
               If set, this route appears on the Glance dashboard
-              (https://home.nori.lan) — both as an uptime-monitor dot
+              (`https://home.<domain>`) — both as an uptime-monitor dot
               and as a grouped bookmark. The URL is derived from the
-              route name as `https://<name>.nori.lan`; only metadata
+              route name and canonical domain; only metadata
               lives here. Glance consumes the whole nori.lanRoutes
               attrset and renders entries with `dashboard != null`.
 
@@ -492,8 +491,8 @@ in
               Caddy layer. Caddy asks Authelia's `/api/verify` whether
               the request's session cookie is valid before forwarding;
               if not, Authelia issues a 302 to the portal. The session
-              cookie at *.nori.lan covers every forward-auth'd route —
-              log in once at https://auth.nori.lan, navigate to any
+              cookie at the canonical domain covers every forward-auth'd route —
+              log in once at `https://auth.<domain>`, navigate to any
               gated service without re-auth.
 
               Used for services that don't have native OIDC client
@@ -560,7 +559,7 @@ in
                   redirectPath = mkOption {
                     type = types.str;
                     description = ''
-                      Path appended to https://<name>.nori.lan to form
+                      Path appended to `https://<name>.<domain>` to form
                       the OIDC redirect URI. Service-specific:
                         Open WebUI:  /oauth/oidc/callback
                         PocketBase:  /api/oauth2-redirect
@@ -674,7 +673,7 @@ in
           assertion = lib.all (r: lib.hasPrefix "/" r.oidc.redirectPath) (lib.attrValues oidcRoutes);
           message = ''
             Every nori.lanRoutes.<n>.oidc.redirectPath must start
-            with "/" — it's appended to https://<n>.nori.lan to form
+            with "/" — it's appended to `https://<n>.<domain>` to form
             the OIDC redirect URI.
           '';
         }
@@ -774,7 +773,7 @@ in
         lib.concatStringsSep "\n" (lib.mapAttrsToList routeBlock routes);
 
       services.blocky.settings.customDNS.mapping =
-        # Primary mapping — every route name under the new domain.
+        # Primary mapping — every route name under the canonical domain.
         (mapAttrs' (
           name: _: nameValuePair "${name}.${config.nori.domain}" config.nori.lanIp
         ) config.nori.lanRoutes)
@@ -785,7 +784,11 @@ in
           devices have all migrated bookmarks. Until then, every route
           gets a parallel `<name>.nori.lan` entry pointing at the same IP.
         */
-        // (mapAttrs' (name: _: nameValuePair "${name}.nori.lan" config.nori.lanIp) config.nori.lanRoutes);
+        // lib.foldl' (
+          aliases: domain:
+          aliases
+          // mapAttrs' (name: _: nameValuePair "${name}.${domain}" config.nori.lanIp) config.nori.lanRoutes
+        ) { } site.deprecatedDomains;
 
       /*
         Tailnet firewall: open backend ports for opt-in routes only,

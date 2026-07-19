@@ -8,7 +8,7 @@
     writes the .srt/.ass files alongside the video files.
 
     First-run setup:
-      1. Visit https://subtitles.nori.lan
+      1. Visit https://subtitles.home.phibkro.org
       2. Set admin password
       3. Settings → Languages → enabled languages (Norwegian + English
          most common)

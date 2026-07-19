@@ -11,7 +11,7 @@ in
 {
   /*
     Navidrome — Subsonic-protocol music server. Family-facing playback;
-    browser UI at https://audio.nori.lan, Subsonic-API clients
+    browser UI at https://audio.home.phibkro.org, Subsonic-API clients
     (Symfonium, DSub, play:Sub, Substreamer, Sonixd) connect to the
     same URL.
 
@@ -32,7 +32,7 @@ in
            oidc-audio-client-secret: '<raw>'
            oidc-audio-client-secret-hash: '<hash>'
       3. just rebuild
-      4. https://audio.nori.lan
+      4. https://audio.home.phibkro.org
       5. First-launch wizard — create master admin account (this is
          the recovery path if Authelia is ever down). Use a real
          password manager entry.
@@ -48,7 +48,7 @@ in
     the per-user "Subsonic API password" set inside Navidrome:
       Settings → Personal → Generate Subsonic API token
     Connection details for clients:
-      Server URL:  https://audio.nori.lan
+      Server URL:  https://audio.home.phibkro.org
       Username:    <navidrome username>
       Password:    <subsonic-api token, NOT the web password>
 

@@ -4,7 +4,7 @@
   /*
     Radicale — CalDAV + CardDAV server. Replaces Google Calendar /
     Contacts dependency for the household. Phones (iOS Calendar,
-    Android DAVx5) sync to https://calendar.nori.lan/ over the tailnet.
+    Android DAVx5) sync to https://calendar.home.phibkro.org/ over the tailnet.
 
     First-run setup:
       1. Create the htpasswd file (one-time, on the host):
@@ -12,13 +12,13 @@
              /var/lib/radicale/users nori
            sudo chown radicale:radicale /var/lib/radicale/users
            sudo chmod 0640 /var/lib/radicale/users
-      2. Visit https://calendar.nori.lan, log in with the credentials
+      2. Visit https://calendar.home.phibkro.org, log in with the credentials
          set above. Create a default calendar + addressbook for nori.
       3. On the iPhone: Settings → Calendar → Accounts → Add Account →
-         Other → CalDAV. Server: calendar.nori.lan, user/pass as set.
+         Other → CalDAV. Server: calendar.home.phibkro.org, user/pass as set.
          Same shape for CardDAV.
       4. On Android: install DAVx5 (F-Droid), add account with the
-         base URL https://calendar.nori.lan and creds.
+         base URL https://calendar.home.phibkro.org and creds.
   */
   services.radicale = {
     enable = true;

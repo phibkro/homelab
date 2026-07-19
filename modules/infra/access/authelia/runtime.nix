@@ -49,7 +49,7 @@ in
     Authelia — SSO portal. Chosen over Authentik / Keycloak for
     declarative-first design + ~50MB footprint + good NixOS module.
 
-    Connect: https://auth.nori.lan — user = nori, password from
+    Connect: https://auth.home.phibkro.org — user = nori, password from
     secrets bootstrap. Add an OIDC client by declaring
     `nori.lanRoutes.<name>.oidc = { ... }` in the consuming module
     (see open-webui.nix / beszel.nix). OIDC client secrets are

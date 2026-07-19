@@ -16,7 +16,7 @@
            oidc-vault-client-secret: '<raw>'
            oidc-vault-client-secret-hash: '<paste-hash-from-just-oidc-key>'
       3. just rebuild
-      4. Connect to https://vault.nori.lan
+      4. Connect to https://vault.home.phibkro.org
       5. Create master account (used as password-fallback if Authelia
          is ever down; SSO_ONLY = false leaves the door open).
       6. Sign out, click "Continue with Authelia" — should round-trip
@@ -24,7 +24,7 @@
 
     === Migration from cloud Bitwarden (one-time) ===
       - cloud → Tools → Export Vault → "Bitwarden (encrypted json)"
-      - vault.nori.lan → Tools → Import → Bitwarden JSON
+      - vault.home.phibkro.org → Tools → Import → Bitwarden JSON
       - verify all entries opened correctly
       - keep the cloud account dormant for ~30 days as recovery
         before deleting (Vaultwarden bugs late-discovered are
@@ -53,7 +53,7 @@
         the /identity/accounts/register endpoint that creates new
         accounts. To onboard a new user (family member, etc.):
           1. flip to `true` for one rebuild
-          2. user registers a master account at vault.nori.lan
+          2. user registers a master account at vault.home.phibkro.org
           3. ensure their Authelia user has the same email so
              SSO_SIGNUPS_MATCH_EMAIL links the SSO identity
           4. flip back to `false`

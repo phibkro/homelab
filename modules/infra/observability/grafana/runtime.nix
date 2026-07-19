@@ -21,8 +21,9 @@
 
   /**
     Grafana — operator's cross-source observability console at
-    `ops.nori.lan`. Distinct from Glance (`home.nori.lan`, family-facing
-    landing) and Beszel (`metrics.nori.lan`, single-source telemetry
+    `ops.home.phibkro.org`. Distinct from Glance
+    (`home.home.phibkro.org`, family-facing landing) and Beszel
+    (`metrics.home.phibkro.org`, single-source telemetry
     native UI). Grafana's role here is the join — VictoriaLogs LogsQL
     + (future) VictoriaMetrics time-series in one queryable view, with
     operator-owned dashboards committed alongside the rest of the

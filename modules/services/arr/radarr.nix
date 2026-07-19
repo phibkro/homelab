@@ -7,7 +7,7 @@
     finished movies into the movies library.
 
     First-run setup:
-      1. Visit https://movies.nori.lan
+      1. Visit https://movies.home.phibkro.org
       2. Set admin password
       3. Settings → Media Management → Root Folders →
            /mnt/media/downloads/movies

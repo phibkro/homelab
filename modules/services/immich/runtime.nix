@@ -18,11 +18,11 @@
     via the web UI (External Library) or `immich-cli upload`.
 
     First-run setup:
-      1. Visit https://photos.nori.lan
+      1. Visit https://photos.home.phibkro.org
       2. Create admin account on first-connect form
       3. Settings → Users → Add User per family member
       4. On phone: install Immich app from app store, point at
-         https://photos.nori.lan over tailnet, log in, enable
+         https://photos.home.phibkro.org over tailnet, log in, enable
          auto-backup
       5. (optional) Import existing /mnt/media/photos/{2022,...}
          via the web UI (Settings → External Library) or

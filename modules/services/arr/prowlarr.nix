@@ -8,7 +8,7 @@ _:
     indexer list. One source of truth.
 
     First-run setup:
-      1. Visit https://indexers.nori.lan
+      1. Visit https://indexers.home.phibkro.org
       2. Set admin password
       3. Settings → General → Authentication → "Forms (Login Page)"
          (default; tailnet trust is the boundary, but local-only access

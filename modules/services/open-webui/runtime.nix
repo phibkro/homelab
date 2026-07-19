@@ -11,7 +11,7 @@ let
     state at /var/lib/private/open-webui (DynamicUser symlink). The
     single boolean toggles:
       * the systemd unit
-      * the https://chat.nori.lan Caddy route + Authelia OIDC client
+      * the https://chat.home.phibkro.org Caddy route + Authelia OIDC client
       * Gatus monitor + Glance dashboard entry
       * the daily sqlite3-dump-then-restic backup
     Paused 2026-06-06 — open-webui's Python process held a steady

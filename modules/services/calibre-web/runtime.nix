@@ -19,7 +19,7 @@
     off the 8080 collision with Open WebUI) — calibre-web → 8084.
 
     First-run setup:
-      1. Visit https://books.nori.lan
+      1. Visit https://books.home.phibkro.org
       2. Default admin login: admin / admin123
       3. Admin → Edit Basic Configuration → Calibre Database Directory
            /mnt/media/library/books

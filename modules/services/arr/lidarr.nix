@@ -28,7 +28,7 @@ in
            Username/Password: from qBittorrent
            Category: music-lidarr
       5. Copy Lidarr's API key from Settings → General → API Key.
-         In Prowlarr (indexers.nori.lan) → Settings → Apps → Add →
+         In Prowlarr (indexers.home.phibkro.org) → Settings → Apps → Add →
          Lidarr.
       6. Add Artists / Albums via the UI.
   */

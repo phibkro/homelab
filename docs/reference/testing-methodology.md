@@ -61,7 +61,7 @@ Examples in this homelab:
 | "lanRoutes → caddy vhost emits valid config" | nixosTest | requires caddy to parse it |
 | "restic snapshot < 25h old" | runtime | depends on actual schedule firing on the live host |
 | "process-exporter publishing for workstation" | runtime | requires real scrape from real VM |
-| "Caddy serves https://<name>.nori.lan with 200" | runtime | DNS + TLS + service all live together |
+| "Caddy serves `https://<name>.home.phibkro.org` with 200" | runtime | DNS + TLS + service all live together |
 
 ## Speed budgets — the load-bearing constraint
 

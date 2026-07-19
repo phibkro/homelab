@@ -14,6 +14,7 @@ let
   profiles = import ./profiles.nix;
   workloadCatalog = import ./workloads.nix { inherit lib; };
   datasets = import ./datasets.nix;
+  site = import ./site.nix;
 
   hostNames = lib.attrNames hosts;
   nixosHostNames = lib.attrNames (lib.filterAttrs (_: host: host.kind == "nixos") hosts);
@@ -176,6 +177,72 @@ let
     inherit activationOrder;
   };
 
+  authenticationFor =
+    endpoint:
+    if endpoint ? oidc then
+      "oidc"
+    else if endpoint ? forwardAuth then
+      "forward-auth"
+    else if endpoint ? noAuthReason then
+      "service-native-or-exception"
+    else
+      "none";
+
+  visibleToFor =
+    audience:
+    if audience == "public" then
+      [
+        "public"
+        "family"
+        "operator"
+      ]
+    else if audience == "family" then
+      [
+        "family"
+        "operator"
+      ]
+    else
+      [ "operator" ];
+
+  presentationFor =
+    endpointName: endpoint:
+    let
+      dashboard = endpoint.dashboard or null;
+      audience = endpoint.audience or "operator";
+    in
+    {
+      title = if dashboard == null then endpointName else dashboard.title;
+      description = if dashboard == null then "" else dashboard.description;
+      url = "https://${endpointName}.${site.domain}";
+      inherit audience;
+      authentication = authenticationFor endpoint;
+      registrationRequired = audience != "public";
+      visibleTo = visibleToFor audience;
+    };
+
+  presentationCatalog = lib.mapAttrs presentationFor lanRoutes;
+  monitoredEndpointNames = lib.attrNames (
+    lib.filterAttrs (_name: endpoint: (endpoint.monitor or null) != null) lanRoutes
+  );
+  dashboardEndpointNames = lib.attrNames (
+    lib.filterAttrs (_name: endpoint: (endpoint.dashboard or null) != null) lanRoutes
+  );
+  statusEndpointNames = lib.filter (
+    endpointName: (lanRoutes.${endpointName}.audience or "operator") != "operator"
+  ) monitoredEndpointNames;
+
+  status = {
+    services = lib.getAttrs statusEndpointNames presentationCatalog;
+  };
+  portal = {
+    accessTiers = {
+      public = "Visible without a homelab account";
+      family = "Visible to registered family members and operators";
+      operator = "Visible only to homelab operators";
+    };
+    services = lib.getAttrs dashboardEndpointNames presentationCatalog;
+  };
+
   repoRoot = toString ../.;
   runtimeRootFor =
     workload:
@@ -217,6 +284,7 @@ let
     workloads = publicWorkloads;
     inherit datasets;
     deployment = publicDeployment;
+    inherit site status portal;
   };
 
   forHost =
@@ -252,6 +320,7 @@ assert lib.assertMsg (invalidArtifactWorkloads == { })
       hosts
       profiles
       datasets
+      site
       workloadCatalog
       workloadsFor
       systemModulesFor

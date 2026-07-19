@@ -7,7 +7,7 @@
     complete dir, hardlinks finished episodes into the shows library.
 
     First-run setup:
-      1. Visit https://tv.nori.lan
+      1. Visit https://tv.home.phibkro.org
       2. Set admin password
       3. Settings → Media Management → Root Folders →
            /mnt/media/downloads/shows
@@ -23,7 +23,7 @@
            Username/Password: from qBittorrent's WebUI auth
            Category: tv-sonarr  (Sonarr files downloads under this label)
       5. Copy Sonarr's API key from Settings → General → API Key.
-         In Prowlarr (indexers.nori.lan) → Settings → Apps → Add →
+         In Prowlarr (indexers.home.phibkro.org) → Settings → Apps → Add →
          Sonarr. Paste API key. Once linked, indexer changes propagate.
       6. Add Series via the UI; Sonarr picks an indexer + sends to
          qBittorrent.

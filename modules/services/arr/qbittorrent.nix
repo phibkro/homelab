@@ -17,7 +17,7 @@
     an explicit firewall rule). Outgoing peer connections still work.
 
     First-run setup (one-shot, after rebuild):
-      1. Visit https://downloads.nori.lan — Caddy forward-auth gates
+      1. Visit https://downloads.home.phibkro.org — Caddy forward-auth gates
          browser access via Authelia; qBittorrent's own login is
          bypassed for localhost (the Caddy hop) per the preStart below.
       2. Save paths + auth-bypass + ban-prevention all declarative

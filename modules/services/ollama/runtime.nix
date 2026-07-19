@@ -11,7 +11,7 @@ let
     toggle (NixOS doesn't reap StateDirectory on disable). Flipping
     this single boolean restores:
       * the systemd unit + CUDA acceleration
-      * the https://ai.nori.lan Caddy route
+      * the https://ai.home.phibkro.org Caddy route
       * Gatus monitor + Glance dashboard entry (both downstream of
         nori.lanRoutes.ai)
   */

@@ -1,10 +1,14 @@
 {
   config,
   inputs,
+  lib,
   pkgs,
   ...
 }:
 
+let
+  site = import ../../../../inventory/site.nix;
+in
 {
   /**
     Caddy reverse proxy — clean *.<nori.domain> subdomain per service,
@@ -90,10 +94,17 @@
     (no TLS handshake offered) — forces bookmark updates rather than
     scary cert warnings.
   */
-  services.caddy.virtualHosts."http://*.nori.lan".extraConfig = ''
-    @sub header_regexp Host ^([^.]+)\.nori\.lan$
-    redir @sub https://{re.sub.1}.${config.nori.domain}{uri} 301
-  '';
+  services.caddy.virtualHosts = lib.listToAttrs (
+    map (
+      domain:
+      lib.nameValuePair "http://*.${domain}" {
+        extraConfig = ''
+          @legacySubdomain header_regexp Host ^([^.]+)\.${lib.escapeRegex domain}$
+          redir @legacySubdomain https://{re.legacySubdomain.1}.${config.nori.domain}{uri} 301
+        '';
+      }
+    ) site.deprecatedDomains
+  );
 
   /*
     Cloudflare Account API Token (40-char alphanumeric, no prefix),

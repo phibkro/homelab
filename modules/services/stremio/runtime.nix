@@ -6,7 +6,7 @@
 /*
   stremio — Stremio Server (the streaming-server backend that pairs
   with the Stremio web/desktop client). Operator-personal; tailnet-only
-  at https://stremio.nori.lan.
+  at https://stremio.home.phibkro.org.
 
   ── Why a hand-rolled module ─────────────────────────────────────
   nixpkgs dropped `stremio` 2026-02-11 (depended on the vulnerable
@@ -19,9 +19,8 @@
   ── Pairing flow ─────────────────────────────────────────────────
   Stremio Web (https://web.stremio.com) won't talk to a plaintext
   server — mixed-content rule. Caddy fronts our server with a valid
-  nori.lan cert (operator's clients trust the local CA via the same
-  mechanism that makes immich-cli + claude-code MCP fetches work),
-  so the client points at https://stremio.nori.lan as its streaming
+  publicly trusted `home.phibkro.org` certificate, so the client points at
+  https://stremio.home.phibkro.org as its streaming
   server URL and the handshake succeeds.
 
   ── State + env ──────────────────────────────────────────────────

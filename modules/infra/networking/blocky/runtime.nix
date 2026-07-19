@@ -6,6 +6,7 @@
 
 let
   cfg = config.nori.blocky;
+  site = import ../../../../inventory/site.nix;
 in
 {
   /**
@@ -31,12 +32,12 @@ in
     ];
     default = "self-hosted";
     description = ''
-      How this host's Blocky resolves *.nori.lan.
+      How this host's Blocky resolves the canonical service namespace.
 
-      * `self-hosted` — auto-generates the *.nori.lan customDNS map
+      * `self-hosted` — auto-generates the service customDNS map
         from `nori.lanRoutes` declarations. Use on hosts that import
         the service modules (i.e. the host the services run on).
-      * `forwarder` — conditionally forwards *.nori.lan queries to
+      * `forwarder` — conditionally forwards service-domain queries to
         the host that runs the services (nori.lanIp). Use on
         observability-only hosts (pi) so they don't have to
         know what services exist on the server.
@@ -47,7 +48,7 @@ in
     type = lib.types.str;
     default = config.nori.lanIp;
     description = ''
-      For `forwarder` role: where to send *.nori.lan queries.
+      For `forwarder` role: where to send service-domain queries.
       Defaults to `nori.lanIp` (the canonical service host).
     '';
   };
@@ -105,11 +106,11 @@ in
         */
         customDNS.customTTL = "1h";
 
-        # Forwarder role: delegate *.nori.lan to the host that has the
-        # actual map.
-        conditional.mapping = lib.mkIf (cfg.role == "forwarder") {
-          "nori.lan" = cfg.forwardTarget;
-        };
+        # Forwarder role: delegate canonical and transitional domains to the
+        # host that has the actual map.
+        conditional.mapping = lib.mkIf (cfg.role == "forwarder") (
+          lib.genAttrs ([ config.nori.domain ] ++ site.deprecatedDomains) (_: cfg.forwardTarget)
+        );
 
         log = {
           level = "info";
