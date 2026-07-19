@@ -4,6 +4,10 @@
   ...
 }:
 
+let
+  musicDataset = config.nori.inventory.datasets.music;
+  musicPath = "${config.nori.fs.library.path}/${musicDataset.storage.relativePath}";
+in
 {
   /*
     Navidrome — Subsonic-protocol music server. Family-facing playback;
@@ -62,7 +66,7 @@
     settings = {
       Address = "0.0.0.0";
       Port = 4533;
-      MusicFolder = "${config.nori.fs.library.path}/music";
+      MusicFolder = musicPath;
       EnableTranscodingConfig = true;
     };
   };
@@ -99,7 +103,7 @@
     Read-only access to the music tier; navidrome's own state at
     /var/lib/private/navidrome rides upstream's StateDirectory.
   */
-  nori.harden.navidrome.readOnlyBinds = [ "${config.nori.fs.library.path}/music" ];
+  nori.harden.navidrome.readOnlyBinds = [ musicPath ];
 
   /*
     Pattern C2 — sqlite3 .backup before restic. DynamicUser's symlink

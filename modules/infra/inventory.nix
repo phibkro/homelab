@@ -46,7 +46,12 @@ let
 
   workloadType = types.submodule {
     options = {
-      kind = mkOption { type = types.enum [ "service" ]; };
+      kind = mkOption {
+        type = types.enum [
+          "service"
+          "job"
+        ];
+      };
       active = mkOption {
         type = types.bool;
         default = true;
@@ -63,6 +68,40 @@ let
       };
       hosts = mkOption { type = types.listOf types.str; };
       profiles = mkOption { type = types.listOf types.str; };
+    };
+  };
+
+  datasetType = types.submodule {
+    options = {
+      description = mkOption { type = types.str; };
+      valueTier = mkOption {
+        type = types.enum [
+          "replaceable"
+          "curated"
+          "irreplaceable"
+        ];
+      };
+      canonicalFormat = mkOption { type = types.str; };
+      storage = mkOption {
+        type = types.submodule {
+          options = {
+            filesystem = mkOption { type = types.str; };
+            relativePath = mkOption { type = types.str; };
+          };
+        };
+      };
+      producers = mkOption { type = types.listOf types.str; };
+      consumers = mkOption { type = types.listOf types.str; };
+      derivedFormats = mkOption { type = types.listOf types.str; };
+      delivery = mkOption {
+        type = types.submodule {
+          options = {
+            protocol = mkOption { type = types.str; };
+            transcodeOnDemand = mkOption { type = types.listOf types.str; };
+            persistentDerivative = mkOption { type = types.bool; };
+          };
+        };
+      };
     };
   };
 in
@@ -92,6 +131,11 @@ in
       type = types.attrsOf workloadType;
       readOnly = true;
       description = "Public-safe workload identity and resolved placement.";
+    };
+    datasets = mkOption {
+      type = types.attrsOf datasetType;
+      readOnly = true;
+      description = "Public-safe canonical dataset ownership, storage, producer, consumer, and delivery contracts.";
     };
   };
 }

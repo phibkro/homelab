@@ -22,7 +22,7 @@
 # every path/window; this script guesses nothing.
 #
 #   MUSIC_INGEST_STAGING            required  transient Syncthing staging dir
-#   MUSIC_INGEST_LIBRARY            required  master library root (holds music/)
+#   MUSIC_INGEST_MASTER             required  canonical music dataset root
 #   MUSIC_INGEST_STABILITY_SECONDS  default 60   mtime-age stability window
 #   MUSIC_INGEST_EXTENSIONS         default "flac jpg jpeg png webp"   file
 #       extensions (no dot, case-insensitive) considered for ingest. FLAC is
@@ -33,14 +33,12 @@
 set -euo pipefail
 
 : "${MUSIC_INGEST_STAGING:?MUSIC_INGEST_STAGING (the Syncthing staging dir) is required}"
-: "${MUSIC_INGEST_LIBRARY:?MUSIC_INGEST_LIBRARY (the master library root) is required}"
+: "${MUSIC_INGEST_MASTER:?MUSIC_INGEST_MASTER (the canonical music dataset root) is required}"
 stability="${MUSIC_INGEST_STABILITY_SECONDS:-60}"
 extensions="${MUSIC_INGEST_EXTENSIONS:-flac jpg jpeg png webp}"
 
 staging="$MUSIC_INGEST_STAGING"
-# music/ under the library root — same layout the FLAC→Opus mirror reads from
-# The master is always ${library}/music: one source of truth for the layout.
-master="$MUSIC_INGEST_LIBRARY/music"
+master="$MUSIC_INGEST_MASTER"
 conflicts="$staging/.conflicts"
 
 if [ ! -d "$staging" ]; then

@@ -131,7 +131,7 @@
 
   # Let the Waydroid Android container reach this host's Samba over its bridge,
   # so Symfonium reads the local music library via SMB (→ 192.168.240.1, share
-  # `media`, path library/music-opus). Android's FUSE storage can't cross a
+  # `media`, path library/music). Android's FUSE storage can't cross a
   # bind-mount of the library into /storage, so SMB over the bridge is the path.
   # Scoped to waydroid0; Samba's hosts-allow gates the 240.x subnet (samba.nix).
   networking.firewall.interfaces.waydroid0.allowedTCPPorts = [ 445 ];

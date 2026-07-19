@@ -8,6 +8,8 @@
 let
   cfg = config.nori.musicIngest;
   libraryPath = config.nori.fs.library.path;
+  musicDataset = config.nori.inventory.datasets.music;
+  musicPath = "${libraryPath}/${musicDataset.storage.relativePath}";
 
   # The ingest logic lives as a standalone script (./music-ingest.sh) so the
   # fixture test (./music-ingest.test.sh) can invoke it directly against a /tmp
@@ -72,8 +74,8 @@ in
         # Structural guard against the contamination incident (runbook
         # music-flac-ingest.md): staging nested inside the master would let the
         # phone's deletes reach the master. Keep them disjoint.
-        assertion = !(lib.hasPrefix "${libraryPath}/music/" "${cfg.stagingPath}/");
-        message = "nori.musicIngest.stagingPath (${cfg.stagingPath}) must NOT be inside the master ${libraryPath}/music — the master must never be deletable via the staging Syncthing folder.";
+        assertion = !(lib.hasPrefix "${musicPath}/" "${cfg.stagingPath}/");
+        message = "nori.musicIngest.stagingPath (${cfg.stagingPath}) must NOT be inside the master ${musicPath} — the master must never be deletable via the staging Syncthing folder.";
       }
     ];
 
@@ -94,7 +96,7 @@ in
       after = [ "local-fs.target" ];
       environment = {
         MUSIC_INGEST_STAGING = cfg.stagingPath;
-        MUSIC_INGEST_LIBRARY = libraryPath;
+        MUSIC_INGEST_MASTER = musicPath;
         MUSIC_INGEST_STABILITY_SECONDS = toString cfg.stabilitySeconds;
       };
       serviceConfig = {

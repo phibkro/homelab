@@ -1,5 +1,8 @@
 { config, ... }:
-
+let
+  musicDataset = config.nori.inventory.datasets.music;
+  musicPath = "${config.nori.fs.library.path}/${musicDataset.storage.relativePath}";
+in
 {
   /*
     Lidarr — music management. Same role as Sonarr/Radarr but for music:
@@ -46,7 +49,7 @@
 
   nori.harden.lidarr.binds = [
     config.nori.fs.downloads.path
-    "${config.nori.fs.library.path}/music"
+    musicPath
   ];
 
   nori.backups.lidarr.include = [ "/var/lib/lidarr" ];

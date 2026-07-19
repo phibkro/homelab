@@ -1245,6 +1245,20 @@
                 '';
 
               /**
+                Canonical datasets project into producer and consumer runtime
+                paths without duplicating their logical storage contract.
+              */
+              eval-datasets =
+                let
+                  result = import ./tests/eval/datasets.nix {
+                    inherit pkgs lib inputs;
+                  };
+                in
+                pkgs.runCommandLocal "eval-datasets" { } ''
+                  echo ${lib.escapeShellArg result} > $out
+                '';
+
+              /**
                 System adapters must be selected only by explicit profiles.
               */
               eval-system-profile-adapters =

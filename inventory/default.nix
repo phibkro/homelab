@@ -13,6 +13,7 @@ let
   hosts = import ./hosts.nix;
   profiles = import ./profiles.nix;
   workloadCatalog = import ./workloads.nix { inherit lib; };
+  datasets = import ./datasets.nix;
 
   hostNames = lib.attrNames hosts;
   profileNames = lib.attrNames profiles;
@@ -27,6 +28,17 @@ let
   );
   unknownWorkloads = lib.subtractLists workloadNames referencedWorkloads;
   unusedWorkloads = lib.subtractLists referencedWorkloads workloadNames;
+
+  datasetWorkloadReferences = lib.unique (
+    lib.concatMap (dataset: dataset.producers ++ dataset.consumers) (lib.attrValues datasets)
+  );
+  unknownDatasetWorkloads = lib.subtractLists workloadNames datasetWorkloadReferences;
+  invalidDatasetPaths = lib.filterAttrs (
+    _name: dataset:
+    dataset.storage.relativePath == ""
+    || lib.hasPrefix "/" dataset.storage.relativePath
+    || lib.hasInfix ".." dataset.storage.relativePath
+  ) datasets;
 
   workloadsFor =
     hostName:
@@ -119,6 +131,7 @@ let
     hosts = publicHosts;
     profiles = publicProfiles;
     workloads = publicWorkloads;
+    inherit datasets;
   };
 
   forHost =
@@ -140,6 +153,10 @@ assert lib.assertMsg (
 ) "inventory: catalog workload(s) have no placement: ${lib.concatStringsSep ", " unusedWorkloads}";
 assert lib.assertMsg (duplicateEndpoints == [ ])
   "inventory: endpoint name(s) have multiple owners: ${lib.concatStringsSep ", " duplicateEndpoints}";
+assert lib.assertMsg (unknownDatasetWorkloads == [ ])
+  "inventory: dataset producer/consumer workload reference(s) do not exist: ${lib.concatStringsSep ", " unknownDatasetWorkloads}";
+assert lib.assertMsg (invalidDatasetPaths == { })
+  "inventory: dataset storage.relativePath must be a non-empty relative path without '..': ${lib.concatStringsSep ", " (lib.attrNames invalidDatasetPaths)}";
 {
   inherit public forHost;
 
@@ -147,6 +164,7 @@ assert lib.assertMsg (duplicateEndpoints == [ ])
     inherit
       hosts
       profiles
+      datasets
       workloadCatalog
       workloadsFor
       systemModulesFor

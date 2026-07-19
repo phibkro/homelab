@@ -101,7 +101,7 @@ set +e
 (
   umask 0002
   MUSIC_INGEST_STAGING="$staging" \
-  MUSIC_INGEST_LIBRARY="$library" \
+  MUSIC_INGEST_MASTER="$master" \
   MUSIC_INGEST_STABILITY_SECONDS=60 \
     bash "$script"
 )
@@ -219,7 +219,7 @@ rm -f "$staging/Artist B/~syncthing~02 transferring.flac.tmp" \
       "$staging/Artist I/cover.jpg"
 master_snapshot_before="$(cd "$master" && find . -type f -exec b3sum --no-names {} \; | sort)"
 set +e
-MUSIC_INGEST_STAGING="$staging" MUSIC_INGEST_LIBRARY="$library" \
+MUSIC_INGEST_STAGING="$staging" MUSIC_INGEST_MASTER="$master" \
   MUSIC_INGEST_STABILITY_SECONDS=60 bash "$script" >/dev/null 2>&1
 rerun_rc=$?
 set -e
