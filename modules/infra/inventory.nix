@@ -262,6 +262,7 @@ in
         options = {
           domain = mkOption { type = types.str; };
           deprecatedDomains = mkOption { type = types.listOf types.str; };
+          entryPlaneHost = mkOption { type = types.str; };
         };
       };
       readOnly = true;

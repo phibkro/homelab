@@ -1,3 +1,6 @@
+let
+  site = import ../../../../../inventory/site.nix;
+in
 {
   kind = "service";
   runtimeModule = ../hub.nix;
@@ -8,7 +11,7 @@
 
   endpoints.metrics = {
     port = 8090;
-    runsOn = "pi";
+    runsOn = site.entryPlaneHost;
     monitor = { };
     audience = "operator";
     oidc = {

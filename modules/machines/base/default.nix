@@ -1,5 +1,9 @@
 { config, ... }:
 
+let
+  site = import ../../../inventory/site.nix;
+in
+
 /**
   Universal NixOS bits every host imports regardless of role.
 
@@ -52,5 +56,5 @@
     and route every client through workstation's now-retired
     Caddy.
   */
-  nori.lanIp = config.nori.hosts.pi.lanIp;
+  nori.lanIp = config.nori.hosts.${site.entryPlaneHost}.lanIp;
 }

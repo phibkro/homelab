@@ -312,6 +312,8 @@ assert lib.assertMsg (invalidDatasetPaths == { })
   "inventory: dataset storage.relativePath must be a non-empty relative path without '..': ${lib.concatStringsSep ", " (lib.attrNames invalidDatasetPaths)}";
 assert lib.assertMsg (invalidArtifactWorkloads == { })
   "inventory: immutable artifact contract or governed legacy exception is invalid for workload(s): ${lib.concatStringsSep ", " (lib.attrNames invalidArtifactWorkloads)}";
+assert lib.assertMsg (entryPlaneHosts == [ site.entryPlaneHost ])
+  "inventory: site.entryPlaneHost must be the only host selecting the entry-plane profile (site=${site.entryPlaneHost}; profiles=${lib.concatStringsSep ", " entryPlaneHosts})";
 {
   inherit public forHost deployment;
 

@@ -60,11 +60,22 @@ let
   portalUsesCanonicalDomain =
     lib.hasInfix "https://media.home.phibkro.org" glanceSettings
     && !lib.hasInfix ".nori.lan" glanceSettings;
+  entryPlaneEndpointsFollowSite =
+    lib.all (endpoint: endpoint.runsOn == inventory.site.entryPlaneHost)
+      [
+        inventory.workloads.authelia.endpoints.auth
+        inventory.workloads."beszel-hub".endpoints.metrics
+        inventory.workloads.gatus.endpoints.status
+        inventory.workloads."ntfy-server".endpoints.alert
+        inventory.workloads.victoriametrics.endpoints.tsdb
+        inventory.workloads."victorialogs-server".endpoints.logs
+      ];
 in
 if
   inventory.site == {
     domain = "home.phibkro.org";
     deprecatedDomains = [ "nori.lan" ];
+    entryPlaneHost = "pi";
   }
   && shapeIsMinimal statusServices
   && shapeIsMinimal portalServices
@@ -72,6 +83,7 @@ if
   && portalPolicyWorks
   && deprecatedDomainPolicyWorks
   && portalUsesCanonicalDomain
+  && entryPlaneEndpointsFollowSite
 then
   "ok — presentation catalogs, portal links, and deprecated redirects derive from the canonical site"
 else
@@ -82,4 +94,5 @@ else
     Status safe:     ${toString statusIsInternetSafe}
     Legacy aliases:  ${toString deprecatedDomainPolicyWorks}
     Portal domains:  ${toString portalUsesCanonicalDomain}
+    Entry plane:     ${toString entryPlaneEndpointsFollowSite}
   ''

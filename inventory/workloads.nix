@@ -1,10 +1,10 @@
 /*
   Stable workload identifiers known to the homelab inventory compiler.
 
-  Phase 1 carries identity only. Catalog metadata and runtime-module handles
-  move here incrementally during the vertical workload migration; keeping the
-  identifiers explicit now lets profile/host references fail before NixOS
-  module evaluation instead of becoming silent strings.
+  Every identifier is aggregated explicitly with its pure manifest below.
+  Keeping the catalog explicit makes profile/host references fail before NixOS
+  module evaluation and prevents directory names or tags from becoming hidden
+  deployment behavior.
 */
 { lib }:
 

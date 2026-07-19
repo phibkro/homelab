@@ -1,3 +1,6 @@
+let
+  site = import ../../../../inventory/site.nix;
+in
 {
   kind = "service";
   runtimeModule = ./runtime.nix;
@@ -7,7 +10,7 @@
   ];
   endpoints.auth = {
     port = 9091;
-    runsOn = "pi";
+    runsOn = site.entryPlaneHost;
     monitor = { };
     audience = "public";
     dashboard = {

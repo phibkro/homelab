@@ -1,3 +1,6 @@
+let
+  site = import ../../../../inventory/site.nix;
+in
 {
   kind = "service";
   runtimeModule = ./runtime.nix;
@@ -8,7 +11,7 @@
 
   endpoints.logs = {
     port = 9428;
-    runsOn = "pi";
+    runsOn = site.entryPlaneHost;
     monitor.path = "/health";
     audience = "operator";
   };

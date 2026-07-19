@@ -1,3 +1,6 @@
+let
+  site = import ../../../../inventory/site.nix;
+in
 {
   kind = "service";
   runtimeModule = ./runtime.nix;
@@ -5,7 +8,7 @@
 
   endpoints.status = {
     port = 8082;
-    runsOn = "pi";
+    runsOn = site.entryPlaneHost;
     exposeOnTailnet = true;
     audience = "public";
     dashboard = {
