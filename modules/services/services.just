@@ -2,15 +2,18 @@
 # Operator-facing recipes for the services layer (per-service workloads).
 # Imported via the root Justfile.
 
-# Each app's `modules/services/<name>.nix` declares a `<name>-build.service`
-# oneshot — this recipe just kicks it. Operator triggers explicitly so
-# `nixos-rebuild switch` stays fast (no npm-install on every rebuild).
+# Each personal-app manifest declares its artifact consumer unit. This recipe
+# resolves that unit through the host's public inventory, so naming and
+# deployability are not inferred from a filesystem convention.
 # Logs stream live, exit code matches the unit's.
 # Usage: just deploy-app filmder
 #
-# Build + publish a personal app's static artifact via its `<name>-build.service` oneshot.
+# Build + publish a personal app through its inventory-declared artifact consumer.
 deploy-app name:
-    sudo systemctl start --wait {{name}}-build.service
-    @echo ""
-    @echo "[deploy-app {{name}}] Last 20 log lines:"
-    @journalctl -u {{name}}-build.service --no-pager -n 20
+    #!/usr/bin/env bash
+    set -euo pipefail
+    unit="$(nix eval --raw ".#nixosConfigurations.$(hostname).config.nori.inventory.workloads.{{name}}.artifact.consumer.unit")"
+    sudo systemctl start --wait "$unit.service"
+    echo ""
+    echo "[deploy-app {{name}}] Last 20 log lines:"
+    journalctl -u "$unit.service" --no-pager -n 20

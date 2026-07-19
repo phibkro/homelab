@@ -1259,6 +1259,20 @@
                 '';
 
               /**
+                Personal products consume explicit immutable artifacts or a
+                fully governed legacy host-build exception.
+              */
+              eval-product-artifacts =
+                let
+                  result = import ./tests/eval/product-artifacts.nix {
+                    inherit pkgs lib inputs;
+                  };
+                in
+                pkgs.runCommandLocal "eval-product-artifacts" { } ''
+                  echo ${lib.escapeShellArg result} > $out
+                '';
+
+              /**
                 System adapters must be selected only by explicit profiles.
               */
               eval-system-profile-adapters =

@@ -15,12 +15,12 @@
   `memory/reference/tailscale_funnel_implementation.md`.
 
   ── Build/deploy shape ─────────────────────────────────────────────
-  Build is an *activation-time systemd oneshot* rather than a Nix
+  Build is a manually triggered *host-side systemd oneshot* rather than a Nix
   flake build, because filmder's TMDB token is read at *build time*
   by Vite and embedded into the JS bundle (`import.meta.env.VITE_*`).
   Nix's hermetic build sandbox can't read /run/secrets/X, so the
   clean `nix build → /nix/store/<hash>-filmder` path doesn't apply.
-  Activation-time build with the secret read in the script is the
+  A host-side build with the secret read in the script is the
   pragmatic compromise.
 
   ── Trigger ──────────────────────────────────────────────────────
@@ -39,7 +39,9 @@
 
 let
   inherit (config.sops) secrets;
-  filmderRepo = "https://github.com/phibkro/filmder.git";
+  artifact = config.nori.inventory.workloads.filmder.artifact;
+  filmderRepo = artifact.source.repository;
+  filmderRef = artifact.source.ref;
   servePort = 9092;
 in
 {
@@ -57,7 +59,7 @@ in
   };
   users.groups.filmder = { };
 
-  systemd.services.filmder-build = {
+  systemd.services.${artifact.consumer.unit} = {
     description = "Build filmder static site (manual trigger via `just deploy-app filmder`)";
     after = [ "network-online.target" ];
     wants = [ "network-online.target" ];
@@ -85,10 +87,10 @@ in
       # 1. Pull or clone source.
       if [ ! -d src/.git ]; then
         rm -rf src
-        git clone --depth 1 ${filmderRepo} src
+        git clone --depth 1 --branch ${filmderRef} ${filmderRepo} src
       else
-        git -C src fetch --depth 1 origin main
-        git -C src reset --hard origin/main
+        git -C src fetch --depth 1 origin ${filmderRef}
+        git -C src reset --hard FETCH_HEAD
       fi
 
       cd src

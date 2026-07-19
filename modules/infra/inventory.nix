@@ -68,6 +68,56 @@ let
       };
       hosts = mkOption { type = types.listOf types.str; };
       profiles = mkOption { type = types.listOf types.str; };
+      artifact = mkOption {
+        type = types.nullOr artifactType;
+        default = null;
+      };
+    };
+  };
+
+  artifactType = types.submodule {
+    options = {
+      kind = mkOption { type = types.enum [ "static-web" ]; };
+      immutable = mkOption { type = types.bool; };
+      source = mkOption {
+        type = types.submodule {
+          options = {
+            repository = mkOption { type = types.str; };
+            ref = mkOption { type = types.str; };
+          };
+        };
+      };
+      consumer = mkOption {
+        type = types.submodule {
+          options = {
+            kind = mkOption {
+              type = types.enum [
+                "nix-package"
+                "release-archive"
+                "oci-image"
+                "legacy-host-build"
+              ];
+            };
+            unit = mkOption {
+              type = types.nullOr types.str;
+              default = null;
+            };
+          };
+        };
+      };
+      legacyException = mkOption {
+        type = types.nullOr (
+          types.submodule {
+            options = {
+              owner = mkOption { type = types.str; };
+              reason = mkOption { type = types.str; };
+              removalTrigger = mkOption { type = types.str; };
+              verification = mkOption { type = types.str; };
+            };
+          }
+        );
+        default = null;
+      };
     };
   };
 

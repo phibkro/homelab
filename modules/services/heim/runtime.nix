@@ -31,7 +31,9 @@
 */
 
 let
-  heimRepo = "https://github.com/phibkro/heim.git";
+  artifact = config.nori.inventory.workloads.heim.artifact;
+  heimRepo = artifact.source.repository;
+  heimRef = artifact.source.ref;
   servePort = 9094;
 
   ldLibraryPath = lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
@@ -45,7 +47,7 @@ in
   };
   users.groups.heim = { };
 
-  systemd.services.heim-build = {
+  systemd.services.${artifact.consumer.unit} = {
     description = "Build heim Astro site (manual trigger via `just deploy-app heim`)";
     after = [ "network-online.target" ];
     wants = [ "network-online.target" ];
@@ -74,10 +76,10 @@ in
 
       if [ ! -d src/.git ]; then
         rm -rf src
-        git clone --depth 1 ${heimRepo} src
+        git clone --depth 1 --branch ${heimRef} ${heimRepo} src
       else
-        git -C src fetch --depth 1 origin main
-        git -C src reset --hard origin/main
+        git -C src fetch --depth 1 origin ${heimRef}
+        git -C src reset --hard FETCH_HEAD
       fi
 
       cd src

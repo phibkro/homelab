@@ -40,6 +40,31 @@ let
     || lib.hasInfix ".." dataset.storage.relativePath
   ) datasets;
 
+  artifactWorkloads = lib.filterAttrs (_: workload: workload ? artifact) workloadCatalog;
+  invalidArtifactWorkloads = lib.filterAttrs (
+    _name: workload:
+    let
+      artifact = workload.artifact;
+      legacy = artifact.consumer.kind == "legacy-host-build";
+      exception = artifact.legacyException or null;
+    in
+    artifact.source.repository == ""
+    || artifact.source.ref == ""
+    || (
+      legacy
+      && (
+        artifact.immutable
+        || (artifact.consumer.unit or null) == null
+        || exception == null
+        || exception.owner == ""
+        || exception.reason == ""
+        || exception.removalTrigger == ""
+        || exception.verification == ""
+      )
+    )
+    || (!legacy && (!artifact.immutable || artifact ? legacyException))
+  ) artifactWorkloads;
+
   workloadsFor =
     hostName:
     let
@@ -157,6 +182,8 @@ assert lib.assertMsg (unknownDatasetWorkloads == [ ])
   "inventory: dataset producer/consumer workload reference(s) do not exist: ${lib.concatStringsSep ", " unknownDatasetWorkloads}";
 assert lib.assertMsg (invalidDatasetPaths == { })
   "inventory: dataset storage.relativePath must be a non-empty relative path without '..': ${lib.concatStringsSep ", " (lib.attrNames invalidDatasetPaths)}";
+assert lib.assertMsg (invalidArtifactWorkloads == { })
+  "inventory: immutable artifact contract or governed legacy exception is invalid for workload(s): ${lib.concatStringsSep ", " (lib.attrNames invalidArtifactWorkloads)}";
 {
   inherit public forHost;
 
