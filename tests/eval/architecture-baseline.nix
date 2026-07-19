@@ -136,6 +136,8 @@ let
       "pavilion"
     ];
     beszel-hub = [ "pi" ];
+    btrbk-replica-target = [ "workstation" ];
+    btrbk-replication = [ "aurora" ];
     calibre-web = [ "aurora" ];
     disk-alert = [ "workstation" ];
     filmder = [ "aurora" ];
@@ -177,6 +179,7 @@ let
     radarr = [ "workstation" ];
     radicale = [ "aurora" ];
     recyclarr = [ "workstation" ];
+    restic-target = [ "aurora" ];
     samba = [
       "workstation"
       "aurora"
@@ -195,6 +198,7 @@ let
 
   runtimeEvidenceNames = {
     beszel-hub = "beszel";
+    btrbk-replication = "btrbk-family-replica";
     ntfy-notify = "notify";
     ntfy-server = "ntfy";
     victorialogs-server = "victorialogs";

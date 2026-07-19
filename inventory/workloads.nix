@@ -62,6 +62,8 @@ lib.genAttrs
   bazarr = import ../modules/services/arr/manifests/bazarr.nix;
   beszel-agent = import ../modules/infra/observability/beszel/manifests/agent.nix;
   beszel-hub = import ../modules/infra/observability/beszel/manifests/hub.nix;
+  btrbk-replica-target = import ../modules/infra/backup/btrbk-replica-target/manifest.nix;
+  btrbk-replication = import ../modules/infra/backup/btrbk-replication/manifest.nix;
   calibre-web = import ../modules/services/calibre-web/manifest.nix;
   disk-alert = import ../modules/infra/observability/disk-alert/manifest.nix;
   filmder = import ../modules/services/filmder/manifest.nix;
@@ -89,6 +91,7 @@ lib.genAttrs
   radarr = import ../modules/services/arr/manifests/radarr.nix;
   radicale = import ../modules/services/radicale/manifest.nix;
   recyclarr = import ../modules/services/arr/manifests/recyclarr.nix;
+  restic-target = import ../modules/infra/backup/restic-target/manifest.nix;
   samba = import ../modules/services/samba/manifest.nix;
   sonarr = import ../modules/services/arr/manifests/sonarr.nix;
   stremio = import ../modules/services/stremio/manifest.nix;

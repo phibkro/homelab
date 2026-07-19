@@ -47,15 +47,6 @@
     */
     ../../services
 
-    /*
-      Aurora-only specialty: chrooted SFTP backup target. Sits outside
-      the bundle because it's not a user-facing service. Pairs with the
-      disko-onetouch entry below; both arrived 2026-06-11 when the
-      OneTouch HDD physically moved from workstation. See
-      docs/plans/2026-06-11-aurora-migration.md § P13.
-    */
-    ../../infra/backup/restic-target.nix
-
     # Notably absent:
     #   modules/machines/desktop/default.nix — headless
 
@@ -141,7 +132,7 @@
     target here. The OneTouch HDD lives on aurora, so aurora's own
     backups land LOCAL at /mnt/backup — bypassing SFTP. Remote
     clients (workstation, pi) reach the same drive via the SFTP
-    target declared in modules/infra/backup/restic-target.nix.
+    target declared by the restic-target inventory workload.
   */
   sops.secrets.restic-password = {
     owner = "root";
@@ -149,7 +140,7 @@
   };
   nori.backupTargets.onetouch = {
     repository = "/mnt/backup";
-    description = "Aurora-local OneTouch HDD (P13 dest). Aurora's own restic backups write here directly; remote hosts reach the same drive via SFTP per restic-target.nix.";
+    description = "Aurora-local OneTouch HDD (P13 dest). Aurora's own restic backups write here directly; remote hosts reach the same drive through the restic-target workload.";
   };
   /*
     Aurora-side tmpfiles:

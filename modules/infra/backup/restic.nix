@@ -127,7 +127,7 @@ lib.mkIf (config.networking.hostName == "workstation") {
                   2026-06-11; reached over SFTP via the chrooted
                   `restic` user on aurora (machines/aurora/
                   disko-onetouch.nix + modules/infra/backup/
-                  restic-target.nix). Full failure-domain
+                  the restic-target workload). Full failure-domain
                   independence from workstation now: separate
                   chassis, PSU, and USB controller.
       mp510     — Always-mounted @backup-local btrfs subvolume on the
@@ -161,7 +161,7 @@ lib.mkIf (config.networking.hostName == "workstation") {
   nori.backupTargets = {
     onetouch = {
       repository = "sftp:restic@aurora.saola-matrix.ts.net:";
-      description = "OneTouch HDD relocated to aurora 2026-06-11; reached over SFTP via the chrooted `restic` user on aurora (see modules/machines/aurora/disko-onetouch.nix + modules/infra/backup/restic-target.nix).";
+      description = "OneTouch HDD relocated to aurora 2026-06-11; reached over SFTP via the chrooted `restic` user on aurora (see modules/machines/aurora/disko-onetouch.nix + the restic-target workload).";
       extraOptions = [
         "sftp.command='${pkgs.openssh}/bin/ssh -o BatchMode=yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/etc/ssh/aurora_known_hosts -i /run/secrets/restic-ssh-key restic@aurora.saola-matrix.ts.net -s sftp'"
       ];
@@ -175,7 +175,7 @@ lib.mkIf (config.networking.hostName == "workstation") {
   /*
     SSH identity for the chrooted `restic` user on aurora. Private
     half lives in sops; public half lives in
-    modules/infra/backup/restic-target.nix (authorized_keys).
+    modules/infra/backup/restic-target/runtime.nix (authorized_keys).
     `owner = root` because restic backup units run as root.
   */
   sops.secrets.restic-ssh-key = {

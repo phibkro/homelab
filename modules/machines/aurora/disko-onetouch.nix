@@ -5,7 +5,7 @@ _: {
     of the aurora migration); same drive, same ext4 partition, same
     mount path. Workstation reaches this repo over SFTP via the
     `restic` chrooted user defined in modules/infra/backup/
-    restic-target.nix.
+    the restic-target inventory workload.
 
     By-id is stable across the host move — USB drives are identified
     by their controller serial, not the host's USB port topology.
