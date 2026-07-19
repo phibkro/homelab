@@ -1204,6 +1204,22 @@
                 '';
 
               /**
+                Phase-0 architecture migration baseline. Pins the resolved
+                workload placement per host and the entry-plane route policy
+                fingerprint while implementation moves from global imports to
+                a pure inventory compiler + selected runtime modules.
+              */
+              eval-architecture-baseline =
+                let
+                  result = import ./tests/eval/architecture-baseline.nix {
+                    inherit pkgs lib inputs;
+                  };
+                in
+                pkgs.runCommandLocal "eval-architecture-baseline" { } ''
+                  echo ${lib.escapeShellArg result} > $out
+                '';
+
+              /**
                 Docs-fresh — committed generated artifacts must match
                 what the generators would produce right now. Catches the
                 drift class where a schema change lands but the docs/
