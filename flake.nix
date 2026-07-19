@@ -757,6 +757,22 @@
                     touch $out
                   '';
 
+              agent-post-edit =
+                pkgs.runCommandLocal "agent-post-edit-test"
+                  {
+                    nativeBuildInputs = [
+                      pkgs.bash
+                      pkgs.coreutils
+                      pkgs.git
+                      pkgs.perl
+                    ];
+                  }
+                  ''
+                    bash ${./tests/hooks/post-edit-nix_test.sh} \
+                      ${./tools/hooks/post-edit-nix.sh}
+                    touch $out
+                  '';
+
               format = pkgs.runCommandLocal "format" { } ''
                 cp -R --no-preserve=mode ${./.} source
                 chmod -R u+w source

@@ -120,6 +120,11 @@ Recurring procedures live as skills under `.claude/skills/` so the body loads on
 
 - `nix flake check` — standard Nix lints + repo-specific guard derivations (`every-service-has-fs-hardening`, `every-service-has-backup-intent`, `forbidden-patterns`, …). `nix flake show .#checks` for the live list.
 - `nix fmt` — apply nixfmt.
+- Repo-local Claude Code and Codex `PostToolUse(Edit|Write)` hooks run targeted
+  `nix fmt` after Nix edits. When `statix` and `deadnix` are already on `PATH`
+  (for example inside `nix develop`), they also return targeted diagnostics
+  without blocking successful edits. Codex requires reviewing the tracked hook
+  once through `/hooks`; hook success never replaces the full flake gate.
 - Pre-commit hook in `.githooks/pre-commit` runs `nix flake check` on staged `.nix` changes; enable once per clone with `git config core.hooksPath .githooks`. Skips gracefully if nix isn't on PATH (Mac); CI catches the skipped commits.
 - Adding a new rule: see `docs/invariants.md` § decision tree.
 
