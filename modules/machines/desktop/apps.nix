@@ -2,9 +2,9 @@
 {
   /**
     System-level wiring for desktop apps. The user-tier package list
-    (browsers, editors, Wayland CLI utilities, etc.) lives in
-    modules/home/desktop/apps.nix — only NixOS-module-only things stay here:
-    the file-manager xdg-mime registration + the thumbnail daemon.
+    (browsers, editors, Wayland CLI utilities, etc.) composes through
+    modules/home/profiles/desktop/ — only NixOS-module-only things stay
+    here: the file-manager xdg-mime registration + thumbnail daemon.
   */
 
   /*

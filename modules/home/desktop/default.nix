@@ -1,12 +1,9 @@
 _: {
   /**
-    Home-manager modules for the Wayland/Hyprland graphical session.
-    Imported by `modules/machines/workstation/home.nix` (Linux NixOS desktop).
-    NOT imported by macbook — its standalone home-manager goes through
-    `modules/home/pc.nix` directly + uses brew/cask for GUI surfaces.
+    Private implementation modules for the Wayland/Hyprland session.
+    The public composition boundary is profiles/desktop/default.nix.
   */
   imports = [
-    ./apps.nix
     ./hypr-lock.nix
     ./hypr-rice
     ./hyprsunset.nix

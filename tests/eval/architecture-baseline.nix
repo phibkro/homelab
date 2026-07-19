@@ -343,7 +343,41 @@ let
         "workstation"
         "macbook"
       ]
-    ) (lib.attrNames homes);
+    ) (lib.attrNames homes)
+    && homes.workstation.nori.agentNotify.enable
+    && !homes.macbook.nori.agentNotify.enable
+    && builtins.hasAttr ".codex/AGENTS.md" homes.workstation.home.file
+    && lib.all (packageName: hasHomePackage "workstation" packageName) [
+      "agent-dispatch"
+      "bubblewrap"
+      "deno"
+    ];
+
+  desktopCapabilityProfilesCorrect =
+    lib.all (packageName: hasHomePackage "workstation" packageName) [
+      "ghostty"
+      "davinci-resolve"
+      "audacity"
+      "discord"
+      "zotero"
+    ]
+    &&
+      lib.all
+        (
+          homeName:
+          lib.all (packageName: !hasHomePackage homeName packageName) [
+            "davinci-resolve"
+            "audacity"
+            "discord"
+            "zotero"
+          ]
+        )
+        [
+          "aurora"
+          "pi"
+          "pavilion"
+          "macbook"
+        ];
 
   riceInterfaceCorrect =
     hosts.workstation.config.home-manager.users.nori.nori.hyprRice.enable
@@ -635,6 +669,7 @@ if
   && systemProfileRealizationCorrect
   && homeManagerRealizationCorrect
   && homeCapabilityProfilesCorrect
+  && desktopCapabilityProfilesCorrect
   && riceInterfaceCorrect
 then
   "ok — architecture workload placement + route behavior baseline unchanged"
@@ -651,6 +686,7 @@ else
     System profile realization: ${toString systemProfileRealizationCorrect}
     Home Manager realization:   ${toString homeManagerRealizationCorrect}
     Home capability profiles:   ${toString homeCapabilityProfilesCorrect}
+    Desktop capabilities:       ${toString desktopCapabilityProfilesCorrect}
     Rice interface realization: ${toString riceInterfaceCorrect}
 
     Expected workloads: ${builtins.toJSON expectedWorkloads}

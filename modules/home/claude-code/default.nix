@@ -29,7 +29,7 @@ let
   /*
     claude-code overlaid from nixpkgs-master — channel ships 2.1.148 while
     master ships 2.1.179 (2026-06-21 lock; upstream ~2.1.185). Same
-    overlay rationale as zed-editor (modules/home/desktop/apps.nix): the
+    overlay rationale as Zed (modules/home/profiles/desktop/productivity.nix): the
     26.05 channel is curated + lags, master tracks upstream more closely.
     Revert to plain `pkgs.claude-code` when the channel catches up
     (likely the 26.11 release boundary).
