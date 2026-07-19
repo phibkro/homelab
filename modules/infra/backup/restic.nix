@@ -94,14 +94,11 @@ let
     '';
 in
 /*
-  The cross-cutting infrastructure here — backup targets registry,
-  user-data + media-irreplaceable jobs, weekly/monthly check timers —
-  is workstation-specific by data ownership: only workstation holds
-  the IronWolf media + /srv/share + Immich's dump dir. Other hosts
-  that import the services bundle for its route declarations only
-  (pi, aurora) get a clean no-op via the hostname gate.
+  Selected only by the Workstation `backup-source` system profile. The
+  cross-cutting targets, user-data + media-irreplaceable jobs, and check
+  timers belong there because Workstation owns the relevant source data.
 */
-lib.mkIf (config.networking.hostName == "workstation") {
+{
   /**
     Cross-cutting restic infrastructure: the shared password secret,
     the /var/backup tmpfiles rule that Pattern C2 prepareCommands

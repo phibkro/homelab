@@ -50,6 +50,7 @@ pkgs.testers.runNixOSTest {
         ../modules/infra/capabilities
         ../modules/infra/storage
         ../modules/infra/backup
+        ../modules/infra/backup/restic.nix
         ../modules/infra/networking
       ];
 

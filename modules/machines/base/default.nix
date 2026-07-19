@@ -41,7 +41,6 @@
 
     # Top-level policies + leaf config.
     ../../infra/restart-policy.nix
-    ../../infra/tailnet-appliance.nix
     ../../infra/motd.nix # codename banner + live MOTD on login
   ];
 

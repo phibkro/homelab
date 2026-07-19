@@ -1253,6 +1253,19 @@
                 '';
 
               /**
+                System adapters must be selected only by explicit profiles.
+              */
+              eval-system-profile-adapters =
+                let
+                  result = import ./tests/eval/system-profile-adapters.nix {
+                    inherit pkgs lib inputs;
+                  };
+                in
+                pkgs.runCommandLocal "eval-system-profile-adapters" { } ''
+                  echo ${lib.escapeShellArg result} > $out
+                '';
+
+              /**
                 Docs-fresh — committed generated artifacts must match
                 what the generators would produce right now. Catches the
                 drift class where a schema change lands but the docs/

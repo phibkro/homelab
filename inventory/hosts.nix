@@ -12,7 +12,9 @@
     homeModule = ../modules/machines/workstation/home.nix;
     profiles = [
       "base"
+      "backup-source"
       "desktop"
+      "log-forwarder"
       "media-compute"
       "observability-agent"
     ];
@@ -47,6 +49,7 @@
     profiles = [
       "base"
       "entry-plane"
+      "log-forwarder"
     ];
     workloads = [
       "beszel-agent"
@@ -73,6 +76,7 @@
     profiles = [
       "base"
       "agent-host"
+      "log-forwarder"
       "observability-agent"
     ];
     workloads = [ ];
@@ -97,6 +101,7 @@
     profiles = [
       "base"
       "family-vault"
+      "log-forwarder"
       "observability-agent"
     ];
     workloads = [

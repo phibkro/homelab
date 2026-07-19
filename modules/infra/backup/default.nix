@@ -23,9 +23,6 @@ in
 {
   imports = [
     ./agent-fix.nix
-    ./btrbk.nix
-    ./restic.nix
-    ./verify.nix
   ];
 
   /**

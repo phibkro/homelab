@@ -5,8 +5,9 @@ _:
 
   PaaS observability: collection (exporters), storage (TSDB + logs
   index), query (Grafana), monitoring (Gatus), alerting (ntfy +
-  heartbeat). Universal exporters (node, nvidia-gpu, vector) ship
-  on every host that imports this; daemon-side services
+  heartbeat). Workload runtimes select exporters and daemons; the explicit
+  `log-forwarder` system profile selects Vector on each participating host.
+  Daemon-side services
   (VictoriaMetrics, VictoriaLogs, Gatus, Beszel hub, ntfy server,
   Grafana) activate only where opted in.
 
@@ -34,8 +35,5 @@ _:
    - `disk-alert.nix`          per-fs disk-space alert
 */
 {
-  imports = [
-    ./alerts.nix
-    ./vector.nix
-  ];
+  imports = [ ./alerts.nix ];
 }

@@ -18,6 +18,22 @@
     workloads = [ ];
   };
 
+  log-forwarder = {
+    description = "Per-host journald shipping to the central log index";
+    systemModules = [ ../modules/infra/observability/vector.nix ];
+    workloads = [ ];
+  };
+
+  backup-source = {
+    description = "Workstation-owned snapshots, backup targets, and restore drills";
+    systemModules = [
+      ../modules/infra/backup/btrbk.nix
+      ../modules/infra/backup/restic.nix
+      ../modules/infra/backup/verify.nix
+    ];
+    workloads = [ ];
+  };
+
   media-compute = {
     description = "GPU media serving, acquisition, and operator AI";
     systemModules = [ ];
@@ -66,7 +82,7 @@
 
   entry-plane = {
     description = "Always-on HTTP, DNS, identity, alert, and metrics hub";
-    systemModules = [ ];
+    systemModules = [ ../modules/infra/tailnet-appliance.nix ];
     workloads = [
       "authelia"
       "beszel-hub"
