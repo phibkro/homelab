@@ -27,7 +27,7 @@ content that doesn't fit one extraction site.
 | Family Samba shares | aurora | Follows the drive — per-fs `samba = { }` blocks in `modules/machines/aurora/disko-family.nix` |
 | Workstation Samba shares (`media`, `share`, `nori`) | workstation | Whole-drive `media` share scoped to `/mnt/media` (IronWolf root) stays workstation-only; per-fs `share` + `nori` shares stay workstation-only via the gated workstation-shape check in `samba.nix` |
 | Observability + alert plane (Beszel hub, Gatus, VictoriaMetrics, VictoriaLogs, ntfy server) | pi | Must survive workstation outage — that's *when* they fire |
-| Heartbeat / dead-man-switch (healthchecks.io ping) | pi | SPOF mitigation — see `modules/infra/observability/heartbeat.nix` |
+| Heartbeat / dead-man-switch (healthchecks.io ping) | pi | SPOF mitigation — see `modules/infra/observability/heartbeat/` |
 | DNS authoritative for `*.${nori.domain}` (Blocky self-hosted) | pi | ADR-0003 prerequisite for the LE wildcard issuance (ADR-0004). Workstation's Blocky stays as a secondary self-hosted forwarder for LAN-side resilience if pi is down |
 | Network plumbing (subnet router + exit node) | pi | Appliance role; opt-in per device for exit node |
 | Agent quarantine (sandboxed Claude, Codex, and nixpkgs-agent work) | pavilion | Pavilion's impermanence root makes pollution self-healing |

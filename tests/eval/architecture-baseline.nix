@@ -136,9 +136,15 @@ let
       "pavilion"
     ];
     calibre-web = [ "aurora" ];
+    disk-alert = [ "workstation" ];
     filmder = [ "aurora" ];
     glance = [ "aurora" ];
     grafana = [ "aurora" ];
+    gatus = [
+      "workstation"
+      "pi"
+    ];
+    heartbeat = [ "pi" ];
     heim = [ "aurora" ];
     immich = [ "aurora" ];
     jellyfin = [ "workstation" ];
@@ -202,6 +208,7 @@ let
     filmder.filmder = "aurora";
     glance.home = "aurora";
     grafana.ops = "aurora";
+    gatus.status = "pi";
     heim.heim = "aurora";
     immich.photos = "aurora";
     jellyfin.media = "workstation";

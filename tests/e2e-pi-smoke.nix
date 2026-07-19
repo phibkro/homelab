@@ -75,8 +75,8 @@ pkgs.testers.runNixOSTest {
         # with a hub) + node-exporter / nvidia-gpu-exporter (not
         # needed for smoke). Phase 4 picks up the fuller observability
         # set.
-        ../modules/infra/observability/gatus.nix
-        ../modules/infra/observability/heartbeat.nix
+        ../modules/infra/observability/gatus/runtime.nix
+        ../modules/infra/observability/heartbeat/runtime.nix
         # Phase 7 — OnFailure → notify@ → ntfy POST. Module declares
         # the systemd template + the channel sops secret; the test
         # overrides nori.observability.ntfyNotify.{baseUrl,

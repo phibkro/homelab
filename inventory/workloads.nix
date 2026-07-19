@@ -63,9 +63,12 @@ lib.genAttrs
   beszel-agent = import ../modules/infra/observability/beszel/manifests/agent.nix;
   beszel-hub = import ../modules/infra/observability/beszel/manifests/hub.nix;
   calibre-web = import ../modules/services/calibre-web/manifest.nix;
+  disk-alert = import ../modules/infra/observability/disk-alert/manifest.nix;
   filmder = import ../modules/services/filmder/manifest.nix;
+  gatus = import ../modules/infra/observability/gatus/manifest.nix;
   glance = import ../modules/services/glance/manifest.nix;
   grafana = import ../modules/infra/observability/grafana/manifest.nix;
+  heartbeat = import ../modules/infra/observability/heartbeat/manifest.nix;
   heim = import ../modules/services/heim/manifest.nix;
   immich = import ../modules/services/immich/manifest.nix;
   jellyfin = import ../modules/services/jellyfin/manifest.nix;

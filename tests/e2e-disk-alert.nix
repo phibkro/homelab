@@ -43,7 +43,7 @@ pkgs.testers.runNixOSTest {
         ../modules/infra/storage
         ../modules/infra/backup
         ../modules/infra/networking
-        ../modules/infra/observability/disk-alert.nix
+        ../modules/infra/observability/disk-alert/runtime.nix
         ../modules/infra/observability/ntfy/notify.nix
       ];
 

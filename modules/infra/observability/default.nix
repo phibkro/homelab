@@ -36,12 +36,9 @@ _:
 {
   imports = [
     ./alerts.nix
-    ./gatus.nix
     ./victoriametrics.nix
     ./victorialogs/default.nix
     ./ntfy/notify.nix
     ./vector.nix
-    ./heartbeat.nix
-    ./disk-alert.nix
   ];
 }

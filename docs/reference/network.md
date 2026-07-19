@@ -47,7 +47,7 @@ IS the gate. Edited in admin UI JSON, not in this repo. See
 [[just-remote-tailnet-hostnames]].
 
 **SPOF mitigation for pi:** heartbeat to healthchecks.io every 60s via
-`modules/infra/observability/heartbeat.nix`. Pi dies → hc.io alerts
+`modules/infra/observability/heartbeat/`. Pi dies → hc.io alerts
 off-host. Pre-fix, pi outage would have taken its own alert delivery
 (ntfy server) with it.
 

@@ -46,7 +46,6 @@
     ../../infra/observability/ntfy/server.nix
     ../../infra/observability/victorialogs/server.nix
     ../../infra/observability/victoriametrics.nix
-    ../../infra/observability/heartbeat.nix
 
     ./hardware.nix
     inputs.home-manager.nixosModules.home-manager
