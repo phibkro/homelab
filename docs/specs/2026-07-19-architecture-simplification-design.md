@@ -192,31 +192,32 @@ decision. The internal workload entry has this shape:
 ```nix
 {
   jellyfin = {
+    kind = "service";
     runtimeModule = ../modules/services/jellyfin/runtime.nix;
+    tags = [ "media-server" "family-tier" "gpu-bound" "stateful" ];
 
-    metadata = {
-      kind = "service";
-      criticality = "important";
-      capabilities = [ "gpu.video" ];
-
-      endpoints.media = {
-        port = 8096;
-        audience = "family";
-        reachability = "internet";
-        authentication = {
-          mode = "native";
-          reason = "TV and mobile clients use Jellyfin credentials";
-        };
-        presentation = {
-          title = "Jellyfin";
-          group = "Consume";
-          icon = "si:jellyfin";
-        };
+    endpoints.media = {
+      port = 8096;
+      exposeOnTailnet = true;
+      monitor = { };
+      audience = "family";
+      noAuthReason = "TV and mobile clients use native credentials";
+      dashboard = {
+        title = "Jellyfin";
+        group = "Consume";
+        icon = "si:jellyfin";
       };
     };
   };
 }
 ```
+
+The endpoint shape deliberately uses the existing typed `nori.lanRoutes`
+vocabulary during this migration. That keeps one route schema and makes policy
+fingerprints byte-for-byte comparable. A richer authentication sum is a
+possible later schema revision, not a second representation introduced during
+the workload move. New manifest fields such as capabilities or criticality are
+added only when a validator or consumer gives them operational meaning.
 
 `runtimeModule` is compiler-private. The factory removes implementation paths
 and injects only validated metadata into the read-only public projection:
@@ -238,11 +239,15 @@ The compiler:
 3. derives resolved workload placement from the hosts selecting a workload;
 4. validates required capabilities and placement cardinality;
 5. injects the secret-free resolved inventory;
-6. exports machine-readable JSON for deployment and documentation tools.
+6. exposes a public-safe Nix projection; Phase 6 packages that projection as
+   machine-readable JSON for deployment and documentation tools.
 
-The first version supports singleton placement. Replication, failover, and load
-balancing are added only with a concrete workload requiring them, using a typed
-sum rather than an overloaded list.
+Workloads may run on multiple hosts. An endpoint on a singleton workload gets
+that host by default. An endpoint on a multi-host workload must explicitly set
+`runsOn` to one of the workload's resolved placement hosts. This covers the
+current Gatus and Syncthing topology without pretending that an endpoint is
+load-balanced. Replication, failover, and load balancing semantics remain out
+of scope until a concrete consumer requires a typed model for them.
 
 ### 2. Explicit profiles
 
@@ -313,7 +318,7 @@ Manifest responsibilities:
 - stable workload identifier;
 - endpoint and presentation metadata;
 - audience, reachability, and authentication posture;
-- capability requirements and criticality;
+- capability requirements and criticality only once enforced or consumed;
 - public-safe status/documentation metadata.
 
 Runtime responsibilities:
@@ -571,7 +576,9 @@ non-placement hosts.
 - Convert workloads incrementally in coherent groups.
 - Preserve tightly coupled stacks as units where their runtime coupling is real.
 - Remove the full service implementation bundle from hosts.
-- Remove per-host `nori.services.<name>.enable` declarations after replacement.
+- Keep per-host `nori.services.<name>.enable` declarations as temporary
+  baseline mirrors while workloads migrate, then remove the entire legacy
+  registry in one end-of-phase commit.
 - Retire `nori.enableServicesByTag`.
 
 Gate: every workload is catalog/runtime split; every host imports only its
@@ -750,6 +757,51 @@ Cadence:
 4. host/profile and Home Manager boundary review;
 5. final whole-branch review before PR.
 
+## Advisory decision and deviation ledger
+
+### 2026-07-19 — Jellyfin pilot review
+
+Claude Code Fable 5 reviewed the governing design, inventory compiler, machine
+factory, typed projection, Jellyfin manifest/runtime split, and architecture
+baseline in read-only mode. Verdict: **proceed to Phase 3; no blockers**.
+
+Accepted steering decisions:
+
+- **D1 — endpoint schema:** use the existing `nori.lanRoutes` vocabulary for
+  every migration manifest. Do not introduce a parallel authentication or
+  presentation schema in this PR.
+- **D2 — machine-readable export:** the public-safe Nix projection is the Phase
+  1 artifact; package it as JSON no later than Phase 6, before external
+  deployment or documentation consumers are migrated.
+- **D3 — legacy activation mirrors:** retain all legacy enable flags throughout
+  Phase 3 so the equality baseline stays useful, then remove the registry, tag
+  activation, and legacy comparison together.
+- **D4 — cross-host runtime proof:** evaluation proves that Pi can consume the
+  Jellyfin endpoint without importing its runtime; add the equivalent VM-level
+  proof during Phase 3.
+- **D5 — multi-host endpoints:** retain one workload identity when instances
+  share a runtime implementation and use explicit endpoint-level `runsOn` to
+  select the serving instance. This is sufficient for current Gatus and
+  Syncthing usage and avoids identity churn solely to encode an endpoint role.
+
+The advisor recommended splitting multi-host identities when their roles are
+materially distinct. D5 chooses the smaller interface for this repository
+because both current cases share one runtime module and differ only in which
+instance owns the routed UI. Revisit the split if their configuration,
+lifecycle, or runtime implementation diverges.
+
+Phase 3 steering constraints:
+
+- migrate routed singletons first, the coupled Arr stack as one unit,
+  multi-host workloads only after D5 is enforced, and the entry plane last;
+- never change `expectedWorkloads` or `expectedRoutes` inside a migration
+  commit;
+- add and keep a recursive negative test for secret-shaped public inventory;
+- treat profile membership edits as deployment edits;
+- do not mix behavior improvements, public-exposure changes, speculative
+  manifest fields, directory discovery, or rename-only churn into migration
+  commits.
+
 ## Alternatives rejected
 
 ### Keep importing all service modules and improve gate discipline
@@ -790,7 +842,7 @@ against it.
 The migration may need focused ADRs for:
 
 - the final inventory schema if it becomes a long-lived external interface;
-- replicated workload placement semantics;
+- replicated/failover workload semantics beyond explicit endpoint ownership;
 - adoption of a deployment framework;
 - extraction of Hyprland rice or agentic tooling into separate repositories;
 - persistent derived music formats;

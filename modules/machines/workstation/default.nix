@@ -164,15 +164,20 @@
   networking.firewall.interfaces.waydroid0.allowedTCPPorts = [ 445 ];
 
   /*
-    Service-placement registry. Each modules/services/*.nix that wraps
-    itself in `mkIf config.nori.services.<name>.enabled` gets explicitly
-    enabled here. Workstation is the workhorse — it runs the GPU /
+    Temporary legacy service-placement mirror. Pure inventory profiles and
+    host additions are now authoritative; these flags remain only so the
+    migration baseline can prove both models resolve the same workloads until
+    the registry is removed at the end of Phase 3. Do not move a migrated
+    workload by changing this block.
+
+    Workstation is the workhorse — it runs the GPU /
     compute / acquisition layer (arr stack, qBittorrent, Jellyfin,
     Ollama, Open WebUI, Stremio, Syncthing, observability agents).
     Family-tier serving (Immich, Navidrome, Calibre-web, Komga,
     Vaultwarden, etc.) lives on aurora; the HTTP entry plane (Caddy,
-    Authelia, Blocky-authoritative) lives on pi. Moves between hosts:
-    flip `enable` on the destination, unset here.
+    Authelia, Blocky-authoritative) lives on pi. Placement changes belong in
+    inventory/profiles.nix or an explicit inventory/hosts.nix deviation and
+    require behavior review.
   */
   nori.services = {
     # arr stack + qBit (media-server)
