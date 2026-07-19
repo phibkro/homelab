@@ -47,6 +47,15 @@ let
   workloadType = types.submodule {
     options = {
       kind = mkOption { type = types.enum [ "service" ]; };
+      tags = mkOption {
+        type = types.listOf types.str;
+        default = [ ];
+      };
+      endpoints = mkOption {
+        type = types.attrsOf types.anything;
+        default = { };
+        description = "Resolved, secret-free endpoint metadata; validated by the networking route schema when projected.";
+      };
       hosts = mkOption { type = types.listOf types.str; };
       profiles = mkOption { type = types.listOf types.str; };
     };

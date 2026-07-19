@@ -58,3 +58,6 @@ lib.genAttrs
   (_: {
     kind = "service";
   })
+// {
+  jellyfin = import ../modules/services/jellyfin/manifest.nix;
+}

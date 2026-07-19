@@ -60,10 +60,14 @@ let
       specialArgs = { inherit inputs; };
       modules = [
         host.systemModule
+      ]
+      ++ inventory.internal.runtimeModulesFor name
+      ++ [
         {
           config.networking.hostName = name;
           config.nori.hosts = hostRegistry;
           config.nori.inventory = inventory.forHost name;
+          config.nori.lanRoutes = inventory.internal.lanRoutes;
         }
       ];
     };

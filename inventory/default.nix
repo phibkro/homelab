@@ -42,6 +42,34 @@ let
   hostsForWorkload =
     workloadName: lib.filter (hostName: lib.elem workloadName (workloadsFor hostName)) hostNames;
 
+  resolvedEndpointsFor =
+    workloadName:
+    let
+      workload = workloadCatalog.${workloadName};
+      endpoints = workload.endpoints or { };
+      placements = hostsForWorkload workloadName;
+    in
+    assert lib.assertMsg (endpoints == { } || lib.length placements == 1)
+      "inventory: routed workload '${workloadName}' requires exactly one host, found ${toString (lib.length placements)}";
+    lib.mapAttrs (_: endpoint: endpoint // { runsOn = lib.head placements; }) endpoints;
+
+  endpointNames = lib.concatMap (
+    workloadName: lib.attrNames (workloadCatalog.${workloadName}.endpoints or { })
+  ) workloadNames;
+  duplicateEndpoints = lib.filter (
+    endpointName: lib.count (candidate: candidate == endpointName) endpointNames > 1
+  ) (lib.unique endpointNames);
+
+  lanRoutes = lib.foldl' (
+    routes: workloadName: routes // resolvedEndpointsFor workloadName
+  ) { } workloadNames;
+
+  runtimeModulesFor =
+    hostName:
+    map (workloadName: workloadCatalog.${workloadName}.runtimeModule) (
+      lib.filter (workloadName: workloadCatalog.${workloadName} ? runtimeModule) (workloadsFor hostName)
+    );
+
   profilesForWorkload =
     workloadName:
     lib.attrNames (lib.filterAttrs (_: profile: lib.elem workloadName profile.workloads) profiles);
@@ -61,10 +89,11 @@ let
 
   publicWorkloads = lib.mapAttrs (
     name: workload:
-    workload
+    removeAttrs workload [ "runtimeModule" ]
     // {
       hosts = hostsForWorkload name;
       profiles = profilesForWorkload name;
+      endpoints = resolvedEndpointsFor name;
     }
   ) workloadCatalog;
 
@@ -91,6 +120,8 @@ assert lib.assertMsg (unknownWorkloads == [ ])
 assert lib.assertMsg (
   unusedWorkloads == [ ]
 ) "inventory: catalog workload(s) have no placement: ${lib.concatStringsSep ", " unusedWorkloads}";
+assert lib.assertMsg (duplicateEndpoints == [ ])
+  "inventory: endpoint name(s) have multiple owners: ${lib.concatStringsSep ", " duplicateEndpoints}";
 {
   inherit public forHost;
 
@@ -100,6 +131,8 @@ assert lib.assertMsg (
       profiles
       workloadCatalog
       workloadsFor
+      runtimeModulesFor
+      lanRoutes
       ;
   };
 }

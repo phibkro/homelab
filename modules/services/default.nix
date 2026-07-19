@@ -10,10 +10,13 @@
   the bundle today, each activating a different subset. Pavilion
   flat-imports only what it needs (no LAN services).
 
-  Routes live OUTSIDE the per-service activation gate (in the first
-  `mkMerge` block of each module), so every host that imports the
-  bundle sees the route in `nori.lanRoutes` and can serve it via its
-  Caddy. `runsOn` resolves the backend to the right host per route.
+  Migration boundary: catalog/runtime-split workloads are absent from this
+  legacy bundle. Their manifests are globally visible through
+  `nori.inventory`, their routes project from the pure inventory, and their
+  runtime modules are selected only for placement hosts by the machine
+  factory. Jellyfin is the first vertical pilot. Unmigrated workloads still
+  declare routes outside their activation gate so bundle-importing entry-plane
+  hosts can see them.
 
   Tightly-coupled stacks live under their own folders (each with a
   `default.nix` that imports siblings):
@@ -38,7 +41,7 @@ _: {
     ./glance.nix
     ./heim.nix
     ./immich.nix
-    ./jellyfin.nix
+    # Jellyfin is inventory-selected from jellyfin/manifest.nix.
     ./komga.nix
     ./miniflux.nix
     ./music-ingest.nix

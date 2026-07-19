@@ -127,6 +127,28 @@ let
 
   actualRoutes = lib.mapAttrs (_: routeFingerprint) hosts.pi.config.nori.lanRoutes;
 
+  hasJellyfinRuntime =
+    host: host.config.nori.harden ? jellyfin && host.config.nori.backups ? jellyfin;
+  runtimePlacementCorrect =
+    hasJellyfinRuntime hosts.workstation
+    && lib.all (hostName: !(hasJellyfinRuntime hosts.${hostName})) [
+      "aurora"
+      "pi"
+      "pavilion"
+    ];
+  catalogVisibleEverywhere =
+    lib.all
+      (
+        hostName:
+        hosts.${hostName}.config.nori.inventory.workloads.jellyfin.endpoints.media.runsOn == "workstation"
+      )
+      [
+        "workstation"
+        "aurora"
+        "pi"
+        "pavilion"
+      ];
+
   expectedRoutes = {
     ai = {
       port = 11434;
@@ -404,7 +426,13 @@ let
   workloadsMatch = actualWorkloads == expectedWorkloads;
   routesMatch = actualRoutes == expectedRoutes;
 in
-if inventoryMatchesLegacy && workloadsMatch && routesMatch then
+if
+  inventoryMatchesLegacy
+  && workloadsMatch
+  && routesMatch
+  && runtimePlacementCorrect
+  && catalogVisibleEverywhere
+then
   "ok — architecture workload placement + route behavior baseline unchanged"
 else
   throw ''
@@ -413,6 +441,8 @@ else
     Inventory matches legacy:   ${toString inventoryMatchesLegacy}
     Workload placement matches: ${toString workloadsMatch}
     Route fingerprints match:   ${toString routesMatch}
+    Jellyfin runtime placement: ${toString runtimePlacementCorrect}
+    Jellyfin catalog global:    ${toString catalogVisibleEverywhere}
 
     Expected workloads: ${builtins.toJSON expectedWorkloads}
     Inventory workloads: ${builtins.toJSON actualWorkloads}
