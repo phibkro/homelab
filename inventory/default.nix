@@ -45,7 +45,7 @@ let
   invalidArtifactWorkloads = lib.filterAttrs (
     _name: workload:
     let
-      artifact = workload.artifact;
+      inherit (workload) artifact;
       legacy = artifact.consumer.kind == "legacy-host-build";
       exception = artifact.legacyException or null;
     in
@@ -153,11 +153,70 @@ let
     }
   ) workloadCatalog;
 
+  hostsForProfile =
+    profileName: lib.filter (hostName: lib.elem profileName hosts.${hostName}.profiles) hostNames;
+  profileHosts = lib.mapAttrs (name: _profile: hostsForProfile name) profiles;
+  workloadHosts = lib.mapAttrs (name: _workload: hostsForWorkload name) workloadCatalog;
+
+  deploymentTargets = lib.mapAttrs (name: host: {
+    inherit (host) kind profiles;
+    workloads = workloadsFor name;
+    buildAttribute =
+      if host.kind == "nixos" then
+        "nixosConfigurations.${name}.config.system.build.toplevel"
+      else
+        "homeConfigurations.${name}.activationPackage";
+  }) hosts;
+  entryPlaneHosts = profileHosts.entry-plane;
+  activationOrder = lib.subtractLists entryPlaneHosts nixosHostNames ++ entryPlaneHosts;
+
+  publicDeployment = {
+    targets = deploymentTargets;
+    buildOrder = hostNames;
+    inherit activationOrder;
+  };
+
+  repoRoot = toString ../.;
+  runtimeRootFor =
+    workload:
+    let
+      relativeModule = lib.removePrefix "${repoRoot}/" (toString workload.runtimeModule);
+    in
+    builtins.dirOf relativeModule;
+  sourceRootHosts = lib.foldl' (
+    roots: workloadName:
+    let
+      workload = workloadCatalog.${workloadName};
+    in
+    if !(workload ? runtimeModule) then
+      roots
+    else
+      let
+        root = runtimeRootFor workload;
+      in
+      roots
+      // {
+        ${root} = lib.unique ((roots.${root} or [ ]) ++ workloadHosts.${workloadName});
+      }
+  ) { } workloadNames;
+  machineRootHosts = lib.mapAttrs' (
+    name: _host: lib.nameValuePair "modules/machines/${name}" [ name ]
+  ) hosts;
+
+  deployment = publicDeployment // {
+    allHosts = hostNames;
+    profiles = profileHosts;
+    workloads = workloadHosts;
+    sourceRoots = sourceRootHosts;
+    machineRoots = machineRootHosts;
+  };
+
   public = {
     hosts = publicHosts;
     profiles = publicProfiles;
     workloads = publicWorkloads;
     inherit datasets;
+    deployment = publicDeployment;
   };
 
   forHost =
@@ -186,7 +245,7 @@ assert lib.assertMsg (invalidDatasetPaths == { })
 assert lib.assertMsg (invalidArtifactWorkloads == { })
   "inventory: immutable artifact contract or governed legacy exception is invalid for workload(s): ${lib.concatStringsSep ", " (lib.attrNames invalidArtifactWorkloads)}";
 {
-  inherit public forHost;
+  inherit public forHost deployment;
 
   internal = {
     inherit

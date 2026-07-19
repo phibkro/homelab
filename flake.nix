@@ -208,6 +208,7 @@
         ./flake-parts/packages/docs-backups.nix
         ./flake-parts/packages/docs-fs.nix
         ./flake-parts/packages/docs-replicas.nix
+        ./flake-parts/packages/inventory.nix
       ];
 
       # System-keyed outputs (devShells, formatter, packages, checks).
@@ -1269,6 +1270,20 @@
                   };
                 in
                 pkgs.runCommandLocal "eval-product-artifacts" { } ''
+                  echo ${lib.escapeShellArg result} > $out
+                '';
+
+              /**
+                Deployment builds, affected-host change scopes, and activation
+                order derive from the same host/profile/workload inventory.
+              */
+              eval-deployment =
+                let
+                  result = import ./tests/eval/deployment.nix {
+                    inherit pkgs lib inputs;
+                  };
+                in
+                pkgs.runCommandLocal "eval-deployment" { } ''
                   echo ${lib.escapeShellArg result} > $out
                 '';
 

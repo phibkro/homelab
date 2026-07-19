@@ -164,6 +164,28 @@ let
       };
     };
   };
+
+  deploymentTargetType = types.submodule {
+    options = {
+      kind = mkOption {
+        type = types.enum [
+          "nixos"
+          "home-manager"
+        ];
+      };
+      profiles = mkOption { type = types.listOf types.str; };
+      workloads = mkOption { type = types.listOf types.str; };
+      buildAttribute = mkOption { type = types.str; };
+    };
+  };
+
+  deploymentType = types.submodule {
+    options = {
+      targets = mkOption { type = types.attrsOf deploymentTargetType; };
+      buildOrder = mkOption { type = types.listOf types.str; };
+      activationOrder = mkOption { type = types.listOf types.str; };
+    };
+  };
 in
 {
   options.nori.inventory = {
@@ -196,6 +218,11 @@ in
       type = types.attrsOf datasetType;
       readOnly = true;
       description = "Public-safe canonical dataset ownership, storage, producer, consumer, and delivery contracts.";
+    };
+    deployment = mkOption {
+      type = deploymentType;
+      readOnly = true;
+      description = "Public-safe build targets and backend-before-entry-plane activation order derived from host inventory.";
     };
   };
 }

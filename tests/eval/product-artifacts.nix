@@ -18,7 +18,7 @@ let
   legacyIsGoverned = lib.all (
     workload:
     let
-      artifact = workload.artifact;
+      inherit (workload) artifact;
       exception = artifact.legacyException;
     in
     artifact.consumer.kind == "legacy-host-build"

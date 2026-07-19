@@ -17,5 +17,6 @@ in
   flake = {
     inherit (machines) nixosConfigurations;
     lib.noriInventory = machines.inventory.public;
+    lib.noriDeployment = machines.inventory.deployment;
   };
 }
