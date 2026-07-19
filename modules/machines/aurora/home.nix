@@ -14,7 +14,7 @@
 */
 
 {
-  imports = [ ../../home/core.nix ];
+  imports = [ ../../home/profiles/core.nix ];
 
   home.packages = with pkgs; [
     fd

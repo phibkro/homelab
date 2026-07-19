@@ -40,7 +40,7 @@ in
 */
 {
   imports = [
-    ../../home/pc.nix
+    ../../home/profiles/pc.nix
     ../../home/desktop
   ];
 
@@ -48,7 +48,6 @@ in
   programs.home-manager.enable = true;
 
   home.packages = [
-    pkgs.gh # GitHub CLI — PR ops, gh auth, gh api …
     pkgs.nvtopPackages.nvidia # GPU monitor (NVIDIA-only build, smaller closure)
     pkgs.ncdu # interactive disk usage browser
     pkgs.bandwhich # per-process / per-connection network throughput

@@ -8,7 +8,7 @@
 */
 
 {
-  imports = [ ../../home/core.nix ];
+  imports = [ ../../home/profiles/core.nix ];
 
   home.stateVersion = "26.05"; # match host's system.stateVersion
   programs.home-manager.enable = true;

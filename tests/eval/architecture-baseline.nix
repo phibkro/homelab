@@ -18,6 +18,17 @@
 
 let
   hosts = inputs.self.nixosConfigurations;
+  homes = {
+    workstation = hosts.workstation.config.home-manager.users.nori;
+    aurora = hosts.aurora.config.home-manager.users.nori;
+    pi = hosts.pi.config.home-manager.users.nori;
+    pavilion = hosts.pavilion.config.home-manager.users.nori;
+    macbook = inputs.self.homeConfigurations.macbook.config;
+  };
+
+  hasHomePackage =
+    homeName: packageName:
+    lib.any (package: lib.getName package == packageName) homes.${homeName}.home.packages;
 
   actualWorkloads = lib.mapAttrs (_: host: host.config.nori.inventory.currentWorkloads) hosts;
 
@@ -315,6 +326,25 @@ let
         "pavilion"
       ];
 
+  homeCapabilityProfilesCorrect =
+    lib.all (homeName: hasHomePackage homeName "just" && hasHomePackage homeName "devenv") (
+      lib.attrNames homes
+    )
+    && lib.all (
+      homeName:
+      hasHomePackage homeName "gh" == lib.elem homeName [
+        "workstation"
+        "macbook"
+      ]
+    ) (lib.attrNames homes)
+    && lib.all (
+      homeName:
+      builtins.hasAttr ".claude/settings.json" homes.${homeName}.home.file == lib.elem homeName [
+        "workstation"
+        "macbook"
+      ]
+    ) (lib.attrNames homes);
+
   riceInterfaceCorrect =
     hosts.workstation.config.home-manager.users.nori.nori.hyprRice.enable
     && hosts.workstation.config.home-manager.users.nori.wayland.windowManager.hyprland.enable;
@@ -604,6 +634,7 @@ if
   && papersFetchCompatibility
   && systemProfileRealizationCorrect
   && homeManagerRealizationCorrect
+  && homeCapabilityProfilesCorrect
   && riceInterfaceCorrect
 then
   "ok — architecture workload placement + route behavior baseline unchanged"
@@ -619,6 +650,7 @@ else
     Papers-fetch compatibility: ${toString papersFetchCompatibility}
     System profile realization: ${toString systemProfileRealizationCorrect}
     Home Manager realization:   ${toString homeManagerRealizationCorrect}
+    Home capability profiles:   ${toString homeCapabilityProfilesCorrect}
     Rice interface realization: ${toString riceInterfaceCorrect}
 
     Expected workloads: ${builtins.toJSON expectedWorkloads}
