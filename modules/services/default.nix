@@ -43,13 +43,9 @@ _: {
     ./music-ingest.nix
     ./ollama.nix
     ./open-webui.nix
-    ./paperless.nix
     ./papers-fetch.nix
-    ./radicale.nix
     ./samba.nix
     ./stremio.nix
-    ./suwayomi.nix
     ./syncthing.nix
-    ./vaultwarden.nix
   ];
 }

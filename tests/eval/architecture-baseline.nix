@@ -134,6 +134,10 @@ let
     komga = "aurora";
     miniflux = "aurora";
     navidrome = "aurora";
+    paperless = "aurora";
+    radicale = "aurora";
+    suwayomi = "aurora";
+    vaultwarden = "aurora";
   };
 
   hasMigratedRuntime = workloadName: host: builtins.hasAttr workloadName host.config.nori.backups;
@@ -160,6 +164,10 @@ let
     komga.comics = "aurora";
     miniflux.news = "aurora";
     navidrome.audio = "aurora";
+    paperless.papers = "aurora";
+    radicale.calendar = "aurora";
+    suwayomi.manga = "aurora";
+    vaultwarden.vault = "aurora";
   };
   catalogVisibleEverywhere =
     lib.all
