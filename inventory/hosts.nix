@@ -9,6 +9,7 @@
 {
   workstation = {
     systemModule = ../modules/machines/workstation;
+    homeModule = ../modules/machines/workstation/home.nix;
     profiles = [
       "base"
       "desktop"
@@ -42,6 +43,7 @@
 
   pi = {
     systemModule = ../modules/machines/pi;
+    homeModule = ../modules/machines/pi/home.nix;
     profiles = [
       "base"
       "entry-plane"
@@ -67,6 +69,7 @@
 
   pavilion = {
     systemModule = ../modules/machines/pavilion;
+    homeModule = ../modules/machines/pavilion/home.nix;
     profiles = [
       "base"
       "agent-host"
@@ -90,6 +93,7 @@
 
   aurora = {
     systemModule = ../modules/machines/aurora;
+    homeModule = ../modules/machines/aurora/home.nix;
     profiles = [
       "base"
       "family-vault"

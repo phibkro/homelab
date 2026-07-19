@@ -34,9 +34,6 @@
 {
   imports = [
     inputs.disko.nixosModules.disko
-    inputs.home-manager.nixosModules.home-manager
-
-    ../base
 
     ../../compat/papers-fetch-system-cli.nix
 
@@ -47,14 +44,6 @@
     ./disko-onetouch.nix
     ./disko-family.nix
   ];
-
-  home-manager = {
-    useGlobalPkgs = true;
-    useUserPackages = true;
-    extraSpecialArgs = { inherit inputs; };
-    backupFileExtension = "hm-backup";
-    users.nori.imports = [ ./home.nix ];
-  };
 
   /*
     Papers acquisition (docs/specs/2026-06-23-papers-acquisition.md):

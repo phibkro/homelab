@@ -2,8 +2,8 @@
   Explicit reusable compositions.
 
   A profile changes only through review of this file; workload tags never add
-  themselves to a host. `systemModules` is compiler-private and intentionally
-  unused during Phase 1 while existing host imports remain authoritative.
+  themselves to a host. `systemModules` is compiler-private and selected
+  before NixOS evaluation.
 */
 {
   base = {

@@ -15,10 +15,10 @@ experiment).
 NixOS configuration factory backed by the pure homelab inventory.
 
 `inventory/default.nix` is evaluated before the NixOS module fixed point and
-owns host enumeration, identity, profile selection, and intended workload
-placement. This factory still imports each legacy host realization unchanged
-during Phase 1; later phases replace its all-service imports with runtime
-modules selected from the same pure inventory.
+owns host enumeration, identity, profile selection, intended workload
+placement, and reusable system-module composition. Host realizations carry
+only hardware/storage and genuine deviations; profiles and workload
+manifests select reusable modules before the NixOS fixed point.
 
 ## Topology
 

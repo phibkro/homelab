@@ -39,6 +39,12 @@ let
       )
     );
 
+  systemModulesFor =
+    hostName:
+    lib.unique (
+      lib.concatMap (profileName: profiles.${profileName}.systemModules) hosts.${hostName}.profiles
+    );
+
   hostsForWorkload =
     workloadName: lib.filter (hostName: lib.elem workloadName (workloadsFor hostName)) hostNames;
 
@@ -143,6 +149,7 @@ assert lib.assertMsg (duplicateEndpoints == [ ])
       profiles
       workloadCatalog
       workloadsFor
+      systemModulesFor
       runtimeModulesFor
       lanRoutes
       ;

@@ -298,6 +298,23 @@ let
         "pavilion"
       ];
 
+  systemProfileRealizationCorrect =
+    hosts.workstation.config.programs.hyprland.enable
+    && lib.all (hostName: !hosts.${hostName}.config.programs.hyprland.enable) [
+      "aurora"
+      "pi"
+      "pavilion"
+    ];
+
+  homeManagerRealizationCorrect =
+    lib.all (hostName: hosts.${hostName}.config.home-manager.users.nori.home.stateVersion == "26.05")
+      [
+        "workstation"
+        "aurora"
+        "pi"
+        "pavilion"
+      ];
+
   expectedRoutes = {
     ai = {
       port = 11434;
@@ -581,6 +598,8 @@ if
   && catalogVisibleEverywhere
   && lifecycleStateCorrect
   && papersFetchCompatibility
+  && systemProfileRealizationCorrect
+  && homeManagerRealizationCorrect
 then
   "ok — architecture workload placement + route behavior baseline unchanged"
 else
@@ -593,6 +612,8 @@ else
     Migrated catalog global:    ${toString catalogVisibleEverywhere}
     Lifecycle state correct:    ${toString lifecycleStateCorrect}
     Papers-fetch compatibility: ${toString papersFetchCompatibility}
+    System profile realization: ${toString systemProfileRealizationCorrect}
+    Home Manager realization:   ${toString homeManagerRealizationCorrect}
 
     Expected workloads: ${builtins.toJSON expectedWorkloads}
     Inventory workloads: ${builtins.toJSON actualWorkloads}

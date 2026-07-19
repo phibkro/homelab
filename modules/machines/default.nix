@@ -7,10 +7,10 @@
   NixOS configuration factory backed by the pure homelab inventory.
 
   `inventory/default.nix` is evaluated before the NixOS module fixed point and
-  owns host enumeration, identity, profile selection, and intended workload
-  placement. This factory still imports each legacy host realization unchanged
-  during Phase 1; later phases replace its all-service imports with runtime
-  modules selected from the same pure inventory.
+  owns host enumeration, identity, profile selection, intended workload
+  placement, and reusable system-module composition. Host realizations carry
+  only hardware/storage and genuine deviations; profiles and workload
+  manifests select reusable modules before the NixOS fixed point.
 
   ## Topology
 
@@ -58,18 +58,28 @@ let
     name: host:
     lib.nixosSystem {
       specialArgs = { inherit inputs; };
-      modules = [
-        host.systemModule
-      ]
-      ++ inventory.internal.runtimeModulesFor name
-      ++ [
-        {
-          config.networking.hostName = name;
-          config.nori.hosts = hostRegistry;
-          config.nori.inventory = inventory.forHost name;
-          config.nori.lanRoutes = inventory.internal.lanRoutes;
-        }
-      ];
+      modules =
+        inventory.internal.systemModulesFor name
+        ++ [
+          inputs.home-manager.nixosModules.home-manager
+          host.systemModule
+        ]
+        ++ inventory.internal.runtimeModulesFor name
+        ++ [
+          {
+            config.networking.hostName = name;
+            config.nori.hosts = hostRegistry;
+            config.nori.inventory = inventory.forHost name;
+            config.nori.lanRoutes = inventory.internal.lanRoutes;
+            config.home-manager = {
+              useGlobalPkgs = true;
+              useUserPackages = true;
+              extraSpecialArgs = { inherit inputs; };
+              backupFileExtension = "hm-backup";
+              users.nori.imports = [ host.homeModule ];
+            };
+          }
+        ];
     };
 in
 {

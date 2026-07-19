@@ -26,24 +26,8 @@
     */
     "${modulesPath}/installer/sd-card/sd-image-aarch64.nix"
 
-    ../base
-
     ./hardware.nix
-    inputs.home-manager.nixosModules.home-manager
   ];
-
-  /*
-    home-manager-as-NixOS-module wrapper. Same shape as
-    modules/machines/workstation/default.nix; extract a shared snippet at the
-    third NixOS host (laptop NixOS would be the trigger).
-  */
-  home-manager = {
-    useGlobalPkgs = true;
-    useUserPackages = true;
-    extraSpecialArgs = { inherit inputs; };
-    backupFileExtension = "hm-backup";
-    users.nori.imports = [ ./home.nix ];
-  };
 
   # Blocky authoritative on pi: serves the customDNS map derived from
   # `nori.lanRoutes` directly, rather than forwarding to workstation.

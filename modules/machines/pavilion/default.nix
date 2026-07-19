@@ -49,21 +49,8 @@
   imports = [
     inputs.disko.nixosModules.disko
     inputs.impermanence.nixosModules.impermanence
-    inputs.home-manager.nixosModules.home-manager
-
-    ../base # base + users + sops + tailscale + lib options
-
     ./hardware.nix
   ];
-
-  # ── home-manager-as-NixOS-module ──────────────────────────────────
-  home-manager = {
-    useGlobalPkgs = true;
-    useUserPackages = true;
-    extraSpecialArgs = { inherit inputs; };
-    backupFileExtension = "hm-backup";
-    users.nori.imports = [ ./home.nix ];
-  };
 
   /*
     ── Boot ───────────────────────────────────────────────────────────
