@@ -80,6 +80,7 @@ lib.genAttrs
   node-exporter = import ../modules/infra/observability/node-exporter/manifest.nix;
   nvidia-gpu-exporter = import ../modules/infra/observability/nvidia-gpu-exporter/manifest.nix;
   ntfy-server = import ../modules/infra/observability/ntfy/manifests/server.nix;
+  ntfy-notify = import ../modules/infra/observability/ntfy/manifests/notify.nix;
   ollama = import ../modules/services/ollama/manifest.nix;
   open-webui = import ../modules/services/open-webui/manifest.nix;
   paperless = import ../modules/services/paperless/manifest.nix;

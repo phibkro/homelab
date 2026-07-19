@@ -163,6 +163,11 @@ let
       "workstation"
       "aurora"
     ];
+    ntfy-notify = [
+      "workstation"
+      "aurora"
+      "pi"
+    ];
     ntfy-server = [ "pi" ];
     ollama = [ "workstation" ];
     open-webui = [ "workstation" ];
@@ -190,6 +195,7 @@ let
 
   runtimeEvidenceNames = {
     beszel-hub = "beszel";
+    ntfy-notify = "notify";
     ntfy-server = "ntfy";
     victorialogs-server = "victorialogs";
   };

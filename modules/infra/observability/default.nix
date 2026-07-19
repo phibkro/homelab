@@ -36,7 +36,6 @@ _:
 {
   imports = [
     ./alerts.nix
-    ./ntfy/notify.nix
     ./vector.nix
   ];
 }
