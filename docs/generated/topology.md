@@ -85,10 +85,9 @@ VRAM for LLM inference — that stays on workstation's 5060 Ti.
 
 ## Why workhorse role
 
-Has GPU, has compute, hosts state. Classified workhorse — but it's a
-*minimal* workhorse. If a second compute-offload host ever appears,
-the rule-of-three signal is to extract a dedicated `compute` role
-then (see `modules/infra/hosts.nix § role`).
+Has GPU, compute, and durable state, so the broad hardware role remains
+`workhorse`. Its narrower family-vault purpose is expressed by the inventory
+profile rather than another host-role enum.
 ## pavilion — HP Pavilion g6 · AMD Athlon II P360 · 3.6 GB RAM · BIOS+GRUB
 
 Decade-old laptop (Phenom II era, 2010) repurposed as the agent

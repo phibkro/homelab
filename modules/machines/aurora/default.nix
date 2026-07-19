@@ -8,25 +8,24 @@
 
 /**
   aurora — retired Asus N552V (i7-6700HQ, 12 GB RAM, GTX 950M
-  Maxwell, dead battery). Single-role: immich machine-learning
-  offload host so workstation's 5060 Ti stays dedicated to ollama.
+  Maxwell, dead battery). Always-on family vault and application tier;
+  Immich machine learning is co-located here so Workstation's 5060 Ti stays
+  dedicated to interactive compute.
 
   ── Why it exists ──────────────────────────────────────────────────
-  Workstation runs ollama AND immich's CLIP/face/OCR pipeline on the
-  same 5060 Ti. Heavy photo ingest (smart-search re-index, face-
-  detection backfill) evict/reload-thrashes ollama and tanks
-  operator latency. The 950M's 2 GB VRAM fits CLIP-ViT-B/32 (~350 MB)
-  + RetinaFace (~250 MB) with Tesseract OCR on CPU, and Maxwell CUDA
-  is still fast at batched inference.
+  Aurora owns `/mnt/family/*`, the OneTouch restic target, and family-facing
+  applications such as Immich, Navidrome, Vaultwarden, Paperless, and Komga.
+  Keeping this tier always-on makes it independent of Workstation sleep. The
+  950M also absorbs Immich's CLIP/face/OCR pipeline without evicting Ollama.
 
   ── Posture ────────────────────────────────────────────────────────
-  * Stateless from a backup perspective — immich's authoritative
-    state (DB, originals, embeddings) lives on workstation. Aurora
-    only caches downloaded ML weights, replaceable on first run.
-  * No impermanence — weights are ~2 GB; re-downloading every boot
-    wastes bandwidth + startup. Regular btrfs root.
-  * No services exposed to LAN. immich-ml listens on tailnet only;
-    workstation's immich-server reaches it via tailnet ACL.
+  * Stateful and backup-critical — family datasets live on the Toshiba HDD,
+    service state is protected by local restic jobs, and btrbk replicates the
+    irreplaceable family tier to Workstation.
+  * No impermanence — service databases and ML weights need durable local
+    state. Regular btrfs root.
+  * Family services are reached through Pi's Caddy over tailnet; Samba is the
+    deliberate direct file-sharing exception.
   * No claude-code, no operator GitHub credential. Operator's daily
     driver stays on workstation.
 */
@@ -281,9 +280,8 @@
       assertion = config.nori.hosts.${config.networking.hostName}.role == "workhorse";
       message =
         "aurora's role must be 'workhorse' in inventory/hosts.nix. "
-        + "(Currently classified workhorse despite the single-service "
-        + "footprint; promote to a dedicated `compute` role on the "
-        + "third single-GPU-peer host — rule of three.)";
+        + "Aurora is the always-on family-vault workhorse; placement and "
+        + "topology must agree before changing this role.";
     }
   ];
 }
