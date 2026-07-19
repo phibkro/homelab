@@ -43,6 +43,7 @@ let
       ../../modules/infra/storage
       ../../modules/infra/backup
       ../../modules/infra/networking
+      ../../modules/infra/networking/blocky/runtime.nix
       (
         { lib, ... }:
         {
@@ -75,7 +76,6 @@ let
             port = 9090;
             runsOn = "workstation";
           };
-          nori.services.blocky.enable = true;
           nori.blocky.role = "self-hosted";
           # Stub backup target so the appliance assertion passes.
           nori.backupTargets.test-stub = {

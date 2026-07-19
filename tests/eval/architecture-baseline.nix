@@ -128,6 +128,7 @@ let
   actualRoutes = lib.mapAttrs (_: routeFingerprint) hosts.pi.config.nori.lanRoutes;
 
   migratedRuntimePlacements = {
+    authelia = [ "pi" ];
     bazarr = [ "workstation" ];
     beszel-agent = [
       "workstation"
@@ -136,8 +137,13 @@ let
       "pavilion"
     ];
     beszel-hub = [ "pi" ];
+    blocky = [
+      "workstation"
+      "pi"
+    ];
     btrbk-replica-target = [ "workstation" ];
     btrbk-replication = [ "aurora" ];
+    caddy = [ "pi" ];
     calibre-web = [ "aurora" ];
     disk-alert = [ "workstation" ];
     filmder = [ "aurora" ];
@@ -223,6 +229,7 @@ let
   ) (lib.attrNames migratedRuntimePlacements);
 
   migratedCatalogEndpoints = {
+    authelia.auth = "pi";
     bazarr.subtitles = "workstation";
     beszel-hub.metrics = "pi";
     ntfy-server.alert = "pi";

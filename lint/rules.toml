@@ -97,7 +97,7 @@ filmder/heim).'''
 # redirect goes away.
 pattern = 'services\.caddy\.virtualHosts'
 scope = ["modules/"]
-excludeFiles = ["modules/infra/networking/default.nix", "modules/infra/networking/caddy.nix"]
+excludeFiles = ["modules/infra/networking/default.nix", "modules/infra/networking/caddy/runtime.nix"]
 tags = ["architecture", "lan-route"]
 message = '''
 Direct services.caddy.virtualHosts found above. Use
@@ -203,7 +203,7 @@ Schema: modules/infra/hosts.nix; values: inventory/hosts.nix.'''
 # in their headers.
 pattern = '"https?://[a-z0-9.-]*\.nori\.lan'
 scope = ["modules/"]
-excludeFiles = ["modules/infra/networking/caddy.nix", "modules/infra/networking/default.nix"]
+excludeFiles = ["modules/infra/networking/caddy/runtime.nix", "modules/infra/networking/default.nix"]
 tags = ["migration", "adr-0004"]
 message = '''
 Hard-coded https://*.nori.lan URI found above. Use

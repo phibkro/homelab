@@ -110,8 +110,6 @@ in
 {
   imports = [
     ./gatus-probe.nix
-    ./caddy.nix
-    ./blocky.nix
   ];
 
   /**

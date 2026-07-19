@@ -59,11 +59,14 @@ lib.genAttrs
     kind = "service";
   })
 // {
+  authelia = import ../modules/infra/access/authelia/manifest.nix;
   bazarr = import ../modules/services/arr/manifests/bazarr.nix;
   beszel-agent = import ../modules/infra/observability/beszel/manifests/agent.nix;
   beszel-hub = import ../modules/infra/observability/beszel/manifests/hub.nix;
+  blocky = import ../modules/infra/networking/blocky/manifest.nix;
   btrbk-replica-target = import ../modules/infra/backup/btrbk-replica-target/manifest.nix;
   btrbk-replication = import ../modules/infra/backup/btrbk-replication/manifest.nix;
+  caddy = import ../modules/infra/networking/caddy/manifest.nix;
   calibre-web = import ../modules/services/calibre-web/manifest.nix;
   disk-alert = import ../modules/infra/observability/disk-alert/manifest.nix;
   filmder = import ../modules/services/filmder/manifest.nix;

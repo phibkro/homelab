@@ -1,4 +1,4 @@
-{ ... }:
+_:
 
 /**
   P15 receiver — workstation accepts btrfs send streams from aurora's

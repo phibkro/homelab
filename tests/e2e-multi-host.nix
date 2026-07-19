@@ -123,7 +123,11 @@ pkgs.testers.runNixOSTest {
   nodes.pi =
     { config, lib, ... }:
     {
-      imports = homelabBundle ++ [ commonNodeModule ];
+      imports = homelabBundle ++ [
+        commonNodeModule
+        ../modules/infra/networking/blocky/runtime.nix
+        ../modules/infra/networking/caddy/runtime.nix
+      ];
 
       networking.hostName = "pi";
       nori.lanIp = lib.mkForce piIp;
@@ -133,8 +137,6 @@ pkgs.testers.runNixOSTest {
         runsOn = "workstation";
       };
 
-      nori.services.blocky.enable = true;
-      nori.services.caddy.enable = true;
       nori.blocky.role = "self-hosted";
 
       services.caddy.package = lib.mkForce pkgs.caddy;
