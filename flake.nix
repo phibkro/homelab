@@ -682,6 +682,8 @@
               baseNonServicePatterns = [
                 "*/default.nix"
                 "*/manifest.nix"
+                "*/manifests/*.nix"
+                "modules/services/arr/runtime.nix"
                 "modules/services/arr/shared.nix"
                 /*
                   CLI-only — packages the papers-fetch resolver onto

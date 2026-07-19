@@ -18,11 +18,11 @@
   declare routes outside their activation gate so bundle-importing entry-plane
   hosts can see them.
 
-  Tightly-coupled stacks live under their own folders (each with a
-  `default.nix` that imports siblings):
+  Tightly-coupled stacks live under their own folders:
     arr/      — Sonarr/Radarr/Lidarr/Bazarr/Jellyseerr/Prowlarr/qBittorrent.
                 Cross-reference each other via API + share /mnt/media/
                 streaming via the `media` group + arr-internal tmpfiles.
+                Inventory identities select one shared runtime module.
     backup/   — restic + verify (drill) + btrbk. Share /mnt/backup, the
                 restic-password sops secret, and the notify@ pipeline.
 
@@ -32,11 +32,7 @@
 */
 _: {
   imports = [
-    # Coupled stacks (folder = coupling)
-    ./arr
-
-    # Loose services
-    # Jellyfin is inventory-selected from jellyfin/manifest.nix.
+    # Legacy loose services; migrated services are inventory-selected.
     ./music-ingest.nix
     ./papers-fetch.nix
     ./samba.nix

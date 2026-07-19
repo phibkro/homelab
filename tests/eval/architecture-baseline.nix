@@ -128,6 +128,7 @@ let
   actualRoutes = lib.mapAttrs (_: routeFingerprint) hosts.pi.config.nori.lanRoutes;
 
   migratedRuntimePlacements = {
+    bazarr = "workstation";
     calibre-web = "aurora";
     filmder = "aurora";
     glance = "aurora";
@@ -135,13 +136,20 @@ let
     heim = "aurora";
     immich = "aurora";
     jellyfin = "workstation";
+    jellyseerr = "workstation";
     komga = "aurora";
+    lidarr = "workstation";
     miniflux = "aurora";
     navidrome = "aurora";
     ollama = "workstation";
     open-webui = "workstation";
     paperless = "aurora";
+    prowlarr = "workstation";
+    qbittorrent = "workstation";
+    radarr = "workstation";
     radicale = "aurora";
+    recyclarr = "workstation";
+    sonarr = "workstation";
     stremio = "workstation";
     suwayomi = "aurora";
     vaultwarden = "aurora";
@@ -165,6 +173,7 @@ let
   ) (lib.attrNames migratedRuntimePlacements);
 
   migratedCatalogEndpoints = {
+    bazarr.subtitles = "workstation";
     calibre-web.books = "aurora";
     filmder.filmder = "aurora";
     glance.home = "aurora";
@@ -172,12 +181,18 @@ let
     heim.heim = "aurora";
     immich.photos = "aurora";
     jellyfin.media = "workstation";
+    jellyseerr.requests = "workstation";
     komga.comics = "aurora";
+    lidarr.music = "workstation";
     miniflux.news = "aurora";
     navidrome.audio = "aurora";
     ollama.ai = "workstation";
     paperless.papers = "aurora";
+    prowlarr.indexers = "workstation";
+    qbittorrent.downloads = "workstation";
+    radarr.movies = "workstation";
     radicale.calendar = "aurora";
+    sonarr.tv = "workstation";
     stremio.stremio = "workstation";
     suwayomi.manga = "aurora";
     vaultwarden.vault = "aurora";

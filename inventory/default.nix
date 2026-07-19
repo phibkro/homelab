@@ -75,8 +75,10 @@ let
 
   runtimeModulesFor =
     hostName:
-    map (workloadName: workloadCatalog.${workloadName}.runtimeModule) (
-      lib.filter (workloadName: workloadCatalog.${workloadName} ? runtimeModule) (workloadsFor hostName)
+    lib.unique (
+      map (workloadName: workloadCatalog.${workloadName}.runtimeModule) (
+        lib.filter (workloadName: workloadCatalog.${workloadName} ? runtimeModule) (workloadsFor hostName)
+      )
     );
 
   profilesForWorkload =

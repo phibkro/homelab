@@ -59,6 +59,7 @@ lib.genAttrs
     kind = "service";
   })
 // {
+  bazarr = import ../modules/services/arr/manifests/bazarr.nix;
   calibre-web = import ../modules/services/calibre-web/manifest.nix;
   filmder = import ../modules/services/filmder/manifest.nix;
   glance = import ../modules/services/glance/manifest.nix;
@@ -66,13 +67,20 @@ lib.genAttrs
   heim = import ../modules/services/heim/manifest.nix;
   immich = import ../modules/services/immich/manifest.nix;
   jellyfin = import ../modules/services/jellyfin/manifest.nix;
+  jellyseerr = import ../modules/services/arr/manifests/jellyseerr.nix;
   komga = import ../modules/services/komga/manifest.nix;
+  lidarr = import ../modules/services/arr/manifests/lidarr.nix;
   miniflux = import ../modules/services/miniflux/manifest.nix;
   navidrome = import ../modules/services/navidrome/manifest.nix;
   ollama = import ../modules/services/ollama/manifest.nix;
   open-webui = import ../modules/services/open-webui/manifest.nix;
   paperless = import ../modules/services/paperless/manifest.nix;
+  prowlarr = import ../modules/services/arr/manifests/prowlarr.nix;
+  qbittorrent = import ../modules/services/arr/manifests/qbittorrent.nix;
+  radarr = import ../modules/services/arr/manifests/radarr.nix;
   radicale = import ../modules/services/radicale/manifest.nix;
+  recyclarr = import ../modules/services/arr/manifests/recyclarr.nix;
+  sonarr = import ../modules/services/arr/manifests/sonarr.nix;
   stremio = import ../modules/services/stremio/manifest.nix;
   suwayomi = import ../modules/services/suwayomi/manifest.nix;
   vaultwarden = import ../modules/services/vaultwarden/manifest.nix;
