@@ -48,10 +48,19 @@ let
       workload = workloadCatalog.${workloadName};
       endpoints = workload.endpoints or { };
       placements = hostsForWorkload workloadName;
+      resolveEndpoint =
+        endpointName: endpoint:
+        let
+          explicitHost = endpoint.runsOn or null;
+          resolvedHost = if explicitHost != null then explicitHost else lib.head placements;
+        in
+        assert lib.assertMsg (explicitHost != null || lib.length placements == 1)
+          "inventory: endpoint '${endpointName}' on multi-host workload '${workloadName}' must declare runsOn";
+        assert lib.assertMsg (lib.elem resolvedHost placements)
+          "inventory: endpoint '${endpointName}' on workload '${workloadName}' runs on '${resolvedHost}', which is not a placement host";
+        endpoint // { runsOn = resolvedHost; };
     in
-    assert lib.assertMsg (endpoints == { } || lib.length placements == 1)
-      "inventory: routed workload '${workloadName}' requires exactly one host, found ${toString (lib.length placements)}";
-    lib.mapAttrs (_: endpoint: endpoint // { runsOn = lib.head placements; }) endpoints;
+    lib.mapAttrs resolveEndpoint endpoints;
 
   endpointNames = lib.concatMap (
     workloadName: lib.attrNames (workloadCatalog.${workloadName}.endpoints or { })
