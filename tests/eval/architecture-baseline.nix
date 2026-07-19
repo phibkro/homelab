@@ -128,31 +128,39 @@ let
   actualRoutes = lib.mapAttrs (_: routeFingerprint) hosts.pi.config.nori.lanRoutes;
 
   migratedRuntimePlacements = {
-    bazarr = "workstation";
-    calibre-web = "aurora";
-    filmder = "aurora";
-    glance = "aurora";
-    grafana = "aurora";
-    heim = "aurora";
-    immich = "aurora";
-    jellyfin = "workstation";
-    jellyseerr = "workstation";
-    komga = "aurora";
-    lidarr = "workstation";
-    miniflux = "aurora";
-    navidrome = "aurora";
-    ollama = "workstation";
-    open-webui = "workstation";
-    paperless = "aurora";
-    prowlarr = "workstation";
-    qbittorrent = "workstation";
-    radarr = "workstation";
-    radicale = "aurora";
-    recyclarr = "workstation";
-    sonarr = "workstation";
-    stremio = "workstation";
-    suwayomi = "aurora";
-    vaultwarden = "aurora";
+    bazarr = [ "workstation" ];
+    calibre-web = [ "aurora" ];
+    filmder = [ "aurora" ];
+    glance = [ "aurora" ];
+    grafana = [ "aurora" ];
+    heim = [ "aurora" ];
+    immich = [ "aurora" ];
+    jellyfin = [ "workstation" ];
+    jellyseerr = [ "workstation" ];
+    komga = [ "aurora" ];
+    lidarr = [ "workstation" ];
+    miniflux = [ "aurora" ];
+    navidrome = [ "aurora" ];
+    ollama = [ "workstation" ];
+    open-webui = [ "workstation" ];
+    paperless = [ "aurora" ];
+    prowlarr = [ "workstation" ];
+    qbittorrent = [ "workstation" ];
+    radarr = [ "workstation" ];
+    radicale = [ "aurora" ];
+    recyclarr = [ "workstation" ];
+    samba = [
+      "workstation"
+      "aurora"
+    ];
+    sonarr = [ "workstation" ];
+    stremio = [ "workstation" ];
+    suwayomi = [ "aurora" ];
+    syncthing = [
+      "workstation"
+      "aurora"
+    ];
+    vaultwarden = [ "aurora" ];
   };
 
   hasMigratedRuntime = workloadName: host: builtins.hasAttr workloadName host.config.nori.backups;
@@ -162,7 +170,7 @@ let
       (
         hostName:
         hasMigratedRuntime workloadName hosts.${hostName}
-        == (hostName == migratedRuntimePlacements.${workloadName})
+        == lib.elem hostName migratedRuntimePlacements.${workloadName}
       )
       [
         "workstation"
@@ -195,6 +203,7 @@ let
     sonarr.tv = "workstation";
     stremio.stremio = "workstation";
     suwayomi.manga = "aurora";
+    syncthing.sync = "workstation";
     vaultwarden.vault = "aurora";
   };
   catalogVisibleEverywhere =

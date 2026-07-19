@@ -1023,7 +1023,7 @@
                             baseNonServicePatterns
                             ++ [
                               "modules/infra/observability/ntfy/notify.nix"
-                              "modules/services/samba.nix"
+                              "modules/services/samba/runtime.nix"
                             ]
                           )
                         })

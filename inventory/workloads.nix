@@ -80,8 +80,10 @@ lib.genAttrs
   radarr = import ../modules/services/arr/manifests/radarr.nix;
   radicale = import ../modules/services/radicale/manifest.nix;
   recyclarr = import ../modules/services/arr/manifests/recyclarr.nix;
+  samba = import ../modules/services/samba/manifest.nix;
   sonarr = import ../modules/services/arr/manifests/sonarr.nix;
   stremio = import ../modules/services/stremio/manifest.nix;
   suwayomi = import ../modules/services/suwayomi/manifest.nix;
+  syncthing = import ../modules/services/syncthing/manifest.nix;
   vaultwarden = import ../modules/services/vaultwarden/manifest.nix;
 }

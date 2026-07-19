@@ -35,7 +35,5 @@ _: {
     # Legacy loose services; migrated services are inventory-selected.
     ./music-ingest.nix
     ./papers-fetch.nix
-    ./samba.nix
-    ./syncthing.nix
   ];
 }
