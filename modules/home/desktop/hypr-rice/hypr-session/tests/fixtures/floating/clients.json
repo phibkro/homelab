@@ -1,0 +1,11 @@
+[{
+    "address": "0x70a1b2c3d4e5",
+    "at": [700, 500],
+    "size": [700, 500],
+    "workspace": { "id": 1, "name": "1" },
+    "floating": true,
+    "monitor": 0,
+    "class": "com.saivert.pwvucontrol",
+    "title": "Volume Control",
+    "pid": 999999997
+}]

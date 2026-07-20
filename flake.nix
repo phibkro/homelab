@@ -1116,6 +1116,18 @@
               e2e-disk-alert = import ./tests/e2e-disk-alert.nix { inherit pkgs lib inputs; };
 
               /**
+                E2E — hypr-session user-journey nixosTest. Boots a real
+                Hyprland (virtio-gpu + llvmpipe, structurally isolated
+                from host DRM) and drives capture → save → compositor
+                SIGKILL → restore against a fresh instance. Lives next to
+                the scripts + bats suites it gates, unlike the tests/
+                e2e-* set which exercise host configs.
+              */
+              e2e-hypr-session = import ./modules/home/desktop/hypr-rice/hypr-session/tests/e2e-vm.nix {
+                inherit pkgs;
+              };
+
+              /**
                 Layer-1 eval test — `nori.lanRoutes` → blocky.customDNS
                 auto-generation. Sub-second; runs at every flake check
                 via the import below. Per docs/reference/testing-
@@ -1163,6 +1175,37 @@
                   };
                 in
                 pkgs.runCommandLocal "eval-route-invariants" { } ''
+                  echo ${lib.escapeShellArg result} > $out
+                '';
+
+              /**
+                Layer-1 eval test — `nori.lanRoutes.<n>.reachability` →
+                Caddy client-IP matcher + fail-closed catch-all. Verifies
+                that forwarding WAN :443 exposes only routes explicitly
+                marked internet-reachable.
+              */
+              eval-lanroute-reachability =
+                let
+                  result = import ./tests/eval/lanroute-reachability.nix {
+                    inherit pkgs lib inputs;
+                  };
+                in
+                pkgs.runCommandLocal "eval-lanroute-reachability" { } ''
+                  echo ${lib.escapeShellArg result} > $out
+                '';
+
+              /**
+                Layer-1 eval test — internet-reachable lanRoutes become
+                exact DNS-only IPv4 Cloudflare records. Internal routes,
+                wildcard records, proxying, and IPv6 stay absent.
+              */
+              eval-cloudflare-ddns-routes =
+                let
+                  result = import ./tests/eval/cloudflare-ddns-routes.nix {
+                    inherit pkgs lib inputs;
+                  };
+                in
+                pkgs.runCommandLocal "eval-cloudflare-ddns-routes" { } ''
                   echo ${lib.escapeShellArg result} > $out
                 '';
 

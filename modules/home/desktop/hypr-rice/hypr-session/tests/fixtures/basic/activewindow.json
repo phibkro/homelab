@@ -1,0 +1,22 @@
+{
+    "address": "0x60cdafc982a0",
+    "mapped": true,
+    "hidden": false,
+    "visible": true,
+    "at": [8, 44],
+    "size": [1708, 1388],
+    "workspace": {
+        "id": -97,
+        "name": "special:browser"
+    },
+    "floating": false,
+    "monitor": 0,
+    "class": "code",
+    "title": "projects - shiftx - Visual Studio Code",
+    "initialClass": "code",
+    "initialTitle": "Visual Studio Code",
+    "pid": 999999998,
+    "xwayland": false,
+    "pinned": false,
+    "fullscreen": 0
+}

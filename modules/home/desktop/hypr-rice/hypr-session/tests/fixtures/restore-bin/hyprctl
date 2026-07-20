@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# PATH-shim stub for hyprctl, scoped to restore.bats. Distinct from
+# tests/bin/hyprctl (capture.bats' stub, read-only) because restore.sh
+# also *dispatches* — this stub records every dispatch invocation verbatim
+# so tests can assert exact lua builder syntax, and serves a canned
+# post-restore `clients -j` snapshot representing "windows that showed up
+# after the respawn" (deliberately a different fixture from the input
+# current.json, which is restore.sh's INPUT, not what hyprctl would report
+# mid-restore).
+#
+# Env:
+#   HYPR_SESSION_TEST_FIXTURES_DIR   dir holding clients-after.json (falls
+#                                     back to an empty list if absent, e.g.
+#                                     for scenarios that never poll).
+#   HYPR_SESSION_TEST_DISPATCH_LOG   file this stub appends one dispatch
+#                                     expression per line to.
+set -euo pipefail
+
+: "${HYPR_SESSION_TEST_DISPATCH_LOG:?hyprctl stub: HYPR_SESSION_TEST_DISPATCH_LOG not set}"
+
+case "${1-}" in
+  dispatch)
+    printf '%s\n' "${2-}" >>"$HYPR_SESSION_TEST_DISPATCH_LOG"
+    echo ok
+    ;;
+  clients)
+    fixture="${HYPR_SESSION_TEST_FIXTURES_DIR-}/clients-after.json"
+    if [[ -n ${HYPR_SESSION_TEST_FIXTURES_DIR-} && -f $fixture ]]; then
+      cat "$fixture"
+    else
+      echo '[]'
+    fi
+    ;;
+  *)
+    printf 'hyprctl-stub(restore): unhandled invocation: %s\n' "$*" >&2
+    exit 1
+    ;;
+esac

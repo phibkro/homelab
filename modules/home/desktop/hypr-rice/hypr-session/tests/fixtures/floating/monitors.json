@@ -1,0 +1,12 @@
+[{
+    "id": 0,
+    "name": "DP-3",
+    "description": "Samsung Electric Company S34J55x H4ZN401303",
+    "width": 3440,
+    "height": 1440,
+    "x": 0,
+    "y": 0,
+    "activeWorkspace": { "id": 1, "name": "1" },
+    "specialWorkspace": { "id": 0, "name": "" },
+    "focused": true
+}]
