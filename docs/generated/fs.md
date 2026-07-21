@@ -54,7 +54,7 @@ Writer half of `nori.fs`: hosts that declare any
 `nori.fs.<X>.samba` entries emit the corresponding share +
 ownership tmpfiles. The samba globals (workgroup, hosts allow,
 vfs objects, the firewall rule) live in
-`modules/services/samba.nix` on the host that imports it.
+`modules/services/samba/runtime.nix` on the host that imports it.
 
 
 
@@ -127,7 +127,7 @@ share follows the drive across hosts because the
 declaration lives next to the disko entry. The share’s
 global hardening (tailnet-only firewall, hosts allow
 CIDRs, vfs objects for macOS interop) lives in
-modules/services/samba.nix; per-share fields here.
+modules/services/samba/runtime.nix; per-share fields here.
 
 Defaults are picked for the homelab’s single-user
 operator + family case: writable, valid user ` nori `,

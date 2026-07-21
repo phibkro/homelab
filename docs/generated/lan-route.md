@@ -124,7 +124,7 @@ under `*.${domain}`. Each entry generates ALL of:
  - Tailnet firewall hole (if `exposeOnTailnet`)
  - sops raw + hash secrets + env-file template (if `oidc` is
    set) — Authelia client list assembly lives in
-   `modules/infra/access/authelia.nix`, reading back
+   `modules/infra/access/authelia/runtime.nix`, reading back
    `config.nori.lanRoutes` from here. Hash material stays in
    sops; the authelia config-filter injects it at runtime.
 
@@ -207,7 +207,7 @@ route advertisement (services.tailscale.useRoutingFeatures =
 “server” in modules/machines/pi/default.nix); the client side needs
 –accept-routes set in its tailscaled config.
 
-Consumers: Blocky’s forwarder mode (modules/infra/networking/blocky.nix)
+Consumers: Blocky’s forwarder mode (modules/infra/networking/blocky/runtime.nix)
 and the Blocky DNS generator below. Both want a single “where
 does the service namespace live” address.
 
@@ -514,7 +514,7 @@ break under cookie-based forward-auth.
 Authelia uptime becomes load-bearing: an Authelia outage
 returns 502 for every forward-auth’d route. SSH-tunnel to
 the backend port directly as the recovery escape hatch.
-See modules/infra/access/authelia.nix for the upstream.
+See modules/infra/access/authelia/runtime.nix for the upstream.
 
 
 
@@ -747,7 +747,7 @@ null
 If set, this route gets:
 
  - an Authelia OIDC client entry (assembled by
-   modules/infra/access/authelia.nix from this declaration)
+   modules/infra/access/authelia/runtime.nix from this declaration)
  - a sops secret named ` oidc-<name>-client-secret `
  - a sops env-file template named ` oidc-<name>-env `
    containing ` <secretEnvName>=<raw> `, ready to wire as
