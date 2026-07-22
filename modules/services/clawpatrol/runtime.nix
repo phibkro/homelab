@@ -74,7 +74,7 @@ let
     schema_version = 1
 
     gateway {
-      dashboard_listen       = "0.0.0.0:${toString cfg.dashboardPort}"
+      dashboard_listen       = "127.0.0.1:${toString cfg.dashboardPort}"
       public_url             = "https://clawpatrol.${config.nori.domain}"
       state_dir              = "/var/lib/clawpatrol"
       dashboard_config_writes = false

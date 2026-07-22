@@ -24,7 +24,10 @@
           hash = "sha256-YUheXD5xzXwrHT5HmrgGF+19o8NvcaxMdJW7BQCdKiU=";
         };
 
-        patches = [ ./clawpatrol-ssh-env-slots.patch ];
+        patches = [
+          ./clawpatrol-ssh-env-slots.patch
+          ./clawpatrol-default-deny-relay.patch
+        ];
 
         subPackages = [ "cmd/clawpatrol" ];
         vendorHash = "sha256-9HIqm4PmmiDMFjBMqIlMtKlUBlKyKGkMWlDLSOoyVXE=";
@@ -83,6 +86,10 @@
           # bytes remain owned by the gateway service user.
           ca="$HOME/.clawpatrol/ca.crt"
           caBundle="$HOME/.clawpatrol/ca-bundle.crt"
+          if [ ! -r "$ca" ]; then
+            echo "pagu-box: Claw Patrol is not enrolled; run 'clawpatrol join <gateway-url>' first" >&2
+            exit 1
+          fi
           exec clawpatrol run -- \
             ${paguBoxUnwrapped}/bin/pagu-box \
               --ro-allow "$ca" \
@@ -99,6 +106,7 @@
         ${paguBoxClawpatrol}/bin/pagu-box --help > /dev/null
         grep -F 'clawpatrol run' ${paguBoxClawpatrol}/bin/pagu-box
         grep -F 'ca-bundle.crt' ${paguBoxClawpatrol}/bin/pagu-box
+        grep -F 'Claw Patrol is not enrolled' ${paguBoxClawpatrol}/bin/pagu-box
         touch "$out"
       '';
 

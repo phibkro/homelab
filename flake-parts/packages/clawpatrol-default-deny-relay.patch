@@ -1,0 +1,16 @@
+diff --git a/cmd/clawpatrol/main.go b/cmd/clawpatrol/main.go
+index 4ce8b73..941ef62 100644
+--- a/cmd/clawpatrol/main.go
++++ b/cmd/clawpatrol/main.go
+@@ -3468,0 +3469,5 @@ func runGateway(args []string) {
++				if policy := g.Policy(); policy != nil && policy.UnknownHost == "deny" {
++					log.Printf("wg-fwd: %s:%d: unknown destination denied", dstIP, dstPort)
++					_ = c.Close()
++					return
++				}
+@@ -3485,0 +3491,5 @@ func runGateway(args []string) {
++			if policy := g.Policy(); policy != nil && policy.UnknownHost == "deny" {
++				log.Printf("wg-fwd: udp %s:%d: unknown destination denied", dstIP, dstPort)
++				_ = c.Close()
++				return true
++			}
