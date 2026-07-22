@@ -10,6 +10,7 @@
 
   endpoints.audio = {
     port = 4533;
+    publicStatus = true;
     exposeOnTailnet = true;
     monitor = { };
     audience = "family";

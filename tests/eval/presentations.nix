@@ -13,12 +13,14 @@
 */
 let
   inventory = inputs.self.lib.noriInventory;
+  compiler = import ../../inventory;
+  workloadCatalog = import ../../inventory/workloads.nix { inherit lib; };
   pi = inputs.self.nixosConfigurations.pi.config;
   aurora = inputs.self.nixosConfigurations.aurora.config;
   statusServices = inventory.status.services;
   portalServices = inventory.portal.services;
 
-  presentationKeys = [
+  portalPresentationKeys = [
     "audience"
     "authentication"
     "description"
@@ -27,15 +29,42 @@ let
     "url"
     "visibleTo"
   ];
+  statusPresentationKeys = [
+    "description"
+    "title"
+    "url"
+  ];
 
   shapeIsMinimal =
-    catalog: lib.all (service: lib.attrNames service == presentationKeys) (lib.attrValues catalog);
+    keys: catalog: lib.all (service: lib.attrNames service == keys) (lib.attrValues catalog);
   statusIsInternetSafe = lib.all (
-    service:
-    service.audience != "operator"
-    && lib.hasPrefix "https://" service.url
-    && lib.hasSuffix ".home.phibkro.org" service.url
+    service: lib.hasPrefix "https://" service.url && lib.hasSuffix ".home.phibkro.org" service.url
   ) (lib.attrValues statusServices);
+  expectedStatusServices = [
+    "audio"
+    "media"
+    "requests"
+  ];
+  invalidPublicationFails =
+    endpointChange:
+    let
+      changedCatalog = workloadCatalog // {
+        jellyfin = workloadCatalog.jellyfin // {
+          endpoints = workloadCatalog.jellyfin.endpoints // {
+            media = workloadCatalog.jellyfin.endpoints.media // endpointChange;
+          };
+        };
+      };
+      evaluated = builtins.tryEval (
+        builtins.deepSeq
+          (compiler {
+            inherit lib;
+            workloadCatalog = changedCatalog;
+          }).public.status
+          true
+      );
+    in
+    !evaluated.success;
 
   portalPolicyWorks =
     portalServices.media.audience == "family"
@@ -77,9 +106,12 @@ if
     deprecatedDomains = [ "nori.lan" ];
     entryPlaneHost = "pi";
   }
-  && shapeIsMinimal statusServices
-  && shapeIsMinimal portalServices
+  && lib.attrNames statusServices == expectedStatusServices
+  && shapeIsMinimal statusPresentationKeys statusServices
+  && shapeIsMinimal portalPresentationKeys portalServices
   && statusIsInternetSafe
+  && invalidPublicationFails { monitor = null; }
+  && invalidPublicationFails { audience = "operator"; }
   && portalPolicyWorks
   && deprecatedDomainPolicyWorks
   && portalUsesCanonicalDomain

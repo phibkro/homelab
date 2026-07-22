@@ -9,9 +9,9 @@
       deploymentIndex = pkgs.writeText "homelab-deployment-index.json" (
         builtins.toJSON inputs.self.lib.noriDeployment
       );
-      statusCatalog = pkgs.writeText "homelab-status.json" (
-        builtins.toJSON inputs.self.lib.noriInventory.status
-      );
+      statusCatalog = pkgs.writeText "homelab-status.json" ''
+        ${builtins.toJSON inputs.self.lib.noriInventory.status}
+      '';
       portalCatalog = pkgs.writeText "homelab-portal.json" (
         builtins.toJSON inputs.self.lib.noriInventory.portal
       );
@@ -72,6 +72,15 @@
               '.hosts == ["macbook", "workstation"] and .activationOrder == ["workstation"]' \
               selected.json
 
+            touch "$out"
+          '';
+      checks.status-components-fresh =
+        pkgs.runCommandLocal "status-components-fresh"
+          {
+            nativeBuildInputs = [ pkgs.diffutils ];
+          }
+          ''
+            diff -u ${../../products/status/generated/components.json} ${statusCatalog}
             touch "$out"
           '';
     };
