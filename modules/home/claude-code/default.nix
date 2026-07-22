@@ -269,12 +269,18 @@ let
     pagu-box — cross-platform sandboxed agent launcher (github:phibkro/
     pagu-box). `--profile=strict` puts $HOME on tmpfs, binds $PWD + the
     agent's state dir RW, blocks secrets (~/.ssh, sops age, gh, host keys),
-    blocks system mutation (no setuid binaries, user namespace blocks sudo),
-    and blocks `git push` (no SSH key bound — operator pushes from outside).
+    and blocks system mutation (no setuid binaries, user namespace blocks sudo).
+    On Linux, the installed pagu-box command is wrapped by Claw Patrol: the
+    gateway injects reviewed credentials on matching egress while raw tokens
+    remain absent from the sandbox's environment and filesystem.
     claude-box / opencode-box just set cwd and forward args; the strict
     profile + --ro-allow list IS the security boundary.
   */
-  pagu-box = paguBoxInput.packages.${system}.default;
+  pagu-box =
+    if pkgs.stdenv.hostPlatform.isLinux then
+      inputs.self.packages.${system}.pagu-box-clawpatrol
+    else
+      paguBoxInput.packages.${system}.default;
 
   /*
     `box` — homelab-wrapped pagu-box. Operator-specific policy lives

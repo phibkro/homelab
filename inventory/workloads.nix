@@ -19,6 +19,7 @@ lib.genAttrs
     "btrbk-replication"
     "caddy"
     "calibre-web"
+    "clawpatrol"
     "clamor"
     "disk-alert"
     "filmder"
@@ -70,6 +71,7 @@ lib.genAttrs
   btrbk-replication = import ../modules/infra/backup/btrbk-replication/manifest.nix;
   caddy = import ../modules/infra/networking/caddy/manifest.nix;
   calibre-web = import ../modules/services/calibre-web/manifest.nix;
+  clawpatrol = import ../modules/services/clawpatrol/manifest.nix;
   clamor = import ../modules/services/clamor/manifest.nix;
   disk-alert = import ../modules/infra/observability/disk-alert/manifest.nix;
   filmder = import ../modules/services/filmder/manifest.nix;

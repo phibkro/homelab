@@ -207,6 +207,7 @@
         ./flake-parts/devshell.nix
         ./flake-parts/machines.nix
         ./flake-parts/home.nix
+        ./flake-parts/packages/clawpatrol.nix
         ./flake-parts/packages/docs-backups.nix
         ./flake-parts/packages/docs-fs.nix
         ./flake-parts/packages/docs-replicas.nix
