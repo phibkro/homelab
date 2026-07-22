@@ -47,11 +47,41 @@
     mode = "0400";
   };
 
+  /*
+    2026-07-23: agents channel moved off ntfy.sh onto the self-hosted pi
+    hub. FLEET/AGENT volume (every turn-end/permission/question ping from
+    however many agents are running) was tripping ntfy.sh's public rate
+    limit (429s, reproduced with a bare nori-alert call) — and it shares
+    that quota with every OTHER alert on ntfy.sh, so a noisy fleet could
+    silently starve a real infra alert of delivery.
+
+    CRITICAL INFRA alerts (nori.alerts.channels.infra, wired in
+    ntfy/notify.nix) deliberately STAY on ntfy.sh: they need to survive
+    the homelab itself being down, so pointing them at a service the
+    homelab hosts would be self-defeating. Fleet/agent alerts carry no
+    such requirement — if pi is down, the phone will also see pi's other
+    outage alerts (still on ntfy.sh) and losing agent chatter is a nonissue.
+
+    The pi hub denies anonymous publish (auth-default-access = deny, see
+    ntfy/server.nix + docs/runbooks/ntfy-auth-bootstrap.md) — reuse the
+    same shared publisher token already provisioned there. It's read by
+    home-manager's agent-notify, which runs as nori: same owner/mode as
+    the topic secret above.
+  */
+  sops.secrets.ntfy-publisher-token = {
+    owner = "nori";
+    mode = "0400";
+  };
+
   # The agents channel + route: agent-notify emits `--audience agents`,
   # this maps it to the dedicated topic. Defined here (not in the shared
   # home module) because the secret + nori-alert live at the system layer
   # on the host that runs the fleet.
-  nori.alerts.channels.agents.topicSecret = config.sops.secrets.ntfy-agents-channel.path;
+  nori.alerts.channels.agents = {
+    topicSecret = config.sops.secrets.ntfy-agents-channel.path;
+    baseUrl = "https://alert.${config.nori.domain}";
+    authTokenSecret = config.sops.secrets.ntfy-publisher-token.path;
+  };
   nori.alerts.routes.agents = [ "agents" ];
 
   /*

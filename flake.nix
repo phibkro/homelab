@@ -1167,6 +1167,7 @@
               e2e-multi-host = import ./tests/e2e-multi-host.nix { inherit pkgs lib inputs; };
               e2e-restic-backup = import ./tests/e2e-restic-backup.nix { inherit pkgs lib inputs; };
               e2e-disk-alert = import ./tests/e2e-disk-alert.nix { inherit pkgs lib inputs; };
+              e2e-alerts-channel-auth = import ./tests/e2e-alerts-channel-auth.nix { inherit pkgs lib inputs; };
 
               /**
                 E2E — hypr-session user-journey nixosTest. Boots a real

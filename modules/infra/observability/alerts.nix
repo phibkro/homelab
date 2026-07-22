@@ -31,10 +31,20 @@
   channel + operator route in ntfy/notify.nix; agents channel + agents
   route on the workstation that runs the fleet).
 
+  baseUrl is per-channel, not a single hardcode: infra/operator alerts
+  stay on ntfy.sh (uptime-independent of the homelab — the phone must
+  hear about the homelab being down), while high-volume channels (fleet/
+  agent chatter) can point at the self-hosted pi hub instead, so they
+  don't share ntfy.sh's public rate limit with the alerts that most need
+  to get through. The pi hub denies anonymous publish
+  (auth-default-access = deny, ./ntfy/server.nix) — authTokenSecret is the
+  seam for that: null for ntfy.sh, a sops token path for the hub.
+
   Scope: v1 is the seam + routing + a structured log line, NOT a durable
   transactional outbox. Delivery is still best-effort fire-and-forget (as
-  it was). A spool/retry relay that survives ntfy.sh being unreachable is a
-  later rung — add it if we measure dropped alerts, not before.
+  it was). A spool/retry relay that survives a channel's endpoint being
+  unreachable is a later rung — add it if we measure dropped alerts, not
+  before.
 */
 
 let
@@ -54,7 +64,24 @@ let
       baseUrl = lib.mkOption {
         type = lib.types.str;
         default = "https://ntfy.sh";
-        description = "ntfy base URL; topic appended as a path segment.";
+        description = ''
+          ntfy base URL; topic appended as a path segment. Defaults to the
+          public instance (uptime-independent of the homelab, but shares
+          its rate limit across every channel that doesn't override this).
+          Point at a self-hosted hub (e.g. the pi instance in ./ntfy) for
+          traffic that doesn't need to survive the homelab's own outage.
+        '';
+      };
+      authTokenSecret = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = ''
+          Path to a secret file holding a bearer token (sops). When set,
+          sent as `Authorization: Bearer <token>` on every publish to this
+          channel. ntfy.sh needs none (default null); a self-hosted hub
+          running `auth-default-access = deny` (see ./ntfy/server.nix)
+          rejects anonymous publish, so its channels must set this.
+        '';
       };
     };
   };
@@ -70,7 +97,16 @@ let
       fi
       local topic
       topic="$(cat ${lib.escapeShellArg ch.topicSecret})"
+      local auth_header=()
+      ${lib.optionalString (ch.authTokenSecret != null) ''
+        if [ ! -r ${lib.escapeShellArg ch.authTokenSecret} ]; then
+          echo "nori-alert: channel ${name} auth token unreadable; skipping" >&2
+          return 0
+        fi
+        auth_header=(-H "Authorization: Bearer $(cat ${lib.escapeShellArg ch.authTokenSecret})")
+      ''}
       curl -fsS \
+        "''${auth_header[@]}" \
         -H "Title: $title" \
         -H "Priority: $prio" \
         -H "Tags: $tags" \

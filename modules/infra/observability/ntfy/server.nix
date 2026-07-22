@@ -7,11 +7,19 @@
     alert/observability infra shouldn't share fate with the host being
     alerted. Migrated from station 2026-04-29.
 
-    Today's actual alert path still goes to ntfy.sh (public) — both
-    Gatus and the notify@ template POST there directly because the
-    operator's mobile app subscription is on ntfy.sh. The local instance
-    is pre-positioned for future internal-only alerts (services that
-    shouldn't traverse public internet).
+    Gatus and the notify@ template still POST straight to ntfy.sh
+    (public), by design — those are CRITICAL INFRA alerts and need to
+    survive the homelab itself being down, so routing them through a
+    service the homelab hosts would be self-defeating.
+
+    2026-07-23: the FLEET/AGENT channel (nori.alerts.channels.agents,
+    wired on workstation — modules/machines/workstation/default.nix) is
+    now the first real publisher against THIS local instance instead of
+    ntfy.sh. Volume from a running agent fleet (every turn-end/
+    permission/question ping) was tripping ntfy.sh's public rate limit
+    (429s) and sharing that quota with alerts that most need to get
+    through; agent chatter carries no uptime-independence requirement,
+    so it's the one channel that can safely live here.
 
     Auth posture (hardened 2026-06-15 per docs/runbooks/ntfy-auth-
     bootstrap.md): `auth-default-access = "deny"` — no anonymous
@@ -29,6 +37,15 @@
     Declarative bootstrap deferred until the CLI's non-interactive
     password shape is verified — runbook's example doesn't match
     upstream's documented syntax. Tracked as a small follow-up.
+
+    deny also blocks anonymous SUBSCRIBE — unlike ntfy.sh, where a
+    topic's obscure name alone gates read access, the phone app can't
+    just subscribe to the agents topic here without credentials. Until
+    a scoped grant is added (`ntfy access '*' <agents-topic> read-only`,
+    run once on pi — same "no declarative users API yet" constraint as
+    the publisher above), the operator's app has to log into this
+    server AS the publisher user to read the agents topic. Tracked
+    alongside the publisher bootstrap follow-up.
   */
   services.ntfy-sh = {
     enable = true;
