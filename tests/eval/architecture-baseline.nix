@@ -38,6 +38,7 @@ let
       "beszel-agent"
       "blocky"
       "btrbk-replica-target"
+      "clamor"
       "disk-alert"
       "gatus"
       "jellyfin"
@@ -233,6 +234,7 @@ let
     beszel-hub.metrics = "pi";
     ntfy-server.alert = "pi";
     calibre-web.books = "aurora";
+    clamor.agents = "workstation";
     filmder.filmder = "aurora";
     glance.home = "aurora";
     grafana.ops = "aurora";
@@ -384,6 +386,15 @@ let
     && hosts.workstation.config.home-manager.users.nori.wayland.windowManager.hyprland.enable;
 
   expectedRoutes = {
+    agents = {
+      port = 4173;
+      runsOn = "workstation";
+      audience = "operator";
+      exposeOnTailnet = true;
+      auth = "none";
+      monitored = true;
+      dashboard = false;
+    };
     ai = {
       port = 11434;
       runsOn = "workstation";

@@ -22,6 +22,7 @@
     workloads = [
       "blocky"
       "btrbk-replica-target"
+      "clamor"
       "disk-alert"
       "gatus"
       "ntfy-notify"
