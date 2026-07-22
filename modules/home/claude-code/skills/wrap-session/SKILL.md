@@ -20,6 +20,59 @@ off. If they'd be confused, the wrap-up isn't done.
 - Pending unpushed commits: !`git log --oneline @{u}.. 2>/dev/null || echo "(branch not tracking remote)"`
 - Recent commit history: !`git log --oneline -10`
 
+## Context-rot checkpoint mode
+
+Use this mode when the Herdr manager reports that this lane is near its context
+threshold (approximately 20% remaining), or when the manager explicitly requests
+a context-rot handoff. This is an early in-flight checkpoint, not an ordinary
+session ending. The monitor detects context pressure and wakes the manager; this
+skill does not infer pressure from conversation prose or mutate other panes.
+
+When this mode is selected, run it before the ordinary push step below:
+
+1. Read the project instructions, `git status --short`, `git log --oneline -10`,
+   and the project's existing SSoT edge document (`CONTEXT.md`, an active
+   `PATH-*.md`, or `handoff.md`). If there is no unambiguous existing edge
+   document, stop and report the blocker; never create a parallel handoff store.
+2. Determine a filesystem-safe lane name and create
+   `handoff/<lane>-<YYYYMMDDTHHMMSSZ>` from the current branch.
+3. Run the bounded project gate when feasible. Record its exact command and
+   result. A red or unavailable gate belongs in `left`; it is not `verified`.
+4. Stage intended WIP, excluding the edge document, and commit it as the
+   durable WIP checkpoint. Do not discard unrelated changes. If a documented
+   skip mechanism is needed for knowingly red WIP, explain why in `left`.
+5. Resolve the WIP commit with `git rev-parse HEAD`, then write the following
+   compact contract into the existing edge document and commit that document
+   separately:
+
+   ```markdown
+   ## Context-rot handoff
+   - done: <completed artifacts or "none">
+   - verified: <gate command + result tied to WIP SHA, or "none — reason">
+   - left: <unfinished work>
+   - current edge: <one line stating exactly where work is>
+   - next concrete action: <one executable action>
+   - gotchas / traps: <successor hazards and claims to re-check>
+   - wip branch: <handoff/...>
+   - wip branch sha: <full 40-character WIP SHA>
+   ```
+
+   The WIP SHA is the durable referent. The edge-document commit is its child;
+   a commit cannot contain its own SHA. Verify the WIP SHA exists and is an
+   ancestor of the handoff branch tip, and leave the tree clean.
+6. Use the `handoff <pane>` relaunch recipe after the checkpoint. It validates
+   the branch, edge document, WIP SHA, and ancestry; exits the old provider;
+   and launches a new provider process in the same pane seeded with:
+   `read <edge-doc>, verify <WIP SHA>/<branch tip>, continue from the next
+   concrete action`. Never use `--resume`, `--continue`, or `fork` here.
+
+The successor must independently inspect Git and run the named gate. Treat the
+summary as a routing hint, not evidence. A rotted agent summarizing itself is
+self-validation, so every verified claim must be tethered to the committed WIP
+SHA, Git history, edge document, and gate. Do not push, merge, or alter unrelated
+project state as part of this context refresh; the fresh session may invoke the
+ordinary wrap-up mode later when it actually ends.
+
 ## Procedure
 
 ### 1. Push pending commits
