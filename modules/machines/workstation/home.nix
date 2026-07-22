@@ -97,11 +97,41 @@
     above. Declared (rather than left transient) so fleet-wide bounds
     have a home when needed; per-lane kill comes from each scope's own
     ManagedOOMMemoryPressure.
+
+    FLEET-WIDE MEMORY CAP — 2026-07-23 incident: herdr.slice carried
+    ManagedOOMMemoryPressure (a per-scope kill trigger) but no memory
+    limit of its own, so the fleet's aggregate RSS grew unbounded,
+    drove user-1000.slice's memory pressure past its 50% oomd trip
+    (`systemd.slices."user-1000".sliceConfig.ManagedOOMMemoryPressureLimit`,
+    workstation/default.nix), and oomd picked the DESKTOP session scope
+    to kill — the biggest cgroup it saw, and the opposite of what the
+    2026-07-20 per-pane isolation was for (that made each PANE
+    killable; it never bounded the FLEET). MemoryHigh/MemoryMax give
+    the slice its own hard ceiling: growth past 16G now trips a kernel
+    OOM INSIDE herdr.slice — killing a fleet agent — before
+    user-1000's pressure trip ever has to pick a victim. ManagedOOMSwap
+    extends the same "contain inside the slice" story to the swap
+    axis, mirroring what MemorySwapMax does for user@ in default.nix.
+
+    Verified live at the time of the incident via `systemctl --user
+    set-property herdr.slice MemoryHigh=12G MemoryMax=16G
+    ManagedOOMMemoryPressure=kill ManagedOOMSwap=kill` — that command
+    does not survive a reboot, hence codifying it here.
+
+    Numbers: herdr.slice's 16G hard cap is a sub-budget of
+    user-1000.slice's own 28G MemoryMax (default.nix), leaving ~12G of
+    that budget for the desktop session + everything else outside the
+    fleet. Tighten if repeated trips show 16G is still generous;
+    loosen only with a corresponding raise to user-1000.slice so the
+    fleet can't re-eat the desktop's share.
   */
   systemd.user.slices.herdr = {
     Unit.Description = "Herdr agent lanes (one scope per pane)";
     Slice = {
+      MemoryHigh = "12G";
+      MemoryMax = "16G";
       ManagedOOMMemoryPressure = "kill";
+      ManagedOOMSwap = "kill";
       /*
         Below-default weights (100): under contention the lanes yield
         to the interactive session instead of 4×-oversubscribing it
