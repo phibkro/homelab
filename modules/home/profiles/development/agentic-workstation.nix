@@ -9,7 +9,7 @@ let
   agent-dispatch = pkgs.writeShellApplication {
     name = "agent-dispatch";
     runtimeInputs = [
-      inputs.pagu-box.packages.${pkgs.stdenv.hostPlatform.system}.default
+      inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.pagu-box-clawpatrol
       pkgs.coreutils
       pkgs.util-linux
     ];
