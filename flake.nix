@@ -711,6 +711,7 @@
                 name:
                 builtins.head (builtins.filter (package: lib.getName package == name) workstationHome.packages);
               agentDispatchPackage = homePackageNamed "agent-dispatch";
+              agentNotifyPackage = homePackageNamed "agent-notify";
               riceCommandPackage = homePackageNamed "rice-command";
               ricePalettePackage = homePackageNamed "rice-palette";
               confirmationNo = pkgs.writeShellScript "rice-confirm-no" ''
@@ -753,6 +754,25 @@
                       ${./modules/home/agent-dispatch.sh}
                     touch $out
                   '';
+
+              agent-notify = pkgs.runCommandLocal "agent-notify-test" { } ''
+                mkdir fake-bin
+                cat > fake-bin/nori-alert <<'EOF'
+                #!${pkgs.runtimeShell}
+                touch "$AGENT_NOTIFY_CALLED"
+                EOF
+                chmod +x fake-bin/nori-alert
+
+                called="$PWD/called"
+                HERDR_ENV=1 AGENT_NOTIFY_CALLED="$called" PATH="$PWD/fake-bin:$PATH" \
+                  ${agentNotifyPackage}/bin/agent-notify claude stop </dev/null
+                test ! -e "$called"
+
+                AGENT_NOTIFY_CALLED="$called" PATH="$PWD/fake-bin:$PATH" \
+                  ${agentNotifyPackage}/bin/agent-notify claude stop </dev/null
+                test -e "$called"
+                touch $out
+              '';
 
               agent-post-edit =
                 pkgs.runCommandLocal "agent-post-edit-test"
