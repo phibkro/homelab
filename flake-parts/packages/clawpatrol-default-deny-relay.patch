@@ -2,6 +2,12 @@ diff --git a/cmd/clawpatrol/main.go b/cmd/clawpatrol/main.go
 index 4ce8b73..941ef62 100644
 --- a/cmd/clawpatrol/main.go
 +++ b/cmd/clawpatrol/main.go
+@@ -1826,0 +1827,5 @@ func (g *Gateway) handlePostgresConn(c net.Conn, dstIP net.IP, profile string) {
++		if policy != nil && policy.UnknownHost == "deny" {
++			log.Printf("pg %s: no postgres endpoint in profile %q; unknown destination denied", dstIP, profile)
++			_ = c.Close()
++			return
++		}
 @@ -3468,0 +3469,5 @@ func runGateway(args []string) {
 +				if policy := g.Policy(); policy != nil && policy.UnknownHost == "deny" {
 +					log.Printf("wg-fwd: %s:%d: unknown destination denied", dstIP, dstPort)
