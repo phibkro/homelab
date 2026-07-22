@@ -2,6 +2,8 @@
 result
 result-*
 .direnv/
+node_modules/
+.alchemy/
 
 # Local flake state (generated, not source of truth)
 flake.lock.local

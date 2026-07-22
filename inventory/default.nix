@@ -144,6 +144,16 @@ let
   duplicateEndpoints = lib.filter (
     endpointName: lib.count (candidate: candidate == endpointName) endpointNames > 1
   ) (lib.unique endpointNames);
+  invalidPublicStatusEndpoints = lib.concatMap (
+    workloadName:
+    lib.mapAttrsToList (endpointName: _endpoint: "${workloadName}.${endpointName}") (
+      lib.filterAttrs (
+        _endpointName: endpoint:
+        (endpoint.publicStatus or false)
+        && ((endpoint.monitor or null) == null || (endpoint.audience or "operator") == "operator")
+      ) (workloadCatalog.${workloadName}.endpoints or { })
+    )
+  ) workloadNames;
 
   lanRoutes = lib.foldl' (
     routes: workloadName: routes // resolvedEndpointsFor workloadName
@@ -252,18 +262,18 @@ let
     };
 
   presentationCatalog = lib.mapAttrs presentationFor lanRoutes;
-  monitoredEndpointNames = lib.attrNames (
-    lib.filterAttrs (_name: endpoint: (endpoint.monitor or null) != null) lanRoutes
-  );
   dashboardEndpointNames = lib.attrNames (
     lib.filterAttrs (_name: endpoint: (endpoint.dashboard or null) != null) lanRoutes
   );
-  statusEndpointNames = lib.filter (
-    endpointName: (lanRoutes.${endpointName}.audience or "operator") != "operator"
-  ) monitoredEndpointNames;
+  statusEndpointNames = lib.attrNames (
+    lib.filterAttrs (_name: endpoint: endpoint.publicStatus or false) lanRoutes
+  );
+  statusPresentationFor = endpointName: {
+    inherit (presentationCatalog.${endpointName}) title description url;
+  };
 
   status = {
-    services = lib.getAttrs statusEndpointNames presentationCatalog;
+    services = lib.genAttrs statusEndpointNames statusPresentationFor;
   };
   portal = {
     accessTiers = {
@@ -343,6 +353,8 @@ assert lib.assertMsg (invalidRolePlacements == [ ])
   "inventory: workload placement violates its declared hostRoles: ${lib.concatStringsSep ", " invalidRolePlacements}";
 assert lib.assertMsg (duplicateEndpoints == [ ])
   "inventory: endpoint name(s) have multiple owners: ${lib.concatStringsSep ", " duplicateEndpoints}";
+assert lib.assertMsg (invalidPublicStatusEndpoints == [ ])
+  "inventory: publicStatus endpoints must be monitored and non-operator: ${lib.concatStringsSep ", " invalidPublicStatusEndpoints}";
 assert lib.assertMsg (unknownDatasetWorkloads == [ ])
   "inventory: dataset producer/consumer workload reference(s) do not exist: ${lib.concatStringsSep ", " unknownDatasetWorkloads}";
 assert lib.assertMsg (invalidDatasetPaths == { })

@@ -411,6 +411,15 @@ in
               }
             );
           };
+          publicStatus = mkOption {
+            type = types.bool;
+            default = false;
+            description = ''
+              Explicitly publish this route as a component on the external
+              status page. This is a disclosure grant, not a network exposure
+              mechanism. Published routes must be non-operator and monitored.
+            '';
+          };
           dashboard = mkOption {
             default = null;
             description = ''
@@ -697,6 +706,23 @@ in
             no app-side awareness. Pick one. Conflicting routes:
               ${lib.concatStringsSep ", " (
                 lib.attrNames (lib.filterAttrs (_: r: r.oidc != null && r.forwardAuth != null) routes)
+              )}
+          '';
+        }
+        {
+          assertion = lib.all (r: !r.publicStatus || (r.monitor != null && r.audience != "operator")) (
+            lib.attrValues routes
+          );
+          message = ''
+            nori.lanRoutes.<n> with publicStatus=true must be monitored and
+            must not use audience="operator". Public status publication is an
+            explicit disclosure boundary.
+
+            Offending routes:
+              ${lib.concatStringsSep ", " (
+                lib.attrNames (
+                  lib.filterAttrs (_: r: r.publicStatus && (r.monitor == null || r.audience == "operator")) routes
+                )
               )}
           '';
         }

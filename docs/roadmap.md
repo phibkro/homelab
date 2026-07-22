@@ -10,18 +10,16 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 ## Outstanding (actionable)
 
-- **Concern-oriented architecture simplification.** Split globally visible
-  workload metadata from host-local runtime realization; compose hosts and
-  Home Manager environments through explicit typed profiles; derive routing,
-  deployment, status, dashboards, and future onboarding views from one
-  secret-free inventory. Governing design and phased verification contract:
-  `docs/specs/2026-07-19-architecture-simplification-design.md`. Implementation
-  branch: `feat/architecture-simplification`; production activation remains
-  operator-gated until the complete migration PR is reviewed. **Implementation
-  status (2026-07-20):** all seven migration phases are implemented on the
-  branch, including machine-readable inventory, deployment planning, canonical
-  music/artifact contracts, status/portal projections, and current-truth docs.
-  Remaining work is the final whole-branch verification and operator PR review.
+- **Public status and maintenance communication.** Build the failure-independent
+  `status.home.phibkro.org` Cloudflare Worker from the explicit public-safe
+  `noriInventory.status` projection. The first vertical slice owns read-only
+  HTML/JSON, D1 component state, and scheduled external probes; authenticated
+  maintenance/incident mutations and the rebuild wrapper follow after public
+  acceptance. Design and gates:
+  `docs/specs/2026-07-22-public-status-design.md`. **Implementation status
+  (2026-07-22):** publication contract and read-only Worker vertical slice are
+  in progress on `feat/public-status`; no Cloudflare resources have been
+  created or changed.
 
 - **Aurora migration — workstation-as-compute / aurora-as-family-vault.** Reorganises hosts to let workstation sleep when no GPU/transcode/bulk-storage workload is active and to give irreplaceable media a 3-copy replication posture. Full delta table, phase ordering, validation gates, and reversibility ladder in `docs/plans/2026-06-11-aurora-migration.md`. **Progress (2026-06-16):** P1–P15 ✓ landed (foundation + aurora bootstrap + data move + service-state migration + entry-plane flip + nightly btrbk replication aurora → workstation MP510 live since 2877267). P18 (s2idle resume hang) fixed b77b030; P19 ✓ landed end-to-end (pi `wakeonlan` sender 3674d89 + operator-verified magic-packet test 2026-06-16); P20 partially landed (PipeWire idle inhibit + hibernate setup + hypridle removal — manual triggers only). **Outstanding:** P20 hypridle re-enable (gated on operator verifying suspend works post-reboot). P16 pavilion tertiary replica future-work; P17 Hetzner explicitly rejected per ADR-0002.
 
@@ -49,14 +47,12 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 ## Deferred (tracked, not currently worked)
 
-- **Public status and authenticated family portal frontends.** The inventory now
-  emits minimal `status-json` and access-tiered `portal-json` packages with no
-  topology or secret fields. Build the actual public status page, planned
-  maintenance workflow, authenticated capability filtering, registration guide,
-  and generated walkthroughs as a follow-up product. This migration deliberately
-  supplies the governed data contract only; it does not expose a new internet
-  surface or choose a frontend stack. **Trigger:** architecture migration merged
-  and public-exposure design approved.
+- **Authenticated family onboarding portal and documentation.** Reuse the
+  access-tiered `portal-json` contract and the public status component vocabulary
+  for capability filtering, registration guidance, Tailscale setup, and generated
+  walkthroughs. Keep its authentication and release lifecycle separate from the
+  unauthenticated status Worker. **Trigger:** the public status surface passes
+  production acceptance and its component/presentation contract is stable.
 
 - **Mac is on x86_64-darwin EOL clock.** Confirmed 2026-06-15: **26.05 is the last nixpkgs stable supporting x86_64-darwin** (26.11 drops it). Determinate installer v3.12.2 was the last with x86_64-darwin (v3.12.3 dropped Intel). The Mac is currently pinned to 26.05 and works; "stay pinned indefinitely" is a valid stance until something else forces movement.
 

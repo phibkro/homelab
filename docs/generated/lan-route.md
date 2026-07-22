@@ -911,6 +911,32 @@ Backend TCP port (validated 0-65535 at eval time).
 
 
 
+## nori.lanRoutes.<name>.publicStatus
+
+
+
+Explicitly publish this route as a component on the external
+status page. This is a disclosure grant, not a network exposure
+mechanism. Published routes must be non-operator and monitored.
+
+
+
+*Type:*
+boolean
+
+
+
+*Default:*
+
+```nix
+false
+```
+
+*Declared by:*
+ - `modules/infra/networking`
+
+
+
 ## nori.lanRoutes.<name>.runsOn
 
 
