@@ -5,8 +5,9 @@ _:
 
   PaaS observability: collection (exporters), storage (TSDB + logs
   index), query (Grafana), monitoring (Gatus), alerting (ntfy +
-  heartbeat). Universal exporters (node, nvidia-gpu, vector) ship
-  on every host that imports this; daemon-side services
+  heartbeat). Workload runtimes select exporters and daemons; the explicit
+  `log-forwarder` system profile selects Vector on each participating host.
+  Daemon-side services
   (VictoriaMetrics, VictoriaLogs, Gatus, Beszel hub, ntfy server,
   Grafana) activate only where opted in.
 
@@ -17,7 +18,7 @@ _:
                                (consumes per-route monitors
                                declared via
                                `modules/infra/networking/default.nix`)
-   - `victoriametrics.nix`     metrics TSDB
+   - `victoriametrics/`        metrics TSDB
    - `victorialogs/`           logs index (server + bundle)
    - `grafana.nix`             dashboards UI
    - `grafana-dashboards/`     dashboard sources
@@ -25,8 +26,8 @@ _:
                                split-module)
    - `ntfy/`                   alert channel (server + per-host
                                notify@ client)
-   - `node-exporter.nix`       Linux metrics exporter
-   - `nvidia-gpu-exporter.nix` GPU metrics
+   - `node-exporter/`          Linux metrics exporter
+   - `nvidia-gpu-exporter/`    GPU metrics
    - `vector.nix`              journald → VictoriaLogs shipper
                                (was modules/infra/observability/vector.nix)
    - `heartbeat.nix`           dead-man-switch ping →
@@ -34,18 +35,5 @@ _:
    - `disk-alert.nix`          per-fs disk-space alert
 */
 {
-  imports = [
-    ./alerts.nix
-    ./gatus.nix
-    ./victoriametrics.nix
-    ./victorialogs/default.nix
-    ./grafana.nix
-    ./beszel/agent.nix
-    ./ntfy/notify.nix
-    ./node-exporter.nix
-    ./nvidia-gpu-exporter.nix
-    ./vector.nix
-    ./heartbeat.nix
-    ./disk-alert.nix
-  ];
+  imports = [ ./alerts.nix ];
 }

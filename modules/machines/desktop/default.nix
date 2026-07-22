@@ -2,8 +2,8 @@ _: {
   /**
     System-level concerns of the workstation graphical session.
     Per-user HM-only modules (waybar, mako, hypr-lock, hyprsunset, the
-    GUI app package list) live in `home/desktop/` and are imported by
-    `modules/machines/workstation/home.nix`.
+    rice implementation) live in `modules/home/desktop/`; user-facing app
+    groups compose through `modules/home/profiles/desktop/`.
   */
   imports = [
     ./hyprland.nix

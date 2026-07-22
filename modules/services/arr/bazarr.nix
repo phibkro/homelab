@@ -1,58 +1,35 @@
+{ config, ... }:
+
 {
-  config,
-  lib,
-  ...
-}:
+  /*
+    Bazarr — subtitle automation. Reads Sonarr's + Radarr's libraries,
+    finds missing subtitles per the user's language preferences, fetches
+    them from configured providers (OpenSubtitles, Subscene, etc.) and
+    writes the .srt/.ass files alongside the video files.
 
-lib.mkMerge [
-  {
-    nori.services.bazarr.tags = [ "media-server" ];
+    First-run setup:
+      1. Visit https://subtitles.home.phibkro.org
+      2. Set admin password
+      3. Settings → Languages → enabled languages (Norwegian + English
+         most common)
+      4. Settings → Providers → enable OpenSubtitles (free, generous
+         quota; requires a free account); add others as desired
+      5. Settings → Sonarr → Host: localhost, Port: 8989, paste API key
+         Settings → Radarr → Host: localhost, Port: 7878, paste API key
+      6. Bazarr scans on a schedule + on-demand; new subtitles land
+         next to the video file automatically.
+  */
+  services.bazarr = {
+    enable = true;
+    user = "bazarr";
+    group = "bazarr";
+    openFirewall = false;
+    listenPort = 6767;
+  };
 
-    nori.lanRoutes.subtitles = {
-      port = 6767;
-      runsOn = "workstation";
-      exposeOnTailnet = true; # pi's Caddy proxies cross-host over tailnet
-      monitor = { };
-      audience = "operator";
-      dashboard = {
-        title = "Bazarr";
-        icon = "sh:bazarr";
-        group = "Acquire";
-        description = "Subtitle automation";
-      };
-    };
-  }
-  (lib.mkIf config.nori.services.bazarr.enabled {
-    /*
-      Bazarr — subtitle automation. Reads Sonarr's + Radarr's libraries,
-      finds missing subtitles per the user's language preferences, fetches
-      them from configured providers (OpenSubtitles, Subscene, etc.) and
-      writes the .srt/.ass files alongside the video files.
+  users.users.bazarr.extraGroups = [ "media" ];
 
-      First-run setup:
-        1. Visit https://subtitles.nori.lan
-        2. Set admin password
-        3. Settings → Languages → enabled languages (Norwegian + English
-           most common)
-        4. Settings → Providers → enable OpenSubtitles (free, generous
-           quota; requires a free account); add others as desired
-        5. Settings → Sonarr → Host: localhost, Port: 8989, paste API key
-           Settings → Radarr → Host: localhost, Port: 7878, paste API key
-        6. Bazarr scans on a schedule + on-demand; new subtitles land
-           next to the video file automatically.
-    */
-    services.bazarr = {
-      enable = true;
-      user = "bazarr";
-      group = "bazarr";
-      openFirewall = false;
-      listenPort = 6767;
-    };
+  nori.harden.bazarr.binds = [ config.nori.fs.downloads.path ];
 
-    users.users.bazarr.extraGroups = [ "media" ];
-
-    nori.harden.bazarr.binds = [ config.nori.fs.downloads.path ];
-
-    nori.backups.bazarr.include = [ "/var/lib/bazarr" ];
-  })
-]
+  nori.backups.bazarr.include = [ "/var/lib/bazarr" ];
+}

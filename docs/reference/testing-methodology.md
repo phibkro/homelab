@@ -61,7 +61,7 @@ Examples in this homelab:
 | "lanRoutes → caddy vhost emits valid config" | nixosTest | requires caddy to parse it |
 | "restic snapshot < 25h old" | runtime | depends on actual schedule firing on the live host |
 | "process-exporter publishing for workstation" | runtime | requires real scrape from real VM |
-| "Caddy serves https://<name>.nori.lan with 200" | runtime | DNS + TLS + service all live together |
+| "Caddy serves `https://<name>.home.phibkro.org` with 200" | runtime | DNS + TLS + service all live together |
 
 ## Speed budgets — the load-bearing constraint
 
@@ -210,8 +210,8 @@ The canonical "add a new homelab service" flow (combining
                      `config.services.<service>.<important-option>` =
                      the expected default OR a specific value.
 
-2.  Make module      write modules/services/<service>.nix with just
-                     enough to make the eval succeed.
+2.  Make workload    write manifest.nix + runtime.nix with just enough
+                     to make the eval succeed.
 
 3.  GREEN at layer 1  nix-instantiate --eval passes.
 

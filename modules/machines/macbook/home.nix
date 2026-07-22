@@ -28,7 +28,7 @@
 
 {
   imports = [
-    ../../home/pc.nix
+    ../../home/profiles/pc.nix
     inputs.pagu-box-darwin.homeManagerModules.default
   ];
 
@@ -47,8 +47,6 @@
   home.stateVersion = "26.05";
 
   home.packages = with pkgs; [
-    gh
-
     # JS/TS runtime + tooling
     bun
     pnpm

@@ -120,13 +120,13 @@ Format precedence (lifted from RFC 145):
 | `mkOption { ... }` declaration | `description = ''...''` |
 | Lib function in `modules/`, `flake.nix`, or `lint/default.nix` | `/** ... */` |
 | Let-binding with non-obvious purpose (e.g. our `lintLib`, `lintRules`, `baseNonServicePatterns`) | `/** ... */` |
-| Attribute set entry that's effectively a function or registry (e.g. `nori.lanRoutes.<X>`, bundle headers under `modules/services/<group>/default.nix`) | `/** ... */` |
+| Attribute set entry that's effectively a function or registry (e.g. `nori.lanRoutes.<X>`, public contracts in a workload `manifest.nix`) | `/** ... */` |
 | **Module overview** — file-level docstring at the top of a `default.nix` carrying mental models, architecture diagrams, and rationale for the concern as a whole (mermaid diagrams, three-zone tables, registry shape rationale) | `/** ... */` (file-level, above the `let`/`{}` body) |
 | Rationale, runbook, or intent narrative (bootstrap procedures, "why we chose Pattern A", "reapply this UI state if X gets stomped", config-line trade-offs) | `/* ... */` |
 | Inline implementation detail not part of the public surface | standard `#` comment |
 | Cross-cutting prose (mental models, why-this-shape, multi-module rationale) | hand-written `docs/reference/<topic>.md` |
 
-The test that distinguishes `/** */` from `/* */`: **would I want this block surfaced in generated docs as code-API reference?** YES → `/** */`. NO → `/* */`. Operator runbooks, "click X then Y" steps, rationale for a specific config value, and service-behavior narrative all fail the test — they're operator-intent content, not consumer-facing API. The 2026-06-17 sweep reclassified 51 such blocks across `modules/services/` after the Stage 4 bulk migration over-promoted them; calibration examples land at `modules/services/{jellyfin,ollama,vaultwarden}.nix` head-comments.
+The test that distinguishes `/** */` from `/* */`: **would I want this block surfaced in generated docs as code-API reference?** YES → `/** */`. NO → `/* */`. Operator runbooks, "click X then Y" steps, rationale for a specific config value, and service-behavior narrative all fail the test — they're operator-intent content, not consumer-facing API. The 2026-06-17 sweep reclassified 51 such blocks across `modules/services/` after the Stage 4 bulk migration over-promoted them; current calibration examples live in workload `runtime.nix` headers.
 
 ### Module-scoped → code; cross-module → handwritten
 

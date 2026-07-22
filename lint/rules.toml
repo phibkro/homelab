@@ -97,7 +97,7 @@ filmder/heim).'''
 # redirect goes away.
 pattern = 'services\.caddy\.virtualHosts'
 scope = ["modules/"]
-excludeFiles = ["modules/infra/networking/default.nix", "modules/infra/networking/caddy.nix"]
+excludeFiles = ["modules/infra/networking/default.nix", "modules/infra/networking/caddy/runtime.nix"]
 tags = ["architecture", "lan-route"]
 message = '''
 Direct services.caddy.virtualHosts found above. Use
@@ -148,9 +148,9 @@ fields:
 [rules.tailnetIp]
 # CGNAT range (100.64.0.0/10). Cross-host references go through
 # the topology registry: config.nori.hosts.<host>.tailnetIp.
-# modules/machines/default.nix is the only legitimate site for
-# the host-specific literal (via identityFor; was in flake.nix
-# pre-Phase-2 trim).
+# inventory/hosts.nix is the only legitimate site for host-specific
+# literals. The pure inventory compiler projects them into nori.hosts
+# and nori.inventory before NixOS evaluation.
 #
 # Allowlist:
 #   * 100.100.100.100  Tailscale MagicDNS stub (well-known
@@ -160,17 +160,16 @@ fields:
 #   * modules/infra/hosts.nix — the registry schema's own
 #                                 header comment narrates the
 #                                 refactor.
-#   * modules/machines/default.nix — identityFor lives here
-#                                    post-Phase-2.
+#   * inventory/hosts.nix — physical identity source of truth.
 # Other one-off canonical-site declarations should use the
 # line-level `# lint: skip tailnetIp — <reason>` annotation
 # instead of expanding `excludeFiles`; that keeps the rationale
 # next to the literal and avoids whole-file blast radius.
 pattern = '\b100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+\b'
-scope = ["modules/"]
+scope = ["modules/", "inventory/"]
 excludeFiles = [
   "modules/infra/hosts.nix",
-  "modules/machines/default.nix",
+  "inventory/hosts.nix",
   # observability.just is operator-tooling that needs a static endpoint URL;
   # reading from the registry would add `nix eval` overhead per
   # `just query-logs` invocation (~1-2s) — bad UX. Pi tailnet IP is stable.
@@ -181,7 +180,7 @@ tags = ["topology"]
 message = '''
 Tailnet IP literal (CGNAT range) found above. Use
 config.nori.hosts.<host>.tailnetIp from the topology registry.
-Schema: modules/infra/hosts.nix; values: modules/machines/default.nix identityFor.'''
+Schema: modules/infra/hosts.nix; values: inventory/hosts.nix.'''
 
 # ── Migration drift ─────────────────────────────────────────────
 
@@ -204,7 +203,7 @@ Schema: modules/infra/hosts.nix; values: modules/machines/default.nix identityFo
 # in their headers.
 pattern = '"https?://[a-z0-9.-]*\.nori\.lan'
 scope = ["modules/"]
-excludeFiles = ["modules/infra/networking/caddy.nix", "modules/infra/networking/default.nix"]
+excludeFiles = ["modules/infra/networking/caddy/runtime.nix", "modules/infra/networking/default.nix"]
 tags = ["migration", "adr-0004"]
 message = '''
 Hard-coded https://*.nori.lan URI found above. Use

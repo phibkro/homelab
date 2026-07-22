@@ -33,10 +33,9 @@
 
   ## Why workhorse role
 
-  Has GPU, has compute, hosts state. Classified workhorse — but it's a
-  *minimal* workhorse. If a second compute-offload host ever appears,
-  the rule-of-three signal is to extract a dedicated `compute` role
-  then (see `modules/infra/hosts.nix § role`).
+  Has GPU, compute, and durable state, so the broad hardware role remains
+  `workhorse`. Its narrower family-vault purpose is expressed by the inventory
+  profile rather than another host-role enum.
 */
 
 {

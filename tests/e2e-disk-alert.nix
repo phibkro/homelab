@@ -38,12 +38,11 @@ pkgs.testers.runNixOSTest {
       imports = [
         inputs.sops-nix.nixosModules.sops
         ../modules/infra/hosts.nix
-        ../modules/infra/placement.nix
         ../modules/infra/capabilities
         ../modules/infra/storage
         ../modules/infra/backup
         ../modules/infra/networking
-        ../modules/infra/observability/disk-alert.nix
+        ../modules/infra/observability/disk-alert/runtime.nix
         ../modules/infra/observability/ntfy/notify.nix
       ];
 
@@ -86,7 +85,6 @@ pkgs.testers.runNixOSTest {
       # Real disk-alert config, only with the knobs the test cares
       # about overridden: tmpfs root is ~100% used (always >0%), so
       # any threshold ≥1 fires.
-      nori.services.disk-alert.enable = true;
       nori.observability.diskAlert = {
         mountpoints = [ "/" ];
         criticalThresholdPct = 1;
@@ -94,7 +92,6 @@ pkgs.testers.runNixOSTest {
       # ntfy-notify owns the sops.secrets.ntfy-channel declaration AND the
       # infra channel that disk-alert now delivers through (nori.alerts);
       # its baseUrl knob redirects delivery → stub receiver.
-      nori.services.ntfy-notify.enable = true;
       nori.observability.ntfyNotify.baseUrl = "http://127.0.0.1:9999";
 
       # Phase 7's stub receiver pattern — captures POST bodies + headers

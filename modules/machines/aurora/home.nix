@@ -3,7 +3,7 @@
 /**
   aurora — home-manager config for nori.
 
-  Minimal. aurora is a single-role ML offload host; operator SSHs in
+  Minimal. Aurora is the headless family-vault host; operator SSHs in
   from a privileged-tier machine for occasional maintenance. No
   desktop, no claude-code, no agent harnesses — that's pavilion's job.
 
@@ -14,7 +14,7 @@
 */
 
 {
-  imports = [ ../../home/core.nix ];
+  imports = [ ../../home/profiles/core.nix ];
 
   home.packages = with pkgs; [
     fd

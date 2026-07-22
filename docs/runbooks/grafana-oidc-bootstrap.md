@@ -38,7 +38,7 @@ oidc-ops-client-secret: '<raw>'
 oidc-ops-client-secret-hash: '$pbkdf2-sha512$310000$...'
 ```
 
-### 3. Edit `modules/infra/observability/grafana.nix`
+### 3. Edit `modules/infra/observability/grafana/runtime.nix`
 
 Apply these three changes:
 
@@ -105,7 +105,7 @@ The `oidc-ops-env` template is auto-declared by the lan-route effect from the `o
 
 ### 4. Update the header comment
 
-Replace the existing "Auth: anonymous-Admin on the tailnet…" paragraph in `grafana.nix` with the rationale above (observability-join blast radius).
+Replace the existing authentication rationale in `grafana/runtime.nix` with the rationale above (observability-join blast radius).
 
 ### 5. Rebuild aurora
 
@@ -127,4 +127,4 @@ Open `https://ops.home.phibkro.org` — should auto-redirect to Authelia, log in
 
 ## Rollback
 
-Revert the grafana.nix changes in git; the sops secrets are harmless to leave (unused). Optional cleanup: delete `oidc-ops-client-secret` + `oidc-ops-client-secret-hash` from sops to keep the secret list tidy.
+Revert the Grafana runtime changes in git; the sops secrets are harmless to leave (unused). Optional cleanup: delete `oidc-ops-client-secret` + `oidc-ops-client-secret-hash` from sops to keep the secret list tidy.

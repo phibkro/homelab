@@ -1,5 +1,9 @@
 { config, ... }:
 
+let
+  site = import ../../../inventory/site.nix;
+in
+
 /**
   Universal NixOS bits every host imports regardless of role.
 
@@ -18,7 +22,7 @@
      interpret.
 
   Topology: the `nori.hosts` registry is populated in
-  `modules/machines/default.nix`'s `identityFor` (single source of
+  `inventory/hosts.nix` (single source of
   truth — every host evals the same topology). The schema lives at
   `modules/infra/hosts.nix`.
 */
@@ -31,6 +35,7 @@
 
     # Infra layer — the PaaS concerns + their schemas.
     ../../infra/hosts.nix
+    ../../infra/inventory.nix
     ../../infra/storage
     ../../infra/networking
     ../../infra/access
@@ -39,9 +44,7 @@
     ../../infra/observability
 
     # Top-level policies + leaf config.
-    ../../infra/placement.nix
     ../../infra/restart-policy.nix
-    ../../infra/tailnet-appliance.nix
     ../../infra/motd.nix # codename banner + live MOTD on login
   ];
 
@@ -53,5 +56,5 @@
     and route every client through workstation's now-retired
     Caddy.
   */
-  nori.lanIp = config.nori.hosts.pi.lanIp;
+  nori.lanIp = config.nori.hosts.${site.entryPlaneHost}.lanIp;
 }

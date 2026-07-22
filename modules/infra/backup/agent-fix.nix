@@ -295,7 +295,7 @@ in
             # own toolchain (agent-dispatch, git, gh, nix) with their creds.
             # The SAFETY boundary is elsewhere — the dispatched agent runs in
             # pagu-box strict (no push/deploy), and PR-only means the operator
-            # merges. A raw template like notify@, not a nori.services entry.
+            # merges. A raw template like notify@, not an inventory workload.
             serviceConfig = {
               Type = "oneshot";
               User = cfg.user;

@@ -4,7 +4,7 @@
 
 ## Symptom
 
-`healthchecks.io` fires the off-host alert (pi misses 3+ heartbeats — see `modules/infra/observability/heartbeat.nix`). `https://*.home.phibkro.org` either times out (Caddy gone) or resolves to NXDOMAIN (Blocky gone via the Tailscale DNS push). Family-tier services that gate on Authelia OIDC reject every login.
+`healthchecks.io` fires the off-host alert (pi misses 3+ heartbeats — see `modules/infra/observability/heartbeat/`). `https://*.home.phibkro.org` either times out (Caddy gone) or resolves to NXDOMAIN (Blocky gone via the Tailscale DNS push). Family-tier services that gate on Authelia OIDC reject every login.
 
 ## What still works while pi is down
 
@@ -51,16 +51,24 @@ Edit Tailscale admin UI → DNS → Global nameservers. Replace pi (`100.100.71.
 
 ### Option D — promote workstation to entry plane (extended outage only)
 
-Last resort. Re-enable Caddy + Authelia on workstation:
+Last resort. Move the complete entry-plane profile and its endpoint identity to
+workstation through the pure inventory:
 
-1. `nori.lanIp = config.nori.hosts.workstation.lanIp;` in `modules/machines/base/default.nix`.
-2. Set `nori.services.caddy.enable = true` and `nori.services.authelia.enable = true` in `modules/machines/workstation/default.nix`.
-3. Flip `nori.lanRoutes.auth.runsOn = "workstation"` (override in workstation's config).
-4. Open ports 80/443 on workstation's tailnet firewall.
-5. `just rebuild` workstation.
-6. Tailscale admin UI → DNS push workstation.
+1. In `inventory/hosts.nix`, remove `"entry-plane"` from Pi's `profiles` and
+   add it to workstation's `profiles`.
+2. In `inventory/site.nix`, set `entryPlaneHost = "workstation"`. The inventory
+   assertion rejects a site/profile mismatch; Authelia, Gatus, VictoriaMetrics,
+   VictoriaLogs, Caddy's LAN target, and deprecated aliases all follow this one
+   identity.
+3. Run `nix flake check --no-build` and
+   `nix run .#deployment-plan -- --profile entry-plane`. The plan must select
+   workstation and its build must evaluate before activation.
+4. Build and switch workstation, then verify Caddy, Authelia, Blocky, and Gatus
+   locally and through `*.home.phibkro.org`.
+5. Tailscale admin UI → DNS → replace Pi with workstation's tailnet IP.
 
-Reverse all of the above when pi is back.
+When Pi returns, reverse the two inventory edits, build Pi, activate it, verify
+the entry plane, and only then restore Pi as the Tailscale DNS server.
 
 ## After recovery
 

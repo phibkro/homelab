@@ -29,14 +29,13 @@ let
   );
 in
 /*
-  Workstation-only by data ownership — same gate as sibling
-  backup/restic.nix + backup/verify.nix. btrbk snapshots the IronWolf
+  Selected only by the Workstation `backup-source` system profile. btrbk
+  snapshots the IronWolf
   subvols + the SN750 root, both physically on workstation; the
   activation script also enables a btrfs quota on /mnt/media/downloads
-  (workstation-specific path). Other hosts importing the bundle get
-  a clean no-op.
+  (workstation-specific path).
 */
-lib.mkIf (config.networking.hostName == "workstation") {
+{
   /**
     btrbk — local btrfs subvolume snapshots, the "single file
     deletion" recovery path per RECOVERY.md RTO targets (target: <15 min

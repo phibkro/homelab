@@ -72,7 +72,7 @@ systemd.services.ntfy-sh-bootstrap = {
 
 ### 3. Wire publishers to send the Authorization header
 
-**Gatus** (`modules/infra/observability/gatus.nix`) — add the env-file consumption and the `Authorization` header to the ntfy provider config:
+**Gatus** (`modules/infra/observability/gatus/`) — add the env-file consumption and the `Authorization` header to the ntfy provider config:
 
 ```nix
 sops.secrets.ntfy-publisher-token = { /* already declared in ntfy server module */ };

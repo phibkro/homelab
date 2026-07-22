@@ -8,25 +8,24 @@
 
 /**
   aurora — retired Asus N552V (i7-6700HQ, 12 GB RAM, GTX 950M
-  Maxwell, dead battery). Single-role: immich machine-learning
-  offload host so workstation's 5060 Ti stays dedicated to ollama.
+  Maxwell, dead battery). Always-on family vault and application tier;
+  Immich machine learning is co-located here so Workstation's 5060 Ti stays
+  dedicated to interactive compute.
 
   ── Why it exists ──────────────────────────────────────────────────
-  Workstation runs ollama AND immich's CLIP/face/OCR pipeline on the
-  same 5060 Ti. Heavy photo ingest (smart-search re-index, face-
-  detection backfill) evict/reload-thrashes ollama and tanks
-  operator latency. The 950M's 2 GB VRAM fits CLIP-ViT-B/32 (~350 MB)
-  + RetinaFace (~250 MB) with Tesseract OCR on CPU, and Maxwell CUDA
-  is still fast at batched inference.
+  Aurora owns `/mnt/family/*`, the OneTouch restic target, and family-facing
+  applications such as Immich, Navidrome, Vaultwarden, Paperless, and Komga.
+  Keeping this tier always-on makes it independent of Workstation sleep. The
+  950M also absorbs Immich's CLIP/face/OCR pipeline without evicting Ollama.
 
   ── Posture ────────────────────────────────────────────────────────
-  * Stateless from a backup perspective — immich's authoritative
-    state (DB, originals, embeddings) lives on workstation. Aurora
-    only caches downloaded ML weights, replaceable on first run.
-  * No impermanence — weights are ~2 GB; re-downloading every boot
-    wastes bandwidth + startup. Regular btrfs root.
-  * No services exposed to LAN. immich-ml listens on tailnet only;
-    workstation's immich-server reaches it via tailnet ACL.
+  * Stateful and backup-critical — family datasets live on the Toshiba HDD,
+    service state is protected by local restic jobs, and btrbk replicates the
+    irreplaceable family tier to Workstation.
+  * No impermanence — service databases and ML weights need durable local
+    state. Regular btrfs root.
+  * Family services are reached through Pi's Caddy over tailnet; Samba is the
+    deliberate direct file-sharing exception.
   * No claude-code, no operator GitHub credential. Operator's daily
     driver stays on workstation.
 */
@@ -34,27 +33,6 @@
 {
   imports = [
     inputs.disko.nixosModules.disko
-    inputs.home-manager.nixosModules.home-manager
-
-    ../base
-
-    /*
-      Full services bundle. Importing does NOT activate services —
-      each module's body is gated on `nori.services.<X>.enabled`,
-      while routes are declared unconditionally. Enabling a service
-      on aurora is a one-line edit per service (see `nori.services`
-      below).
-    */
-    ../../services
-
-    /*
-      Aurora-only specialty: chrooted SFTP backup target. Sits outside
-      the bundle because it's not a user-facing service. Pairs with the
-      disko-onetouch entry below; both arrived 2026-06-11 when the
-      OneTouch HDD physically moved from workstation. See
-      docs/plans/2026-06-11-aurora-migration.md § P13.
-    */
-    ../../infra/backup/restic-target.nix
 
     # Notably absent:
     #   modules/machines/desktop/default.nix — headless
@@ -63,69 +41,6 @@
     ./disko-onetouch.nix
     ./disko-family.nix
   ];
-
-  home-manager = {
-    useGlobalPkgs = true;
-    useUserPackages = true;
-    extraSpecialArgs = { inherit inputs; };
-    backupFileExtension = "hm-backup";
-    users.nori.imports = [ ./home.nix ];
-  };
-
-  /*
-    Service-placement registry. Pre-existing aurora services + the
-    ADR-0002 P8 family-tier services standing up empty. Per the
-    ADR-0003 addendum, runsOn (per route) stays at "workstation" until
-    state is migrated and the backend is bound for cross-host proxy.
-    Aurora's family-tier services initialize empty databases here; the
-    operator runs the state migration (dump on workstation, sftp,
-    restore on aurora) before flipping runsOn + Tailscale split-DNS.
-  */
-  nori.services = {
-    node-exporter.enable = true;
-    nvidia-gpu-exporter.enable = true;
-    restic-target.enable = true;
-    ntfy-notify.enable = true; # OnFailure → notify@ alerts for aurora-side units
-    beszel-agent.enable = true; # high-level metrics → pi's Beszel hub
-
-    /*
-      P8 family-tier — small, sqlite-only services standing up empty.
-      State migration + cutover are operator-driven per service; see
-      the runbook in the P8 bellwether commit (e76907b). Postgres-
-      backed services (immich, miniflux) are deferred — each is its
-      own data + bootstrap exercise.
-    */
-    vaultwarden.enable = true; # bellwether
-    radicale.enable = true; # CalDAV / CardDAV (sqlite)
-    calibre-web.enable = true; # books (sqlite + library/books read)
-    komga.enable = true; # comics + manga (sqlite + library/{comics,manga} read)
-    suwayomi.enable = true; # manga acquisition (sqlite + library/manga write → komga)
-    paperless.enable = true; # document archive (postgres + library/papers originals)
-    glance.enable = true; # dashboard (stateless, reads lanRoutes)
-    heim.enable = true; # operator portfolio (stateless serve, github build)
-    immich.enable = true; # photos (postgres + redis + ML co-located)
-    miniflux.enable = true; # RSS reader (postgres — shares immich's instance)
-    filmder.enable = true; # personal-app (stateless serve, github build)
-    grafana.enable = true; # observability frontend (sessions ephemeral; pi VM/logs over tailnet)
-    samba.enable = true; # /mnt/family/* shares for family bookmarks
-    navidrome.enable = true; # music (sqlite + library/music read)
-    btrbk-replication.enable = true; # P15 — nightly send to workstation MP510
-    syncthing.enable = true; # phone-to-library music sync (SpotiFlac path)
-  };
-
-  /*
-    Papers acquisition (docs/specs/2026-06-23-papers-acquisition.md):
-    the OA-first fetcher CLI lives on aurora next to its Paperless sink.
-    `consumptionDirIsPublic` makes /var/lib/paperless/consume world-
-    writable so the operator (running papers-fetch as `nori`) can drop
-    PDFs into it — local-only dir on the always-on tailnet-fronted host;
-    the documents are the operator's own. allowGrayZone stays off.
-  */
-  nori.papersFetch = {
-    enable = true;
-    email = "philib.krogh@gmail.com";
-  };
-  services.paperless.consumptionDirIsPublic = true;
 
   /*
     Aurora doesn't proxy syncthing through Caddy (the sync.* lanRoute
@@ -141,7 +56,7 @@
     target here. The OneTouch HDD lives on aurora, so aurora's own
     backups land LOCAL at /mnt/backup — bypassing SFTP. Remote
     clients (workstation, pi) reach the same drive via the SFTP
-    target declared in modules/infra/backup/restic-target.nix.
+    target declared by the restic-target inventory workload.
   */
   sops.secrets.restic-password = {
     owner = "root";
@@ -149,7 +64,7 @@
   };
   nori.backupTargets.onetouch = {
     repository = "/mnt/backup";
-    description = "Aurora-local OneTouch HDD (P13 dest). Aurora's own restic backups write here directly; remote hosts reach the same drive via SFTP per restic-target.nix.";
+    description = "Aurora-local OneTouch HDD (P13 dest). Aurora's own restic backups write here directly; remote hosts reach the same drive through the restic-target workload.";
   };
   /*
     Aurora-side tmpfiles:
@@ -257,7 +172,7 @@
     so only the host that owns the backend opens the port.
 
     SSH (22) is opened by services.openssh.openFirewall (global, default
-    true). Samba (445) is opened by modules/services/samba.nix on the
+    true). Samba (445) is opened by modules/services/samba/runtime.nix on the
     tailnet interface. immich-machine-learning (3003) stays loopback-
     only — post-P11 immich-server is co-located here and reaches ML
     via 127.0.0.1:3003 (forced below).
@@ -349,10 +264,9 @@
     {
       assertion = config.nori.hosts.${config.networking.hostName}.role == "workhorse";
       message =
-        "aurora's role must be 'workhorse' in flake.nix identityFor. "
-        + "(Currently classified workhorse despite the single-service "
-        + "footprint; promote to a dedicated `compute` role on the "
-        + "third single-GPU-peer host — rule of three.)";
+        "aurora's role must be 'workhorse' in inventory/hosts.nix. "
+        + "Aurora is the always-on family-vault workhorse; placement and "
+        + "topology must agree before changing this role.";
     }
   ];
 }

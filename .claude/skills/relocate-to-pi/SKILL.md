@@ -20,7 +20,7 @@ Pattern established by beszel-hub (commit b4499ee) and ntfy-server (commit 9e0b2
 
 ```bash
 # Before:
-modules/services/<service>.nix         # one file with everything
+modules/services/<service>/{manifest,runtime}.nix
 
 # After:
 modules/services/<service>/
@@ -85,9 +85,8 @@ The `host = config.nori.hosts.pi.tailnetIp` is also load-bearing — never use I
 ### 4. Update host imports
 
 ```nix
-# modules/machines/workstation/default.nix → modules/services/default.nix bundle
-# imports the client side (notify / agent / proxy) automatically.
-# DO NOT import the daemon side — station shouldn't be running it.
+# inventory/profiles.nix selects the client/agent workload where required.
+# DO NOT keep the daemon workload in the old host profile.
 
 # modules/machines/pi/default.nix
 imports = [
@@ -96,7 +95,10 @@ imports = [
 ];
 ```
 
-Update `modules/services/default.nix` (the workhorse bundle) to import only the client side. Update `modules/machines/pi/default.nix` (flat imports) to import both daemon + client.
+Update `inventory/profiles.nix` so the entry-plane profile owns the daemon and
+the appropriate host/profile owns each client workload. The inventory compiler
+selects both runtime modules before NixOS evaluation; do not add a service bundle
+or hostname-gated import.
 
 ### 5. Per-host config that varies
 

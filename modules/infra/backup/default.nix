@@ -8,18 +8,10 @@
 /**
   Backup concern — schema + collection + adapter wiring.
 
-  This `default.nix` carries the `nori.backups` schema (Reader) and
-  the assertions (placement: appliance ≠ paths-backups; agent ≠
-  `nori.backups`). It also imports the adapter siblings (Writer):
-  `restic`, `btrbk`, `btrbk-replication`, `btrbk-replica-target`,
-  `verify`. Each adapter conditionally activates from declared
-  `nori.backups.<X>` entries + its own gates (e.g.
-  `btrbk-replica-target`'s `hostName == "workstation"` gate);
-  adapters are inert otherwise.
-
-  `restic-target.nix` is the one adapter NOT in the aggregator —
-  it's per-host opt-in via direct import on `aurora/default.nix`
-  (declares the SFTP-chrooted `restic` user that workstation pushes to).
+  This `default.nix` carries the `nori.backups` schema (Reader), its
+  assertions, and the generic restic/btrbk generators (Writer). Concrete
+  sender and receiver roles are inventory-selected workloads under their
+  own concern folders; importing this platform module never places one.
 */
 let
   inherit (lib)
@@ -31,11 +23,6 @@ in
 {
   imports = [
     ./agent-fix.nix
-    ./btrbk.nix
-    ./btrbk-replication.nix
-    ./btrbk-replica-target.nix
-    ./restic.nix
-    ./verify.nix
   ];
 
   /**

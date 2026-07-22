@@ -17,7 +17,7 @@ _: {
       tier = "user";
       /*
         Family-shared storage over SMB. Generic defaults; the fs.nix
-        samba generator emits the share, modules/services/samba.nix
+        samba generator emits the share, modules/services/samba/runtime.nix
         owns the globals + firewall rule.
       */
       samba = { };

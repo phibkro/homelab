@@ -15,7 +15,7 @@ content that doesn't fit one extraction site.
 
 Authelia provides OIDC for services that opt in via
 `nori.lanRoutes.<X>.oidc`. The networking concern generates the sops-
-templated secrets; the access concern (`modules/infra/access/authelia.nix`)
+templated secrets; the access concern (`modules/infra/access/authelia/runtime.nix`)
 consumes them to populate Authelia's client list. Per-service setup
 is one declaration block; no edits scattered across two modules.
 
@@ -47,7 +47,7 @@ IS the gate. Edited in admin UI JSON, not in this repo. See
 [[just-remote-tailnet-hostnames]].
 
 **SPOF mitigation for pi:** heartbeat to healthchecks.io every 60s via
-`modules/infra/observability/heartbeat.nix`. Pi dies → hc.io alerts
+`modules/infra/observability/heartbeat/`. Pi dies → hc.io alerts
 off-host. Pre-fix, pi outage would have taken its own alert delivery
 (ntfy server) with it.
 

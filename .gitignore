@@ -21,6 +21,7 @@ inventory-*.tar.gz
 # session caches). Skills are project artifacts and ARE committed; the
 # negation lets them through.
 .claude/*
+!.claude/settings.json
 !.claude/skills/
 
 # Nested standalone project — pagu has its own git repo; homelab must

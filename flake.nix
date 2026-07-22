@@ -208,6 +208,7 @@
         ./flake-parts/packages/docs-backups.nix
         ./flake-parts/packages/docs-fs.nix
         ./flake-parts/packages/docs-replicas.nix
+        ./flake-parts/packages/inventory.nix
       ];
 
       # System-keyed outputs (devShells, formatter, packages, checks).
@@ -421,7 +422,7 @@
 
                   §2  Topology registry schema — nixosOptionsDoc reference for
                       `nori.hosts.<name>.*` option fields. Tells you what an
-                      identityFor entry must declare.
+                      `inventory/hosts.nix` identity entry must declare.
 
                 §1 is built from VALUES (config.nori.hosts.workstation.hardware
                 etc.); §2 is built from the OPTIONS tree. nixosOptionsDoc handles
@@ -536,8 +537,8 @@
 
                     # Topology — generated reference
 
-                    Auto-derived from `nori.hosts` schema + `identityFor` values
-                    in `modules/machines/default.nix`. Do not hand-edit; the
+                    Auto-derived from the `nori.hosts` schema + values in
+                    `inventory/hosts.nix`. Do not hand-edit; the
                     hand-curated overview lives at `docs/reference/topology.md`
                     (kept parallel for the generated-vs-handwritten coverage
                     experiment).
@@ -559,9 +560,8 @@
 
                     ## Registry schema (`nori.hosts.<name>.*`)
 
-                    What an `identityFor` entry must declare to satisfy the schema.
-                    Schema lives in `modules/infra/hosts.nix`; values live in
-                    `modules/machines/default.nix`.
+                    What an `inventory/hosts.nix` identity entry must declare to
+                    satisfy the schema. Schema lives in `modules/infra/hosts.nix`.
 
                     SCHEMA_HEADER
                     # See docs-lan-route for the GFM-cleanup rationale.
@@ -682,15 +682,10 @@
               */
               baseNonServicePatterns = [
                 "*/default.nix"
+                "*/manifest.nix"
+                "*/manifests/*.nix"
+                "modules/services/arr/runtime.nix"
                 "modules/services/arr/shared.nix"
-                /*
-                  CLI-only — packages the papers-fetch resolver onto
-                  PATH (an operator runs it on demand). No daemon, no
-                  port, no state, no systemd unit → nothing to harden or
-                  back up. The Paperless sink it feeds carries both
-                  intents.
-                */
-                "modules/services/papers-fetch.nix"
               ];
               /**
                 Generate a `case` glob from a list of patterns, joined with
@@ -754,6 +749,22 @@
                     test -x ${agentDispatchPackage}/bin/agent-dispatch
                     ${pkgs.bash}/bin/bash ${./modules/home/agent-dispatch_test.sh} \
                       ${./modules/home/agent-dispatch.sh}
+                    touch $out
+                  '';
+
+              agent-post-edit =
+                pkgs.runCommandLocal "agent-post-edit-test"
+                  {
+                    nativeBuildInputs = [
+                      pkgs.bash
+                      pkgs.coreutils
+                      pkgs.git
+                      pkgs.perl
+                    ];
+                  }
+                  ''
+                    bash ${./tests/hooks/post-edit-nix_test.sh} \
+                      ${./tools/hooks/post-edit-nix.sh}
                     touch $out
                   '';
 
@@ -1005,7 +1016,7 @@
                             baseNonServicePatterns
                             ++ [
                               "modules/infra/observability/ntfy/notify.nix"
-                              "modules/services/samba.nix"
+                              "modules/services/samba/runtime.nix"
                             ]
                           )
                         })
@@ -1200,6 +1211,106 @@
                   };
                 in
                 pkgs.runCommandLocal "eval-gatus-probes" { } ''
+                  echo ${lib.escapeShellArg result} > $out
+                '';
+
+              /**
+                Phase-0 architecture migration baseline. Pins the resolved
+                workload placement per host and the entry-plane route policy
+                fingerprint while implementation moves from global imports to
+                a pure inventory compiler + selected runtime modules.
+              */
+              eval-architecture-baseline =
+                let
+                  result = import ./tests/eval/architecture-baseline.nix {
+                    inherit pkgs lib inputs;
+                  };
+                in
+                pkgs.runCommandLocal "eval-architecture-baseline" { } ''
+                  echo ${lib.escapeShellArg result} > $out
+                '';
+
+              /**
+                Public inventory must stay safe for deployment, status, and
+                documentation consumers. Recursively rejects compiler-private
+                paths, derivations, secret-shaped keys, and secret markers.
+              */
+              eval-inventory-public-safe =
+                let
+                  result = import ./tests/eval/inventory-public-safe.nix {
+                    inherit pkgs lib inputs;
+                  };
+                in
+                pkgs.runCommandLocal "eval-inventory-public-safe" { } ''
+                  echo ${lib.escapeShellArg result} > $out
+                '';
+
+              /**
+                Canonical datasets project into producer and consumer runtime
+                paths without duplicating their logical storage contract.
+              */
+              eval-datasets =
+                let
+                  result = import ./tests/eval/datasets.nix {
+                    inherit pkgs lib inputs;
+                  };
+                in
+                pkgs.runCommandLocal "eval-datasets" { } ''
+                  echo ${lib.escapeShellArg result} > $out
+                '';
+
+              /**
+                Personal products consume explicit immutable artifacts or a
+                fully governed legacy host-build exception.
+              */
+              eval-product-artifacts =
+                let
+                  result = import ./tests/eval/product-artifacts.nix {
+                    inherit pkgs lib inputs;
+                  };
+                in
+                pkgs.runCommandLocal "eval-product-artifacts" { } ''
+                  echo ${lib.escapeShellArg result} > $out
+                '';
+
+              /**
+                Deployment builds, affected-host change scopes, and activation
+                order derive from the same host/profile/workload inventory.
+              */
+              eval-deployment =
+                let
+                  result = import ./tests/eval/deployment.nix {
+                    inherit pkgs lib inputs;
+                  };
+                in
+                pkgs.runCommandLocal "eval-deployment" { } ''
+                  echo ${lib.escapeShellArg result} > $out
+                '';
+
+              /**
+                Future status and onboarding catalogs expose the minimum
+                presentation policy and no internal topology.
+              */
+              eval-presentations =
+                let
+                  result = import ./tests/eval/presentations.nix {
+                    inherit pkgs lib inputs;
+                  };
+                in
+                pkgs.runCommandLocal "eval-presentations" { } ''
+                  echo ${lib.escapeShellArg result} > $out
+                '';
+
+              /**
+                System adapters must be selected only by explicit profiles.
+              */
+              eval-system-profile-adapters =
+                let
+                  result = import ./tests/eval/system-profile-adapters.nix {
+                    inherit pkgs lib inputs;
+                  };
+                in
+                pkgs.runCommandLocal "eval-system-profile-adapters" { } ''
                   echo ${lib.escapeShellArg result} > $out
                 '';
 

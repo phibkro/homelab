@@ -100,6 +100,10 @@ default: rebuild
 
 # === build / deploy (local) ===
 
+# Derive affected build targets from inventory and changes since a Git ref.
+@plan-deploy base="origin/main":
+    nix run .#deployment-plan -- --changed-since {{base}}
+
 # Build + activate this host's configuration from the working tree.
 @rebuild *args:
     nh os switch . -H $(hostname) {{args}}

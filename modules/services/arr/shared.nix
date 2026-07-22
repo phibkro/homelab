@@ -40,6 +40,7 @@ lib.mkIf ((config.nori.fs ? downloads) && (config.nori.fs ? library)) {
     let
       downloads = config.nori.fs.downloads.path;
       library = config.nori.fs.library.path;
+      musicPath = "${library}/${config.nori.inventory.datasets.music.storage.relativePath}";
     in
     [
       "d ${downloads}                     02775 root media -"
@@ -51,6 +52,6 @@ lib.mkIf ((config.nori.fs ? downloads) && (config.nori.fs ? library)) {
       "d ${library}                         02775 root media -"
       "d ${library}/books                   02775 root media -"
       "d ${library}/comics                  02775 root media -"
-      "d ${library}/music                   02775 root media -"
+      "d ${musicPath}                        02775 root media -"
     ];
 }

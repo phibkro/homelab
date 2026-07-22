@@ -83,11 +83,9 @@
   name, Authelia cookie domain + issuer URL, and OIDC redirect URI
   reads from it.
 
-  Transitional `*.nori.lan` redirect: pi's Caddy still serves
-  `*.nori.lan` (Caddy internal CA) and 301-redirects to the same
-  path under `home.phibkro.org`. Drop this block from `caddy.nix` +
-  the parallel entries in `blocky` customDNS once family bookmarks
-  have migrated.
+  Transitional domains declared by `nori.inventory.site.deprecatedDomains`
+  remain in Blocky and receive an HTTP 301 from Caddy to the canonical domain.
+  Remove a domain from inventory once family bookmarks have migrated.
 
   ## Naming: function over brand
 
@@ -98,6 +96,7 @@
   `lint.functionNamedSubdomains` TOML rule.
 */
 let
+  site = import ../../../inventory/site.nix;
   inherit (lib)
     mkOption
     types
@@ -110,8 +109,6 @@ in
 {
   imports = [
     ./gatus-probe.nix
-    ./caddy.nix
-    ./blocky.nix
   ];
 
   /**
@@ -124,7 +121,7 @@ in
      - Tailnet firewall hole (if `exposeOnTailnet`)
      - sops raw + hash secrets + env-file template (if `oidc` is
        set) — Authelia client list assembly lives in
-       `modules/infra/access/authelia.nix`, reading back
+       `modules/infra/access/authelia/runtime.nix`, reading back
        `config.nori.lanRoutes` from here. Hash material stays in
        sops; the authelia config-filter injects it at runtime.
 
@@ -143,7 +140,7 @@ in
 
   options.nori.domain = mkOption {
     type = types.str;
-    default = "home.phibkro.org";
+    default = (import ../../../inventory/site.nix).domain;
     description = ''
       Parent DNS domain for the homelab's `*.<domain>` services.
       Single source of truth: vhost names, Authelia cookie domain,
@@ -184,14 +181,14 @@ in
           nori.lanIp: cannot pick a default — expected exactly one workhorse
           host with a non-null lanIp in the registry, found ${toString (lib.length names)}
           (${lib.concatStringsSep ", " names}). Set nori.lanIp explicitly,
-          or update the host registry (flake.nix identityFor).
+          or update the host registry (`inventory/hosts.nix`).
         '';
     defaultText = lib.literalExpression ''
       # the unique workhorse-with-lanIp from config.nori.hosts;
       # eval-fails if zero or more than one matches.
     '';
     description = ''
-      LAN IP that *.nori.lan names resolve to. Derived from the
+      LAN IP that service-domain names resolve to. Derived from the
       nori.hosts registry as "the unique host with role=workhorse
       and a non-null lanIp" (see modules/infra/hosts.nix). When
       a future second workhorse with a static LAN lease lands, the
@@ -208,16 +205,16 @@ in
       "server" in modules/machines/pi/default.nix); the client side needs
       --accept-routes set in its tailscaled config.
 
-      Consumers: Blocky's forwarder mode (modules/infra/networking/blocky.nix)
+      Consumers: Blocky's forwarder mode (modules/infra/networking/blocky/runtime.nix)
       and the Blocky DNS generator below. Both want a single "where
-      does *.nori.lan live" address.
+      does the service namespace live" address.
     '';
   };
 
   options.nori.lanRoutes = mkOption {
     default = { };
     description = ''
-      Services to expose under *.nori.lan via Caddy reverse proxy +
+      Services to expose under the canonical domain via Caddy reverse proxy +
       Blocky DNS. Attribute name = subdomain; value declares the
       backend.
     '';
@@ -282,7 +279,7 @@ in
             description = ''
               Optional rewrite of the `Host` request header before
               forwarding to the upstream. By default Caddy forwards
-              the original Host (the public `<n>.nori.lan`), which
+              the original Host (the canonical `<n>.<domain>`), which
               most backends accept. Set this when a backend validates
               Host as a DNS-rebinding defence and only accepts the
               address on which it is bound.
@@ -418,9 +415,9 @@ in
             default = null;
             description = ''
               If set, this route appears on the Glance dashboard
-              (https://home.nori.lan) — both as an uptime-monitor dot
+              (`https://home.<domain>`) — both as an uptime-monitor dot
               and as a grouped bookmark. The URL is derived from the
-              route name as `https://<name>.nori.lan`; only metadata
+              route name and canonical domain; only metadata
               lives here. Glance consumes the whole nori.lanRoutes
               attrset and renders entries with `dashboard != null`.
 
@@ -494,8 +491,8 @@ in
               Caddy layer. Caddy asks Authelia's `/api/verify` whether
               the request's session cookie is valid before forwarding;
               if not, Authelia issues a 302 to the portal. The session
-              cookie at *.nori.lan covers every forward-auth'd route —
-              log in once at https://auth.nori.lan, navigate to any
+              cookie at the canonical domain covers every forward-auth'd route —
+              log in once at `https://auth.<domain>`, navigate to any
               gated service without re-auth.
 
               Used for services that don't have native OIDC client
@@ -515,7 +512,7 @@ in
               Authelia uptime becomes load-bearing: an Authelia outage
               returns 502 for every forward-auth'd route. SSH-tunnel to
               the backend port directly as the recovery escape hatch.
-              See modules/infra/access/authelia.nix for the upstream.
+              See modules/infra/access/authelia/runtime.nix for the upstream.
             '';
             type = types.nullOr (
               types.submodule {
@@ -541,7 +538,7 @@ in
             description = ''
               If set, this route gets:
                 * an Authelia OIDC client entry (assembled by
-                  modules/infra/access/authelia.nix from this declaration)
+                  modules/infra/access/authelia/runtime.nix from this declaration)
                 * a sops secret named `oidc-<name>-client-secret`
                 * a sops env-file template named `oidc-<name>-env`
                   containing `<secretEnvName>=<raw>`, ready to wire as
@@ -562,7 +559,7 @@ in
                   redirectPath = mkOption {
                     type = types.str;
                     description = ''
-                      Path appended to https://<name>.nori.lan to form
+                      Path appended to `https://<name>.<domain>` to form
                       the OIDC redirect URI. Service-specific:
                         Open WebUI:  /oauth/oidc/callback
                         PocketBase:  /api/oauth2-redirect
@@ -676,7 +673,7 @@ in
           assertion = lib.all (r: lib.hasPrefix "/" r.oidc.redirectPath) (lib.attrValues oidcRoutes);
           message = ''
             Every nori.lanRoutes.<n>.oidc.redirectPath must start
-            with "/" — it's appended to https://<n>.nori.lan to form
+            with "/" — it's appended to `https://<n>.<domain>` to form
             the OIDC redirect URI.
           '';
         }
@@ -688,7 +685,7 @@ in
             auth check). Routes with forwardAuth: ${lib.concatStringsSep ", " (lib.attrNames forwardAuthRoutes)}.
 
             Either drop the forwardAuth blocks, or import
-            modules/infra/access/authelia.nix on this host.
+            modules/infra/access/authelia/runtime.nix on this host.
           '';
         }
         {
@@ -776,7 +773,7 @@ in
         lib.concatStringsSep "\n" (lib.mapAttrsToList routeBlock routes);
 
       services.blocky.settings.customDNS.mapping =
-        # Primary mapping — every route name under the new domain.
+        # Primary mapping — every route name under the canonical domain.
         (mapAttrs' (
           name: _: nameValuePair "${name}.${config.nori.domain}" config.nori.lanIp
         ) config.nori.lanRoutes)
@@ -787,7 +784,11 @@ in
           devices have all migrated bookmarks. Until then, every route
           gets a parallel `<name>.nori.lan` entry pointing at the same IP.
         */
-        // (mapAttrs' (name: _: nameValuePair "${name}.nori.lan" config.nori.lanIp) config.nori.lanRoutes);
+        // lib.foldl' (
+          aliases: domain:
+          aliases
+          // mapAttrs' (name: _: nameValuePair "${name}.${domain}" config.nori.lanIp) config.nori.lanRoutes
+        ) { } site.deprecatedDomains;
 
       /*
         Tailnet firewall: open backend ports for opt-in routes only,
@@ -806,7 +807,7 @@ in
 
       /*
         Auto-generated Gatus endpoints for routes that opt in via
-        `monitor`. Manual entries in modules/infra/observability/gatus.nix
+        `monitor`. Manual entries in modules/infra/observability/gatus/
         (blocky-dns, samba-smb) coexist via list concatenation.
       */
       services.gatus.settings.endpoints = lib.mkAfter (
@@ -826,7 +827,7 @@ in
 
       /**
         OIDC plumbing for routes with `oidc` set. The Authelia client
-        entry is assembled by modules/infra/access/authelia.nix reading
+        entry is assembled by modules/infra/access/authelia/runtime.nix reading
         config.nori.lanRoutes — keeps single ownership of the clients
         list (NixOS module merging on freeform-typed lists conflicts
         rather than concatenates, so a centralized assembly site is

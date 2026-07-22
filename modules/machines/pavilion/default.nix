@@ -40,52 +40,17 @@
      appliance/agent allowed from privileged only.
 
   ── Imports ────────────────────────────────────────────────────────
-  Flat imports per the homelab convention: pull only what this host
-  needs, NOT modules/services/default.nix. Most service modules
-  (Caddy, Authelia, Jellyfin, the *arr stack) make no sense here.
+  Inventory profiles select only the observability runtimes this host needs.
+  Caddy, Authelia, Jellyfin, and the acquisition stack are absent because no
+  selected profile or host deviation places them here.
 */
 
 {
   imports = [
     inputs.disko.nixosModules.disko
     inputs.impermanence.nixosModules.impermanence
-    inputs.home-manager.nixosModules.home-manager
-
-    ../base # base + users + sops + tailscale + lib options
-
-    /*
-      Per-process RSS + system metrics → pi VictoriaMetrics. Imported
-      file-by-file (not the whole services/ bundle) since pavilion has
-      no LAN services. Catches agent-process leaks before they OOM.
-    */
-    ../../infra/observability/node-exporter.nix
-    ../../infra/observability/beszel/agent.nix # aggregate dashboard → pi's Beszel hub
-
-    /*
-      Notably absent:
-        modules/services/default.nix    — no LAN services
-        modules/machines/desktop/default.nix   — headless
-    */
-
     ./hardware.nix
   ];
-
-  /*
-    Service-placement registry (aurora migration P3). Reproduces today's
-    pavilion activation set — node-exporter only. Pavilion is the
-    agent quarantine; LAN services intentionally don't run here.
-  */
-  nori.services.node-exporter.enable = true;
-  nori.services.beszel-agent.enable = true; # high-level metrics → pi's Beszel hub
-
-  # ── home-manager-as-NixOS-module ──────────────────────────────────
-  home-manager = {
-    useGlobalPkgs = true;
-    useUserPackages = true;
-    extraSpecialArgs = { inherit inputs; };
-    backupFileExtension = "hm-backup";
-    users.nori.imports = [ ./home.nix ];
-  };
 
   /*
     ── Boot ───────────────────────────────────────────────────────────
@@ -306,7 +271,7 @@
     {
       assertion = config.nori.hosts.${config.networking.hostName}.role == "agent";
       message =
-        "pavilion's role must be 'agent' in flake.nix identityFor "
+        "pavilion's role must be 'agent' in inventory/hosts.nix "
         + "(otherwise the impermanence/no-backup posture is silently "
         + "wrong)";
     }

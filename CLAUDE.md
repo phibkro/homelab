@@ -10,7 +10,7 @@ NixOS flake managing four NixOS hosts + a home-manager macbook:
 | **pavilion** | agent quarantine (x86_64) | worktrees, weekly tertiary `/mnt/family/*` replica (planned) |
 | **macbook** | daily-driver laptop (intel x86_64) | standalone home-manager only — not under the flake's `nixosConfigurations` |
 
-The codebase splits along the PaaS lens: `modules/services/` holds **workloads** (vaultwarden, immich, jellyfin — what the operator USES); `modules/infra/` holds the **platform** (storage / networking / access / capabilities / observability / backup — HOW the system works). Universal infra (the platform layer + baseline OS bits) is imported by every host via `modules/machines/base/`. Three of the four NixOS hosts (pi, aurora, workstation) additionally import the workloads bundle (`modules/services/default.nix`); pavilion flat-imports just what it needs. Activation is per-service via `nori.services.<X>.enable`. See `docs/reference/module-authoring.md` for the convention.
+The codebase splits along the PaaS lens: `modules/services/` holds **workloads** (vaultwarden, immich, jellyfin — what the operator USES); `modules/infra/` holds the **platform** (storage / networking / access / capabilities / observability / backup — HOW the system works). Universal infra (the platform layer + baseline OS bits) is imported by every host via `modules/machines/base/`. Pure declarations in `inventory/` compose explicit profiles and host deviations; the machine factory selects only those workloads' `runtimeModule` values. Workload folders expose cross-host metadata in `manifest.nix` and keep secrets, units, backup, and hardening details in `runtime.nix`. See `docs/reference/module-authoring.md` for the convention.
 
 ## Docs map
 
@@ -45,8 +45,9 @@ without this file's context.
 | `docs/reference/runtime-tests.md` | adding a `just test-<X>` lever or auditing whether an infra concern ships with one |
 | `docs/reference/capacity-baseline.md` | sizing a new service against current RAM/disk/CPU baselines per host |
 | `docs/reference/agentic-workflow.md` | starting a new PR (prologue), wrapping one (epilogue), deciding session vs PR boundary, or designing per-sprint ceremonies — the per-PR three-phase ceremony lives here |
+| `docs/reference/deployment.md` | planning which hosts a change affects, reviewing build targets and activation order, or preparing the operator-gated deployment handoff |
 | `docs/generated/lan-route.md` | looking up the schema details for a specific `nori.lanRoutes.<name>.<field>` option — generated from `modules/infra/networking/default.nix` via `nix build .#docs-lan-route`. Pairs with the hand-written `docs/reference/network.md`; they coexist under separate paths so the generated-vs-handwritten coverage trade-off stays comparable over time |
-| `docs/generated/topology.md` | looking up the hosts-at-a-glance table or `nori.hosts` schema — generated from `modules/machines/default.nix:identityFor` + `modules/infra/hosts.nix` via `nix build .#docs-topology`. Pairs with `docs/reference/topology.md`; same coexistence pattern as above |
+| `docs/generated/topology.md` | looking up the hosts-at-a-glance table or `nori.hosts` schema — generated from `inventory/hosts.nix` + `modules/infra/hosts.nix` via `nix build .#docs-topology`. Pairs with `docs/reference/topology.md`; same coexistence pattern as above |
 | `docs/generated/capabilities.md` | looking up the GPU access pattern or `nori.harden` / `nori.gpu` schemas — generated from `modules/infra/capabilities/{default,gpu}.nix` via `nix build .#docs-capabilities`. No handwritten counterpart; capabilities concern is mono-module enough that the generated doc carries the whole story |
 | `docs/generated/backups.md` | looking up the `nori.backups.<name>.<field>` schema — generated from `modules/infra/backup/default.nix` via `nix build .#docs-backups`. Pairs with the patterns described in `docs/reference/services.md § backup`; the generated doc carries the WHAT (fields, types, defaults) |
 | `docs/generated/fs.md` | looking up the `nori.fs.<name>.<field>` schema — generated from `modules/infra/storage/default.nix` via `nix build .#docs-fs`. Pairs with `docs/reference/storage.md` for the WHY (value tiers, btrfs subvolume rationale) |
@@ -120,6 +121,11 @@ Recurring procedures live as skills under `.claude/skills/` so the body loads on
 
 - `nix flake check` — standard Nix lints + repo-specific guard derivations (`every-service-has-fs-hardening`, `every-service-has-backup-intent`, `forbidden-patterns`, …). `nix flake show .#checks` for the live list.
 - `nix fmt` — apply nixfmt.
+- Repo-local Claude Code and Codex `PostToolUse(Edit|Write)` hooks run targeted
+  `nix fmt` after Nix edits. When `statix` and `deadnix` are already on `PATH`
+  (for example inside `nix develop`), they also return targeted diagnostics
+  without blocking successful edits. Codex requires reviewing the tracked hook
+  once through `/hooks`; hook success never replaces the full flake gate.
 - Pre-commit hook in `.githooks/pre-commit` runs `nix flake check` on staged `.nix` changes; enable once per clone with `git config core.hooksPath .githooks`. Skips gracefully if nix isn't on PATH (Mac); CI catches the skipped commits.
 - Adding a new rule: see `docs/invariants.md` § decision tree.
 

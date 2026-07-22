@@ -35,7 +35,6 @@ let
     modules = [
       inputs.sops-nix.nixosModules.sops
       ../../modules/infra/hosts.nix
-      ../../modules/infra/placement.nix
       ../../modules/infra/capabilities
       ../../modules/infra/storage
       ../../modules/infra/backup
@@ -83,8 +82,6 @@ let
             # monitor unset → no gatus endpoint expected.
           };
 
-          nori.services.blocky.enable = true;
-          nori.blocky.role = "self-hosted";
           nori.backupTargets.test-stub = {
             repository = "sftp:stub@stub:/stub";
             description = "test";

@@ -79,7 +79,8 @@ All three are wrap-up failures; fix and re-run.
 - Default-deny FS hardening: `nori.harden.widget = { binds = [...]; readOnlyBinds = [...]; };` (`every-service-has-fs-hardening` flake check enforces presence)
 - `nori.lanRoutes.widget = { port = 9000; monitor = { }; };`
 - `nori.backups.widget = { paths = [...] | skip = "..."; };`
-- Append to `modules/services/default.nix` imports
+- Add the manifest explicitly to `inventory/workloads.nix` and place it through
+  `inventory/profiles.nix` or a host deviation
 
 **Source**: `.claude/skills/add-service/` (procedure) + `docs/reference/module-authoring.md` (shape).
 

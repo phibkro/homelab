@@ -9,9 +9,9 @@ in
 
     Collapses cross-host IP literals (was 6+ grep hits for 100.x.y.z
     across service modules and probes) into one declaration site:
-    `identityFor` in flake.nix. Cross-host refs read
+    `identity` entries in `inventory/hosts.nix`. Cross-host refs read
     `config.nori.hosts.<n>.tailnetIp`. Enforced by the
-    `forbidden-patterns` flake check (no `100.x.y.z` outside identityFor).
+    `lint.tailnetIp` check (no host CGNAT literals outside that inventory).
 
     `role` is typed (enum, not free-form) because it's the key for
     placement assertions in modules/infra/backup/default.nix (appliance ≠
@@ -132,8 +132,8 @@ in
     default = { };
     description = ''
       Topology registry. Single source of truth for cross-host
-      references. Populated in flake.nix's `identityFor` (driven by
-      readDir over ./hosts/).
+      references. Projected from `inventory/hosts.nix` before NixOS
+      module evaluation.
     '';
   };
 }

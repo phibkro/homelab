@@ -11,7 +11,7 @@ _: {
     later phases want service modules (Immich, Calibre-web, Komga,
     Navidrome, Samba) to read `config.nori.fs.<X>.path` on aurora once
     they migrate; declaring the entries up front means a service move
-    is just a `nori.services.<svc>.enable = true` on aurora.
+    is an explicit workload placement in `inventory/profiles.nix`.
   */
   nori.fs = {
     /*

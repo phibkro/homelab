@@ -7,7 +7,8 @@
 }:
 
 /**
-  Claude Code agent — declarative + reusable. Imported via modules/home/pc.nix on
+  Claude Code agent — declarative + reusable. Imported via the PC and agentic
+  development profiles on
   every operator-attached PC (workstation + macbook). NOT imported by pi:
   no operator agent loop, and the Node closure shouldn't land on pi's
   anti-write SSD.
@@ -29,7 +30,7 @@ let
   /*
     claude-code overlaid from nixpkgs-master — channel ships 2.1.148 while
     master ships 2.1.179 (2026-06-21 lock; upstream ~2.1.185). Same
-    overlay rationale as zed-editor (modules/home/desktop/apps.nix): the
+    overlay rationale as Zed (modules/home/profiles/desktop/productivity.nix): the
     26.05 channel is curated + lags, master tracks upstream more closely.
     Revert to plain `pkgs.claude-code` when the channel catches up
     (likely the 26.11 release boundary).
@@ -238,7 +239,7 @@ let
         Notification — Claude needs permission, or has been waiting on input
                        (covers a pending question).
       Together they cover "an agent halted and needs you". One shared
-      entrypoint fans out to ntfy — see modules/home/agent-notify.nix.
+      entrypoint fans out to ntfy — see modules/home/agent-notify/default.nix.
     */
     hooks = {
       Stop = [

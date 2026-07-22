@@ -17,7 +17,7 @@
 {
   # core.nix is the cross-host operator baseline. `just` from there is
   # load-bearing for `just remote pavilion rebuild` from workstation.
-  imports = [ ../../home/core.nix ];
+  imports = [ ../../home/profiles/core.nix ];
 
   home.packages = with pkgs; [
     # Pavilion-only extras on top of core.

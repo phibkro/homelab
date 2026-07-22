@@ -33,7 +33,8 @@ pause toggle.
 | Item | Value |
 |---|---|
 | Option | `nori.musicIngest` |
-| Module | `modules/services/music-ingest.nix` |
+| Manifest | `modules/services/music-ingest/manifest.nix` |
+| Runtime | `modules/services/music-ingest/runtime.nix` |
 | Timer | `music-ingest.timer` |
 | Staging | `/mnt/media/staging/music-flac` |
 | Master | `/mnt/media/library/music` |
@@ -71,7 +72,7 @@ when onboarding or replacing a device.
 ```bash
 sudo systemctl start music-ingest.service
 journalctl -u music-ingest.service
-nix shell nixpkgs#b3sum --command bash modules/services/music-ingest.test.sh
+nix shell nixpkgs#b3sum --command bash modules/services/music-ingest/music-ingest.test.sh
 ```
 
 The test covers stability guards, deduplication, conflict quarantine,

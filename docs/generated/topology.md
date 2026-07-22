@@ -6,29 +6,30 @@ regenerate: nix build .#docs-topology
 
 # Topology — generated reference
 
-Auto-derived from `nori.hosts` schema + `identityFor` values
-in `modules/machines/default.nix`. Do not hand-edit; the
+Auto-derived from the `nori.hosts` schema + values in
+`inventory/hosts.nix`. Do not hand-edit; the
 hand-curated overview lives at `docs/reference/topology.md`
 (kept parallel for the generated-vs-handwritten coverage
 experiment).
 
-Machine registry + `nixosConfigurations` factory.
+NixOS configuration factory backed by the pure homelab inventory.
 
-Four persistent NixOS hosts on a single residential network plus a
-Mac on standalone home-manager. Roles are typed; placement assertions
-enforce them (see `modules/infra/backup/default.nix`); cross-host refs
-go through `nori.hosts` registry — never IP literals.
+`inventory/default.nix` is evaluated before the NixOS module fixed point and
+owns host enumeration, identity, profile selection, intended workload
+placement, and reusable system-module composition. Host realizations carry
+only hardware/storage and genuine deviations; profiles and workload
+manifests select reusable modules before the NixOS fixed point.
 
 ## Topology
 
 ```mermaid
 graph TB
   subgraph "appliance tier"
-    P[pi<br/>entry plane: Caddy + Authelia + Blocky<br/>+ observability + alert + Tailscale]
+    P[pi<br/>entry plane + observability hub]
   end
   subgraph "workhorse tier"
-    A[aurora<br/>family vault + family-tier backends]
-    W[workstation<br/>GPU + arr stack + downloads<br/>+ cold replica of /mnt/family]
+    A[aurora<br/>always-on family vault]
+    W[workstation<br/>media compute + desktop]
   end
   subgraph "agent tier"
     V[pavilion<br/>quarantined agents]
@@ -36,81 +37,19 @@ graph TB
   M[macbook<br/>daily-driver]
   P -- "*.${nori.domain} proxy" --> A
   P -- "*.${nori.domain} proxy" --> W
-  W -- "nightly btrfs send/receive" --> W
+  A -- "nightly btrfs send/receive" --> W
   A -- "scraped by" --> P
   W -- "scraped by" --> P
   V -- "scraped by" --> P
-  P -- "ntfy.sh public<br/>heartbeat to hc.io" --> Internet[Internet]
   M -. "SSH" .-> P
   M -. "SSH" .-> A
   M -. "SSH" .-> W
 ```
 
-Failure domain independence: each host shares no storage, no PSU, no
-critical boot-path dependency with the others. Any single failure does
-not block the rest.
-
-## Service-implicit-until-lan-route'd (the tier principle)
-
-A service has three concerns: registration (it exists), state (it
-persists data), location (it runs on host X). For services confined to
-one host, **location is implicit from the import site**:
-
-```
-modules/machines/aurora/default.nix imports modules/services/vaultwarden.nix
-                            ⇒ vaultwarden runs on aurora
-```
-
-The service doesn't declare a host. The fact that aurora's module list
-pulls it in IS the location declaration. No explicit `runsOn`, no
-cross-host wiring.
-
-**Location becomes explicit when a service crosses machines.** That
-happens through `nori.lanRoutes.<X>.runsOn`, which names the host
-backing a route. `runsOn` lives on lan-route not by convenience — but
-because the act of exposing a service via HTTP IS the act of declaring
-location-needs-resolving. Pre-exposure, location is implicit; at
-exposure, location is the cross-machine answer the proxy needs.
-
-```
-  declaration      state      location          cross-machine?
-  ─────────────────────────────────────────────────────────────────
-  packages         none       anywhere          N/A (stateless)
-  services         local      implicit (import) opt-in via lan-route
-  distributed      local +    EXPLICIT —        N/A (already is)
-  services         binding    runsOn host(s)
-```
-
-Today `runsOn` is a single host string. Forward shape (not in tree
-yet but pre-named): a list with a semantic tag — `failover` (sum),
-`loadbalance` (product), `sequential` (ordered sum). Rule of three:
-extract when a second service genuinely needs multi-host routing.
-
-## How this module works
-
-Two explicit maps form the single source of truth:
-
- - `nixosMachines`     — NixOS hosts the flake builds, name → folder path
- - `standaloneHomes`   — non-NixOS machines (Mac) that ride home-manager
-                         standalone, name → home.nix path
- - `identityFor`       — per-host identity facts (tailnet/lan IPs, role,
-                         hardware, primaryJob); keys MUST equal those of
-                         `nixosMachines`. Asserted eval-time below.
-
-Adding a NixOS host: add the entry to BOTH `nixosMachines` AND
-`identityFor`. The key-set assertion fails eval if one is missing,
-preserving the "no parallel identifier to keep in sync" property the
-old readDir-driven enumeration had — but explicit instead of magic.
-
-Schema: `modules/infra/hosts.nix`.
-
-Consumers (cross-host refs):
-
- - `modules/infra/networking/default.nix`     — `nori.lanIp` default
- - `modules/infra/backup/default.nix`         — host-aware appliance assertion
- - `modules/infra/observability/beszel/agent.nix` — metrics route backend
- - `modules/infra/observability/ntfy/notify.nix`  — alert route backend
- - `modules/machines/workstation/default.nix` — Pi probe URLs
+Cross-host references continue through the compatibility `nori.hosts`
+registry. New architecture consumers use the typed, public-safe
+`nori.inventory` projection. Both derive from the same pure source; there is
+no parallel identity map.
 
 # Topology — overview {#sec-functions-library-topology}
 
@@ -146,10 +85,9 @@ VRAM for LLM inference — that stays on workstation's 5060 Ti.
 
 ## Why workhorse role
 
-Has GPU, has compute, hosts state. Classified workhorse — but it's a
-*minimal* workhorse. If a second compute-offload host ever appears,
-the rule-of-three signal is to extract a dedicated `compute` role
-then (see `modules/infra/hosts.nix § role`).
+Has GPU, compute, and durable state, so the broad hardware role remains
+`workhorse`. Its narrower family-vault purpose is expressed by the inventory
+profile rather than another host-role enum.
 ## pavilion — HP Pavilion g6 · AMD Athlon II P360 · 3.6 GB RAM · BIOS+GRUB
 
 Decade-old laptop (Phenom II era, 2010) repurposed as the agent
@@ -248,15 +186,14 @@ prevents idle-sleep during ambient sound. Full debt note in
 
 ## Registry schema (`nori.hosts.<name>.*`)
 
-What an `identityFor` entry must declare to satisfy the schema.
-Schema lives in `modules/infra/hosts.nix`; values live in
-`modules/machines/default.nix`.
+What an `inventory/hosts.nix` identity entry must declare to
+satisfy the schema. Schema lives in `modules/infra/hosts.nix`.
 
 ## nori.hosts
 
 Topology registry. Single source of truth for cross-host
-references. Populated in flake.nix’s ` identityFor ` (driven by
-readDir over ./hosts/).
+references. Projected from ` inventory/hosts.nix ` before NixOS
+module evaluation.
 
 
 

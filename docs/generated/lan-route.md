@@ -98,11 +98,9 @@ Caddy's `withPlugins` bakes in `caddy-dns/cloudflare`. The
 name, Authelia cookie domain + issuer URL, and OIDC redirect URI
 reads from it.
 
-Transitional `*.nori.lan` redirect: pi's Caddy still serves
-`*.nori.lan` (Caddy internal CA) and 301-redirects to the same
-path under `home.phibkro.org`. Drop this block from `caddy.nix` +
-the parallel entries in `blocky` customDNS once family bookmarks
-have migrated.
+Transitional domains declared by `nori.inventory.site.deprecatedDomains`
+remain in Blocky and receive an HTTP 301 from Caddy to the canonical domain.
+Remove a domain from inventory once family bookmarks have migrated.
 
 ## Naming: function over brand
 
@@ -126,7 +124,7 @@ under `*.${domain}`. Each entry generates ALL of:
  - Tailnet firewall hole (if `exposeOnTailnet`)
  - sops raw + hash secrets + env-file template (if `oidc` is
    set) — Authelia client list assembly lives in
-   `modules/infra/access/authelia.nix`, reading back
+   `modules/infra/access/authelia/runtime.nix`, reading back
    `config.nori.lanRoutes` from here. Hash material stays in
    sops; the authelia config-filter injects it at runtime.
 
@@ -192,7 +190,7 @@ string
 
 
 
-LAN IP that \*.nori.lan names resolve to. Derived from the
+LAN IP that service-domain names resolve to. Derived from the
 nori.hosts registry as “the unique host with role=workhorse
 and a non-null lanIp” (see modules/infra/hosts.nix). When
 a future second workhorse with a static LAN lease lands, the
@@ -209,9 +207,9 @@ route advertisement (services.tailscale.useRoutingFeatures =
 “server” in modules/machines/pi/default.nix); the client side needs
 –accept-routes set in its tailscaled config.
 
-Consumers: Blocky’s forwarder mode (modules/infra/networking/blocky.nix)
+Consumers: Blocky’s forwarder mode (modules/infra/networking/blocky/runtime.nix)
 and the Blocky DNS generator below. Both want a single “where
-does \*.nori.lan live” address.
+does the service namespace live” address.
 
 
 
@@ -237,7 +235,7 @@ string
 
 
 
-Services to expose under \*.nori.lan via Caddy reverse proxy +
+Services to expose under the canonical domain via Caddy reverse proxy +
 Blocky DNS. Attribute name = subdomain; value declares the
 backend.
 
@@ -327,9 +325,9 @@ one of “operator”, “family”, “public”
 
 
 If set, this route appears on the Glance dashboard
-(https://home.nori.lan) — both as an uptime-monitor dot
+(` https://home.<domain> `) — both as an uptime-monitor dot
 and as a grouped bookmark. The URL is derived from the
-route name as ` https://<name>.nori.lan `; only metadata
+route name and canonical domain; only metadata
 lives here. Glance consumes the whole nori.lanRoutes
 attrset and renders entries with ` dashboard != null `.
 
@@ -494,8 +492,8 @@ If set, gate this route via Authelia forward-auth at the
 Caddy layer. Caddy asks Authelia’s ` /api/verify ` whether
 the request’s session cookie is valid before forwarding;
 if not, Authelia issues a 302 to the portal. The session
-cookie at \*.nori.lan covers every forward-auth’d route —
-log in once at https://auth.nori.lan, navigate to any
+cookie at the canonical domain covers every forward-auth’d route —
+log in once at ` https://auth.<domain> `, navigate to any
 gated service without re-auth.
 
 Used for services that don’t have native OIDC client
@@ -516,7 +514,7 @@ break under cookie-based forward-auth.
 Authelia uptime becomes load-bearing: an Authelia outage
 returns 502 for every forward-auth’d route. SSH-tunnel to
 the backend port directly as the recovery escape hatch.
-See modules/infra/access/authelia.nix for the upstream.
+See modules/infra/access/authelia/runtime.nix for the upstream.
 
 
 
@@ -749,7 +747,7 @@ null
 If set, this route gets:
 
  - an Authelia OIDC client entry (assembled by
-   modules/infra/access/authelia.nix from this declaration)
+   modules/infra/access/authelia/runtime.nix from this declaration)
  - a sops secret named ` oidc-<name>-client-secret `
  - a sops env-file template named ` oidc-<name>-env `
    containing ` <secretEnvName>=<raw> `, ready to wire as
@@ -822,7 +820,7 @@ string
 
 
 
-Path appended to https://<name>.nori.lan to form
+Path appended to ` https://<name>.<domain> ` to form
 the OIDC redirect URI. Service-specific:
 Open WebUI:  /oauth/oidc/callback
 PocketBase:  /api/oauth2-redirect
@@ -993,7 +991,7 @@ one of “http”, “https”
 
 Optional rewrite of the ` Host ` request header before
 forwarding to the upstream. By default Caddy forwards
-the original Host (the public ` <n>.nori.lan `), which
+the original Host (the canonical ` <n>.<domain> `), which
 most backends accept. Set this when a backend validates
 Host as a DNS-rebinding defence and only accepts the
 address on which it is bound.

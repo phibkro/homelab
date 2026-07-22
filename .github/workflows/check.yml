@@ -14,6 +14,13 @@ on:
   # Allow manual reruns when investigating CI flakes.
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: flake-check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -35,3 +42,29 @@ jobs:
         # and it SIGTERM'd a run at the runner's disk/time limit on 2026-07-18).
         # Local `just rebuild` / `nix flake check` stay pure → real package.
         run: HOMELAB_CI=1 nix flake check --impure --print-build-logs
+
+  # Build the appliance closure on native ARM instead of making either the
+  # workstation emulate aarch64 or the production Pi compile while serving
+  # DNS and the entry plane. This job only proves the closure: it receives no
+  # deployment credentials and never activates a host.
+  pi-build:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            experimental-features = nix-command flakes
+            extra-substituters = https://cache.garnix.io
+            extra-trusted-public-keys = cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g=
+
+      - name: build Pi system closure
+        run: >-
+          nix build
+          .#nixosConfigurations.pi.config.system.build.toplevel
+          --no-link
+          --print-build-logs
+          --option max-jobs 1
+          --option cores 2
