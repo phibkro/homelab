@@ -31,7 +31,7 @@ If SSH answers but services are down → likely bad config; jump to `bad-config.
 ssh nori@pi.saola-matrix.ts.net 'sudo nixos-rebuild switch --rollback'
 ```
 
-Atomic. Same as `bad-config.md`. Verify with `curl -k https://status.home.phibkro.org`.
+Atomic. Same as `bad-config.md`. Verify internal routing with `curl -k https://uptime.home.phibkro.org`.
 
 ### Option B — swap to spare SD card / USB SSD (hardware-driven outage)
 
@@ -41,7 +41,7 @@ Atomic. Same as `bad-config.md`. Verify with `curl -k https://status.home.phibkr
 4. Verify entry plane:
    ```bash
    ssh nori@pi.saola-matrix.ts.net 'systemctl status caddy authelia-main blocky'
-   curl -k https://status.home.phibkro.org             # gatus → workstation
+   curl -k https://uptime.home.phibkro.org             # internal Gatus UI
    curl -k https://auth.home.phibkro.org/api/health    # authelia
    ```
 

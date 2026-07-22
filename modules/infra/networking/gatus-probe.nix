@@ -40,7 +40,7 @@ in
         blocky-dns.url = "tcp://127.0.0.1:53";
         pi-ssh.url = "tcp://''${config.nori.hosts.pi.tailnetIp}:22";
         station-caddy = {
-          url = "https://status.${config.nori.domain}";
+          url = "https://uptime.${config.nori.domain}";
           interval = "120s";
           conditions = [ "[STATUS] == 200" ];
         };

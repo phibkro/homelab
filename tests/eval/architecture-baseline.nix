@@ -236,7 +236,7 @@ let
     filmder.filmder = "aurora";
     glance.home = "aurora";
     grafana.ops = "aurora";
-    gatus.status = "pi";
+    gatus.uptime = "pi";
     heim.heim = "aurora";
     immich.photos = "aurora";
     jellyfin.media = "workstation";
@@ -591,10 +591,10 @@ let
       monitored = true;
       dashboard = true;
     };
-    status = {
+    uptime = {
       port = 8082;
       runsOn = "pi";
-      audience = "public";
+      audience = "operator";
       exposeOnTailnet = true;
       auth = "none";
       monitored = false;

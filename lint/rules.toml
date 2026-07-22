@@ -46,7 +46,7 @@ hashes live in sops as oidc-<n>-client-secret-hash.'''
 
 [rules.functionNamedSubdomains]
 # CLAUDE.md § "Style for prose": "Function-named subdomains, agnostic
-# over branded: status.${nori.domain} not gatus.${nori.domain} unless
+# over branded: uptime.${nori.domain} not gatus.${nori.domain} unless
 # the brand IS the identity."
 #
 # Brands change (Uptime Kuma → Gatus → next-thing); functions don't.
@@ -75,7 +75,7 @@ message = '''
 Branded subdomain found above. Function-named subdomains beat brand-
 named (brands change — Uptime Kuma → Gatus; functions don't). Rename
 the lanRoute key:
-  gatus       → status         immich     → photos
+  gatus       → uptime         immich     → photos
   ntfy        → alert          ollama     → ai
   jellyfin    → media          open-webui → chat
   beszel      → metrics        navidrome  → music

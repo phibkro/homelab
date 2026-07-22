@@ -10,11 +10,11 @@ in
   runtimeModule = ./runtime.nix;
   tags = [ "observability" ];
 
-  endpoints.status = {
+  endpoints.uptime = {
     port = 8082;
     runsOn = site.entryPlaneHost;
     exposeOnTailnet = true;
-    audience = "public";
+    audience = "operator";
     dashboard = {
       title = "Gatus";
       icon = "sh:gatus";

@@ -77,7 +77,7 @@ in
     station-blocky-dns.url = "tcp://${config.nori.lanIp}:53";
     station-ssh.url = "tcp://${config.nori.lanIp}:22";
     station-caddy = {
-      url = "https://status.${config.nori.domain}";
+      url = "https://uptime.${config.nori.domain}";
       interval = "120s";
       conditions = [ "[STATUS] == 200" ];
     };

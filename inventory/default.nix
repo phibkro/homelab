@@ -158,6 +158,10 @@ let
   lanRoutes = lib.foldl' (
     routes: workloadName: routes // resolvedEndpointsFor workloadName
   ) { } workloadNames;
+  publicEdgeHostnames = [ "status.${site.domain}" ];
+  edgeHostnameCollisions = lib.filter (
+    endpointName: lib.elem "${endpointName}.${site.domain}" publicEdgeHostnames
+  ) (lib.attrNames lanRoutes);
 
   runtimeModulesFor =
     hostName:
@@ -353,6 +357,10 @@ assert lib.assertMsg (invalidRolePlacements == [ ])
   "inventory: workload placement violates its declared hostRoles: ${lib.concatStringsSep ", " invalidRolePlacements}";
 assert lib.assertMsg (duplicateEndpoints == [ ])
   "inventory: endpoint name(s) have multiple owners: ${lib.concatStringsSep ", " duplicateEndpoints}";
+assert lib.assertMsg (edgeHostnameCollisions == [ ])
+  "inventory: lanRoute hostname(s) collide with edge-owned domain(s): ${
+    lib.concatStringsSep ", " (map (name: "${name}.${site.domain}") edgeHostnameCollisions)
+  }";
 assert lib.assertMsg (invalidPublicStatusEndpoints == [ ])
   "inventory: publicStatus endpoints must be monitored and non-operator: ${lib.concatStringsSep ", " invalidPublicStatusEndpoints}";
 assert lib.assertMsg (unknownDatasetWorkloads == [ ])

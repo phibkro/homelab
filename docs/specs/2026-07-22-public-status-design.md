@@ -158,6 +158,8 @@ Alchemy operations remain separately confirmed.
 - Only `media`, `requests`, and `audio` appear in the first public manifest.
 - Disabling or omitting `publicStatus` removes a component from the next build.
 - A public-status grant on an operator or unmonitored route fails evaluation.
+- A homelab `lanRoute` cannot claim the edge-owned
+  `status.home.phibkro.org` hostname; the inventory compiler fails evaluation.
 - Public HTML and JSON contain none of the forbidden topology/security fields.
 - The Worker remains usable when all homelab hosts are offline.
 - Unknown routes and mutation attempts without the phase-2 credential fail

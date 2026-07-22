@@ -173,13 +173,13 @@ pkgs.nixosTest {
     workstation.wait_for_unit("multi-user.target")
 
     # entry-plane resolves a known route
-    workstation.succeed("curl -sfI https://status.test.lan/")
+    workstation.succeed("curl -sfI https://uptime.test.lan/")
 
     # DNS authoritative — pi resolves a synthetic LAN name
     workstation.succeed("dig +short station.test.lan @pi | grep -E '^[0-9]'")
 
     # Gatus probe contract — health page returns 200
-    workstation.succeed("curl -sf http://pi:8080/api/v1/endpoints/status")
+    workstation.succeed("curl -sf http://pi:8080/api/v1/endpoints/uptime")
   '';
 }
 ```
@@ -251,7 +251,7 @@ DoD: `nix flake check` passes locally; the check fires on a deliberate caddy/blo
 
 ```
 nodes      pi + workstation
-checks     entry-plane: workstation curls https://status.test.lan/ via pi
+checks     entry-plane: workstation curls https://uptime.test.lan/ via pi
            backwards probe: pi resolves station.test.lan via Blocky
            audience policy: operator route reachable; family route 401 without OIDC
            lan-route registry: every defined route serves at /

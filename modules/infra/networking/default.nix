@@ -334,10 +334,12 @@ in
                   Where native OIDC isn't clean (Komga, calibre-web),
                   forward-auth gates browser access at Caddy.
 
-                * public — intentionally open dashboards (home/Glance,
-                  status/Gatus) and the SSO portal itself (auth/
-                  Authelia). Tailnet trust is the only gate; auth
-                  inside these would defeat their purpose.
+                * public — intentionally open dashboards (home/Glance)
+                  and the SSO portal itself (auth/Authelia). Tailnet
+                  trust is the only gate; auth inside these would
+                  defeat their purpose. Gatus is the operator-only
+                  diagnostic surface at uptime/; the public status/
+                  hostname is owned independently at the edge.
 
               Enforced (eval-time assertion below): audience=family
               requires either an `oidc` or `forwardAuth` block, or

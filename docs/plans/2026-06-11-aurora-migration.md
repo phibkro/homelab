@@ -125,7 +125,7 @@ After Phase 1 (pool support in the lan-route schema), routes name their host(s) 
 | `media.nori.lan` (Jellyfin) | workstation | workstation |
 | `chat.nori.lan` (Open-WebUI) | workstation | workstation |
 | `arr.nori.lan` (jellyseerr), `torrents.nori.lan` (qBit), `stream.nori.lan` (Sunshine), `hermes.nori.lan` | workstation | workstation |
-| `status.nori.lan` (Gatus), `metrics.nori.lan` (Beszel), `alert.nori.lan` (ntfy), `logs.nori.lan` (VictoriaLogs), `tsdb.nori.lan` (VictoriaMetrics) | pi | pi |
+| `uptime.nori.lan` (Gatus), `metrics.nori.lan` (Beszel), `alert.nori.lan` (ntfy), `logs.nori.lan` (VictoriaLogs), `tsdb.nori.lan` (VictoriaMetrics) | pi | pi |
 
 ---
 
