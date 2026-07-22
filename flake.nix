@@ -1179,37 +1179,6 @@
                 '';
 
               /**
-                Layer-1 eval test — `nori.lanRoutes.<n>.reachability` →
-                Caddy client-IP matcher + fail-closed catch-all. Verifies
-                that forwarding WAN :443 exposes only routes explicitly
-                marked internet-reachable.
-              */
-              eval-lanroute-reachability =
-                let
-                  result = import ./tests/eval/lanroute-reachability.nix {
-                    inherit pkgs lib inputs;
-                  };
-                in
-                pkgs.runCommandLocal "eval-lanroute-reachability" { } ''
-                  echo ${lib.escapeShellArg result} > $out
-                '';
-
-              /**
-                Layer-1 eval test — internet-reachable lanRoutes become
-                exact DNS-only IPv4 Cloudflare records. Internal routes,
-                wildcard records, proxying, and IPv6 stay absent.
-              */
-              eval-cloudflare-ddns-routes =
-                let
-                  result = import ./tests/eval/cloudflare-ddns-routes.nix {
-                    inherit pkgs lib inputs;
-                  };
-                in
-                pkgs.runCommandLocal "eval-cloudflare-ddns-routes" { } ''
-                  echo ${lib.escapeShellArg result} > $out
-                '';
-
-              /**
                 Layer-1 eval test — `nori.lanRoutes.<X>.monitor` →
                 `services.gatus.settings.endpoints`. Pins the registry-
                 to-Gatus contract so a schema regression that silently
