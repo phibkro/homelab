@@ -174,14 +174,16 @@
     claudex.inputs.home-manager.follows = "home-manager";
 
     /*
-      pagu-box — cross-platform sandboxed launcher for any process.
-      The public pin keeps this flake reproducible on fresh machines and
-      in CI. Develop pagu-box in its own checkout, push a reviewed commit,
-      then advance this lock deliberately.
+      pagu-box — the sandbox launcher, now the `pagu-box` compat output of
+      the consolidated pagu repo (box + gate; the old pagu-box repo is
+      archived, merged in tree-identical). The `.default`/`.pagu-box` package
+      and home-manager module are re-exposed unchanged, so consumers are
+      untouched. The public pin keeps this flake reproducible on fresh
+      machines and in CI; advance the lock deliberately.
     */
-    pagu-box.url = "github:phibkro/pagu-box";
+    pagu-box.url = "github:phibkro/pagu";
     pagu-box.inputs.nixpkgs.follows = "nixpkgs";
-    pagu-box-darwin.url = "github:phibkro/pagu-box";
+    pagu-box-darwin.url = "github:phibkro/pagu";
     pagu-box-darwin.inputs.nixpkgs.follows = "nixpkgs-stable";
   };
 

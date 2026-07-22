@@ -537,16 +537,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1780910773,
-        "narHash": "sha256-b7LYzOMVKIDn1UVpMXT5Rs/WUnkivDZuBu8OPBRZp8E=",
+        "lastModified": 1784501695,
+        "narHash": "sha256-vGv/OHNKWKi+b5pp/hPnnA+wRBvIIEq2PEm27p8SKC8=",
         "owner": "phibkro",
-        "repo": "pagu-box",
-        "rev": "8027e4705eaa51e86628ec46d3aa36ab01fbc93b",
+        "repo": "pagu",
+        "rev": "3275af2b193401c4bb2b8fb0603dc720749b1289",
         "type": "github"
       },
       "original": {
         "owner": "phibkro",
-        "repo": "pagu-box",
+        "repo": "pagu",
         "type": "github"
       }
     },
@@ -557,16 +557,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1780910773,
-        "narHash": "sha256-b7LYzOMVKIDn1UVpMXT5Rs/WUnkivDZuBu8OPBRZp8E=",
+        "lastModified": 1784501695,
+        "narHash": "sha256-vGv/OHNKWKi+b5pp/hPnnA+wRBvIIEq2PEm27p8SKC8=",
         "owner": "phibkro",
-        "repo": "pagu-box",
-        "rev": "8027e4705eaa51e86628ec46d3aa36ab01fbc93b",
+        "repo": "pagu",
+        "rev": "3275af2b193401c4bb2b8fb0603dc720749b1289",
         "type": "github"
       },
       "original": {
         "owner": "phibkro",
-        "repo": "pagu-box",
+        "repo": "pagu",
         "type": "github"
       }
     },
