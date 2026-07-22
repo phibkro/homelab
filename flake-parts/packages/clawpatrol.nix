@@ -24,6 +24,8 @@
           hash = "sha256-YUheXD5xzXwrHT5HmrgGF+19o8NvcaxMdJW7BQCdKiU=";
         };
 
+        patches = [ ./clawpatrol-ssh-env-slots.patch ];
+
         subPackages = [ "cmd/clawpatrol" ];
         vendorHash = "sha256-9HIqm4PmmiDMFjBMqIlMtKlUBlKyKGkMWlDLSOoyVXE=";
 
@@ -75,12 +77,17 @@
             exec ${paguBoxUnwrapped}/bin/pagu-box "$@"
           fi
 
-          # Claw Patrol publishes a CA, not a secret. Make that one file
-          # visible through strict's tmpfs HOME so TLS clients trust the MITM;
-          # credential bytes remain owned by the gateway service user.
+          # Claw Patrol publishes a CA, not a secret. Its run command builds
+          # ca-bundle.crt immediately before it execs pagu-box, so make both
+          # public trust files visible through strict's tmpfs HOME. Credential
+          # bytes remain owned by the gateway service user.
           ca="$HOME/.clawpatrol/ca.crt"
+          caBundle="$HOME/.clawpatrol/ca-bundle.crt"
           exec clawpatrol run -- \
-            ${paguBoxUnwrapped}/bin/pagu-box --ro-allow "$ca" "$@"
+            ${paguBoxUnwrapped}/bin/pagu-box \
+              --ro-allow "$ca" \
+              --ro-allow "$caBundle" \
+              "$@"
         '';
       };
     in
@@ -91,6 +98,7 @@
       checks.pagu-box-clawpatrol = pkgs.runCommandLocal "pagu-box-clawpatrol-check" { } ''
         ${paguBoxClawpatrol}/bin/pagu-box --help > /dev/null
         grep -F 'clawpatrol run' ${paguBoxClawpatrol}/bin/pagu-box
+        grep -F 'ca-bundle.crt' ${paguBoxClawpatrol}/bin/pagu-box
         touch "$out"
       '';
 

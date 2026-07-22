@@ -22,22 +22,36 @@ let
 
   package = inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.clawpatrol;
   credentialType = types.submodule {
-    options.sopsKey = mkOption {
-      type = types.nullOr types.str;
-      default = null;
-      description = ''
-        Key in secrets/apps.yaml. Null keeps the hostname allowed but injects
-        no credential. Secret bytes are read from the sops runtime file.
-      '';
+    options = {
+      sopsKey = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = ''
+          Key in secrets/apps.yaml. Null keeps the hostname allowed but injects
+          no credential. Secret bytes are read from the sops runtime file.
+        '';
+      };
+      secretSlot = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = ''
+          Optional Claw Patrol plugin secret slot. For example, ssh_key reads
+          key material from the private_key slot rather than its bare value.
+        '';
+      };
     };
   };
   credentials = filter (entry: entry.sopsKey != null) (
     mapAttrsToList (name: value: {
       inherit name;
-      inherit (value) sopsKey;
+      inherit (value) sopsKey secretSlot;
     }) cfg.credentials
   );
   secretName = name: "clawpatrol-${name}";
+  credentialEnvName =
+    entry:
+    "CLAWPATROL_SECRET_${lib.toUpper (lib.replaceStrings [ "-" ] [ "_" ] entry.name)}"
+    + lib.optionalString (entry.secretSlot != null) "_${lib.toUpper entry.secretSlot}";
   credentialRef =
     name: type:
     if cfg.credentials.${name}.sopsKey == null then "passthrough.${name}" else "${type}.${name}";
@@ -168,7 +182,10 @@ in
           };
           github-ssh = mkOption {
             type = credentialType;
-            default.sopsKey = "github_ssh_private_key";
+            default = {
+              sopsKey = "github_ssh_private_key";
+              secretSlot = "private_key";
+            };
           };
           cloudflare = mkOption {
             type = credentialType;
@@ -234,7 +251,7 @@ in
       group = "clawpatrol";
       mode = "0400";
       content = concatMapStringsSep "\n" (entry: ''
-        CLAWPATROL_SECRET_${lib.toUpper entry.name}=@${config.sops.secrets.${secretName entry.name}.path}
+        ${credentialEnvName entry}=@${config.sops.secrets.${secretName entry.name}.path}
       '') credentials;
     };
 
