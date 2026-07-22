@@ -3,6 +3,10 @@ let
 in
 {
   kind = "service";
+  hostRoles = [
+    "workhorse"
+    "appliance"
+  ];
   runtimeModule = ./runtime.nix;
   tags = [ "observability" ];
 

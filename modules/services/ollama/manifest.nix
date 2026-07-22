@@ -4,6 +4,7 @@ in
 {
   inherit active;
   kind = "service";
+  hostRoles = [ "workhorse" ];
   runtimeModule = ./runtime.nix;
   tags = [
     "gpu-bound"

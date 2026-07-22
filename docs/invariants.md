@@ -45,7 +45,7 @@ Strongest rung each claim has reached. `[prose: unchecked]` entries are promotio
 | Sops-encrypted secrets stay in `secrets/secrets.yaml`; encryption itself is structural | `[structural]` (sops policy file `.sops.yaml`) |
 | Never bulk-rename keys in sops-encrypted yaml (AAD-bound ciphertext breaks) | `[prose: unchecked]` — can't really mechanize; lives in gotcha skill |
 | **Topology & roles** | |
-| Pi runs only services that survive workstation outage (observability / alerting / DNS / network plumbing) | `[prose: unchecked]` — promote? per-service role-vs-host cross-check |
+| Pi runs only appliance-safe services; every workload placement matches a typed role declared by its manifest | `[structural]` (closed role enum + pure inventory assertion) + `[law: eval-workload-role-placement]` |
 | Cross-host service split: daemon on one host, client/proxy on every consumer; cross-host refs via `nori.hosts` registry | `[structural]` (the registry IS the wiring) |
 | Each host has one folder at `machines/<n>/`; identity registered in `nori.hosts`; eval fails if folder + registry don't both land | `[law: add-host eval check]` (via `add-host` skill's exit invariant) |
 | **lanRoutes** | |
@@ -173,9 +173,8 @@ The effect-interface family in `modules/infra/` is enforced by all five rungs si
 
 `[prose: unchecked]` claims in rough priority order for mechanization:
 
-1. **`workhorse-vs-appliance-placement`** — derived check: for each service module, assert it's placed on a host whose role tag matches the service's declared role. Currently `nori.hosts` carries role tags; could be cross-referenced. **Medium value**: prevents accidental Pi-bloat. **Implementation:** needs eval-time module assertion, not nori.lint (semantic, not grep-shaped).
-
 **Recently promoted:**
+- `workhorse-vs-appliance-placement` → `[law: eval-workload-role-placement]` (2026-07-22) — workload manifests declare a non-empty set from the shared typed host-role vocabulary; the pure inventory compiler rejects every resolved placement whose host role is outside that set before NixOS module evaluation.
 - `disko-uses-by-id` → `[law: lint.diskoUsesById]` (2026-06-16) — was register item #1; the rule that tested the "add a rule = one TOML block" Goal motivating the nori.lint refactor.
 - `function-named-subdomains` → `[law: lint.functionNamedSubdomains]` (2026-06-16) — TOML denylist of 13 upstream brand names with clean function-name mappings (gatus→status, ntfy→alert, …). Audited current tree: zero real violations (operator's branded apps `filmder`/`heim` legitimately have brand-as-identity).
 - `audience-enforces-auth` → `[structural: module assertion]` (2026-06-21) — `audience="family"` requires `oidc`, `forwardAuth`, or explicit `noAuthReason` per `modules/infra/networking/default.nix` assertion. Two legitimate exceptions annotated (radicale, jellyfin).

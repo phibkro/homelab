@@ -1,0 +1,6 @@
+[
+  "workhorse"
+  "appliance"
+  "agent"
+  "client"
+]

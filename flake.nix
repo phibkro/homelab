@@ -1280,6 +1280,20 @@
                 '';
 
               /**
+                Workload manifests declare their allowed host roles, and the
+                pure inventory compiler rejects mismatched placements.
+              */
+              eval-workload-role-placement =
+                let
+                  result = import ./tests/eval/workload-role-placement.nix {
+                    inherit lib;
+                  };
+                in
+                pkgs.runCommandLocal "eval-workload-role-placement" { } ''
+                  echo ${lib.escapeShellArg result} > $out
+                '';
+
+              /**
                 Canonical datasets project into producer and consumer runtime
                 paths without duplicating their logical storage contract.
               */

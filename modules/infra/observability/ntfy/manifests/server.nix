@@ -3,6 +3,7 @@ let
 in
 {
   kind = "service";
+  hostRoles = [ "appliance" ];
   runtimeModule = ../server.nix;
   tags = [
     "network-appliance"

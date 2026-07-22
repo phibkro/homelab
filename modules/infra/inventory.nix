@@ -10,6 +10,7 @@
 
 let
   inherit (lib) mkOption types;
+  hostRoles = import ../../inventory/roles.nix;
 
   identityOptions = {
     tailnetIp = mkOption {
@@ -21,12 +22,7 @@ let
       default = null;
     };
     role = mkOption {
-      type = types.enum [
-        "workhorse"
-        "appliance"
-        "agent"
-        "client"
-      ];
+      type = types.enum hostRoles;
     };
     roleOneLiner = mkOption { type = types.str; };
     codename = mkOption { type = types.str; };
@@ -70,6 +66,10 @@ let
       tags = mkOption {
         type = types.listOf types.str;
         default = [ ];
+      };
+      hostRoles = mkOption {
+        type = types.listOf (types.enum hostRoles);
+        description = "Host roles on which this workload may be placed.";
       };
       endpoints = mkOption {
         type = types.attrsOf types.anything;
