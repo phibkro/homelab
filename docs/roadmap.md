@@ -88,7 +88,7 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 | ~~`function-named-subdomains`~~ | ✓ `[law: lint.functionNamedSubdomains]` (landed 2026-06-16) | service-name leakage in `nori.lanRoutes` |
 | ~~`audience-enforces-auth`~~ | ✓ `[structural: module assertion]` (landed 2026-06-21) | `audience="family"` without `oidc` / `forwardAuth` / explicit `noAuthReason` |
 | ~~`infra-concerns-have-tests`~~ | ✓ `[law: infra-concerns-have-tests]` (landed 2026-06-21) | every `modules/infra/<X>/` with Reader-shaped `options.nori.*` has matching `test-*` recipe (mapping in `flake.nix § checks.infra-concerns-have-tests`) |
-| `workhorse-vs-appliance-placement` | `[law]` — module assertion (eval-time, not grep) | service placement matches host role |
+| ~~`workhorse-vs-appliance-placement`~~ | ✓ `[law: eval-workload-role-placement]` (landed 2026-07-22; pure inventory assertion) | service placement matches the typed roles declared by its manifest |
 | ~~`systemd-execstart-resolves`~~ | ✗ REJECTED 2026-06-21 (zero catch rate on this codebase — every ExecStart already `${pkgs.foo}/bin/baz`; nix eval validates. See `docs/plans/2026-06-21-improve-audit.md § #4`) | — |
 
 ## Idea backlog (no commitment)

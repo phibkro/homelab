@@ -2,6 +2,7 @@
 
 let
   inherit (lib) mkOption types;
+  hostRoles = lib.remove "client" (import ../../inventory/roles.nix);
 in
 {
   /**
@@ -91,11 +92,7 @@ in
             '';
           };
           role = mkOption {
-            type = types.enum [
-              "workhorse"
-              "appliance"
-              "agent"
-            ];
+            type = types.enum hostRoles;
             description = ''
               Structural role driving placement assertions:
 

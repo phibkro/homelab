@@ -1,4 +1,12 @@
-{ lib }:
+{
+  lib,
+  hosts ? import ./hosts.nix,
+  profiles ? import ./profiles.nix,
+  workloadCatalog ? import ./workloads.nix { inherit lib; },
+  datasets ? import ./datasets.nix,
+  site ? import ./site.nix,
+  hostRoles ? import ./roles.nix,
+}:
 
 /**
   Pure homelab inventory compiler.
@@ -10,16 +18,12 @@
 */
 
 let
-  hosts = import ./hosts.nix;
-  profiles = import ./profiles.nix;
-  workloadCatalog = import ./workloads.nix { inherit lib; };
-  datasets = import ./datasets.nix;
-  site = import ./site.nix;
-
   hostNames = lib.attrNames hosts;
   nixosHostNames = lib.attrNames (lib.filterAttrs (_: host: host.kind == "nixos") hosts);
   profileNames = lib.attrNames profiles;
   workloadNames = lib.attrNames workloadCatalog;
+
+  invalidHostRoles = lib.filterAttrs (_name: host: !lib.elem host.identity.role hostRoles) hosts;
 
   referencedProfiles = lib.unique (lib.concatMap (host: host.profiles) (lib.attrValues hosts));
   unknownProfiles = lib.subtractLists profileNames referencedProfiles;
@@ -30,6 +34,16 @@ let
   );
   unknownWorkloads = lib.subtractLists workloadNames referencedWorkloads;
   unusedWorkloads = lib.subtractLists referencedWorkloads workloadNames;
+
+  invalidHostRoleDeclarations = lib.filterAttrs (
+    _name: workload:
+    !(workload ? hostRoles)
+    || !builtins.isList workload.hostRoles
+    || workload.hostRoles == [ ]
+    || !lib.all builtins.isString workload.hostRoles
+    || lib.any (role: !lib.elem role hostRoles) workload.hostRoles
+    || lib.unique workload.hostRoles != workload.hostRoles
+  ) workloadCatalog;
 
   datasetWorkloadReferences = lib.unique (
     lib.concatMap (dataset: dataset.producers ++ dataset.consumers) (lib.attrValues datasets)
@@ -86,6 +100,23 @@ let
 
   hostsForWorkload =
     workloadName: lib.filter (hostName: lib.elem workloadName (workloadsFor hostName)) hostNames;
+
+  invalidRolePlacements = lib.concatMap (
+    workloadName:
+    let
+      workload = workloadCatalog.${workloadName};
+    in
+    if builtins.hasAttr workloadName invalidHostRoleDeclarations then
+      [ ]
+    else
+      lib.concatMap (
+        hostName:
+        let
+          actualRole = hosts.${hostName}.identity.role;
+        in
+        lib.optional (!lib.elem actualRole workload.hostRoles) "${workloadName}@${hostName} (${actualRole})"
+      ) (hostsForWorkload workloadName)
+  ) workloadNames;
 
   resolvedEndpointsFor =
     workloadName:
@@ -299,11 +330,17 @@ in
 assert lib.assertMsg (
   unknownProfiles == [ ]
 ) "inventory: host profile reference(s) do not exist: ${lib.concatStringsSep ", " unknownProfiles}";
+assert lib.assertMsg (invalidHostRoles == { })
+  "inventory: host roles must be drawn from [${lib.concatStringsSep ", " hostRoles}]: ${lib.concatStringsSep ", " (lib.attrNames invalidHostRoles)}";
 assert lib.assertMsg (unknownWorkloads == [ ])
   "inventory: profile/host workload reference(s) do not exist: ${lib.concatStringsSep ", " unknownWorkloads}";
 assert lib.assertMsg (
   unusedWorkloads == [ ]
 ) "inventory: catalog workload(s) have no placement: ${lib.concatStringsSep ", " unusedWorkloads}";
+assert lib.assertMsg (invalidHostRoleDeclarations == { })
+  "inventory: workload hostRoles must be a non-empty list drawn from [${lib.concatStringsSep ", " hostRoles}]: ${lib.concatStringsSep ", " (lib.attrNames invalidHostRoleDeclarations)}";
+assert lib.assertMsg (invalidRolePlacements == [ ])
+  "inventory: workload placement violates its declared hostRoles: ${lib.concatStringsSep ", " invalidRolePlacements}";
 assert lib.assertMsg (duplicateEndpoints == [ ])
   "inventory: endpoint name(s) have multiple owners: ${lib.concatStringsSep ", " duplicateEndpoints}";
 assert lib.assertMsg (unknownDatasetWorkloads == [ ])
