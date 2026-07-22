@@ -1,0 +1,22 @@
+[
+  {
+    "address": "0xzenLIVEa",
+    "class": "zen-beta",
+    "title": "tab a - Zen",
+    "workspace": { "id": 5, "name": "5" },
+    "floating": false,
+    "at": [0, 0],
+    "size": [100, 100],
+    "pid": 424242
+  },
+  {
+    "address": "0xzenLIVEb",
+    "class": "zen-beta",
+    "title": "tab b - Zen",
+    "workspace": { "id": 5, "name": "5" },
+    "floating": false,
+    "at": [0, 0],
+    "size": [100, 100],
+    "pid": 424243
+  }
+]

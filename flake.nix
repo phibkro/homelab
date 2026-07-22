@@ -1149,6 +1149,18 @@
               e2e-disk-alert = import ./tests/e2e-disk-alert.nix { inherit pkgs lib inputs; };
 
               /**
+                E2E — hypr-session user-journey nixosTest. Boots a real
+                Hyprland (virtio-gpu + llvmpipe, structurally isolated
+                from host DRM) and drives capture → save → compositor
+                SIGKILL → restore against a fresh instance. Lives next to
+                the scripts + bats suites it gates, unlike the tests/
+                e2e-* set which exercise host configs.
+              */
+              e2e-hypr-session = import ./modules/home/desktop/hypr-rice/hypr-session/tests/e2e-vm.nix {
+                inherit pkgs;
+              };
+
+              /**
                 Layer-1 eval test — `nori.lanRoutes` → blocky.customDNS
                 auto-generation. Sub-second; runs at every flake check
                 via the import below. Per docs/reference/testing-

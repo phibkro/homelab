@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "captured_at": "2026-07-20T10:00:00Z",
+  "monitors": [{ "id": 0, "name": "DP-3", "width": 3440, "height": 1440 }],
+  "focus": {
+    "focused_window": null,
+    "monitors": [{ "monitor": "DP-3", "active_workspace": "1", "special_workspace": null }]
+  },
+  "windows": [
+    {
+      "address": "0xzen0001",
+      "class": "zen-beta",
+      "title": "tab a - Zen",
+      "workspace": "special:web1",
+      "floating": false,
+      "geometry": null,
+      "process": { "cwd": "/home/x", "cmdline": ["zen-beta"] },
+      "identity": null
+    },
+    {
+      "address": "0xzen0002",
+      "class": "zen-beta",
+      "title": "tab b - Zen",
+      "workspace": "special:web2",
+      "floating": false,
+      "geometry": null,
+      "process": { "cwd": "/home/x", "cmdline": ["zen-beta"] },
+      "identity": null
+    }
+  ]
+}

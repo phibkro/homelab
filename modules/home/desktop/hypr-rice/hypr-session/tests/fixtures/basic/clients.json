@@ -1,0 +1,85 @@
+[{
+    "address": "0x60cdb01386f0",
+    "mapped": true,
+    "hidden": false,
+    "visible": true,
+    "at": [8, 44],
+    "size": [3424, 1388],
+    "workspace": {
+        "id": -92,
+        "name": "special:files"
+    },
+    "floating": false,
+    "monitor": 0,
+    "class": "Zotero",
+    "title": "My Library - Zotero",
+    "initialClass": "Zotero",
+    "initialTitle": "Zotero",
+    "pid": 999999998,
+    "xwayland": false,
+    "pinned": false,
+    "fullscreen": 0
+},{
+    "address": "0x60cdb0158bb0",
+    "mapped": true,
+    "hidden": false,
+    "visible": true,
+    "at": [1720, 44],
+    "size": [850, 1388],
+    "workspace": {
+        "id": -95,
+        "name": "special:term"
+    },
+    "floating": false,
+    "monitor": 0,
+    "class": "com.mitchellh.ghostty",
+    "title": "herdr",
+    "initialClass": "com.mitchellh.ghostty",
+    "initialTitle": "Ghostty",
+    "pid": 999999999,
+    "xwayland": false,
+    "pinned": false,
+    "fullscreen": 0
+},{
+    "address": "0x60cdafd76480",
+    "mapped": true,
+    "hidden": false,
+    "visible": true,
+    "at": [866, 742],
+    "size": [846, 690],
+    "workspace": {
+        "id": -95,
+        "name": "special:term"
+    },
+    "floating": false,
+    "monitor": 0,
+    "class": "com.mitchellh.ghostty",
+    "title": "hyprland-layout-ordering",
+    "initialClass": "com.mitchellh.ghostty",
+    "initialTitle": "Ghostty",
+    "pid": 999999999,
+    "xwayland": false,
+    "pinned": false,
+    "fullscreen": 0
+},{
+    "address": "0x60cdafc982a0",
+    "mapped": true,
+    "hidden": false,
+    "visible": true,
+    "at": [8, 44],
+    "size": [1708, 1388],
+    "workspace": {
+        "id": -97,
+        "name": "special:browser"
+    },
+    "floating": false,
+    "monitor": 0,
+    "class": "code",
+    "title": "projects - shiftx - Visual Studio Code",
+    "initialClass": "code",
+    "initialTitle": "Visual Studio Code",
+    "pid": 999999998,
+    "xwayland": false,
+    "pinned": false,
+    "fullscreen": 0
+}]

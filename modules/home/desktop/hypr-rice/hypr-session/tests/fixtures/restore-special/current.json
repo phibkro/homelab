@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "captured_at": "2026-07-20T10:00:00Z",
+  "monitors": [{ "id": 0, "name": "DP-3", "width": 3440, "height": 1440 }],
+  "focus": {
+    "focused_window": null,
+    "monitors": [{ "monitor": "DP-3", "active_workspace": "1", "special_workspace": null }]
+  },
+  "windows": [
+    {
+      "address": "0xdead0002",
+      "class": "Zotero",
+      "title": "My Library - Zotero",
+      "workspace": "special:files",
+      "floating": false,
+      "geometry": null,
+      "process": { "cwd": "/home/x", "cmdline": ["zotero"] },
+      "identity": null
+    }
+  ]
+}

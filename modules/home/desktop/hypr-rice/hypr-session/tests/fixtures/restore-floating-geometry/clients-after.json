@@ -1,0 +1,12 @@
+[
+  {
+    "address": "0xfloatLIVE",
+    "class": "pwvucontrol",
+    "title": "Volume Control",
+    "workspace": { "id": 1, "name": "1" },
+    "floating": true,
+    "at": [0, 0],
+    "size": [1, 1],
+    "pid": 313131
+  }
+]

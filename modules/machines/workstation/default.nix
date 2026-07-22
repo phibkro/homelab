@@ -216,11 +216,37 @@
     If a legitimate workload trips these, the right response is fewer
     concurrent agent sessions (or more RAM), not a bigger cap — the freeze
     proved the marginal session is parked heap, not useful work.
+
+    THIRD CALIBRATION — the 2026-07-20 fleet kill: caps + oomd WORKED
+    (desktop survived, ~3 min recovery), but the whole Herdr fleet
+    shared one ghostty transient scope, so the per-scope 60% trip
+    (oomd.conf default; the 50% below governs only user@'s own cgroup)
+    killed 908 processes in one shot — and the actual swap squatter
+    (browser, separate scope) survived the victim selection. Per-pane
+    scopes now bound a kill to one lane: home.nix
+    programs.bash.initExtra + docs/reports/
+    2026-07-20-oomd-agent-fleet-kill.md.
   */
   systemd.services."user@".serviceConfig = {
     MemoryHigh = "24G";
     MemoryMax = "28G";
     MemorySwapMax = "16G";
+    ManagedOOMMemoryPressureLimit = "50%";
+  };
+  /*
+    Same caps at the TRUE user boundary. user@ bounds only its own
+    subtree — a Herdr fleet relaunched from a login shell lands in
+    session-N.scope, a SIBLING of user@, and escapes every cap above
+    (observed 2026-07-20 evening: 12+ GiB fleet, zero containment).
+    user-1000.slice contains the session scopes AND user@, so the
+    budget holds regardless of where the fleet is launched from.
+    Single-user machine; the UID-specific name is fine.
+  */
+  systemd.slices."user-1000".sliceConfig = {
+    MemoryHigh = "24G";
+    MemoryMax = "28G";
+    MemorySwapMax = "16G";
+    ManagedOOMMemoryPressure = "kill";
     ManagedOOMMemoryPressureLimit = "50%";
   };
   systemd.oomd.enableUserSlices = true;

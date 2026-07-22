@@ -1,0 +1,29 @@
+[{
+    "id": 0,
+    "name": "DP-3",
+    "description": "Samsung Electric Company S34J55x H4ZN401303",
+    "make": "Samsung Electric Company",
+    "model": "S34J55x",
+    "serial": "H4ZN401303",
+    "width": 3440,
+    "height": 1440,
+    "physicalWidth": 800,
+    "physicalHeight": 330,
+    "refreshRate": 74.98300,
+    "x": 0,
+    "y": 0,
+    "activeWorkspace": {
+        "id": 1,
+        "name": "1"
+    },
+    "specialWorkspace": {
+        "id": -97,
+        "name": "special:browser"
+    },
+    "reserved": [0, 36, 0, 0],
+    "scale": 1.00,
+    "transform": 0,
+    "focused": true,
+    "dpmsStatus": true,
+    "vrr": false
+}]

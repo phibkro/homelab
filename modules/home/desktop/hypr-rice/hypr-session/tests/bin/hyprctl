@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# PATH-shim stub for hyprctl. Replays canned JSON fixtures instead of
+# talking to a real compositor socket — capture.bats prepends this
+# directory to PATH so capture.sh never touches the live session.
+#
+# Selects fixture file by subcommand; the fixture SET (directory) comes
+# from $HYPR_SESSION_TEST_FIXTURES_DIR, set per-test.
+set -euo pipefail
+
+: "${HYPR_SESSION_TEST_FIXTURES_DIR:?hyprctl stub: HYPR_SESSION_TEST_FIXTURES_DIR not set}"
+
+case "${1-} ${2-}" in
+  "clients -j") cat "$HYPR_SESSION_TEST_FIXTURES_DIR/clients.json" ;;
+  "monitors -j") cat "$HYPR_SESSION_TEST_FIXTURES_DIR/monitors.json" ;;
+  "activewindow -j") cat "$HYPR_SESSION_TEST_FIXTURES_DIR/activewindow.json" ;;
+  *)
+    printf 'hyprctl-stub: unhandled invocation: %s\n' "$*" >&2
+    exit 1
+    ;;
+esac

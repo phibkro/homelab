@@ -37,7 +37,83 @@
     pkgs.pulseaudio # pactl — PipeWire/PulseAudio sink/card/port inspection (e.g. fix jack desync after replug)
   ];
 
-  programs.bash.enable = true; # home-manager owns ~/.bashrc — lets fzf/zoxide auto-source
+  /*
+    home-manager owns ~/.bashrc — lets fzf/zoxide auto-source.
+
+    initExtra: Herdr blast-radius isolation. Every Herdr pane starts an
+    interactive bash; this hook moves that shell — and thus every pane
+    descendant (agents, builds) — into its own transient scope under
+    herdr.slice, so systemd-oomd's smallest killable unit is one lane,
+    not the whole fleet (2026-07-20: the fleet shared one ghostty scope
+    and a single pressure trip killed 908 processes; see
+    docs/reports/2026-07-20-oomd-agent-fleet-kill.md).
+
+    StartTransientUnit-with-PIDs (not `exec systemd-run --scope`) keeps
+    the process tree and tty untouched; on failure the pane keeps
+    working in the shared scope, loudly.
+
+    ManagedOOMMemoryPressure=kill is explicit because transient scopes
+    outside the app-* naming default to `auto` and would silently
+    escape the oomd guardrail. The pressure LIMIT is deliberately not
+    set — it inherits oomd.conf's default, one source of truth for the
+    number.
+
+    Success is verified by observing /proc/self/cgroup, NOT busctl's
+    exit code: StartTransientUnit reports success even when the PID
+    attach silently fails, which is exactly what happens when the
+    shell sits outside user@'s delegated subtree (e.g. Herdr launched
+    from a login-session shell — session-N.scope is root-owned, the
+    user manager can't migrate out of it). The warning names the fix.
+  */
+  programs.bash = {
+    enable = true;
+    initExtra = ''
+      if [[ -n ''${HERDR_PANE_ID-} && -z ''${__HERDR_PANE_SCOPE-} ]]; then
+        export __HERDR_PANE_SCOPE="''${HERDR_PANE_ID}"
+        if busctl call --user --quiet \
+            org.freedesktop.systemd1 /org/freedesktop/systemd1 \
+            org.freedesktop.systemd1.Manager StartTransientUnit \
+            "ssa(sv)a(sa(sv))" \
+            "herdr-''${HERDR_PANE_ID//:/-}-$$.scope" fail 4 \
+            PIDs au 1 "$$" \
+            Slice s herdr.slice \
+            ManagedOOMMemoryPressure s kill \
+            CollectMode s inactive-or-failed \
+            0 2>/dev/null; then
+          for _ in 1 2 3; do
+            grep -q '/herdr-' /proc/self/cgroup && break
+            sleep 0.1
+          done
+        fi
+        if ! grep -q '/herdr-' /proc/self/cgroup; then
+          echo "herdr-scope: pane NOT isolated — launch herdr via: systemd-run --user --scope --slice=herdr.slice herdr" >&2
+        fi
+      fi
+    '';
+  };
+
+  /*
+    Parent slice for the per-pane Herdr scopes created by the bash hook
+    above. Declared (rather than left transient) so fleet-wide bounds
+    have a home when needed; per-lane kill comes from each scope's own
+    ManagedOOMMemoryPressure.
+  */
+  systemd.user.slices.herdr = {
+    Unit.Description = "Herdr agent lanes (one scope per pane)";
+    Slice = {
+      ManagedOOMMemoryPressure = "kill";
+      /*
+        Below-default weights (100): under contention the lanes yield
+        to the interactive session instead of 4×-oversubscribing it
+        (2026-07-20: two `lake build`s + `nix flake check` + 6 agents
+        put a 12-core box at load 56 and CPU-PSI 75%). Lane-vs-lane
+        build serialization stays a per-repo concern; this only keeps
+        the DESKTOP responsive while lanes contend.
+      */
+      CPUWeight = 80;
+      IOWeight = 80;
+    };
+  };
 
   programs.lazygit = {
     enable = true;

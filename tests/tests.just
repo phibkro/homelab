@@ -11,6 +11,7 @@
 #     replicas,authelia,observability,hypr} — query live state against
 #     declared intent on this host.
 #   * Eval (layer 1): test-eval runs every eval-* flake check (sub-sec).
+#   * Unit (bats, no live compositor): test-hypr-session.
 #   * Composite (test): runs all of the above in one signal (~3 min).
 #   * Process: test-agent-onboarding is a meta-test for doc orientation.
 #
@@ -101,6 +102,7 @@
 # one command).
 @test:
     just test-hypr
+    just test-hypr-session
     just test-backups
     just test-routes
     just test-observability
@@ -720,6 +722,30 @@
       echo "=== FAIL ==="
       exit 1
     fi
+
+# Unit tests (bats, no live compositor — see hypr-session/tests/*.bats
+# headers) for the four hypr-session scripts (capture/logd/cli/restore).
+# hyprctl and Hyprland's socket2 are PATH-shimmed / fixture-replayed, so
+# this never touches the operator's own Hyprland session — safe to run
+# unattended, unlike test-hypr-layout-live / test-hypr-palette-live.
+#
+# Unit test: hypr-session capture/logd/cli/restore bats suites.
+@test-hypr-session:
+    nix shell nixpkgs#bats nixpkgs#jq nixpkgs#socat -c \
+      bats modules/home/desktop/hypr-rice/hypr-session/tests/*.bats
+
+# VM-tier e2e (layer 2 nixosTest) for hypr-session: boots a real
+# Hyprland on virtio-gpu/llvmpipe inside QEMU — structurally isolated
+# from host DRM — and drives the full journey: logd capture → save →
+# compositor kill -9 → restore into a fresh instance, asserted against
+# that instance's hyprctl. Slow (VM build + boot), so deliberately NOT
+# in the `test` composite; the bats layer above stays the inner loop.
+# Iterate via `just e2e-shell e2e-hypr-session`. `path:` ref so the
+# check builds even while the files are untracked.
+#
+# E2E test (nixosTest): hypr-session real user journey in a VM.
+@test-hypr-session-e2e:
+    nix build --no-link --print-build-logs "path:$(pwd)#checks.x86_64-linux.e2e-hypr-session"
 
 # === e2e nixosTest helpers (per docs/reference/testing-methodology.md) ===
 

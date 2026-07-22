@@ -817,6 +817,17 @@ let
     text = builtins.readFile ./hypr-layout-menu.sh;
   };
 
+  /*
+    hypr-session — event-log capture + tmux-style restore. Packaging
+    lives in its own subdirectory (modules/home/desktop/hypr-rice/
+    hypr-session/default.nix) because it bundles four scripts into one
+    colocated $out/bin rather than fitting the one-writeShellApplication-
+    per-script pattern the rest of this file uses — see that file's
+    header comment for why. Design doc:
+    docs/specs/2026-07-20-hypr-session-persistence-design.md
+  */
+  hyprSession = pkgs.callPackage ./hypr-session { };
+
   hyprLayoutLiveTest = pkgs.writeShellApplication {
     name = "hypr-layout-live-test";
     excludeShellChecks = [ "SC2016" ];
@@ -1116,6 +1127,7 @@ lib.mkIf config.nori.hyprRice.enable {
     hyprLayout # strict, hex-encoded bridge into the native rice layout
     hyprLayoutMenu # SUPER+SHIFT+R — presets plus typed custom layout input
     hyprLayoutLiveTest # explicit opt-in real-compositor journey
+    hyprSession # hypr-session CLI (list/save/rename/delete/prune/restore)
   ];
 
   # modules/home/desktop/hypr-lock.nix already owns hyprlock.settings.background
@@ -1152,4 +1164,28 @@ lib.mkIf config.nori.hyprRice.enable {
     the `@name@` markers are special, everything else edits normally.
   */
   xdg.configFile."hypr/hyprland.lua".source = checkedHyprlandLua;
+
+  /*
+    hypr-session-logd — subscribes to Hyprland's socket2 event stream and
+    debounce-captures full snapshots (see hypr-session/logd.sh header).
+    graphical-session.target (not hyprland-session.target specifically)
+    matches every other per-session daemon in this file
+    (wayland-pipewire-idle-inhibit.nix); Restart=on-failure covers a
+    transient socket2-not-up-yet race independent of logd's own
+    50x0.1s startup poll.
+  */
+  systemd.user.services.hypr-session-logd = {
+    Unit = {
+      Description = "hypr-session: debounced Hyprland window-topology snapshot log";
+      PartOf = [ "graphical-session.target" ];
+      After = [ "graphical-session.target" ];
+    };
+    Install.WantedBy = [ "graphical-session.target" ];
+    Service = {
+      Type = "simple";
+      ExecStart = "${hyprSession}/bin/hypr-session-logd";
+      Restart = "on-failure";
+      RestartSec = "5s";
+    };
+  };
 }

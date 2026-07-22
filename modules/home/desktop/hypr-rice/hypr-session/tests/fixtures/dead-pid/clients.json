@@ -1,0 +1,11 @@
+[{
+    "address": "0x1a2b3c4d5e6f",
+    "at": [8, 44],
+    "size": [1000, 800],
+    "workspace": { "id": 1, "name": "1" },
+    "floating": false,
+    "monitor": 0,
+    "class": "zen-beta",
+    "title": "Zen Browser",
+    "pid": 999999996
+}]
