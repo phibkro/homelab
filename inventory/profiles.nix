@@ -97,6 +97,7 @@
       "beszel-hub"
       "blocky"
       "caddy"
+      "cloudflare-ddns"
       "gatus"
       "heartbeat"
       "ntfy-server"

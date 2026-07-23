@@ -20,6 +20,7 @@ lib.genAttrs
     "caddy"
     "calibre-web"
     "clamor"
+    "cloudflare-ddns"
     "disk-alert"
     "filmder"
     "gatus"
@@ -71,6 +72,7 @@ lib.genAttrs
   caddy = import ../modules/infra/networking/caddy/manifest.nix;
   calibre-web = import ../modules/services/calibre-web/manifest.nix;
   clamor = import ../modules/services/clamor/manifest.nix;
+  cloudflare-ddns = import ../modules/infra/networking/cloudflare-ddns/manifest.nix;
   disk-alert = import ../modules/infra/observability/disk-alert/manifest.nix;
   filmder = import ../modules/services/filmder/manifest.nix;
   gatus = import ../modules/infra/observability/gatus/manifest.nix;
