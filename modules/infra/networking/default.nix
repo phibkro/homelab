@@ -22,14 +22,16 @@
   | Zone | What's there | Default posture |
   |---|---|---|
   | **localhost** | Services bind here unless explicitly exposed | Closed to outside |
-  | **tailnet** | Personal devices + family. SSH, Samba, `*.${domain}` HTTPS, direct service ports | Closed by default; Caddy on 80+443 + Samba on 445 are the only globally-open tailnet ports |
-  | **public internet** | Personal apps that need public exposure live at Cloudflare edge (Pages + Workers + D1) | **Homelab serves nothing publicly** by default. Tailscale Funnel is the prototyped path if anything ever needs to land public traffic |
+  | **tailnet** | Personal devices + operator workflows. SSH, Samba, `*.${domain}` HTTPS, direct service ports | Closed by default; Caddy on 80+443 + Samba on 445 are the only globally-open tailnet ports |
+  | **public internet** | Explicitly selected family services plus Cloudflare-edge personal apps | Homelab routes stay internal by default; `reachability = "internet"` opts in one account-gated route at a time |
 
   The Cloudflare edge apps (phibkro.org apex, filmder, drinks-app,
   finnbydel-app, heim) live as Pages (static) + Workers+D1 (stateful).
-  The homelab keeps tailnet-only copies of `filmder` + `heim` via
-  `nori.lanRoutes` for fast internal access. A `cloudflared` Tunnel
-  approach was decommissioned 2026-05-08.
+  The homelab keeps internal copies of `filmder` + `heim` via
+  `nori.lanRoutes` for fast access. Family media routes may opt into
+  direct internet reachability through the Pi entry plane; every other
+  route remains limited to LAN/tailnet client ranges even if a caller
+  guesses its hostname or forges its Host header.
 
   ## DNS architecture
 
@@ -148,11 +150,13 @@ in
       read this rather than hardcoding the literal.
 
       Split-horizon DNS: Blocky is authoritative for `*.<domain>` on the
-      LAN/tailnet (resolves to `nori.lanIp`); public DNS for the same
-      names has no A records, so the homelab is reachable only on the
-      LAN/tailnet. Caddy obtains real Let's Encrypt certs via DNS-01
-      using the existing Cloudflare token in sops, so family devices
-      see a green lock with no per-device CA install.
+      LAN/tailnet (resolves to `nori.lanIp`). Public DNS contains records
+      only for routes whose `reachability` is explicitly `internet`;
+      `modules/infra/networking/cloudflare-ddns/runtime.nix` reconciles
+      those exact, DNS-only IPv4 records to the residential WAN address.
+      All other names remain internal. Caddy obtains real Let's Encrypt
+      certs via DNS-01 using the existing Cloudflare token in sops, so
+      family devices see a green lock with no per-device CA install.
 
       Renaming requires:
         - Family/operator bookmark updates from old to new domain.
@@ -306,6 +310,33 @@ in
               point. Opt in only when something needs direct port
               access (legacy clients, programmatic tools that don't
               handle Caddy's internal CA).
+            '';
+          };
+          reachability = mkOption {
+            type = types.enum [
+              "internal"
+              "internet"
+            ];
+            default = "internal";
+            description = ''
+              Network boundary at which Caddy accepts this route:
+
+                * internal — LAN and tailnet clients only. The generated
+                  host matcher also requires a private client range or
+                  Tailscale's 100.64.0.0/10 range, so forwarding port 443
+                  to Caddy does not expose this route through a guessed
+                  hostname or forged Host header.
+
+                * internet — accept requests from any client address.
+                  This only makes the HTTP route reachable; `audience`
+                  still declares who may use it and which identity layer
+                  protects it. Operator routes are structurally forbidden
+                  from selecting this value.
+
+              Default is internal. Public exposure is an explicit per-route
+              opt-in and must never be inferred from `audience`: reachability
+              describes the network boundary, while audience describes the
+              users and authentication posture inside that boundary.
             '';
           };
           audience = mkOption {
@@ -623,6 +654,9 @@ in
       names = lib.attrNames routes;
       oidcRoutes = filterAttrs (_: r: r.oidc != null) routes;
       forwardAuthRoutes = filterAttrs (_: r: r.forwardAuth != null) routes;
+      internetIdentityRoutes = filterAttrs (
+        _: r: r.reachability == "internet" && (r.oidc != null || r.forwardAuth != null)
+      ) routes;
 
       /*
         Resolve a route's backend host. `runsOn` (the placement field)
@@ -729,6 +763,38 @@ in
           '';
         }
         {
+          assertion = lib.all (r: r.reachability != "internet" || r.audience != "operator") (
+            lib.attrValues routes
+          );
+          message = ''
+            nori.lanRoutes.<n> with reachability="internet" cannot use
+            audience="operator". Internet reachability is reserved for
+            explicitly selected family/account-gated or intentionally
+            anonymous public services. Keep management UIs internal.
+
+            Offending routes:
+              ${lib.concatStringsSep ", " (
+                lib.attrNames (
+                  lib.filterAttrs (_: r: r.reachability == "internet" && r.audience == "operator") routes
+                )
+              )}
+          '';
+        }
+        {
+          assertion =
+            internetIdentityRoutes == { } || (routes ? auth && routes.auth.reachability == "internet");
+          message = ''
+            Internet-reachable OIDC/forward-auth routes require the auth
+            route itself to use reachability="internet"; otherwise browser
+            redirects and OIDC discovery leave the public network and fail.
+            Either expose auth deliberately or use the application's native
+            account model for the internet route.
+
+            Routes requiring public auth:
+              ${lib.concatStringsSep ", " (lib.attrNames internetIdentityRoutes)}
+          '';
+        }
+        {
           assertion = lib.all (
             r: r.audience != "family" || r.oidc != null || r.forwardAuth != null || r.noAuthReason != null
           ) (lib.attrValues routes);
@@ -766,8 +832,9 @@ in
       services.caddy.virtualHosts."*.${config.nori.domain}".extraConfig =
         let
           routes = config.nori.lanRoutes;
-          # Per-route handle block: `@<name> host <name>.<domain>` + handle.
-          # forwardAuth is per-route, so its block lives inside the handle.
+          # Per-route handle block: `@<name>` combines the hostname with
+          # the declared reachability boundary. forwardAuth is per-route,
+          # so its block lives inside the handle.
           routeBlock =
             name: cfg:
             let
@@ -790,15 +857,29 @@ in
                   copy_headers Remote-User Remote-Email Remote-Name Remote-Groups
                 }
               '';
+              matcherLines = lib.concatStringsSep "\n        " (
+                [ "host ${name}.${config.nori.domain}" ]
+                ++ lib.optional (cfg.reachability == "internal") "client_ip private_ranges 100.64.0.0/10"
+              );
             in
             ''
-              @${name} host ${name}.${config.nori.domain}
+              @${name} {
+                ${matcherLines}
+              }
               handle @${name} {
                 ${faBlock}${backend}
               }
             '';
         in
-        lib.concatStringsSep "\n" (lib.mapAttrsToList routeBlock routes);
+        lib.concatStringsSep "\n" (lib.mapAttrsToList routeBlock routes)
+        + ''
+
+          # Unknown or network-ineligible hosts fail closed. This catch-all
+          # is load-bearing once WAN :443 is forwarded to the Pi.
+          handle {
+            respond 404
+          }
+        '';
 
       services.blocky.settings.customDNS.mapping =
         # Primary mapping — every route name under the canonical domain.

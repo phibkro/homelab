@@ -201,7 +201,10 @@ Schema: modules/infra/hosts.nix; values: inventory/hosts.nix.'''
 # vhost; lan-route.nix's customDNS map emits both the transitional
 # and canonical entries side by side. Both are temporary and named
 # in their headers.
-pattern = '"https?://[a-z0-9.-]*\.nori\.lan'
+# Match literal and interpolated hosts (`https://${name}.nori.lan`). The old
+# character class silently missed the latter, which let Glance generate an
+# entirely deprecated bookmark catalog while the gate stayed green.
+pattern = '"https?://[^"\n]*\.nori\.lan'
 scope = ["modules/"]
 excludeFiles = ["modules/infra/networking/caddy/runtime.nix", "modules/infra/networking/default.nix"]
 tags = ["migration", "adr-0004"]

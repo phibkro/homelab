@@ -16,10 +16,12 @@ in
     install).
 
     Domain is owned (phibkro.org); Cloudflare hosts the zone. The
-    existing sops secret `cloudflare_api_token` (apps.yaml) has DNS
-    edit scope on the zone — Caddy uses it to write the TXT records
-    LE wants during the DNS-01 challenge, then removes them. No port
-    80 ever opened to the internet; the homelab stays LAN/tailnet-only.
+    dedicated sops secret `cloudflare_acme_token` (apps.yaml) has DNS
+    edit scope on the zone — Caddy uses it to write the TXT records LE
+    wants during the DNS-01 challenge, then removes them. WAN port 80
+    stays closed. Port 443 may be forwarded to pi, but the generated
+    route matchers accept internet clients only for routes explicitly
+    marked `reachability = "internet"` and reject unknown hosts.
 
     Cert lifecycle: Caddy auto-renews each per-vhost cert ~30 days
     before expiry (LE issues 90-day certs). State + private keys at
@@ -32,9 +34,9 @@ in
     each *.<nori.domain> to nori.lanIp (workstation today, pi post
     ADR-0003 pivot). LAN clients hit Caddy directly; off-LAN tailnet
     clients reach the same address via pi's subnet route advertisement
-    (192.168.1.0/24, needs --accept-routes on the client). Public
-    DNS for *.<nori.domain> has no A records — the homelab is
-    unreachable from the internet.
+    (192.168.1.0/24, needs --accept-routes on the client). Public DNS
+    records exist only for the explicit internet-reachable family
+    routes; the rest remain internal even though they share Caddy :443.
   */
 
   services.caddy = {
@@ -130,6 +132,23 @@ in
   };
 
   systemd.services.caddy.serviceConfig.EnvironmentFile = config.sops.templates."caddy-acme-env".path;
+
+  /*
+    The 2026-07 internet-boundary cutover used a persistent runtime bridge
+    while the unrelated Pi 6.12 -> 6.18 kernel closure was intentionally
+    deferred. The first successful declarative activation owns the unit and
+    config again, so remove those two exact bridge artifacts before systemd
+    reloads the generated unit. No-op on every host that never had them.
+  */
+  system.activationScripts.caddy-public-boundary-runtime-bridge-cleanup.text = ''
+    ${pkgs.coreutils}/bin/rm -f \
+      /etc/systemd/system/caddy.service.d/90-public-boundary.conf \
+      /etc/systemd/system.control/caddy.service.d/zz-public-boundary.conf \
+      /run/systemd/system/caddy.service.d/90-public-boundary.conf \
+      /run/systemd/system.control/caddy.service.d/90-public-boundary.conf \
+      /run/systemd/system.control/caddy.service.d/zz-public-boundary.conf \
+      /var/lib/caddy/runtime-public-boundary.Caddyfile
+  '';
 
   nori.harden.caddy = { };
 
