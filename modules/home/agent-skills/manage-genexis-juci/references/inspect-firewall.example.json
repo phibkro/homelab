@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "inspect-firewall-redirects",
+  "summary": "Read current firewall redirects before drafting a reviewed change",
+  "endpoint": "ws://192.168.1.1/",
+  "actions": [
+    {
+      "id": "read-redirects",
+      "risk": "sensitive-read",
+      "call": {
+        "object": "uci",
+        "method": "get",
+        "args": {
+          "config": "firewall",
+          "type": "redirect"
+        }
+      },
+      "expect": {
+        "status": 0
+      }
+    }
+  ],
+  "rollback_actions": []
+}

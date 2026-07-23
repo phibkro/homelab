@@ -275,6 +275,30 @@ briefly, act on sensible defaults, escalate only genuinely operator-owned forks.
 | single source | edit `CLAUDE.md`; codex loads a *different* `AGENTS.md` | both names symlink to one file | two copies can disagree; one source makes drift unrepresentable — *this doc is that fix* |
 | lead interface | manager messages an engineer directly | manager → lead → engineer | bypassing the interface desyncs the lead's model of its team |
 
+**Handoff protocol — interactive succession (operator, 2026-07-23).** When a
+manager (or lead) must be replaced (context maxed, harness switch), the
+predecessor runs the handoff LIVE under Herdr — the successor is not a cold
+reader but a conversation partner:
+
+1. **Durable brief first**: predecessor writes a handoff doc (state, policy,
+   standing rules, open threads) to a file the successor's harness will find.
+2. **Spawn the successor itself** (correct model per policy) into a live pane
+   and point it at the brief.
+3. **Q&A window**: the successor reads the brief, then asks the predecessor
+   clarifying questions on scope/state/intent — through panes (`pane read` /
+   `pane run`) when direct agent-messaging is unavailable. The predecessor
+   answers while its context is still warm; ambiguity dies here, not three
+   wakes later.
+4. **Sanity-check the first move**: successor states its first planned action;
+   predecessor confirms or corrects.
+5. **Cut over LAST**: only after the Q&A closes, repoint the monitor
+   (`managerWake`) at the successor and let the predecessor exit.
+
+Why: a file-only handoff loses exactly the tacit context that didn't seem worth
+writing down; the live window is cheap (minutes) and converts it. This is the
+Herdr benefit in one move — predecessor and successor coexist as addressable
+agents, so succession is a dialogue, not a dead-drop.
+
 **Why, in one line.** Orchestration is correctness-by-construction applied to a
 team: every rule removes a representable illegal state — a lead-bypass desync, a
 shared-tree collision, a false "done", a hallucinated fact, a divergent doc. The

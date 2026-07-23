@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "id": "add-homelab-https-forward",
+  "summary": "Add a WAN TCP 443 redirect to the homelab entry point and verify it; replace the fail-closed precondition hash before review",
+  "endpoint": "ws://192.168.1.1/",
+  "actions": [
+    {
+      "id": "check-firewall-state",
+      "risk": "sensitive-read",
+      "call": {
+        "object": "uci",
+        "method": "get",
+        "args": {
+          "config": "firewall",
+          "type": "redirect"
+        }
+      },
+      "expect": {
+        "status": 0,
+        "payload_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    {
+      "id": "add-forward",
+      "risk": "mutation",
+      "call": {
+        "object": "uci",
+        "method": "add",
+        "args": {
+          "config": "firewall",
+          "type": "redirect",
+          "values": {
+            "name": "homelab_media_https",
+            "enabled": "1",
+            "src": "wan",
+            "dest": "lan",
+            "target": "DNAT",
+            "proto": "tcp",
+            "src_dport": "443",
+            "dest_ip": "192.168.1.225",
+            "dest_port": "443",
+            "reflection": "0"
+          }
+        }
+      },
+      "expect": {
+        "status": 0
+      }
+    },
+    {
+      "id": "commit-forward",
+      "risk": "mutation",
+      "call": {
+        "object": "uci",
+        "method": "commit",
+        "args": {
+          "config": "firewall"
+        }
+      },
+      "expect": {
+        "status": 0
+      }
+    },
+    {
+      "id": "verify-forward",
+      "risk": "sensitive-read",
+      "call": {
+        "object": "uci",
+        "method": "get",
+        "args": {
+          "config": "firewall",
+          "section": "${actions.add-forward.section}"
+        }
+      },
+      "expect": {
+        "status": 0
+      }
+    }
+  ],
+  "rollback_actions": [
+    {
+      "id": "delete-forward",
+      "risk": "mutation",
+      "call": {
+        "object": "uci",
+        "method": "delete",
+        "args": {
+          "config": "firewall",
+          "section": "${actions.add-forward.section}"
+        }
+      },
+      "expect": {
+        "status": 0
+      }
+    },
+    {
+      "id": "commit-delete",
+      "risk": "mutation",
+      "call": {
+        "object": "uci",
+        "method": "commit",
+        "args": {
+          "config": "firewall"
+        }
+      },
+      "expect": {
+        "status": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manage Genexis JUCI"
+  short_description: "Safely inspect and change Genexis JUCI routers"
+  default_prompt: "Use $manage-genexis-juci to draft and safely execute an auditable JUCI router procedure."
