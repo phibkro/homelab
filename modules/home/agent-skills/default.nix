@@ -5,8 +5,9 @@
   the same directory to every installed agent surface so procedure and safety
   policy cannot drift between Claude and Codex.
 
-  This module is PC-only through home/pc.nix: router administration is an
-  operator capability and does not belong on service appliances.
+  This module is selected by the agentic-tools capability: router
+  administration is an operator capability and does not belong on service
+  appliances.
 */
 
 let

@@ -7,7 +7,8 @@
 */
 {
   imports = [
-    ../../claude-code
     ../../agent-notify
+    ../../agent-skills
+    ../../claude-code
   ];
 }
