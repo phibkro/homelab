@@ -299,6 +299,17 @@ writing down; the live window is cheap (minutes) and converts it. This is the
 Herdr benefit in one move — predecessor and successor coexist as addressable
 agents, so succession is a dialogue, not a dead-drop.
 
+**Scope by role (proportionality).** Manager/lead succession ALWAYS runs the
+full protocol — their value is exactly the tacit judgment a file can't hold.
+ENGINEER succession defaults to the cheap path: the design-spec file is the
+binding contract and the worktree/commits are the state, so a fresh lane
+re-reads spec + git and continues (that binding exists precisely so succession
+is cheap). Upgrade an engineer to the full Q&A window only when the lane holds
+state its artifacts don't capture — mid-proof reasoning, explored-and-rejected
+approaches, a half-diagnosed bug. The context-rot monitor policy (wakes the
+manager at ≤20% lane context) is the trigger; the MANAGER runs the protocol on
+the worker, choosing cheap vs full per this rule.
+
 **Why, in one line.** Orchestration is correctness-by-construction applied to a
 team: every rule removes a representable illegal state — a lead-bypass desync, a
 shared-tree collision, a false "done", a hallucinated fact, a divergent doc. The
