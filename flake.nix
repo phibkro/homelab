@@ -174,17 +174,15 @@
     claudex.inputs.home-manager.follows = "home-manager";
 
     /*
-      pagu-box — the sandbox launcher, now the `pagu-box` compat output of
-      the consolidated pagu repo (box + gate; the old pagu-box repo is
-      archived, merged in tree-identical). The `.default`/`.pagu-box` package
-      and home-manager module are re-exposed unchanged, so consumers are
-      untouched. The public pin keeps this flake reproducible on fresh
-      machines and in CI; advance the lock deliberately.
+      pagu — the consolidated box + gate product. Linux consumes the gate and
+      its co-packaged `pagu-box` compatibility PEP from one revision. Darwin
+      follows the final x86_64-darwin-capable stable nixpkgs while schema-v0
+      seatbelt lowering remains upstream work. Advance both pins deliberately.
     */
-    pagu-box.url = "github:phibkro/pagu";
-    pagu-box.inputs.nixpkgs.follows = "nixpkgs";
-    pagu-box-darwin.url = "github:phibkro/pagu";
-    pagu-box-darwin.inputs.nixpkgs.follows = "nixpkgs-stable";
+    pagu.url = "github:phibkro/pagu";
+    pagu.inputs.nixpkgs.follows = "nixpkgs";
+    pagu-darwin.url = "github:phibkro/pagu";
+    pagu-darwin.inputs.nixpkgs.follows = "nixpkgs-stable";
   };
 
   outputs =

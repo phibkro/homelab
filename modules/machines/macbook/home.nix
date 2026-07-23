@@ -29,13 +29,13 @@
 {
   imports = [
     ../../home/profiles/pc.nix
-    inputs.pagu-box-darwin.homeManagerModules.default
+    inputs.pagu-darwin.homeManagerModules.default
   ];
 
   /*
     Sandboxed launcher for CLI agents (claude, aider, opencode, …).
-    `pagu-box --profile=default` is the Mac equivalent of workstation's
-    `claude-box`. https://github.com/phibkro/pagu-box.
+    `pagu-box --profile=default` remains the Mac compatibility path while
+    schema-v0 seatbelt lowering is upstream work. https://github.com/phibkro/pagu.
   */
   programs.pagu-box.enable = true;
 

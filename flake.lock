@@ -532,7 +532,7 @@
         "type": "github"
       }
     },
-    "pagu-box": {
+    "pagu": {
       "inputs": {
         "nixpkgs": [
           "nixpkgs"
@@ -552,7 +552,7 @@
         "type": "github"
       }
     },
-    "pagu-box-darwin": {
+    "pagu-darwin": {
       "inputs": {
         "nixpkgs": [
           "nixpkgs-stable"
@@ -589,8 +589,8 @@
         "nixpkgs-master": "nixpkgs-master",
         "nixpkgs-stable": "nixpkgs-stable",
         "obsidian-skills": "obsidian-skills",
-        "pagu-box": "pagu-box",
-        "pagu-box-darwin": "pagu-box-darwin",
+        "pagu": "pagu",
+        "pagu-darwin": "pagu-darwin",
         "rtk-src": "rtk-src",
         "shadcn": "shadcn",
         "shadcn-improve": "shadcn-improve",
