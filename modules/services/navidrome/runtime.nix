@@ -27,37 +27,22 @@ in
     `music` is taken by Lidarr (acquire-tier); Navidrome uses `audio`.
 
     ── First-run setup ────────────────────────────────────────────
-      1. just generate-oidc-key audio
-      2. sops secrets/secrets.yaml — paste raw + hash:
-           oidc-audio-client-secret: '<raw>'
-           oidc-audio-client-secret-hash: '<hash>'
-      3. just rebuild
-      4. https://audio.home.phibkro.org
-      5. First-launch wizard — create master admin account (this is
-         the recovery path if Authelia is ever down). Use a real
-         password manager entry.
-      6. Settings → Users → enable "Login with Authelia" (the OIDC
-         env vars below take effect on service start; web UI exposes
-         the SSO button automatically once ND_AUTH_OIDC_ENABLED=true)
-      7. Family members log in with "Sign in with Authelia" — auto-
-         creates a Navidrome user linked to their Authelia identity
-         via the `preferred_username` claim.
+      1. Visit https://audio.home.phibkro.org.
+      2. First-launch wizard — create the master admin account and store
+         it in the password manager.
+      3. Create one non-admin Navidrome user per family member. Native
+         credentials are intentional: the OpenSubsonic protocol embeds
+         its own authentication parameters and most clients cannot pass
+         an Authelia browser session or generic OIDC flow.
 
     ── Subsonic API clients ───────────────────────────────────────
-    OIDC is web-only. Subsonic clients (mobile / desktop apps) use
-    the per-user "Subsonic API password" set inside Navidrome:
-      Settings → Personal → Generate Subsonic API token
+    Subsonic clients (mobile / desktop / PWA) use each family member's
+    native Navidrome credential or per-user API password:
+      Settings → Personal → Generate Subsonic API token (when supported)
     Connection details for clients:
       Server URL:  https://audio.home.phibkro.org
       Username:    <navidrome username>
-      Password:    <subsonic-api token, NOT the web password>
-
-    ── OIDC env-var notes ──────────────────────────────────────────
-    Navidrome's TOML config keys map to env vars as ND_<SECTION>_<KEY>
-    with no separators inside multi-word keys (DiscoveryURL →
-    DISCOVERYURL, ClientID → CLIENTID). Env-var names verified against
-    Navidrome 0.55+; if Navidrome rejects with "unknown config key",
-    check the running version's docs and adjust here.
+      Password:    <native password or generated API password>
   */
 
   services.navidrome = {
@@ -68,17 +53,10 @@ in
       Port = 4533;
       MusicFolder = musicPath;
       EnableTranscodingConfig = true;
+      # Public reachability is account-gated. Disable unauthenticated
+      # share URLs so every listener remains attributable to a user.
+      EnableSharing = false;
     };
-  };
-
-  /*
-    Client secret arrives via lan-route's generated env file (key
-    `ND_AUTH_OIDC_CLIENTSECRET` per `secretEnvName` below). Non-secret
-    OIDC knobs go in `environment` directly.
-  */
-  systemd.services.navidrome.serviceConfig = {
-    EnvironmentFile = config.sops.templates."oidc-audio-env".path;
-    SupplementaryGroups = [ "keys" ];
   };
 
   /*
@@ -89,15 +67,6 @@ in
     (Subsonic clients negotiate max bitrate per network).
   */
   systemd.services.navidrome.path = [ pkgs.ffmpeg ];
-  systemd.services.navidrome.environment = {
-    ND_AUTH_OIDC_ENABLED = "true";
-    ND_AUTH_OIDC_PROVIDERNAME = "Authelia";
-    ND_AUTH_OIDC_DISCOVERYURL = "https://auth.${config.nori.domain}/.well-known/openid-configuration";
-    ND_AUTH_OIDC_CLIENTID = "audio";
-    # ND_AUTH_OIDC_CLIENTSECRET injected via EnvironmentFile above.
-    ND_AUTH_OIDC_REDIRECTURL = "https://audio.${config.nori.domain}/auth/callback";
-    ND_AUTH_OIDC_USERNAMECLAIM = "preferred_username";
-  };
 
   /*
     Read-only access to the music tier; navidrome's own state at

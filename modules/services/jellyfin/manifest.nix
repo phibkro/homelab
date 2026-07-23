@@ -20,6 +20,7 @@
     port = 8096;
     publicStatus = true;
     exposeOnTailnet = true;
+    reachability = "internet";
     monitor = { };
     audience = "family";
     noAuthReason = "mobile/TV clients bypass cookie-based forward-auth; native SSO plugin has sharp historical edges";

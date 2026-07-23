@@ -11,15 +11,13 @@
     port = 5055;
     publicStatus = true;
     exposeOnTailnet = true;
+    reachability = "internet";
     monitor = { };
     audience = "family";
-    oidc = {
-      clientName = "Jellyseerr";
-      redirectPath = "/login/oidc-callback";
-    };
+    noAuthReason = "Seerr authenticates family members with their existing Jellyfin accounts; generic OIDC is not supported upstream";
     dashboard = {
-      title = "Jellyseerr";
-      icon = "sh:jellyseerr";
+      title = "Seerr";
+      icon = "sh:seerr";
       group = "Acquire";
       description = "Request shows / movies (family-facing)";
     };

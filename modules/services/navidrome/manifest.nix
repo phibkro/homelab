@@ -12,13 +12,10 @@
     port = 4533;
     publicStatus = true;
     exposeOnTailnet = true;
+    reachability = "internet";
     monitor = { };
     audience = "family";
-    oidc = {
-      clientName = "Navidrome";
-      redirectPath = "/auth/callback";
-      secretEnvName = "ND_AUTH_OIDC_CLIENTSECRET";
-    };
+    noAuthReason = "Navidrome and OpenSubsonic clients use native per-user credentials; proxy-cookie or OIDC gates break most clients";
     dashboard = {
       title = "Navidrome";
       icon = "sh:navidrome";

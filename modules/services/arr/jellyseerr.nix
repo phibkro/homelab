@@ -2,38 +2,27 @@ _:
 
 {
   /*
-    Jellyseerr — request UI for users. Family members log in (via
-    Authelia OIDC, see below), search for a movie/show, click "Request",
-    and Jellyseerr forwards the request to Sonarr/Radarr to grab.
+    Seerr — request UI for users. Family members log in with the same
+    Jellyfin account they use for playback, search for a movie/show,
+    click "Request", and Seerr forwards the request to Sonarr/Radarr.
     Removes the "ask Philip via SMS to add this show" loop.
 
     First-run setup:
-      1. just generate-oidc-key requests
-         → outputs raw + PBKDF2 hash; copy both
-      2. sops secrets/secrets.yaml → paste:
-           oidc-requests-client-secret: '<raw>'
-           oidc-requests-client-secret-hash: '<hash>'
-      3. just rebuild
-      4. Visit https://requests.home.phibkro.org
-      5. First-time wizard: set up sign-in method
-           Pick "Local accounts" or "Jellyfin" — either works alongside
-           OIDC. Create a master admin first (recovery path if Authelia
-           is ever down).
-      6. Settings → General → OpenID Connect:
-           Issuer URL:   https://auth.home.phibkro.org
-           Client ID:    requests
-           Client Secret: paste raw secret from
-                          /run/secrets/oidc-requests-client-secret
-                          (cat it on the host)
-           Scopes:       openid email profile
-           Save. The redirect URI in Authelia (auto-set by lan-route) is
-           https://requests.home.phibkro.org/login/oidc-callback — must match
-           whatever Jellyseerr actually uses; tweak the lanRoute
-           `oidc.redirectPath` below if Jellyseerr's docs say otherwise.
-      7. Add Sonarr → URL http://localhost:8989, paste API key, default
+      1. Visit https://requests.home.phibkro.org and choose Jellyfin
+         during the setup wizard. Use the dedicated Jellyfin admin as
+         Seerr's owner/recovery account.
+      2. Set Jellyfin internal URL to http://localhost:8096 and external
+         URL to https://media.home.phibkro.org.
+      3. Settings → Users: import the explicitly approved family Jellyfin
+         users. Give defaults request-only permissions, no management
+         permissions, and configure request quotas/manual approval.
+      4. Create one local owner/recovery account with a unique password.
+         Keep "new Jellyfin sign-in" disabled so membership requires an
+         explicit import rather than merely possessing a Jellyfin account.
+      5. Add Sonarr → URL http://localhost:8989, paste API key, default
          quality profile, root folder /mnt/media/downloads/shows
-      8. Add Radarr similarly with /mnt/media/downloads/movies
-      9. (Optional) Settings → Notifications → ntfy webhook for new
+      6. Add Radarr similarly with /mnt/media/downloads/movies
+      7. (Optional) Settings → Notifications → ntfy webhook for new
          requests / approvals.
 
     Jellyseerr doesn't touch /mnt/media — it's API-orchestration only,

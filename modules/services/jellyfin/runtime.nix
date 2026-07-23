@@ -16,6 +16,12 @@
     …walk through the wizard. Admin user is independent of the
     system `nori` user.
 
+    Internet-facing account posture:
+      * one non-admin user per family member; never share the admin login
+      * unique passwords stored in the family password manager
+      * configure a failed-login lockout threshold in each user policy
+      * disable accounts promptly when access is revoked
+
     NVENC on the RTX 5060 Ti works but requires opt-in via the web
     UI (Dashboard → Playback → Transcoding) — Jellyfin stores it
     in /var/lib/jellyfin/config/encoding.xml, not a Nix option. The
