@@ -15,6 +15,7 @@ juci-grant*.json
 
 # Local flake state (generated, not source of truth)
 flake.lock.local
+.worktrees/
 
 # Inventory output must never land in the repo — it contains system info
 # (process lists, container env, etc.) that may include secrets.

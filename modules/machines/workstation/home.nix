@@ -13,6 +13,7 @@
     ../../home/profiles/pc.nix
     ../../home/profiles/desktop
     ../../home/profiles/development/agentic-workstation.nix
+    ../../home/profiles/development/chatlog.nix
   ];
 
   home.stateVersion = "26.05"; # match host's system.stateVersion

@@ -100,6 +100,29 @@
         "type": "github"
       }
     },
+    "chatlog": {
+      "inputs": {
+        "home-manager": [
+          "home-manager"
+        ],
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1784845175,
+        "narHash": "sha256-lubTHIwkd+2SIKOpggKD/4w5WCObO3JCKCe462P4i6w=",
+        "owner": "phibkro",
+        "repo": "chatlog",
+        "rev": "0c6580c7d85d92091d844d6b01324cf68d87440e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "phibkro",
+        "repo": "chatlog",
+        "type": "github"
+      }
+    },
     "claudex": {
       "inputs": {
         "home-manager": [
@@ -576,6 +599,7 @@
       "inputs": {
         "anthropics-skills": "anthropics-skills",
         "caveman": "caveman",
+        "chatlog": "chatlog",
         "claudex": "claudex",
         "disko": "disko",
         "flake-parts": "flake-parts",
