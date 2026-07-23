@@ -41,6 +41,40 @@ Subnet route + exit node require one-time approval in the Tailscale
 admin console. MagicDNS gives every host a stable `<host>.saola-matrix.ts.net`
 name.
 
+## Internet entry plane
+
+WAN TCP 443 may be forwarded to Caddy on pi. This does not publish the
+whole wildcard vhost: each `nori.lanRoutes` entry defaults to
+`reachability = "internal"`, which combines its host matcher with a
+private/LAN or Tailscale-source matcher. Only `reachability = "internet"`
+omits that address gate. Unknown hostnames hit a final 404 handler.
+
+The current internet allowlist is `media` (Jellyfin), `requests` (Seerr),
+and `audio` (Navidrome). Each uses its application's native per-user
+accounts because TV, mobile, PWA, and OpenSubsonic clients cannot reliably
+complete a proxy-cookie login flow. Operator routes are forbidden from
+selecting internet reachability by a module assertion.
+
+Pi's `cloudflare-ddns` service derives its IPv4-only domain list from that
+same allowlist and reconciles the three exact records every five minutes.
+It sets `PROXIED=false`, never publishes a wildcard or AAAA record, and
+uses an anchored record-comment selector so it mutates only records it owns.
+On a graceful configuration restart, the old unit removes its owned records
+before the new allowlist is created; this makes an internet-to-internal route
+transition fail closed. Its zone-scoped API token is rendered from sops;
+desired state remains entirely in Nix.
+
+The remaining external step is to forward WAN TCP 443 to pi at
+`192.168.1.225:443`. Do not forward port 80; certificate issuance already
+uses DNS-01. After changing the router, verify from a cellular connection
+that the three family names load, an internal-only known name returns 404,
+and a random name returns 404. If the router source-NATs inbound
+connections, the internal matcher cannot distinguish them from LAN
+clients; replace or reconfigure the router rather than carrying sustained
+Jellyfin/Navidrome media through a Cloudflare self-serve proxy.
+
+See ADR-0006 for the decision and fallback constraints.
+
 **SSH ACL: `action: accept`** (since 2026-06-07). Eliminates the periodic
 browser reauth dance for cross-host SSH automation. Tailnet membership
 IS the gate. Edited in admin UI JSON, not in this repo. See
@@ -65,8 +99,10 @@ off-host. Pre-fix, pi outage would have taken its own alert delivery
 | `/etc`, `/nix`, `/root` | No | Yes | No | Per rebuild (`@`) |
 
 OS has one user (Philip). Family members get per-service accounts in
-Jellyfin, Immich, Open WebUI, Vaultwarden; their devices get Tailscale
-invites. Cross-cuts the networking concern (Samba is a service module,
+Jellyfin, Seerr, Navidrome, Immich, Open WebUI, and Vaultwarden. Tailscale
+invitations are needed only for internal services; the three ADR-0006
+family-media routes work through their native accounts without tailnet
+enrollment. Cross-cuts the networking concern (Samba is a service module,
 not a networking adapter); kept here because the access answer to "what
 can each path serve over which protocol" is the question the operator
 actually asks.

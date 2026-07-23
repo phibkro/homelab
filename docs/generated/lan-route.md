@@ -37,14 +37,16 @@ the sops-templated OIDC secrets here; authelia consumes them.
 | Zone | What's there | Default posture |
 |---|---|---|
 | **localhost** | Services bind here unless explicitly exposed | Closed to outside |
-| **tailnet** | Personal devices + family. SSH, Samba, `*.${domain}` HTTPS, direct service ports | Closed by default; Caddy on 80+443 + Samba on 445 are the only globally-open tailnet ports |
-| **public internet** | Personal apps that need public exposure live at Cloudflare edge (Pages + Workers + D1) | **Homelab serves nothing publicly** by default. Tailscale Funnel is the prototyped path if anything ever needs to land public traffic |
+| **tailnet** | Personal devices + operator workflows. SSH, Samba, `*.${domain}` HTTPS, direct service ports | Closed by default; Caddy on 80+443 + Samba on 445 are the only globally-open tailnet ports |
+| **public internet** | Explicitly selected family services plus Cloudflare-edge personal apps | Homelab routes stay internal by default; `reachability = "internet"` opts in one account-gated route at a time |
 
 The Cloudflare edge apps (phibkro.org apex, filmder, drinks-app,
 finnbydel-app, heim) live as Pages (static) + Workers+D1 (stateful).
-The homelab keeps tailnet-only copies of `filmder` + `heim` via
-`nori.lanRoutes` for fast internal access. A `cloudflared` Tunnel
-approach was decommissioned 2026-05-08.
+The homelab keeps internal copies of `filmder` + `heim` via
+`nori.lanRoutes` for fast access. Family media routes may opt into
+direct internet reachability through the Pi entry plane; every other
+route remains limited to LAN/tailnet client ranges even if a caller
+guesses its hostname or forges its Host header.
 
 ## DNS architecture
 
@@ -150,11 +152,13 @@ Authelia issuer URL, OIDC redirect URIs, Caddy ACME wildcard all
 read this rather than hardcoding the literal.
 
 Split-horizon DNS: Blocky is authoritative for ` *.<domain> ` on the
-LAN/tailnet (resolves to ` nori.lanIp `); public DNS for the same
-names has no A records, so the homelab is reachable only on the
-LAN/tailnet. Caddy obtains real Let’s Encrypt certs via DNS-01
-using the existing Cloudflare token in sops, so family devices
-see a green lock with no per-device CA install.
+LAN/tailnet (resolves to ` nori.lanIp `). Public DNS contains records
+only for routes whose ` reachability ` is explicitly ` internet `;
+` modules/infra/networking/cloudflare-ddns/runtime.nix ` reconciles
+those exact, DNS-only IPv4 records to the residential WAN address.
+All other names remain internal. Caddy obtains real Let’s Encrypt
+certs via DNS-01 using the existing Cloudflare token in sops, so
+family devices see a green lock with no per-device CA install.
 
 Renaming requires:
 
@@ -932,6 +936,47 @@ boolean
 
 ```nix
 false
+```
+
+*Declared by:*
+ - `modules/infra/networking`
+
+
+
+## nori.lanRoutes.<name>.reachability
+
+
+
+Network boundary at which Caddy accepts this route:
+
+ - internal — LAN and tailnet clients only. The generated
+   host matcher also requires a private client range or
+   Tailscale’s 100.64.0.0/10 range, so forwarding port 443
+   to Caddy does not expose this route through a guessed
+   hostname or forged Host header.
+
+ - internet — accept requests from any client address.
+   This only makes the HTTP route reachable; ` audience `
+   still declares who may use it and which identity layer
+   protects it. Operator routes are structurally forbidden
+   from selecting this value.
+
+Default is internal. Public exposure is an explicit per-route
+opt-in and must never be inferred from ` audience `: reachability
+describes the network boundary, while audience describes the
+users and authentication posture inside that boundary.
+
+
+
+*Type:*
+one of “internal”, “internet”
+
+
+
+*Default:*
+
+```nix
+"internal"
 ```
 
 *Declared by:*

@@ -22,13 +22,14 @@ Single-user NixOS homelab flake. Four NixOS hosts on a residential LAN + tailnet
 | Touching storage, backups, snapshots | `docs/reference/storage.md` |
 | Touching network, lanRoutes, Authelia, DNS | `docs/reference/network.md` |
 | Debugging a known landmine (NVMe, Caddy CA, sops, DynamicUser, …) | `.claude/skills/gotcha-*/SKILL.md` (auto-loaded on trigger) |
+| Operating the Genexis router programmatically | `.claude/skills/manage-genexis-juci/` or `.codex/skills/manage-genexis-juci/` |
 | Resuming work, forward plan | `docs/roadmap.md` |
 
 ## Active services
 
-All HTTP services live behind Caddy at `https://<name>.home.phibkro.org`, LE-signed via ACME DNS-01 against Cloudflare — trusted by every modern device with no per-device CA install (ADR-0004). Legacy `*.nori.lan` URLs 301-redirect transitionally while family bookmarks migrate.
+All HTTP services live behind Caddy at `https://<name>.home.phibkro.org`, LE-signed via ACME DNS-01 against Cloudflare — trusted by every modern device with no per-device CA install (ADR-0004). Legacy `http://*.nori.lan` URLs 301-redirect transitionally while bookmarks migrate; legacy HTTPS URLs cannot redirect without an untrusted private-CA handshake.
 
-Resolution path: Blocky on pi is authoritative for `*.home.phibkro.org` on the LAN/tailnet (resolves to pi's LAN IP — Caddy's vhost). Public DNS for the same names has no A records, so the homelab is unreachable from the internet. LAN clients hit Caddy directly with no tailnet hop. Off-LAN tailnet clients reach the same address via pi's subnet-route advertisement (`192.168.1.0/24`); needs `--accept-routes` on the client. Tailnet DNS comes from pi's Blocky (Tailscale admin console → DNS → custom nameserver = `100.100.71.3`); LAN-only devices need their DNS pointed at pi's LAN IP (`192.168.1.225`).
+Resolution path: Blocky on pi is authoritative for `*.home.phibkro.org` on the LAN/tailnet (resolves to pi's LAN IP — Caddy's vhost). Pi's `cloudflare-ddns` derives exact DNS-only IPv4 records from routes explicitly marked `reachability = "internet"` (currently `media`, `requests`, and `audio`) and keeps them pointed at the residential WAN address; other routes remain address-gated to LAN/tailnet clients. LAN clients hit Caddy directly with no tailnet hop. Off-LAN tailnet clients reach the same address via pi's subnet-route advertisement (`192.168.1.0/24`); needs `--accept-routes` on the client. Tailnet DNS comes from pi's Blocky (Tailscale admin console → DNS → custom nameserver = `100.100.71.3`); LAN-only devices need their DNS pointed at pi's LAN IP (`192.168.1.225`). See ADR-0006 for the exposure boundary and deployment checks.
 
 The live catalog is compiled from the secret-free manifests in `inventory/` and
 injected into every NixOS host as `nori.inventory`. Static lists drift; query or
@@ -42,6 +43,7 @@ nix build .#portal-json --no-link --print-out-paths
 
 Background services not exposed via Caddy:
 - `blocky` — adblock DNS for the tailnet via Tailscale push (`:53`)
+- `cloudflare-ddns` — reconciles exact internet-route A records every five minutes (DNS-only; ownership-isolated; no wildcard, proxy, or AAAA)
 - `samba` — SMB shares for `/mnt/media` (workstation), `/mnt/family/*` (aurora), `/srv/share` (`:445`, not HTTP)
 - `restic` — daily backups to OneTouch (aurora) + MP510 (workstation)
 - `btrbk` — hourly/daily snapshots + nightly aurora → workstation `/mnt/family/*` replication
@@ -100,7 +102,7 @@ modules/
   profiles/                  # reusable system capability compositions
   services/                  # manifest/runtime workload pairs; arr remains one coupled cluster
   infra/                     # typed platform effects and their adapters
-  home/                      # Home Manager capabilities, profiles, agent tooling, rice
+  home/                      # Home Manager capabilities, profiles, provider-neutral skills, agent tooling, rice
 tests/                       # evaluation, VM, fixtures, and operator-triggered tests
 scripts/                     # checks, deployment planning, and operator utilities
 secrets/                     # sops-encrypted values; never part of inventory projections
@@ -110,7 +112,7 @@ docs/
   specs/ decisions/          # accepted designs and durable decisions
   reference/ runbooks/       # current truth and executable operations
   plans/ reports/            # retained execution plans and retrospectives
-.claude/skills/              # repository-managed procedures and gotchas
+.claude/skills/ .codex/skills/ # generated provider skill surfaces; repository procedures remain under .claude
 ```
 
 ## Status

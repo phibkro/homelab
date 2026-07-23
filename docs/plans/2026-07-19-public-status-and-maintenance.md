@@ -1,8 +1,11 @@
 # Public status and maintenance communication
 
-- Status: Proposed
+- Status: Superseded by `docs/specs/2026-07-22-public-status-design.md`
 - Date: 2026-07-19
 - Scope: family-facing internet services only
+
+Retained as the banked design precursor. The later spec binds implementation to
+the inventory-backed public-status projection and is the active contract.
 
 ## Problem
 

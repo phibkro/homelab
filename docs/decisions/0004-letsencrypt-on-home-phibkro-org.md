@@ -39,7 +39,7 @@ Use Let's Encrypt for all `*.<nori.domain>` certs, served by Caddy on pi (post-A
 
 - **Domain template**: `nori.domain` option (default `"home.phibkro.org"`) replaces every `*.nori.lan` literal. Service modules read `${config.nori.domain}` for vhost names, OIDC redirect URIs, Authelia cookie domain, etc.
 - **Wildcard vhost**: lan-route's Caddy generator emits ONE `*.${nori.domain}` block with `@<name> host <name>.${nori.domain}` matchers per route. Caddy issues one wildcard cert covering all subdomains.
-- **DNS resolution**: Blocky's `customDNS.mapping` is authoritative on the LAN/tailnet for `*.home.phibkro.org → nori.lanIp`. Public DNS has no A records for `home.*` — the homelab stays internal-only. CF's authoritative DNS holds only the TXT records ACME needs (Caddy creates + removes them per challenge).
+- **DNS resolution**: Blocky's `customDNS.mapping` is authoritative on the LAN/tailnet for `*.home.phibkro.org → nori.lanIp`. At the time of this decision public DNS had no A records for `home.*`. ADR-0006 later adds exact-name public records for an explicit family-media allowlist; the wildcard certificate mechanism is unchanged.
 - **Cloudflare API token**: dedicated `cloudflare_acme_token` in sops.apps.yaml, scope `Zone | DNS | Edit` + `Zone | Zone | Read` on the `phibkro.org` zone only. Separate from the operator's `cloudflare_api_token` (used by app-deploy flows).
 - **Forced issuer**: `acme_ca https://acme-v02.api.letsencrypt.org/directory` pins LE; Caddy's default tries ZeroSSL first which doubled the issuance traffic on the first attempt.
 
@@ -62,7 +62,7 @@ LE root certs (ISRG Root X1) ship pre-trusted on every modern device. Mac/iOS ke
 - **One-time bookmark migration cost.** Every family device + saved login + Mac keychain entry that targeted `*.nori.lan` needs updating to `*.home.phibkro.org`. Mitigated by Blocky keeping (optionally) the old names as 301-redirect aliases during transition.
 - **Cert renewal depends on Cloudflare API reachability.** If CF API is down (unlikely; their uptime is good) or the API token gets revoked, Caddy's auto-renewal fails. LE issues 90-day certs and Caddy starts retrying 30 days before expiry — a 60-day grace window before traffic actually breaks. Loud and predictable failure mode.
 - **DNS-01 challenge requires outbound HTTPS from the Caddy host.** Pi/workstation both have this; no change needed.
-- **`*.home.phibkro.org` names are unreachable from outside the LAN/tailnet.** This is by design (split-horizon DNS; public records intentionally absent) but worth being explicit: a phone on cellular data with Tailscale off won't reach the homelab.
+- **Internet reachability is a separate decision from certificate issuance.** This ADR originally kept every name internal. ADR-0006 later makes three exact family-media names public while preserving split-horizon resolution and address gates for all other routes.
 
 ### Structurally enforced
 
@@ -107,6 +107,7 @@ The previously-killed Hetzner path from ADR-0002 (offsite restic) and LE are ind
 ## See also
 
 - ADR-0003 — pi-central entry plane decision; this ADR refines the TLS portion of that.
+- ADR-0006 — later internet exposure of an exact family-media allowlist; certificate issuance here is unchanged.
 - `modules/infra/networking/default.nix` § `nori.domain` and the wildcard Caddy vhost generator.
 - `modules/infra/networking/caddy/runtime.nix` § `withPlugins`, `acme_dns`, `acme_ca`, sops token wiring.
 - `docs/plans/2026-06-11-aurora-migration.md` — P7 standup on pi inherits this Caddy config wholesale.

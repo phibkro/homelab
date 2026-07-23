@@ -21,6 +21,14 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
   in progress on `feat/public-status`; no Cloudflare resources have been
   created or changed.
 
+- **Finish ADR-0006 router cutover and external acceptance.** Route-derived
+  DNS-only A records, Pi DDNS reconciliation, and Caddy's exact-host/source
+  boundary are ready declaratively. The remaining operator-gated step is to
+  forward WAN TCP 443 to `192.168.1.225:443` (never port 80), then run
+  ADR-0006's cellular-data acceptance checks for all three family logins plus
+  known-internal and random-host 404s. Confirm the router preserves the real
+  client source IP.
+
 - **Aurora migration — workstation-as-compute / aurora-as-family-vault.** Reorganises hosts to let workstation sleep when no GPU/transcode/bulk-storage workload is active and to give irreplaceable media a 3-copy replication posture. Full delta table, phase ordering, validation gates, and reversibility ladder in `docs/plans/2026-06-11-aurora-migration.md`. **Progress (2026-06-16):** P1–P15 ✓ landed (foundation + aurora bootstrap + data move + service-state migration + entry-plane flip + nightly btrbk replication aurora → workstation MP510 live since 2877267). P18 (s2idle resume hang) fixed b77b030; P19 ✓ landed end-to-end (pi `wakeonlan` sender 3674d89 + operator-verified magic-packet test 2026-06-16); P20 partially landed (PipeWire idle inhibit + hibernate setup + hypridle removal — manual triggers only). **Outstanding:** P20 hypridle re-enable (gated on operator verifying suspend works post-reboot). P16 pavilion tertiary replica future-work; P17 Hetzner explicitly rejected per ADR-0002.
 
 - **Sunshine remote-desktop pairing.** Deployed (`modules/machines/desktop/sunshine.nix`); NVENC builds confirmed (`h264/hevc/av1_nvenc`). Outstanding: one-time Moonlight pairing.
