@@ -48,15 +48,15 @@ let
     nixpkgs-master lags upstream by ~1 day. Override version + src with
     the upstream manifest hashes so resume and gateway compatibility fixes
     do not wait for the package channel. Drop this block once nixpkgs-master
-    carries ≥ 2.1.210 and revert claude-code-master back to
+    carries ≥ 2.1.212 and revert claude-code-master back to
     `pkgsMaster.claude-code`.
   */
-  claude-code-upstream-version = "2.1.210";
+  claude-code-upstream-version = "2.1.212";
   claude-code-upstream-checksums = {
-    "x86_64-linux" = "e7d2ceb53ed4c2ced1fe7fc1c6331c98dc5f7b4c9b2722d9c5fa3dd5dff6f719";
-    "aarch64-linux" = "84feb193c1d91f3b5eba836ed47c0e4dee953195abba950917c3e101eff174e8";
-    "x86_64-darwin" = "892f2c878050d8829e67119328dd9768345fba18a58c169212b70597c9175c40";
-    "aarch64-darwin" = "1b471d62d1117482689d75447f5e050c640da717a5a3c91e6c13792450f8c662";
+    "x86_64-linux" = "044a88cf3a5180776617fd3da1238dcbf9141ddec449a39cf7d2af1ac78e684e";
+    "aarch64-linux" = "66e88634a8573a002702e6a9de0d80cb9bb7c9072f9e6f4486778539057dfd3c";
+    "x86_64-darwin" = "7681a0634c89fa4474e53c0c794e992944aebf3409a7a2b87ea9f9b0194ea341";
+    "aarch64-darwin" = "09ecba2ab2df9b6ee5b0695e26f65dea60fb3b6af3d3542ee09f466838d1e574";
   };
   claude-code-upstream-platform-keys = {
     "x86_64-linux" = "linux-x64";
@@ -201,15 +201,14 @@ let
     permissions.defaultMode = "auto";
 
     /*
-      MCP server posture: per-project opt-in.
-        * allowManagedMcpServersOnly:    only servers explicitly
-          allow-listed elsewhere are loadable. Blocks ad-hoc loads.
-        * enableAllProjectMcpServers:    do NOT auto-trust project-
-          level .mcp.json files. Each project that wants MCP must
-          opt in explicitly (via enabledMcpjsonServers in this file
-          or by accepting the per-project trust prompt once).
-      Together these cap MCP-driven context consumption — large tool
-      surfaces only load when a project actually needs them.
+      MCP server posture: project-declared, machine-policy constrained.
+        * allowManagedMcpServersOnly: only servers permitted by managed
+          policy are loadable. Blocks ad-hoc unmanaged loads.
+        * enableAllProjectMcpServers: automatically enable the servers a
+          project's explicit .mcp.json declares; it does not invent or
+          globally enable server surfaces absent from that project.
+      Together these keep MCP capability explicit at the project seam while
+      avoiding a second per-server allowlist copied into user settings.
     */
     allowManagedMcpServersOnly = true;
     enableAllProjectMcpServers = true;

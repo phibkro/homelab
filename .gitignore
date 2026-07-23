@@ -5,6 +5,14 @@ result-*
 node_modules/
 .alchemy/
 
+# Python helpers (including repo-managed agent skills)
+__pycache__/
+*.py[cod]
+
+# JUCI execution artifacts may expose topology or carry live policy grants
+juci-audit*.json
+juci-grant*.json
+
 # Local flake state (generated, not source of truth)
 flake.lock.local
 
