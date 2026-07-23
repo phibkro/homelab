@@ -160,7 +160,7 @@
       external Codex CLI workers without pretending one Claude Code process
       can switch provider endpoints per subagent.
     */
-    herdr.url = "github:ogulcancelik/herdr/v0.7.4";
+    herdr.url = "github:ogulcancelik/herdr/v0.7.5";
     herdr.inputs.nixpkgs.follows = "nixpkgs";
 
     /*
