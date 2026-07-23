@@ -110,11 +110,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1784845175,
-        "narHash": "sha256-lubTHIwkd+2SIKOpggKD/4w5WCObO3JCKCe462P4i6w=",
+        "lastModified": 1784846732,
+        "narHash": "sha256-5S1Bwmfi82DdBnsW5zw+IbQ8toNT2U9Wz1qlUkZKt/s=",
         "owner": "phibkro",
         "repo": "chatlog",
-        "rev": "0c6580c7d85d92091d844d6b01324cf68d87440e",
+        "rev": "7f29d5d95e39885faf0175a7280372f55a4f7ced",
         "type": "github"
       },
       "original": {
