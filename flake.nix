@@ -104,6 +104,16 @@
     claudex.inputs.home-manager.follows = "home-manager";
 
     /*
+      Chatlog — local conversation corpus, operator Workbench, and
+      policy-bounded MCP recall. The product owns ingestion, redaction,
+      indexing, and its service module; Homelab only pins and enables it on
+      the workstation. Corpus state stays outside the Nix store.
+    */
+    chatlog.url = "github:phibkro/chatlog";
+    chatlog.inputs.nixpkgs.follows = "nixpkgs";
+    chatlog.inputs.home-manager.follows = "home-manager";
+
+    /*
       pagu — the consolidated box + gate product. Consumes the gate and its
       co-packaged `pagu-box` compatibility PEP from one revision. Advance the
       pin deliberately.
