@@ -28,5 +28,7 @@ in
     dataRoot = "${config.xdg.dataHome}/chatlog";
     host = "127.0.0.1";
     port = 4789;
+    allowAnnotations = true;
+    annotationOrigins = [ "https://chatlog.home.phibkro.org" ];
   };
 }
