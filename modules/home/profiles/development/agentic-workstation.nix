@@ -42,6 +42,7 @@ in
   ];
 
   nori.agentNotify.enable = true;
+  nori.herdrMonitor.enable = true;
   home.sessionPath = [ "$HOME/.deno/bin" ];
 
   home.file.".codex/AGENTS.md".text = ''
