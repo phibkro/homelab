@@ -1,5 +1,19 @@
 # ntfy auth tightening
 
+> **Status (2026-07-24): DONE + DECLARATIVE.** The `deny` posture, the
+> `publisher` user, its `tk_` access token, and the anonymous read-only grant
+> on the agents topic are all provisioned **declaratively** by
+> `modules/infra/observability/ntfy/server.nix` — no manual steps. It uses
+> ntfy's native config provisioning (`auth-users` / `auth-tokens` /
+> `auth-access`, upstream ≥2.11), fed via a sops template + `EnvironmentFile`
+> so the token/topic/password-hash never enter the store. ntfy reconciles
+> `user.db` to match on every start (idempotent against the already-provisioned
+> live db). The manual `ntfy user add` / `ntfy access` steps below are kept for
+> **history and the § 5 verification curls only** — do NOT run them; the
+> declarative unit owns this state. Secrets: `ntfy-publisher-token`,
+> `ntfy-agents-channel`, and the new `ntfy-publisher-password-hash`
+> (bcrypt of the publisher's unused password) in `secrets/secrets.yaml`.
+
 Switch pi's ntfy hub from `auth-default-access = read-write` (current) to `deny` + per-publisher tokens. Wave-2 deep-clean output: prevent alert spoofing from agentic tailnet workloads.
 
 ## Why
