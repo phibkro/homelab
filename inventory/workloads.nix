@@ -19,6 +19,7 @@ in
   pihole = manifest ../services/pihole/manifest.nix;
   caddy = manifest ../services/caddy/manifest.nix;
   calibre-web = manifest ../services/calibre-web/manifest.nix;
+  chatlog = manifest ../services/chatlog/manifest.nix;
   cloudflare-ddns = manifest ../services/cloudflare-ddns/manifest.nix;
   disk-alert = manifest ../services/disk-alert/manifest.nix;
   gatus = manifest ../services/gatus/manifest.nix;
