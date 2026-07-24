@@ -38,6 +38,7 @@ let
       "beszel-agent"
       "blocky"
       "btrbk-replica-target"
+      "chatlog"
       "clamor"
       "disk-alert"
       "gatus"
@@ -144,6 +145,7 @@ let
     btrbk-replication = [ "aurora" ];
     caddy = [ "pi" ];
     calibre-web = [ "aurora" ];
+    chatlog = [ "workstation" ];
     disk-alert = [ "workstation" ];
     filmder = [ "aurora" ];
     glance = [ "aurora" ];
@@ -234,6 +236,7 @@ let
     beszel-hub.metrics = "pi";
     ntfy-server.alert = "pi";
     calibre-web.books = "aurora";
+    chatlog.chatlog = "workstation";
     clamor.agents = "workstation";
     filmder.filmder = "aurora";
     glance.home = "aurora";
@@ -448,6 +451,15 @@ let
       auth = "exception";
       monitored = true;
       dashboard = true;
+    };
+    chatlog = {
+      port = 4790;
+      runsOn = "workstation";
+      audience = "operator";
+      exposeOnTailnet = true;
+      auth = "none";
+      monitored = true;
+      dashboard = false;
     };
     comics = {
       port = 8085;

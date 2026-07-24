@@ -19,6 +19,7 @@ lib.genAttrs
     "btrbk-replication"
     "caddy"
     "calibre-web"
+    "chatlog"
     "clamor"
     "cloudflare-ddns"
     "disk-alert"
@@ -71,6 +72,7 @@ lib.genAttrs
   btrbk-replication = import ../modules/infra/backup/btrbk-replication/manifest.nix;
   caddy = import ../modules/infra/networking/caddy/manifest.nix;
   calibre-web = import ../modules/services/calibre-web/manifest.nix;
+  chatlog = import ../modules/services/chatlog/manifest.nix;
   clamor = import ../modules/services/clamor/manifest.nix;
   cloudflare-ddns = import ../modules/infra/networking/cloudflare-ddns/manifest.nix;
   disk-alert = import ../modules/infra/observability/disk-alert/manifest.nix;
