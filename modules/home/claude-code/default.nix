@@ -24,7 +24,7 @@
 let
   inherit (pkgs.stdenv.hostPlatform) system;
   isIntelDarwin = system == "x86_64-darwin";
-  paguBoxInput = if isIntelDarwin then inputs.pagu-box-darwin else inputs.pagu-box;
+  paguInput = if isIntelDarwin then inputs.pagu-darwin else inputs.pagu;
   tilthInput = if isIntelDarwin then inputs.tilth-darwin else inputs.tilth;
 
   /*
@@ -273,7 +273,7 @@ let
     claude-box / opencode-box just set cwd and forward args; the strict
     profile + --ro-allow list IS the security boundary.
   */
-  pagu-box = paguBoxInput.packages.${system}.default;
+  pagu-box = paguInput.packages.${system}.pagu-box;
 
   /*
     `box` — homelab-wrapped pagu-box. Operator-specific policy lives

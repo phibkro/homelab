@@ -6,10 +6,12 @@
 }:
 
 let
+  paguPackages = inputs.pagu.packages.${pkgs.stdenv.hostPlatform.system};
   agent-dispatch = pkgs.writeShellApplication {
     name = "agent-dispatch";
     runtimeInputs = [
-      inputs.pagu-box.packages.${pkgs.stdenv.hostPlatform.system}.default
+      paguPackages.pagu
+      paguPackages.pagu-box
       pkgs.coreutils
       pkgs.util-linux
     ];
@@ -40,6 +42,7 @@ in
   ];
 
   nori.agentNotify.enable = true;
+  nori.herdrMonitor.enable = true;
   home.sessionPath = [ "$HOME/.deno/bin" ];
 
   home.file.".codex/AGENTS.md".text = ''
