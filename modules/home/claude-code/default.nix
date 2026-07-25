@@ -28,12 +28,18 @@ let
   tilthInput = if isIntelDarwin then inputs.tilth-darwin else inputs.tilth;
 
   /*
-    claude-code overlaid from nixpkgs-master — channel ships 2.1.148 while
-    master ships 2.1.179 (2026-06-21 lock; upstream ~2.1.185). Same
-    overlay rationale as Zed (modules/home/profiles/desktop/productivity.nix): the
-    26.05 channel is curated + lags, master tracks upstream more closely.
-    Revert to plain `pkgs.claude-code` when the channel catches up
-    (likely the 26.11 release boundary).
+    claude-code overlaid from nixpkgs-master (2026-07-25 lock: 2.1.219).
+    The main `nixpkgs` input (nixos-unstable, pinned to 2026-07-19) ships
+    2.1.214, so master buys the handful of patch releases upstream lands
+    before the channel advances. Same overlay rationale as Zed
+    (modules/home/profiles/desktop/productivity.nix): master picks up
+    upstream releases a little sooner than the curated channel. Revert to
+    plain `pkgs.claude-code` if the channel ever leads master here.
+
+    Bump only this input (`nix flake update nixpkgs-master`) to advance
+    claude-code without moving the whole system's nixpkgs — the main
+    input stays put so the rest of the closure (e.g. cached ollama-cuda)
+    doesn't re-hash off the binary cache.
 
     We must `import` rather than use `legacyPackages` because claude-code
     is unfree, and legacyPackages doesn't inherit allowUnfree from our
@@ -44,35 +50,7 @@ let
     config.allowUnfree = true;
   };
 
-  /*
-    nixpkgs-master lags upstream by ~1 day. Override version + src with
-    the upstream manifest hashes so resume and gateway compatibility fixes
-    do not wait for the package channel. Drop this block once nixpkgs-master
-    carries ≥ 2.1.212 and revert claude-code-master back to
-    `pkgsMaster.claude-code`.
-  */
-  claude-code-upstream-version = "2.1.212";
-  claude-code-upstream-checksums = {
-    "x86_64-linux" = "044a88cf3a5180776617fd3da1238dcbf9141ddec449a39cf7d2af1ac78e684e";
-    "aarch64-linux" = "66e88634a8573a002702e6a9de0d80cb9bb7c9072f9e6f4486778539057dfd3c";
-    "x86_64-darwin" = "7681a0634c89fa4474e53c0c794e992944aebf3409a7a2b87ea9f9b0194ea341";
-    "aarch64-darwin" = "09ecba2ab2df9b6ee5b0695e26f65dea60fb3b6af3d3542ee09f466838d1e574";
-  };
-  claude-code-upstream-platform-keys = {
-    "x86_64-linux" = "linux-x64";
-    "aarch64-linux" = "linux-arm64";
-    "x86_64-darwin" = "darwin-x64";
-    "aarch64-darwin" = "darwin-arm64";
-  };
-  claude-code-master = pkgsMaster.claude-code.overrideAttrs (_old: {
-    version = claude-code-upstream-version;
-    src = pkgsMaster.fetchurl {
-      url = "https://downloads.claude.ai/claude-code-releases/${claude-code-upstream-version}/${
-        claude-code-upstream-platform-keys.${system}
-      }/claude";
-      sha256 = claude-code-upstream-checksums.${system};
-    };
-  });
+  claude-code-master = pkgsMaster.claude-code;
 
   /*
     tilth — MCP server for structural file navigation (tree-sitter
