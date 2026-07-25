@@ -350,7 +350,10 @@ let
     && !homes.macbook.nori.agentNotify.enable
     && builtins.hasAttr ".codex/AGENTS.md" homes.workstation.home.file
     && lib.all (packageName: hasHomePackage "workstation" packageName) [
-      "agent-dispatch"
+      # `pagu` replaced `agent-dispatch` as the agent-launch surface
+      # (docs/decisions/0008). Assert the launcher the guidance names is
+      # actually installed — that mismatch is what the ADR was written for.
+      "pagu"
       "bubblewrap"
       "deno"
     ];

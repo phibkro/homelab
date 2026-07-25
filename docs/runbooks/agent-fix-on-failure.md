@@ -16,7 +16,7 @@ unit fails ─OnFailure→ ├─ notify@       (ntfy: a service is down)
    survive recovery window (~120s; transient self-heal → quiet exit)
    cooldown check (6h per unit)                     [/var/lib/agent-fix/<unit>.last]
    clone origin/main → /srv/nori/agent-fix/<unit>-<ts>   (OUTSIDE the homelab prefix)
-   agent-dispatch <provider>  (pagu-box strict: EDITS + writes report; NO push)
+   pagu-box --profile=strict --<provider>  (EDITS + writes report; NO push)
    nix flake check  → passes = ready PR · fails = DRAFT PR   (never blocks the PR)
    git push + gh pr create   (always)  →  nori-alert (agents topic)
 ```
@@ -41,8 +41,8 @@ The PR body itself carries the resume + journal commands — start there.
 
 ## Review + steer the agent's thread
 
-The boxed agent's session persists to your real `~/.claude` (agent-dispatch
-binds it via pagu-box `--claude`). **Resume it un-boxed** to review its
+The boxed agent's session persists to your real `~/.claude` (bound by the
+box's `--claude` preset). **Resume it un-boxed** to review its
 reasoning and give feedback:
 
 ```bash

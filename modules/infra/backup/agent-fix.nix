@@ -24,10 +24,10 @@
        rationale with notify@); recovered → exit quiet.
     2. cooldown per unit — never re-dispatch the same unit within the
        window (loop-breaker; the fix-agent's own faults aren't allowlisted).
-    3. disposable clone OUTSIDE the homelab prefix — agent-dispatch forces
-       read-only under /srv/share/projects/homelab, and pagu-box binds only
-       $PWD, so the clone needs a self-contained .git elsewhere.
-    4. the BOXED agent (agent-dispatch, pagu-box strict) only EDITS files +
+    3. disposable clone OUTSIDE the homelab prefix — the box binds only $PWD
+       read-write, so the clone needs a self-contained .git elsewhere. An
+       assertion below enforces workRoot is not under repo.
+    4. the BOXED agent (`pagu-box --profile=strict`) only EDITS files +
        writes an incident report. It has model access but NO push/deploy —
        the sandbox blocks gh/ssh/secrets. It cannot reach origin.
     5. the UN-BOXED orchestrator ALWAYS pushes the branch + `gh pr create` —
@@ -48,14 +48,15 @@ let
   cfg = config.nori.agentFix;
   window = config.nori.observability.ntfyNotify.recoveryWindowSeconds;
 
-  # claude is headless via `-p`, codex via `exec` — agent-dispatch forwards
-  # everything after `--` to the provider.
+  # claude is headless via `-p`, codex via `exec`. A headless one-shot never
+  # resumes and has no operator to answer a request, so it takes the ungated
+  # box, which forwards everything after `--` to the provider unchanged.
   providerInvoke = if cfg.provider == "codex" then ''exec "$prompt"'' else ''-p "$prompt"'';
 
   agentFix = pkgs.writeShellApplication {
     name = "agent-fix";
     # Deterministic tools the ORCHESTRATOR uses. The agent + its sandbox
-    # (agent-dispatch, claude/codex) come from the unit's PATH; nori-alert
+    # (pagu-box, claude/codex) come from the unit's PATH; nori-alert
     # is referenced by its absolute nori.alerts.command below.
     runtimeInputs = [
       pkgs.git
@@ -140,7 +141,12 @@ let
       )"
 
       cd "$work"
-      AGENT_DISPATCH_DEPTH=0 agent-dispatch ${cfg.provider} -- ${providerInvoke} || true
+      # `pagu-box`, not `pagu box`: the pinned pagu input predates the `box`
+      # subcommand dispatch, so `pagu box` would be parsed as a harness name
+      # and fail. This is the exact executable agent-dispatch invoked, so the
+      # migration changes the caller without changing the enforcement. Switch
+      # to `pagu box` when the flake input is bumped past that dispatch.
+      pagu-box --profile=strict --${cfg.provider} -- ${cfg.provider} ${providerInvoke} || true
 
       # 6. relay — ALWAYS open a PR. A fire means a real unit failure AND a
       #    started thread to fix it, whether or not the agent nailed the fix:
@@ -177,7 +183,7 @@ let
       fi
 
       # 8. resume handle — the boxed agent's session persisted to the real
-      #    ~/.claude (agent-dispatch binds it via pagu-box --claude). Claude keys
+      #    ~/.claude (bound by the `--claude` preset). Claude keys
       #    sessions by cwd, slugged '/' -> '-'; one .jsonl per run.
       slug="$(printf '%s' "$work" | sed 's#/#-#g')"
       session_id=""
@@ -258,8 +264,8 @@ in
       type = lib.types.str;
       default = "/srv/nori/agent-fix";
       description = ''
-        Where fix clones live. MUST be outside `repo`'s path — agent-dispatch
-        forces read-only whenever $PWD is under the homelab prefix.
+        Where fix clones live. MUST be outside `repo`'s path; the boxed agent
+        gets $PWD read-write. Enforced by an assertion.
       '';
     };
 
@@ -286,15 +292,37 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    /*
+      `agent-dispatch` used to force `--pwd-ro` whenever $PWD sat under the
+      homelab prefix, which is what kept a mis-set workRoot from handing the
+      boxed agent write access to the canonical checkout. That script is gone,
+      and the box has no equivalent implicit rule — correctly, since a
+      launcher should not infer authority from a path.
+
+      The guard becomes structural instead, and stronger: this fails at
+      evaluation rather than at incident time, when nobody is watching.
+    */
+    assertions = [
+      {
+        assertion = !(lib.hasPrefix "${cfg.repo}/" "${cfg.workRoot}/");
+        message = ''
+          nori.agentFix.workRoot (${cfg.workRoot}) must not be inside
+          nori.agentFix.repo (${cfg.repo}). The boxed agent gets $PWD bound
+          read-write, so a clone beneath the canonical checkout would give it
+          write access to the source of truth it is only meant to read.
+        '';
+      }
+    ];
+
     systemd.services = lib.mkMerge (
       [
         {
           "agent-fix@" = {
             description = "Dispatch a coding agent to fix + PR failed unit %i";
             # Deliberately unhardened: the orchestrator drives the operator's
-            # own toolchain (agent-dispatch, git, gh, nix) with their creds.
+            # own toolchain (pagu, git, gh, nix) with their creds.
             # The SAFETY boundary is elsewhere — the dispatched agent runs in
-            # pagu-box strict (no push/deploy), and PR-only means the operator
+            # `pagu-box --profile=strict` (no push/deploy), and PR-only means the operator
             # merges. A raw template like notify@, not an inventory workload.
             serviceConfig = {
               Type = "oneshot";

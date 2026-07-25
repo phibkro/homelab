@@ -161,6 +161,81 @@ let
     echo "$status"
   '';
 
+  /*
+    Herdr's Claude integration is two artifacts that must agree: a hook script
+    on disk, and a `SessionStart` registration in settings.json that actually
+    invokes it. `herdr integration install claude` writes both — but it writes
+    the registration to ~/.claude/settings.json, which home-manager owns as a
+    read-only store symlink, so the write fails and only the script lands.
+    `herdr integration status` reads only the script's version marker, so it
+    reported "current" while the hook had never once fired.
+
+    Fix both halves declaratively from the pinned herdr revision, so the script
+    and the binary that consumes it can never drift:
+      * the script is installed from `inputs.herdr` (home.file, below);
+      * the registration is generated here to herdr's exact contract
+        (targets.rs `install_claude`): SessionStart only, matcher "*",
+        `<script> session`, timeout 10s. The script no-ops unless HERDR_ENV=1,
+        HERDR_SOCKET_PATH, and HERDR_PANE_ID are all set, so registering it
+        outside Herdr costs one fast exit.
+    Do not add the PostToolUse/Stop/SubagentStop entries older Herdr versions
+    used; v7 explicitly removes them, and SubagentStop could revive an idle
+    pane after the turn already ended.
+  */
+  herdrClaudeHookAsset = "${inputs.herdr}/src/integration/assets/claude/herdr-agent-state.sh";
+  herdrClaudeHookPath = "${config.home.homeDirectory}/.claude/hooks/herdr-agent-state.sh";
+
+  /*
+    Phone push on every execution-stopping event (nori.agentNotify).
+      Stop         — the turn ended.
+      Notification — Claude needs permission, or has been waiting on input
+                     (covers a pending question).
+    Together they cover "an agent halted and needs you". One shared
+    entrypoint fans out to ntfy — see modules/home/agent-notify/default.nix.
+  */
+  agentNotifyHooks = lib.optionalAttrs config.nori.agentNotify.enable {
+    Stop = [
+      {
+        hooks = [
+          {
+            type = "command";
+            command = "${config.nori.agentNotify.command} claude stop";
+          }
+        ];
+      }
+    ];
+    Notification = [
+      {
+        hooks = [
+          {
+            type = "command";
+            command = "${config.nori.agentNotify.command} claude notification";
+          }
+        ];
+      }
+    ];
+  };
+
+  # Herdr is installed only on the Linux workstation; the Intel Mac's stable
+  # package set stays isolated, so it gets no pane-state reporting.
+  herdrHooks = lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+    SessionStart = [
+      {
+        matcher = "*";
+        hooks = [
+          {
+            type = "command";
+            command = "${pkgs.bash}/bin/bash ${herdrClaudeHookPath} session";
+            timeout = 10;
+          }
+        ];
+      }
+    ];
+  };
+
+  # Disjoint key sets, so `//` is a merge rather than a silent overwrite.
+  hooks = agentNotifyHooks // herdrHooks;
+
   settings = {
     "$schema" = "https://json.schemastore.org/claude-code-settings.json";
 
@@ -209,38 +284,7 @@ let
       command = "${statuslineScript}";
     };
   }
-  // lib.optionalAttrs config.nori.agentNotify.enable {
-    /*
-      Phone push on every execution-stopping event (nori.agentNotify).
-        Stop         — the turn ended.
-        Notification — Claude needs permission, or has been waiting on input
-                       (covers a pending question).
-      Together they cover "an agent halted and needs you". One shared
-      entrypoint fans out to ntfy — see modules/home/agent-notify/default.nix.
-    */
-    hooks = {
-      Stop = [
-        {
-          hooks = [
-            {
-              type = "command";
-              command = "${config.nori.agentNotify.command} claude stop";
-            }
-          ];
-        }
-      ];
-      Notification = [
-        {
-          hooks = [
-            {
-              type = "command";
-              command = "${config.nori.agentNotify.command} claude notification";
-            }
-          ];
-        }
-      ];
-    };
-  };
+  // lib.optionalAttrs (hooks != { }) { inherit hooks; };
 
   /*
     pagu-box — cross-platform sandboxed agent launcher (github:phibkro/
@@ -510,11 +554,23 @@ in
         };
       }
       /*
-        Herdr's own control-plane contract. Herdr is installed only on the
-        Linux workstation; the Intel Mac's stable package set stays isolated.
+        Herdr's control-plane SKILL.md now lives in modules/home/agent-skills,
+        which installs it for Claude and Codex from one pinned revision. Only
+        the Claude-specific hook belongs here.
       */
       (lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
-        ".claude/skills/herdr/SKILL.md".source = "${inputs.herdr}/SKILL.md";
+        /*
+          The pane-state reporter registered by `herdrHooks` above. Owned here
+          rather than left to `herdr integration install claude` so the script
+          and the herdr binary consuming its socket messages come from one
+          pinned revision. Bumping the herdr input moves both together;
+          `herdr integration status` keeps reading the version marker in this
+          file and stays honest.
+        */
+        ".claude/hooks/herdr-agent-state.sh" = {
+          source = herdrClaudeHookAsset;
+          executable = true;
+        };
       })
     ];
 

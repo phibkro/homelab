@@ -1,7 +1,13 @@
 # ADR-0007: Cross-provider agents run as separate processes
 
-- Status: Accepted
+- Status: Superseded by [ADR-0008](0008-agents-launch-directly-inside-pagu.md)
 - Date: 2026-07-16
+
+> ADR-0008 supersedes the **launch mechanism** below: agents now launch directly
+> inside `pagu`, `agent-dispatch` is deprecated as an agent-facing workflow, and
+> the observability unit is a Herdr tab rather than a pane. The separate-process
+> reasoning — one provider endpoint per process, isolated credentials and
+> quotas, Herdr as control plane, monotone sandbox attenuation — still holds.
 
 ## Context
 

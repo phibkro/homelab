@@ -120,5 +120,11 @@ After a significant step, restate: done / verified / left. Lost the thread → s
 ### Tooling is a `nix shell` away
 Almost any tool is available ad-hoc: `nix shell nixpkgs#<pkg> -c <cmd>` (e.g. `nix shell nixpkgs#jq -c jq .`) or `nix run nixpkgs#<pkg> -- <args>`. "command not found" on PATH is rarely a dead end; reach for nixpkgs first (node, pnpm, ripgrep, jq, shellcheck, …). Inside a project, prefer its own dev shell (`nix develop`, or direnv auto-loads from `.envrc`): it pins the exact toolchain via the project's `flake.lock`.
 
-### Cross-provider delegation
-Claude Code's native subagents share this process's provider endpoint. On the Linux workstation, delegate to Codex with `agent-dispatch codex ...`; never invoke `codex` directly from an agent. The dispatcher permits two delegated workers and depth two (lead → worker → reviewer), then fails loud. Every child enters pagu-box `strict`; sandbox access may only narrow, never widen. A read-only parent stays read-only and a network-denied parent cannot launch a cloud child. When running inside Herdr (`HERDR_ENV=1`), use the Herdr skill to place each dispatched worker in an observable pane or isolated worktree. The stable Intel Mac does not install this cross-provider runtime.
+### Delegation, sandboxing, observability
+Claude Code's native subagents share this process's provider endpoint, so they cannot route per-worker to a different provider. Cross-provider work is separate processes, never one native Agent tree (homelab ADR-0008).
+
+On the Linux workstation every agent runs inside `pagu`, which owns the box (the enforcement point) and the outside gate. Because pagu is the enforceable outer boundary, Claude's own permission bypass inside a box is acceptable — the sandbox, not the harness prompt, is the security control. Sandbox authority is monotone: a child may narrow it, never widen it; a read-only parent stays read-only and a network-denied parent cannot launch a cloud child. Use `pagu <harness>` for a gated session and `pagu box -- COMMAND ...` for anything else; the bare `pagu-box` executable is compatibility-only. The stable Intel Mac has only that compatibility path.
+
+Observable work runs as **one Claude session per Herdr tab**; the tab is the organizational unit. Keep delegation to at most two concurrent delegated workers and depth two (lead → worker → reviewer), and give each worker explicit file or worktree ownership.
+
+Read the `pagu` and `herdr` skills for procedure, and treat `pagu --help` / `herdr --help` as the authority for the installed version — do not reconstruct flags from memory or from a repository's own copy of these rules.

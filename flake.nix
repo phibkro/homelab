@@ -708,7 +708,6 @@
               homePackageNamed =
                 name:
                 builtins.head (builtins.filter (package: lib.getName package == name) workstationHome.packages);
-              agentDispatchPackage = homePackageNamed "agent-dispatch";
               agentNotifyPackage = homePackageNamed "agent-notify";
               riceCommandPackage = homePackageNamed "rice-command";
               ricePalettePackage = homePackageNamed "rice-palette";
@@ -740,18 +739,6 @@
                 ${pkgs.deadnix}/bin/deadnix --fail --no-lambda-pattern-names ${./.}
                 touch $out
               '';
-
-              agent-dispatch =
-                pkgs.runCommandLocal "agent-dispatch-test"
-                  {
-                    nativeBuildInputs = [ pkgs.util-linux ];
-                  }
-                  ''
-                    test -x ${agentDispatchPackage}/bin/agent-dispatch
-                    ${pkgs.bash}/bin/bash ${./modules/home/agent-dispatch_test.sh} \
-                      ${./modules/home/agent-dispatch.sh}
-                    touch $out
-                  '';
 
               agent-notify = pkgs.runCommandLocal "agent-notify-test" { } ''
                 mkdir fake-bin

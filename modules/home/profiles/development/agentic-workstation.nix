@@ -7,16 +7,6 @@
 
 let
   paguPackages = inputs.pagu.packages.${pkgs.stdenv.hostPlatform.system};
-  agent-dispatch = pkgs.writeShellApplication {
-    name = "agent-dispatch";
-    runtimeInputs = [
-      paguPackages.pagu
-      paguPackages.pagu-box
-      pkgs.coreutils
-      pkgs.util-linux
-    ];
-    text = builtins.readFile ../../agent-dispatch.sh;
-  };
 
   codex-notify = pkgs.writeShellApplication {
     name = "codex";
@@ -38,21 +28,53 @@ in
     pkgs.bubblewrap
     codex-notify
     inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default
-    agent-dispatch
+
+    /*
+      `pagu` is the agent-launch surface (box + gate) and the only one. It was
+      previously reachable only as an `agent-dispatch` runtimeInput, so
+      `command -v pagu` failed for the operator and for every agent told to
+      use it. Guidance that names a command the environment does not install
+      is a latent lie; install it explicitly.
+
+      `agent-dispatch` is gone — see
+      docs/decisions/0008-agents-launch-directly-inside-pagu.md. Its last
+      caller (modules/infra/backup/agent-fix.nix) now runs `pagu box`, and the
+      read-only guard it enforced at runtime is a module assertion there.
+    */
+    paguPackages.pagu
   ];
 
   nori.agentNotify.enable = true;
   home.sessionPath = [ "$HOME/.deno/bin" ];
 
+  /*
+    Codex's global context. Keep this the same policy Claude reads in
+    modules/home/claude-code/CLAUDE.md § "Delegation, sandboxing,
+    observability" — two providers disagreeing about the launch boundary is
+    the failure this file exists to prevent. Both point at the `pagu` and
+    `herdr` skills for procedure rather than restating flags that drift.
+  */
   home.file.".codex/AGENTS.md".text = ''
-    # Cross-provider delegation
+    # Delegation, sandboxing, observability
 
-    To delegate to Claude Code, use `agent-dispatch claude ...`; never
-    invoke `claude` directly from an agent. The dispatcher permits two
-    delegated workers and depth two (lead → worker → reviewer), then fails
-    loud. Every child enters pagu-box `strict`; sandbox access may only
-    narrow, never widen. A read-only parent stays read-only and a
-    network-denied parent cannot launch a cloud child. In Herdr, use
-    panes/worktrees so work remains observable.
+    Every agent on this workstation runs inside `pagu`, which owns the box
+    (the enforcement point) and the outside gate. Because pagu is the
+    enforceable outer boundary, a harness's own permission bypass inside a
+    box is acceptable — the sandbox, not the harness prompt, is the security
+    control. Sandbox authority is monotone: a child may narrow it, never
+    widen it. A read-only parent stays read-only and a network-denied parent
+    cannot launch a cloud child.
+
+    Use `pagu <harness>` for a gated session and `pagu box -- COMMAND ...`
+    for anything else. The bare `pagu-box` executable is compatibility-only.
+
+    Observable work runs as one agent session per Herdr tab; the tab is the
+    organizational unit. Keep delegation to at most two concurrent delegated
+    workers and depth two (lead → worker → reviewer), and give each worker
+    explicit file or worktree ownership.
+
+    Read the `pagu` and `herdr` skills for procedure, and treat
+    `pagu --help` / `herdr --help` as the authority for the installed
+    version. Do not reconstruct flags from memory.
   '';
 }
