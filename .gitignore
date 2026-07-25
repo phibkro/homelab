@@ -38,5 +38,9 @@ inventory-*.tar.gz
 # not track it. (Local dev checkout; published separately.)
 /pagu/
 
+# Agent git worktrees — each is a separate checkout with its own .git;
+# they live here for isolated parallel work, never as tracked content.
+/.worktrees/
+
 # OS
 .DS_Store
