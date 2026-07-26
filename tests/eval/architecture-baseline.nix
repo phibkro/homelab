@@ -87,6 +87,7 @@ let
       "beszel-hub"
       "blocky"
       "caddy"
+      "cloudflare-ddns"
       "gatus"
       "heartbeat"
       "ntfy-notify"
@@ -412,7 +413,8 @@ let
       runsOn = "aurora";
       audience = "family";
       exposeOnTailnet = true;
-      auth = "oidc";
+      # Native Navidrome accounts rather than Authelia OIDC (70398f9).
+      auth = "exception";
       monitored = true;
       dashboard = true;
     };
@@ -592,7 +594,8 @@ let
       runsOn = "workstation";
       audience = "family";
       exposeOnTailnet = true;
-      auth = "oidc";
+      # Native Jellyseerr accounts rather than Authelia OIDC (70398f9).
+      auth = "exception";
       monitored = true;
       dashboard = true;
     };

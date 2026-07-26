@@ -62,17 +62,7 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
   unauthenticated status Worker. **Trigger:** the public status surface passes
   production acceptance and its component/presentation contract is stable.
 
-- **Mac is on x86_64-darwin EOL clock.** Confirmed 2026-06-15: **26.05 is the last nixpkgs stable supporting x86_64-darwin** (26.11 drops it). Determinate installer v3.12.2 was the last with x86_64-darwin (v3.12.3 dropped Intel). The Mac is currently pinned to 26.05 and works; "stay pinned indefinitely" is a valid stance until something else forces movement.
-
-  | Layer | Status |
-  |---|---|
-  | HM config | `homeConfigurations.macbook` in `flake.nix`; content `modules/machines/macbook/home.nix` |
-  | Switch cmd | `nix run home-manager/master -- switch --flake ~/Documents/nix-migration#macbook` |
-  | Nix installer | Pin Determinate v3.12.2 OR upstream nix |
-  | Nixpkgs lifeline | 26.05 (pinned indefinitely) |
-  | Already adapted | `nix shell` over `home.packages` for heavy compiles (Hydra cache thin); ghostty + utm stay on brew |
-
-  **Forcing functions to revisit:** a package the operator needs on Mac requires nixpkgs > 26.05; nixpkgs security advisories the operator wants for Mac specifically; the Intel Mac itself fails / gets replaced.
+- **~~Mac is on x86_64-darwin EOL clock.~~ RESOLVED 2026-07-26 — retired.** nixpkgs 26.11 dropped `x86_64-darwin` before a decision was made, which took `nix flake check` red on main. The Mac had already fallen out of use, so the configuration was removed rather than migrated or pinned. See ADR-0009 (supersedes ADR-0006). If a Mac returns it will be Apple Silicon and a fresh inventory entry.
 
 - **Remaining stabilisation (personal apps).** Phases 1-3 + 6-prep landed 2026-05-08 (CI + Renovate on all 4 app repos; zod validation on drinks-api; finnbydel → Astro + Hono; stateful apps → Drizzle + bun:sqlite; @sentry SDKs wired, no-op without DSN). Remaining: phase 4 (static sites → Cloudflare Pages, removes 3 attack surfaces from workstation), phase 5 (microvm.nix for drinks + finnbydel, kernel-level isolation for stateful apps that stay on workstation). Sentry activation when operator provisions projects: add 6 sops secrets `sentry-dsn-{heim,drinks-app,drinks-server,filmder,finnbydel-app,finnbydel-server}` to `secrets/apps.yaml`; update each module's environment block.
 

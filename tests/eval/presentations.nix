@@ -92,7 +92,14 @@ let
         "family"
         "operator"
       ]
-    && portalServices.audio.authentication == "oidc"
+    /*
+      Navidrome moved off Authelia OIDC to native accounts in 70398f9
+      ("expose family media through native accounts"). Assert the pair, not
+      just the enum: a native-account service is only correct for a family
+      audience if the portal also tells them registration is required.
+    */
+    && portalServices.audio.authentication == "service-native-or-exception"
+    && portalServices.audio.registrationRequired
     && portalServices.downloads.visibleTo == [ "operator" ]
     &&
       portalServices.filmder.visibleTo == [

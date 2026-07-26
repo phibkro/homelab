@@ -34,16 +34,12 @@ graph TB
   subgraph "agent tier"
     V[pavilion<br/>quarantined agents]
   end
-  M[macbook<br/>daily-driver]
   P -- "*.${nori.domain} proxy" --> A
   P -- "*.${nori.domain} proxy" --> W
   A -- "nightly btrfs send/receive" --> W
   A -- "scraped by" --> P
   W -- "scraped by" --> P
   V -- "scraped by" --> P
-  M -. "SSH" .-> P
-  M -. "SSH" .-> A
-  M -. "SSH" .-> W
 ```
 
 Cross-host references continue through the compatibility `nori.hosts`

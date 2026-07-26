@@ -8,7 +8,6 @@ Single-user NixOS homelab flake. Four NixOS hosts on a residential LAN + tailnet
 | **aurora** | always-on family vault (x86_64) | `/mnt/family/*` irreplaceable data + family-tier backends (Vaultwarden, Immich, Calibre-web, Komga, Navidrome, Radicale, Miniflux, Glance, Heim, Filmder, Grafana), OneTouch restic target |
 | **workstation** | sleep-friendly compute (x86_64) | Ollama (GPU), Jellyfin (NVENC), `*arr` stack + qBittorrent, `@downloads`, daily-driver desktop. Cold replica of `/mnt/family/*` on MP510 (btrbk receive) |
 | **pavilion** | agent quarantine (x86_64) | impermanence-rooted; nixpkgs-agent / sandboxed Claude and Codex work, headless |
-| **macbook** | daily-driver laptop (intel x86_64) | standalone home-manager only — not under the flake's `nixosConfigurations` |
 
 ## Where to start
 

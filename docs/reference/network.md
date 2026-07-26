@@ -35,7 +35,6 @@ systemd wiring. Bootstrap script: `just generate-oidc-key <name>`.
 | pi | router | `--advertise-routes=192.168.1.0/24` (subnet) + `--advertise-exit-node` (opt-in) |
 | workstation | regular node | — |
 | pavilion / aurora | regular node | — |
-| macbook | regular node | — |
 
 Subnet route + exit node require one-time approval in the Tailscale
 admin console. MagicDNS gives every host a stable `<host>.saola-matrix.ts.net`

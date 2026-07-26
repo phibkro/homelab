@@ -38,9 +38,10 @@ nix build \
   .#nixosConfigurations.workstation.config.system.build.toplevel
 ```
 
-`macbook` is part of the unified host inventory but has a Home Manager build
-target, `.#homeConfigurations.macbook.activationPackage`, and never appears in
-the NixOS activation order.
+Every host is a NixOS host, so every target builds a `toplevel` and appears in
+the activation order. The inventory keeps its `kind` discriminator (and
+`deploymentTargets` its Home Manager branch) so re-adding a standalone home is
+an inventory entry rather than a schema change — see ADR-0009.
 
 ## Activation boundary
 
