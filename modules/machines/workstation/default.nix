@@ -85,12 +85,22 @@
   nori.alerts.routes.agents = [ "agents" ];
 
   /*
-    Fix-agent: ARMED on backup verification + snapshot units. A real failure
-    (surviving the recovery window) OnFailure-dispatches a boxed agent that
-    diagnoses, fixes on an origin/main clone, validates with `nix flake check`,
-    and opens a PR — PR-only, never deploys. Dry-run validated 2026-07-18 (it
-    found + fixed the SFTP restic-check bug this same PR carries).
+    Fix-agent: ARMED on backup verification + snapshot + the backup jobs
+    themselves. A real failure (surviving the recovery window)
+    OnFailure-dispatches a boxed agent that diagnoses, fixes on an origin/main
+    clone, validates with `nix flake check`, and opens a PR — PR-only, never
+    deploys. Dry-run validated 2026-07-18 (it found + fixed the SFTP
+    restic-check bug that PR carried).
     Design: docs/specs/2026-07-18-agent-fix-on-failure-design.md.
+
+    The `restic-backups-*` half is DERIVED from services.restic.backups rather
+    than hand-listed. 22 units is too many to keep in sync by hand, and the
+    failure mode of a stale hand-list is silent: a new service's backup job
+    would fail unwatched. Auditing this on 2026-07-26 found exactly that gap —
+    restic-check-* was armed while every restic-backups-* unit was not, and
+    five of them had failed since arming (user-data, qbittorrent, radarr,
+    prowlarr) with only a notify@ ping. Deriving makes that drift
+    unrepresentable: a new backup arrives armed.
   */
   nori.agentFix.enable = true;
   nori.agentFix.units = [
@@ -98,7 +108,8 @@
     "restic-check-monthly"
     "btrbk-root"
     "btrbk-media"
-  ];
+  ]
+  ++ map (name: "restic-backups-${name}") (lib.attrNames config.services.restic.backups);
 
   /*
     CI-only stub for davinci-resolve. It's unfree → not on cache.nixos.org →
