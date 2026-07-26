@@ -1,6 +1,6 @@
 # ADR-0006: Track unstable on Linux and freeze Intel Mac on 26.05
 
-- Status: Accepted
+- Status: Superseded by ADR-0009 (2026-07-26)
 - Date: 2026-07-16
 
 ## Context

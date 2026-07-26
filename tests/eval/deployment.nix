@@ -15,9 +15,13 @@ let
   inventory = inputs.self.lib.noriInventory;
   deployment = inputs.self.lib.noriDeployment;
   inventoryHosts = lib.attrNames inventory.hosts;
-  outputHosts = lib.sort builtins.lessThan (
-    lib.attrNames inputs.self.nixosConfigurations ++ lib.attrNames inputs.self.homeConfigurations
-  );
+  /*
+    Every host is a NixOS host since the Intel Mac was retired; the flake no
+    longer emits `homeConfigurations`. The inventory keeps its `kind`
+    discriminator so re-adding a standalone home is an inventory entry rather
+    than a schema change — but that branch is currently unexercised.
+  */
+  outputHosts = lib.sort builtins.lessThan (lib.attrNames inputs.self.nixosConfigurations);
 
   rootsCorrect =
     deployment.sourceRoots."modules/services/jellyfin" == [ "workstation" ]
@@ -26,10 +30,8 @@ let
     && deployment.sourceRoots."modules/infra/networking/caddy" == [ "pi" ];
 
   targetsCorrect =
-    deployment.targets.macbook.buildAttribute == "homeConfigurations.macbook.activationPackage"
-    &&
-      deployment.targets.workstation.buildAttribute
-      == "nixosConfigurations.workstation.config.system.build.toplevel";
+    deployment.targets.workstation.buildAttribute
+    == "nixosConfigurations.workstation.config.system.build.toplevel";
 in
 if
   inventoryHosts == outputHosts

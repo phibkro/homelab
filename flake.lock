@@ -296,27 +296,6 @@
         "type": "github"
       }
     },
-    "home-manager-darwin": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs-stable"
-        ]
-      },
-      "locked": {
-        "lastModified": 1784350909,
-        "narHash": "sha256-ZWyzLbS1yKUTeFJLmdVuWNnHttL333/ldJbEE+KzCrM=",
-        "owner": "nix-community",
-        "repo": "home-manager",
-        "rev": "4ce190229c73d44536caa7072f6308fb2d8feeb3",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nix-community",
-        "ref": "release-26.05",
-        "repo": "home-manager",
-        "type": "github"
-      }
-    },
     "home-manager_2": {
       "inputs": {
         "nixpkgs": [
@@ -552,26 +531,6 @@
         "type": "github"
       }
     },
-    "pagu-darwin": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs-stable"
-        ]
-      },
-      "locked": {
-        "lastModified": 1784775842,
-        "narHash": "sha256-pCG1a8LLi1K2r9VQdTbHdm/uprIAmLPMtG8QObDD2c4=",
-        "owner": "phibkro",
-        "repo": "pagu",
-        "rev": "17179f683e732db8cb857913b080ef97fa210b5f",
-        "type": "github"
-      },
-      "original": {
-        "owner": "phibkro",
-        "repo": "pagu",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
         "anthropics-skills": "anthropics-skills",
@@ -581,7 +540,6 @@
         "flake-parts": "flake-parts",
         "herdr": "herdr",
         "home-manager": "home-manager",
-        "home-manager-darwin": "home-manager-darwin",
         "impermanence": "impermanence",
         "mattpocock-skills": "mattpocock-skills",
         "nixos-hardware": "nixos-hardware",
@@ -590,7 +548,6 @@
         "nixpkgs-stable": "nixpkgs-stable",
         "obsidian-skills": "obsidian-skills",
         "pagu": "pagu",
-        "pagu-darwin": "pagu-darwin",
         "rtk-src": "rtk-src",
         "shadcn": "shadcn",
         "shadcn-improve": "shadcn-improve",
@@ -600,7 +557,6 @@
         "stylix": "stylix",
         "superpowers": "superpowers",
         "tilth": "tilth",
-        "tilth-darwin": "tilth-darwin",
         "zen-browser": "zen-browser"
       }
     },
@@ -813,26 +769,6 @@
       "inputs": {
         "nixpkgs": [
           "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1784186645,
-        "narHash": "sha256-Cq+Ru3O4QMufbYPvfBATfQ0/HuK8cUE7pqEHhv3cGDE=",
-        "owner": "jahala",
-        "repo": "tilth",
-        "rev": "ad9eb2cdb90a4333c4eec337ff7499e1867d248f",
-        "type": "github"
-      },
-      "original": {
-        "owner": "jahala",
-        "repo": "tilth",
-        "type": "github"
-      }
-    },
-    "tilth-darwin": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs-stable"
         ]
       },
       "locked": {

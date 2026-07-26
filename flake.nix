@@ -1,9 +1,15 @@
 {
   description = "nori infrastructure (NixOS) — workstation and future lab hosts";
   inputs = {
-    # Linux hosts track the rolling channel; the Intel Mac remains on the
-    # final release line that supports x86_64-darwin (ADR-0006).
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    /*
+      A stable pin kept only for packages that need one — currently just
+      handbrake (modules/home/profiles/creative/video.nix). Still on the
+      26.05 *darwin* branch, a leftover of the retired Intel Mac
+      (ADR-0006, superseded); the branch carries every platform, so this is
+      cosmetically wrong rather than broken. Repointing it re-resolves
+      handbrake, so that is a deliberate bump, not a cleanup rider.
+    */
     nixpkgs-stable.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
 
@@ -34,14 +40,9 @@
     sops-nix.url = "github:Mic92/sops-nix";
     sops-nix.inputs.nixpkgs.follows = "nixpkgs";
 
-    /*
-      Linux Home Manager follows unstable with the NixOS hosts. Intel Mac
-      stays on the matching 26.05 pair, the final x86_64-darwin release.
-    */
+    # Home Manager follows unstable with the NixOS hosts.
     home-manager.url = "github:nix-community/home-manager";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
-    home-manager-darwin.url = "github:nix-community/home-manager/release-26.05";
-    home-manager-darwin.inputs.nixpkgs.follows = "nixpkgs-stable";
 
     /*
       Zen browser. Not in nixpkgs; consumed via upstream community flake.
@@ -147,8 +148,6 @@
     */
     tilth.url = "github:jahala/tilth";
     tilth.inputs.nixpkgs.follows = "nixpkgs";
-    tilth-darwin.url = "github:jahala/tilth";
-    tilth-darwin.inputs.nixpkgs.follows = "nixpkgs-stable";
     rtk-src.url = "github:rtk-ai/rtk";
     rtk-src.flake = false;
     stacklit-src.url = "github:glincker/stacklit";
@@ -174,15 +173,12 @@
     claudex.inputs.home-manager.follows = "home-manager";
 
     /*
-      pagu — the consolidated box + gate product. Linux consumes the gate and
-      its co-packaged `pagu-box` compatibility PEP from one revision. Darwin
-      follows the final x86_64-darwin-capable stable nixpkgs while schema-v0
-      seatbelt lowering remains upstream work. Advance both pins deliberately.
+      pagu — the consolidated box + gate product. Consumes the gate and its
+      co-packaged `pagu-box` compatibility PEP from one revision. Advance the
+      pin deliberately.
     */
     pagu.url = "github:phibkro/pagu";
     pagu.inputs.nixpkgs.follows = "nixpkgs";
-    pagu-darwin.url = "github:phibkro/pagu";
-    pagu-darwin.inputs.nixpkgs.follows = "nixpkgs-stable";
   };
 
   outputs =
@@ -204,7 +200,6 @@
         ./flake-parts/formatter.nix
         ./flake-parts/devshell.nix
         ./flake-parts/machines.nix
-        ./flake-parts/home.nix
         ./flake-parts/packages/docs-backups.nix
         ./flake-parts/packages/docs-fs.nix
         ./flake-parts/packages/docs-replicas.nix

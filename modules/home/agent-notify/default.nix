@@ -22,7 +22,7 @@
   below). The `agents` audience routes to the agents ntfy topic — defined by
   the host that runs the fleet (modules/machines/workstation/default.nix),
   since that's where the topic secret and nori-alert live. On a host without
-  nori.alerts (or macbook) the enable stays off.
+  nori.alerts the enable stays off.
 */
 
 let

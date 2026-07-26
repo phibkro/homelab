@@ -26,16 +26,12 @@
     subgraph "agent tier"
       V[pavilion<br/>quarantined agents]
     end
-    M[macbook<br/>daily-driver]
     P -- "*.${nori.domain} proxy" --> A
     P -- "*.${nori.domain} proxy" --> W
     A -- "nightly btrfs send/receive" --> W
     A -- "scraped by" --> P
     W -- "scraped by" --> P
     V -- "scraped by" --> P
-    M -. "SSH" .-> P
-    M -. "SSH" .-> A
-    M -. "SSH" .-> W
   ```
 
   Cross-host references continue through the compatibility `nori.hosts`
@@ -48,12 +44,8 @@ let
   inventory = import ../../inventory { inherit lib; };
   hosts = inventory.internal.hosts;
   nixosHosts = lib.filterAttrs (_: host: host.kind == "nixos") hosts;
-  homeManagerHosts = lib.filterAttrs (_: host: host.kind == "home-manager") hosts;
 
   hostRegistry = lib.mapAttrs (_: host: host.identity) nixosHosts;
-  standaloneHomes = lib.mapAttrs (_: host: {
-    inherit (host) homeModule homeSystem;
-  }) homeManagerHosts;
 
   mkHost =
     name: host:
@@ -85,5 +77,5 @@ let
 in
 {
   nixosConfigurations = lib.mapAttrs mkHost nixosHosts;
-  inherit standaloneHomes inventory;
+  inherit inventory;
 }

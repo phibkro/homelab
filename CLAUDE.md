@@ -1,6 +1,6 @@
 # Project guide for Claude (and other agents)
 
-NixOS flake managing four NixOS hosts + a home-manager macbook:
+NixOS flake managing four NixOS hosts:
 
 | Host | Role | Runs |
 |---|---|---|
@@ -8,7 +8,6 @@ NixOS flake managing four NixOS hosts + a home-manager macbook:
 | **aurora** | always-on family vault (x86_64) | `/mnt/family/*` irreplaceable data, family-tier service backends (vaultwarden, immich, calibre-web, komga, navidrome, …), OneTouch restic target |
 | **workstation** | sleep-friendly compute (x86_64) | Ollama, Jellyfin (NVENC), `*arr` stack + qBittorrent, `@downloads`, desktop. Cold replica of `/mnt/family/*` on MP510 |
 | **pavilion** | agent quarantine (x86_64) | worktrees, weekly tertiary `/mnt/family/*` replica (planned) |
-| **macbook** | daily-driver laptop (intel x86_64) | standalone home-manager only — not under the flake's `nixosConfigurations` |
 
 The codebase splits along the PaaS lens: `modules/services/` holds **workloads** (vaultwarden, immich, jellyfin — what the operator USES); `modules/infra/` holds the **platform** (storage / networking / access / capabilities / observability / backup — HOW the system works). Universal infra (the platform layer + baseline OS bits) is imported by every host via `modules/machines/base/`. Pure declarations in `inventory/` compose explicit profiles and host deviations; the machine factory selects only those workloads' `runtimeModule` values. Workload folders expose cross-host metadata in `manifest.nix` and keep secrets, units, backup, and hardening details in `runtime.nix`. See `docs/reference/module-authoring.md` for the convention.
 

@@ -132,25 +132,4 @@
       '';
     };
   };
-
-  macbook = {
-    kind = "home-manager";
-    homeSystem = "x86_64-darwin";
-    homeModule = ../modules/machines/macbook/home.nix;
-    profiles = [ ];
-    workloads = [ ];
-    identity = {
-      tailnetIp = null;
-      lanIp = null;
-      role = "client";
-      roleOneLiner = "portable operator client";
-      codename = "macbook";
-      hardware = "Intel MacBook · x86_64-darwin · standalone Home Manager";
-      primaryJob = ''
-        Portable operator console for reviewing, administering, and
-        consuming homelab services over Tailscale. Home Manager follows
-        the final x86_64-darwin release line independently of Linux hosts.
-      '';
-    };
-  };
 }

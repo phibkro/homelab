@@ -7,9 +7,10 @@
     GPU does all encode/render work, the client is thin.
 
     Workstation-only by construction: imported via
-    modules/machines/desktop/default.nix, which the darwin MacBook never imports
-    (it pulls only modules/home/profiles/pc.nix). Design + rationale:
-    docs/specs/2026-05-22-sunshine-remote-host-design.md.
+    modules/machines/desktop/default.nix, which no other host imports.
+    The Moonlight client is any tailnet device — it is not flake-managed,
+    so retiring the Mac's home-manager config did not change this service.
+    Design + rationale: docs/specs/2026-05-22-sunshine-remote-host-design.md.
   */
   services.sunshine = {
     enable = true;

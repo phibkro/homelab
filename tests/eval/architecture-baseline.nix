@@ -23,7 +23,6 @@ let
     aurora = hosts.aurora.config.home-manager.users.nori;
     pi = hosts.pi.config.home-manager.users.nori;
     pavilion = hosts.pavilion.config.home-manager.users.nori;
-    macbook = inputs.self.homeConfigurations.macbook.config;
   };
 
   hasHomePackage =
@@ -332,22 +331,15 @@ let
     lib.all (homeName: hasHomePackage homeName "just" && hasHomePackage homeName "devenv") (
       lib.attrNames homes
     )
+    && lib.all (homeName: hasHomePackage homeName "gh" == lib.elem homeName [ "workstation" ]) (
+      lib.attrNames homes
+    )
     && lib.all (
       homeName:
-      hasHomePackage homeName "gh" == lib.elem homeName [
-        "workstation"
-        "macbook"
-      ]
-    ) (lib.attrNames homes)
-    && lib.all (
-      homeName:
-      builtins.hasAttr ".claude/settings.json" homes.${homeName}.home.file == lib.elem homeName [
-        "workstation"
-        "macbook"
-      ]
+      builtins.hasAttr ".claude/settings.json" homes.${homeName}.home.file
+      == lib.elem homeName [ "workstation" ]
     ) (lib.attrNames homes)
     && homes.workstation.nori.agentNotify.enable
-    && !homes.macbook.nori.agentNotify.enable
     && builtins.hasAttr ".codex/AGENTS.md" homes.workstation.home.file
     && lib.all (packageName: hasHomePackage "workstation" packageName) [
       # `pagu` replaced `agent-dispatch` as the agent-launch surface
@@ -381,7 +373,6 @@ let
           "aurora"
           "pi"
           "pavilion"
-          "macbook"
         ];
 
   riceInterfaceCorrect =

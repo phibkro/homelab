@@ -9,7 +9,7 @@
 /**
   Claude Code agent — declarative + reusable. Imported via the PC and agentic
   development profiles on
-  every operator-attached PC (workstation + macbook). NOT imported by pi:
+  every operator-attached PC (workstation). NOT imported by pi:
   no operator agent loop, and the Node closure shouldn't land on pi's
   anti-write SSD.
 
@@ -23,9 +23,8 @@
 
 let
   inherit (pkgs.stdenv.hostPlatform) system;
-  isIntelDarwin = system == "x86_64-darwin";
-  paguInput = if isIntelDarwin then inputs.pagu-darwin else inputs.pagu;
-  tilthInput = if isIntelDarwin then inputs.tilth-darwin else inputs.tilth;
+  paguInput = inputs.pagu;
+  tilthInput = inputs.tilth;
 
   /*
     claude-code overlaid from nixpkgs-master (2026-07-25 lock: 2.1.219).
@@ -366,9 +365,7 @@ in
 {
   imports = [ inputs.claudex.homeManagerModules.default ];
 
-  # The public ClaudeX module is Linux/systemd-only today; keep the shared
-  # workstation+macbook Claude Code module importable on Darwin.
-  programs.claudex.enable = pkgs.stdenv.hostPlatform.isLinux;
+  programs.claudex.enable = true;
 
   home.packages = [
     claude-code-master # Anthropic CLI; pulls Node closure (~300 MB). Overlaid from master — see let-binding.
@@ -388,10 +385,8 @@ in
     tilth # MCP: structural file navigation (tree-sitter outlines)
     rtk # CLI proxy: noise filter on git/test/build output
     stacklit # CLI: per-repo ~250-token static codebase index
+    pkgs.opencode
   ]
-  # opencode lacks x86_64-darwin support in nixpkgs 26.05 (aarch64-darwin
-  # only). Skip on Intel Mac.
-  ++ lib.optional (pkgs.stdenv.hostPlatform.system != "x86_64-darwin") pkgs.opencode
   # pagu-box + the `box` alias both on PATH so nixpkgs-agent's solve.sh
   # can exec the launcher directly.
   ++ [
