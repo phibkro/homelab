@@ -54,6 +54,7 @@ let
       "radarr"
       "recyclarr"
       "samba"
+      "saturation-alert"
       "sonarr"
       "stremio"
       "syncthing"
@@ -190,6 +191,7 @@ let
       "workstation"
       "aurora"
     ];
+    saturation-alert = [ "workstation" ];
     sonarr = [ "workstation" ];
     stremio = [ "workstation" ];
     suwayomi = [ "aurora" ];
