@@ -79,7 +79,17 @@ in
         User = "root"; # nori-alert reads /run/secrets/ntfy-channel (mode 0444)
       };
       unitConfig.OnFailure = [ "notify@saturation-alert.service" ];
-      path = [ pkgs.coreutils ];
+      /*
+        gawk as well as coreutils: PSI values are decimals, so the threshold
+        comparison lives in awk. Copying disk-alert's `path` verbatim shipped a
+        unit that died with `awk: command not found` on its first activation —
+        the script had only ever been exercised in an interactive shell, which
+        has a PATH the unit does not.
+      */
+      path = [
+        pkgs.coreutils
+        pkgs.gawk
+      ];
       script = ''
         set -eu
 
