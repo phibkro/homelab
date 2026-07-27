@@ -23,6 +23,8 @@ in
   policy live here instead of leaking into the machine definition.
 */
 {
+  imports = [ ../../saturation-alert.nix ];
+
   home.packages = [
     pkgs.deno
     pkgs.bubblewrap
@@ -45,6 +47,7 @@ in
   ];
 
   nori.agentNotify.enable = true;
+  nori.saturationAlert.enable = true;
   home.sessionPath = [ "$HOME/.deno/bin" ];
 
   /*

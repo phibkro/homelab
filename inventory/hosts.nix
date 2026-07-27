@@ -27,7 +27,6 @@
       "gatus"
       "ntfy-notify"
       "nvidia-gpu-exporter"
-      "saturation-alert"
     ];
     identity = {
       tailnetIp = "100.81.5.122";

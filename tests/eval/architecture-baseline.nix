@@ -54,7 +54,6 @@ let
       "radarr"
       "recyclarr"
       "samba"
-      "saturation-alert"
       "sonarr"
       "stremio"
       "syncthing"
@@ -191,7 +190,6 @@ let
       "workstation"
       "aurora"
     ];
-    saturation-alert = [ "workstation" ];
     sonarr = [ "workstation" ];
     stremio = [ "workstation" ];
     suwayomi = [ "aurora" ];
@@ -343,6 +341,7 @@ let
       == lib.elem homeName [ "workstation" ]
     ) (lib.attrNames homes)
     && homes.workstation.nori.agentNotify.enable
+    && homes.workstation.nori.saturationAlert.enable
     && builtins.hasAttr ".codex/AGENTS.md" homes.workstation.home.file
     && lib.all (packageName: hasHomePackage "workstation" packageName) [
       # `pagu` replaced `agent-dispatch` as the agent-launch surface

@@ -50,7 +50,6 @@ lib.genAttrs
     "recyclarr"
     "restic-target"
     "samba"
-    "saturation-alert"
     "sonarr"
     "stremio"
     "suwayomi"
@@ -103,7 +102,6 @@ lib.genAttrs
   recyclarr = import ../modules/services/arr/manifests/recyclarr.nix;
   restic-target = import ../modules/infra/backup/restic-target/manifest.nix;
   samba = import ../modules/services/samba/manifest.nix;
-  saturation-alert = import ../modules/infra/observability/saturation-alert/manifest.nix;
   sonarr = import ../modules/services/arr/manifests/sonarr.nix;
   stremio = import ../modules/services/stremio/manifest.nix;
   suwayomi = import ../modules/services/suwayomi/manifest.nix;
