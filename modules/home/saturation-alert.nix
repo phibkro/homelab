@@ -167,6 +167,41 @@ in
       };
     };
 
+    /*
+      Route by severity, because the two channels cost the operator very
+      differently.
+
+      The warn thresholds came from clamor-manager-monitor.sh, whose only
+      output was `herdr notification show` — a desktop toast: free to glance
+      at, free to ignore. Transplanting those numbers into a unit whose output
+      is an ntfy push to a PHONE changes what they mean. Measured 2026-07-27:
+      `full avg300` sat at 27%, 22% and 13% during routine `nix flake check`
+      runs, and the merged unit fired a genuine warn at 2.54% caused by a
+      `nix build`. On a machine where `just rebuild` is constant, a 2% warn
+      tier pushed to the phone fires on ordinary work — which trains the
+      operator to ignore the channel, the exact failure this module's own
+      comments cite as the reason cpu PSI is not watched at all.
+
+      So: warn is real and worth surfacing, but on the cheap channel. Only
+      critical earns the phone.
+    */
+    desktopNotify = lib.mkEnableOption "show warn-tier breaches as a desktop notification" // {
+      default = true;
+    };
+
+    phoneOnCriticalOnly = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Send ntfy (phone) alerts only for the critical tier. Warn-tier
+        breaches go to the desktop instead. Set false to push both, accepting
+        that a heavy build will page you.
+
+        Recovery notices follow the tier that raised them: a critical that
+        clears notifies the phone, a warn that clears does not.
+      '';
+    };
+
     cooldownSeconds = lib.mkOption {
       type = lib.types.ints.positive;
       default = 300;
@@ -368,7 +403,21 @@ in
           fi
 
           if [ "$should_alert" -eq 1 ]; then
-            if [ -n "$nori_alert" ]; then
+            # Route by tier. `phone` gates the ntfy push; warn stays on the
+            # desktop so a routine `nix build` cannot page the operator.
+            phone=1
+            ${lib.optionalString cfg.phoneOnCriticalOnly ''
+              [ "$severity" = "critical" ] || phone=0
+            ''}
+
+            ${lib.optionalString cfg.desktopNotify ''
+              if command -v herdr >/dev/null 2>&1; then
+                herdr notification show "saturation $severity" \
+                  --body "$summary" >/dev/null 2>&1 || true
+              fi
+            ''}
+
+            if [ "$phone" -eq 1 ] && [ -n "$nori_alert" ]; then
               sev_word="warning"
               [ "$severity" = "critical" ] && sev_word="urgent"
               "$nori_alert" \
@@ -380,7 +429,7 @@ in
 
           $summary
           $breach_lines" || true
-            else
+            elif [ "$phone" -eq 1 ]; then
               echo "saturation-alert: nori-alert not found; skipping alert (severity=$severity $summary)" >&2
             fi
             last_alert_epoch="$now_epoch"
@@ -398,7 +447,19 @@ in
               fi
             ''}
           elif [ "$severity" = "ok" ] && [ "$last_severity" != "ok" ]; then
-            if [ -n "$nori_alert" ]; then
+            ${lib.optionalString cfg.desktopNotify ''
+              if command -v herdr >/dev/null 2>&1; then
+                herdr notification show "saturation recovered" \
+                  --body "$summary" >/dev/null 2>&1 || true
+              fi
+            ''}
+            # Recovery follows the tier that raised it: only a cleared CRITICAL
+            # earns a phone notice, otherwise a build finishing would page too.
+            recovery_phone=1
+            ${lib.optionalString cfg.phoneOnCriticalOnly ''
+              [ "$last_severity" = "critical" ] || recovery_phone=0
+            ''}
+            if [ "$recovery_phone" -eq 1 ] && [ -n "$nori_alert" ]; then
               "$nori_alert" \
                 --audience operator \
                 --severity info \
