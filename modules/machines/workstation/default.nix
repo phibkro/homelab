@@ -293,6 +293,85 @@
   systemd.oomd.enableUserSlices = true;
 
   /*
+    FOURTH CALIBRATION — the 2026-07-30 build-driven fleet kill
+    (docs/reports/2026-07-30-nix-build-memory-saturation.md).
+
+    Every calibration above bounds the USER side. This one originated on
+    the SYSTEM side, and none of them could see it: an agent ran
+    `nix build .#aeneas .#charon`; `max-jobs` was unset so it resolved to
+    `auto` = 12 concurrent derivations, and one of them
+    (ocamlPackages.saturn's checkPhase) runs dscheck — an exhaustive
+    interleaving model checker whose state space grows without bound. That
+    single builder reached 1.77 GiB RSS + 3.0 GiB swap in 13 minutes and
+    was still climbing.
+
+    WHY NO USER-SIDE KNOB COULD HAVE HELPED: PSI is charged where the
+    STALL happens, not where the allocation happened. The build took
+    shared RAM without stalling itself, so system.slice sat at 0.32%
+    full-pressure while user-1000.slice hit 23% — and oomd, which only
+    monitors user slices here, culled six agent panes / 211 processes.
+    The box recovered only because kill #6 happened to destroy the pane
+    that OWNED the nix client, aborting the build as a side effect of
+    destroying the victim. Pressure-based victim selection structurally
+    cannot target a cgroup that steals memory without stalling itself.
+
+    Hence a CEILING on the build, not another pressure trigger: a trigger
+    fires on the stall (wrong side), a ceiling fires on the allocation
+    (where the fault actually is).
+
+    MemoryHigh     = throttle FIRST. Past 4 GiB the kernel reclaims
+                     nix-daemon's OWN pages rather than the fleet's, so a
+                     legitimately hungry derivation gets slow instead of
+                     dying, and the cost lands on the build rather than on
+                     innocent agents. This is the load-bearing setting.
+    MemorySwapMax  = bounds the swap axis so throttling cannot turn into
+                     unbounded disk thrash (the 01:03-01:09 failure mode).
+    MemoryMax      = last-resort backstop, deliberately ABOVE any
+                     legitimate derivation here. MEASURED CAVEAT: in
+                     practice it is nearly unreachable, because MemoryHigh
+                     throttling slows allocation faster than the builder
+                     can climb — a 7 GiB allocation against a temporarily
+                     lowered 5 GiB max with swap disabled never tripped it
+                     in 300 s (memory.events max=0, oom_kill=0, high=55647).
+                     So treat MemoryMax as insurance, not as the mechanism;
+                     MemoryHigh is what actually contains a runaway. If it
+                     ever does trip, nix-daemon is ~20 MiB against a
+                     multi-GiB builder so oom_score selects the builder,
+                     and upstream OOMPolicy=continue keeps the daemon up
+                     (verified: daemon PID unchanged across the test).
+    max-jobs/cores = bound aggregate demand so the ceiling is rarely
+                     reached at all: 4 x 3 = 12 threads on 12 cores,
+                     replacing auto(12) x all(12).
+
+    ESCAPE HATCH for a known-huge derivation (chromium, kernel): build it
+    with `--max-jobs 1` and raise MemoryHigh here temporarily. Do NOT raise
+    MemoryHigh casually to make a build faster — that re-points the reclaim
+    cost at the fleet, which is the whole defect being fixed.
+
+    KNOWN TRADE-OFF, measured: because MemoryHigh throttles rather than
+    fails, a genuine runaway no longer takes the box down — it crawls,
+    pinned at 4 GiB resident + 8 GiB swap, indefinitely. Contained, but
+    silent: `max-silent-time`/`timeout` are both 0 (infinite) here, so
+    nothing ever surfaces it. Picking a threshold needs to know this
+    host's longest legitimately-silent build, so it is left as follow-up
+    #7 in the incident report rather than guessed at.
+
+    NOT solvable via `nix.settings.use-cgroups`: nix 2.34 has the flag,
+    but it isolates builds for accounting/cleanup and exposes no per-build
+    memory limit. NOT solvable at system.slice level either — that slice
+    legitimately carries ~15 GiB of media services (qbittorrent, jellyfin).
+  */
+  systemd.services.nix-daemon.serviceConfig = {
+    MemoryHigh = "4G";
+    MemorySwapMax = "8G";
+    MemoryMax = "12G";
+  };
+  nix.settings = {
+    max-jobs = 4;
+    cores = 3;
+  };
+
+  /*
     Station-side Gatus probes for non-HTTP services. HTTP services
     behind Caddy are auto-probed via nori.lanRoutes.<n>.monitor.
 

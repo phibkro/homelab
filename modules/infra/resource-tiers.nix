@@ -9,6 +9,35 @@
   valve. Without this, a single mis-behaving service balloons and the
   kernel OOM-killer picks targets by oom_score_adj — often killing
   Caddy or sshd while the offender survives.
+
+  !!! CURRENTLY IMPORTED BY NO HOST — THIS FILE IS INERT !!!
+
+  Verified 2026-07-30: `grep -rn resource-tiers --include=.nix .` matches
+  nothing, and `nori.resourceTier` is absent from `config.nori` on every host
+  (workstation and aurora both checked via `nix eval`). Nothing below has
+  ever taken effect on any machine.
+
+  Why it went unnoticed for so long: the flake's completeness lint globs
+  `modules/infra/<X>/default.nix` (flake.nix ~1088) to find concerns that
+  declare `options.nori.*`. This is a FLAT file, so it is invisible to
+  that check — the lint can only catch a directory-shaped concern that
+  forgot a recipe, never a module nobody imports.
+
+  Consequence, paid on 2026-07-30: no system service has a memory ceiling,
+  so an unbounded `nix build` drove the box into swap thrash and oomd
+  culled 211 agent processes instead (docs/reports/
+  2026-07-30-nix-build-memory-saturation.md). The immediate ceiling now
+  lives host-scoped in machines/workstation/default.nix; this module
+  remains the right home for the GENERAL case.
+
+  Two honest resolutions, both a real decision rather than a cleanup:
+    1. adopt — import it per host and assign tiers to the long-running
+       services (note `enableRootSlice` sets ManagedOOMSwap=kill on the
+       ROOT slice, which changes behaviour for everything; adopt that flag
+       deliberately, not incidentally), and recalibrate the numbers below
+       (they say "~64 GB workstation"; workstation actually has 31 GiB).
+    2. delete — if the per-host approach is preferred, remove the file so
+       it stops reading as an active guarantee.
 */
 
 let
@@ -99,7 +128,21 @@ in
       by oom_score_adj. Heavy/decorative tend to be the pressure
       source, so they get killed before critical units do.
     */
-    services.systemd-oomd = {
+    /*
+      Option path corrected 2026-07-30: this block read
+      `services.systemd-oomd` — an option that does not exist. The real
+      path is `systemd.oomd` (what workstation/default.nix already uses).
+      The mistake never surfaced as an eval error only because the module
+      is imported nowhere, so this `config` block is never evaluated;
+      adopting the file with the old path would have failed immediately
+      with "option does not exist".
+
+      Live proof the intent never landed: `systemd.oomd.enableSystemSlice`
+      and `enableRootSlice` both evaluate to `false` on workstation, no
+      /etc/systemd/system/system.slice.d drop-in exists, and `oomctl`
+      monitors only /user.slice and its descendants.
+    */
+    systemd.oomd = {
       enable = true;
       enableRootSlice = true;
       enableUserSlices = true;
