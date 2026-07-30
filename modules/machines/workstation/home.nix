@@ -19,6 +19,7 @@
   programs.home-manager.enable = true;
 
   home.packages = [
+    pkgs.chromium # wrapped Chromium for browser automation and ChatGPT Work agents
     pkgs.nvtopPackages.nvidia # GPU monitor (NVIDIA-only build, smaller closure)
     pkgs.ncdu # interactive disk usage browser
     pkgs.bandwhich # per-process / per-connection network throughput
