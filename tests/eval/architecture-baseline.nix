@@ -250,7 +250,6 @@ let
     ollama.ai = "workstation";
     paperless.papers = "aurora";
     prowlarr.indexers = "workstation";
-    qbittorrent.downloads = "workstation";
     radarr.movies = "workstation";
     radicale.calendar = "aurora";
     sonarr.tv = "workstation";
@@ -288,13 +287,16 @@ let
         hosts.${hostName}.config.nori.inventory.workloads.ollama.active
         && !hosts.${hostName}.config.nori.inventory.workloads.open-webui.active
         && hosts.${hostName}.config.nori.inventory.workloads.open-webui.endpoints == { }
+        && !hosts.${hostName}.config.nori.inventory.workloads.qbittorrent.active
+        && hosts.${hostName}.config.nori.inventory.workloads.qbittorrent.endpoints == { }
       )
       [
         "workstation"
         "aurora"
         "pi"
         "pavilion"
-      ];
+      ]
+    && !hosts.workstation.config.services.qbittorrent.enable;
 
   papersFetchCompatibility =
     lib.all
@@ -452,15 +454,6 @@ let
       audience = "family";
       exposeOnTailnet = true;
       auth = "forward-auth";
-      monitored = true;
-      dashboard = true;
-    };
-    downloads = {
-      port = 8083;
-      runsOn = "workstation";
-      audience = "operator";
-      exposeOnTailnet = true;
-      auth = "none";
       monitored = true;
       dashboard = true;
     };

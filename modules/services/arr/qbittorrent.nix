@@ -5,6 +5,9 @@
   ...
 }:
 
+let
+  enabled = (import ./manifests/qbittorrent.nix).active;
+in
 {
   /*
     qBittorrent — torrent download client for the *arr stack. WebUI only
@@ -37,7 +40,7 @@
          its library subdir.
   */
   services.qbittorrent = {
-    enable = true;
+    enable = enabled;
     webuiPort = 8083;
     user = "qbittorrent";
     group = "qbittorrent";
@@ -92,60 +95,66 @@
     for the library file), proving link() had silently fallen back to
     copy — every torrent in @downloads stored twice (~2.9T doubled).
   */
-  systemd.services.qbittorrent.serviceConfig.UMask = "0002";
+  systemd.services.qbittorrent = lib.mkIf enabled {
+    serviceConfig.UMask = "0002";
 
-  systemd.services.qbittorrent.preStart = lib.mkAfter ''
-    # qBittorrent doesn't auto-create Session\TempPath; if it's # multi-line: ok
-    # missing, every incomplete file_open hits "Permission denied"
-    # because the parent doesn't exist either (caught 2026-05-07).
-    mkdir -p /var/lib/qBittorrent/qBittorrent/incomplete
+    preStart = lib.mkAfter ''
+      # qBittorrent doesn't auto-create Session\TempPath; if it's # multi-line: ok
+      # missing, every incomplete file_open hits "Permission denied"
+      # because the parent doesn't exist either (caught 2026-05-07).
+      mkdir -p /var/lib/qBittorrent/qBittorrent/incomplete
 
-    ${pkgs.python3}/bin/python3 ${pkgs.writeText "qbt-configure.py" ''
-      import configparser, glob, sys
-      candidates = glob.glob('/var/lib/qBittorrent/**/qBittorrent.conf', recursive=True)
-      if not candidates:
-          print('qbt-configure: qBittorrent.conf not yet present (first start) — skipping', file=sys.stderr)
-          sys.exit(0)
-      conf = candidates[0]
-      cp = configparser.ConfigParser()
-      cp.optionxform = str  # preserve case + backslash in keys
-      cp.read(conf)
+      ${pkgs.python3}/bin/python3 ${pkgs.writeText "qbt-configure.py" ''
+        import configparser, glob, sys
+        candidates = glob.glob('/var/lib/qBittorrent/**/qBittorrent.conf', recursive=True)
+        if not candidates:
+            print('qbt-configure: qBittorrent.conf not yet present (first start) — skipping', file=sys.stderr)
+            sys.exit(0)
+        conf = candidates[0]
+        cp = configparser.ConfigParser()
+        cp.optionxform = str  # preserve case + backslash in keys
+        cp.read(conf)
 
-      sections = {
-          'Preferences': {
-              r'WebUI\LocalHostAuth': 'false',
-              r'WebUI\HostHeaderValidation': 'false',
-              r'WebUI\CSRFProtection': 'false',
-              r'WebUI\BanDuration': '0',
-              r'WebUI\MaxAuthenticationFailCount': '99999',
-          },
-          'BitTorrent': {
-              # COMPLETE on @downloads (same subvol as *arr libraries
-              # for hardlink-on-import).
-              r'Session\DefaultSavePath': '${config.nori.fs.downloads.path}/.downloads/complete',
-              # INCOMPLETE on NVMe (qBittorrent StateDirectory) for IO
-              # isolation + HDD wear-isolation. Cross-device copy on
-              # completion is the trade.
-              r'Session\TempPath':        '/var/lib/qBittorrent/qBittorrent/incomplete',
-              r'Session\TempPathEnabled': 'true',
-          },
-      }
-      for section, kv in sections.items():
-          if section not in cp:
-              cp.add_section(section)
-          for k, v in kv.items():
-              cp[section][k] = v
+        sections = {
+            'Preferences': {
+                r'WebUI\LocalHostAuth': 'false',
+                r'WebUI\HostHeaderValidation': 'false',
+                r'WebUI\CSRFProtection': 'false',
+                r'WebUI\BanDuration': '0',
+                r'WebUI\MaxAuthenticationFailCount': '99999',
+            },
+            'BitTorrent': {
+                # COMPLETE on @downloads (same subvol as *arr libraries
+                # for hardlink-on-import).
+                r'Session\DefaultSavePath': '${config.nori.fs.downloads.path}/.downloads/complete',
+                # INCOMPLETE on NVMe (qBittorrent StateDirectory) for IO
+                # isolation + HDD wear-isolation. Cross-device copy on
+                # completion is the trade.
+                r'Session\TempPath':        '/var/lib/qBittorrent/qBittorrent/incomplete',
+                r'Session\TempPathEnabled': 'true',
+            },
+        }
+        for section, kv in sections.items():
+            if section not in cp:
+                cp.add_section(section)
+            for k, v in kv.items():
+                cp[section][k] = v
 
-      with open(conf, 'w') as f:
-          # Qt INI uses `key=value` with no spaces; configparser default is
-          # `key = value`. space_around_delimiters=False matches Qt's format.
-          cp.write(f, space_around_delimiters=False)
-    ''}
-  '';
+        with open(conf, 'w') as f:
+            # Qt INI uses `key=value` with no spaces; configparser default is
+            # `key = value`. space_around_delimiters=False matches Qt's format.
+            cp.write(f, space_around_delimiters=False)
+      ''}
+    '';
+  };
 
-  users.users.qbittorrent.extraGroups = [ "media" ];
+  users.users = lib.mkIf enabled {
+    qbittorrent.extraGroups = [ "media" ];
+  };
 
-  nori.harden.qbittorrent.binds = [ config.nori.fs.downloads.path ];
+  nori.harden = lib.mkIf enabled {
+    qbittorrent.binds = [ config.nori.fs.downloads.path ];
+  };
 
   /*
     Exclude `incomplete/` — re-derivable (peers re-send chunks) and
@@ -153,8 +162,14 @@
     pinned by snapshots referencing a bygone full-incomplete state.
     Live state without it is ~31 MiB.
   */
-  nori.backups.qbittorrent = {
-    include = [ "/var/lib/qBittorrent" ];
-    exclude = [ "/var/lib/qBittorrent/qBittorrent/incomplete" ];
-  };
+  nori.backups.qbittorrent =
+    if enabled then
+      {
+        include = [ "/var/lib/qBittorrent" ];
+        exclude = [ "/var/lib/qBittorrent/qBittorrent/incomplete" ];
+      }
+    else
+      {
+        skip = "Service paused by operator; retained state and existing snapshots are unchanged.";
+      };
 }

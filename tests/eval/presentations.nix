@@ -100,7 +100,7 @@ let
     */
     && portalServices.audio.authentication == "service-native-or-exception"
     && portalServices.audio.registrationRequired
-    && portalServices.downloads.visibleTo == [ "operator" ]
+    && !(portalServices ? downloads)
     &&
       portalServices.filmder.visibleTo == [
         "public"
