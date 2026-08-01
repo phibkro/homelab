@@ -15,6 +15,10 @@ cycleOrder:
   - default
   - slow
 
+theme:
+  dark: dark-catppuccin
+  light: light-catppuccin
+
 defaultThinkingLevel: auto
 
 advisor:
