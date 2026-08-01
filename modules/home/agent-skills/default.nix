@@ -17,6 +17,7 @@
 
 let
   genexisJuciSkill = ./manage-genexis-juci;
+  simpleEnglishSkill = ./simple-english;
 
   /*
     One source, every surface. Two copies of a procedure is a representable
@@ -49,6 +50,14 @@ in
 
   home.file = lib.mkMerge [
     (bothSurfaces "manage-genexis-juci" genexisJuciSkill)
+
+    /*
+      ASD-STE100 Simplified Technical English writing skill (MIT-licensed,
+      provider-neutral prose rules). Canonical here; previously a loose
+      undeclared checkout in ~/.codex/skills only — the exact drift state
+      the herdr incident above describes.
+    */
+    (bothSurfaces "simple-english" simpleEnglishSkill)
 
     /*
       pagu and herdr publish their own agent contracts. Consume each from the
