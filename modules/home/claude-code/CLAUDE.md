@@ -103,6 +103,21 @@ Collapsing parallel systems is the win even when the diff widens.
 - Dependencies by attack surface, not count: a reliable dep already in the tree (even transitively) beats hand-rolling. Hand-roll only the security-critical core.
 - Conflicts: pick one (newer / better-tested), say why, flag the other. Never average two contradicting patterns.
 
+### Work like a lazy senior engineer
+
+- Search the repository and installed tooling for an existing command, scaffold,
+  generator, library, or established pattern before hand-writing infrastructure.
+- Reuse or adapt license-compatible upstream code and techniques with source and
+  license provenance. Never copy an unattributed snippet or let copied code
+  silently define project semantics.
+- Automate deterministic, bounded, repeatable work when the automation is
+  cheaper to own than repeated manual execution.
+- Stop automating when it becomes an unbounded side quest; implement the
+  smallest direct solution that satisfies the frozen contract and record the
+  deferred automation opportunity.
+- Report which scaffold, command, dependency, or prior art was evaluated, what
+  was reused, and why any relevant established option was rejected.
+
 ### Constraints are generative, not only limiting
 A constraint is not just a wall to prune the space; it is structure the solution EXPLOITS. No Free Lunch: performance over random is bought only by exploiting problem structure, so an invariant (a type, a law) is what lets an optimiser fire.
 Reach for the constraint that buys the capability, don't only minimise constraints.
@@ -121,10 +136,15 @@ After a significant step, restate: done / verified / left. Lost the thread → s
 Almost any tool is available ad-hoc: `nix shell nixpkgs#<pkg> -c <cmd>` (e.g. `nix shell nixpkgs#jq -c jq .`) or `nix run nixpkgs#<pkg> -- <args>`. "command not found" on PATH is rarely a dead end; reach for nixpkgs first (node, pnpm, ripgrep, jq, shellcheck, …). Inside a project, prefer its own dev shell (`nix develop`, or direnv auto-loads from `.envrc`): it pins the exact toolchain via the project's `flake.lock`.
 
 ### Delegation, sandboxing, observability
-Claude Code's native subagents share this process's provider endpoint, so they cannot route per-worker to a different provider. Cross-provider work is separate processes, never one native Agent tree (homelab ADR-0008).
+OMP is the preferred multi-provider supervisor when it is available. Its task
+agents are internal delegation; separately supervised work remains one agent
+session per Herdr tab, with the tab as the organizational unit. Claude Code's
+native subagents share this process's provider endpoint; use OMP model roles or
+separate Herdr sessions when a genuinely different provider perspective is
+required.
 
-On the Linux workstation every agent runs inside `pagu`, which owns the box (the enforcement point) and the outside gate. Because pagu is the enforceable outer boundary, Claude's own permission bypass inside a box is acceptable — the sandbox, not the harness prompt, is the security control. Sandbox authority is monotone: a child may narrow it, never widen it; a read-only parent stays read-only and a network-denied parent cannot launch a cloud child. Use `pagu <harness>` for a gated session and `pagu box -- COMMAND ...` for anything else; the bare `pagu-box` executable is compatibility-only. The stable Intel Mac has only that compatibility path.
-
-Observable work runs as **one Claude session per Herdr tab**; the tab is the organizational unit. Keep delegation to at most two concurrent delegated workers and depth two (lead → worker → reviewer), and give each worker explicit file or worktree ownership.
-
-Read the `pagu` and `herdr` skills for procedure, and treat `pagu --help` / `herdr --help` as the authority for the installed version — do not reconstruct flags from memory or from a repository's own copy of these rules.
+Do not impose a fixed worker ceiling. Scale concurrency to observed machine
+capacity, give every writer explicit file or worktree ownership, and reduce
+concurrency when the real resource consumers show the machine is saturated.
+Read the `herdr` skill for lifecycle procedure and treat installed help as the
+authority rather than reconstructing commands from memory.
