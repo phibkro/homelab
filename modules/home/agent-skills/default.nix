@@ -18,6 +18,7 @@
 let
   genexisJuciSkill = ./manage-genexis-juci;
   simpleEnglishSkill = ./simple-english;
+  writingPythonSkill = ./writing-python;
 
   /*
     One source, every surface. Two copies of a procedure is a representable
@@ -58,6 +59,15 @@ in
       the herdr incident above describes.
     */
     (bothSurfaces "simple-english" simpleEnglishSkill)
+
+    /*
+      Idiomatic + performant Python: Hettinger's transformation table, the
+      ruff families that enforce part of it, and the patterns NO linter
+      catches. That last list is the reason the skill exists — ruff has 968
+      rules and implements about 40% of the talk, and it catches none of the
+      `range(len(...))` rewrites, so those must be read for by eye.
+    */
+    (bothSurfaces "writing-python" writingPythonSkill)
 
     /*
       pagu and herdr publish their own agent contracts. Consume each from the
