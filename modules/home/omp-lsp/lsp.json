@@ -1,0 +1,93 @@
+{
+  "idleTimeoutMs": 600000,
+  "servers": {
+    "typescript-language-server": {
+      "disabled": true
+    },
+    "nil": {
+      "disabled": true
+    },
+    "pbk-typescript": {
+      "command": "omp-typescript-language-server",
+      "args": [],
+      "fileTypes": [
+        ".ts",
+        ".tsx",
+        ".mts",
+        ".cts",
+        ".js",
+        ".jsx",
+        ".mjs",
+        ".cjs"
+      ],
+      "rootMarkers": [
+        "tsconfig.json",
+        "jsconfig.json",
+        "package.json"
+      ],
+      "warmupTimeoutMs": 60000
+    },
+    "pyright": {
+      "disabled": true
+    },
+    "basedpyright": {
+      "disabled": true
+    },
+    "pylsp": {
+      "disabled": true
+    },
+    "ty": {
+      "command": "omp-ty",
+      "args": [
+        "server"
+      ],
+      "fileTypes": [
+        ".py",
+        ".pyi"
+      ],
+      "rootMarkers": [
+        "ty.toml",
+        "pyproject.toml",
+        ".git"
+      ],
+      "warmupTimeoutMs": 60000
+    },
+    "ruff": {
+      "command": "ruff",
+      "args": [
+        "server"
+      ],
+      "fileTypes": [
+        ".py",
+        ".pyi"
+      ],
+      "rootMarkers": [
+        "ruff.toml",
+        ".ruff.toml",
+        "pyproject.toml",
+        ".git"
+      ],
+      "warmupTimeoutMs": 60000,
+      "isLinter": true
+    },
+    "rust-analyzer": {
+      "command": "rust-analyzer",
+      "fileTypes": [
+        ".rs"
+      ],
+      "rootMarkers": [
+        "Cargo.toml",
+        "rust-project.json",
+        ".git"
+      ],
+      "warmupTimeoutMs": 120000,
+      "capabilities": {
+        "flycheck": true,
+        "ssr": true,
+        "expandMacro": true,
+        "runnables": true,
+        "relatedTests": true
+      }
+    }
+  }
+}

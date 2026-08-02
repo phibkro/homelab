@@ -10,5 +10,6 @@
     ../../agent-notify
     ../../agent-skills
     ../../claude-code
+    ../../omp-lsp
   ];
 }
