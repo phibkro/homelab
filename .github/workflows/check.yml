@@ -67,6 +67,14 @@ jobs:
   # deployment credentials and never activates a host.
   pi-build:
     runs-on: ubuntu-24.04-arm
+    # Mapped here because the secrets context is unavailable to a step-level
+    # `if`, and the publish step must skip cleanly while these are unset.
+    env:
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      NIX_SIGNING_KEY: ${{ secrets.NIX_SIGNING_KEY }}
+      CACHE_BUCKET: ${{ vars.HOMELAB_CACHE_BUCKET }}
+      CACHE_ENDPOINT: ${{ vars.HOMELAB_CACHE_ENDPOINT }}
     steps:
       - uses: actions/checkout@v5
 
@@ -77,10 +85,34 @@ jobs:
             experimental-features = nix-command flakes
 
       - name: build Pi system closure
-        run: >-
-          nix build
-          .#nixosConfigurations.pi.config.system.build.toplevel
-          --no-link
-          --print-build-logs
-          --option max-jobs 1
-          --option cores 2
+        id: closure
+        run: |
+          path="$(
+            nix build \
+              .#nixosConfigurations.pi.config.system.build.toplevel \
+              --no-link \
+              --print-out-paths \
+              --print-build-logs \
+              --option max-jobs 1 \
+              --option cores 2
+          )"
+          echo "path=${path}" >> "${GITHUB_OUTPUT}"
+
+      # This runner is the only native aarch64 builder in the fleet.
+      # Publishing the closure lets the workstation substitute it instead of
+      # recompiling linux-rpi under binfmt emulation, which is where that
+      # cost currently lands. Skipped while the R2 credentials are unset, so
+      # the job stays green until they exist.
+      - name: publish closure to the homelab cache
+        if: env.R2_ACCESS_KEY_ID != '' && env.CACHE_BUCKET != ''
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          umask 077
+          key="$(mktemp)"
+          trap 'rm -f "${key}"' EXIT
+          printf '%s' "${NIX_SIGNING_KEY}" > "${key}"
+          nix copy \
+            --to "s3://${CACHE_BUCKET}?endpoint=${CACHE_ENDPOINT}&region=auto&compression=zstd&secret-key=${key}" \
+            "${{ steps.closure.outputs.path }}"
