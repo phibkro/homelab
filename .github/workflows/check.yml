@@ -69,12 +69,17 @@ jobs:
     runs-on: ubuntu-24.04-arm
     # Mapped here because the secrets context is unavailable to a step-level
     # `if`, and the publish step must skip cleanly while these are unset.
+    #
+    # The endpoint is a secret rather than a variable although it is not a
+    # credential: it embeds the Cloudflare account id, it is interpolated into
+    # a command line, and this repository is public, so only a secret is
+    # masked in the build log.
     env:
       R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
       R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
       NIX_SIGNING_KEY: ${{ secrets.NIX_SIGNING_KEY }}
+      CACHE_ENDPOINT: ${{ secrets.HOMELAB_CACHE_ENDPOINT }}
       CACHE_BUCKET: ${{ vars.HOMELAB_CACHE_BUCKET }}
-      CACHE_ENDPOINT: ${{ vars.HOMELAB_CACHE_ENDPOINT }}
     steps:
       - uses: actions/checkout@v5
 
