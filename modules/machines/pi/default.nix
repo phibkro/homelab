@@ -25,11 +25,14 @@
   networking.useDHCP = lib.mkDefault true;
 
   /*
-    Garnix's cached `linux-rpi` can omit modules requested by the upstream
-    Raspberry Pi hardware module (notably `dw-hdmi`). Allow the post-build
-    shrink step to skip those absent modules instead of forcing an hour-long
-    emulated kernel rebuild. A real boot-module regression can therefore be
-    silent; the trade-off is specific to this appliance image path.
+    Allows the post-build shrink step to skip initrd modules the upstream
+    Raspberry Pi hardware module requests but the kernel does not provide
+    (notably `dw-hdmi`), so a real boot-module regression is silent here.
+
+    This was adopted to accept a prebuilt `linux-rpi` that omitted those
+    modules. That kernel is now compiled from source, so the omission may no
+    longer occur; dropping this line and letting the CI pi-build job fail
+    loudly is the check that has not been run yet.
   */
   boot.initrd.allowMissingModules = true;
 }

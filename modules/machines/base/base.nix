@@ -22,20 +22,13 @@
 
       /*
         Binary cache substituters. cache.nixos.org is the default
-        upstream cache (NixOS module sets it implicitly). garnix.io
-        is a community-built CI cache that covers many derivations
-        cache.nixos.org doesn't — notably, aarch64-linux Pi-specific
-        builds (linux-rpi kernel, etc).
+        upstream cache (NixOS module sets it implicitly).
 
-        Confirmed coverage 2026-04-28: garnix had the linux-rpi
-        kernel cached when cache.nixos.org didn't, which would have
-        saved 60-90 min of qemu-emulated compile during pi
-        sd-image build had it been configured beforehand. Adding
-        so future Pi rebuilds, kernel bumps, etc don't re-pay that
-        cost.
+        Nothing here covers aarch64-linux Pi-specific builds, so the
+        linux-rpi kernel is compiled from source whenever it changes.
+        The CI pi-build job absorbs that on a native ARM runner.
       */
       extra-substituters = [
-        "https://cache.garnix.io"
         /*
           nixpkgs-cuda-ci builds nixpkgs with cudaSupport=true and
           publishes here. Without it, every CUDA-touching derivation
@@ -46,7 +39,6 @@
         "https://cache.nixos-cuda.org"
       ];
       extra-trusted-public-keys = [
-        "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
         "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
       ];
     };
