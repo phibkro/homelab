@@ -14,12 +14,15 @@ const DAY = 24 * 60 * 60;
  * Pi system closure here; the workstation substitutes it instead of
  * recompiling linux-rpi under binfmt emulation.
  *
- * The bucket is deliberately PRIVATE — no `domains` entry, so no custom
- * domain and no public hostname. A published Nix cache discloses the exact
- * package set and versions a host runs, and this bucket holds closures for a
- * machine that also serves the entry plane. Readers authenticate with the S3
- * API instead. Omitting public access also avoids the managed bucket-policy
- * step that failed during the occupational-health deploy.
+ * Reads are public at cache.phibkro.org, writes stay credentialed through the
+ * S3 API. That split is what lets the workstation carry a plain substituter
+ * URL with no credentials on the machine.
+ *
+ * Public here means the same thing it means for cache.nixos.org: objects are
+ * addressed by store hash and the bucket cannot be listed, so fetching an
+ * object requires already knowing its hash. It is not a secret store — anyone
+ * who can derive a store path can fetch it — which is why nothing that is
+ * actually secret may be built into a published closure.
  *
  * Nothing here is bound to a Worker: `nix copy` speaks S3 directly, so the
  * bucket is the whole surface.
@@ -38,6 +41,11 @@ export default Alchemy.Stack(
       // builds of public open-source packages, and an "eu" jurisdiction moves
       // the S3 endpoint to a different hostname for every client.
       locationHint: "weur",
+
+      // The read path. Serving from a domain we own rather than the generated
+      // r2.dev hostname means the substituter URL in base.nix survives a move
+      // to different storage. The zone is inferred from the hostname.
+      domains: [{ name: "cache.phibkro.org", minTLS: "1.2" }],
 
       lifecycleRules: [
         {
