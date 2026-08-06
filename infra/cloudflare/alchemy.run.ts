@@ -1,5 +1,6 @@
 import * as Alchemy from "alchemy";
 import * as Cloudflare from "alchemy/Cloudflare";
+import * as Output from "alchemy/Output";
 import * as State from "alchemy/State";
 import * as Effect from "effect/Effect";
 
@@ -64,9 +65,12 @@ export default Alchemy.Stack(
     });
 
     // Consumed as GitHub repository variables by .github/workflows/check.yml.
+    // The account id is an Output, not a string: it is unknown until deploy
+    // time, so it has to be composed with `Output.interpolate` rather than a
+    // plain template literal, which would coerce it to "[object Object]".
     return {
       bucket: cache.bucketName,
-      endpoint: `${cache.accountId}.r2.cloudflarestorage.com`,
+      endpoint: Output.interpolate`${cache.accountId}.r2.cloudflarestorage.com`,
     };
   }),
 );
