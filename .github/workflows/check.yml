@@ -118,6 +118,11 @@ jobs:
           key="$(mktemp)"
           trap 'rm -f "${key}"' EXIT
           printf '%s' "${NIX_SIGNING_KEY}" > "${key}"
+          # want-mass-query and priority are recorded in nix-cache-info by the
+          # first upload and are awkward to change afterwards. Priority 45 puts
+          # this cache after cache.nixos.org (40), which is right: upstream
+          # serves almost everything, and this bucket only adds the aarch64
+          # paths upstream does not build.
           nix copy \
-            --to "s3://${CACHE_BUCKET}?endpoint=${CACHE_ENDPOINT}&region=auto&compression=zstd&secret-key=${key}" \
+            --to "s3://${CACHE_BUCKET}?endpoint=${CACHE_ENDPOINT}&region=auto&compression=zstd&want-mass-query=true&priority=45&secret-key=${key}" \
             "${{ steps.closure.outputs.path }}"
