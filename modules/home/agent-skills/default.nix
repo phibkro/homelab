@@ -19,6 +19,7 @@ let
   genexisJuciSkill = ./manage-genexis-juci;
   simpleEnglishSkill = ./simple-english;
   writingPythonSkill = ./writing-python;
+  effectV4Skill = ./effect-v4-engineer;
 
   /*
     One source, every surface. Two copies of a procedure is a representable
@@ -68,6 +69,21 @@ in
       `range(len(...))` rewrites, so those must be read for by eye.
     */
     (bothSurfaces "writing-python" writingPythonSkill)
+
+    /*
+      Effect v4 as the default application language: schema boundaries,
+      services and Layers, and the module-role classification that stops an
+      agent reaching for ambient plain TypeScript. Canonical here; previously
+      an undeclared checkout in ~/.codex/skills only, so Claude could not read
+      it at all while Codex could — the same one-surface drift the herdr and
+      simple-english entries above record.
+
+      It matters more than most: v4 is in beta, its ecosystem still publishes
+      v3 under `latest`, and an agent working from remembered v3 APIs writes
+      code that type-checks against documentation and fails against the
+      installed package.
+    */
+    (bothSurfaces "effect-v4-engineer" effectV4Skill)
 
     /*
       pagu and herdr publish their own agent contracts. Consume each from the
