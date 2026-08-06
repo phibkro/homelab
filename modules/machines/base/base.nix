@@ -26,7 +26,10 @@
 
         Nothing here covers aarch64-linux Pi-specific builds, so the
         linux-rpi kernel is compiled from source whenever it changes.
-        The CI pi-build job absorbs that on a native ARM runner.
+        That compile lands on this machine under binfmt emulation,
+        because pi closures are built on the workstation and pushed;
+        the CI pi-build job proves the same closure on a native ARM
+        runner but keeps nothing.
       */
       extra-substituters = [
         /*
