@@ -136,11 +136,77 @@ Reproduced and fixed against real restic repos, not stubs.
    (the 2026-07-18 quoting regression does not recur — the wrapper forwards
    `"$@"`).
 
-4. `nix fmt` clean, `nix flake check` green.
+4. `nix fmt` clean. **`nix flake check` is NOT green — and is not green on the
+   base either.** Every one of the 33 declared checks was built individually on
+   pristine `origin/main` (d6cd4d3) and on this branch, capturing each exit code
+   directly from `nix build`:
+
+   | | base (d6cd4d3) | + this fix |
+   |---|---|---|
+   | pass | 31 | 31 |
+   | fail | 2 | 2 |
+   | **differ** | — | **0** |
+
+   The two failures are `every-service-has-fs-hardening` and `docs-fresh`,
+   identical with and without this change (see § Pre-existing base breakage).
+   `e2e-restic-backup` — the check that exercises this concern end to end
+   (`initialize` → `backup` → `forget --prune` → snapshot readback, now through
+   the wrapper) — passes on both.
+
+   An earlier revision of this report claimed `nix flake check` was green. That
+   was wrong: the command was piped into `tail`, so the exit status read was
+   `tail`'s, not nix's. Corrected here, and the per-check table above replaces
+   the single aggregate status.
 
 **Not verified here:** a real SFTP handshake to aurora, or an actual
 backup↔check collision on the live host. This is a disposable clone with no
 tailnet and no `/run/secrets`.
+
+## Pre-existing base breakage (not from this change)
+
+`main` was already red when this branch was cut. Nothing below is caused by, or
+fixed by, this change — recorded so the PR's red checks are not misread as this
+fix's fault.
+
+1. **`every-service-has-fs-hardening`** — `✗ modules/services/arr/qbittorrent.nix:
+   no nori.harden.<name> declaration.` The module *does* declare it, at
+   `qbittorrent.nix:155`, as `nori.harden = lib.mkIf enabled { … }`. The guard
+   is a textual `grep -qE 'nori\.harden\.'` (`flake.nix:1027`), which cannot see
+   through `lib.mkIf`. Broken by `a1209c3` ("pause qbittorrent declaratively",
+   2026-07-31).
+
+2. **`docs-fresh`** — `docs/generated/backups.md` still carries the
+   `qbittorrent` row that the generator no longer emits, because the same commit
+   made `nori.backups.qbittorrent` conditional on `enabled`. Regenerate with
+   `nix build .#docs-backups`.
+
+3. **CI `pi-build`** — caddy vendor hash mismatch
+   (`sha256-8yZDrejNKsaUnUaTUFYbarWNmxafqp2z2rWo+XRsxV8=` vs
+   `sha256-hEHgAG0F0ozHRAPuxEqLyTATBrE+pajeXDiSNwniorg=`). Already fixed by
+   `57385f4` on the operator's working branch `fix/nix-daemon-memory-ceiling`;
+   that commit is not on `main`, which is what this PR targets.
+
+Worth noting for (1): a grep-based guard sits on the *convention* rung of the
+derivation ladder — it enforces the spelling of an intent, not the intent. The
+declaration it rejects is correct; the check is what drifted. Promoting it to
+read the evaluated `config.nori.harden` attrset would make this class of false
+positive unrepresentable. Out of scope here.
+
+## Applies cleanly to the operator's working tree
+
+This branch was cut from `origin/main` (d6cd4d3), but the live working tree is
+`fix/nix-daemon-memory-ceiling` — two commits ahead, plus uncommitted work (new
+`modules/services/hindsight/`, `inventory/{hosts,workloads}.nix`, …). Verified
+against a reconstruction of that exact state (their branch + their uncommitted
+diff + their untracked files) with this fix cherry-picked on top:
+
+* no textual conflict — neither the two commits nor the uncommitted changes
+  touch `modules/infra/backup/`;
+* all 19 workstation and 8 aurora restic backup units, including
+  `media-irreplaceable-onetouch`, resolve to the same wrapper store path
+  (`…-w5fjn2zm5aah8s06wd8gklhlr6bpz6g9-restic`) that was built and tested above;
+* the new `hindsight` service declares `nori.backups.hindsight.skip`, so it adds
+  no restic unit and does not interact with this change.
 
 ## What to watch
 
