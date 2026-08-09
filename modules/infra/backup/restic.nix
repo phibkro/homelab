@@ -6,6 +6,11 @@
 }:
 
 let
+  # Same lock-retrying restic the backup units run — `check` takes the
+  # EXCLUSIVE lock that the 2026-08-09 incident collided with, so it has
+  # to queue behind a running backup for exactly the same reason.
+  resticCli = import ./restic-cli.nix pkgs;
+
   /*
     Shared (job, target) iteration for the weekly + monthly check
     scripts: emit one `check_repo` call per pair, carrying the
@@ -77,8 +82,8 @@ let
             # older than 30min, so a concurrent run is untouched. Same rationale
             # as the backup units' pre-unlock — but INSIDE the check so it's
             # structural, not a separate ExecStartPre that could drift.
-            ${envPrefix}${pkgs.restic}/bin/restic ${extraOpts} -r ${lib.escapeShellArg repo} unlock >/dev/null 2>&1 || true
-            ${pkgs.restic}/bin/restic ${extraOpts} -r ${lib.escapeShellArg repo} check ${flags}
+            ${envPrefix}${lib.getExe resticCli} ${extraOpts} -r ${lib.escapeShellArg repo} unlock >/dev/null 2>&1 || true
+            ${lib.getExe resticCli} ${extraOpts} -r ${lib.escapeShellArg repo} check ${flags}
           ); then
             :
           else
