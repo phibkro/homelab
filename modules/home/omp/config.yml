@@ -1,0 +1,65 @@
+modelRoles:
+  default: openai-codex/gpt-5.6-sol
+  smol: openai-codex/gpt-5.6-luna:high
+  slow: anthropic/claude-opus-5:medium
+  plan: openai-codex/gpt-5.6-sol:high
+  task: openai-codex/gpt-5.6-luna:max
+  advisor: anthropic/claude-fable-5:high
+
+modelProviderOrder:
+  - openai-codex
+  - anthropic
+
+cycleOrder:
+  - smol
+  - default
+  - slow
+
+theme:
+  dark: dark-catppuccin
+  light: light-catppuccin
+
+defaultThinkingLevel: auto
+
+advisor:
+  enabled: false
+  subagents: false
+
+task:
+  eager: preferred
+  batch: true
+  enableEffort: true
+  maxConcurrency: 3
+  maxRecursionDepth: 2
+  maxEffort: max
+  isolation:
+    mode: auto
+    apply: false
+
+bash:
+  autoBackground:
+    enabled: true
+    thresholdMs: 60000
+
+eval:
+  py: false
+  js: true
+
+debug:
+  enabled: true
+
+compaction:
+  enabled: true
+  strategy: snapcompact
+  midTurnEnabled: true
+  autoContinue: true
+
+memory:
+  backend: mnemopi
+
+secrets:
+  enabled: true
+
+startup:
+  setupWizard: false
+  showSplash: false
