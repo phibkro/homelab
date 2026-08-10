@@ -55,16 +55,19 @@ Scope {
         id: notificationWindow
         visible: root.normalNotifications.length > 0
         color: "transparent"
-        implicitWidth: 460
+        implicitWidth: 680
         implicitHeight: Math.max(1, notificationStack.implicitHeight)
         focusable: false
+        mask: Region {
+            item: notificationStack
+        }
 
         anchors {
             top: true
             right: true
         }
         margins.top: 220
-        margins.right: 20
+        margins.right: -160
 
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.exclusionMode: ExclusionMode.Ignore
@@ -72,7 +75,8 @@ Scope {
 
         Column {
             id: notificationStack
-            width: parent.width
+            x: 40
+            width: 460
             spacing: 12
 
             Repeater {
@@ -131,15 +135,35 @@ Scope {
             && notification.urgency !== NotificationUrgency.Critical
             && notification.expireTimeout !== 0
         readonly property int cardHeight: Math.max(112, content.implicitHeight + 30)
+        readonly property real minDragOffset: -40
+        readonly property real maxDragOffset: 180
+        readonly property real dismissVelocity: 400
+        property real dragOffset: 0
+        property bool dismissAsExpired: false
+        property bool dismissing: false
 
         width: 460
         height: isPresented ? cardHeight : 0
         visible: isPresented
         x: 40
         opacity: 0
+        transform: Translate {
+            x: card.dragOffset
+        }
+        Behavior on dragOffset {
+            enabled: !dismissAnimation.running
+            SpringAnimation {
+                spring: 4
+                damping: 0.35
+                epsilon: 0.2
+            }
+        }
 
         function resetPresentation(): void {
             expiryTimer.stop();
+            dismissAnimation.stop();
+            card.dismissing = false;
+            card.dragOffset = 0;
             if (!card.isPresented)
                 return;
             card.x = 40;
@@ -148,6 +172,16 @@ Scope {
             if (card.shouldExpire)
                 expiryTimer.start();
             cardShape.requestPaint();
+        }
+
+        function dismissWithMotion(asExpired: bool): void {
+            if (!card.hasNotification || card.dismissing)
+                return;
+            expiryTimer.stop();
+            enterAnimation.stop();
+            card.dismissAsExpired = asExpired;
+            card.dismissing = true;
+            dismissAnimation.restart();
         }
 
         Component.onCompleted: resetPresentation()
@@ -171,16 +205,38 @@ Scope {
                 easing.type: Easing.OutCubic
             }
         }
+        SequentialAnimation {
+            id: dismissAnimation
+            NumberAnimation {
+                target: card
+                property: "dragOffset"
+                to: -24
+                duration: 110
+                easing.type: Easing.OutCubic
+            }
+            NumberAnimation {
+                target: card
+                property: "dragOffset"
+                to: 520
+                duration: 300
+                easing.type: Easing.InCubic
+            }
+            onFinished: {
+                if (!card.hasNotification)
+                    return;
+                if (card.dismissAsExpired)
+                    card.notification.expire();
+                else
+                    card.notification.dismiss();
+            }
+        }
 
         Timer {
             id: expiryTimer
             interval: card.requestedTimeout
             repeat: false
             running: false
-            onTriggered: {
-                if (card.hasNotification)
-                    card.notification.expire();
-            }
+            onTriggered: card.dismissWithMotion(true)
         }
 
         Connections {
@@ -236,16 +292,92 @@ Scope {
             onWidthChanged: requestPaint()
             onHeightChanged: requestPaint()
         }
+        MouseArea {
+            id: dragArea
+            anchors.fill: parent
+            enabled: !card.dismissing
+            cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+            property real pressSceneX: 0
+            property real dragStartOffset: 0
+            property real lastSceneX: 0
+            property double pressStartedMs: 0
+            property double lastSampleMs: 0
+            property real releaseVelocity: 0
+            property bool moved: false
 
-        Rectangle {
-            x: 8
+            onPressed: mouse => {
+                const sceneX = mapToGlobal(mouse.x, mouse.y).x;
+                const now = Date.now();
+                pressSceneX = sceneX;
+                dragStartOffset = card.dragOffset;
+                lastSceneX = sceneX;
+                pressStartedMs = now;
+                lastSampleMs = now;
+                releaseVelocity = 0;
+                moved = false;
+                expiryTimer.stop();
+            }
+            onPositionChanged: mouse => {
+                if (!pressed)
+                    return;
+                const sceneX = mapToGlobal(mouse.x, mouse.y).x;
+                const now = Date.now();
+                const delta = sceneX - pressSceneX;
+                const elapsed = now - lastSampleMs;
+                moved = moved || Math.abs(delta) >= 6;
+                card.dragOffset = Math.max(card.minDragOffset, Math.min(card.maxDragOffset, dragStartOffset + delta));
+                if (elapsed > 0) {
+                    const instantaneousVelocity = (sceneX - lastSceneX) * 1000 / elapsed;
+                    releaseVelocity = releaseVelocity * 0.35 + instantaneousVelocity * 0.65;
+                }
+                lastSceneX = sceneX;
+                lastSampleMs = now;
+            }
+            onReleased: {
+                const now = Date.now();
+                const velocity = now - lastSampleMs <= 80 ? releaseVelocity : 0;
+                const isClick = !moved && now - pressStartedMs <= 400;
+                if (isClick || velocity >= card.dismissVelocity) {
+                    card.dismissWithMotion(false);
+                } else {
+                    card.dragOffset = 0;
+                    if (card.shouldExpire)
+                        expiryTimer.restart();
+                }
+            }
+            onCanceled: {
+                card.dragOffset = 0;
+                if (card.shouldExpire)
+                    expiryTimer.restart();
+            }
+        }
+
+        Canvas {
+            id: badgeShape
+            x: 13
             y: 16
             width: 48
             height: 58
-            rotation: -8
-            color: "#0c0f1d"
-            border.color: card.accent
-            border.width: 3
+            readonly property color accent: card.accent
+
+            onAccentChanged: requestPaint()
+            onPaint: {
+                const context = getContext("2d");
+                const inset = 1.5;
+                const diagonal = 8;
+                context.clearRect(0, 0, width, height);
+                context.beginPath();
+                context.moveTo(inset, inset);
+                context.lineTo(width - diagonal - inset, inset);
+                context.lineTo(width - inset, height - inset);
+                context.lineTo(diagonal + inset, height - inset);
+                context.closePath();
+                context.fillStyle = "#0c0f1d";
+                context.fill();
+                context.lineWidth = 3;
+                context.strokeStyle = accent;
+                context.stroke();
+            }
 
             Text {
                 anchors.centerIn: parent
@@ -258,7 +390,6 @@ Scope {
                 font.family: "Montserrat"
                 font.pixelSize: 24
                 font.weight: Font.Bold
-                rotation: 8
             }
         }
 
@@ -351,28 +482,6 @@ Scope {
             }
         }
 
-        Text {
-            anchors {
-                top: parent.top
-                right: parent.right
-                topMargin: 8
-                rightMargin: 15
-            }
-            text: "×"
-            color: card.accent
-            font.family: "Montserrat"
-            font.pixelSize: 22
-
-            MouseArea {
-                anchors.fill: parent
-                anchors.margins: -8
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    if (card.hasNotification)
-                        card.notification.dismiss();
-                }
-            }
-        }
     }
 
     component LayerOsdCard: Item {
@@ -474,15 +583,29 @@ Scope {
             }
         }
 
-        Rectangle {
-            x: 9
+        Canvas {
+            x: 14
             anchors.verticalCenter: parent.verticalCenter
             width: 42
             height: 48
-            rotation: -8
-            color: "#0c0f1d"
-            border.color: "#9cf7ff"
-            border.width: 2
+
+            onPaint: {
+                const context = getContext("2d");
+                const inset = 1;
+                const diagonal = 7;
+                context.clearRect(0, 0, width, height);
+                context.beginPath();
+                context.moveTo(inset, inset);
+                context.lineTo(width - diagonal - inset, inset);
+                context.lineTo(width - inset, height - inset);
+                context.lineTo(diagonal + inset, height - inset);
+                context.closePath();
+                context.fillStyle = "#0c0f1d";
+                context.fill();
+                context.lineWidth = 2;
+                context.strokeStyle = "#9cf7ff";
+                context.stroke();
+            }
 
             Text {
                 anchors.centerIn: parent
@@ -491,7 +614,6 @@ Scope {
                 font.family: "Montserrat"
                 font.pixelSize: 20
                 font.weight: Font.Bold
-                rotation: 8
             }
         }
 

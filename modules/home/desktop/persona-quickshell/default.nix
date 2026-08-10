@@ -60,6 +60,11 @@ let
         substituteInPlace "$out/shell.qml" \
           --replace-fail '    Lay.Searchapp {}' $'    Lay.Searchapp {}\n    Lay.Notifications {}'
 
+        substituteInPlace "$out/Layers/AppDrawer.qml" \
+          --replace-fail $'                    id: bladesContainer\n                    anchors.left: mainCircle.right' $'                    id: bladesContainer\n                    property int hoveredBlade: -1\n                    anchors.left: mainCircle.right' \
+          --replace-fail $'                            id: blade\n                            width: 120' $'                            id: blade\n                            z: bladesContainer.hoveredBlade === index ? 100 : index\n                            opacity: bladesContainer.hoveredBlade < 0 || bladesContainer.hoveredBlade === index ? 1 : 0.45\n                            Behavior on opacity {\n                                NumberAnimation {\n                                    duration: 140\n                                    easing.type: Easing.OutCubic\n                                }\n                            }\n                            width: 120' \
+          --replace-fail $'                                onHoveredChanged: {\n                                    if (hovered)\n                                        autoHideTimer.stop();\n                                }' $'                                onHoveredChanged: {\n                                    if (hovered) {\n                                        bladesContainer.hoveredBlade = index;\n                                        autoHideTimer.stop();\n                                    } else if (bladesContainer.hoveredBlade === index) {\n                                        bladesContainer.hoveredBlade = -1;\n                                    }\n                                }'
+
         test "$(${pkgs.gnugrep}/bin/grep -c '^    FontLoader {$' "$out/Layers/OptionsList.qml")" -eq 2
         sed -i '/^    FontLoader {$/,/^    }$/d' "$out/Layers/OptionsList.qml"
         ! ${pkgs.gnugrep}/bin/grep -q '^    FontLoader {$' "$out/Layers/OptionsList.qml"
@@ -72,6 +77,7 @@ let
           --replace-fail 'font.family: "Microsoft Yahei"' 'font.family: "Montserrat"' \
           --replace-fail 'font.family: "Bahnschrift Condensed"' 'font.family: "Roboto Condensed"'
         substituteInPlace "$out/Layers/Clock.qml" \
+          --replace-fail '                    text: Info.BatteryInfo.icon + " " + Info.BatteryInfo.percentageString' $'                    visible: Info.BatteryInfo.available\n                    text: Info.BatteryInfo.icon + " " + Info.BatteryInfo.percentageString' \
           --replace-fail 'font.family: "Microsoft Yahei"' 'font.family: "Montserrat"' \
           --replace-fail 'font.family: "Bahnschrift Condensed"' 'font.family: "Roboto Condensed"' \
           --replace-fail 'font.family: "JetBrainsMono Nerd Font"' 'font.family: "JetBrainsMono Nerd Font Mono"'

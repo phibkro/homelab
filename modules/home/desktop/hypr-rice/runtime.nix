@@ -396,6 +396,46 @@ let
       icon = "applets-screenshooter-symbolic";
     };
 
+    "testing.notification.normal" = mkCommand {
+      label = "Testing: Notification — Normal";
+      description = "show a normal notification for interaction testing";
+      category = "testing";
+      executable = "${notificationPlayground}/bin/notification-playground";
+      args = [ "normal" ];
+      keywords = [
+        "toast"
+        "swipe"
+        "dismiss"
+      ];
+      icon = "dialog-information-symbolic";
+    };
+    "testing.notification.persistent" = mkCommand {
+      label = "Testing: Notification — Persistent";
+      description = "show a persistent critical notification";
+      category = "testing";
+      executable = "${notificationPlayground}/bin/notification-playground";
+      args = [ "persistent" ];
+      keywords = [
+        "toast"
+        "critical"
+        "dismiss"
+      ];
+      icon = "dialog-warning-symbolic";
+    };
+    "testing.notification.stack" = mkCommand {
+      label = "Testing: Notifications — Five-card Stack";
+      description = "fill the visible notification stack";
+      category = "testing";
+      executable = "${notificationPlayground}/bin/notification-playground";
+      args = [ "stack" ];
+      keywords = [
+        "toast"
+        "overflow"
+        "swipe"
+      ];
+      icon = "view-list-symbolic";
+    };
+
     "view.frequent" = mkCommand {
       label = "View: Frequent";
       description = "reopen the default relevance-ranked palette";
@@ -453,7 +493,14 @@ let
     "help"
     "view"
     "utility"
+    "testing"
   ];
+  browsableCommandCategories = lib.remove "view" commandCategories;
+  commandCategoryLabels = map (
+    category:
+    lib.toUpper (lib.substring 0 1 category)
+    + lib.substring 1 (builtins.stringLength category) category
+  ) browsableCommandCategories;
   commandEffects = [
     "launch"
     "query"
@@ -650,6 +697,43 @@ let
     '';
   };
 
+  notificationPlayground = pkgs.writeShellApplication {
+    name = "notification-playground";
+    runtimeInputs = [ pkgs.libnotify ];
+    text = ''
+      case ''${1-} in
+        normal)
+          notify-send \
+            --app-name='Persona Playground' \
+            --expire-time=15000 \
+            'Normal notification' \
+            'Click or swipe this card to dismiss it.'
+          ;;
+        persistent)
+          notify-send \
+            --app-name='Persona Playground' \
+            --urgency=critical \
+            --expire-time=0 \
+            'Persistent notification' \
+            'This card remains until you dismiss it.'
+          ;;
+        stack)
+          for index in {1..5}; do
+            notify-send \
+              --app-name='Persona Playground' \
+              --expire-time=30000 \
+              "Stack card $index" \
+              'Drag, flick, or click this card.'
+          done
+          ;;
+        *)
+          printf 'usage: notification-playground {normal|persistent|stack}\n' >&2
+          exit 64
+          ;;
+      esac
+    '';
+  };
+
   riceCommandCases = lib.concatStringsSep "\n" (
     lib.mapAttrsToList (
       id: command:
@@ -777,6 +861,7 @@ let
     runtimeInputs = [ pkgs.fuzzel ];
     text = ''
       export RICE_PRIVATE_DATA_DIR=${lib.escapeShellArg "${privateDesktopEntries}/share"}
+      export RICE_PALETTE_CATEGORIES=${lib.escapeShellArg (lib.concatStringsSep " " commandCategoryLabels)}
       export RICE_LAUNCH_PREFIX_BIN=${lib.escapeShellArg "${riceLaunch}/bin/rice-launch"}
       ${builtins.readFile ./rice-palette.sh}
     '';
