@@ -25,13 +25,20 @@ let
       test -f "$out/lib/qt6/qml/CavaMonitor/qmldir"
     '';
   };
-  qmlImportPath = "${cavaPlugin}/lib/qt6/qml";
+  qmlImportPath = lib.concatStringsSep ":" [
+    "${cavaPlugin}/lib/qt6/qml"
+    "${pkgs.qt6.qtmultimedia}/lib/qt-6/qml"
+  ];
+  qtPluginPath = lib.makeSearchPath "lib/qt-6/plugins" [
+    pkgs.qt6.qtmultimedia
+  ];
 
   /*
     Upstream is a mutable QML source tree rather than a Nix package. Keep the
     pinned source intact and derive the workstation-compatible tree here:
       * replace the NetworkManager-only service with the network-backend-neutral
         adapter beside this module;
+      * add the native Persona notification daemon and toast layer;
       * use fonts already supplied declaratively by the desktop profile instead
         of references to absent Assets/fonts files and Windows-only families.
 
@@ -45,8 +52,13 @@ let
         cp -R ${inputs.persona-quickshell}/. "$out/"
         chmod -R u+w "$out"
         test -f "$out/Widgets/Info/NetInfo.qml"
+        test ! -e "$out/Layers/Notifications.qml"
 
         cp ${./NetInfo.qml} "$out/Widgets/Info/NetInfo.qml"
+        cp ${./Notifications.qml} "$out/Layers/Notifications.qml"
+
+        substituteInPlace "$out/shell.qml" \
+          --replace-fail '    Lay.Searchapp {}' $'    Lay.Searchapp {}\n    Lay.Notifications {}'
 
         test "$(${pkgs.gnugrep}/bin/grep -c '^    FontLoader {$' "$out/Layers/OptionsList.qml")" -eq 2
         sed -i '/^    FontLoader {$/,/^    }$/d' "$out/Layers/OptionsList.qml"
@@ -81,6 +93,7 @@ let
     text = ''
       export QML_IMPORT_PATH=${lib.escapeShellArg qmlImportPath}''${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}
       export QML2_IMPORT_PATH=${lib.escapeShellArg qmlImportPath}''${QML2_IMPORT_PATH:+:$QML2_IMPORT_PATH}
+      export QT_PLUGIN_PATH=${lib.escapeShellArg qtPluginPath}''${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}
       exec ${pkgs.quickshell}/bin/qs -c persona
     '';
   };
@@ -89,6 +102,7 @@ in
   home.packages = [
     personaShell
     pkgs.quickshell
+    pkgs.montserrat
   ];
 
   # Quickshell discovers named configurations below the XDG quickshell root.

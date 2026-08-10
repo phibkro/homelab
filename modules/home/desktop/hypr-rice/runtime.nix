@@ -976,7 +976,7 @@ let
   };
 
   /*
-    layer-announce — COMMAND only (CQS): the mako layer-osd popup
+    layer-announce — COMMAND only (CQS): the Persona layer-osd popup
     (capitalized name). Was copy-pasted in layer-cycle and layer-toggle.
   */
   layerAnnounce = pkgs.writeShellApplication {
@@ -1038,8 +1038,8 @@ let
   /*
     layer-toggle — the tags loop's SUPER+N bind calls this instead of
     dispatching toggle_special directly, so showing a tag also
-    announces it (mako's app-name=layer-osd criteria, modules/home/
-    desktop/mako.nix). Only announces on SHOW, not on hide — checks
+    announces it (Persona's app-name=layer-osd notification route). Only
+    announces on SHOW, not on hide — checks
     whether the tag actually ended up visible after the toggle, since
     toggle_special() can go either direction depending on prior state.
   */
@@ -1140,9 +1140,9 @@ lib.mkIf config.nori.hyprRice.enable {
     popupTerm # SUPER+RETURN togglable terminal (lazy-spawns its own ghostty)
     glassSpacer # SUPER+G tiled blank glass target
     currentLayer # query: bare name of the shown special-workspace tag, or empty
-    layerAnnounce # command: mako layer-osd popup for a tag name
+    layerAnnounce # command: Persona layer-osd popup for a tag name
     layerCycle # SUPER+ALT+TAB / SUPER+ALT+SHIFT+TAB — step through special-workspace tags
-    layerToggle # SUPER+N tag toggle, announces via mako when shown
+    layerToggle # SUPER+N tag toggle, announces via Persona when shown
     layerAutohide # daemon: hides the shown tag when focus moves to a regular workspace
     tileRatio # absolute focused-window ratio on Dwindle
     hyprLayout # strict, hex-encoded bridge into the native rice layout

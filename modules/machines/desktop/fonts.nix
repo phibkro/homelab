@@ -3,7 +3,7 @@
   /*
     System-level font set for the Linux desktop session. fontconfig
     picks these up via /run/current-system/sw/share/fonts/, so every
-    rendering process — Ghostty, fuzzel, Persona, mako, Hyprlock,
+    rendering process — Ghostty, fuzzel, Persona, Hyprlock,
     Zen, Electron apps, even system services that emit text — sees
     the same font baseline.
 
@@ -22,7 +22,6 @@
     # Sans-serif primary — Roboto is Google's Material Design body font;
     # pairs with Material Symbols below for a coherent UI.
     pkgs.roboto
-    pkgs.montserrat
     # Mono — JetBrainsMono + the Nerd Font variant (programming ligatures
     # + powerline / device / brand glyphs for prompts, lazygit, btop).
     pkgs.jetbrains-mono
