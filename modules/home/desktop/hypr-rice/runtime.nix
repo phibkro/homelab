@@ -166,6 +166,27 @@ let
       icon = "utilities-terminal-symbolic";
       effect = "toggle";
     };
+    "space.persona-search" = mkCommand {
+      label = "Space: Persona App Search";
+      description = "toggle the Persona application search";
+      category = "space";
+      executable = "${pkgs.quickshell}/bin/qs";
+      args = [
+        "-c"
+        "persona"
+        "ipc"
+        "call"
+        "searchapp"
+        "toggle"
+      ];
+      keywords = [
+        "applications"
+        "launcher"
+        "search"
+      ];
+      icon = "system-search-symbolic";
+      effect = "toggle";
+    };
     "space.cycle.next" = mkCommand {
       label = "Space: Cycle Next";
       description = "show the next special space";

@@ -12,7 +12,7 @@
 
     `uwsm start hyprland-uwsm.desktop`: UWSM wraps Hyprland with a
     systemd-user-session bootstrap that activates graphical-session.target
-    (and friends) so user units like waybar/mako/hypridle auto-start
+    (and friends) so user units like Persona/mako/hypridle auto-start
     cleanly. See programs.hyprland.withUWSM in modules/machines/desktop/hyprland.nix.
   */
   services.greetd = {

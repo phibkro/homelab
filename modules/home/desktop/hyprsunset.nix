@@ -4,7 +4,7 @@ _: {
     the screen in the evening; reverts to neutral in the morning.
     Activated as a home-manager systemd user service so it runs alongside
     the rest of the Hyprland session (started via UWSM's
-    graphical-session.target — same lifecycle as waybar/mako/hypridle).
+    graphical-session.target — same lifecycle as Persona/mako/hypridle).
 
     Schedule is fixed times rather than astronomical sunrise/sunset
     because Oslo's daylight swing is so extreme (~6h winter / ~18h

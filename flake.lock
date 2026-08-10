@@ -531,6 +531,38 @@
         "type": "github"
       }
     },
+    "persona-cava": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1781801743,
+        "narHash": "sha256-itoyEEpT3ZeAjzjz8yASU9gXFQg3nF29lkiK7v45OxM=",
+        "ref": "refs/heads/main",
+        "rev": "23b108a7919da59d4eaaced5f0bf4cbe21867093",
+        "revCount": 12,
+        "type": "git",
+        "url": "https://github.com/Yujonpradhananga/Qt6-Cava-plugin"
+      },
+      "original": {
+        "type": "git",
+        "url": "https://github.com/Yujonpradhananga/Qt6-Cava-plugin"
+      }
+    },
+    "persona-quickshell": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784909037,
+        "narHash": "sha256-Imjg5a1FM/YKuGpbBy1kuwcDofkpAIGOsM/9PJenM4w=",
+        "ref": "refs/heads/main",
+        "rev": "6bb02aa50f609be8047f67b8a9984274c91e2060",
+        "revCount": 65,
+        "type": "git",
+        "url": "https://github.com/Yujonpradhananga/Persona-Quickshell"
+      },
+      "original": {
+        "type": "git",
+        "url": "https://github.com/Yujonpradhananga/Persona-Quickshell"
+      }
+    },
     "root": {
       "inputs": {
         "anthropics-skills": "anthropics-skills",
@@ -548,6 +580,8 @@
         "nixpkgs-stable": "nixpkgs-stable",
         "obsidian-skills": "obsidian-skills",
         "pagu": "pagu",
+        "persona-cava": "persona-cava",
+        "persona-quickshell": "persona-quickshell",
         "rtk-src": "rtk-src",
         "shadcn": "shadcn",
         "shadcn-improve": "shadcn-improve",

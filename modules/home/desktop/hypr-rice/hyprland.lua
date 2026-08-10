@@ -51,7 +51,7 @@ hl.config({
     },
 
     decoration = {
-        rounding = 12,  -- Material 3 corner-medium, matches waybar
+        rounding = 12,  -- Material 3 corner-medium
     },
 
     dwindle = {
@@ -65,7 +65,7 @@ hl.config({
 -------------------
 hl.on("hyprland.start", function()
     -- Refresh dbus activation env + bounce hyprland-session.target so
-    -- waybar/hypridle/mako pick up DISPLAY/WAYLAND_DISPLAY etc.
+    -- Persona/hypridle/mako pick up DISPLAY/WAYLAND_DISPLAY etc.
     -- NOTE: using the bare command name relies on PATH; pinning the
     -- dbus executable to its nix-store path remains deferred.
     hl.exec_cmd("dbus-update-activation-environment --systemd DISPLAY HYPRLAND_INSTANCE_SIGNATURE WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE && systemctl --user stop hyprland-session.target && systemctl --user start hyprland-session.target")

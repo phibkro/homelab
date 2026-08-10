@@ -3,7 +3,7 @@
   /*
     System-level font set for the Linux desktop session. fontconfig
     picks these up via /run/current-system/sw/share/fonts/, so every
-    rendering process — Ghostty, fuzzel, waybar, mako, Hyprlock,
+    rendering process — Ghostty, fuzzel, Persona, mako, Hyprlock,
     Zen, Electron apps, even system services that emit text — sees
     the same font baseline.
 
@@ -22,6 +22,7 @@
     # Sans-serif primary — Roboto is Google's Material Design body font;
     # pairs with Material Symbols below for a coherent UI.
     pkgs.roboto
+    pkgs.montserrat
     # Mono — JetBrainsMono + the Nerd Font variant (programming ligatures
     # + powerline / device / brand glyphs for prompts, lazygit, btop).
     pkgs.jetbrains-mono
@@ -32,9 +33,8 @@
     pkgs.noto-fonts-color-emoji
     pkgs.dejavu_fonts
     /*
-      Material Symbols — Google's Material Design icon font. Used by the
-      waybar blue-light toggle (light_mode / dark_mode glyphs); install
-      system-wide so any future Material-Symbols-using widget just works.
+      Material Symbols — Google's Material Design icon font. Persona and
+      future Material-Symbols-using widgets share this system-wide copy.
     */
     pkgs.material-symbols
   ];
