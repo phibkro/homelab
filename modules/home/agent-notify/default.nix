@@ -40,14 +40,15 @@ let
       #   event   : stop | permission | question | notification
       #   json    : optional payload. Codex passes it as the trailing arg;
       #             Claude Code pipes it on stdin. Best-effort.
-      # Herdr's manager owns operator attention for its panes. Per-agent hooks
-      # would otherwise duplicate the same halt signal for every worker.
-      if [ "''${HERDR_ENV:-}" = 1 ]; then
-        exit 0
-      fi
-
       harness="''${1:-agent}"
       event="''${2:-stop}"
+
+      # Herdr owns in-app attention, not the nori-alert phone route. Preserve
+      # stop pushes for background project agents while leaving its native
+      # needs-input handling authoritative for permission and question events.
+      if [ "''${HERDR_ENV:-}" = 1 ] && [ "$event" != stop ]; then
+        exit 0
+      fi
       payload="''${3:-}"
       if [ -z "$payload" ] && [ ! -t 0 ]; then
         payload="$(cat)"

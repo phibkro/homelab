@@ -48,6 +48,7 @@ in
   ];
 
   nori.agentNotify.enable = true;
+  nori.omp.exaApiKeyFile = "/run/secrets/exa-api-key";
   nori.saturationAlert.enable = true;
   home.sessionPath = [ "$HOME/.deno/bin" ];
 

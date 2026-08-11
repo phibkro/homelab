@@ -41,6 +41,21 @@ Convention:
 - **Homelab service secrets** (used by `modules/services/<service>/runtime.nix` to run the service itself) → `secrets.yaml` (default file, no override needed).
 - **Self-deployed app secrets** (used by personal projects: filmder, heim, drinks, finnbydel) → `apps.yaml` (override `sopsFile` per declaration).
 
+## SecretSpec
+
+`secretspec.toml` declares credentials for operator tools. It stores no secret
+values. Its `workstation` profile maps `EXA_API_KEY` to the encrypted
+`exa-api-key` root key in `secrets/secrets.yaml`.
+
+Run this command from the repository root to set or rotate the Exa key:
+
+```bash
+secretspec -f secretspec.toml set --profile workstation EXA_API_KEY
+```
+
+SecretSpec asks for the value in a masked prompt. It sends the value to SOPS,
+which updates only the encrypted file.
+
 ## One-time bootstrap (do this once per editor machine)
 
 On the Mac (or any machine that should be able to edit secrets):
