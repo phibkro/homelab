@@ -282,7 +282,3 @@ External references for the homelab's specific take:
 - `docs/decisions/0005-agile-for-agents-ceremonies.md` — this doc's authoritative decision record
 - `docs/specs/2026-06-16-agentic-development-workflow.md` — research seed + worked example (2026-06-16 docs deep-sweep retro)
 - [[session-economics]] — when to start a fresh session
-- `home/claude-code/skills/wrap-session/SKILL.md` — existing end-of-session ceremony
-- `home/claude-code/skills/wrap-feature/SKILL.md` — existing per-feature ceremony (overlap with Phase 4 retro)
-- `home/claude-code/skills/brainstorming/SKILL.md` — existing prologue-shaped ceremony (overlap with Phase 1)
-- `home/claude-code/skills/dev-loop/SKILL.md` — workflow map; due for refresh against this doc

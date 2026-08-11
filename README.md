@@ -20,8 +20,8 @@ Single-user NixOS homelab flake. Four NixOS hosts on a residential LAN + tailnet
 | Wiring topology / placement | `docs/reference/topology.md` |
 | Touching storage, backups, snapshots | `docs/reference/storage.md` |
 | Touching network, lanRoutes, Authelia, DNS | `docs/reference/network.md` |
-| Debugging a known landmine (NVMe, Caddy CA, sops, DynamicUser, …) | `.claude/skills/gotcha-*/SKILL.md` (auto-loaded on trigger) |
-| Operating the Genexis router programmatically | `.claude/skills/manage-genexis-juci/` or `.codex/skills/manage-genexis-juci/` |
+| Debugging a known landmine (NVMe, Caddy CA, sops, DynamicUser, …) | Mnemopi semantic recall (`Mnemopi recall: gotcha-*`) |
+| Operating the Genexis router programmatically | `.agents/skills/manage-genexis-juci/` |
 | Resuming work, forward plan | `docs/roadmap.md` |
 
 ## Active services
@@ -111,7 +111,7 @@ docs/
   specs/ decisions/          # accepted designs and durable decisions
   reference/ runbooks/       # current truth and executable operations
   plans/ reports/            # retained execution plans and retrospectives
-.claude/skills/ .codex/skills/ # generated provider skill surfaces; repository procedures remain under .claude
+.claude/skills/ .agents/skills/ # project-specific and provider-neutral project skills
 ```
 
 ## Status

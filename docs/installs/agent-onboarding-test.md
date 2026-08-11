@@ -154,7 +154,7 @@ nori.lanRoutes.widget = {
 - Fix: `nori.backups.foo.paths = [ "/var/lib/private/foo" ]`
 - The DynamicUser-symlink assertion in `modules/infra/backup/default.nix` catches this at eval time (lists known DynamicUser services explicitly)
 
-**Source**: `.claude/skills/gotcha-dynamicuser-statedirectory-symlink/`, `modules/infra/backup/default.nix` assertion.
+**Source**: `Mnemopi recall: gotcha-dynamicuser-statedirectory-symlink`, `modules/infra/backup/default.nix` assertion.
 
 ---
 
@@ -187,7 +187,7 @@ nori.lanRoutes.widget = {
 - Ignoring this risks wiping the wrong drive
 - Verify by-id mapping via `ls /dev/disk/by-id/` before any destructive command
 
-**Source**: CLAUDE.md "Hard rules", `.claude/skills/gotcha-nvme-enumeration/`, `docs/reference/recovery.md` "Permanent constraints".
+**Source**: CLAUDE.md "Hard rules", `Mnemopi recall: gotcha-nvme-enumeration`, `docs/reference/recovery.md` "Permanent constraints".
 
 ---
 
@@ -202,8 +202,8 @@ nori.lanRoutes.widget = {
 - Stale active examples in CLAUDE.md / docs/reference/ → fix immediately (highest-cost drift class)
 - Pattern used twice or more → codify as a procedure skill (under `.claude/skills/`)
 - New convention agents should follow → `docs/reference/module-authoring.md` (shape) + `docs/invariants.md` (which rung of the enforcement ladder), ideally backed by a flake check / module assertion
-- Hard-won mistake → new `.claude/skills/gotcha-<name>/SKILL.md` with USE-WHEN trigger
-- Cross-session fact (preferences, project state, host topology) → memory entry
+- Hard-won mistake → retain one self-contained Mnemopi memory named `gotcha-<technology>-<symptom>`
+- Cross-session fact (preferences, project state, host topology) → retain a Mnemopi memory
 
 **Source**: `.claude/skills/on-structural-change/SKILL.md` (the procedure) + `docs/invariants.md` § "Decision tree — when to add a rule" + `docs/decisions/0001-agentic-homelab-practices.md` (the why).
 

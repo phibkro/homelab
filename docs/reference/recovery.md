@@ -34,7 +34,7 @@ Each runbook is the step-by-step for one failure class. Initial outlines:
 | `drive-failure-root.md` | SN750 dies | Replace drive → boot installer → clone flake → run disko → `nixos-install` → restic restore service state from OneTouch (off-chassis on aurora) or mp510 (local) |
 | `drive-failure-media.md` | IronWolf dies | Replace drive → `mkfs.btrfs` + subvolumes → restic restore irreplaceable subvolumes from Pi → re-download streaming media from sources |
 | `pi-failure.md` | Pi unreachable / hardware dead | Swap to spare USB SSD with current flake → boot → verify Blocky + Tailscale come up → router DHCP unaffected (workstation is secondary DNS) |
-| `storage-full.md` | Disk pressure | Find what filled up; library is reflinked (not duplicated) — see `.claude/skills/gotcha-arr-reflinks-not-hardlinks/` |
+| `storage-full.md` | Disk pressure | Find what filled up; library is reflinked (not duplicated) — see `Mnemopi recall: gotcha-arr-reflinks-not-hardlinks` |
 | `tailscale-acl.md` | Tailscale admin UI ACL recovery | Live ACL lives only in admin UI; this snapshots `tailscale-acl.json` for editor-regression + account-loss recovery |
 | `agent-fix-on-failure.md` | An armed backup/check unit fails (`nori.agentFix`) | Recovery window survives → boxed agent diagnoses + opens a PR (draft if unfixed). Find the run at `journalctl -u agent-fix@<unit>` and resume its conversation via `claude --resume` (handle in the PR body) to steer + merge |
 
@@ -53,7 +53,7 @@ These are **inviolable** — every recovery action must respect them or the reco
 |---|---|
 | **Never touch the Windows drive** (Corsair Force MP510, by-id `nvme-Force_MP510_2031826300012953207B`) | NVMe enumeration is unstable across reboots — at install time the WD Black SN750 (NixOS) was `nvme0n1` and the MP510 (Windows) was `nvme1n1`; post-reboot they swapped. A re-run of disko targeting the wrong `/dev` path would wipe Windows. Caught this latently after the swap; fixed by switching all disko configs to `/dev/disk/by-id/...` |
 | **Disko configs MUST target `/dev/disk/by-id/...`** | by-id paths follow the hardware; `/dev` paths follow PCIe scan order |
-| **Disambiguate disks by model + by-id, never `/dev/nvmeN`** | Same reason as above; codified in `.claude/skills/gotcha-nvme-enumeration/` |
+| **Disambiguate disks by model + by-id, never `/dev/nvmeN`** | Same reason as above; codified in `Mnemopi recall: gotcha-nvme-enumeration` |
 | **Don't schedule destructive system changes during weeks with Aker demo pressure** | The lab is the operator's daily-driver; outage during high-load weeks isn't acceptable |
 | **Backup verification is part of the system, not optional** | Tiered drill (`restore-drill-services` monthly + `restore-drill-user-data` quarterly) + `just test-backups` per deploy are the **real RTO measurement** — green CI is necessary, not sufficient |
 | **Phase 2 (IronWolf reformat) does not happen during Phase 4 (install)** | Two separate sequential operations. Do not combine. (Phase 2 was eventually pulled forward as part of Phase 5 service migration, *after* Phase 4 was complete — same constraint, different timing than original plan.) |

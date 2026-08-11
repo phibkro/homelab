@@ -10,7 +10,7 @@
 - **Priority**: P3
 - **Effort**: M–L
 - **Risk**: LOW
-- **Depends on**: `plans/006-fail-closed-backup-runtime-tests.md`, `plans/008-run-replica-verifiers-now.md`, `plans/010-fail-closed-observability.md`, `plans/011-gate-third-party-agent-skills.md`, `plans/012-verify-authelia-client-registry.md`, `plans/013-repair-active-documentation.md`
+- **Depends on**: `plans/006-fail-closed-backup-runtime-tests.md`, `plans/008-run-replica-verifiers-now.md`, `plans/010-fail-closed-observability.md`, `plans/012-verify-authelia-client-registry.md`, `plans/013-repair-active-documentation.md`
 - **Category**: perf, dx
 - **Planned at**: commit `0cef85b`, 2026-07-14
 

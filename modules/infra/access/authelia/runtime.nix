@@ -13,7 +13,7 @@ let
 
     `client_secret` uses the template config-filter (enabled below)
     to read the PBKDF2 hash from sops at startup — hash never lands
-    in committed Nix. See .claude/skills/gotcha-authelia-template-filter/.
+    in committed Nix. See Mnemopi recall: gotcha-authelia-template-filter.
   */
   generatedClients = lib.mapAttrsToList (name: route: {
     client_id = name;
@@ -167,7 +167,7 @@ in
   /*
     Template config-filter — read PBKDF2 hashes from sops at startup
     for `generatedClients` above. See
-    .claude/skills/gotcha-authelia-template-filter/ for why `_FILE`
+    Mnemopi recall: gotcha-authelia-template-filter for why `_FILE`
     doesn't work on list-typed sections.
   */
   systemd.services.authelia-main.environment = {

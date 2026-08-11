@@ -9,14 +9,10 @@
   Provider-neutral operator skills. Keep the canonical source here and expose
   the same directory to every installed agent surface so procedure and safety
   policy cannot drift between Claude and Codex.
-
-  This module is selected by the agentic-tools capability: router
-  administration is an operator capability and does not belong on service
-  appliances.
 */
 
 let
-  genexisJuciSkill = ./manage-genexis-juci;
+  agentBrowserSkill = ./agent-browser;
   simpleEnglishSkill = ./simple-english;
   writingPythonSkill = ./writing-python;
   effectV4Skill = ./effect-v4-engineer;
@@ -46,12 +42,14 @@ let
 in
 {
   home.packages = [
+    pkgs.agent-browser
+    # Runtime for .agents/skills/manage-genexis-juci.
     pkgs.python3
     pkgs.websocat
   ];
 
   home.file = lib.mkMerge [
-    (bothSurfaces "manage-genexis-juci" genexisJuciSkill)
+    (bothSurfaces "agent-browser" agentBrowserSkill)
 
     /*
       ASD-STE100 Simplified Technical English writing skill (MIT-licensed,
@@ -86,20 +84,15 @@ in
     (bothSurfaces "effect-v4-engineer" effectV4Skill)
 
     /*
-      pagu and herdr publish their own agent contracts. Consume each from the
-      same pinned flake revision that supplies its executable, so the guidance
-      and the behaviour it describes can only move together — the `generate`
-      rung rather than the `convention` rung.
+      Pagu remains installed as an agent-launch runtime, but its discoverable
+      skill is deliberately disabled for now.
 
-      Linux only: the Intel Mac installs neither the `pagu` gate nor herdr, and
-      has no Codex surface either.
+      Herdr publishes its agent contract alongside its executable. Consume both
+      from the same pinned flake revision so guidance and behavior move together.
+      Linux only: the Intel Mac installs neither Herdr nor a Codex surface.
     */
     (lib.mkIf pkgs.stdenv.hostPlatform.isLinux (
-      lib.mkMerge [
-        (bothSurfaces "pagu" "${inputs.pagu}/skills/pagu")
-        # Herdr publishes its contract as a single file at the repository root.
-        (bothSurfacesFile "herdr/SKILL.md" "${inputs.herdr}/SKILL.md")
-      ]
+      bothSurfacesFile "herdr/SKILL.md" "${inputs.herdr}/SKILL.md"
     ))
   ];
 }

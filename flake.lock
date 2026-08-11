@@ -1,21 +1,5 @@
 {
   "nodes": {
-    "anthropics-skills": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1784923954,
-        "narHash": "sha256-RH2B03gj4kzw1j5LORezgUZPPu8mW+mWb+Kl2U7WUbY=",
-        "owner": "anthropics",
-        "repo": "skills",
-        "rev": "b29e7cf65e5cb78a5ac33d582270551bc74a14eb",
-        "type": "github"
-      },
-      "original": {
-        "owner": "anthropics",
-        "repo": "skills",
-        "type": "github"
-      }
-    },
     "base16": {
       "inputs": {
         "fromYaml": "fromYaml"
@@ -81,22 +65,6 @@
         "owner": "tinted-theming",
         "repo": "base16-vim",
         "rev": "577fe8125d74ff456cf942c733a85d769afe58b7",
-        "type": "github"
-      }
-    },
-    "caveman": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1783076931,
-        "narHash": "sha256-VqRHx3/4SSCnEh3cUJ/he5saIfwNhS0hOzoH/wwtU2o=",
-        "owner": "juliusbrussee",
-        "repo": "caveman",
-        "rev": "0d95a81d35a9f2d123a5e9430d1cfc43d55f1bb0",
-        "type": "github"
-      },
-      "original": {
-        "owner": "juliusbrussee",
-        "repo": "caveman",
         "type": "github"
       }
     },
@@ -357,23 +325,6 @@
         "type": "github"
       }
     },
-    "mattpocock-skills": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1781734059,
-        "narHash": "sha256-nuHQ+SG5UerKs334Yk5nsxHOncGXQKF1yVdnwwVpLZ8=",
-        "owner": "mattpocock",
-        "repo": "skills",
-        "rev": "2454c95dc305c158b21a0cdafeb728879dd0359a",
-        "type": "github"
-      },
-      "original": {
-        "owner": "mattpocock",
-        "ref": "v1.0.1",
-        "repo": "skills",
-        "type": "github"
-      }
-    },
     "nixos-hardware": {
       "inputs": {
         "nixpkgs": "nixpkgs_2"
@@ -495,22 +446,6 @@
         "type": "github"
       }
     },
-    "obsidian-skills": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1780935121,
-        "narHash": "sha256-/Kr3cMaN81WXFxgWMNt/QQhEMzuu3e3WJpspqjrnPss=",
-        "owner": "kepano",
-        "repo": "obsidian-skills",
-        "rev": "a1dc48e68138490d522c04cbf5822214c6eb1202",
-        "type": "github"
-      },
-      "original": {
-        "owner": "kepano",
-        "repo": "obsidian-skills",
-        "type": "github"
-      }
-    },
     "pagu": {
       "inputs": {
         "nixpkgs": [
@@ -533,29 +468,22 @@
     },
     "root": {
       "inputs": {
-        "anthropics-skills": "anthropics-skills",
-        "caveman": "caveman",
         "claudex": "claudex",
         "disko": "disko",
         "flake-parts": "flake-parts",
         "herdr": "herdr",
         "home-manager": "home-manager",
         "impermanence": "impermanence",
-        "mattpocock-skills": "mattpocock-skills",
         "nixos-hardware": "nixos-hardware",
         "nixpkgs": "nixpkgs_3",
         "nixpkgs-master": "nixpkgs-master",
         "nixpkgs-stable": "nixpkgs-stable",
-        "obsidian-skills": "obsidian-skills",
         "pagu": "pagu",
         "rtk-src": "rtk-src",
-        "shadcn": "shadcn",
-        "shadcn-improve": "shadcn-improve",
         "snappy-switcher": "snappy-switcher",
         "sops-nix": "sops-nix",
         "stacklit-src": "stacklit-src",
         "stylix": "stylix",
-        "superpowers": "superpowers",
         "tilth": "tilth",
         "zen-browser": "zen-browser"
       }
@@ -594,38 +522,6 @@
       "original": {
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "type": "github"
-      }
-    },
-    "shadcn": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1769747802,
-        "narHash": "sha256-8ytqk2f4/SkgyUsTyrK/WSf7vstaPcVeMCGVJtPefeo=",
-        "owner": "masonjames",
-        "repo": "Shadcnblocks-Skill",
-        "rev": "a87b3bd218056f88375ea1417ea7b1438bcca31a",
-        "type": "github"
-      },
-      "original": {
-        "owner": "masonjames",
-        "repo": "Shadcnblocks-Skill",
-        "type": "github"
-      }
-    },
-    "shadcn-improve": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1781504319,
-        "narHash": "sha256-m0a1n8xguDI2nooJ856sWPofh+tZI5VvIrVZrQH6XgY=",
-        "owner": "shadcn",
-        "repo": "improve",
-        "rev": "03369ee6d7cafbfcecc4346539b05b3dc0a603bb",
-        "type": "github"
-      },
-      "original": {
-        "owner": "shadcn",
-        "repo": "improve",
         "type": "github"
       }
     },
@@ -716,22 +612,6 @@
       "original": {
         "owner": "danth",
         "repo": "stylix",
-        "type": "github"
-      }
-    },
-    "superpowers": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1784852836,
-        "narHash": "sha256-F5LEk0yNWbMpan1vZSFZM76XSpsFGvA7h8q6Idrvenk=",
-        "owner": "obra",
-        "repo": "superpowers",
-        "rev": "3dcbd5c4b48e02263fbf4a3c01e3fe4f81d584d9",
-        "type": "github"
-      },
-      "original": {
-        "owner": "obra",
-        "repo": "superpowers",
         "type": "github"
       }
     },

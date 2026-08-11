@@ -94,15 +94,13 @@ in
       scaffold, generator, library, or established pattern before hand-writing
       infrastructure.
     - Reuse or adapt license-compatible upstream code and techniques with source
-      and license provenance. Never copy an unattributed snippet or let copied
-      code silently define project semantics.
+      and license provenance. Never let copied code silently define semantics.
     - Automate deterministic, bounded, repeatable work when the automation is
       cheaper to own than repeated manual execution.
     - Stop automating when it becomes an unbounded side quest; implement the
-      smallest direct solution that satisfies the frozen contract and record the
-      deferred automation opportunity.
+      smallest direct solution that satisfies the frozen contract.
     - Report which scaffold, command, dependency, or prior art was evaluated,
-      what was reused, and why any relevant established option was rejected.
+      what was reused, and why relevant established options were rejected.
 
     ## Delegation and model routing
 

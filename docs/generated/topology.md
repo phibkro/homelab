@@ -127,7 +127,7 @@ out daily restic to flash.
 **NVMe enumeration warning.** Disko configs target `/dev/disk/by-id/...`
 paths because NVMe enumeration is unstable across reboots. Pi itself
 doesn't have NVMe today, but the convention is universal in this repo;
-see `.claude/skills/gotcha-nvme-enumeration/`.
+see `Mnemopi recall: gotcha-nvme-enumeration`.
 
 ## Build path
 
@@ -152,7 +152,7 @@ Workhorse-tier compute. Three NVMe-class drives + one USB-attached HDD:
 swapped. Disko configs target `/dev/disk/by-id/...` paths because of
 this. **Never touch `nvme0n1` without verifying the model string via
 `/dev/disk/by-id/`** — full constraint in CLAUDE.md hard rules. See
-`.claude/skills/gotcha-nvme-enumeration/`.
+`Mnemopi recall: gotcha-nvme-enumeration`.
 
 ## Wake-on-LAN
 

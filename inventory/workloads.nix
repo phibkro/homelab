@@ -28,11 +28,14 @@ lib.genAttrs
     "grafana"
     "heartbeat"
     "heim"
+    "herdr-projects-mcp"
+    "hindsight"
     "immich"
     "jellyfin"
     "jellyseerr"
     "komga"
     "lidarr"
+    "mcp-origin-tunnel"
     "miniflux"
     "music-ingest"
     "navidrome"
@@ -80,11 +83,14 @@ lib.genAttrs
   grafana = import ../modules/infra/observability/grafana/manifest.nix;
   heartbeat = import ../modules/infra/observability/heartbeat/manifest.nix;
   heim = import ../modules/services/heim/manifest.nix;
+  herdr-projects-mcp = import ../modules/services/herdr-projects-mcp/manifest.nix;
+  hindsight = import ../modules/services/hindsight/manifest.nix;
   immich = import ../modules/services/immich/manifest.nix;
   jellyfin = import ../modules/services/jellyfin/manifest.nix;
   jellyseerr = import ../modules/services/arr/manifests/jellyseerr.nix;
   komga = import ../modules/services/komga/manifest.nix;
   lidarr = import ../modules/services/arr/manifests/lidarr.nix;
+  mcp-origin-tunnel = import ../modules/services/mcp-origin-tunnel/manifest.nix;
   miniflux = import ../modules/services/miniflux/manifest.nix;
   music-ingest = import ../modules/services/music-ingest/manifest.nix;
   navidrome = import ../modules/services/navidrome/manifest.nix;

@@ -23,7 +23,7 @@
   **NVMe enumeration warning.** Disko configs target `/dev/disk/by-id/...`
   paths because NVMe enumeration is unstable across reboots. Pi itself
   doesn't have NVMe today, but the convention is universal in this repo;
-  see `.claude/skills/gotcha-nvme-enumeration/`.
+  see `Mnemopi recall: gotcha-nvme-enumeration`.
 
   ## Build path
 

@@ -93,6 +93,7 @@ mapfile -t files < <(
     [ -f "$f" ] && echo "$f"
   done
   find .claude/skills -name 'SKILL.md' 2>/dev/null
+  find .agents/skills -name 'SKILL.md' 2>/dev/null
 )
 
 check_literal() {

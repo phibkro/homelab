@@ -37,14 +37,20 @@ motto, not a preference:
    are a derivation of code. If you can't name the edge from a derived thing back
    to its core, that's the defect.
 
-## Tech-stack defaults (operator, 2026-07-22)
+## Tech-stack defaults (operator, updated 2026-07-31)
 
-- **Prefer Bun whenever possible** — runtime, package manager, test runner,
-  bundler. Reach for Node/npm only when a dep genuinely needs it.
-- **The Effect ecosystem is the near-full-stack default for TS work:** **Alchemy**
-  (infra / IaC — e.g. Cloudflare), **Effect** (complex server-side / effectful
-  logic), **Foldkit** (frontend — Effect + Elm MVU). Lean into it; don't hand-roll
-  what these cover.
+- **The preferred default stack is TypeScript 7 + Bun + Effect v4 + Oxfmt +
+  Oxlint + the Oxlint Effect plugin + Alchemy v2 for infrastructure.** Start
+  there when it fits; a deliberate divergence is allowed when its technical
+  reason is recorded.
+- Prefer Bun as runtime, package manager, test runner, and bundler. Reach for
+  Node/npm only when a dependency or target genuinely requires it.
+- **The Effect ecosystem is the near-full-stack default for TS work:** Alchemy
+  v2 (infra / IaC — e.g. Cloudflare), Effect v4 (complex server-side /
+  effectful logic), and Foldkit where its frontend model fits. Lean into it;
+  don't hand-roll what these cover.
+- Python is fine for disposable one-off investigation, but do not commit it as
+  project source or scripts.
 - **What evades Effect — and why it matters:** the **seams** (integration
   boundaries / the explicit edges between systems) and the **core** (pure domain
   logic + the source of truth). These are deliberately *outside* Effect — Effect
@@ -256,9 +262,9 @@ briefly, act on sensible defaults, escalate only genuinely operator-owned forks.
   resolve routine in-scope gates, escalate genuine decisions.
 - **Auto-approver** clears routine gates between wakes — **default-ALLOW + hardened
   DENY** (an allowlist is leaky and can't win; deny the genuinely dangerous, allow
-  the rest). The correctness-by-construction endgame is OS containment (pagu-box
-  hides secrets; Claw Patrol injects creds on egress) so bypass is *safe by
-  construction*, not gated by a classifier.
+  the rest). Safety claims must name the enforcement mechanism that is actually
+  active; never infer containment, secret isolation, or egress control from a
+  harness prompt or from superseded infrastructure.
 - **Escalate to the operator** (ntfy, *sparingly*) only for operator-owned calls:
   credentials, deploys to shared infra, irreversible/public actions, direction.
 - **Measure before adopt** — a prompt or process change earns adoption via

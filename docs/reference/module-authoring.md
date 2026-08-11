@@ -248,7 +248,7 @@ Services that read/write the same files on `@downloads` / `@library` join a sing
 users.users.<svc>.extraGroups = [ "media" ];
 ```
 
-This is what makes the qBittorrent → *arr hardlink-on-import flow work — distinct uids, shared gid, group-writable files (set via qBittorrent's `UMask=0002`). Without it the kernel's `fs.protected_hardlinks=1` makes `link()` fail with EPERM and *arr silently falls back to reflink/copy. See `.claude/skills/gotcha-arr-reflinks-not-hardlinks/`.
+This is what makes the qBittorrent → *arr hardlink-on-import flow work — distinct uids, shared gid, group-writable files (set via qBittorrent's `UMask=0002`). Without it the kernel's `fs.protected_hardlinks=1` makes `link()` fail with EPERM and *arr silently falls back to reflink/copy. See `Mnemopi recall: gotcha-arr-reflinks-not-hardlinks`.
 
 Canonical doc: `modules/services/arr/shared.nix` header comment.
 
@@ -306,7 +306,7 @@ NixOS services using `DynamicUser=yes` (open-webui, ollama, ntfy-sh, beszel-hub,
 |---|---|
 | Can't `chown <name>:<name>` — users don't exist statically | `chown --reference=<existing-file>` to copy ownership from a sibling |
 | `/run/secrets/*` is `0440 root:keys` | `SupplementaryGroups = [ "keys" ]` to grant access |
-| `StateDirectory` is `/var/lib/private/<name>` symlinked to `/var/lib/<name>` | Target the real path: `nori.backups.<n>.paths = [ "/var/lib/private/<name>" ];`. Restic stores symlinks AS symlinks → pointing at `/var/lib/<name>` produces a 0-byte snapshot. A self-maintaining assertion in `modules/infra/backup/default.nix` (derived from `config.systemd.services` introspection) catches this at eval time. Deep dive: `.claude/skills/gotcha-dynamicuser-statedirectory-symlink/` |
+| `StateDirectory` is `/var/lib/private/<name>` symlinked to `/var/lib/<name>` | Target the real path: `nori.backups.<n>.paths = [ "/var/lib/private/<name>" ];`. Restic stores symlinks AS symlinks → pointing at `/var/lib/<name>` produces a 0-byte snapshot. A self-maintaining assertion in `modules/infra/backup/default.nix` (derived from `config.systemd.services` introspection) catches this at eval time. Deep dive: `Mnemopi recall: gotcha-dynamicuser-statedirectory-symlink` |
 
 Adding a new OIDC client → `/add-oidc-client` (procedure skill — bootstrap, sops paste, route declaration, systemd wiring).
 

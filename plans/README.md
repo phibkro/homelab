@@ -41,10 +41,10 @@ The advisor directly wrote only files under this `plans/` directory.
 | [008](008-run-replica-verifiers-now.md) | Run current replica verification instead of trusting stored success | P1 | S | 005, 006 | TODO |
 | [009](009-claim-music-before-ingest.md) | Claim music files atomically before publish and deletion | P1 | M | 006 | TODO |
 | [010](010-fail-closed-observability.md) | Fail closed on unreadable heartbeat and undelivered disk alerts | P2 | S–M | 006, 008 | TODO |
-| [011](011-gate-third-party-agent-skills.md) | Gate third-party agent skills behind reviewable hashes | P2 | M | 009 | TODO |
+| [011](011-gate-third-party-agent-skills.md) | Gate third-party agent skills behind reviewable hashes | P2 | M | 009 | REJECTED — third-party skill inputs removed 2026-08-11 |
 | [012](012-verify-authelia-client-registry.md) | Compare live Authelia clients with declared OIDC routes | P2 | M | 006, 010 | TODO |
 | [013](013-repair-active-documentation.md) | Repair active documentation and enforce routing paths | P2 | M | 007, 012 | TODO |
-| [014](014-single-runtime-test-environment.md) | Run runtime tests in one pinned tool environment | P3 | M–L | 006, 008, 010, 011, 012, 013 | TODO |
+| [014](014-single-runtime-test-environment.md) | Run runtime tests in one pinned tool environment | P3 | M–L | 006, 008, 010, 012, 013 | TODO |
 
 Status values: `TODO` | `IN PROGRESS` | `DONE` | `BLOCKED — <reason>` | `REJECTED — <reason>`.
 
@@ -62,7 +62,7 @@ Status values: `TODO` | `IN PROGRESS` | `DONE` | `BLOCKED — <reason>` | `REJEC
 
 - **007** repairs the operator's manual backup lever.
 - **010** makes monitoring uncertainty visible.
-- **011** adds a review boundary for instruction-bearing dependencies.
+- **011** was rejected after its third-party instruction inputs were removed.
 - **012** verifies the actual deployed Authelia registry.
 - **013** restores the repository's onboarding map.
 
@@ -74,7 +74,7 @@ Status values: `TODO` | `IN PROGRESS` | `DONE` | `BLOCKED — <reason>` | `REJEC
 
 ```text
 # Shared flake.nix serialization chain
-001 → 002 → 003 → 004 → 005 → 006 → 009 → 011 → 014
+001 → 002 → 003 → 004 → 005 → 006 → 009 → 014
 
 # Runtime-test implementation chain
 003 → 006 → 008 → 010 → 012 → 013 → 014
@@ -91,7 +91,7 @@ Plans may run concurrently only when they share no files below. Worktree isolati
 
 | Shared file/surface | Serialize these plans in order |
 |---|---|
-| `flake.nix` | 001 → 002 → 003 → 004 → 005 → 006 → 009 → 011 → 014 |
+| `flake.nix` | 001 → 002 → 003 → 004 → 005 → 006 → 009 → 014 |
 | `tests/tests.just` | 003 → 006 → 008 → 010 → 012 → 014 |
 | `tests/runtime/assertions.sh` + test | 006 → 010 → 012 → 014 |
 | `secrets/secrets.yaml` | 001 → 002 → 004 |
@@ -126,7 +126,7 @@ Every plan inherits these repository constraints:
 | Replica test trusts an indefinitely old stored success result | 008 |
 | Music ingest can publish one source version and delete another | 009 |
 | Heartbeat unreadability and ntfy delivery failure pass green | 010 |
-| External instruction content enters auto-discovery without a review artifact | 011 |
+| External instruction content entered auto-discovery without a review artifact; resolved by removing those inputs | 011 (rejected) |
 | Authelia test promises client comparison but checks only secret files | 012 |
 | Active docs route to old files, paths, roles, and domain names | 013 |
 | Runtime loops repeatedly start ad-hoc Nix shells | 014 |

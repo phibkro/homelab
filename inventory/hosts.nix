@@ -25,6 +25,9 @@
       "clamor"
       "disk-alert"
       "gatus"
+      "herdr-projects-mcp"
+      "hindsight"
+      "mcp-origin-tunnel"
       "ntfy-notify"
       "nvidia-gpu-exporter"
     ];

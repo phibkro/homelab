@@ -43,7 +43,7 @@ Strongest rung each claim has reached. `[prose: unchecked]` entries are promotio
 | Tailnet is the auth perimeter; Authelia only for per-user identity | `[structural]` (the `audience` enum forces the choice at the type level) |
 | `disko*.nix` configs reference disks by `/dev/disk/by-id/*`, never `/dev/nvmeN` | `[law: lint.diskoUsesById]` (promoted 2026-06-16; nori.lint TOML registry) |
 | Sops-encrypted secrets stay in `secrets/secrets.yaml`; encryption itself is structural | `[structural]` (sops policy file `.sops.yaml`) |
-| Never bulk-rename keys in sops-encrypted yaml (AAD-bound ciphertext breaks) | `[prose: unchecked]` — can't really mechanize; lives in gotcha skill |
+| Never bulk-rename keys in sops-encrypted yaml (AAD-bound ciphertext breaks) | `[prose: unchecked]` — `Mnemopi recall: gotcha-sops-bulk-sed` |
 | **Topology & roles** | |
 | Pi runs only appliance-safe services; every workload placement matches a typed role declared by its manifest | `[structural]` (closed role enum + pure inventory assertion) + `[law: eval-workload-role-placement]` |
 | Cross-host service split: daemon on one host, client/proxy on every consumer; cross-host refs via `nori.hosts` registry | `[structural]` (the registry IS the wiring) |
@@ -54,7 +54,7 @@ Strongest rung each claim has reached. `[prose: unchecked]` entries are promotio
 | Cloudflare edge-owned hostnames cannot also be claimed by internal `lanRoutes` | `[structural]` (pure inventory assertion) + `[law: eval-presentations]` (negative split-horizon collision fixture) |
 | Service names function over brand (`uptime`, not `gatus`; `chat`, not `ollama`) unless brand IS identity | `[law: lint.functionNamedSubdomains]` (promoted 2026-06-16; nori.lint TOML denylist of 13 upstream brands with clean function-name mappings) |
 | **systemd units** | |
-| Every `Restart=on-failure` unit's `ExecStart` is smoke-tested before landing (prevents restart-loop bombs that break the next `switch-to-configuration` — incident 2026-06-03 in `.claude/skills/gotcha-*/`) | `[prose: unchecked]` — promote? flake check resolving each `ExecStart` to a real nix-store binary path |
+| Every `Restart=on-failure` unit's `ExecStart` is smoke-tested before landing (prevents restart-loop bombs that break the next `switch-to-configuration` — incident 2026-06-03 in `Mnemopi recall: gotcha-systemd-restart-loop-bombs`) | `[prose: unchecked]` — promote? flake check resolving each `ExecStart` to a real nix-store binary path |
 | **Convention shapes** | |
 | `nori.<X>` effects are one input → multiple generators (Reader + collected-Writer interface) | `[structural]` (the abstraction shape itself; documented in `docs/glossary.md` § effect-interface deep-dive) |
 | Adding `modules/infra/<X>.nix` ships with a `just test-<X>` runtime introspection recipe | `[prose: unchecked]` — promote? meta-check that every Reader+Writer-shaped effect file has a matching test recipe in `Justfile`. See `docs/reference/runtime-tests.md` § "Next potential test targets" |
@@ -105,7 +105,7 @@ scope = ["modules/"]                # paths grep walks
 excludeFiles = ["allowlist.nix"]    # optional per-rule file exemptions
 excludePatterns = ['known-ok']      # optional per-rule substring exemptions
 tags = ["security", "topology"]     # optional, for future filtering
-docLink = ".claude/skills/<>/"      # optional pointer to the why
+docLink = "Mnemopi recall: gotcha-<name>" # optional pointer to the why; repo-relative paths also work
 message = '''
 Operator-facing explanation when the rule fires.'''
 ```
@@ -180,7 +180,7 @@ The effect-interface family in `modules/infra/` is enforced by all five rungs si
 - `function-named-subdomains` → `[law: lint.functionNamedSubdomains]` (2026-06-16) — TOML denylist of 13 upstream brand names with clean function-name mappings (gatus→uptime, ntfy→alert, …). Audited current tree: zero real violations (operator's branded apps `filmder`/`heim` legitimately have brand-as-identity).
 - `audience-enforces-auth` → `[structural: module assertion]` (2026-06-21) — `audience="family"` requires `oidc`, `forwardAuth`, or explicit `noAuthReason` per `modules/infra/networking/default.nix` assertion. Two legitimate exceptions annotated (radicale, jellyfin).
 - `infra-concerns-have-tests` → `[law: infra-concerns-have-tests]` (2026-06-21) — every `modules/infra/<X>/` with a Reader-shaped `options.nori.*` schema must ship a matching test-* recipe per the lookup table in `flake.nix § checks.infra-concerns-have-tests`. Mapping: backup→test-backups, capabilities→test-harden, networking→test-routes, observability→test-observability, storage→test-fs, access→test-authelia.
-- `systemd-execstart-resolves` → REJECTED (2026-06-21) — vetted after audit proposed it; grep finds zero literal-path ExecStarts in `modules/`, every one is `${pkgs.foo}/bin/baz` interpolation which nix eval already validates. Real incident class (bad flags, 2026-06-03) handled by `gotcha-systemd-restart-loop-bombs` at prose+procedure rung. See `docs/plans/2026-06-21-improve-audit.md § finding #4`.
+- `systemd-execstart-resolves` → REJECTED (2026-06-21) — vetted after audit proposed it; grep finds zero literal-path ExecStarts in `modules/`, every one is `${pkgs.foo}/bin/baz` interpolation which nix eval already validates. Real incident class (bad flags, 2026-06-03) handled by `Mnemopi recall: gotcha-systemd-restart-loop-bombs` at the prose+memory rung. See `docs/plans/2026-06-21-improve-audit.md § finding #4`.
 
 Others (the `[judgment]` ones) stay where they are — they're not staleness risks.
 

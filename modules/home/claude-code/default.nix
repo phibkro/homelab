@@ -13,8 +13,9 @@
   no operator agent loop, and the Node closure shouldn't land on pi's
   anti-write SSD.
 
-  Static config only — settings.json, CLAUDE.md, ~/.claude/{skills,agents,
-  artifacts}/ — wired in the home.file block below. Dynamic state
+  Static config only — settings.json, CLAUDE.md, ~/.claude/{agents,artifacts}/
+  — wired in the home.file block below. Global skills are owned by
+  modules/home/agent-skills. Dynamic state
   (per-project memory, per-session todos, ~/.claude.json with OAuth tokens
   + runtime caches) is excluded by design; it mutates per launch and would
   be clobbered on rebuild. Per-project `<project>/.claude/` stays
@@ -265,19 +266,6 @@ let
     allowManagedMcpServersOnly = true;
     enableAllProjectMcpServers = true;
 
-    /*
-      "user-invocable-only" hides the description from auto-loaded
-      skills (saves ~150-300 tokens/session per skill) but keeps
-      `/<name>` reachable. Applied to skills too heavy for the
-      auto-discovery slot — opt-in modes (caveman) and UI tools
-      (frontend-design, shadcn-ui).
-    */
-    skillOverrides = {
-      caveman = "user-invocable-only";
-      frontend-design = "user-invocable-only";
-      shadcn-ui = "user-invocable-only";
-    };
-
     statusLine = {
       type = "command";
       command = "${statuslineScript}";
@@ -369,7 +357,6 @@ in
 
   home.packages = [
     claude-code-master # Anthropic CLI; pulls Node closure (~300 MB). Overlaid from master — see let-binding.
-    pkgs.agent-browser # Persistent browser automation for AI agents
     /*
       MCP servers — direct binaries from nixpkgs (no npx-fetch latency,
       version pinned by flake.lock). Wired into Claude Code via the
@@ -395,179 +382,29 @@ in
     piAgent
   ];
 
-  /*
-    Claude Code skill discovery is shallow (~/.claude/skills/<name>/
-    SKILL.md, not nested), so external collections get flattened one-
-    subdir-per-skill into the flat tree. recursive=true symlinks at the
-    file level so multiple sources can coexist under the same parent dir.
-  */
-  home.file =
-    let
-      # Allowlist rather than import-all so the curated ./skills set
-      # isn't drowned by upstream skills we've replaced or don't use.
-      # `subdir` lets the helper reach into nested upstream layouts
-      # (Matt Pocock's repo nests by category: skills/engineering/<n>).
-      importSkills =
-        {
-          src,
-          subdir ? "",
-          names,
-        }:
-        let
-          prefix = if subdir == "" then src else "${src}/${subdir}";
-        in
-        lib.listToAttrs (
-          map (
-            n:
-            lib.nameValuePair ".claude/skills/${n}" {
-              source = "${prefix}/${n}";
-              recursive = true;
-            }
-          ) names
-        );
-    in
-    lib.mkMerge [
-      {
-        ".claude/skills" = {
-          source = ./skills;
-          recursive = true;
-        };
-        ".claude/CLAUDE.md".source = ./CLAUDE.md;
-        ".claude/agents" = {
-          source = ./agents;
-          recursive = true;
-        };
-        ".claude/artifacts" = {
-          source = ./artifacts;
-          recursive = true;
-        };
-        ".claude/settings.json".text = builtins.toJSON settings;
-      }
+  home.file = lib.mkMerge [
+    {
+      ".claude/CLAUDE.md".source = ./CLAUDE.md;
+      ".claude/agents" = {
+        source = ./agents;
+        recursive = true;
+      };
+      ".claude/artifacts" = {
+        source = ./artifacts;
+        recursive = true;
+      };
+      ".claude/settings.json".text = builtins.toJSON settings;
+    }
 
-      /*
-        Third-party skill collections — flake-input-pinned, mapped one-
-        subdir-per-skill into the flat ~/.claude/skills/.
-        superpowers: only the survivors of the curation (utilities + code
-        review). brainstorming is vendored + adapted in ./skills (repointed
-        to grill-with-docs); writing-plans/executing-plans/subagent-driven-
-        development/verification-before-completion/finishing-a-development-
-        branch/using-superpowers were dropped. Superpowers' test-driven-
-        development + systematic-debugging are superseded by Matt Pocock's
-        tdd + diagnosing-bugs below; writing-skills is superseded by
-        ./skills/write-a-skill.
-      */
-      (importSkills {
-        src = "${inputs.superpowers}/skills";
-        names = [
-          "dispatching-parallel-agents"
-          "receiving-code-review"
-          "requesting-code-review"
-          "using-git-worktrees"
-        ];
-      })
-      # caveman: keep only the core compressed-comms mode; the -commit/
-      # -compress/-help/-review/-stats variants + cavecrew are pruned.
-      (importSkills {
-        src = "${inputs.caveman}/skills";
-        names = [ "caveman" ];
-      })
-
-      /*
-        Matt Pocock v1.0.1 engineering + productivity skills. The
-        upstream layout nests skills under `skills/<category>/<name>/`;
-        we lift the names we want into the flat ~/.claude/skills/ tree
-        category-by-category. Excludes:
-          • personal/   — operator-personal (obsidian-vault, edit-article)
-          • in-progress/ — explicit alpha (writing-shape, review, etc.)
-          • misc/migrate-to-shoehorn (TS-lib specific)
-          • misc/scaffold-exercises (teaching environments)
-        Local ./skills/{improve-codebase-architecture,tdd,diagnose,
-        grill-with-docs} were removed when this import landed —
-        upstream is canonical.
-      */
-      (importSkills {
-        src = inputs.mattpocock-skills;
-        subdir = "skills/engineering";
-        names = [
-          "ask-matt"
-          "codebase-design"
-          "diagnosing-bugs"
-          "domain-modeling"
-          "grill-with-docs"
-          "implement"
-          "improve-codebase-architecture"
-          "prototype"
-          "resolving-merge-conflicts"
-          "setup-matt-pocock-skills"
-          "tdd"
-          "to-issues"
-          "to-prd"
-          "triage"
-        ];
-      })
-      (importSkills {
-        src = inputs.mattpocock-skills;
-        subdir = "skills/productivity";
-        names = [
-          "grill-me"
-          "grilling"
-          "handoff"
-          "teach"
-          "writing-great-skills"
-        ];
-      })
-      (importSkills {
-        src = inputs.mattpocock-skills;
-        subdir = "skills/misc";
-        names = [
-          "git-guardrails-claude-code"
-          "setup-pre-commit"
-        ];
-      })
-
-      {
-        ".claude/skills/frontend-design" = {
-          source = "${inputs.anthropics-skills}/skills/frontend-design";
-          recursive = true;
-        };
-        ".claude/skills/shadcn-ui" = {
-          source = "${inputs.shadcn}/skills/shadcn-ui";
-          recursive = true;
-        };
-        /*
-          shadcn/improve — read-only audit + plan-author skill. Pairs
-          with the implementation skills (tdd, implement) above by
-          producing the spec they execute against.
-        */
-        ".claude/skills/improve" = {
-          source = "${inputs.shadcn-improve}/skills/improve";
-          recursive = true;
-        };
-        ".claude/skills/obsidian-markdown" = {
-          source = "${inputs.obsidian-skills}/skills/obsidian-markdown";
-          recursive = true;
-        };
-      }
-      /*
-        Herdr's control-plane SKILL.md now lives in modules/home/agent-skills,
-        which installs it for Claude and Codex from one pinned revision. Only
-        the Claude-specific hook belongs here.
-      */
-      (lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
-        /*
-          The pane-state reporter registered by `herdrHooks` above. Owned here
-          rather than left to `herdr integration install claude` so the script
-          and the herdr binary consuming its socket messages come from one
-          pinned revision. Bumping the herdr input moves both together;
-          `herdr integration status` keeps reading the version marker in this
-          file and stays honest.
-        */
-        ".claude/hooks/herdr-agent-state.sh" = {
-          source = herdrClaudeHookAsset;
-          executable = true;
-        };
-      })
-    ];
+    # The Herdr control-plane skill is provider-neutral and lives in
+    # modules/home/agent-skills. Only Claude's lifecycle adapter belongs here.
+    (lib.mkIf pkgs.stdenv.hostPlatform.isLinux {
+      ".claude/hooks/herdr-agent-state.sh" = {
+        source = herdrClaudeHookAsset;
+        executable = true;
+      };
+    })
+  ];
 
   /*
     Shared memory across /srv/share/projects/* namespaces. Claude Code

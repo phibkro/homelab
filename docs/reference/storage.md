@@ -126,6 +126,6 @@ All failures alert via ntfy. The drill is the **real RTO measurement**, not the 
 
 **Appliance hosts cannot use `paths`** — the role drives a placement assertion in `modules/infra/backup/default.nix` that fails eval if an appliance host (`nori.hosts.<self>.role = "appliance"`) declares a `paths`-based backup. Pi is an observer, not a state holder; daily restic writes to flash defeat its anti-write storage posture. Appliance-host services declare `.skip = "<reason>"` instead (or move the backup target to the workhorse via `nori.fs`).
 
-The DynamicUser `StateDirectory` symlink-trap assertion derives from `config.systemd.services` introspection — self-maintaining. See `.claude/skills/gotcha-dynamicuser-statedirectory-symlink/`.
+The DynamicUser `StateDirectory` symlink-trap assertion derives from `config.systemd.services` introspection — self-maintaining. See `Mnemopi recall: gotcha-dynamicuser-statedirectory-symlink`.
 
 Schema in `modules/infra/backup/default.nix`. Cross-cutting infra (sops password, check timers) lives in `modules/infra/backup/restic.nix`; restore drills live in `modules/infra/backup/verify.nix`. Each workstation repo writes to **both** `sftp:restic@aurora…:/mnt/backup/<job>` (OneTouch ext4 on aurora) and `/mnt/backup-local/<job>` (local MP510 btrfs). Automated restore drills use the local MP510 copy; off-host restorability is covered by the separate target/runtime checks.

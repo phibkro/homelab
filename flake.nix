@@ -71,57 +71,6 @@
     stylix.inputs.nixpkgs.follows = "nixpkgs";
 
     /*
-      Third-party Claude Code skill sources — pinned via flake.lock,
-      consumed as plain source trees by modules/home/claude-code/default.nix.
-      Update via `nix flake update --update-input <name>`. Not flakes
-      themselves, hence flake = false.
-    */
-    superpowers.url = "github:obra/superpowers";
-    superpowers.flake = false;
-    caveman.url = "github:juliusbrussee/caveman";
-    caveman.flake = false;
-    /*
-      Anthropics' public Agent-Skills repo. We only consume the
-      frontend-design subdir today; the rest (xlsx, pptx, mcp-builder,
-      etc.) is one extra symlink away if/when needed.
-    */
-    anthropics-skills.url = "github:anthropics/skills";
-    anthropics-skills.flake = false;
-    /*
-      masonjames/Shadcnblocks-Skill — gives Claude Code expert
-      knowledge of 2,500+ shadcn/ui blocks. Single `shadcn-ui` skill.
-    */
-    shadcn.url = "github:masonjames/Shadcnblocks-Skill";
-    shadcn.flake = false;
-    /*
-      kepano/obsidian-skills — multi-skill (defuddle, json-canvas,
-      obsidian-bases, obsidian-cli, obsidian-markdown). We only
-      consume obsidian-markdown today.
-    */
-    obsidian-skills.url = "github:kepano/obsidian-skills";
-    obsidian-skills.flake = false;
-    /*
-      mattpocock/skills — Matt Pocock's engineering + productivity
-      skill collection. Pinned to v1.0.1 (the explicit versioned
-      release; tag-pinning catches breaking renames in his model-
-      invocation slots). Replaces several skills previously
-      hand-vendored under modules/home/claude-code/skills/
-      (improve-codebase-architecture, tdd, diagnose, grill-with-docs).
-      The curated import list in default.nix excludes personal/
-      and in-progress/ subdirs; misc/ is selective.
-    */
-    mattpocock-skills.url = "github:mattpocock/skills/v1.0.1";
-    mattpocock-skills.flake = false;
-    /*
-      shadcn/improve — single `improve` skill. Audits a codebase
-      as a senior advisor and writes self-contained implementation
-      plans for cheaper-model executors to run. Read-only on
-      source code by design.
-    */
-    shadcn-improve.url = "github:shadcn/improve";
-    shadcn-improve.flake = false;
-
-    /*
       nix-community/impermanence — "erase your darlings" mechanism.
       Opt-in per host. Consumed by machines/pavilion (agent quarantine):
       pavilion uses btrfs-rollback rather than tmpfs root (3.6 GB RAM

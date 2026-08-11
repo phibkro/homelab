@@ -41,6 +41,9 @@ bash:
     enabled: true
     thresholdMs: 60000
 
+ask:
+  notify: on
+
 eval:
   py: false
   js: true
