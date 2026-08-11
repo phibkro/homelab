@@ -84,7 +84,7 @@ Restore path (substitute `<repo>` with any service whose state you need):
 
 ```bash
 sudo RESTIC_PASSWORD_FILE=/run/secrets/restic-password \
-  restic -r /mnt/backup/<repo> restore latest --target /        # OneTouch (ext4)
+  restic -r /mnt/backup/repos/<repo> restore latest --target /  # OneTouch (ext4) — run on aurora
 # Same restore via Ironwolf if OneTouch is offline:
 sudo RESTIC_PASSWORD_FILE=/run/secrets/restic-password \
   restic -r /mnt/backup-local/<repo> restore latest --target /  # Ironwolf (btrfs)

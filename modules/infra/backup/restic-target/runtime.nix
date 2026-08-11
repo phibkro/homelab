@@ -4,38 +4,63 @@
   ...
 }:
 
+let
+  /*
+    sshd's ChrootDirectory must be root-owned and not group/other-
+    writable — the ext4 mount root satisfies that for free (root:root
+    0755 from mkfs), which is precisely why the chrooted `restic` user
+    can NOT create anything directly inside it.
+  */
+  chrootRoot = "/mnt/backup";
+
+  /*
+    So per-job repos live one level down, in a directory the SFTP user
+    OWNS. That's what makes `initialize = true` work unattended for a
+    NEW nori.backups job: restic mkdirs `<repoBase>/<job>/` itself.
+    Parking repos at the chroot root instead made every first push fail
+    with `MkdirAll /<job>/index: permission denied` — see
+    docs/reports/20260811-030203-restic-backups-herdr-projects-mcp-onetouch-failure.md.
+  */
+  repoBase = "${chrootRoot}/repos";
+in
 {
   /**
     Restic backup target — chrooted SFTP-only user.
 
     Lets remote hosts (workstation, future pi/pavilion) push restic
-    snapshots to this host's /mnt/backup. The `restic` user has no
+    snapshots to this host's OneTouch drive. The `restic` user has no
     shell, no port forwarding, and an OpenSSH ChrootDirectory locking
     them to /mnt/backup. Repository paths in the workstation's
     `nori.backupTargets.onetouch.repository` string look like
-    `sftp:restic@<host>:/<jobname>` — the leading slash is the chroot
-    root, i.e. /mnt/backup on the real fs.
+    `sftp:restic@<host>:/repos/<jobname>` — the leading slash is the
+    chroot root, i.e. /mnt/backup/repos/<jobname> on the real fs.
 
-    The chroot guarantees:
-      ChrootDirectory must be owned by root and not group/other-writable.
-      Ext4 mount-root inherits root:root 0755 from the filesystem, so
-      /mnt/backup satisfies this automatically when the OneTouch is
-      mounted. Per-job subdirs (/mnt/backup/<job>) are restic-owned;
-      restic creates them via `initialize = true` on first push.
+    Ownership, and why the extra level exists:
 
-    ── Onboarding existing repos (one-time after the OneTouch moves) ─
-    The drive's existing per-job dirs were created by workstation's
-    root, so they're root:root. Hand ownership to the new restic user
-    so the SFTP client can write:
-      sudo chown -R restic:restic /mnt/backup/{<job1>,<job2>,...}
-    Skip /mnt/backup itself — that must stay root-owned for chroot.
+      /mnt/backup         root:root 0755  chroot root (sshd's rule)
+      /mnt/backup/repos   restic:restic   repo base — restic writes here
+      /mnt/backup/repos/<job>             one restic repo per job
+
+    Aurora's OWN backups (nori.backupTargets.onetouch on aurora, a
+    local path) run as root and are unaffected by this split.
   */
+
+  /*
+    The repo base, created on the drive itself: the path lookup goes
+    through the OneTouch's x-systemd.automount, which mounts it on
+    demand. Drive detached → the automount point still masks the
+    underlying root-fs directory, so tmpfiles errors instead of
+    seeding a shadow repo base on aurora's SSD.
+  */
+  systemd.tmpfiles.rules = [
+    "d ${repoBase} 0750 restic restic -"
+  ];
 
   users.users.restic = {
     isSystemUser = true;
     group = "restic";
-    home = "/mnt/backup";
-    createHome = false; # /mnt/backup is the ext4 mountpoint
+    home = chrootRoot;
+    createHome = false; # the ext4 mountpoint; repos/ comes from tmpfiles above
     shell = "${pkgs.shadow}/bin/nologin";
     openssh.authorizedKeys.keys = [
       /*
@@ -61,7 +86,7 @@
   */
   services.openssh.extraConfig = lib.mkAfter ''
     Match User restic
-      ChrootDirectory /mnt/backup
+      ChrootDirectory ${chrootRoot}
       ForceCommand internal-sftp -d /
       AllowTcpForwarding no
       X11Forwarding no

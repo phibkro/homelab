@@ -110,7 +110,7 @@ in
     prepareCommand can use either path — bash file ops follow symlinks.
 
     When disabled, the backup is skipped — the state isn't changing,
-    the existing restic snapshots remain on /mnt/backup/open-webui as
+    the existing restic snapshots remain on aurora at /mnt/backup/repos/open-webui as
     the recovery surface. Resume the daily job by flipping `enabled`.
   */
   nori.backups.open-webui =
@@ -146,6 +146,6 @@ in
       }
     else
       {
-        skip = "Service disabled — see `enabled` at top of file. Existing snapshots in /mnt/backup/open-webui retained.";
+        skip = "Service disabled — see `enabled` at top of file. Existing snapshots in aurora:/mnt/backup/repos/open-webui retained.";
       };
 }

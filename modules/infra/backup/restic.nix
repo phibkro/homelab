@@ -157,8 +157,20 @@ in
   # Backup target registry — schema in modules/infra/backup/default.nix.
   nori.backupTargets = {
     onetouch = {
-      repository = "sftp:restic@aurora.saola-matrix.ts.net:";
-      description = "OneTouch HDD relocated to aurora 2026-06-11; reached over SFTP via the chrooted `restic` user on aurora (see modules/machines/aurora/disko-onetouch.nix + the restic-target workload).";
+      /*
+        `/repos`, not the SFTP root: the root IS aurora's chroot root
+        for the `restic` user, which sshd forces to be root-owned and
+        non-group-writable — so the pushing user cannot mkdir a new
+        job's repo there. Every existing repo worked only because its
+        directory had been hand-chowned during the 2026-06-11 move;
+        the first NEW job (`herdr-projects-mcp`, 2026-08-11) died on
+        `MkdirAll /<job>/index: permission denied`. `/repos` is
+        restic-owned (restic-target workload), so `initialize = true`
+        is self-serving again. Report:
+        docs/reports/20260811-030203-restic-backups-herdr-projects-mcp-onetouch-failure.md
+      */
+      repository = "sftp:restic@aurora.saola-matrix.ts.net:/repos";
+      description = "OneTouch HDD relocated to aurora 2026-06-11; reached over SFTP via the chrooted `restic` user on aurora, under the restic-owned /mnt/backup/repos base (see modules/machines/aurora/disko-onetouch.nix + the restic-target workload).";
       extraOptions = [
         "sftp.command='${pkgs.openssh}/bin/ssh -o BatchMode=yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/etc/ssh/aurora_known_hosts -i /run/secrets/restic-ssh-key restic@aurora.saola-matrix.ts.net -s sftp'"
       ];

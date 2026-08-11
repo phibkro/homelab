@@ -65,7 +65,7 @@ nori.backups.user-data = {
   include = [ "/home" "/srv/share" "/srv/nori" ];
   tier = "user";  # drives default retention curve
 };
-# Generates `restic-backups-user-data-onetouch.service` (→ /mnt/backup/user-data)
+# Generates `restic-backups-user-data-onetouch.service` (→ aurora:/mnt/backup/repos/user-data over SFTP)
 # AND `restic-backups-user-data-mp510.service` (→ /mnt/backup-local/user-data)
 ```
 
