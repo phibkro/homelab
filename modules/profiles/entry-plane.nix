@@ -23,8 +23,11 @@ in
   nori.blocky.role = "self-hosted";
 
   /*
-    Stream Pi service backups to Aurora's OneTouch over chrooted SFTP. The
-    `/pi` prefix keeps appliance snapshots out of Workstation's repo namespace.
+    Stream appliance service backups to Aurora's OneTouch over chrooted SFTP,
+    scoped under this host's own namespace directory. Same construction every
+    pusher uses now — Aurora creates one restic-owned namespace per host in
+    `nori.hosts` (the restic-target workload), which is what makes a NEW job's
+    `initialize = true` able to mkdir its repo at all.
   */
   sops.secrets = lib.mkIf needsApplianceBackupTarget {
     restic-password = {
@@ -42,8 +45,8 @@ in
     '';
   };
   nori.backupTargets.onetouch = lib.mkIf needsApplianceBackupTarget {
-    repository = "sftp:restic@aurora.saola-matrix.ts.net:/pi";
-    description = "Entry plane → OneTouch via Aurora SFTP, scoped under /pi/ so appliance snapshots do not collide with Workstation's shared chroot namespace.";
+    repository = "sftp:restic@aurora.saola-matrix.ts.net:/${config.networking.hostName}";
+    description = "Entry plane → OneTouch via Aurora SFTP, scoped under /${config.networking.hostName}/ so appliance snapshots get their own writable repo namespace and cannot collide with another host's job names.";
     extraOptions = [
       "sftp.command='${pkgs.openssh}/bin/ssh -o BatchMode=yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/etc/ssh/aurora_known_hosts -i /run/secrets/restic-ssh-key restic@aurora.saola-matrix.ts.net -s sftp'"
     ];

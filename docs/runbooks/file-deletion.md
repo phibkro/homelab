@@ -63,12 +63,12 @@ If nothing on local snapshots covers it, the next layer is restic (whichever bac
 
 ```bash
 # List snapshots
-sudo restic -r /mnt/backup/user-data \
+sudo restic -r /mnt/backup/workstation/user-data \
   --password-file /run/secrets/restic-password \
   snapshots
 
 # Restore one file from a specific snapshot
-sudo restic -r /mnt/backup/user-data \
+sudo restic -r /mnt/backup/workstation/user-data \
   --password-file /run/secrets/restic-password \
   restore <snapshot-id> --target /tmp/restore --include /home/nori/notes.md
 ```

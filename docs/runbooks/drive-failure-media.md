@@ -45,7 +45,7 @@ Wipes + creates the btrfs filesystem with all six subvolumes (@streaming, @photo
 ### 4. Restore irreplaceable data from restic
 
 ```bash
-sudo restic -r /mnt/backup/media-irreplaceable \
+sudo restic -r /mnt/backup/workstation/media-irreplaceable \
   --password-file /run/secrets/restic-password \
   restore latest --target /
 ```
@@ -73,7 +73,7 @@ If you decide a particular subset of streaming is actually irreplaceable (a spec
 
 ```bash
 ls /mnt/media/{photos,home-videos,projects,archive}
-sudo restic -r /mnt/backup/media-irreplaceable \
+sudo restic -r /mnt/backup/workstation/media-irreplaceable \
   --password-file /run/secrets/restic-password \
   check
 ```

@@ -61,7 +61,7 @@ sudo systemctl start open-webui.service
 If `/var/backup/open-webui/webui.db` is also bad, pull from restic:
 
 ```bash
-sudo restic -r /mnt/backup/open-webui \
+sudo restic -r /mnt/backup/workstation/open-webui \
   --password-file /run/secrets/restic-password \
   restore latest --target /tmp/restore \
   --include /var/backup/open-webui/webui.db
