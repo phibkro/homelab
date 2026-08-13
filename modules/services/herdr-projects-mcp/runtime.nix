@@ -163,5 +163,16 @@ in
     };
   };
 
-  nori.backups.herdr-projects-mcp.include = [ stateDir ];
+  /*
+    No repo of its own. The facade journal sits under /home, which the
+    cross-cutting `user-data` job already ships to every target on the same
+    03:00 timer at a longer retention (user tier, 14d/4w/12m vs the service
+    default 7d/4w/12m). A second job would copy the same bytes twice — and
+    against the `onetouch` target it can't even initialize: that repository
+    root is aurora's sshd ChrootDirectory (/mnt/backup), which must stay
+    root-owned, so restic's MkdirAll at the chroot root is denied and the
+    unit failed nightly from 2026-08-11. See
+    docs/reports/20260813-030204-restic-backups-herdr-projects-mcp-onetouch-failure.md.
+  */
+  nori.backups.herdr-projects-mcp.skip = "Facade journal lives at ${stateDir}, inside the /home path the user-data repo already backs up to every target.";
 }

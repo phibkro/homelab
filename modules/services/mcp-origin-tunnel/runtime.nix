@@ -80,4 +80,6 @@ in
       RestrictSUIDSGID = true;
     };
   };
+
+  nori.backups.mcp-origin-tunnel.skip = "Stateless — the tunnel id and its whole ingress table are rendered from this module; the connector credentials come from sops.";
 }
