@@ -5,24 +5,38 @@ description: Build, review, or migrate TypeScript systems that use Effect v4 as 
 
 # Effect v4 Engineer
 
-Use Effect for application semantics and capability ownership. Keep plain TypeScript for small, total leaf computations or an adapter whose exception is explicit. Do not wrap every expression in `Effect`; make boundaries, failure, resources, concurrency, and authority visible.
+Use Effect as the application language and standard library. Push dependencies and authority to explicit seams: portable programs require abstract Services, Layer implementations lower those requirements into concrete runtimes, and composition roots select Layers and execute the program. A small total expression can remain a direct function; do not turn dependency-free computation into a Service merely for uniformity.
 
 ## Establish the exact API
 
 1. Read the repository `AGENTS.md` and package manifests.
-2. Record the exact `effect`, platform, and TypeScript versions. Treat every v4 beta change as potentially incompatible.
-3. Prefer the installed package source, README, and declaration files over remembered v3 APIs. Use official Effect v4 documentation when local sources do not answer the question.
+2. Record the exact `effect`, platform, and TypeScript versions. Treat every v4 prerelease change as potentially incompatible.
+3. When the official Effect checkout is available at `../effect`, treat it as the authoritative feature reference: start at `LLMS.md`, then read the relevant package guide, source, tests, and type tests. Otherwise prefer the installed package source, README, and declarations over remembered v3 APIs.
 4. Search the repository for accepted v4 patterns before introducing a new house abstraction.
-5. Read [effect-first-patterns.md](references/effect-first-patterns.md) before implementing or reviewing application code.
-6. Read [beta-field-notes.md](references/beta-field-notes.md) before installing a dependency or upgrading the beta. It records renames confirmed by compiler error, ecosystem packages whose `latest` tag still points at v3, and a peer range that is declared satisfied and is not.
+5. Use [official-source-router.md](references/official-source-router.md) to load only the official source branches relevant to the task.
+6. Read [effect-first-patterns.md](references/effect-first-patterns.md) before implementing or reviewing application architecture.
+7. Read [beta-field-notes.md](references/beta-field-notes.md) before installing a dependency or upgrading the prerelease. It records renames confirmed by compiler error, ecosystem packages whose `latest` tag still points at v3, and a peer range that is declared satisfied and is not.
 
 Never silently translate a v3 example. For example, staged Schema composition that used `Schema.compose` in older code is normally expressed with `Schema.decodeTo` or a specific v4 transformation. Verify the direction from the installed source.
+
+Do not maintain a second catalog of Effect features in this skill. This skill
+defines architectural policy and routes API questions to the official repository;
+the checked-out source defines the available modules and exact signatures.
+
+## Choose the semantic construct
+
+- Model an ordinary boundary record with `Schema.Struct` and a same-name interface when the project uses that convention.
+- Model an internal control-flow sum with `Data.TaggedEnum` and its exhaustive `$match`; do not add Schema only to obtain constructors and matching.
+- Model a serializable or externally decoded sum with `Schema.TaggedUnion` and its `cases`, `guards`, and exhaustive `match` helpers.
+- For an external discriminator other than `_tag`, build the member structs with `Schema.tag(...)` and add union helpers through `Schema.toTaggedUnion(discriminator)`.
+- Model expected schema-visible Effect failures with `Schema.TaggedError<Self>()("Tag", fields)`. Verify this exact prerelease name; do not import the obsolete `TaggedErrorClass` spelling.
+- Decode unknown input with `Schema.decodeUnknownEffect`. Use `schema.makeEffect` when construction failure belongs in the error channel; reserve throwing construction for trusted paths that intentionally terminate on invalid values.
 
 ## Classify each module
 
 Assign one primary role before editing:
 
-- `pure-library`: total deterministic values and algorithms;
+- `pure-library`: total deterministic values and algorithms, preferably using Effect's data modules where they fit;
 - `schema-boundary`: encoded data, decoding, validation, and transformations;
 - `effect-library`: reusable programs with requirements still visible;
 - `service`: one owned capability exposed through a service contract and Layer;
@@ -48,7 +62,10 @@ Do not let a reusable library execute its own runtime or select live infrastruct
 
 - Read configuration through Effect Config. Do not read ambient environment variables throughout the program.
 - Model clocks, randomness, files, network clients, persistence, and operational output as requirements or services.
-- Build implementations as Layers. Provide final live Layers only at the composition root.
+- Search Effect's core, platform, and unstable modules before defining a project Service. Reuse services such as FileSystem, Path, ChildProcessSpawner, HttpClient, and their platform Layers when they already express the required capability.
+- Define a project Service when it owns a domain contract, policy, or capability that is meaningfully different from the existing Effect service—not merely to rename a platform operation.
+- Keep concrete runtime, vendor, and operational imports inside runtime adapters that implement those Services.
+- Build adapters as Layers. Provide final live Layers only at the composition root.
 - Prefer existing Effect platform modules and maintained adapters over custom wrappers.
 
 ### Failure and resources
@@ -85,19 +102,25 @@ Disallow ordinary `useEffect` in product components. Put browser subscriptions, 
 
 Enable React Compiler. Avoid manual `useMemo`, `useCallback`, and `memo` unless profiling or an external identity contract proves they are necessary. Enable React, Hooks, compiler-analysis, and JSX accessibility lint domains.
 
-## Admit plain TypeScript deliberately
+## Keep leaf computation direct
 
-Plain TypeScript is acceptable for:
+TypeScript is Effect's host syntax, not a second application architecture. Keep a
+calculation as a direct function when it is total and has no dependency,
+authority, failure, resource, or lifecycle to expose. Examples include:
 
 - a small total transformation with no failure or capability;
 - an immutable data constructor already guarded by a schema;
 - a hot pure loop supported by a benchmark;
-- a framework callback that only forwards a typed message;
-- a runtime adapter where Effect has no maintained surface.
+- a framework callback that only forwards a typed message into an Effect-owned program.
 
-It is not acceptable for ambient configuration, raw external decoding, resource ownership, retries, cancellation, operational concurrency, persistence boundaries, or application-level error handling.
+Direct external packages are acceptable only when reviewed as total,
+authority-free dependencies with stable semantics. Otherwise expose the needed
+functionality as a Service and confine the concrete import to its Layer. Ambient
+configuration, raw external decoding, resource ownership, retries, cancellation,
+operational concurrency, persistence boundaries, and application-level error
+handling remain Effect-owned.
 
-When an entire module is intentionally pure or adapter-specific, state its role in a short module comment or architecture map. Do not demand exemption comments for every local pure function inside an Effect program.
+When an entire module is intentionally pure or adapter-specific, state its role in a short module comment or architecture map. Do not demand exemption comments for every local total function inside an Effect program.
 
 ## Enforce the architecture
 
@@ -123,5 +146,7 @@ Treat lint results and tests as evidence over their checked scope, not proof of 
 - Are Config and platform capabilities injected instead of ambient?
 - Does Schema composition make representation changes readable?
 - Does React render observations instead of secretly managing system lifecycles?
-- Is every plain TypeScript exception genuinely pure, measured, or adapter-bound?
+- Are concrete dependencies confined to Layer implementations while portable programs depend on Services?
+- Does every custom Service add a domain contract or policy that an existing Effect service does not already provide?
+- Is every direct external pure dependency explicitly reviewed and genuinely authority-free?
 - Do the gates contain a counterexample that would fail if the policy regressed?

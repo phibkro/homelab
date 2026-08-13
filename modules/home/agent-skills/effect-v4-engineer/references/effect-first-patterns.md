@@ -2,6 +2,22 @@
 
 Consult the exact installed Effect v4 source before using an API name. This map describes semantic replacements, not copy-paste signatures.
 
+Push dependencies outward without pushing Effect out of the core:
+
+```text
+portable Effect program
+  requires abstract Services
+           ↓ provide
+Layer implementations
+  import concrete runtimes and vendors
+           ↓ select and run
+composition root
+```
+
+A direct total function is still part of the portable program. A Service earns
+its place by representing a dependency, authority, replaceable policy, or owned
+lifecycle—not merely because a function exists.
+
 | Plain JavaScript pattern | Effect-first default | Boundary reason |
 | --- | --- | --- |
 | `JSON.parse` plus a cast | `Schema.fromJsonString` and strict decoding | Syntax and semantic validation become one explicit codec |

@@ -51,14 +51,15 @@ motto, not a preference:
   don't hand-roll what these cover.
 - Python is fine for disposable one-off investigation, but do not commit it as
   project source or scripts.
-- **What evades Effect — and why it matters:** the **seams** (integration
-  boundaries / the explicit edges between systems) and the **core** (pure domain
-  logic + the source of truth). These are deliberately *outside* Effect — Effect
-  owns the effectful/derived layers, but the core stays pure and the seams stay
-  explicit. Per the governing motto, the **core and seams are where
-  correctness-by-construction is most load-bearing** (pure core = single source of
-  truth; explicit seams = the traceable core→derivation dependency graph). Design
-  those by hand with care; let Effect carry the rest.
+- **Effect pushes dependencies to the seams:** use Effect as the application
+  language and standard library, including in the semantic core. Keep portable
+  programs open over abstract Services so their dependencies and authority stay
+  visible. Concrete runtimes, vendors, and operational imports belong in Layer
+  implementations; composition roots select those Layers and execute the program.
+  The core still owns domain meaning, and seams still expose the traceable
+  core→derivation dependency graph—Effect expresses that separation rather than
+  sitting outside it. A total local calculation remains a direct function; do not
+  invent a Service when there is no dependency or authority to abstract.
 
 ## Context engineering tools
 
