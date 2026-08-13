@@ -20,15 +20,23 @@
       ChrootDirectory must be owned by root and not group/other-writable.
       Ext4 mount-root inherits root:root 0755 from the filesystem, so
       /mnt/backup satisfies this automatically when the OneTouch is
-      mounted. Per-job subdirs (/mnt/backup/<job>) are restic-owned;
-      restic creates them via `initialize = true` on first push.
+      mounted.
 
-    ── Onboarding existing repos (one-time after the OneTouch moves) ─
-    The drive's existing per-job dirs were created by workstation's
-    root, so they're root:root. Hand ownership to the new restic user
-    so the SFTP client can write:
-      sudo chown -R restic:restic /mnt/backup/{<job1>,<job2>,...}
-    Skip /mnt/backup itself — that must stay root-owned for chroot.
+    ── Adding a job: the per-job dir is an OPERATOR step ──────────────
+    The same root-ownership that makes the chroot legal makes the chroot
+    root unwritable for the `restic` user, so `initialize = true` CANNOT
+    create /mnt/backup/<job> — restic fails with
+    `MkdirAll /<job>/… permission denied` and the nightly unit stays red
+    until someone acts. Before a new `nori.backups.<job>` fans out to the
+    `onetouch` target, on aurora:
+      sudo install -d -o restic -g restic /mnt/backup/<job>
+    Skip /mnt/backup itself — that must stay root-owned for chroot. Pi
+    avoids the step entirely by scoping its repository under a restic-owned
+    /pi prefix (modules/profiles/entry-plane.nix); making Workstation do
+    the same is the standing fix for the class, and costs a one-time
+    relocation of every existing repo on the drive. Bit 2026-08-11 with
+    the herdr-projects-mcp job; see
+    docs/reports/20260813-030204-restic-backups-herdr-projects-mcp-onetouch-failure.md.
   */
 
   users.users.restic = {

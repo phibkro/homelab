@@ -96,7 +96,7 @@ Make it mirror the current root `CLAUDE.md` docs map:
 - `docs/reference/<topic>.md` paths;
 - generated docs entries where relevant;
 - current drill-down directories (`decisions`, `runbooks`, `plans`, `specs`, `reports`, `installs`);
-- `.claude/skills/gotcha-*/` for procedures.
+- `Mnemopi recall: gotcha-*` for tactical landmines.
 
 Because the file is already inside `docs/`, choose and apply one consistent relative-path convention; the routing check must resolve it accordingly.
 

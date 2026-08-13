@@ -5,7 +5,6 @@
 */
 {
   home.packages = [
-    pkgs.ghostty
     pkgs.fuzzel
     pkgs.hyprpaper
     pkgs.rustdesk
@@ -26,4 +25,15 @@
     pkgs.unzip
     pkgs.p7zip
   ];
+
+  programs.ghostty = {
+    enable = true;
+    settings.keybind = [
+      # OMP speaks the Kitty keyboard protocol. These bindings preserve the
+      # distinction between Alt+Backspace and Backspace, and between
+      # Shift+Enter and Enter, when OMP runs inside Ghostty.
+      "alt+backspace=text:\\x1b\\x7f"
+      "shift+enter=text:\\n"
+    ];
+  };
 }

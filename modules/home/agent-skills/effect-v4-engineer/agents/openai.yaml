@@ -1,0 +1,4 @@
+interface:
+  display_name: "Effect v4 Engineer"
+  short_description: "Build Effect-first TypeScript systems against the pinned v4 API."
+  default_prompt: "Apply Effect v4 idioms, schemas, services, layers, structured concurrency, and repository policy to this task."

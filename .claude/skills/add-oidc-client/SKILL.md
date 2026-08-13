@@ -89,7 +89,7 @@ Python services (`httpx` / `requests` / `urllib3`) use `certifi` by default, not
 SSL_CERT_FILE = "/etc/ssl/certs/ca-bundle.crt";
 ```
 
-See `.claude/skills/gotcha-python-certifi-bypass-system-trust/` for the underlying gotcha.
+See `Mnemopi recall: gotcha-python-ca-trust` for the underlying gotcha.
 
 ### 6. Deploy
 

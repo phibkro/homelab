@@ -8,7 +8,7 @@
 # tests/fixtures/<scenario>/clients-after.json. Assertions on dispatch
 # syntax read $dispatch_log directly — this is what keeps the tests
 # honest against the lua-builder-form gotcha (see
-# .claude/skills/gotcha-hyprland-lua-migration).
+# Mnemopi recall: gotcha-hyprland-lua-migration).
 
 setup() {
   script_dir="$(cd "$(dirname "$BATS_TEST_FILENAME")" && pwd)"

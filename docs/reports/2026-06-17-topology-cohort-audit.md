@@ -184,7 +184,7 @@ Adding back the operator-facing rule in `topology.md § Pi posture`:
 **NVMe enumeration is unstable across reboots.** Disko configs
 target `/dev/disk/by-id/...` paths; never touch `nvme0n1`
 without verifying the model string. See
-`.claude/skills/gotcha-nvme-enumeration/`.
+`Mnemopi recall: gotcha-nvme-enumeration`.
 ```
 
 This isn't strictly Pi posture but it's load-bearing and lives in CLAUDE.md as a hard rule — the operator-facing surface should re-state it.

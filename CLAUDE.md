@@ -62,7 +62,7 @@ without this file's context.
 | `docs/specs/` | design specs preceding implementation |
 | `docs/reports/` | after-action narratives — backward-looking companion to a plan in `docs/plans/` |
 | `docs/installs/` | bring-up procedures (`baremetal.md`, `vm.md`) + `agent-onboarding-test.md` for validating a new agent's orientation |
-| `.claude/skills/gotcha-*/` | auto-loaded on trigger; manually `/<skill-name>` if it fits a known landmine |
+| `Mnemopi recall: gotcha-*` | semantic recall for a known landmine; query by technology, symptom, or exact memory name |
 | `git log --oneline` | a recent change isn't yet reflected in docs, or a comment references "2026-MM-DD incident" without enough context |
 
 ## Hard rules

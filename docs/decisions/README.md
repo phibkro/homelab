@@ -19,7 +19,7 @@ Don't write an ADR for:
 
 - Routine implementation choices (commit message is enough).
 - Patterns already documented in `docs/reference/module-authoring.md` / `docs/invariants.md` (just follow the convention).
-- Tactical landmines (`.claude/skills/gotcha-*/` is the right home — one skill per landmine).
+- Tactical landmines (retain one self-contained Mnemopi memory named `gotcha-<technology>-<symptom>`).
 - Load-bearing claims (`docs/invariants.md` carries those with their enforcement tier).
 
 ## File shape

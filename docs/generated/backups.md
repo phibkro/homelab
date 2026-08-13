@@ -69,7 +69,7 @@ patterns" fit this schema:
 DynamicUser services: point `include` at /var/lib/private/<n>,
 not /var/lib/<n> (which is a symlink restic would store as a
 symlink → 0-byte snapshot). Enforced by the `badPaths` assertion
-below; see .claude/skills/gotcha-dynamicuser-statedirectory-symlink/
+below; see Mnemopi recall: gotcha-dynamicuser-statedirectory-symlink
 
 
 

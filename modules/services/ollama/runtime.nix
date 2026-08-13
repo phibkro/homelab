@@ -65,7 +65,7 @@ in
       after a successful manual pull is safe (and survives reinstalls).
 
       The 0.24-era restart-loop hazard
-      (.claude/skills/gotcha-systemd-restart-loop-bombs/) was: setting
+      (Mnemopi recall: gotcha-systemd-restart-loop-bombs) was: setting
       loadModels to a tag the daemon rejects → systemd respawns every
       10s → cascade. The Ollama 0.30 bump (see `package` above) clears
       the mxfp8 / nvfp4 rejection class. Still verify any new tag via

@@ -265,6 +265,29 @@ in
     include = lib.mapAttrsToList (_: f: f.path) (
       lib.filterAttrs (_: f: f.tier == "user") config.nori.fs
     );
+    # Preserve harness history, sessions, plans, databases, and credentials,
+    # but do not pin large reproducible caches into retained snapshots. OMP is
+    # intentionally absent until its on-disk cache layout is observed after
+    # installation; ~/.omp is otherwise covered by the /home snapshot.
+    exclude = [
+      "/home/nori/.codex/.tmp"
+      "/home/nori/.codex/cache"
+      "/home/nori/.codex/ipc"
+      "/home/nori/.codex/logs_2.sqlite"
+      "/home/nori/.codex/logs_2.sqlite-shm"
+      "/home/nori/.codex/logs_2.sqlite-wal"
+      "/home/nori/.codex/mcp-oauth-locks"
+      "/home/nori/.codex/models_cache.json"
+      "/home/nori/.codex/shell_snapshots"
+      "/home/nori/.codex/vendor_imports"
+      "/home/nori/.claude/backups"
+      "/home/nori/.claude/cache"
+      "/home/nori/.claude/daemon"
+      "/home/nori/.claude/paste-cache"
+      "/home/nori/.claude/plugins/cache"
+      "/home/nori/.claude/remote"
+      "/home/nori/.claude/shell-snapshots"
+    ];
     tier = "user";
     timer = "*-*-* 03:00:00";
   };

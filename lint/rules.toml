@@ -122,7 +122,7 @@ nori.lanRoutes.<name> instead.'''
 pattern = 'acmeCA = "internal"'
 scope = ["modules/"]
 tags = ["gotcha"]
-docLink = ".claude/skills/gotcha-caddy-acme-internal/"
+docLink = "Mnemopi recall: gotcha-caddy-acme-internal"
 message = '''
 acmeCA = "internal" found above. Caddy interprets this as a literal
 ACME directory URL. Use:
@@ -136,7 +136,7 @@ ACME directory URL. Use:
 pattern = 'url = "https://ntfy.sh/'
 scope = ["modules/"]
 tags = ["gotcha"]
-docLink = ".claude/skills/gotcha-gatus-ntfy-provider/"
+docLink = "Mnemopi recall: gotcha-gatus-ntfy-provider-shape"
 message = '''
 Gatus ntfy URL with embedded topic found above. Split into separate
 fields:
@@ -235,7 +235,7 @@ redirect_uris or service root URLs.'''
 pattern = '=\s*"/dev/(nvme[0-9]|sd[a-z][0-9]?|vd[a-z][0-9]?)'
 scope = ["modules/machines/"]
 tags = ["safety", "disko"]
-docLink = ".claude/skills/gotcha-nvme-enumeration/"
+docLink = "Mnemopi recall: gotcha-nvme-enumeration"
 message = '''
 Raw block-device path assigned as a config value above. Disko configs
 must target /dev/disk/by-id/... paths (stable across reboots); the

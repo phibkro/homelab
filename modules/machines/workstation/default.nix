@@ -35,6 +35,16 @@
   users.users.nori.extraGroups = [ "media" ];
 
   /*
+    Exa web-search credential for interactive OMP processes. SOPS decrypts the
+    raw value for nori; the Home Manager OMP wrapper reads it only at launch
+    and exports EXA_API_KEY to OMP without copying it into generated config.
+  */
+  sops.secrets.exa-api-key = {
+    owner = "nori";
+    mode = "0400";
+  };
+
+  /*
     ntfy topic for agent-attention pushes (home-manager: nori.agentNotify).
     Separate secret from the infra `ntfy-channel` so "an agent halted and
     needs you" is its own phone subscription + priority, not mixed with

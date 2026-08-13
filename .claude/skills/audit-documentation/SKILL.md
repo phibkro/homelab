@@ -139,7 +139,8 @@ Naming convention by tree:
 |-----------------------------------|---------------------------------------------------------------------------|
 | `docs/*.md` (tier-2 reference)    | UPPER_SNAKE_CASE; topic-encoding                                          |
 | `docs/runbooks/`, `decisions/`    | lower-kebab-case (procedural / numbered)                                  |
-| `.claude/skills/<name>/SKILL.md`  | lower-kebab-case; verb-object or `gotcha-<technology>-<symptom>`          |
+| `.claude/skills/<name>/SKILL.md`  | lower-kebab-case; verb-object                                                |
+| Mnemopi gotcha memory             | `gotcha-<technology>-<symptom>`                                              |
 | `scripts/*.sh`                    | lower-kebab-case; verb-object or noun-prefix-procedural                   |
 | `modules/services/<svc>/`        | lower-kebab-case; `manifest.nix` + `runtime.nix`                          |
 

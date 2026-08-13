@@ -81,8 +81,7 @@ at Tailscale's stub (100.100.100.100); Tailscale forwards back to
 workstation's Blocky; Blocky can't resolve its own outbound URLs
 (blocklist sources, DoH endpoints) before serving DNS.
 `services.blocky.settings.bootstrapDns` MUST be set to direct
-upstream IPs. Codified in `.claude/skills/gotcha-blocky-bootstrap-
-loop/`.
+upstream IPs. Codified in `Mnemopi recall: gotcha-blocky-bootstrap-dns`.
 
 ## Caddy + TLS + naming
 

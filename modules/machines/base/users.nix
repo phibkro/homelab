@@ -21,7 +21,7 @@
         workstation — enables cross-host automation (`just remote pi
         <recipe>`) over plain OpenSSH instead of Tailscale-SSH, which
         periodically wedges silently waiting for browser auth. See
-        .claude/skills/gotcha-tailscale-ssh-browser-auth-wedges/. Comment
+        Mnemopi recall: gotcha-tailscale-ssh-browser-auth. Comment
         in the key is `nori-station@github`, stale from the pre-rename
         host name; key material is the same.
       */

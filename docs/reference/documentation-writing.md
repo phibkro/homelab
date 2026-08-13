@@ -5,10 +5,8 @@ with `docs/reference/module-authoring.md` (code shape) and
 `docs/invariants.md` (how to promote a claim from prose → comment →
 test → type).
 
-For the deep, project-agnostic doc-writing framework, see the
-`userSettings:writing-docs` skill — this file is the homelab-specific
-overlay + the load-bearing meta-rule that makes the framework matter
-*here*.
+This file is the canonical documentation-writing framework for the homelab.
+It combines project-independent guidance with repository-specific constraints.
 
 ## Core principle
 
@@ -345,7 +343,6 @@ without examples drift; examples without rules don't generalise.
 
 ## Docs — the four levers
 
-(deep version: `userSettings:writing-docs`)
 
 | Lever                  | Means                              | Failure smell                                |
 |------------------------|------------------------------------|----------------------------------------------|
@@ -413,8 +410,6 @@ without examples drift; examples without rules don't generalise.
 
 ## Cross-references
 
-- `userSettings:writing-docs` — deep doc-writing framework: tiers,
-  bind-claims-to-evidence, mermaid legends, doc-drift guards.
 - `docs/reference/module-authoring.md` — code shape (this file is its
   prose-side companion).
 - `docs/invariants.md` — load-bearing claims tagged by enforcement tier

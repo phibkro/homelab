@@ -108,8 +108,8 @@
     to kill — the biggest cgroup it saw, and the opposite of what the
     2026-07-20 per-pane isolation was for (that made each PANE
     killable; it never bounded the FLEET). MemoryHigh/MemoryMax give
-    the slice its own hard ceiling: growth past 16G now trips a kernel
-    OOM INSIDE herdr.slice — killing a fleet agent — before
+    the slice its own hard ceiling: growth past MemoryMax now trips a
+    kernel OOM INSIDE herdr.slice — killing a fleet agent — before
     user-1000's pressure trip ever has to pick a victim. ManagedOOMSwap
     extends the same "contain inside the slice" story to the swap
     axis, mirroring what MemorySwapMax does for user@ in default.nix.
@@ -119,18 +119,28 @@
     ManagedOOMMemoryPressure=kill ManagedOOMSwap=kill` — that command
     does not survive a reboot, hence codifying it here.
 
-    Numbers: herdr.slice's 16G hard cap is a sub-budget of
-    user-1000.slice's own 28G MemoryMax (default.nix), leaving ~12G of
-    that budget for the desktop session + everything else outside the
-    fleet. Tighten if repeated trips show 16G is still generous;
-    loosen only with a corresponding raise to user-1000.slice so the
-    fleet can't re-eat the desktop's share.
+    FIFTH CALIBRATION — 2026-08-11: repeated oomd kills were parent
+    user-1000.slice pressure trips, not herdr.slice hard-cap OOMs. Live
+    counters showed herdr.slice pinned at its 12G MemoryHigh with more
+    than 31 million high events and zero max/oom events; 10G of its
+    working set was already swapped. Raise the fleet's resident soft
+    budget so hot agent pages can remain resident instead of
+    continuously driving reclaim pressure. Keep the 50% parent oomd
+    threshold and its victim selection unchanged: they remain the
+    livelock backstop.
+
+    Numbers: 24G leaves 4G below user-1000.slice's 28G MemoryMax
+    (default.nix) for the desktop session + everything else outside the
+    fleet. The 20G soft cap similarly leaves 4G before the parent's 24G
+    MemoryHigh. Tighten if the desktop approaches its reserve; further
+    loosening requires more physical RAM or fewer concurrent resident
+    sessions, not a weaker oomd threshold.
   */
   systemd.user.slices.herdr = {
     Unit.Description = "Herdr agent lanes (one scope per pane)";
     Slice = {
-      MemoryHigh = "12G";
-      MemoryMax = "16G";
+      MemoryHigh = "20G";
+      MemoryMax = "24G";
       ManagedOOMMemoryPressure = "kill";
       ManagedOOMSwap = "kill";
       /*

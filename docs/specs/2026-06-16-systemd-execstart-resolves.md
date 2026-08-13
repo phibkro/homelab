@@ -1,9 +1,8 @@
 ---
-summary: Eval-time flake check that catches ExecStart first-tokens which
-  don't resolve to /nix/store/ closure paths. Prevents the typo-mass-outage
-  incident class (2026-06-03 cf. `.claude/skills/gotcha-systemd-execstart-
-  resolves/` once it exists). High-value promotion; needs more design than
-  a single sub-sprint can absorb so deferred to a focused session.
+summary: Superseded eval-time flake check proposal for ExecStart first-tokens
+  that do not resolve to /nix/store/ closure paths. It targeted the 2026-06-03
+  typo-mass-outage incident class but could not catch valid binaries with
+  invalid flags.
 status: SUPERSEDED — by `docs/specs/2026-06-17-e2e-vm-simulation.md`.
   Operator-prompted reframe 2026-06-18: the narrow path-prefix check would
   NOT have caught the 2026-06-03 incident (which was `--no-such-flag` on a
@@ -147,8 +146,6 @@ Trigger: any of
 - `docs/invariants.md` § Promotion register (entry #2 remaining after
   Sprint 4's function-named-subdomains promotion)
 - `docs/roadmap.md` § Promotion register
-- `.claude/skills/gotcha-systemd-execstart-resolves/` — would
-  document the failure mode once the check lands and someone trips it
 - Sprint 3 (`feat(checks): Phase 3d — nori.lint TOML registry`) +
   Sprint 4 (`feat(checks): promote function-named-subdomains`) —
   precedents for promotion-via-flake-check; but those are grep-shaped

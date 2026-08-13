@@ -81,7 +81,7 @@ Naming: function over brand (`chat` not `open-webui`, `media` not `jellyfin`, `a
 
 **Both pi and the runsOn host need to rebuild.** Pi gets the Caddy route + Authelia client + the new entry baked into Blocky's customDNS; the host where `runsOn` points (aurora, workstation, or pi itself) gets the service itself. `just rebuild` only touches the host you're on — silent split-brain otherwise. Use `just rebuild-homelab`.
 
-**After the pi rebuild lands, flush pi Blocky's negative cache** (see `gotcha-blocky-stale-negative-on-new-lan-route`):
+**After the pi rebuild lands, flush pi Blocky's negative cache** (see `Mnemopi recall: gotcha-blocky-stale-negative-on-new-lan-route`):
 
 ```sh
 ssh nori@pi.saola-matrix.ts.net 'sudo systemctl restart blocky.service'

@@ -85,5 +85,5 @@ the entry plane, and only then restore Pi as the Tailscale DNS server.
 ## What this won't recover
 
 - **Authelia session continuity.** All family devices need to log in again. Authelia state (`/var/lib/authelia-main`) is restored from restic if needed, but session cookies don't survive an issuer-key reissue.
-- **Blocky's negative cache.** Newly-added `nori.lanRoutes` declarations that landed during the outage need a `blocky.service` restart — see [gotcha-blocky-stale-negative-on-new-lan-route](../../.claude/skills/gotcha-blocky-stale-negative-on-new-lan-route/SKILL.md).
+- **Blocky's negative cache.** Newly-added `nori.lanRoutes` declarations that landed during the outage need a `blocky.service` restart — see Mnemopi memory `gotcha-blocky-stale-negative-on-new-lan-route`.
 - **Hardware loss of the SD card itself.** Buy a spare; provision it with `nixos-anywhere` from the flake; keep it boxed near the pi.

@@ -70,7 +70,7 @@ in
     DynamicUser services: point `include` at /var/lib/private/<n>,
     not /var/lib/<n> (which is a symlink restic would store as a
     symlink → 0-byte snapshot). Enforced by the `badPaths` assertion
-    below; see .claude/skills/gotcha-dynamicuser-statedirectory-symlink/
+    below; see Mnemopi recall: gotcha-dynamicuser-statedirectory-symlink
   */
 
   options.nori.backupTargets = mkOption {
@@ -453,7 +453,7 @@ in
             Offending paths: ${lib.concatStringsSep ", " badPaths}
 
             Known DynamicUser services: ${lib.concatStringsSep ", " dynamicUserServices}
-            See .claude/skills/gotcha-dynamicuser-statedirectory-symlink/
+            See Mnemopi recall: gotcha-dynamicuser-statedirectory-symlink
             for the full story.
           '';
         }
