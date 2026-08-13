@@ -95,8 +95,11 @@
               # tiers exercise the same code path; only the wait differs.
               sleep ${toString config.nori.observability.ntfyNotify.recoveryWindowSeconds}
 
-              if systemctl is-active "$UNIT" --quiet; then
-                # Unit recovered during the window — quiet.
+              # Alert only for the exact persistent-failure state. Inactive
+              # can mean an intentional stop, condition skip, or completed
+              # oneshot; activating means the restart ladder is still trying.
+              # Neither warrants a phone notification.
+              if ! systemctl is-failed "$UNIT" --quiet; then
                 exit 0
               fi
 
@@ -107,8 +110,8 @@
                 --audience operator \
                 --severity urgent \
                 --category service-failure \
-                --title "${config.networking.hostName}: $UNIT still failed after recovery window" \
-                --body "$UNIT is still in failed state on ${config.networking.hostName} after the OnFailure recovery window. Recent journal:
+                --title "${config.networking.hostName}: $UNIT persistently failed" \
+                --body "$UNIT remains in systemd's failed state on ${config.networking.hostName} after the OnFailure recovery window. Recent journal:
 
         $TAIL
 

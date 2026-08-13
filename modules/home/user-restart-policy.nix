@@ -63,7 +63,12 @@ let
       # by the time the phone lights up. Mirrors the system notify@ template.
       sleep ${toString cfg.recoveryWindowSeconds}
 
-      if systemctl --user is-active "$UNIT" --quiet; then
+      # Alert only when systemd still classifies the unit as failed. Merely
+      # being inactive is not a fault: graphical-session teardown, an
+      # operator stop, a condition skip, and a completed oneshot all land
+      # there. An auto-restarting unit is "activating", so this also avoids
+      # one phone alert per failed attempt while the restart ladder is live.
+      if ! systemctl --user is-failed "$UNIT" --quiet; then
         exit 0
       fi
 
@@ -83,8 +88,8 @@ let
         --audience operator \
         --severity urgent \
         --category service-failure \
-        --title "$(uname -n): user unit $UNIT still failed after recovery window" \
-        --body "$UNIT is still failed in ${config.home.username}'s user manager. Recent journal:
+        --title "$(uname -n): user unit $UNIT persistently failed" \
+        --body "$UNIT remains in systemd's failed state in ${config.home.username}'s user manager after the recovery window. Recent journal:
 
       $TAIL
 

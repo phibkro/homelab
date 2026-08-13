@@ -255,6 +255,18 @@ pkgs.testers.runNixOSTest {
         unitConfig.OnFailure = [ "notify@test-failing-unit.service" ];
       };
 
+      # Same failure edge, but the operator acknowledges/clears it during the
+      # recovery window. The delayed notifier must infer the resulting
+      # inactive state is no longer a persistent failure and stay silent.
+      systemd.services.test-acknowledged-unit = {
+        description = "Phase 7 — failure acknowledged during notify recovery window";
+        serviceConfig = {
+          Type = "oneshot";
+          ExecStart = "${pkgs.coreutils}/bin/false";
+        };
+        unitConfig.OnFailure = [ "notify@test-acknowledged-unit.service" ];
+      };
+
       # Stub backup target — required because caddy declares
       # `nori.backups.caddy.include = [...]` and the backup module
       # asserts that any active paths-backup needs ≥1 target. Test
@@ -486,6 +498,17 @@ pkgs.testers.runNixOSTest {
         pi.wait_for_unit("test-ntfy-receiver.service")
 
         # Sanity: the receiver hasn't logged anything yet.
+        pi.succeed("test ! -s /var/lib/test-ntfy/messages || ! grep -q . /var/lib/test-ntfy/messages")
+
+        # A failure that is explicitly cleared during the recovery window is
+        # no longer a persistent failure. This models an operator stopping or
+        # acknowledging a desktop-session dependent after teardown. The
+        # already-running notifier must finish without posting.
+        pi.succeed("systemctl start test-acknowledged-unit.service || true")
+        # `systemctl start` returns after the failed unit has queued its
+        # OnFailure dependency, so clearing here cannot outrun the notifier.
+        pi.succeed("systemctl reset-failed test-acknowledged-unit.service")
+        pi.sleep(5)
         pi.succeed("test ! -s /var/lib/test-ntfy/messages || ! grep -q . /var/lib/test-ntfy/messages")
 
         # Trip the bait. The unit exits non-zero so `systemctl start`
