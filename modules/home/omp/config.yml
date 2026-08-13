@@ -70,3 +70,6 @@ secrets:
 startup:
   setupWizard: false
   showSplash: false
+
+dev:
+  autoqaConsent: granted

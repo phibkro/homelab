@@ -29,6 +29,15 @@ let
     homeName: packageName:
     lib.any (package: lib.getName package == packageName) homes.${homeName}.home.packages;
 
+  agentSoulPath = ../../modules/home/agent-soul/SOUL.md;
+  agentSoul = builtins.readFile agentSoulPath;
+  agentHarnessesShareSoul =
+    homes.workstation.home.file.".claude/CLAUDE.md".source == agentSoulPath
+    && lib.all (path: lib.hasPrefix agentSoul homes.workstation.home.file.${path}.text) [
+      ".codex/AGENTS.md"
+      ".omp/agent/AGENTS.md"
+    ];
+
   actualWorkloads = lib.mapAttrs (_: host: host.config.nori.inventory.currentWorkloads) hosts;
 
   expectedWorkloads = {
@@ -40,9 +49,12 @@ let
       "clamor"
       "disk-alert"
       "gatus"
+      "herdr-projects-mcp"
+      "hindsight"
       "jellyfin"
       "jellyseerr"
       "lidarr"
+      "mcp-origin-tunnel"
       "music-ingest"
       "node-exporter"
       "ntfy-notify"
@@ -520,6 +532,15 @@ let
       monitored = true;
       dashboard = true;
     };
+    memory-origin = {
+      port = 9078;
+      runsOn = "workstation";
+      audience = "operator";
+      exposeOnTailnet = true;
+      auth = "exception";
+      monitored = false;
+      dashboard = false;
+    };
     metrics = {
       port = 8090;
       runsOn = "pi";
@@ -582,6 +603,15 @@ let
       auth = "oidc";
       monitored = true;
       dashboard = true;
+    };
+    projects-origin = {
+      port = 9081;
+      runsOn = "workstation";
+      audience = "operator";
+      exposeOnTailnet = true;
+      auth = "none";
+      monitored = false;
+      dashboard = false;
     };
     requests = {
       port = 5055;
@@ -671,6 +701,7 @@ if
   && systemProfileRealizationCorrect
   && homeManagerRealizationCorrect
   && homeCapabilityProfilesCorrect
+  && agentHarnessesShareSoul
   && desktopCapabilityProfilesCorrect
   && riceInterfaceCorrect
 then
@@ -688,6 +719,7 @@ else
     System profile realization: ${toString systemProfileRealizationCorrect}
     Home Manager realization:   ${toString homeManagerRealizationCorrect}
     Home capability profiles:   ${toString homeCapabilityProfilesCorrect}
+    Agent harnesses share SOUL:  ${toString agentHarnessesShareSoul}
     Desktop capabilities:       ${toString desktopCapabilityProfilesCorrect}
     Rice interface realization: ${toString riceInterfaceCorrect}
 

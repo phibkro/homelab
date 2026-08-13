@@ -75,10 +75,10 @@ derivation-strength ladder (prefer the top rung you can reach):
   test        a check fails when derivation ≠ root      → drift caught at CI
   convention  you keep them in sync by hand             → hope; the anti-pattern
 ```
-  
+
 - ad-hoc reference to the same thing → a link/ref, never a copy.
 - docs are a prose derivation of code (the root): generate them (types, doctests) or test them (runnable examples), don't hand-maintain a second copy of the truth.
-- you already run the top rung: ~/.claude is a generated derivation of the homelab nix source (see CONTEXT). same move, different domain.
+- the global harness instructions are generated derivations of the homelab Nix source (see CONTEXT). Same move, different domain.
 
 ### Name the right answer first
 Most-correct solution before any compromise, including state-of-art outside the
@@ -122,7 +122,7 @@ Collapsing parallel systems is the win even when the diff widens.
 A constraint is not just a wall to prune the space; it is structure the solution EXPLOITS. No Free Lunch: performance over random is bought only by exploiting problem structure, so an invariant (a type, a law) is what lets an optimiser fire.
 Reach for the constraint that buys the capability, don't only minimise constraints.
 trace: sortedness (a constraint) is what makes binary search (the performance) exist.
- 
+
 ### Knob — checkpoint cadence   [mine, not universal]
 After a significant step, restate: done / verified / left. Lost the thread → stop and restate; don't continue from a state you can't describe back.
 
@@ -130,7 +130,7 @@ After a significant step, restate: done / verified / left. Lost the thread → s
 
 ### This machine - Config in `/srv/share/projects/homelab`
 `workstation` is configured by the homelab repo at `/srv/share/projects/homelab` (NixOS + home-manager), the canonical source of truth for the whole machine.
-`~/.claude/` is a generated DERIVATION, not the source: `~/.claude/CLAUDE.md`, `~/.claude/skills/`, `~/.claude/settings.json` are home-manager symlinks into the nix store. Claude-specific sources live in `homelab/modules/home/claude-code/`; cross-provider skills live in `homelab/modules/home/agent-skills/` and are also exposed under `~/.codex/skills/`. Edit the homelab source and rebuild (`just rebuild`); it re-materializes.
+The global Codex, Claude, and OMP instruction files are generated DERIVATIONS, not sources. Their shared source is `homelab/modules/home/agent-soul/SOUL.md`; harness-specific additions live beside each harness module. Edit the homelab source and rebuild (`just rebuild`); it re-materializes.
 
 ### Tooling is a `nix shell` away
 Almost any tool is available ad-hoc: `nix shell nixpkgs#<pkg> -c <cmd>` (e.g. `nix shell nixpkgs#jq -c jq .`) or `nix run nixpkgs#<pkg> -- <args>`. "command not found" on PATH is rarely a dead end; reach for nixpkgs first (node, pnpm, ripgrep, jq, shellcheck, …). Inside a project, prefer its own dev shell (`nix develop`, or direnv auto-loads from `.envrc`): it pins the exact toolchain via the project's `flake.lock`.
@@ -138,8 +138,8 @@ Almost any tool is available ad-hoc: `nix shell nixpkgs#<pkg> -c <cmd>` (e.g. `n
 ### Delegation, sandboxing, observability
 OMP is the preferred multi-provider supervisor when it is available. Its task
 agents are internal delegation; separately supervised work remains one agent
-session per Herdr tab, with the tab as the organizational unit. Claude Code's
-native subagents share this process's provider endpoint; use OMP model roles or
+session per Herdr tab, with the tab as the organizational unit. Native
+subagents share their parent harness's provider endpoint; use OMP model roles or
 separate Herdr sessions when a genuinely different provider perspective is
 required.
 

@@ -50,6 +50,10 @@ in
     mode = "0400";
   };
 
+  nori.backups.mcp-origin-tunnel.skip = "Stateless — tunnel configuration is generated from Nix and credentials are managed by SOPS.";
+
+  nori.harden.mcp-origin-cloudflared = { };
+
   systemd.services.mcp-origin-cloudflared = {
     description = "Shared Cloudflare Tunnel for authenticated MCP origins";
     wantedBy = [ "multi-user.target" ];

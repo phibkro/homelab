@@ -1,7 +1,7 @@
 # Bump the pagu pin (guidance ↔ installed binary)
 
 **What**: homelab's `pagu` flake input pins a *published* revision. Agent
-guidance — `modules/home/claude-code/CLAUDE.md`, the generated
+guidance — `modules/home/agent-soul/SOUL.md`, the generated
 `~/.codex/AGENTS.md`, and the `pagu` skill installed from
 `${inputs.pagu}/skills/pagu` — describes whatever that pin contains. Local pagu
 commits are invisible to this machine until the pin moves.

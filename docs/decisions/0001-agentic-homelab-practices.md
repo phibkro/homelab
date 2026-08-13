@@ -66,4 +66,4 @@ When a prose rule survives, ask "what's its enforcement tier?" (`docs/invariants
 
 - `docs/invariants.md` — catalog of load-bearing claims with current enforcement tier (some are `[prose: unchecked]` — explicit promotion candidates).
 - `docs/invariants.md` — the prose on the enforcement ladder; this ADR is the *why*.
-- `home/claude-code/CLAUDE.md` — operator's global rules across all projects; many are downstream of this ADR's filter.
+- `modules/home/agent-soul/SOUL.md` — provider-neutral global rules across all projects; many are downstream of this ADR's filter.

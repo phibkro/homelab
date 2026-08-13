@@ -202,6 +202,12 @@ in
     };
   };
 
+  # The API and UI currently keep writable caches below the operator's home.
+  # Make that existing authority explicit while applying the shared baseline.
+  nori.harden.chatlog-hindsight.protectHome = false;
+  nori.harden.hindsight-control-plane.protectHome = false;
+  nori.harden.hindsight-mcp-origin = { };
+
   nori.backups.hindsight.skip = ''
     Derived pilot index: canonical sessions remain in Chatlog and can be
     re-ingested. A live filesystem copy of embedded PostgreSQL would not be a

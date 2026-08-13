@@ -8,6 +8,7 @@
 
 let
   cfg = config.nori.omp;
+  soul = builtins.readFile ../agent-soul/SOUL.md;
   ompUnwrapped = pkgs.callPackage ./package.nix { };
   omp =
     if cfg.exaApiKeyFile == null then
@@ -64,7 +65,8 @@ in
     '';
 
     home.file = {
-      ".omp/agent/AGENTS.md".source = ./AGENTS.md;
+      # Shared user-wide preferences precede OMP-specific operator policy.
+      ".omp/agent/AGENTS.md".text = soul + "\n" + builtins.readFile ./AGENTS.md;
       ".omp/agent/RULES.md".source = ./RULES.md;
 
       # Keep Herdr's lifecycle reporter pinned to the same revision as its CLI.

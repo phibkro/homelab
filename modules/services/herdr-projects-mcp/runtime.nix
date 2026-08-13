@@ -163,5 +163,16 @@ in
     };
   };
 
+  nori.harden.herdr-projects-mcp = {
+    readOnlyBinds = [ sourceRoot ];
+    # Preserve the service's read-only home plus narrow ReadWritePaths.
+    protectHome = null;
+  };
+  nori.harden.herdr-projects-mcp-origin = { };
+  nori.harden.herdr-projects-mcp-relay = {
+    readOnlyBinds = [ sourceRoot ];
+    protectHome = null;
+  };
+
   nori.backups.herdr-projects-mcp.include = [ stateDir ];
 }

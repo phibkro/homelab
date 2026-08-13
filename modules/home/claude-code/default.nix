@@ -13,9 +13,10 @@
   no operator agent loop, and the Node closure shouldn't land on pi's
   anti-write SSD.
 
-  Static config only — settings.json, CLAUDE.md, ~/.claude/{agents,artifacts}/
-  — wired in the home.file block below. Global skills are owned by
-  modules/home/agent-skills. Dynamic state
+  Claude-specific static config only — settings.json and
+  ~/.claude/{agents,artifacts}/ — is wired in the home.file block below. The
+  provider-neutral SOUL is owned by modules/home/agent-soul; global skills are
+  owned by modules/home/agent-skills. Dynamic state
   (per-project memory, per-session todos, ~/.claude.json with OAuth tokens
   + runtime caches) is excluded by design; it mutates per launch and would
   be clobbered on rebuild. Per-project `<project>/.claude/` stays
@@ -384,7 +385,7 @@ in
 
   home.file = lib.mkMerge [
     {
-      ".claude/CLAUDE.md".source = ./CLAUDE.md;
+      ".claude/CLAUDE.md".source = ../agent-soul/SOUL.md;
       ".claude/agents" = {
         source = ./agents;
         recursive = true;
