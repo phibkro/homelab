@@ -389,7 +389,6 @@ therefore change with configuration instead of being duplicated in prose.
 | `lidarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/lidarr` |
 | `media-irreplaceable` | `irreplaceable` | `onetouch` | `/mnt/media/archive`<br>`/mnt/media/home-videos`<br>`/mnt/media/library`<br>`/mnt/media/photos`<br>`/mnt/media/projects`<br>`/var/lib/immich/backups` |
 | `prowlarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/private/prowlarr` |
-| `qbittorrent` | `service` | `mp510`<br>`onetouch` | `/var/lib/qBittorrent` |
 | `radarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/radarr` |
 | `sonarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/sonarr` |
 | `stremio` | `service` | `mp510`<br>`onetouch` | `/var/lib/stremio` |

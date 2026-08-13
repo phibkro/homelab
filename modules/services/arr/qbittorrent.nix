@@ -152,8 +152,8 @@ in
     qbittorrent.extraGroups = [ "media" ];
   };
 
-  nori.harden = lib.mkIf enabled {
-    qbittorrent.binds = [ config.nori.fs.downloads.path ];
+  nori.harden.qbittorrent = lib.mkIf enabled {
+    binds = [ config.nori.fs.downloads.path ];
   };
 
   /*
