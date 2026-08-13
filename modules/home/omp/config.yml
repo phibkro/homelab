@@ -25,6 +25,8 @@ theme:
 
 defaultThinkingLevel: auto
 
+interruptMode: wait
+
 advisor:
   enabled: false
   subagents: false
