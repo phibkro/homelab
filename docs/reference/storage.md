@@ -60,7 +60,7 @@ Two USB-attached drives, mounted on workstation, each hosting one restic repo pe
 
 | Target | Mount | Drive | FS | Repo path | Trigger time |
 |---|---|---|---|---|---|
-| `onetouch` | `/mnt/backup` | Seagate OneTouch (physically on aurora; workstation reaches via SFTP) | ext4 | `/mnt/backup/<svc>` | per-service timer (e.g. 04:30) |
+| `onetouch` | `/mnt/backup` | Seagate OneTouch (physically on aurora; clients reach it via SFTP) | ext4 | `/mnt/backup/<client-host>/<svc>` | per-service timer (e.g. 04:30) |
 | `mp510` | `/mnt/backup-local` | Corsair Force MP510 (workstation NVMe @backup-local) | btrfs | `/mnt/backup-local/<svc>` | same timer minute |
 
 Both restic units race on the prepareCommand `.tmp` file → wrapped in `flock` since 2026-06-07. See [[pattern-c2-sqlite-race-flock]].
@@ -128,4 +128,4 @@ All failures alert via ntfy. The drill is the **real RTO measurement**, not the 
 
 The DynamicUser `StateDirectory` symlink-trap assertion derives from `config.systemd.services` introspection — self-maintaining. See `.claude/skills/gotcha-dynamicuser-statedirectory-symlink/`.
 
-Schema in `modules/infra/backup/default.nix`. Cross-cutting infra (sops password, check timers) lives in `modules/infra/backup/restic.nix`; restore drills live in `modules/infra/backup/verify.nix`. Each workstation repo writes to **both** `sftp:restic@aurora…:/mnt/backup/<job>` (OneTouch ext4 on aurora) and `/mnt/backup-local/<job>` (local MP510 btrfs). Automated restore drills use the local MP510 copy; off-host restorability is covered by the separate target/runtime checks.
+Schema in `modules/infra/backup/default.nix`. Cross-cutting infra (sops password, check timers) lives in `modules/infra/backup/restic.nix`; restore drills live in `modules/infra/backup/verify.nix`. Each workstation repo writes to **both** `sftp:restic@aurora…:/workstation/<job>` (OneTouch ext4 on aurora, `/mnt/backup/workstation/<job>` on the real fs) and `/mnt/backup-local/<job>` (local MP510 btrfs). The per-host namespace under the SFTP chroot root is load-bearing, not cosmetic: the chroot root must stay root-owned for OpenSSH, so a new job can only `initialize` its repo inside a restic-owned namespace directory aurora pre-creates from `nori.hosts`. Automated restore drills use the local MP510 copy; off-host restorability is covered by the separate target/runtime checks.

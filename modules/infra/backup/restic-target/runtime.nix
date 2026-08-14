@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   pkgs,
   ...
@@ -8,28 +9,72 @@
   /**
     Restic backup target — chrooted SFTP-only user.
 
-    Lets remote hosts (workstation, future pi/pavilion) push restic
+    Lets remote hosts (workstation, pi, future pavilion) push restic
     snapshots to this host's /mnt/backup. The `restic` user has no
     shell, no port forwarding, and an OpenSSH ChrootDirectory locking
-    them to /mnt/backup. Repository paths in the workstation's
+    them to /mnt/backup. Repository paths in a client's
     `nori.backupTargets.onetouch.repository` string look like
-    `sftp:restic@<host>:/<jobname>` — the leading slash is the chroot
-    root, i.e. /mnt/backup on the real fs.
+    `sftp:restic@<host>:/<client-hostname>` — the leading slash is the
+    chroot root, i.e. /mnt/backup on the real fs.
 
-    The chroot guarantees:
-      ChrootDirectory must be owned by root and not group/other-writable.
-      Ext4 mount-root inherits root:root 0755 from the filesystem, so
-      /mnt/backup satisfies this automatically when the OneTouch is
-      mounted. Per-job subdirs (/mnt/backup/<job>) are restic-owned;
-      restic creates them via `initialize = true` on first push.
+    ── Why clients get a per-host namespace directory ───────────────
+    OpenSSH requires ChrootDirectory (and every parent) to be owned by
+    root and not group/other-writable. /mnt/backup is the ext4 mount
+    root, so it inherits root:root 0755 and satisfies that for free —
+    which ALSO means the `restic` user cannot create anything at the
+    chroot root itself. A client pointed at the bare chroot root can
+    therefore never bootstrap a new repo: `initialize = true` dies
+    with `MkdirAll /<job>/index: permission denied`, forever, until
+    root hand-creates the directory here. That was the 2026-08-11/12
+    herdr-projects-mcp failure — see
+    docs/reports/20260812-030204-restic-backups-herdr-projects-mcp-onetouch-failure.md.
 
-    ── Onboarding existing repos (one-time after the OneTouch moves) ─
-    The drive's existing per-job dirs were created by workstation's
-    root, so they're root:root. Hand ownership to the new restic user
-    so the SFTP client can write:
-      sudo chown -R restic:restic /mnt/backup/{<job1>,<job2>,...}
-    Skip /mnt/backup itself — that must stay root-owned for chroot.
+    So this host pre-creates one restic-owned namespace directory per
+    pushing host and clients scope their repository under it. Per-job
+    repos land at /mnt/backup/<client>/<job>, which restic creates
+    itself. The namespace also stops two hosts that run the same job
+    name (caddy, authelia) from racing on one repo — the ad-hoc `/pi`
+    prefix added after the 2026-06 migration, generalized.
+
+    Derived from `nori.hosts` so a new host's namespace exists the
+    moment it enters the registry. This host is excluded (it writes
+    locally, not over SFTP) and so are `agent`-role hosts, where a
+    paths-based `nori.backups` is a build error
+    (modules/infra/backup/default.nix).
+
+    ── One-time migration — run WITH the deploy of this change ───────
+    Workstation's repos predate the namespace and sit directly under
+    the chroot root. Move them in, on aurora, before workstation's
+    03:00 timers fire; otherwise `initialize = true` silently creates
+    empty repos under /mnt/backup/workstation and the history is
+    orphaned (not lost — it stays where it is):
+
+      sudo find /mnt/backup -mindepth 1 -maxdepth 1 -type d \
+        ! -name lost+found ! -name pi ! -name workstation \
+        -exec mv -t /mnt/backup/workstation {} +
+      sudo chown -R restic:restic /mnt/backup/workstation
+
+    Verify from workstation — the full history must come back, not a
+    single fresh snapshot:
+
+      sudo restic -r sftp:restic@aurora.saola-matrix.ts.net:/workstation/user-data \
+        -o sftp.command='...' snapshots | tail
   */
+
+  /*
+    Namespace roots for the remote pushers. `d` only creates + chowns;
+    it never recurses, so an existing populated namespace is untouched
+    on every boot. /mnt/backup is an x-systemd.automount point
+    (machines/aurora/disko-onetouch.nix) and automount units are
+    established at local-fs.target, before systemd-tmpfiles-setup —
+    so this triggers the mount rather than writing a phantom directory
+    under it.
+  */
+  systemd.tmpfiles.rules = map (host: "d /mnt/backup/${host} 0700 restic restic -") (
+    lib.attrNames (
+      lib.filterAttrs (name: h: name != config.networking.hostName && h.role != "agent") config.nori.hosts
+    )
+  );
 
   users.users.restic = {
     isSystemUser = true;

@@ -157,8 +157,15 @@ in
   # Backup target registry — schema in modules/infra/backup/default.nix.
   nori.backupTargets = {
     onetouch = {
-      repository = "sftp:restic@aurora.saola-matrix.ts.net:";
-      description = "OneTouch HDD relocated to aurora 2026-06-11; reached over SFTP via the chrooted `restic` user on aurora (see modules/machines/aurora/disko-onetouch.nix + the restic-target workload).";
+      /*
+        Scoped under this host's name, not the bare chroot root: the
+        root is root:root 0755 (OpenSSH's ChrootDirectory requirement),
+        so restic can't mkdir a new per-job repo there and every NEW
+        job died on `initialize = true`. aurora pre-creates the
+        restic-owned namespace — see the restic-target workload.
+      */
+      repository = "sftp:restic@aurora.saola-matrix.ts.net:/${config.networking.hostName}";
+      description = "OneTouch HDD relocated to aurora 2026-06-11; reached over SFTP via the chrooted `restic` user on aurora, scoped under /${config.networking.hostName}/ (see modules/machines/aurora/disko-onetouch.nix + the restic-target workload).";
       extraOptions = [
         "sftp.command='${pkgs.openssh}/bin/ssh -o BatchMode=yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/etc/ssh/aurora_known_hosts -i /run/secrets/restic-ssh-key restic@aurora.saola-matrix.ts.net -s sftp'"
       ];
