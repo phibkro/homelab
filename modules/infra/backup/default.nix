@@ -353,6 +353,11 @@ in
 
   config = mkIf (config.nori.backups != { }) (
     let
+      # Every restic invocation this concern makes goes through the
+      # lock-retrying wrapper; see ./restic-cli.nix for why the wrapper
+      # rather than a per-call-site flag.
+      resticCli = import ./restic-cli.nix pkgs;
+
       /*
         Default targets to all declared destinations if a job didn't
         specify them — done here rather than in the submodule default
@@ -589,6 +594,7 @@ in
           lib.nameValuePair "${jobName}-${target}" {
             paths = cfg.include;
             inherit (cfg) exclude;
+            package = resticCli;
             repository = "${tgt.repository}/${jobName}";
             passwordFile = config.sops.secrets.restic-password.path;
             initialize = true;
@@ -622,6 +628,13 @@ in
         restic is unaffected. See memory restic-stale-lock-recovery
         for the recovery procedure if this isn't enough; upstream
         nixpkgs fix tracked separately.
+
+        That covers DEAD lock holders only. A LIVE holder — the weekly
+        `restic check`, which locks exclusively — is correctly left
+        alone here and wedged the same `cat config || init` chain on
+        2026-08-09. The other half is `resticCli`'s `--retry-lock`:
+        the pre-start now waits for the holder instead of misreading
+        the refusal as "repo not initialised". See ./restic-cli.nix.
       */
       systemd.services = lib.listToAttrs (
         map (
@@ -635,7 +648,7 @@ in
             # leaving exactly the stale locks it exists to clear.
             resticOpts = lib.concatStringsSep " " (map (o: "-o ${o}") tgt.extraOptions);
             preUnlockScript = pkgs.writeShellScript "restic-${jobName}-${target}-pre-unlock" ''
-              ${pkgs.restic}/bin/restic ${resticOpts} unlock 2>/dev/null || true
+              ${lib.getExe resticCli} ${resticOpts} unlock 2>/dev/null || true
             '';
           in
           lib.nameValuePair "restic-backups-${jobName}-${target}" {
