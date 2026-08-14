@@ -44,8 +44,14 @@ Wipes + creates the btrfs filesystem with all six subvolumes (@streaming, @photo
 
 ### 4. Restore irreplaceable data from restic
 
+The OneTouch is mounted on aurora (since 2026-06-11) and workstation-pushed
+repos sit under `/mnt/backup/repos/`. Either restore on aurora and copy over
+the tailnet, or run the same command on workstation with the SFTP repo
+(`-r sftp:restic@aurora.saola-matrix.ts.net:/repos/media-irreplaceable`, plus
+the `-o sftp.command=…` line the backup units use).
+
 ```bash
-sudo restic -r /mnt/backup/media-irreplaceable \
+sudo restic -r /mnt/backup/repos/media-irreplaceable \
   --password-file /run/secrets/restic-password \
   restore latest --target /
 ```
@@ -73,7 +79,7 @@ If you decide a particular subset of streaming is actually irreplaceable (a spec
 
 ```bash
 ls /mnt/media/{photos,home-videos,projects,archive}
-sudo restic -r /mnt/backup/media-irreplaceable \
+sudo restic -r /mnt/backup/repos/media-irreplaceable \
   --password-file /run/secrets/restic-password \
   check
 ```

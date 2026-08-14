@@ -61,14 +61,17 @@ If nothing on local snapshots covers it, the next layer is restic (whichever bac
 
 ## Restoring from restic instead
 
+Workstation-pushed repos live on aurora, under `/mnt/backup/repos/<repo>` —
+run these there (the OneTouch is mounted on aurora since 2026-06-11).
+
 ```bash
 # List snapshots
-sudo restic -r /mnt/backup/user-data \
+sudo restic -r /mnt/backup/repos/user-data \
   --password-file /run/secrets/restic-password \
   snapshots
 
 # Restore one file from a specific snapshot
-sudo restic -r /mnt/backup/user-data \
+sudo restic -r /mnt/backup/repos/user-data \
   --password-file /run/secrets/restic-password \
   restore <snapshot-id> --target /tmp/restore --include /home/nori/notes.md
 ```

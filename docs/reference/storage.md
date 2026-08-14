@@ -60,7 +60,7 @@ Two USB-attached drives, mounted on workstation, each hosting one restic repo pe
 
 | Target | Mount | Drive | FS | Repo path | Trigger time |
 |---|---|---|---|---|---|
-| `onetouch` | `/mnt/backup` | Seagate OneTouch (physically on aurora; workstation reaches via SFTP) | ext4 | `/mnt/backup/<svc>` | per-service timer (e.g. 04:30) |
+| `onetouch` | `/mnt/backup` | Seagate OneTouch (physically on aurora; workstation reaches via SFTP) | ext4 | `/mnt/backup/repos/<svc>` (aurora's own jobs: `/mnt/backup/<svc>`) | per-service timer (e.g. 04:30) |
 | `mp510` | `/mnt/backup-local` | Corsair Force MP510 (workstation NVMe @backup-local) | btrfs | `/mnt/backup-local/<svc>` | same timer minute |
 
 Both restic units race on the prepareCommand `.tmp` file → wrapped in `flock` since 2026-06-07. See [[pattern-c2-sqlite-race-flock]].

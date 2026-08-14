@@ -412,6 +412,32 @@ in
       backupPaths = lib.filter (cfg: cfg.include != null) (lib.attrValues config.nori.backups);
 
       /*
+        An `sftp:` target with an empty path (or a bare `/`) drops every
+        per-job repo into the SSH user's landing directory. When that
+        user is chrooted — the shape this homelab uses, see the
+        restic-target workload — the landing directory IS sshd's
+        ChrootDirectory, which sshd requires to be root-owned and
+        non-group-writable. The pushing user therefore cannot mkdir a
+        new job's repo, and `initialize = true` dies on the FIRST run of
+        every NEW job with `MkdirAll /<job>/index: permission denied`,
+        while every already-onboarded repo keeps working. That
+        asymmetry hid the trap for five months (2026-08-11 incident).
+        Point the target at a path the SSH user owns instead.
+      */
+      sftpRootTargets = lib.mapAttrsToList (name: _: name) (
+        lib.filterAttrs (
+          _: tgt:
+          lib.hasPrefix "sftp:" tgt.repository
+          && (
+            let
+              path = lib.last (lib.splitString ":" tgt.repository);
+            in
+            path == "" || path == "/"
+          )
+        ) config.nori.backupTargets
+      );
+
+      /*
         Validate that every per-job `targets` references a real
         declared target. Catches typos at eval time rather than at
         daily-3am restic failure time.
@@ -557,6 +583,28 @@ in
             Either declare the missing target (top-level
             `nori.backupTargets.<name> = { repository = ...; description = ...; }`)
             or fix the typo on the offending job.
+          '';
+        }
+        {
+          assertion = sftpRootTargets == [ ];
+          message = ''
+            nori.backupTargets has SFTP targets whose repository has no
+            path component, so per-job repos would land in the SSH
+            user's landing directory:
+
+            ${lib.concatStringsSep ", " sftpRootTargets}
+
+            For a chrooted SFTP user that directory is sshd's
+            ChrootDirectory — root-owned and non-group-writable by
+            sshd's own rule — so restic cannot create a new job's repo
+            there. Existing repos keep working (their dirs were chowned
+            once, by hand); only NEW jobs fail, at 03:00, on their first
+            run. See docs/reports/20260811-030203-restic-backups-herdr-projects-mcp-onetouch-failure.md.
+
+            Give the repository a path under a directory the SSH user
+            owns, e.g. `sftp:restic@host:/repos`, and create that
+            directory on the target host (the restic-target workload
+            does this with a tmpfiles rule).
           '';
         }
         {
