@@ -29,23 +29,37 @@
     `/v1/health` stays unauthenticated by upstream design, so Gatus's
     monitor probe on the alert.${nori.domain} route keeps working.
 
-    Publisher provisioning is currently MANUAL one-time:
-      sudo NTFY_AUTH_FILE=/var/lib/ntfy-sh/user.db \
-        ntfy user add --role=admin publisher
-      # → prompts for password; paste the value from sops at key
-      #   `ntfy-publisher-token` (operator generated 2026-06-14).
-    Declarative bootstrap deferred until the CLI's non-interactive
-    password shape is verified — runbook's example doesn't match
-    upstream's documented syntax. Tracked as a small follow-up.
+    Publisher provisioning is DECLARATIVE (2026-07-24), via ntfy's own
+    config-file provisioning (auth-users / auth-tokens / auth-access,
+    upstream ≥2.11). ntfy reconciles user.db to match these on every
+    start: it creates/updates the declared entries and deletes ones it
+    previously provisioned but no longer sees — so drift is
+    unrepresentable, not something a bootstrap script has to detect.
+    The prior MANUAL steps (`ntfy user add`, `ntfy access`) are
+    superseded; the CLI also can't pin a SPECIFIC access-token value
+    (`ntfy token add` only mints random ones), which the workstation
+    publisher's fixed Bearer token requires — only config provisioning
+    can reproduce it.
 
-    deny also blocks anonymous SUBSCRIBE — unlike ntfy.sh, where a
-    topic's obscure name alone gates read access, the phone app can't
-    just subscribe to the agents topic here without credentials. Until
-    a scoped grant is added (`ntfy access '*' <agents-topic> read-only`,
-    run once on pi — same "no declarative users API yet" constraint as
-    the publisher above), the operator's app has to log into this
-    server AS the publisher user to read the agents topic. Tracked
-    alongside the publisher bootstrap follow-up.
+    The three values are secrets, so they never enter the store: a
+    sops template renders the NTFY_AUTH_* env vars at activation and
+    ntfy reads them via EnvironmentFile (same shape as caddy's ACM env,
+    modules/infra/networking/caddy/runtime.nix). What each carries:
+      - auth-users:  publisher (role admin) + a bcrypt password hash
+                     (ntfy-publisher-password-hash). The password is an
+                     unused artifact — publishers authenticate with the
+                     token below, never basic auth — but a token's user
+                     must be a provisioned user, so the hash is required.
+      - auth-tokens: the exact tk_ access token the workstation sends as
+                     `Authorization: Bearer <ntfy-publisher-token>`
+                     (alerts.nix), so a pi reflash reproduces the CURRENT
+                     working credential, not a new incompatible one.
+      - auth-access: `everyone:<agents-topic>:ro`, topic read from the
+                     sops secret at render time (never in the store) —
+                     the scoped anonymous READ that lets the operator's
+                     phone app subscribe to the agents topic without
+                     logging in, while deny still blocks anonymous
+                     publish (spoof surface stays closed).
   */
   services.ntfy-sh = {
     enable = true;
@@ -59,14 +73,42 @@
   };
 
   /*
-    Token lives in sops so a future declarative bootstrap can read it
-    without operator intervention. Mode 0440 (root + ntfy group); ntfy-
-    sh.service is DynamicUser=true so file access happens via group
-    membership rather than uid match.
+    Provisioning inputs. All three are consumed only through the sops
+    template below (rendered as root, read by systemd before ntfy's
+    DynamicUser drop) — ntfy never reads these files directly, so their
+    standalone mode is the restrictive default.
+
+      ntfy-publisher-token         the tk_ Bearer credential (shared with
+                                   workstation's agent-notify publisher)
+      ntfy-agents-channel          the agents topic name (also declared on
+                                   workstation, where the publisher lives)
+      ntfy-publisher-password-hash bcrypt hash of the publisher's (unused)
+                                   password; auth-users requires a hash
   */
-  sops.secrets.ntfy-publisher-token = {
-    mode = "0440";
+  sops.secrets.ntfy-publisher-token = { };
+  sops.secrets.ntfy-agents-channel = { };
+  sops.secrets.ntfy-publisher-password-hash = { };
+
+  /*
+    Renders NTFY_AUTH_* env vars from the sops placeholders at activation
+    (values substituted then, so they land in /run, not the store). ntfy
+    reconciles user.db against these on start — idempotent by construction
+    against the already-provisioned live db (same publisher user, same
+    token, same grant → an update, never a duplicate). restartUnits
+    re-provisions on a sops edit + rebuild.
+  */
+  sops.templates."ntfy-provision.env" = {
+    restartUnits = [ "ntfy-sh.service" ];
+    content = ''
+      NTFY_AUTH_USERS=publisher:${config.sops.placeholder.ntfy-publisher-password-hash}:admin
+      NTFY_AUTH_TOKENS=publisher:${config.sops.placeholder.ntfy-publisher-token}:workstation-agent-notify
+      NTFY_AUTH_ACCESS=everyone:${config.sops.placeholder.ntfy-agents-channel}:ro
+    '';
   };
+
+  systemd.services.ntfy-sh.serviceConfig.EnvironmentFile = [
+    config.sops.templates."ntfy-provision.env".path
+  ];
 
   nori.harden.ntfy-sh = { };
 
@@ -76,5 +118,5 @@
   */
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8081 ];
 
-  nori.backups.ntfy.skip = "Hub on appliance host (pi). Pi flash anti-write posture; auth db tiny (one publisher row), recreated from sops + manual ntfy user add if lost.";
+  nori.backups.ntfy.skip = "Hub on appliance host (pi). Pi flash anti-write posture; auth db tiny (one publisher row) and reprovisioned declaratively from sops on every ntfy-sh start, so it's recreated automatically if lost.";
 }
