@@ -8,6 +8,7 @@ _: {
     ./hypr-rice
     ./hyprsunset.nix
     ./persona-quickshell
+    ./waybar.nix
     ./wayland-pipewire-idle-inhibit.nix
   ];
 
