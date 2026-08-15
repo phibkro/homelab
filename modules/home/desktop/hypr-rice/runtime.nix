@@ -498,8 +498,7 @@ let
   browsableCommandCategories = lib.remove "view" commandCategories;
   commandCategoryLabels = map (
     category:
-    lib.toUpper (lib.substring 0 1 category)
-    + lib.substring 1 (builtins.stringLength category) category
+    lib.toUpper (lib.substring 0 1 category) + lib.substring 1 (builtins.stringLength category) category
   ) browsableCommandCategories;
   commandEffects = [
     "launch"

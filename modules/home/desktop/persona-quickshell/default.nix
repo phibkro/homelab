@@ -46,7 +46,13 @@ let
     shipping a half-applied adaptation.
   */
   personaSource =
-    pkgs.runCommandLocal "persona-quickshell-source" { nativeBuildInputs = [ pkgs.gnugrep pkgs.gnused ]; }
+    pkgs.runCommandLocal "persona-quickshell-source"
+      {
+        nativeBuildInputs = [
+          pkgs.gnugrep
+          pkgs.gnused
+        ];
+      }
       ''
         mkdir -p "$out"
         cp -R ${inputs.persona-quickshell}/. "$out/"
