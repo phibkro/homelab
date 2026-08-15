@@ -62,6 +62,16 @@
     snappy-switcher.inputs.nixpkgs.follows = "nixpkgs";
 
     /*
+      Persona — Quickshell presentation layer for the workstation. Persona
+      itself and its optional Cava visualizer are pinned source trees; the
+      Home Manager module builds both against this flake's Qt/nixpkgs closure.
+    */
+    persona-quickshell.url = "git+https://github.com/Yujonpradhananga/Persona-Quickshell";
+    persona-quickshell.flake = false;
+    persona-cava.url = "git+https://github.com/Yujonpradhananga/Qt6-Cava-plugin";
+    persona-cava.flake = false;
+
+    /*
       Stylix — single-input system-wide theming. Same
       Reader+collected-Writer shape as the lab's `nori.<X>` effect
       family — fits cleanly. Workstation imports the NixOS module

@@ -5,11 +5,13 @@ fuzzel_bin=${FUZZEL_BIN:-$(command -v fuzzel || true)}
 private_data_dir=${RICE_PRIVATE_DATA_DIR:-}
 launch_prefix_bin=${RICE_LAUNCH_PREFIX_BIN:-}
 self=${RICE_PALETTE_SELF:-${BASH_SOURCE[0]}}
+category_labels_text=${RICE_PALETTE_CATEGORIES:-}
 
 for entry in \
   "fuzzel:$fuzzel_bin" \
   "private XDG data root:$private_data_dir" \
-  "launch prefix:$launch_prefix_bin"; do
+  "launch prefix:$launch_prefix_bin" \
+  "command categories:$category_labels_text"; do
   name=${entry%%:*}
   value=${entry#*:}
   if [[ -z $value ]]; then
@@ -17,6 +19,16 @@ for entry in \
     exit 64
   fi
 done
+
+read -r -a category_labels <<<"$category_labels_text"
+
+is_category() {
+  local requested=$1 candidate
+  for candidate in "${category_labels[@]}"; do
+    [[ $requested != "$candidate" ]] || return 0
+  done
+  return 1
+}
 
 if [[ ${RICE_PALETTE_ACTIVE:-0} != 1 ]]; then
   if [[ ${XDG_DATA_DIRS+x} ]]; then
@@ -48,7 +60,7 @@ case "$mode:$#" in
   categories:1)
     set +e
     category=$(
-      printf '%s\n' Layout Space Window System Session Help Utility |
+      printf '%s\n' "${category_labels[@]}" |
         "$fuzzel_bin" --dmenu --only-match --prompt 'category: '
     )
     status=$?
@@ -56,26 +68,18 @@ case "$mode:$#" in
     [[ $status -eq 1 ]] && exit 0
     [[ $status -eq 0 ]] || exit "$status"
     [[ -n $category ]] || exit 0
-    case $category in
-      Layout|Space|Window|System|Session|Help|Utility)
-        exec "$BASH" "$self" category "$category"
-        ;;
-      *)
-        printf 'rice-palette: invalid category: %s\n' "$category" >&2
-        exit 64
-        ;;
-    esac
+    if is_category "$category"; then
+      exec "$BASH" "$self" category "$category"
+    fi
+    printf 'rice-palette: invalid category: %s\n' "$category" >&2
+    exit 64
     ;;
   category:2)
-    case $2 in
-      Layout|Space|Window|System|Session|Help|Utility)
-        exec "$fuzzel_bin" "${application_args[@]}" --search "$2:"
-        ;;
-      *)
-        printf 'rice-palette: invalid category: %s\n' "$2" >&2
-        exit 64
-        ;;
-    esac
+    if is_category "$2"; then
+      exec "$fuzzel_bin" "${application_args[@]}" --search "$2:"
+    fi
+    printf 'rice-palette: invalid category: %s\n' "$2" >&2
+    exit 64
     ;;
   *)
     printf 'usage: rice-palette [frequent|alphabetical|categories|category CATEGORY]\n' >&2

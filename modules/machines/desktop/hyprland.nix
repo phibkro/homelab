@@ -10,8 +10,8 @@
     enable = true;
     /*
       UWSM (Universal Wayland Session Manager) wraps the Hyprland start
-      so systemd-user services depending on graphical-session.target
-      (waybar, mako, hypridle, hyprsunset) activate cleanly on login
+      so systemd-user services tied to the graphical/Hyprland session targets
+      (Persona, hypridle, hyprsunset) activate cleanly on login
       instead of needing a manual `systemctl --user restart` dance.
       Hyprland upstream warns at session start if UWSM isn't used.
       Exposes `hyprland-uwsm.desktop` — see modules/machines/desktop/greetd.nix

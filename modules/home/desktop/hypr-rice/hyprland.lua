@@ -51,7 +51,7 @@ hl.config({
     },
 
     decoration = {
-        rounding = 12,  -- Material 3 corner-medium, matches waybar
+        rounding = 12,  -- Material 3 corner-medium
     },
 
     dwindle = {
@@ -65,7 +65,7 @@ hl.config({
 -------------------
 hl.on("hyprland.start", function()
     -- Refresh dbus activation env + bounce hyprland-session.target so
-    -- waybar/hypridle/mako pick up DISPLAY/WAYLAND_DISPLAY etc.
+    -- Persona/hypridle pick up DISPLAY/WAYLAND_DISPLAY etc.
     -- NOTE: using the bare command name relies on PATH; pinning the
     -- dbus executable to its nix-store path remains deferred.
     hl.exec_cmd("dbus-update-activation-environment --systemd DISPLAY HYPRLAND_INSTANCE_SIGNATURE WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE && systemctl --user stop hyprland-session.target && systemctl --user start hyprland-session.target")
@@ -246,7 +246,7 @@ for _, t in ipairs(tags) do
     -- Toggle tag visibility (bare SUPER+N — layers are the bare-SUPER
     -- surface, workspaces are SUPER+CTRL, see the workspace loop above).
     -- Routed through `layer-toggle` (default.nix) rather than dispatching
-    -- toggle_special directly — it announces the tag via mako when the
+    -- toggle_special directly — it announces the tag via Persona notifications when the
     -- toggle results in it being shown. Positional-string arg to
     -- toggle_special inside that script — the `{ name = t.name }` table
     -- form is broken, see the toggle_special note above SUPER+RETURN.

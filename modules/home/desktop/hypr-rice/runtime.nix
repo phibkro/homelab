@@ -166,6 +166,27 @@ let
       icon = "utilities-terminal-symbolic";
       effect = "toggle";
     };
+    "space.persona-search" = mkCommand {
+      label = "Space: Persona App Search";
+      description = "toggle the Persona application search";
+      category = "space";
+      executable = "${pkgs.quickshell}/bin/qs";
+      args = [
+        "-c"
+        "persona"
+        "ipc"
+        "call"
+        "searchapp"
+        "toggle"
+      ];
+      keywords = [
+        "applications"
+        "launcher"
+        "search"
+      ];
+      icon = "system-search-symbolic";
+      effect = "toggle";
+    };
     "space.cycle.next" = mkCommand {
       label = "Space: Cycle Next";
       description = "show the next special space";
@@ -375,6 +396,46 @@ let
       icon = "applets-screenshooter-symbolic";
     };
 
+    "testing.notification.normal" = mkCommand {
+      label = "Testing: Notification — Normal";
+      description = "show a normal notification for interaction testing";
+      category = "testing";
+      executable = "${notificationPlayground}/bin/notification-playground";
+      args = [ "normal" ];
+      keywords = [
+        "toast"
+        "swipe"
+        "dismiss"
+      ];
+      icon = "dialog-information-symbolic";
+    };
+    "testing.notification.persistent" = mkCommand {
+      label = "Testing: Notification — Persistent";
+      description = "show a persistent critical notification";
+      category = "testing";
+      executable = "${notificationPlayground}/bin/notification-playground";
+      args = [ "persistent" ];
+      keywords = [
+        "toast"
+        "critical"
+        "dismiss"
+      ];
+      icon = "dialog-warning-symbolic";
+    };
+    "testing.notification.stack" = mkCommand {
+      label = "Testing: Notifications — Five-card Stack";
+      description = "fill the visible notification stack";
+      category = "testing";
+      executable = "${notificationPlayground}/bin/notification-playground";
+      args = [ "stack" ];
+      keywords = [
+        "toast"
+        "overflow"
+        "swipe"
+      ];
+      icon = "view-list-symbolic";
+    };
+
     "view.frequent" = mkCommand {
       label = "View: Frequent";
       description = "reopen the default relevance-ranked palette";
@@ -432,7 +493,14 @@ let
     "help"
     "view"
     "utility"
+    "testing"
   ];
+  browsableCommandCategories = lib.remove "view" commandCategories;
+  commandCategoryLabels = map (
+    category:
+    lib.toUpper (lib.substring 0 1 category)
+    + lib.substring 1 (builtins.stringLength category) category
+  ) browsableCommandCategories;
   commandEffects = [
     "launch"
     "query"
@@ -629,6 +697,43 @@ let
     '';
   };
 
+  notificationPlayground = pkgs.writeShellApplication {
+    name = "notification-playground";
+    runtimeInputs = [ pkgs.libnotify ];
+    text = ''
+      case ''${1-} in
+        normal)
+          notify-send \
+            --app-name='Persona Playground' \
+            --expire-time=15000 \
+            'Normal notification' \
+            'Click or swipe this card to dismiss it.'
+          ;;
+        persistent)
+          notify-send \
+            --app-name='Persona Playground' \
+            --urgency=critical \
+            --expire-time=0 \
+            'Persistent notification' \
+            'This card remains until you dismiss it.'
+          ;;
+        stack)
+          for index in {1..5}; do
+            notify-send \
+              --app-name='Persona Playground' \
+              --expire-time=30000 \
+              "Stack card $index" \
+              'Drag, flick, or click this card.'
+          done
+          ;;
+        *)
+          printf 'usage: notification-playground {normal|persistent|stack}\n' >&2
+          exit 64
+          ;;
+      esac
+    '';
+  };
+
   riceCommandCases = lib.concatStringsSep "\n" (
     lib.mapAttrsToList (
       id: command:
@@ -756,6 +861,7 @@ let
     runtimeInputs = [ pkgs.fuzzel ];
     text = ''
       export RICE_PRIVATE_DATA_DIR=${lib.escapeShellArg "${privateDesktopEntries}/share"}
+      export RICE_PALETTE_CATEGORIES=${lib.escapeShellArg (lib.concatStringsSep " " commandCategoryLabels)}
       export RICE_LAUNCH_PREFIX_BIN=${lib.escapeShellArg "${riceLaunch}/bin/rice-launch"}
       ${builtins.readFile ./rice-palette.sh}
     '';
@@ -955,7 +1061,7 @@ let
   };
 
   /*
-    layer-announce — COMMAND only (CQS): the mako layer-osd popup
+    layer-announce — COMMAND only (CQS): the Persona layer-osd popup
     (capitalized name). Was copy-pasted in layer-cycle and layer-toggle.
   */
   layerAnnounce = pkgs.writeShellApplication {
@@ -1017,8 +1123,8 @@ let
   /*
     layer-toggle — the tags loop's SUPER+N bind calls this instead of
     dispatching toggle_special directly, so showing a tag also
-    announces it (mako's app-name=layer-osd criteria, modules/home/
-    desktop/mako.nix). Only announces on SHOW, not on hide — checks
+    announces it (Persona's app-name=layer-osd notification route). Only
+    announces on SHOW, not on hide — checks
     whether the tag actually ended up visible after the toggle, since
     toggle_special() can go either direction depending on prior state.
   */
@@ -1119,9 +1225,9 @@ lib.mkIf config.nori.hyprRice.enable {
     popupTerm # SUPER+RETURN togglable terminal (lazy-spawns its own ghostty)
     glassSpacer # SUPER+G tiled blank glass target
     currentLayer # query: bare name of the shown special-workspace tag, or empty
-    layerAnnounce # command: mako layer-osd popup for a tag name
+    layerAnnounce # command: Persona layer-osd popup for a tag name
     layerCycle # SUPER+ALT+TAB / SUPER+ALT+SHIFT+TAB — step through special-workspace tags
-    layerToggle # SUPER+N tag toggle, announces via mako when shown
+    layerToggle # SUPER+N tag toggle, announces via Persona when shown
     layerAutohide # daemon: hides the shown tag when focus moves to a regular workspace
     tileRatio # absolute focused-window ratio on Dwindle
     hyprLayout # strict, hex-encoded bridge into the native rice layout

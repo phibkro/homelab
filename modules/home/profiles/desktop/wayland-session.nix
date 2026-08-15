@@ -6,7 +6,6 @@
 {
   home.packages = [
     pkgs.fuzzel
-    pkgs.hyprpaper
     pkgs.rustdesk
     pkgs.tailscale-systray
     pkgs.yazi

@@ -57,7 +57,11 @@
     outside the app-* naming default to `auto` and would silently
     escape the oomd guardrail. The pressure LIMIT is deliberately not
     set — it inherits oomd.conf's default, one source of truth for the
-    number.
+    number. ManagedOOMPreference=avoid makes another viable user-owned
+    cgroup the preferred victim when an owner-compatible monitored
+    ancestor chooses between them. It is deliberately a preference,
+    not immunity: it is not recursive, and the root-owned
+    user-1000.slice emergency trigger may still select a Herdr pane.
 
     Success is verified by observing /proc/self/cgroup, NOT busctl's
     exit code: StartTransientUnit reports success even when the PID
@@ -75,10 +79,11 @@
             org.freedesktop.systemd1 /org/freedesktop/systemd1 \
             org.freedesktop.systemd1.Manager StartTransientUnit \
             "ssa(sv)a(sa(sv))" \
-            "herdr-''${HERDR_PANE_ID//:/-}-$$.scope" fail 4 \
+            "herdr-''${HERDR_PANE_ID//:/-}-$$.scope" fail 5 \
             PIDs au 1 "$$" \
             Slice s herdr.slice \
             ManagedOOMMemoryPressure s kill \
+            ManagedOOMPreference s avoid \
             CollectMode s inactive-or-failed \
             0 2>/dev/null; then
           for _ in 1 2 3; do

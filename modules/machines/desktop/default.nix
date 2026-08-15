@@ -1,7 +1,7 @@
 _: {
   /**
     System-level concerns of the workstation graphical session.
-    Per-user HM-only modules (waybar, mako, hypr-lock, hyprsunset, the
+    Per-user HM-only modules (Persona, hypr-lock, hyprsunset, the
     rice implementation) live in `modules/home/desktop/`; user-facing app
     groups compose through `modules/home/profiles/desktop/`.
   */

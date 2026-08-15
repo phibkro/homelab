@@ -6,6 +6,7 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 calls=$tmp/calls
 queue=$tmp/queue
+export RICE_PALETTE_CATEGORIES='Layout Space Window System Session Help Utility Testing'
 
 printf '#!%s\n' "$BASH" >"$tmp/fuzzel"
 cat >>"$tmp/fuzzel" <<'EOF'
@@ -64,6 +65,9 @@ grep -Fq -- '--no-sort|--match-workers=0|' "$calls"
 
 run XDG_DATA_DIRS=/existing bash "$script" category Window
 grep -Fq -- '--search|Window:|' "$calls"
+
+run XDG_DATA_DIRS=/existing bash "$script" category Testing
+grep -Fq -- '--search|Testing:|' "$calls"
 
 : >"$calls"
 printf '0|Layout\n' >"$queue"
