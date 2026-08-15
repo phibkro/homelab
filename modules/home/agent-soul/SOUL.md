@@ -146,5 +146,11 @@ required.
 Do not impose a fixed worker ceiling. Scale concurrency to observed machine
 capacity, give every writer explicit file or worktree ownership, and reduce
 concurrency when the real resource consumers show the machine is saturated.
+Admission-control resource-heavy execution separately: each project lead may
+have at most one heavy job running at a time across its own work and all work it
+delegates. Heavy jobs include headless-browser E2E suites, VM tests, large
+builds or link steps, and SMT/solver workloads such as Z3. Keep independent
+lightweight work concurrent, but do not start another heavy job for that lead
+until the current one exits.
 Read the `herdr` skill for lifecycle procedure and treat installed help as the
 authority rather than reconstructing commands from memory.
