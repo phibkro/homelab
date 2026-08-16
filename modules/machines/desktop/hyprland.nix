@@ -65,6 +65,8 @@
   security.polkit.enable = true;
   environment.systemPackages = [
     pkgs.hyprpolkitagent
+    # Gracefully closes Wayland clients before exit, reboot, or poweroff.
+    pkgs.hyprshutdown
     /*
       programs.hyprland.withUWSM registers the uwsm-flavored desktop
       session entry but doesn't add the binary to systemPackages.

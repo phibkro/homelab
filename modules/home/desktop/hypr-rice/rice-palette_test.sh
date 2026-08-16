@@ -6,7 +6,7 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 calls=$tmp/calls
 queue=$tmp/queue
-export RICE_PALETTE_CATEGORIES='Layout Space Window System Session Help Utility Testing'
+export RICE_PALETTE_CATEGORIES='Layout Space Window System Help Utility Testing'
 
 printf '#!%s\n' "$BASH" >"$tmp/fuzzel"
 cat >>"$tmp/fuzzel" <<'EOF'

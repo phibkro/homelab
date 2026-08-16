@@ -93,6 +93,22 @@ let
     }
     // attrs;
 
+  /*
+    Hyprshutdown owns the confirmation UI and graceful client-close sequence
+    for every desktop exit effect. Fixing the executable and effect here keeps
+    a future reboot/poweroff command from silently regressing to an abrupt
+    compositor exit or acquiring a second confirmation prompt.
+  */
+  mkHyprShutdownCommand =
+    attrs:
+    mkCommand (
+      attrs
+      // {
+        executable = "${pkgs.hyprshutdown}/bin/hyprshutdown";
+        effect = "session";
+      }
+    );
+
   baseCommands = {
     "layout.menu" = mkCommand {
       label = "Layout: Workspace Menu…";
@@ -318,41 +334,46 @@ let
       icon = "weather-clear-night-symbolic";
       effect = "toggle";
     };
-    "system.reboot" = mkCommand {
+    "system.reboot" = mkHyprShutdownCommand {
       label = "System: Reboot…";
-      description = "reboot the machine";
+      description = "gracefully close apps and reboot the machine";
       category = "system";
-      executable = "${pkgs.systemd}/bin/systemctl";
-      args = [ "reboot" ];
+      args = [
+        "--top-label"
+        "Restarting…"
+        "--post-cmd"
+        "${pkgs.systemd}/bin/systemctl reboot"
+      ];
       keywords = [ "restart" ];
       icon = "system-reboot-symbolic";
-      effect = "destructive";
     };
-    "system.poweroff" = mkCommand {
+    "system.poweroff" = mkHyprShutdownCommand {
       label = "System: Power Off…";
-      description = "power off the machine";
+      description = "gracefully close apps and power off the machine";
       category = "system";
-      executable = "${pkgs.systemd}/bin/systemctl";
-      args = [ "poweroff" ];
+      args = [
+        "--top-label"
+        "Shutting down…"
+        "--post-cmd"
+        "${pkgs.systemd}/bin/systemctl poweroff"
+      ];
       keywords = [ "shutdown" ];
       icon = "system-shutdown-symbolic";
-      effect = "destructive";
     };
-    "session.exit" = mkCommand {
-      label = "Session: Exit Hyprland…";
-      description = "exit the Hyprland desktop session";
-      category = "session";
-      executable = "${pkgs.hyprland}/bin/hyprctl";
+    "system.exit-session" = mkHyprShutdownCommand {
+      label = "System: Exit Session…";
+      description = "gracefully close apps and exit the Hyprland session";
+      category = "system";
       args = [
-        "dispatch"
-        "hl.dsp.exit()"
+        "--top-label"
+        "Exiting session…"
       ];
       keywords = [
+        "hyprshutdown"
         "quit"
         "logout"
       ];
       icon = "system-log-out-symbolic";
-      effect = "destructive";
     };
 
     "help.shortcuts" = mkCommand {
@@ -489,7 +510,6 @@ let
     "space"
     "window"
     "system"
-    "session"
     "help"
     "view"
     "utility"
