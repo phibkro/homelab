@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   lib,
   pkgs,
@@ -132,10 +133,10 @@ in
   systemd.user.services.persona-quickshell = {
     Unit = {
       Description = "Persona Quickshell desktop shell";
-      PartOf = [ "graphical-session.target" ];
-      After = [ "graphical-session.target" ];
+      PartOf = [ config.wayland.systemd.target ];
+      After = [ config.wayland.systemd.target ];
     };
-    Install.WantedBy = [ "graphical-session.target" ];
+    Install.WantedBy = [ config.wayland.systemd.target ];
     Service = {
       Type = "simple";
       ExecStart = "${personaShell}/bin/persona-quickshell";

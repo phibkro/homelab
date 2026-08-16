@@ -3,8 +3,8 @@ _: {
     hyprsunset — color temperature shifter (blue-light filter). Warms
     the screen in the evening; reverts to neutral in the morning.
     Activated as a home-manager systemd user service so it runs alongside
-    the rest of the Hyprland session (started via UWSM's
-    graphical-session.target — same lifecycle as Persona/hypridle).
+    the rest of the Hyprland session under the compositor-specific target
+    shared by Persona, Waybar, and hypridle.
 
     Schedule is fixed times rather than astronomical sunrise/sunset
     because Oslo's daylight swing is so extreme (~6h winter / ~18h

@@ -1,4 +1,8 @@
-_:
+{
+  config,
+  lib,
+  ...
+}:
 let
   /*
     Glyph codepoints — embedded via builtins.fromJSON so the literal
@@ -157,5 +161,20 @@ in
           font-size: 16px;
       }
     '';
+  };
+
+  /*
+    Home Manager also binds Waybar to tray.target. That target belongs to the
+    persistent user manager, not one compositor instance, so it can start the
+    bar at the greeter and exhaust the restart budget before Hyprland exists.
+    Keep the generated unit, but give it the same single lifecycle owner as
+    every other Wayland daemon in this desktop composition.
+  */
+  systemd.user.services.waybar = {
+    Unit = {
+      PartOf = lib.mkForce [ config.wayland.systemd.target ];
+      After = lib.mkForce [ config.wayland.systemd.target ];
+    };
+    Install.WantedBy = lib.mkForce [ config.wayland.systemd.target ];
   };
 }

@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 {
   /*
     Inhibits Wayland's idle-inhibit-unstable-v1 protocol while PipeWire
@@ -21,13 +21,13 @@
   systemd.user.services.wayland-pipewire-idle-inhibit = {
     Unit = {
       Description = "Inhibit Wayland idle while PipeWire streams are active";
-      PartOf = [ "graphical-session.target" ];
+      PartOf = [ config.wayland.systemd.target ];
       After = [
-        "graphical-session.target"
+        config.wayland.systemd.target
         "pipewire.service"
       ];
     };
-    Install.WantedBy = [ "graphical-session.target" ];
+    Install.WantedBy = [ config.wayland.systemd.target ];
     Service = {
       Type = "simple";
       ExecStart = "${pkgs.wayland-pipewire-idle-inhibit}/bin/wayland-pipewire-idle-inhibit";

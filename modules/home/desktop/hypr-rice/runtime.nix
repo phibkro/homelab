@@ -1293,19 +1293,17 @@ lib.mkIf config.nori.hyprRice.enable {
   /*
     hypr-session-logd — subscribes to Hyprland's socket2 event stream and
     debounce-captures full snapshots (see hypr-session/logd.sh header).
-    graphical-session.target (not hyprland-session.target specifically)
-    matches every other per-session daemon in this file
-    (wayland-pipewire-idle-inhibit.nix); Restart=on-failure covers a
-    transient socket2-not-up-yet race independent of logd's own
-    50x0.1s startup poll.
+    The shared Wayland session target is the compositor lifecycle root;
+    Restart=on-failure covers a transient socket2-not-up-yet race independent
+    of logd's own 50x0.1s startup poll.
   */
   systemd.user.services.hypr-session-logd = {
     Unit = {
       Description = "hypr-session: debounced Hyprland window-topology snapshot log";
-      PartOf = [ "graphical-session.target" ];
-      After = [ "graphical-session.target" ];
+      PartOf = [ config.wayland.systemd.target ];
+      After = [ config.wayland.systemd.target ];
     };
-    Install.WantedBy = [ "graphical-session.target" ];
+    Install.WantedBy = [ config.wayland.systemd.target ];
     Service = {
       Type = "simple";
       ExecStart = "${hyprSession}/bin/hypr-session-logd";
