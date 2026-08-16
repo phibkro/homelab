@@ -156,9 +156,30 @@ in
 
   # Backup target registry — schema in modules/infra/backup/default.nix.
   nori.backupTargets = {
+    /*
+      The `/${hostName}` prefix is load-bearing, not cosmetic. sshd
+      refuses a ChrootDirectory that is group/other-writable, so the
+      chroot root (/mnt/backup on aurora) is permanently root:root
+      0755 — the `restic` SFTP user can never mkdir there. Pushing
+      to the bare chroot root therefore made `initialize = true`
+      structurally impossible for any repo that didn't already
+      exist: every NEW nori.backups.<job> failed its first push with
+      "MkdirAll /<job>/snapshots: permission denied" until an
+      operator hand-created the dir on aurora. Bit
+      herdr-projects-mcp 2026-08-12; see
+      docs/reports/20260814-030203-restic-backups-herdr-projects-mcp-onetouch-failure.md.
+
+      Under a per-host namespace the parent of every per-job repo is
+      restic-owned (provisioned by the restic-target workload from
+      the same inventory host names), so restic creates job repos
+      itself and a new job needs no aurora-side step. Same shape the
+      entry plane already uses for `/pi`; it also removes the
+      job-name collision between hosts that the 2026-06 `/caddy` +
+      `/authelia` race hit.
+    */
     onetouch = {
-      repository = "sftp:restic@aurora.saola-matrix.ts.net:";
-      description = "OneTouch HDD relocated to aurora 2026-06-11; reached over SFTP via the chrooted `restic` user on aurora (see modules/machines/aurora/disko-onetouch.nix + the restic-target workload).";
+      repository = "sftp:restic@aurora.saola-matrix.ts.net:/${config.networking.hostName}";
+      description = "OneTouch HDD relocated to aurora 2026-06-11; reached over SFTP via the chrooted `restic` user on aurora, under this host's own `/${config.networking.hostName}` namespace (see modules/machines/aurora/disko-onetouch.nix + the restic-target workload).";
       extraOptions = [
         "sftp.command='${pkgs.openssh}/bin/ssh -o BatchMode=yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/etc/ssh/aurora_known_hosts -i /run/secrets/restic-ssh-key restic@aurora.saola-matrix.ts.net -s sftp'"
       ];

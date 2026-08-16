@@ -60,8 +60,16 @@ Two USB-attached drives, mounted on workstation, each hosting one restic repo pe
 
 | Target | Mount | Drive | FS | Repo path | Trigger time |
 |---|---|---|---|---|---|
-| `onetouch` | `/mnt/backup` | Seagate OneTouch (physically on aurora; workstation reaches via SFTP) | ext4 | `/mnt/backup/<svc>` | per-service timer (e.g. 04:30) |
+| `onetouch` | `/mnt/backup` | Seagate OneTouch (physically on aurora; remote hosts reach via SFTP) | ext4 | `/mnt/backup/<host>/<svc>` (aurora's own jobs: `/mnt/backup/<svc>`) | per-service timer (e.g. 04:30) |
 | `mp510` | `/mnt/backup-local` | Corsair Force MP510 (workstation NVMe @backup-local) | btrfs | `/mnt/backup-local/<svc>` | same timer minute |
+
+The `<host>` level on `onetouch` is structural, not tidiness: sshd forbids a
+group/other-writable `ChrootDirectory`, so `/mnt/backup` is permanently
+root-owned and the chrooted `restic` user can only create per-job repos inside
+a namespace the restic-target workload pre-owns. Client hosts derive the
+namespace from their own `networking.hostName`; aurora provisions one per
+inventory host. Without it, every newly declared `nori.backups.<job>` failed
+its first push (2026-08-12, `herdr-projects-mcp`).
 
 Both restic units race on the prepareCommand `.tmp` file → wrapped in `flock` since 2026-06-07. See [[pattern-c2-sqlite-race-flock]].
 
