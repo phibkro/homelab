@@ -9,7 +9,8 @@
 #   2. presence contract: STATE.md exists and declares a Lifecycle;
 #      AGENTS.md exists or is a symlink; design-specs/ when lifecycle >= spec
 #   3. stamped generated artifacts match the foundry profile@v1 (bytes for
-#      configs; stub/skeleton shape for AGENTS.md and STATE.md)
+#      configs; stub/skeleton shape for AGENTS.md and STATE.md). In a
+#      package.json repo, missing lint configs are drift unless declared.
 #
 # Exit nonzero listing undeclared drift; zero when clean or all-declared.
 # Stdlib-only bash; no dependencies beyond coreutils.
@@ -120,12 +121,20 @@ N_OK=0
 N_SKIP=0
 
 report_declared_or_drift() {
-	# $1 exception key, $2 drift message
-	if has_exception "$1"; then
-		printf 'DECLARED %-24s %s [exception: %s]\n' "$REPO_NAME" "$2" "$1"
+	# $1 exception key, or |-separated alternatives (e.g. stamped-artifacts|linter)
+	# $2 drift message
+	local keys=$1 msg=$2 matched="" alt
+	for alt in ${keys//|/ }; do
+		if has_exception "$alt"; then
+			matched=$alt
+			break
+		fi
+	done
+	if [[ -n $matched ]]; then
+		printf 'DECLARED %-24s %s [exception: %s]\n' "$REPO_NAME" "$msg" "$matched"
 		REPO_DECLARED=$((REPO_DECLARED + 1))
 	else
-		printf 'DRIFT    %-24s %s\n' "$REPO_NAME" "$2"
+		printf 'DRIFT    %-24s %s\n' "$REPO_NAME" "$msg"
 		REPO_ISSUES=$((REPO_ISSUES + 1))
 	fi
 }
@@ -206,6 +215,14 @@ check_repo() {
 			;;
 		esac
 	done
+	# package.json proxy: a JS/TS repo (package.json at root) that lacks the
+	# Oxlint/Oxfmt pair is drift unless declared (e.g. key: linter).
+	if [[ -f $repo/package.json ]]; then
+		for f in .oxlintrc.json .oxfmtrc.json; do
+			[[ -f $repo/$f ]] || report_declared_or_drift 'stamped-artifacts|linter' \
+				"$f missing in a package.json repo (JS toolchain without the lint pair)"
+		done
+	fi
 	if ((REPO_ISSUES > 0)); then
 		return 1
 	fi
