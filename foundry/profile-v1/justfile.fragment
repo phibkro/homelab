@@ -1,0 +1,11 @@
+# generated-by: foundry@v1
+# Fragment — merge these recipes into the repo's Justfile (or use as-is).
+# `check` is the build-state gate: lint + format green before merge.
+
+check:
+    oxlint --config .oxlintrc.json && oxfmt --check .
+
+# Conventions drift gate (CONVENTIONS-RECONCILIATION.md §4). Passes when this
+# repo is self-consistent or every divergence is declared.
+conventions-check:
+    @{{ foundry_bin }}/conventions-check {{ invocation_directory() }}

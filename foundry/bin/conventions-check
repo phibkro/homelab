@@ -1,0 +1,264 @@
+#!/usr/bin/env bash
+# generated-by: foundry@v1
+#
+# conventions-check — drift gate for the project conventions contract.
+# (CONVENTIONS-RECONCILIATION.md §4; profile source: homelab/foundry/profile-v1)
+#
+# Per repo:
+#   1. skip if listed in .conventions-exceptions (declared divergence = OK)
+#   2. presence contract: STATE.md exists and declares a Lifecycle;
+#      AGENTS.md exists or is a symlink; design-specs/ when lifecycle >= spec
+#   3. stamped generated artifacts match the foundry profile@v1 (bytes for
+#      configs; stub/skeleton shape for AGENTS.md and STATE.md)
+#
+# Exit nonzero listing undeclared drift; zero when clean or all-declared.
+# Stdlib-only bash; no dependencies beyond coreutils.
+
+set -u
+
+PROGNAME="conventions-check"
+PROFILE_VERSION="v1"
+SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)"
+PROFILE_DIR="$(CDPATH='' cd -- "$SCRIPT_DIR/../profile-v1" && pwd -P)"
+
+STAMPED_FILES=(.oxlintrc.json .oxfmtrc.json AGENTS.md STATE.md)
+
+LC_ALL=C
+
+err() { printf '%s\n' "$*" >&2; }
+
+usage() {
+	err "usage:"
+	err "  $PROGNAME <repo-dir>     single-repo mode"
+	err "  $PROGNAME --all <root>   scan every directory under <root>"
+}
+
+die() {
+	err "$PROGNAME: $*"
+	exit 2
+}
+
+# ---------------------------------------------------------------- exceptions
+
+EXC_SKIP=false
+EXC_KEYS=()
+
+# Parse the .conventions-exceptions YAML subset:
+#   divergences: []   | list items "- key: k" / value: v / reason: r
+#   skip: true|false  (+ reason: ...)
+parse_exceptions() {
+	local file=$1 line rest key
+	EXC_SKIP=false
+	EXC_KEYS=()
+	[[ -f $file ]] || return 0
+	while IFS= read -r line || [[ -n $line ]]; do
+		line="${line%%#*}"
+		rest="${line#"${line%%[![:space:]]*}"}"
+		[[ -z $rest ]] && continue
+		case $rest in
+		skip:\ true*) EXC_SKIP=true ;;
+		-*key:\ *)
+			key="${rest#*- key: }"
+			key="${key%%[[:space:]]*}"
+			EXC_KEYS+=("$key")
+			;;
+		esac
+	done <"$file"
+}
+
+has_exception() {
+	local key=$1 k
+	for k in ${EXC_KEYS[@]+"${EXC_KEYS[@]}"}; do
+		[[ $k == "$key" ]] && return 0
+	done
+	return 1
+}
+
+shape_state() {
+	# $1 repo STATE.md, $2 profile STATE.md — compare skeleton key sequence
+	local f=$1 keys=() line
+	while IFS= read -r line || [[ -n $line ]]; do
+		case $line in
+		"# State") keys+=("State") ;;
+		Lifecycle:*) keys+=("Lifecycle") ;;
+		Now:*) keys+=("Now") ;;
+		Next:*) keys+=("Next") ;;
+		Blocked:*) keys+=("Blocked") ;;
+		Frozen:*) : ;; # optional key, ignored for shape
+		esac
+		line=""
+	done <"$f"
+	local want i
+	want="$(printf '%s\n' State Lifecycle Now Next Blocked)"
+	for i in "${!keys[@]}"; do
+		[[ ${keys[i]} == "$(printf '%s' "$want" | sed -n "$((i + 1))p")" ]] || return 1
+	done
+	((${#keys[@]} == 5)) || return 1
+}
+
+stub_prefix_ok() {
+	# $1 repo AGENTS.md, $2 profile AGENTS.md — repo stub prefix must match the
+	# profile stub up to (and including) the PROJECT-SPECIFIC heading.
+	[[ -f $1 && -f $2 ]] || return 1
+	local n
+	n="$(grep -n '^## PROJECT-SPECIFIC' "$2" | cut -d: -f1)" || return 1
+	[[ -n $n ]] || return 1
+	head -n "$n" -- "$1" | cmp -s - <(head -n "$n" -- "$2")
+}
+
+projectspecific_present() {
+	grep -q '^## PROJECT-SPECIFIC' "$1"
+}
+
+# ---------------------------------------------------------------- per-repo check
+
+REPO_NAME=""
+REPO_ISSUES=0
+REPO_DECLARED=0
+N_TOTAL=0
+N_OK=0
+N_SKIP=0
+
+report_declared_or_drift() {
+	# $1 exception key, $2 drift message
+	if has_exception "$1"; then
+		printf 'DECLARED %-24s %s [exception: %s]\n' "$REPO_NAME" "$2" "$1"
+		REPO_DECLARED=$((REPO_DECLARED + 1))
+	else
+		printf 'DRIFT    %-24s %s\n' "$REPO_NAME" "$2"
+		REPO_ISSUES=$((REPO_ISSUES + 1))
+	fi
+}
+
+check_repo() {
+	local repo=$1
+	local state lifecycle="" line lifecycle_valid=false plural=""
+	REPO_NAME="$(basename -- "$repo")"
+	REPO_ISSUES=0
+	REPO_DECLARED=0
+	N_TOTAL=$((N_TOTAL + 1))
+
+	parse_exceptions "$repo/.conventions-exceptions"
+	if [[ $EXC_SKIP == true ]]; then
+		printf 'SKIP     %-24s whole-repo opt-out (.conventions-exceptions skip: true)\n' "$REPO_NAME"
+		N_SKIP=$((N_SKIP + 1))
+		return 0
+	fi
+
+	# --- presence contract: STATE.md -----------------------------------
+	state="$repo/STATE.md"
+	if [[ ! -e $state ]]; then
+		report_declared_or_drift state-md "STATE.md missing (mission-state doc required)"
+	else
+		while IFS= read -r line || [[ -n $line ]]; do
+			if [[ $line =~ ^Lifecycle:[[:space:]]*([A-Za-z-]+) ]]; then
+				lifecycle="${BASH_REMATCH[1]}"
+				break
+			fi
+		done <"$state"
+		case $lifecycle in
+		idea | spec | spec-frozen | build | park | archive) lifecycle_valid=true ;;
+		esac
+		if [[ $lifecycle_valid == false ]]; then
+			report_declared_or_drift state-lifecycle \
+				"STATE.md must declare Lifecycle: <idea|spec|spec-frozen|build|park|archive>"
+		elif [[ $lifecycle != idea && ! -d $repo/design-specs ]]; then
+			report_declared_or_drift design-specs \
+				"design-specs/ required once lifecycle >= spec (now: $lifecycle)"
+		fi
+	fi
+
+	# --- presence contract: AGENTS.md ----------------------------------
+	if [[ -L $repo/AGENTS.md && ! -e $repo/AGENTS.md ]]; then
+		report_declared_or_drift agents-md "AGENTS.md is a dangling symlink"
+	elif [[ ! -e $repo/AGENTS.md ]]; then
+		report_declared_or_drift agents-md "AGENTS.md missing (agent doc required)"
+	fi
+
+	# --- stamped generated artifacts ------------------------------------
+	# Byte-parity: configs (.oxlintrc.json, .oxfmtrc.json) — generated verbatim.
+	# Shape parity (§4): AGENTS.md = stub prefix before the PROJECT-SPECIFIC
+	# section; STATE.md = skeleton key sequence (# State / Lifecycle: / Now: /
+	# Next: / Blocked:) so filled-in values are not flagged as drift.
+	local f root
+	for f in "${STAMPED_FILES[@]}"; do
+		[[ -f $PROFILE_DIR/$f ]] || continue
+		root="$repo/$f"
+		[[ -f $root ]] || continue # absence handled above / not yet adopted
+		head -c 4096 -- "$root" | grep -qE '^.{0,6}generated-by: foundry@' || continue
+		case $f in
+		STATE.md)
+			shape_state "$root" "$PROFILE_DIR/$f" ||
+				report_declared_or_drift stamped-artifacts \
+					"$f stamped foundry@$PROFILE_VERSION but skeleton diverges from profile"
+			;;
+		AGENTS.md)
+			stub_prefix_ok "$root" "$PROFILE_DIR/$f" ||
+				report_declared_or_drift stamped-artifacts \
+					"$f stamped foundry@$PROFILE_VERSION but stub diverges from profile"
+			projectspecific_present "$root" ||
+				report_declared_or_drift agents-stub "$f lacks a PROJECT-SPECIFIC section"
+			;;
+		*)
+			cmp -s -- "$root" "$PROFILE_DIR/$f" ||
+				report_declared_or_drift stamped-artifacts \
+					"$f stamped foundry@$PROFILE_VERSION but differs from profile (hand-edited?)"
+			;;
+		esac
+	done
+	if ((REPO_ISSUES > 0)); then
+		return 1
+	fi
+	if ((REPO_DECLARED > 0)); then
+		plural=""
+		((REPO_DECLARED > 1)) && plural="s"
+		printf 'OK       %-24s (%d declared divergence%s)\n' "$REPO_NAME" "$REPO_DECLARED" "$plural"
+	else
+		printf 'OK       %s\n' "$REPO_NAME"
+	fi
+	N_OK=$((N_OK + 1))
+	return 0
+}
+
+# ---------------------------------------------------------------- modes
+
+run_all() {
+	local root=$1 d failed=0 drifted
+	drifted=$((0))
+	printf '# conventions-check --all %s (profile@%s)\n' "$root" "$PROFILE_VERSION"
+	for d in "$root"/*/; do
+		[[ -d $d ]] || continue
+		check_repo "${d%/}" || failed=1
+	done
+	drifted=$((N_TOTAL - N_OK - N_SKIP))
+	printf '\n# summary: %d scanned | clean-or-declared %d | with-drift %d | skipped %d\n' \
+		"$N_TOTAL" "$N_OK" "$drifted" "$N_SKIP"
+	return $failed
+}
+
+main() {
+	(($# >= 1)) || {
+		usage
+		exit 2
+	}
+	local rc=0
+	case $1 in
+	-h | --help)
+		usage
+		exit 0
+		;;
+	--all)
+		(($# == 2)) || die "--all takes exactly one root argument"
+		[[ -d $2 ]] || die "--all: not a directory: $2"
+		run_all "$(CDPATH='' cd -- "$2" && pwd -P)" || rc=1
+		;;
+	*)
+		(($# == 1)) || die "single-repo mode takes exactly one argument"
+		[[ -d $1 ]] || die "not a directory: $1"
+		check_repo "$(CDPATH='' cd -- "$1" && pwd -P)" || rc=1
+		;;
+	esac
+	exit $rc
+}
+
+main "$@"

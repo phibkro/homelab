@@ -1,0 +1,87 @@
+// generated-by: foundry@v1
+// Oxlint profile — Effect enforcement enabled via @phibkro/oxlint-effect-plugin.
+// Role/platform are authoritative per group; lower strictness only deliberately.
+{
+  "jsPlugins": [
+    {
+      "name": "effect",
+      "specifier": "@phibkro/oxlint-effect-plugin"
+    }
+  ],
+  "categories": {
+    "correctness": "deny",
+    "suspicious": "deny",
+    "perf": "deny"
+  },
+  "rules": {},
+  "overrides": [
+    {
+      "files": ["src/**"],
+      "rules": {
+        "effect/no-ambient-console": [
+          "error",
+          {
+            "technology": "effect-v4",
+            "role": "application",
+            "platform": "portable"
+          }
+        ],
+        "effect/no-ambient-authority": [
+          "error",
+          {
+            "technology": "effect-v4",
+            "role": "application",
+            "platform": "portable"
+          }
+        ],
+        "effect/no-cross-runtime": [
+          "error",
+          {
+            "technology": "effect-v4",
+            "role": "application",
+            "platform": "portable"
+          }
+        ],
+        "effect/no-premature-execution": [
+          "error",
+          {
+            "technology": "effect-v4",
+            "role": "application",
+            "platform": "portable"
+          }
+        ],
+        "effect/no-native-promise-control-flow": [
+          "error",
+          {
+            "technology": "effect-v4",
+            "role": "application",
+            "platform": "portable"
+          }
+        ],
+        "effect/no-untyped-throw": [
+          "error",
+          {
+            "technology": "effect-v4",
+            "role": "application",
+            "platform": "portable"
+          }
+        ]
+      }
+    },
+    {
+      "files": ["tests/**"],
+      "rules": {
+        "effect/no-cross-runtime": [
+          "error",
+          {
+            "technology": "effect-v4",
+            "role": "test",
+            "platform": "portable"
+          }
+        ],
+        "typescript/no-unsafe-type-assertion": "off",
+        "typescript/no-unnecessary-type-assertion": "off"
+      }
+    }
+  ]
+}

@@ -394,3 +394,13 @@ AGENTS.md ┘→ homelab/docs/PROJECTS.md   (both symlinks → one singular sour
 
 Don't duplicate. If a tool's guidance is project-specific, it belongs in
 the per-project doc, not here.
+
+## Project conventions contract (2026-08-24)
+
+`STATE.md` is the mission-state file (Lifecycle: idea→spec→spec-frozen→build
+→park→archive, one gate per transition). `AGENTS.md` is the one agent doc;
+CLAUDE.md is a symlink to it. Specs live in `design-specs/`. Profile source =
+homelab/foundry/ — generate via reef, check drift via
+`homelab/foundry/bin/conventions-check`. Converge-on-contact: cold repos
+converge whenever an agent next touches them. Real divergence gets declared in
+the repo's `.conventions-exceptions`; undeclared divergence fails the checker.
