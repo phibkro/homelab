@@ -14,6 +14,10 @@
 #   4. app-tier overlay: files stamped foundry@app-v1 are diffed against the
 #      projects-root templates/app-v1 tree; per-area opt-out keys: hooks-path,
 #      claude-hooks, lsp-settings, layout (value: single-package).
+#   5. overlays (optional adopt): templates/app-v1/overlays/** members are
+#      NEVER absence-checked; a repo file at the unwrapped *.skel path that
+#      is stamped foundry@app-v1 must match the overlay source byte-for-byte
+#      (unstamped or absent = silently fine; no dedicated exception keys).
 #
 # Exit nonzero listing undeclared drift; zero when clean or all-declared.
 # Stdlib-only bash; no dependencies beyond coreutils.
@@ -37,7 +41,7 @@ STAMPED_FILES=(.oxlintrc.json .oxfmtrc.json AGENTS.md STATE.md)
 # machine layout (projects/homelab/foundry/bin) — and expects templates/app-v1
 # there. If that layout does not hold, set APP_TEMPLATE_DIR explicitly.
 APP_STAMP="foundry@app-v1"
-APP_STAMPED_FILES=(README.md package.root.json tsconfig.base.json vite.config.ts vitest.config.ts justfile.app.fragment commitlint.config.ts .githooks/pre-commit .githooks/commit-msg scripts/no-throw-ratchet.sh scripts/no-throw-baseline.txt .claude/settings.json .vscode/settings.json .vscode/extensions.json infra/alchemy.run.ts.skel .changeset/README.md .github/workflows/quality-bun.yml)
+APP_STAMPED_FILES=(README.md package.root.json tsconfig.base.json vite.config.ts vitest.config.ts justfile.app.fragment commitlint.config.ts effx.config.json .githooks/pre-commit .githooks/pre-push .githooks/commit-msg scripts/no-throw-ratchet.sh scripts/no-throw-baseline.txt .claude/settings.json .vscode/settings.json .vscode/extensions.json infra/alchemy.run.ts.skel .changeset/README.md .github/workflows/quality-bun.yml)
 LAYOUT_CHECK=false
 
 LC_ALL=C
@@ -301,11 +305,35 @@ check_repo() {
 				"$f stamped $APP_STAMP but differs from templates/app-v1 (hand-edited?)"
 	done
 
+	# --- app-tier OVERLAYS (optional adopt; parity-not-absence) ----------
+	# Files under templates/app-v1/overlays/** are never owed. A member
+	# overlays/<name>/<path>.skel maps to repo path <path> (drop the overlay
+	# name and the .skel suffix); if such a file exists AND is stamped
+	# foundry@app-v1, it must match the overlay source byte-for-byte;
+	# unstamped or absent files are ignored. *.snippet members are
+	# append-fragments (e.g. one .gitignore line among many), not whole-file
+	# artifacts — never parity-checked.
+	local rel ovl
+	if [[ -n $APP_TEMPLATE_DIR && -d $APP_TEMPLATE_DIR/overlays ]]; then
+		while IFS= read -r -d '' ovl; do
+			rel="${ovl#"$APP_TEMPLATE_DIR"/overlays/}"
+			rel="${rel#*/}" # drop the overlay name component
+			rel="${rel%.skel}"
+			root="$repo/$rel"
+			[[ -f $root ]] || continue # not adopted — absence is silent
+			[[ $(stamp_of "$root") == "$APP_STAMP" ]] || continue
+			cmp -s -- "$root" "$ovl" ||
+				report_declared_or_drift stamped-artifacts \
+					"$rel stamped $APP_STAMP but differs from its overlay source (hand-edited?)"
+		done < <(find "$APP_TEMPLATE_DIR/overlays" -type f -name '*.skel' -print0 | sort -z)
+	fi
+
 	# App-tier repos owe the full emitted set: an ABSENT app file is drift
 	# unless its area key is declared — mirrors the base tier's lint-pair
 	# proxy rule. Tier detected via stamped siblings (see app_tier_repo).
 	if app_tier_repo; then
-		for f in .githooks/pre-commit .githooks/commit-msg commitlint.config.ts \
+		for f in .githooks/pre-commit .githooks/pre-push .githooks/commit-msg \
+			commitlint.config.ts effx.config.json \
 			scripts/no-throw-ratchet.sh scripts/no-throw-baseline.txt \
 			.claude/settings.json .vscode/settings.json .vscode/extensions.json \
 			infra/alchemy.run.ts.skel .changeset/README.md \
