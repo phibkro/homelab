@@ -11,6 +11,9 @@
 #   3. stamped generated artifacts match the foundry profile@v1 (bytes for
 #      configs; stub/skeleton shape for AGENTS.md and STATE.md). In a
 #      package.json repo, missing lint configs are drift unless declared.
+#   4. app-tier overlay: files stamped foundry@app-v1 are diffed against the
+#      projects-root templates/app-v1 tree; per-area opt-out keys: hooks-path,
+#      claude-hooks, lsp-settings, layout (value: single-package).
 #
 # Exit nonzero listing undeclared drift; zero when clean or all-declared.
 # Stdlib-only bash; no dependencies beyond coreutils.
@@ -21,8 +24,21 @@ PROGNAME="conventions-check"
 PROFILE_VERSION="v1"
 SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)"
 PROFILE_DIR="$(CDPATH='' cd -- "$SCRIPT_DIR/../profile-v1" && pwd -P)"
+# app-tier overlay dir (stamp foundry@app-v1): templates/app-v1 at the
+# PROJECTS ROOT — three levels above this script's dir on the standing
+# machine layout (projects/homelab/foundry/bin). Override via APP_TEMPLATE_DIR
+# when the layout does not hold.
+APP_TEMPLATE_DIR="${APP_TEMPLATE_DIR:-$(CDPATH='' cd -- "$SCRIPT_DIR/../../.." 2>/dev/null && pwd -P)/templates/app-v1}"
+[[ -d $APP_TEMPLATE_DIR ]] || APP_TEMPLATE_DIR=""
 
 STAMPED_FILES=(.oxlintrc.json .oxfmtrc.json AGENTS.md STATE.md)
+# app-tier overlay (stamp foundry@app-v1). Resolution walks up to the
+# PROJECTS ROOT — three levels above this script's dir on the standing
+# machine layout (projects/homelab/foundry/bin) — and expects templates/app-v1
+# there. If that layout does not hold, set APP_TEMPLATE_DIR explicitly.
+APP_STAMP="foundry@app-v1"
+APP_STAMPED_FILES=(README.md package.root.json tsconfig.base.json vite.config.ts vitest.config.ts justfile.app.fragment commitlint.config.ts .githooks/pre-commit .githooks/commit-msg scripts/no-throw-ratchet.sh scripts/no-throw-baseline.txt .claude/settings.json .vscode/settings.json .vscode/extensions.json infra/alchemy.run.ts.skel .changeset/README.md .github/workflows/quality-bun.yml)
+LAYOUT_CHECK=false
 
 LC_ALL=C
 
@@ -104,7 +120,20 @@ stub_prefix_ok() {
 	local n
 	n="$(grep -n '^## PROJECT-SPECIFIC' "$2" | cut -d: -f1)" || return 1
 	[[ -n $n ]] || return 1
+
 	head -n "$n" -- "$1" | cmp -s - <(head -n "$n" -- "$2")
+}
+stamp_of() {
+	# $1 file — echo its foundry@ stamp, or nothing
+	head -c 4096 -- "$1" | sed -n 's/^.\{0,6\}generated-by: \(foundry@[A-Za-z0-9-]*\).*$/\1/p' | head -n 1
+}
+
+check_app_layout() {
+	# Monorepo-default presence expectation; declared via layout: single-package.
+	if [[ ! -d $repo/apps && ! -d $repo/packages ]]; then
+		report_declared_or_drift 'layout' \
+			"no apps/ or packages/ workspaces (monorepo default; declare layout: single-package if intended)"
+	fi
 }
 
 projectspecific_present() {
@@ -112,6 +141,28 @@ projectspecific_present() {
 }
 
 # ---------------------------------------------------------------- per-repo check
+
+app_exc_for() {
+	# $1 app-tier file path -> exception alternatives covering its area
+	case $1 in
+	.githooks/*) printf '%s' 'stamped-artifacts|hooks-path' ;;
+	.claude/*) printf '%s' 'stamped-artifacts|claude-hooks' ;;
+	.vscode/*) printf '%s' 'stamped-artifacts|lsp-settings' ;;
+	*) printf '%s' 'stamped-artifacts' ;;
+	esac
+}
+
+app_tier_repo() {
+	# An app-tier repo is identified by its app-STAMPED files — the emitted
+	# root package.json itself is pure JSON (no stamp comment can live there),
+	# so the stamped hooks/config siblings are the tier's fingerprint.
+	local f
+	for f in .githooks/commit-msg .githooks/pre-commit .claude/settings.json \
+		vitest.config.ts tsconfig.base.json; do
+		[[ -f $repo/$f && $(stamp_of "$repo/$f") == "$APP_STAMP" ]] && return 0
+	done
+	return 1
+}
 
 REPO_NAME=""
 REPO_ISSUES=0
@@ -143,6 +194,14 @@ check_repo() {
 	local repo=$1
 	local state lifecycle="" line lifecycle_valid=false plural=""
 	REPO_NAME="$(basename -- "$repo")"
+	# --- artifact-source tree -------------------------------------------
+	# The templates garden hosting this checker's app-tier overlay source
+	# (templates/, beside templates/app-v1) is generator input, not a subject
+	# repo: annotated, and invisible to --all counters.
+	if [[ -n ${APP_TEMPLATE_DIR:-} && $repo == "${APP_TEMPLATE_DIR%/*}" ]]; then
+		printf 'SOURCE   %-24s artifact-source tree (generator input, not scanned)\n' "$REPO_NAME"
+		return 0
+	fi
 	REPO_ISSUES=0
 	REPO_DECLARED=0
 	N_TOTAL=$((N_TOTAL + 1))
@@ -215,6 +274,47 @@ check_repo() {
 			;;
 		esac
 	done
+
+	# --- app-tier stamped artifacts (foundry@app-v1) --------------------
+	# Checked only when the repo carries the file (adopted or drifted-in);
+	# per-area opt-outs route to their own keys: hooks-path (.githooks/*),
+	# claude-hooks (.claude/settings.json), lsp-settings (.vscode/*).
+	local stamp tmpl exc
+	for f in "${APP_STAMPED_FILES[@]}"; do
+		root="$repo/$f"
+		[[ -f $root ]] || continue # not adopted
+		stamp="$(stamp_of "$root")"
+		case $stamp in
+		foundry@v1) continue ;; # base-tier file; handled by the loop above
+		"$APP_STAMP") ;;
+		*) continue ;;          # no foundry stamp (verbatim asset, hand file)
+		esac
+		exc="$(app_exc_for "$f")"
+		tmpl="$APP_TEMPLATE_DIR/$f"
+		if [[ -z $APP_TEMPLATE_DIR || ! -f $tmpl ]]; then
+			report_declared_or_drift "$exc" \
+				"$f stamped $APP_STAMP but app template source is missing — cannot verify"
+			continue
+		fi
+		cmp -s -- "$root" "$tmpl" ||
+			report_declared_or_drift "$exc" \
+				"$f stamped $APP_STAMP but differs from templates/app-v1 (hand-edited?)"
+	done
+
+	# App-tier repos owe the full emitted set: an ABSENT app file is drift
+	# unless its area key is declared — mirrors the base tier's lint-pair
+	# proxy rule. Tier detected via stamped siblings (see app_tier_repo).
+	if app_tier_repo; then
+		for f in .githooks/pre-commit .githooks/commit-msg commitlint.config.ts \
+			scripts/no-throw-ratchet.sh scripts/no-throw-baseline.txt \
+			.claude/settings.json .vscode/settings.json .vscode/extensions.json \
+			infra/alchemy.run.ts.skel .changeset/README.md \
+			.github/workflows/quality-bun.yml vitest.config.ts tsconfig.base.json; do
+			[[ -f $repo/$f ]] || report_declared_or_drift "$(app_exc_for "$f")" \
+				"$f missing in an app-tier repo (emitted set incomplete)"
+		done
+		check_app_layout
+	fi
 	# package.json proxy: a JS/TS repo (package.json at root) that lacks the
 	# Oxlint/Oxfmt pair is drift unless declared (e.g. key: linter).
 	if [[ -f $repo/package.json ]]; then
