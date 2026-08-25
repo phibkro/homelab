@@ -14,7 +14,6 @@ let
   inventory = inputs.self.lib.noriInventory;
   music = inventory.datasets.music;
   workstation = inputs.self.nixosConfigurations.workstation.config;
-  aurora = inputs.self.nixosConfigurations.aurora.config;
 
   expected = {
     description = "Lossless canonical music library and its delivery contract";
@@ -46,10 +45,10 @@ let
 
   runtimePathsResolve =
     workstation.systemd.services.music-ingest.environment.MUSIC_INGEST_MASTER
-    == "/mnt/media/library/music"
-    && lib.elem "/mnt/media/library/music" workstation.nori.harden.lidarr.binds
-    && aurora.services.navidrome.settings.MusicFolder == "/mnt/family/library/music"
-    && aurora.nori.harden.navidrome.readOnlyBinds == [ "/mnt/family/library/music" ];
+    == "/mnt/family/library/music"
+    && lib.elem "/mnt/family/library/music" workstation.nori.harden.lidarr.binds
+    && workstation.services.navidrome.settings.MusicFolder == "/mnt/family/library/music"
+    && workstation.nori.harden.navidrome.readOnlyBinds == [ "/mnt/family/library/music" ];
 in
 if music == expected && relationshipsResolve && runtimePathsResolve then
   "ok — music dataset is canonical and every runtime resolves its host-local path"

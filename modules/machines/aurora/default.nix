@@ -8,26 +8,17 @@
 
 /**
   aurora — retired Asus N552V (i7-6700HQ, 12 GB RAM, GTX 950M
-  Maxwell, dead battery). Always-on family vault and application tier;
-  Immich machine learning is co-located here so Workstation's 5060 Ti stays
-  dedicated to interactive compute.
+  Maxwell, dead battery). Always-on off-host backup target.
 
   ── Why it exists ──────────────────────────────────────────────────
-  Aurora owns `/mnt/family/*`, the OneTouch restic target, and family-facing
-  applications such as Immich, Navidrome, Vaultwarden, Paperless, and Komga.
-  Keeping this tier always-on makes it independent of Workstation sleep. The
-  950M also absorbs Immich's CLIP/face/OCR pipeline without evicting Ollama.
+  Aurora owns the OneTouch restic target. Workstation writes to it over the
+  chrooted SFTP account, preserving a second chassis and power-failure domain.
 
   ── Posture ────────────────────────────────────────────────────────
-  * Stateful and backup-critical — family datasets live on the Toshiba HDD,
-    service state is protected by local restic jobs, and btrbk replicates the
-    irreplaceable family tier to Workstation.
-  * No impermanence — service databases and ML weights need durable local
-    state. Regular btrfs root.
-  * Family services are reached through Pi's Caddy over tailnet; Samba is the
-    deliberate direct file-sharing exception.
-  * No claude-code, no operator GitHub credential. Operator's daily
-    driver stays on workstation.
+  * Backup-critical but application-light — family and media services run on
+    Workstation; Aurora stores their off-host restic copies.
+  * No impermanence — regular btrfs root.
+  * No claude-code and no operator GitHub credential.
 */
 
 {
@@ -38,8 +29,7 @@
     #   modules/machines/desktop/default.nix — headless
 
     ./hardware.nix
-    ./disko-onetouch.nix
-    ./disko-family.nix
+    ../workstation/disko-onetouch.nix
   ];
 
   /*
@@ -65,6 +55,10 @@
   nori.backupTargets.onetouch = {
     repository = "/mnt/backup";
     description = "Aurora-local OneTouch HDD (P13 dest). Aurora's own restic backups write here directly; remote hosts reach the same drive through the restic-target workload.";
+  };
+  nori.fs.cache = {
+    path = "/mnt/backup/attic";
+    tier = "re-derivable";
   };
   /*
     Aurora-side tmpfiles:

@@ -20,23 +20,9 @@
 #                               silent = true, window = "address:0x.." })
 # toggle_special is confirmed to require the positional-string form —
 # the `{ name = "X" }` table form silently no-ops.
-# Floating-geometry reapply is split into two independently-tracked
-# dispatches — position and size — because they are NOT equally trusted:
-#   position (hl.dsp.window.move with x/y/exact)   VERIFIED live-in-VM
-#     2026-07-20 (Hyprland 0.55.4, e2e-hypr-session): seed move to
-#     (100,80) landed and restore's reapply reproduced it.
-#   size (hl.dsp.window.resize with width/height/exact) CONFIRMED BROKEN
-#     same run: dispatched 500x300 twice, window stayed at the
-#     700x500 rule-default both times — a silent no-op, not an error.
-#     The correct 0.55 lua-builder grammar for pixel-exact resize is
-#     still unknown (this repo has no live Hyprland session reachable
-#     from a test sandbox to iterate against, and mutating the
-#     operator's own session is off-limits — see task constraints).
-#     Dispatched anyway as best-effort (matches design's "best-effort
-#     restore" value; a no-op dispatch is harmless) but the report NEVER
-#     claims it worked — see report_restored call sites below, action
-#     "size" always says "best-effort". Whoever tracks this down next:
-#     confirm via `just test-hypr-session-e2e`, don't guess-and-merge.
+# Floating geometry uses the Lua builder's x/y fields. Position is corrected
+# against observed coordinates because Hyprland's animated layout goal can lead
+# the coordinates reported by `hyprctl clients`. The VM compares saved/restored.
 #
 # Requires on PATH: hyprctl, jq, bash (assoc arrays + namerefs, 4.3+),
 # coreutils (sleep). Nix wrapping closes over these; login PATH is thin.
@@ -145,18 +131,25 @@ dispatch_move_to_workspace() {
   dispatch "hl.dsp.window.move({ workspace = $(lua_str "$workspace"), silent = true, window = $(lua_str "address:$address") })"
 }
 
-# VERIFIED (see header) — position half of floating-geometry reapply.
+# Converge visible floating-window position. A single absolute dispatch can
+# overshoot while Hyprland's animated layout goal leads the reported position.
 dispatch_reapply_position() {
-  local address=$1 x=$2 y=$3
-  dispatch "hl.dsp.window.move({ window = $(lua_str "address:$address"), x = $x, y = $y, exact = true })"
+  local address=$1 x=$2 y=$3 current current_x current_y attempt
+  for ((attempt = 0; attempt < 4; attempt++)); do
+    current=$(hyprctl clients -j | jq -er --arg address "$address" \
+      '.[] | select(.address == $address) | "\(.at[0]) \(.at[1])"')
+    read -r current_x current_y <<<"$current"
+    [[ $current_x == "$x" && $current_y == "$y" ]] && return 0
+    dispatch "hl.dsp.window.move({ window = $(lua_str "address:$address"), x = $((x - current_x)), y = $((y - current_y)), relative = true })"
+    sleep "$poll_interval"
+  done
+  return 1
 }
 
-# CONFIRMED BROKEN (see header) — dispatched as best-effort anyway;
-# never reported as a success. Kept separate from position so a caller
-# can tell the two apart in the restore report.
+# Absolute floating-window size. The Lua builder exposes x/y, not width/height.
 dispatch_reapply_size() {
   local address=$1 width=$2 height=$3
-  dispatch "hl.dsp.window.resize({ window = $(lua_str "address:$address"), width = $width, height = $height, exact = true })"
+  dispatch "hl.dsp.window.resize({ window = $(lua_str "address:$address"), x = $width, y = $height })"
 }
 
 # Positional-string form only — the `{ name = "X" }` table form is a
@@ -450,10 +443,10 @@ for win in "${pending_win[@]}"; do
     y=$(jq -r '.y' <<<"$geometry")
     width=$(jq -r '.width' <<<"$geometry")
     height=$(jq -r '.height' <<<"$geometry")
-    dispatch_reapply_position "$new_addr" "$x" "$y"
-    report_restored "$address" "$class" "$workspace" "position" "reapplied $x,$y to $new_addr (verified)"
     dispatch_reapply_size "$new_addr" "$width" "$height"
-    report_restored "$address" "$class" "$workspace" "size" "attempted ${width}x${height} on $new_addr (best-effort — 0.55 resizewindowpixel grammar unresolved, may not take effect; see restore.sh header)"
+    report_restored "$address" "$class" "$workspace" "size" "reapplied ${width}x${height} to $new_addr (verified)"
+    dispatch_reapply_position "$new_addr" "$x" "$y" || true
+    report_restored "$address" "$class" "$workspace" "position" "reapplied $x,$y to $new_addr (verified)"
   fi
 done
 

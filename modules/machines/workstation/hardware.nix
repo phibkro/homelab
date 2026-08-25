@@ -9,14 +9,16 @@
 /**
   ## workstation — Ryzen 5600X · 32 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell)
 
-  Workhorse-tier compute. Three NVMe-class drives + one USB-attached HDD:
+  Primary service compute and storage host:
 
    - **WD SN750 1 TB NVMe** — root + service state (`@`, `@home`,
      `@nix`, `@var-lib`, `@var-log`). disko at `./disko.nix`.
-   - **Corsair MP510 960 GB NVMe** — cold replica of `/mnt/family/*`
-     (btrbk receive endpoint, P14). disko at `./disko-mp510.nix`.
+   - **Corsair MP510 960 GB NVMe** — local restic target at
+     `/mnt/backup-local`. disko at `./disko-mp510.nix`.
    - **Seagate IronWolf Pro 4 TB (USB)** — `@downloads` + `@streaming`
      for arr stack throughput. disko at `./disko-media.nix`.
+   - **Toshiba HDD** — family vault at `/mnt/family/*`.
+     disko at `./disko-family.nix`.
 
   ## NVMe enumeration warning
 
@@ -26,13 +28,11 @@
   `/dev/disk/by-id/`** — full constraint in CLAUDE.md hard rules. See
   `Mnemopi recall: gotcha-nvme-enumeration`.
 
-  ## Wake-on-LAN
+  ## Service posture
 
-  Pi's `wakeonlan` sender targets this host's MAC (`scripted-networking
-  → systemd-network-link` config; P19 Aurora-migration). The combined
-  shape is: aurora always-on serving family routes; workstation
-  WoL-woken from pi when media access happens (Jellyfin / Samba /
-  arr web UI).
+  Family services, media services, research tools, and the operator desktop
+  are colocated here. Pi remains the always-on entry and observability plane;
+  Aurora receives the off-host restic copy.
 
   ## Sleep + GPU constraint
 

@@ -710,7 +710,7 @@
                 rm "$called"
                 HERDR_ENV=1 AGENT_NOTIFY_CALLED="$called" PATH="$PWD/fake-bin:$PATH" \
                   ${agentNotifyPackage}/bin/agent-notify claude permission </dev/null
-                test ! -e "$called"
+                test -e "$called"
 
                 AGENT_NOTIFY_CALLED="$called" PATH="$PWD/fake-bin:$PATH" \
                   ${agentNotifyPackage}/bin/agent-notify claude stop </dev/null

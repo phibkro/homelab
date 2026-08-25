@@ -28,18 +28,13 @@ graph TB
     P[pi<br/>entry plane + observability hub]
   end
   subgraph "workhorse tier"
-    A[aurora<br/>always-on family vault]
-    W[workstation<br/>media compute + desktop]
+    A[aurora<br/>off-host backup vault]
+    W[workstation<br/>family + media services + desktop]
   end
-  subgraph "agent tier"
-    V[pavilion<br/>quarantined agents]
-  end
-  P -- "*.${nori.domain} proxy" --> A
   P -- "*.${nori.domain} proxy" --> W
-  A -- "nightly btrfs send/receive" --> W
+  W -- "restic over SFTP" --> A
   A -- "scraped by" --> P
   W -- "scraped by" --> P
-  V -- "scraped by" --> P
 ```
 
 Cross-host references continue through the compatibility `nori.hosts`
@@ -56,16 +51,12 @@ no parallel identity map.
 
 ## aurora — Asus N552V · Intel Skylake-H i7-6700HQ · 12 GB DDR4 · NVIDIA GTX 950M
 
-Retired gaming laptop repurposed as the family-vault host. Dead
+Retired gaming laptop repurposed as an off-host backup appliance. Dead
 battery, but otherwise solid: always-on AC, lid closed, runs headless.
 
- - **119 GB LiteOn SSD (`/dev/sda`)** — root + boot + `/nix`. btrfs
-   subvols; no impermanence (immich-ml's CLIP/face weights are ~2 GB
-   and worth keeping across reboots).
- - **932 GB Toshiba HDD (`/dev/sdb`)** — `/mnt/family/{photos,home-videos,
-   projects,library,archive}`. The family vault.
- - **External Seagate OneTouch USB HDD** — `/mnt/backup/onetouch`,
-   restic vault for both pi and workstation backups. SFTP-served via
+ - **119 GB LiteOn SSD (`/dev/sda`)** — root + boot + `/nix`.
+ - **External Seagate OneTouch USB HDD** — `/mnt/backup`,
+   restic vault for workstation backups. SFTP-served through
    the chrooted `restic` user.
 
 Derived from `nixos-generate-config --no-filesystems` on the live
@@ -74,40 +65,13 @@ ISO (2026-06-06). UEFI firmware. ~1 GB of the 12 GB is iGPU-pinned
 
 ## GPU posture
 
-NVIDIA GTX 950M (Maxwell) handles immich-ml CLIP + face recognition
-via the legacy_535 driver branch (`hardware.nvidia.package =
-config.boot.kernelPackages.nvidiaPackages.legacy_535`). Not enough
-VRAM for LLM inference — that stays on workstation's 5060 Ti.
+The NVIDIA GTX 950M remains available through the legacy_535 driver branch,
+but Aurora no longer runs Immich ML or the GPU exporter.
 
 ## Why workhorse role
 
-Has GPU, compute, and durable state, so the broad hardware role remains
-`workhorse`. Its narrower family-vault purpose is expressed by the inventory
-profile rather than another host-role enum.
-## pavilion — HP Pavilion g6 · AMD Athlon II P360 · 3.6 GB RAM · BIOS+GRUB
-
-Decade-old laptop (Phenom II era, 2010) repurposed as the agent
-quarantine host. Headless, lid closed, always-on power.
-
- - **Single 640 GB SATA rotational HDD** — root + impermanence
-   /persist. No discrete GPU.
- - **3.6 GB RAM** — the ceiling that drives the impermanence choice
-   in `../default.nix`. tmpfs-root would eat ~half of system RAM;
-   btrfs-rollback keeps the "clean every boot" property without
-   that cost.
- - **BIOS firmware (not UEFI)** — boot.loader uses GRUB, not systemd-
-   boot (see `../default.nix`).
-
-## Agent quarantine posture
-
-Pavilion sits under `tag:agent` in the Tailscale ACL. Can reach
-workhorse `:11434` (ollama) only; cannot SSH any privileged-tier
-host. `nori.backups.<X>` declarations are a build error — anything
-escaping the box sandbox vanishes on reboot via the impermanence
-rollback.
-
-Derived from `nixos-generate-config --no-filesystems` on the live
-ISO (2026-06-05).
+The existing `workhorse` role permits durable backup storage. Aurora's
+narrower purpose is explicit in its inventory workload: `restic-target`.
 ## pi — Raspberry Pi 4 (8 GiB) · aarch64 · USB-boot from Samsung FIT 128 GB
 
 **Anti-write storage posture.** SD-card / flash wear is the #1 Pi failure
@@ -137,14 +101,16 @@ the sd-image-aarch64 module handles partitioning. Flashed once, then
 rebuilt in-place via `nh os switch` over tailnet.
 ## workstation — Ryzen 5600X · 32 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell)
 
-Workhorse-tier compute. Three NVMe-class drives + one USB-attached HDD:
+Primary service compute and storage host:
 
  - **WD SN750 1 TB NVMe** — root + service state (`@`, `@home`,
    `@nix`, `@var-lib`, `@var-log`). disko at `./disko.nix`.
- - **Corsair MP510 960 GB NVMe** — cold replica of `/mnt/family/*`
-   (btrbk receive endpoint, P14). disko at `./disko-mp510.nix`.
+ - **Corsair MP510 960 GB NVMe** — local restic target at
+   `/mnt/backup-local`. disko at `./disko-mp510.nix`.
  - **Seagate IronWolf Pro 4 TB (USB)** — `@downloads` + `@streaming`
    for arr stack throughput. disko at `./disko-media.nix`.
+ - **Toshiba HDD** — family vault at `/mnt/family/*`.
+   disko at `./disko-family.nix`.
 
 ## NVMe enumeration warning
 
@@ -154,13 +120,11 @@ this. **Never touch `nvme0n1` without verifying the model string via
 `/dev/disk/by-id/`** — full constraint in CLAUDE.md hard rules. See
 `Mnemopi recall: gotcha-nvme-enumeration`.
 
-## Wake-on-LAN
+## Service posture
 
-Pi's `wakeonlan` sender targets this host's MAC (`scripted-networking
-→ systemd-network-link` config; P19 Aurora-migration). The combined
-shape is: aurora always-on serving family routes; workstation
-WoL-woken from pi when media access happens (Jellyfin / Samba /
-arr web UI).
+Family services, media services, research tools, and the operator desktop
+are colocated here. Pi remains the always-on entry and observability plane;
+Aurora receives the off-host restic copy.
 
 ## Sleep + GPU constraint
 
@@ -175,10 +139,9 @@ prevents idle-sleep during ambient sound. Full debt note in
 
 | Host | Codename | Role | Tailnet | LAN | Hardware | Primary job |
 |---|---|---|---|---|---|---|
-| **aurora** | aurora | `workhorse` (always-on family vault) | `100.101.67.111` | — | Asus N552V · Intel Skylake-H i7-6700HQ · 12 GB DDR4 · NVIDIA GTX 950M (legacy_535) · Toshiba HDD + OneTouch USB | Family vault: `/mnt/family/{photos,home-videos,projects,library,archive}` on the Toshiba HDD + family-tier service backends (Vaultwarden, Radicale, Miniflux, Immich full stack + ML, Calibre-web, Komga, Navidrome, Glance, Heim, Filmder, Grafana). Samba shares for `/mnt/family/*`. OneTouch restic vault. Always-on so it survives workstation's sleep / outage. |
-| **pavilion** | pavilion | `agent` | `100.93.230.66` | — | HP Pavilion g6 · AMD Athlon II · BIOS+GRUB · btrfs-rollback root (impermanence) | Agent quarantine — nixpkgs-agent / sandboxed Claude and Codex work, headless. Planned weekly tertiary replica of `/mnt/family/*` (P16). |
+| **aurora** | aurora | `workhorse` (off-host backup vault) | `100.101.67.111` | — | Asus N552V · Intel Skylake-H i7-6700HQ · 12 GB DDR4 · NVIDIA GTX 950M (legacy_535) · OneTouch USB | Off-host backup appliance. The chrooted restic SFTP target stores workstation backups on the OneTouch HDD, preserving a second chassis and power-failure domain. |
 | **pi** | fairy | `appliance` (always-on entry plane) | `100.100.71.3` | `192.168.1.225` | Raspberry Pi 4 8 GB · aarch64 · USB-boot from Samsung FIT 128 GB | HTTP entry plane (Caddy + Authelia + Blocky-authoritative, LE wildcard cert on `*.${nori.domain}`), observability hub, alert plane, Tailscale subnet router + exit node. |
-| **workstation** | emperor | `workhorse` (sleep-friendly compute) | `100.81.5.122` | `192.168.1.181` | Ryzen 5600X · 32 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) · WD SN750 1 TB NVMe + Corsair MP510 960 GB NVMe + Seagate IronWolf Pro 4 TB (USB) | GPU services (Ollama / Jellyfin NVENC), `*arr` stack + qBittorrent, `@downloads` + `@streaming` on the IronWolf, daily-driver desktop. Cold replica of `/mnt/family/*` on MP510 (btrbk receive endpoint). WoL-wake when media access happens. |
+| **workstation** | emperor | `workhorse` (always-on converged desktop/server) | `100.81.5.122` | `192.168.1.181` | Ryzen 5600X · 32 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) · WD SN750 1 TB NVMe + Corsair MP510 960 GB NVMe + Seagate IronWolf Pro 4 TB USB + Toshiba family-vault HDD | Always-on graphical workstation and homelab server: GPU services (Ollama / Jellyfin NVENC), `*arr` stack + qBittorrent, family-vault services and Samba shares on the attached Toshiba disk. Backups write locally to the MP510 and off-host to Aurora's OneTouch restic vault. |
 
 ## Registry schema (`nori.hosts.<name>.*`)
 

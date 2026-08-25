@@ -20,18 +20,13 @@
       P[pi<br/>entry plane + observability hub]
     end
     subgraph "workhorse tier"
-      A[aurora<br/>always-on family vault]
-      W[workstation<br/>media compute + desktop]
+      A[aurora<br/>off-host backup vault]
+      W[workstation<br/>family + media services + desktop]
     end
-    subgraph "agent tier"
-      V[pavilion<br/>quarantined agents]
-    end
-    P -- "*.${nori.domain} proxy" --> A
     P -- "*.${nori.domain} proxy" --> W
-    A -- "nightly btrfs send/receive" --> W
+    W -- "restic over SFTP" --> A
     A -- "scraped by" --> P
     W -- "scraped by" --> P
-    V -- "scraped by" --> P
   ```
 
   Cross-host references continue through the compatibility `nori.hosts`

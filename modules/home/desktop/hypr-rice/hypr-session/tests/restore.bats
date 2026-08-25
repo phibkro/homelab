@@ -288,16 +288,14 @@ use_current() {
   [ "$unrestorable_count" = "0" ]
 }
 
-# ---- geometry report honesty: position reapply is live-verified
-# (2026-07-20 in-VM), size reapply is CONFIRMED broken on the same
-# compositor (see restore.sh header) — the report must not bundle a
-# verified fact and an unverified attempt under one claim.
-@test "geometry report distinguishes verified position reapply from best-effort size reapply" {
+# The end-to-end VM verifies both position and size reapplication against a
+# real Hyprland Lua-mode compositor.
+@test "geometry report identifies verified position and size reapply" {
   use_current restore-floating-geometry
   run bash "$restore" --json
   [ "$status" -eq 0 ]
   pos_detail=$(jq -r '.restored[] | select(.action == "position") | .detail' <<<"$output")
   [[ $pos_detail == *verified* ]]
   size_detail=$(jq -r '.restored[] | select(.action == "size") | .detail' <<<"$output")
-  [[ $size_detail == *best-effort* ]]
+  [[ $size_detail == *verified* ]]
 }

@@ -108,6 +108,7 @@ in
     systemd.services = mapAttrs' (
       name: cfg:
       nameValuePair name {
+        unitConfig.RequiresMountsFor = cfg.binds ++ cfg.readOnlyBinds;
         serviceConfig = {
           TemporaryFileSystem = [
             "/mnt:ro"

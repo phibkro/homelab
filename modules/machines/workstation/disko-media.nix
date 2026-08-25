@@ -13,39 +13,21 @@ _: {
       path = "/mnt/media/downloads";
       tier = "re-derivable";
     };
-    photos = {
-      path = "/mnt/media/photos";
-      tier = "irreplaceable";
-    };
-    home-videos = {
-      path = "/mnt/media/home-videos";
-      tier = "irreplaceable";
-    };
-    projects = {
-      path = "/mnt/media/projects";
-      tier = "irreplaceable";
-    };
-    library = {
-      path = "/mnt/media/library";
-      tier = "irreplaceable";
-    };
-    archive = {
-      path = "/mnt/media/archive";
-      tier = "irreplaceable";
-    };
   };
 
   /*
     Declarative partition layout for workstation's IronWolf Pro media
-    drive. Phase 2 — applied AFTER the Phase 4 root install. Wipes the
-    existing exfat partition; preserve any irreplaceable data first.
+    drive. The canonical family datasets now live on the Toshiba family
+    vault imported from disko-family.nix; this module mounts only the
+    re-derivable downloads tree and its snapshot area.
+
+    The legacy family subvolumes remain declared below without mountpoints.
+    Disko therefore retains/creates those physical subvolumes without
+    mounting them, preserving their on-disk data while the canonical
+    service-facing paths resolve under /mnt/family.
 
       nix run github:nix-community/disko/latest -- \
         --mode disko modules/machines/workstation/disko-media.nix
-
-    See docs/reference/storage.md § "Workstation media" for the subvol → tier
-    table. Mountpoints stay under /mnt/media/ — the label describes the
-    drive, the mount path describes how it's served.
 
     All mounted subvolumes use compress=zstd:3,noatime. Disko emits the
     corresponding fileSystems entries automatically when this module is
@@ -92,51 +74,14 @@ _: {
                     "noatime"
                   ];
                 };
-                "@photos" = {
-                  mountpoint = "/mnt/media/photos";
-                  mountOptions = [
-                    "compress=zstd:3"
-                    "noatime"
-                  ];
-                };
-                "@home-videos" = {
-                  mountpoint = "/mnt/media/home-videos";
-                  mountOptions = [
-                    "compress=zstd:3"
-                    "noatime"
-                  ];
-                };
-                "@projects" = {
-                  mountpoint = "/mnt/media/projects";
-                  mountOptions = [
-                    "compress=zstd:3"
-                    "noatime"
-                  ];
-                };
-                "@library" = {
-                  /*
-                    Curated media library — books (calibre-web) + comics
-                    (komga). Distinct from @downloads because these are
-                    uploaded/imported by hand, not auto-grabbed by an
-                    *arr; treat as projects-tier (daily snapshot, restic
-                    backed up). Distinct from @projects because the
-                    content is media (consumed) not work (produced).
-                  */
-                  mountpoint = "/mnt/media/library";
-                  mountOptions = [
-                    "compress=zstd:3"
-                    "noatime"
-                  ];
-                };
-                "@archive" = {
-                  # Cold historical data. Backed up via restic at the
-                  # @projects tier; weekly btrbk snapshots, keep 4.
-                  mountpoint = "/mnt/media/archive";
-                  mountOptions = [
-                    "compress=zstd:3"
-                    "noatime"
-                  ];
-                };
+                # These legacy family subvolumes stay on the IronWolf but
+                # are intentionally unmounted. The canonical copies live
+                # on the Toshiba family vault at /mnt/family/*.
+                "@photos" = { };
+                "@home-videos" = { };
+                "@projects" = { };
+                "@library" = { };
+                "@archive" = { };
                 "@snapshots" = {
                   /*
                     Mounted so btrbk can write IronWolf-side snapshots

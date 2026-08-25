@@ -11,12 +11,11 @@
 lib.genAttrs
   [
     "authelia"
+    "attic"
     "bazarr"
     "beszel-agent"
     "beszel-hub"
     "blocky"
-    "btrbk-replica-target"
-    "btrbk-replication"
     "caddy"
     "calibre-web"
     "clamor"
@@ -50,8 +49,8 @@ lib.genAttrs
     "qbittorrent"
     "radarr"
     "radicale"
-    "recyclarr"
     "restic-target"
+    "recyclarr"
     "samba"
     "sonarr"
     "stremio"
@@ -66,12 +65,11 @@ lib.genAttrs
   })
 // {
   authelia = import ../modules/infra/access/authelia/manifest.nix;
+  attic = import ../modules/services/attic/manifest.nix;
   bazarr = import ../modules/services/arr/manifests/bazarr.nix;
   beszel-agent = import ../modules/infra/observability/beszel/manifests/agent.nix;
   beszel-hub = import ../modules/infra/observability/beszel/manifests/hub.nix;
   blocky = import ../modules/infra/networking/blocky/manifest.nix;
-  btrbk-replica-target = import ../modules/infra/backup/btrbk-replica-target/manifest.nix;
-  btrbk-replication = import ../modules/infra/backup/btrbk-replication/manifest.nix;
   caddy = import ../modules/infra/networking/caddy/manifest.nix;
   calibre-web = import ../modules/services/calibre-web/manifest.nix;
   clamor = import ../modules/services/clamor/manifest.nix;
@@ -105,8 +103,8 @@ lib.genAttrs
   qbittorrent = import ../modules/services/arr/manifests/qbittorrent.nix;
   radarr = import ../modules/services/arr/manifests/radarr.nix;
   radicale = import ../modules/services/radicale/manifest.nix;
-  recyclarr = import ../modules/services/arr/manifests/recyclarr.nix;
   restic-target = import ../modules/infra/backup/restic-target/manifest.nix;
+  recyclarr = import ../modules/services/arr/manifests/recyclarr.nix;
   samba = import ../modules/services/samba/manifest.nix;
   sonarr = import ../modules/services/arr/manifests/sonarr.nix;
   stremio = import ../modules/services/stremio/manifest.nix;

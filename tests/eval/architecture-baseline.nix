@@ -19,10 +19,9 @@
 let
   hosts = inputs.self.nixosConfigurations;
   homes = {
-    workstation = hosts.workstation.config.home-manager.users.nori;
     aurora = hosts.aurora.config.home-manager.users.nori;
     pi = hosts.pi.config.home-manager.users.nori;
-    pavilion = hosts.pavilion.config.home-manager.users.nori;
+    workstation = hosts.workstation.config.home-manager.users.nori;
   };
 
   hasHomePackage =
@@ -41,57 +40,11 @@ let
   actualWorkloads = lib.mapAttrs (_: host: host.config.nori.inventory.currentWorkloads) hosts;
 
   expectedWorkloads = {
-    workstation = [
-      "bazarr"
-      "beszel-agent"
-      "blocky"
-      "btrbk-replica-target"
-      "clamor"
-      "disk-alert"
-      "gatus"
-      "herdr-projects-mcp"
-      "hindsight"
-      "jellyfin"
-      "jellyseerr"
-      "lidarr"
-      "mcp-origin-tunnel"
-      "music-ingest"
-      "node-exporter"
-      "ntfy-notify"
-      "nvidia-gpu-exporter"
-      "ollama"
-      "open-webui"
-      "prowlarr"
-      "qbittorrent"
-      "radarr"
-      "recyclarr"
-      "samba"
-      "sonarr"
-      "stremio"
-      "syncthing"
-    ];
     aurora = [
+      "attic"
       "beszel-agent"
-      "btrbk-replication"
-      "calibre-web"
-      "filmder"
-      "glance"
-      "grafana"
-      "heim"
-      "immich"
-      "komga"
-      "miniflux"
-      "navidrome"
       "node-exporter"
-      "ntfy-notify"
-      "nvidia-gpu-exporter"
-      "paperless"
-      "radicale"
       "restic-target"
-      "samba"
-      "suwayomi"
-      "syncthing"
-      "vaultwarden"
     ];
     pi = [
       "authelia"
@@ -107,9 +60,44 @@ let
       "victorialogs-server"
       "victoriametrics"
     ];
-    pavilion = [
+    workstation = [
+      "bazarr"
       "beszel-agent"
+      "calibre-web"
+      "clamor"
+      "disk-alert"
+      "filmder"
+      "glance"
+      "grafana"
+      "heim"
+      "herdr-projects-mcp"
+      "hindsight"
+      "immich"
+      "jellyfin"
+      "jellyseerr"
+      "komga"
+      "lidarr"
+      "mcp-origin-tunnel"
+      "miniflux"
+      "music-ingest"
+      "navidrome"
       "node-exporter"
+      "ntfy-notify"
+      "nvidia-gpu-exporter"
+      "ollama"
+      "open-webui"
+      "paperless"
+      "prowlarr"
+      "qbittorrent"
+      "radarr"
+      "radicale"
+      "recyclarr"
+      "samba"
+      "sonarr"
+      "stremio"
+      "suwayomi"
+      "syncthing"
+      "vaultwarden"
     ];
   };
 
@@ -142,81 +130,59 @@ let
     authelia = [ "pi" ];
     bazarr = [ "workstation" ];
     beszel-agent = [
-      "workstation"
       "aurora"
       "pi"
-      "pavilion"
+      "workstation"
     ];
     beszel-hub = [ "pi" ];
-    blocky = [
-      "workstation"
-      "pi"
-    ];
-    btrbk-replica-target = [ "workstation" ];
-    btrbk-replication = [ "aurora" ];
+    blocky = [ "pi" ];
     caddy = [ "pi" ];
-    calibre-web = [ "aurora" ];
+    calibre-web = [ "workstation" ];
     disk-alert = [ "workstation" ];
-    filmder = [ "aurora" ];
-    glance = [ "aurora" ];
-    grafana = [ "aurora" ];
-    gatus = [
-      "workstation"
-      "pi"
-    ];
+    filmder = [ "workstation" ];
+    glance = [ "workstation" ];
+    grafana = [ "workstation" ];
+    gatus = [ "pi" ];
     heartbeat = [ "pi" ];
-    heim = [ "aurora" ];
-    immich = [ "aurora" ];
+    heim = [ "workstation" ];
+    immich = [ "workstation" ];
     jellyfin = [ "workstation" ];
     jellyseerr = [ "workstation" ];
-    komga = [ "aurora" ];
+    komga = [ "workstation" ];
     lidarr = [ "workstation" ];
-    miniflux = [ "aurora" ];
+    miniflux = [ "workstation" ];
     music-ingest = [ "workstation" ];
-    navidrome = [ "aurora" ];
+    navidrome = [ "workstation" ];
     node-exporter = [
-      "workstation"
       "aurora"
-      "pavilion"
-    ];
-    nvidia-gpu-exporter = [
       "workstation"
-      "aurora"
     ];
+    nvidia-gpu-exporter = [ "workstation" ];
     ntfy-notify = [
-      "workstation"
-      "aurora"
       "pi"
+      "workstation"
     ];
     ntfy-server = [ "pi" ];
     ollama = [ "workstation" ];
     open-webui = [ "workstation" ];
-    paperless = [ "aurora" ];
+    paperless = [ "workstation" ];
     prowlarr = [ "workstation" ];
     qbittorrent = [ "workstation" ];
     radarr = [ "workstation" ];
-    radicale = [ "aurora" ];
+    radicale = [ "workstation" ];
     recyclarr = [ "workstation" ];
-    restic-target = [ "aurora" ];
-    samba = [
-      "workstation"
-      "aurora"
-    ];
+    samba = [ "workstation" ];
     sonarr = [ "workstation" ];
     stremio = [ "workstation" ];
-    suwayomi = [ "aurora" ];
-    syncthing = [
-      "workstation"
-      "aurora"
-    ];
-    vaultwarden = [ "aurora" ];
+    suwayomi = [ "workstation" ];
+    syncthing = [ "workstation" ];
+    vaultwarden = [ "workstation" ];
     victorialogs-server = [ "pi" ];
     victoriametrics = [ "pi" ];
   };
 
   runtimeEvidenceNames = {
     beszel-hub = "beszel";
-    btrbk-replication = "btrbk-family-replica";
     ntfy-notify = "notify";
     ntfy-server = "ntfy";
     victorialogs-server = "victorialogs";
@@ -233,10 +199,9 @@ let
         == lib.elem hostName migratedRuntimePlacements.${workloadName}
       )
       [
-        "workstation"
         "aurora"
         "pi"
-        "pavilion"
+        "workstation"
       ]
   ) (lib.attrNames migratedRuntimePlacements);
 
@@ -245,32 +210,32 @@ let
     bazarr.subtitles = "workstation";
     beszel-hub.metrics = "pi";
     ntfy-server.alert = "pi";
-    calibre-web.books = "aurora";
+    calibre-web.books = "workstation";
     clamor.agents = "workstation";
-    filmder.filmder = "aurora";
-    glance.home = "aurora";
-    grafana.ops = "aurora";
+    filmder.filmder = "workstation";
+    glance.home = "workstation";
+    grafana.ops = "workstation";
     gatus.uptime = "pi";
-    heim.heim = "aurora";
-    immich.photos = "aurora";
+    heim.heim = "workstation";
+    immich.photos = "workstation";
     jellyfin.media = "workstation";
     jellyseerr.requests = "workstation";
-    komga.comics = "aurora";
+    komga.comics = "workstation";
     lidarr.music = "workstation";
-    miniflux.news = "aurora";
-    navidrome.audio = "aurora";
+    miniflux.news = "workstation";
+    navidrome.audio = "workstation";
     ollama.ai = "workstation";
-    paperless.papers = "aurora";
+    paperless.papers = "workstation";
     prowlarr.indexers = "workstation";
     radarr.movies = "workstation";
-    radicale.calendar = "aurora";
+    radicale.calendar = "workstation";
     sonarr.tv = "workstation";
     stremio.stremio = "workstation";
-    suwayomi.manga = "aurora";
+    suwayomi.manga = "workstation";
     syncthing.sync = "workstation";
     victorialogs-server.logs = "pi";
     victoriametrics.tsdb = "pi";
-    vaultwarden.vault = "aurora";
+    vaultwarden.vault = "workstation";
   };
   catalogVisibleEverywhere =
     lib.all
@@ -286,10 +251,9 @@ let
         ) (lib.attrNames migratedCatalogEndpoints)
       )
       [
-        "workstation"
         "aurora"
         "pi"
-        "pavilion"
+        "workstation"
       ];
 
   lifecycleStateCorrect =
@@ -303,10 +267,9 @@ let
         && hosts.${hostName}.config.nori.inventory.workloads.qbittorrent.endpoints == { }
       )
       [
-        "workstation"
         "aurora"
         "pi"
-        "pavilion"
+        "workstation"
       ]
     && !hosts.workstation.config.services.qbittorrent.enable;
 
@@ -316,31 +279,18 @@ let
         hostName:
         lib.any (
           package: lib.getName package == "papers-fetch"
-        ) hosts.${hostName}.config.environment.systemPackages == (hostName == "aurora")
+        ) hosts.${hostName}.config.environment.systemPackages == (hostName == "workstation")
       )
       [
-        "workstation"
         "aurora"
         "pi"
-        "pavilion"
+        "workstation"
       ];
 
-  systemProfileRealizationCorrect =
-    hosts.workstation.config.programs.hyprland.enable
-    && lib.all (hostName: !hosts.${hostName}.config.programs.hyprland.enable) [
-      "aurora"
-      "pi"
-      "pavilion"
-    ];
+  systemProfileRealizationCorrect = hosts.workstation.config.programs.hyprland.enable;
 
   homeManagerRealizationCorrect =
-    lib.all (hostName: hosts.${hostName}.config.home-manager.users.nori.home.stateVersion == "26.05")
-      [
-        "workstation"
-        "aurora"
-        "pi"
-        "pavilion"
-      ];
+    hosts.workstation.config.home-manager.users.nori.home.stateVersion == "26.05";
 
   homeCapabilityProfilesCorrect =
     lib.all (homeName: hasHomePackage homeName "just" && hasHomePackage homeName "devenv") (
@@ -366,34 +316,36 @@ let
       "deno"
     ];
 
-  desktopCapabilityProfilesCorrect =
-    lib.all (packageName: hasHomePackage "workstation" packageName) [
-      "ghostty"
-      "davinci-resolve"
-      "audacity"
-      "discord"
-      "zotero"
-    ]
-    &&
-      lib.all
-        (
-          homeName:
-          lib.all (packageName: !hasHomePackage homeName packageName) [
-            "davinci-resolve"
-            "audacity"
-            "discord"
-            "zotero"
-          ]
-        )
-        [
-          "aurora"
-          "pi"
-          "pavilion"
-        ];
+  desktopCapabilityProfilesCorrect = lib.all (packageName: hasHomePackage "workstation" packageName) [
+    "ghostty"
+    "davinci-resolve"
+    "audacity"
+    "discord"
+    "zotero"
+  ];
 
   riceInterfaceCorrect =
     hosts.workstation.config.home-manager.users.nori.nori.hyprRice.enable
     && hosts.workstation.config.home-manager.users.nori.wayland.windowManager.hyprland.enable;
+
+  cacheContractCorrect =
+    let
+      cacheUrl = "https://cache.${hosts.workstation.config.nori.domain}/nori";
+      cacheKey = "attic.nori.lan-1:3zt/aS8K1bSEjNvZQB9ga9OeZTxcRkvbb7aYRI/vobo=";
+      everyHostPublishes = lib.all (
+        host:
+        lib.elem cacheUrl host.config.nix.settings.extra-substituters
+        && lib.elem cacheKey host.config.nix.settings.extra-trusted-public-keys
+        && host.config.systemd.services.attic-cache-watch.wantedBy == [ "multi-user.target" ]
+        && host.config.systemd.services.attic-cache-seed.wantedBy == [ "multi-user.target" ]
+      ) (lib.attrValues hosts);
+      aurora = hosts.aurora.config;
+    in
+    everyHostPublishes
+    && aurora.services.atticd.enable
+    && aurora.services.atticd.settings.storage.path == "/mnt/backup/attic"
+    && aurora.services.atticd.settings.garbage-collection.default-retention-period == "30 days"
+    && aurora.systemd.services.attic-cache-bootstrap.wantedBy == [ "multi-user.target" ];
 
   expectedRoutes = {
     agents = {
@@ -425,7 +377,7 @@ let
     };
     audio = {
       port = 4533;
-      runsOn = "aurora";
+      runsOn = "workstation";
       audience = "family";
       exposeOnTailnet = true;
       # Native Navidrome accounts rather than Authelia OIDC (70398f9).
@@ -444,16 +396,25 @@ let
     };
     books = {
       port = 8084;
-      runsOn = "aurora";
+      runsOn = "workstation";
       audience = "family";
       exposeOnTailnet = true;
       auth = "forward-auth";
       monitored = true;
       dashboard = true;
     };
+    cache = {
+      port = 5000;
+      runsOn = "aurora";
+      audience = "operator";
+      exposeOnTailnet = true;
+      auth = "exception";
+      monitored = true;
+      dashboard = false;
+    };
     calendar = {
       port = 5232;
-      runsOn = "aurora";
+      runsOn = "workstation";
       audience = "family";
       exposeOnTailnet = true;
       auth = "exception";
@@ -462,7 +423,7 @@ let
     };
     comics = {
       port = 8085;
-      runsOn = "aurora";
+      runsOn = "workstation";
       audience = "family";
       exposeOnTailnet = true;
       auth = "forward-auth";
@@ -471,7 +432,7 @@ let
     };
     filmder = {
       port = 9092;
-      runsOn = "aurora";
+      runsOn = "workstation";
       audience = "public";
       exposeOnTailnet = true;
       auth = "none";
@@ -480,7 +441,7 @@ let
     };
     heim = {
       port = 9094;
-      runsOn = "aurora";
+      runsOn = "workstation";
       audience = "public";
       exposeOnTailnet = true;
       auth = "none";
@@ -489,7 +450,7 @@ let
     };
     home = {
       port = 8086;
-      runsOn = "aurora";
+      runsOn = "workstation";
       audience = "public";
       exposeOnTailnet = true;
       auth = "none";
@@ -516,7 +477,7 @@ let
     };
     manga = {
       port = 8088;
-      runsOn = "aurora";
+      runsOn = "workstation";
       audience = "family";
       exposeOnTailnet = true;
       auth = "forward-auth";
@@ -570,7 +531,7 @@ let
     };
     news = {
       port = 8087;
-      runsOn = "aurora";
+      runsOn = "workstation";
       audience = "family";
       exposeOnTailnet = true;
       auth = "oidc";
@@ -579,7 +540,7 @@ let
     };
     ops = {
       port = 3000;
-      runsOn = "aurora";
+      runsOn = "workstation";
       audience = "operator";
       exposeOnTailnet = true;
       auth = "none";
@@ -588,7 +549,7 @@ let
     };
     papers = {
       port = 28981;
-      runsOn = "aurora";
+      runsOn = "workstation";
       audience = "operator";
       exposeOnTailnet = true;
       auth = "none";
@@ -597,7 +558,7 @@ let
     };
     photos = {
       port = 2283;
-      runsOn = "aurora";
+      runsOn = "workstation";
       audience = "family";
       exposeOnTailnet = true;
       auth = "oidc";
@@ -679,7 +640,7 @@ let
     };
     vault = {
       port = 8222;
-      runsOn = "aurora";
+      runsOn = "workstation";
       audience = "family";
       exposeOnTailnet = true;
       auth = "oidc";
@@ -704,6 +665,7 @@ if
   && agentHarnessesShareSoul
   && desktopCapabilityProfilesCorrect
   && riceInterfaceCorrect
+  && cacheContractCorrect
 then
   "ok — architecture workload placement + route behavior baseline unchanged"
 else
@@ -722,6 +684,7 @@ else
     Agent harnesses share SOUL:  ${toString agentHarnessesShareSoul}
     Desktop capabilities:       ${toString desktopCapabilityProfilesCorrect}
     Rice interface realization: ${toString riceInterfaceCorrect}
+    Cache server + clients:       ${toString cacheContractCorrect}
 
     Expected workloads: ${builtins.toJSON expectedWorkloads}
     Inventory workloads: ${builtins.toJSON actualWorkloads}

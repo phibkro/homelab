@@ -64,10 +64,9 @@ user         := "nori"
 remote_path  := "/tmp/nix-migration"
 tailnet      := "saola-matrix.ts.net"
 
-# Every NixOS host in the homelab. Macbook is intentionally NOT here —
-# it's a standalone home-manager target, not part of the NixOS flake.
-# Used by `rebuild-homelab` to fan rebuild across the set.
-homelab_hosts := "workstation pi aurora pavilion"
+# The converged workstation is the homelab's only NixOS host.
+# Used by `rebuild-homelab` to keep the one-host flow explicit.
+homelab_hosts := "workstation"
 
 # rsync flags — BSD openrsync compatible (Mac default rsync is openrsync;
 # some GNU flags like --info=stats2 fail silently). See docs/gotchas.md.
@@ -108,12 +107,12 @@ default: rebuild
 @rebuild *args:
     nh os switch . -H $(hostname) {{args}}
 
-# Sequential rebuild: local first (catches typos fast), then each remote.
-# Use after any change that affects multiple hosts — most commonly adding
-# a new `nori.lanRoutes.<n>` entry. `just rebuild` only touches whichever
-# host you're sitting on; this fans across the homelab set
-# ({{homelab_hosts}}) to avoid silent split-brain.
-# Build + activate workstation + pi from the working tree.
+# Sequential rebuild: local first, then each remote host.
+# Use after any change that affects the host — most commonly adding a
+# `nori.lanRoutes.<n>` entry. `just rebuild` only touches whichever
+# host you're sitting on; this keeps the host set explicit
+# ({{homelab_hosts}}) and avoids silent split-brain.
+# Build + activate workstation from the working tree.
 @rebuild-homelab *args:
     for h in {{homelab_hosts}}; do \
       if [ "$h" = "$(hostname)" ]; then \
@@ -126,13 +125,9 @@ default: rebuild
     done
 
 # Build a remote host's config HERE and deploy the closure — the target
-# compiles NOTHING. Workstation has aarch64 emulation
-# (workstation/hardware.nix: boot.binfmt.emulatedSystems), so it builds pi's
-# aarch64 closure locally and copies store paths over. Contrast `just remote
-# pi rebuild`, which builds NATIVELY on the Pi 4 — a Caddy-with-plugins Go
-# build there drives load past 50 and starves the entry plane (Caddy + DNS),
-# taking down every *.${domain} route until it finishes. Always `push` to pi;
-# prefer it for aurora too. Activation runs via passwordless remote sudo.
+# compiles NOTHING. This is useful when operating from a Mac or another
+# machine: the converged workstation receives the closure and activation
+# runs via passwordless remote sudo.
 # Usage: just push <host> [extra nixos-rebuild args]
 @push host *args:
     nixos-rebuild switch \

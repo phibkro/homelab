@@ -19,18 +19,19 @@
     ./disko.nix
     ./disko-media.nix
     ./disko-mp510.nix
+    ./disko-family.nix
   ];
 
   # networking.hostName injected from the registry key in flake.nix.
   networking.useDHCP = lib.mkDefault true;
 
   /*
-    Add the operator user to the `media` group so shell access + any
-    service running as `nori` (Syncthing's binds, e.g.) can write to
-    /mnt/media/{downloads,library} which are owned root:media 02775
-    by arr/shared.nix tmpfiles. The group itself is defined in
-    arr/shared.nix — workstation-only, hence the workstation-host-
-    scope here rather than common/users.nix (which Pi also reads).
+    Add the operator user to the `media` group so shell access and
+    services running as `nori` can write to the media and family-library
+    trees, which are owned root:media 02775 by the shared media setup.
+    The group itself and this membership are declared elsewhere in the
+    workstation profile; keep this host-specific prerequisite focused on
+    the tmpfiles paths below.
   */
   users.users.nori.extraGroups = [ "media" ];
 
@@ -80,7 +81,8 @@
   */
   sops.secrets.ntfy-publisher-token = {
     owner = "nori";
-    mode = "0400";
+    group = "keys";
+    mode = "0440";
   };
 
   # The agents channel + route: agent-notify emits `--audience agents`,
@@ -117,8 +119,9 @@
     "restic-check-weekly"
     "restic-check-monthly"
     "btrbk-root"
-    "btrbk-media"
+    "btrbk-family"
   ]
+  ++ lib.optional (config.services.btrbk.instances ? media) "btrbk-media"
   ++ map (name: "restic-backups-${name}") (lib.attrNames config.services.restic.backups);
 
   /*
@@ -197,13 +200,18 @@
     stagingPath = "/mnt/media/staging/music-flac";
   };
 
-  # Pre-create the staging tree. /mnt/media is root:root, so Syncthing (runs as
-  # nori, in `media`) can't mkdir under it. root:media 2775 (setgid) lets both
-  # Syncthing receive into it and the music-ingest user delete from it; new
-  # files inherit the media group.
+  # Pre-create the shared family-library and FLAC staging trees. The
+  # family-library paths moved here with the Toshiba family vault; root:media
+  # 02775 lets calibre-web, Komga, suwayomi, and Syncthing create content.
   systemd.tmpfiles.rules = [
-    "d /mnt/media/staging            0755 root root  - -"
-    "d /mnt/media/staging/music-flac 2775 root media - -"
+    "d /mnt/family/library            02775 root media - -"
+    "d /mnt/family/library/books      02775 root media - -"
+    "d /mnt/family/library/comics     02775 root media - -"
+    "d /mnt/family/library/manga      02775 root media - -"
+    "d /mnt/family/library/music      02775 root media - -"
+    "d /mnt/family/library/papers     02775 root media - -"
+    "d /mnt/media/staging             0755  root root  - -"
+    "d /mnt/media/staging/music-flac  2775  root media - -"
   ];
 
   # Syncthing's sandbox (nori.harden) binds only library + downloads by default,
@@ -382,20 +390,8 @@
   };
 
   /*
-    Station-side Gatus probes for non-HTTP services. HTTP services
-    behind Caddy are auto-probed via nori.lanRoutes.<n>.monitor.
-
-    Mutual observability: station probes Pi's Blocky + SSH via tailnet
-    IP; pi has matching probes for station (modules/machines/pi/default.nix).
-    Each host's Gatus alerts via ntfy.sh directly (no local-ntfy
-    dependency), so one host's outage gets caught by the other.
+    Local non-HTTP service probe. Entry-plane DNS and SSH probes live in
+    modules/profiles/entry-plane.nix; HTTP services derive probes from routes.
   */
-  nori.gatusProbes = {
-    blocky-dns.url = "tcp://127.0.0.1:53";
-    samba-smb.url = "tcp://127.0.0.1:445";
-    pi-blocky-dns.url = "tcp://${config.nori.hosts.pi.tailnetIp}:53";
-    pi-ssh.url = "tcp://${config.nori.hosts.pi.tailnetIp}:22";
-    aurora-ssh.url = "tcp://${config.nori.hosts.aurora.tailnetIp}:22";
-    aurora-samba.url = "tcp://${config.nori.hosts.aurora.tailnetIp}:445";
-  };
+  nori.gatusProbes.samba-smb.url = "tcp://127.0.0.1:445";
 }

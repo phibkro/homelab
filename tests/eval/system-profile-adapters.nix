@@ -32,7 +32,6 @@ let
   expected = {
     vector = [
       "aurora"
-      "pavilion"
       "pi"
       "workstation"
     ];
@@ -41,7 +40,7 @@ let
     restore-drill = [ "workstation" ];
     tailnet-appliance = [ "pi" ];
     entry-plane-role = [ "pi" ];
-    research = [ "aurora" ];
+    research = [ "workstation" ];
   };
 in
 if actual == expected then

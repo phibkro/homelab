@@ -1,27 +1,21 @@
 _: {
   /*
     ── nori.fs declarations ───────────────────────────────────────────
-    Aurora-side family-tier locations. Mirrors the irreplaceable-tier
-    entries that live on workstation (modules/machines/workstation/disko-media.nix),
-    but at /mnt/family/<X> instead of /mnt/media/<X>. Co-existence
-    during P6-P11 is fine: each host evals independently, no cross-host
-    conflict. The data move from workstation to aurora happens in P10.
+    Workstation-side family-tier locations. These are the canonical
+    paths for irreplaceable family data on the Toshiba family vault,
+    mounted at /mnt/family/<X>.
 
-    Why nori.fs entries appear here even before the data is present:
-    later phases want service modules (Immich, Calibre-web, Komga,
-    Navidrome, Samba) to read `config.nori.fs.<X>.path` on aurora once
-    they migrate; declaring the entries up front means a service move
-    is an explicit workload placement in `inventory/profiles.nix`.
+    `nori.fs` entries appear here so service modules (Immich, Calibre-web,
+    Komga, Navidrome, Samba) read `config.nori.fs.<X>.path` from the
+    same declaration as the physical disk layout.
   */
   nori.fs = {
     /*
       `samba = { }` blocks emit per-fs SMB shares via the generator in
-      modules/infra/storage/default.nix. Family clients hit smb://aurora/<share>
-      over the tailnet (default-deny LAN; samba.nix opens 445 only on
-      tailscale0). Share names match the workstation-side naming so a
-      family bookmark only needs the hostname swapped. `ownerTmpfilesRule
-      = false` on library + archive because aurora's tmpfiles already pin
-      them root:media at 02775 (modules/machines/aurora/default.nix) for
+      modules/infra/storage/default.nix. Family clients hit
+      smb://workstation/<share> over the LAN/tailnet firewall policy.
+      `ownerTmpfilesRule = false` on library + archive because
+      workstation/default.nix pins them root:media at 02775 for
       calibre-web + komga; a second `nori users` rule would race.
     */
     photos = {
@@ -52,25 +46,19 @@ _: {
   };
 
   /*
-    Declarative partition layout for aurora's Toshiba HDD — the family
-    vault. P6 lands the declaration; the format itself is operator-
-    triggered (it WIPES the drive):
+    Declarative partition layout for workstation's Toshiba HDD — the
+    family vault. The physical drive moved here unchanged; this module
+    preserves its by-id identity, btrfs filesystem, and subvolume names.
+    The format itself is operator-triggered and WIPES the drive:
 
       nix run github:nix-community/disko/latest -- \
-        --mode disko modules/machines/aurora/disko-family.nix
+        --mode disko modules/machines/workstation/disko-family.nix
 
-    Pre-disko-apply state: GPT with sdb1 (2G) + sdb2 (929.5G) leftovers
-    from this laptop's prior life. Wipe-OK (operator confirmed in the
-    P6 design call). Service-state overflow (postgres etc.) for the
-    eventual migrated services is intentionally NOT carved here — the
-    SSD-vs-HDD choice for service state is the "Still open" decision
-    in the migration plan; defer until first service move measures it.
-
-    nofail on every subvolume so the import in modules/machines/aurora/default.nix
-    is safe BEFORE the disko apply — boot keeps going even when the
-    subvols don't exist yet. Same `x-systemd.automount` pattern used by
-    disko-onetouch.nix; lazy-mount means the subvol mounts on first
-    access, can be unmounted when idle.
+    nofail on every subvolume makes importing this module safe before
+    a disko apply — boot keeps going if a subvolume is not present yet.
+    `x-systemd.automount` keeps the lazy-mount behavior used by the
+    OneTouch module; mounts activate on first access and can be released
+    when idle.
   */
 
   disko.devices = {

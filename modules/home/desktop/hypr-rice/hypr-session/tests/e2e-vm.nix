@@ -67,16 +67,14 @@ let
   '';
 
   # Nudge the floating window off the rule's default placement, then echo
-  # the resulting {at, size}. The testScript compares against the target
-  # (100,80 / 500x300): if the move/resize dispatch grammar works, the
-  # later restore-side geometry assertion is meaningful; if it doesn't,
-  # this surfaces it as evidence instead of a false green (restore.sh
-  # flags exactly this dispatch as UNVERIFIED in its header).
+  # the resulting {at, size}. Hyprland 0.56 applies move x/y as deltas despite
+  # its API contract, so seed the exact target from observed live coordinates.
   e2eFloatGeometry = pkgs.writeShellScriptBin "e2e-float-geometry" ''
     set -euo pipefail
-    addr=$(hyprctl clients -j | jq -r '.[] | select(.class == "foot-float") | .address')
-    hyprctl dispatch "hl.dsp.window.move({ window = \"address:$addr\", x = 100, y = 80, exact = true })" >/dev/null
-    hyprctl dispatch "hl.dsp.window.resize({ window = \"address:$addr\", width = 500, height = 300, exact = true })" >/dev/null
+    read -r addr current_x current_y < <(hyprctl clients -j | jq -er \
+      '.[] | select(.class == "foot-float") | "\(.address) \(.at[0]) \(.at[1])"')
+    hyprctl dispatch "hl.dsp.window.move({ window = \"address:$addr\", x = $((100 - current_x)), y = $((80 - current_y)), relative = true })" >/dev/null
+    hyprctl dispatch "hl.dsp.window.resize({ window = \"address:$addr\", x = 500, y = 300 })" >/dev/null
     sleep 1
     hyprctl clients -j | jq -c --arg a "$addr" '.[] | select(.address == $a) | {at, size}'
   '';
@@ -341,14 +339,7 @@ pkgs.testers.runNixOSTest {
             user_cmd("hyprctl clients -j | jq -e 'length == 3'", sig1), timeout=180
         )
         geom = json.loads(as_user("e2e-float-geometry", sig1).strip().splitlines()[-1])
-        # Tracked separately: restore.sh flags this whole dispatch family
-        # UNVERIFIED; the seed observation decides which half of the
-        # restore-side geometry equality is meaningful evidence.
-        move_seeded = geom["at"] == [100, 80]
-        resize_seeded = geom["size"] == [500, 300]
-        if not (move_seeded and resize_seeded):
-            print(f"WARNING: geometry dispatch partial: move={move_seeded} "
-                  f"resize={resize_seeded}, got {geom}")
+        assert geom["size"] == [500, 300], f"could not seed floating size: {geom}"
         as_user("e2e-show-special", sig1)
 
     with subtest("current.json converges to reality after debounce"):
@@ -406,20 +397,19 @@ pkgs.testers.runNixOSTest {
     with subtest("restored topology matches the snapshot (class/ws/cwd/special/focus)"):
         wait_or_dump("e2e-check-restore", sig2, 120)
 
-    with subtest("floating geometry reapplied on the restored window"):
-        g = json.loads(as_user("e2e-get-float-geometry", sig2).strip().splitlines()[-1])
-        assert g["floating"] is True, g
-        if move_seeded:
-            assert g["at"] == [100, 80], (
-                f"floating position NOT reapplied (restore.sh's flagged-UNVERIFIED "
-                f"dispatch is broken for real): {g}"
-            )
-        else:
-            print(f"move dispatch never verified at seed time; restored: {g}")
-        if resize_seeded:
-            assert g["size"] == [500, 300], f"floating size NOT reapplied: {g}"
-        else:
-            print(f"resize dispatch never verified at seed time; restored: {g}")
+    with subtest("floating geometry matches the saved snapshot"):
+        restored_geom = json.loads(
+            as_user("e2e-get-float-geometry", sig2).strip().splitlines()[-1]
+        )
+        assert restored_geom["floating"] is True, restored_geom
+        assert restored_geom["at"] == geom["at"], (
+            f"floating position differs from saved geometry: "
+            f"saved={geom}, restored={restored_geom}"
+        )
+        assert restored_geom["size"] == geom["size"], (
+            f"floating size differs from saved geometry: "
+            f"saved={geom}, restored={restored_geom}"
+        )
 
     with subtest("restore report is loud about unrestorable windows"):
         as_user("e2e-make-dead-session e2e-test e2e-dead", sig2)

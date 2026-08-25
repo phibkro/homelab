@@ -8,18 +8,9 @@
 let
   /*
     Shared (job, target) iteration for the weekly + monthly check
-    scripts: emit one `check_repo` call per pair, carrying the
-    target's TRANSPORT config alongside the repo path — the `-o`
-    flags from `extraOptions` and the `environmentFile`, if any.
-
-    Load-bearing: the generated backup units inherit `extraOptions` +
-    `environmentFile` from the target (modules/infra/backup/default.nix
-    § services.restic.backups), so a check that omits them speaks a
-    different transport than the backup that wrote the repo. For the
-    `onetouch` SFTP target that meant bare `ssh restic@aurora` with no
-    identity file and no pinned known_hosts → "Permission denied
-    (publickey)" every Sunday, while the backups themselves stayed
-    green. See docs/reports/20260718-115850-restic-check-weekly-failure.md.
+    scripts. Each check carries the target's `extraOptions` and
+    `environmentFile` alongside the repository path, so verification
+    uses the same transport and credentials as the backup unit.
   */
   activeJobs = lib.filterAttrs (_: cfg: cfg.include != null) config.nori.backups;
   activePairs = lib.flatten (
@@ -40,15 +31,9 @@ let
     --read-data-subset monthly). Failures accumulate rather than
     short-circuit so a corrupt repo can't hide rot in the others.
 
-    extraOptions are interpolated RAW, not escapeShellArg'd: the
-    `sftp.command='ssh …'` value carries shell-quotes meant to be STRIPPED
-    by the parser — systemd's ExecStart strips them for the backup units,
-    so a bash check script must too. Escaping preserved them literally, so
-    restic tried to fork/exec the whole `ssh -o … -s sftp` string as one
-    binary ("no such file or directory"). One inline restic call per pair
-    (rather than a `"$@"`-forwarding function) keeps the quoting identical
-    to the backups. Verified against the real aurora handshake 2026-07-18
-    — the seam a disposable clone couldn't reach.
+    Target `extraOptions` are interpolated RAW, matching the generated
+    backup units' command-line parsing. One inline restic call per pair
+    keeps check invocations identical to the corresponding backup.
   */
   mkCheckScript =
     checkArgs:
@@ -109,40 +94,23 @@ in
     Per-job declarations live in the service modules they belong
     to (`nori.backups.sonarr` in sonarr.nix, etc.) — see
     modules/infra/backup/default.nix for the abstraction. The non-service-tied
-    jobs (user-data for /home + /srv/share, media-irreplaceable for
-    /mnt/media subvolumes + Immich's Pattern B dump dir) are
-    declared at the bottom of this file because they don't belong
-    to any one service module.
+    jobs (user-data for /home + /srv/share, family-irreplaceable for
+    /mnt/family subvolumes + Immich's Pattern B dump dir) are declared
+    at the bottom of this file because they do not belong to one service.
 
-    Backup targets (the `where`): every job fans out to every target
-    declared below by default. Each (job, target) becomes its own
-    systemd unit `restic-backups-<job>-<target>.service` with
-    independent failure mode + OnFailure → notify@.
+    Every job fans out to each declared target by default. Each
+    (job, target) becomes an independent systemd unit with its own
+    failure notification.
 
     Current targets:
-      onetouch  — Seagate OneTouch HDD relocated to aurora on
-                  2026-06-11; reached over SFTP via the chrooted
-                  `restic` user on aurora (machines/aurora/
-                  disko-onetouch.nix + modules/infra/backup/
-                  the restic-target workload). Full failure-domain
-                  independence from workstation now: separate
-                  chassis, PSU, and USB controller.
+      onetouch  — Seagate OneTouch HDD on Aurora, reached through the
+                  chrooted restic SFTP service. This is the off-host copy.
       mp510     — Always-mounted @backup-local btrfs subvolume on the
-                  MP510 NVMe (see disko-mp510.nix). Catches aurora-
-                  unreachable failure mode; doesn't protect against a
-                  workstation drive failure (`mp510` lives in the same
-                  chassis as the source irreplaceable data on the
-                  IronWolf). That's the onetouch target's job (off-
-                  chassis via aurora SFTP).
+                  workstation's MP510 NVMe. This is the local copy.
 
-    No cloud off-site target — see docs/decisions/0002-aurora-as-
-    family-vault.md. Total-apartment loss is an accepted residual risk;
-    the schema (`nori.backupTargets`) supports remote SFTP if that
-    tolerance ever reverses, but no target is wired today.
-
-    Roadmap targets:
-      pi        — Local fast-restore on the appliance once a real
-                  disk replaces the FIT-USB (anti-write storage today).
+    Every job writes to both targets by default. Family irreplaceable data
+    also names both targets explicitly so future target additions do not
+    silently change its retention contract.
   */
 
   sops.secrets.restic-password = {
@@ -158,7 +126,7 @@ in
   nori.backupTargets = {
     onetouch = {
       repository = "sftp:restic@aurora.saola-matrix.ts.net:";
-      description = "OneTouch HDD relocated to aurora 2026-06-11; reached over SFTP via the chrooted `restic` user on aurora (see modules/machines/aurora/disko-onetouch.nix + the restic-target workload).";
+      description = "OneTouch HDD on Aurora; reached over SFTP through the chrooted restic user.";
       extraOptions = [
         "sftp.command='${pkgs.openssh}/bin/ssh -o BatchMode=yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/etc/ssh/aurora_known_hosts -i /run/secrets/restic-ssh-key restic@aurora.saola-matrix.ts.net -s sftp'"
       ];
@@ -169,25 +137,11 @@ in
     };
   };
 
-  /*
-    SSH identity for the chrooted `restic` user on aurora. Private
-    half lives in sops; public half lives in
-    modules/infra/backup/restic-target/runtime.nix (authorized_keys).
-    `owner = root` because restic backup units run as root.
-  */
   sops.secrets.restic-ssh-key = {
     owner = "root";
     mode = "0400";
   };
 
-  /*
-    Pinned aurora host pubkey for SSH host verification. Not a
-    secret — committed in-tree because it lets `BatchMode=yes` ssh
-    invocations verify aurora's identity without a TOFU prompt. If
-    aurora's host key rotates (rare; only on full re-install), grab
-    the new line from `ssh-keyscan -t ed25519
-    aurora.saola-matrix.ts.net` and replace below.
-  */
   environment.etc."ssh/aurora_known_hosts".text = ''
     aurora.saola-matrix.ts.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKnfMYRv1a3CGvnL0e82w/Z1RK7aOqS3k8JvMYbD8NET
   '';
@@ -300,16 +254,8 @@ in
     restore plan (per SERVICES.md Pattern B). Not in nori.fs because it's
     NixOS service state, not a structural FS location.
 
-    `targets = [ "onetouch" ]` — opted out of the mp510 target because
-    the source data is ~334 GiB of irreplaceable subvolumes on the
-    IronWolf (@photos/@home-videos/@projects/@library/@archive); the
-    mp510 subvol on a different drive in the same chassis could fit
-    it (894 GiB total), but writing the same bytes twice on the same
-    machine doesn't add an independent failure domain. This tier rides
-    the OneTouch (now on aurora over SFTP, separate chassis) alone;
-    cloud off-site explicitly rejected per ADR-0002. Service-tier and
-    user-tier still dual-write — those are small and benefit from the
-    OneTouch-glitch resilience.
+    Both the local MP510 and Aurora's OneTouch receive this tier. The MP510
+    gives fast local restore; Aurora preserves an off-host failure domain.
   */
   nori.backups.media-irreplaceable = {
     include =
@@ -317,6 +263,9 @@ in
       ++ [ "/var/lib/immich/backups" ];
     tier = "irreplaceable";
     timer = "*-*-* 03:30:00";
-    targets = [ "onetouch" ];
+    targets = [
+      "mp510"
+      "onetouch"
+    ];
   };
 }

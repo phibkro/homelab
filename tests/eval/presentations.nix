@@ -15,8 +15,8 @@ let
   inventory = inputs.self.lib.noriInventory;
   compiler = import ../../inventory;
   workloadCatalog = import ../../inventory/workloads.nix { inherit lib; };
+  workstation = inputs.self.nixosConfigurations.workstation.config;
   pi = inputs.self.nixosConfigurations.pi.config;
-  aurora = inputs.self.nixosConfigurations.aurora.config;
   statusServices = inventory.status.services;
   portalServices = inventory.portal.services;
 
@@ -111,7 +111,7 @@ let
   deprecatedDomainPolicyWorks =
     pi.services.caddy.virtualHosts ? "http://*.nori.lan"
     && pi.services.blocky.settings.customDNS.mapping."media.nori.lan" == pi.nori.lanIp;
-  glanceSettings = builtins.toJSON aurora.services.glance.settings;
+  glanceSettings = builtins.toJSON workstation.services.glance.settings;
   portalUsesCanonicalDomain =
     lib.hasInfix "https://media.home.phibkro.org" glanceSettings
     && !lib.hasInfix ".nori.lan" glanceSettings;

@@ -65,8 +65,8 @@ in
               (target was named `ironwolf` then; renamed in P14
               when the data moved off the IronWolf to the MP510).
             */
-            unitConfig.StartLimitIntervalSec = lib.mkDefault "1h";
-            unitConfig.StartLimitBurst = lib.mkDefault 15;
+            unitConfig.StartLimitIntervalSec = lib.mkIf restartEnabled (lib.mkDefault "1h");
+            unitConfig.StartLimitBurst = lib.mkIf restartEnabled (lib.mkDefault 15);
             /*
               Literal `${name}.service` instead of systemd's %n — %n
               already includes .service, so notify@%n.service renders

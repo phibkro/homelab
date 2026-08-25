@@ -2,7 +2,9 @@
   config,
   ...
 }:
-
+let
+  selfTailnetIp = config.nori.hosts.${config.networking.hostName}.tailnetIp;
+in
 {
   /*
     Paperless-ngx — document archive. Drop a PDF in the consume dir →
@@ -22,16 +24,14 @@
         don't rebuild from originals → logical pg_dump before restic
         (Pattern C1 below).
 
-    Database: createLocally=true joins aurora's shared
-    services.postgresql instance (already on via immich) — same idiom
-    as miniflux. Postgres (not the default SQLite) because the
-    full-text index + metadata want a real RDBMS at archive scale.
+    Database: createLocally=true joins the converged host's shared
+    services.postgresql instance (already enabled by Immich). Postgres
+    remains preferable to SQLite for the full-text index and metadata.
 
     First-run setup:
       1. Visit https://papers.home.phibkro.org
-      2. paperless-manage createsuperuser  (on aurora, as the
-         paperless user) — or set settings.PAPERLESS_ADMIN_USER +
-         a passwordFile. No superuser is auto-created without one.
+      2. `paperless-manage createsuperuser` as the paperless user, or use
+         the declarative admin settings below.
       3. Log in → the consume dir (/var/lib/paperless/consume) is
          watched; anything dropped there is OCR'd + indexed.
       4. On phone: install the Paperless mobile app, point at
@@ -40,10 +40,10 @@
   services.paperless = {
     enable = true;
     user = "paperless";
-    address = "0.0.0.0"; # Caddy on pi proxies in over the tailnet
+    address = "0.0.0.0"; # Caddy is co-located; tailnet direct access remains available
     port = 28981;
 
-    database.createLocally = true; # joins aurora's shared postgres
+    database.createLocally = true;
 
     # Originals + archive land on the irreplaceable vault subvol.
     mediaDir = "${config.nori.fs.library.path}/papers";
@@ -60,13 +60,10 @@
       PAPERLESS_OCR_LANGUAGE = "eng"; # academic papers; add "+nor" if needed
       PAPERLESS_ADMIN_USER = "nori"; # matches the existing superuser
       PAPERLESS_URL = "https://papers.${config.nori.domain}";
-      # Primary host: the Caddy-on-pi proxied domain. Also accept aurora's
-      # own tailnet IP for DIRECT operator access when the pi entry plane is
-      # down or rebuilding — audience=operator means the tailnet IS the trust
-      # perimeter, so reaching the backend directly over the tailnet carries
-      # the same posture as the proxied route (just without Caddy's TLS).
-      PAPERLESS_ALLOWED_HOSTS = "papers.${config.nori.domain},${config.nori.hosts.aurora.tailnetIp}";
-      PAPERLESS_CSRF_TRUSTED_ORIGINS = "https://papers.${config.nori.domain},http://${config.nori.hosts.aurora.tailnetIp}:28981";
+      # Accept the public Caddy route and the converged host's direct tailnet
+      # endpoint for operator recovery.
+      PAPERLESS_ALLOWED_HOSTS = "papers.${config.nori.domain},${selfTailnetIp}";
+      PAPERLESS_CSRF_TRUSTED_ORIGINS = "https://papers.${config.nori.domain},http://${selfTailnetIp}:28981";
     };
   };
 
@@ -75,10 +72,7 @@
   # root:media library subvol.
   users.users.paperless.extraGroups = [ "media" ];
 
-  # Admin password, sops-decrypted from the default secrets file
-  # (secrets/secrets.yaml — aurora is already a recipient). Add the
-  # `paperless-admin-password` key there before the next aurora deploy:
-  #   sops secrets/secrets.yaml   →   paperless-admin-password: <your-pw>
+  # Admin password, sops-decrypted from the default secrets file.
   sops.secrets.paperless-admin-password = {
     owner = "paperless";
     mode = "0400";

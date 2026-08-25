@@ -1,10 +1,27 @@
 {
   config,
+  inputs,
   lib,
   pkgs,
   ...
 }:
 
+let
+  atticClientConfig = pkgs.writeTextDir "attic/config.toml" ''
+    default-server = "nori"
+
+    [servers.nori]
+    endpoint = "https://cache.${config.nori.domain}/"
+    token-file = "${config.sops.secrets.attic-push-token.path}"
+  '';
+  atticPush = pkgs.writeShellApplication {
+    name = "nori-cache-push";
+    text = ''
+      export XDG_CONFIG_HOME=${atticClientConfig}
+      exec ${lib.getExe pkgs.attic-client} push nori "$@"
+    '';
+  };
+in
 {
   # --- nix ---------------------------------------------------------------
 
@@ -40,9 +57,16 @@
           cuda-maintainers.cachix.org to cache.nixos-cuda.org Nov 2025.
         */
         "https://cache.nixos-cuda.org"
+        /*
+          The homelab Attic cache is populated by successful builds on every
+          host. Its signing key is declarative, so a cache response is accepted
+          only when it matches this trust root.
+        */
+        "https://cache.${config.nori.domain}/nori"
       ];
       extra-trusted-public-keys = [
         "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
+        "attic.nori.lan-1:3zt/aS8K1bSEjNvZQB9ga9OeZTxcRkvbb7aYRI/vobo="
       ];
     };
     gc = {
@@ -53,6 +77,52 @@
   };
 
   nixpkgs.config.allowUnfree = true;
+  sops.secrets.attic-push-token = {
+    sopsFile = inputs.self + "/secrets/apps.yaml";
+    key = "attic_push_token";
+    owner = "root";
+    mode = "0400";
+    restartUnits = [
+      "attic-cache-seed.service"
+      "attic-cache-watch.service"
+    ];
+  };
+
+  /*
+    Seed the complete active system at boot, then watch individual store
+    additions continuously. The seed closes the watcher's intentional gap:
+    watch-store only sees paths completed while it is running.
+    Attic filters paths already signed by configured upstream caches.
+  */
+  systemd.services.attic-cache-seed = {
+    description = "Publish the active system closure to the homelab Attic cache";
+    wantedBy = [ "multi-user.target" ];
+    wants = [ "network-online.target" ];
+    after = [ "network-online.target" ];
+    environment.XDG_CONFIG_HOME = atticClientConfig;
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${lib.getExe pkgs.attic-client} push nori --jobs 2 /run/current-system";
+      Restart = "on-failure";
+      RestartSec = "60s";
+    };
+  };
+
+  systemd.services.attic-cache-watch = {
+    description = "Publish new Nix store paths to the homelab Attic cache";
+    wantedBy = [ "multi-user.target" ];
+    wants = [ "network-online.target" ];
+    after = [ "network-online.target" ];
+    environment.XDG_CONFIG_HOME = atticClientConfig;
+    serviceConfig = {
+      ExecStart = "${lib.getExe pkgs.attic-client} watch-store nori --jobs 2";
+      Restart = "on-failure";
+      RestartSec = "60s";
+    };
+  };
+
+  nori.harden.attic-cache-seed = { };
+  nori.harden.attic-cache-watch = { };
 
   /*
     Known-insecure packages we accept. Each entry is a deliberate
@@ -101,6 +171,7 @@
     tree
     vim
     wget
+    atticPush
   ];
 
   /*

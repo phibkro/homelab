@@ -22,17 +22,17 @@
 # greps for `^@?test-<X>:` in Justfile and walks `import` lines, so
 # tests.just is in-scope.
 
-# Catches the silent class where "metrics exist somewhere but not
-# from where we expect." Every host we expect data from is scraped
-# (`up=1`), process-exporter is publishing series, pi heartbeat is
-# firing, gatus has zero failing probes.
+# Catches the silent class where metrics exist somewhere but not where the
+# converged host expects them. Every declared scrape target must be up,
+# process-exporter must publish series, heartbeat must fire, and Gatus must
+# have at least one probe with zero failures.
 #
-# Runtime-introspection test: VM scrape coverage + exporter series + pi heartbeat + gatus probes.
+# Runtime-introspection test for the converged observability stack.
 @test-observability:
     #!/usr/bin/env bash
     set -euo pipefail
     fail=0
-    VM=http://100.100.71.3:8428
+    VM=http://127.0.0.1:8428
 
     echo "=== Tier 1 — VictoriaMetrics scrape targets all up ==="
     targets=$(curl -s "$VM/api/v1/targets?state=any" \
@@ -47,27 +47,21 @@
       fail=1
     fi
 
-    echo "=== Tier 2 — process-exporter publishing per host ==="
-    for host in workstation pavilion aurora; do
-      count=$(curl -sG "$VM/api/v1/query" \
-              --data-urlencode "query=count(namedprocess_namegroup_memory_bytes{host=\"$host\",memtype=\"resident\"})" \
-              | nix shell nixpkgs#jq -c jq -r '.data.result[0].value[1] // "0"')
-      if [[ "$count" -ge 10 ]]; then
-        echo "  ✓ $host: $count process series"
-      else
-        echo "  ✗ $host: only $count series (expected ≥10)"; fail=1
-      fi
-    done
+    echo "=== Tier 2 — process-exporter publishing for workstation ==="
+    count=$(curl -fsSG "$VM/api/v1/query" \
+            --data-urlencode 'query=count(namedprocess_namegroup_memory_bytes{host="workstation",memtype="resident"})' \
+            | nix shell nixpkgs#jq -c jq -er '.data.result[0].value[1]')
+    if [[ "$count" -ge 10 ]]; then
+      echo "  ✓ workstation: $count process series"
+    else
+      echo "  ✗ workstation: only $count series (expected ≥10)"; fail=1
+    fi
 
-    echo "=== Tier 3 — pi heartbeat fired recently (<90s) ==="
+    echo "=== Tier 3 — heartbeat fired recently (<90s) ==="
     # heartbeat timer is 60s; allow 90s buffer for jitter.
-    # ExecMainExitTimestamp on Type=oneshot lags behind actual runs
-    # (caught 2026-06-07); StateChangeTimestamp tracks the latest
-    # active→inactive transition, which IS each successful run.
-    last=$(ssh -o ConnectTimeout=3 nori@100.100.71.3 \
-             'systemctl show heartbeat.service -p StateChangeTimestampMonotonic --value' 2>/dev/null)
-    uptime_us=$(ssh -o ConnectTimeout=3 nori@100.100.71.3 \
-                  'cat /proc/uptime | awk "{ printf \"%d\", \$1 * 1000000 }"' 2>/dev/null)
+    # StateChangeTimestamp tracks the latest active→inactive transition.
+    last=$(systemctl show heartbeat.service -p StateChangeTimestampMonotonic --value)
+    uptime_us=$(awk '{ printf "%d", $1 * 1000000 }' /proc/uptime)
     if [[ -n "$last" && -n "$uptime_us" && "$last" != "0" ]]; then
       age_s=$(( (uptime_us - last) / 1000000 ))
       if [[ "$age_s" -le 90 ]]; then
@@ -79,14 +73,19 @@
       echo "  · heartbeat state unreadable (last=$last uptime=$uptime_us)"
     fi
 
-    echo "=== Tier 4 — Gatus reports zero failing probes ==="
-    failing=$(curl -sG "$VM/api/v1/query" \
-              --data-urlencode 'query=sum(gatus_results_endpoint_success == 0)' \
-              | nix shell nixpkgs#jq -c jq -r '.data.result[0].value[1] // "0"')
-    if [[ "$failing" -eq 0 ]]; then
-      echo "  ✓ no failing gatus probes"
+    echo "=== Tier 4 — Gatus has probes and reports zero failures ==="
+    total=$(curl -fsSG "$VM/api/v1/query" \
+            --data-urlencode 'query=count(gatus_results_endpoint_success)' \
+            | nix shell nixpkgs#jq -c jq -er '.data.result[0].value[1]')
+    failing=$(curl -fsSG "$VM/api/v1/query" \
+              --data-urlencode 'query=count(gatus_results_endpoint_success == 0)' \
+              | nix shell nixpkgs#jq -c jq -er '.data.result[0].value[1]')
+    if [[ "$total" -gt 0 && "$failing" -eq 0 ]]; then
+      echo "  ✓ all $total gatus probes healthy"
+    elif [[ "$total" -eq 0 ]]; then
+      echo "  ✗ no gatus probe series found"; fail=1
     else
-      echo "  ✗ $failing gatus probes currently failing"; fail=1
+      echo "  ✗ $failing of $total gatus probes currently failing"; fail=1
     fi
 
     echo

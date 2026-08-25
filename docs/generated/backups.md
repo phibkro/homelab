@@ -384,13 +384,21 @@ therefore change with configuration instead of being duplicated in prose.
 | Job | Tier | Effective targets | Include paths |
 |---|---|---|---|
 | `bazarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/bazarr` |
+| `calibre-web` | `service` | `mp510`<br>`onetouch` | `/var/lib/calibre-web` |
 | `herdr-projects-mcp` | `service` | `mp510`<br>`onetouch` | `/home/nori/.local/state/herdr-mcp/projects` |
 | `jellyfin` | `service` | `mp510`<br>`onetouch` | `/var/lib/jellyfin` |
 | `jellyseerr` | `service` | `mp510`<br>`onetouch` | `/var/lib/private/jellyseerr` |
+| `komga` | `service` | `mp510`<br>`onetouch` | `/var/lib/komga` |
 | `lidarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/lidarr` |
-| `media-irreplaceable` | `irreplaceable` | `onetouch` | `/mnt/media/archive`<br>`/mnt/media/home-videos`<br>`/mnt/media/library`<br>`/mnt/media/photos`<br>`/mnt/media/projects`<br>`/var/lib/immich/backups` |
+| `media-irreplaceable` | `irreplaceable` | `mp510`<br>`onetouch` | `/mnt/family/archive`<br>`/mnt/family/home-videos`<br>`/mnt/family/library`<br>`/mnt/family/photos`<br>`/mnt/family/projects`<br>`/var/lib/immich/backups` |
+| `miniflux` | `service` | `mp510`<br>`onetouch` | `/var/backup/postgresql/miniflux.sql.gz` |
+| `navidrome` | `service` | `mp510`<br>`onetouch` | `/var/lib/private/navidrome`<br>`/var/backup/navidrome` |
+| `paperless` | `irreplaceable` | `mp510`<br>`onetouch` | `/var/backup/postgresql/paperless.sql.gz` |
 | `prowlarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/private/prowlarr` |
 | `radarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/radarr` |
+| `radicale` | `service` | `mp510`<br>`onetouch` | `/var/lib/radicale` |
 | `sonarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/sonarr` |
 | `stremio` | `service` | `mp510`<br>`onetouch` | `/var/lib/stremio` |
+| `suwayomi` | `service` | `mp510`<br>`onetouch` | `/var/lib/suwayomi-server` |
 | `user-data` | `user` | `mp510`<br>`onetouch` | `/home`<br>`/srv/nori`<br>`/srv/share` |
+| `vaultwarden` | `service` | `mp510`<br>`onetouch` | `/var/lib/vaultwarden`<br>`/var/backup/vaultwarden` |

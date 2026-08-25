@@ -1,21 +1,32 @@
 {
   config,
-  lib,
+  inputs,
   pkgs,
   ...
 }:
 
+let
+  /*
+    Build ONNX Runtime from the same globally CUDA-enabled package set used by
+    the nixos-cuda Hydra jobset. Overriding only onnxruntime's argument changes
+    its dependency graph and therefore misses the public binary cache.
+  */
+  cudaPkgs = import inputs.nixpkgs {
+    inherit (pkgs.stdenv.hostPlatform) system;
+    config = config.nixpkgs.config // {
+      cudaSupport = true;
+    };
+  };
+in
 {
   /*
     Immich — self-hosted photo management. Phone → server auto-upload,
     face recognition, object detection, shared albums.
 
-    Storage split: managed library under _immich-managed/ on @photos
-    (capacity-bound, IronWolf); service state (DB, ML weights, dumps)
-    on root NVMe. Pre-existing user-organized photos at
-    /mnt/media/photos/{2022, Canon EOS, ...} sit alongside
-    _immich-managed/ — Immich won't see them unless explicitly imported
-    via the web UI (External Library) or `immich-cli upload`.
+    Storage split: managed library under _immich-managed/ on the
+    family-vault photos subvolume; service state (DB, ML weights, dumps)
+    stays on root NVMe. Existing user-organized photos sit alongside the
+    managed library and remain available through Immich external libraries.
 
     First-run setup:
       1. Visit https://photos.home.phibkro.org
@@ -24,21 +35,12 @@
       4. On phone: install Immich app from app store, point at
          https://photos.home.phibkro.org over tailnet, log in, enable
          auto-backup
-      5. (optional) Import existing /mnt/media/photos/{2022,...}
-         via the web UI (Settings → External Library) or
-         `immich-cli upload`
-  */
-  /*
-    CUDA ML inference (face detection, smart search). Overlay swaps
-    onnxruntime to a cudaSupport=true build so the Python bindings
-    pick up the CUDA execution provider at runtime. Only `cudaSupport`
-    is overridden — defaults match cache.nixos-cuda.org's build, so
-    the prebuilt artifact substitutes instead of triggering a local
-    nvcc compile (~30 min on this CPU).
+      5. (optional) Import existing photos through the web UI
+         (Settings → External Library) or `immich-cli upload`
   */
   nixpkgs.overlays = [
-    (_: prev: {
-      onnxruntime = prev.onnxruntime.override { cudaSupport = true; };
+    (_: _: {
+      inherit (cudaPkgs) onnxruntime;
     })
   ];
 
@@ -52,35 +54,14 @@
 
     database.enable = true; # dedicated postgres + VectorChord ext
     redis.enable = true;
-    /*
-      ML offloaded to aurora (modules/machines/aurora/default.nix) — the 5060
-      Ti stays dedicated to ollama, no contention on heavy photo
-      ingest. immich-server reaches the remote ML via env override
-      below. Maxwell 950M on aurora is plenty for CLIP + face
-      detection workloads.
-    */
-    machine-learning.enable = false;
+    # ML is co-located on the workstation. The upstream module wires the
+    # server to the loopback ML endpoint, avoiding a network dependency.
+    machine-learning.enable = true;
 
     # accelerationDevices still relevant for immich-server's NVENC
     # transcoding path (HW video conversion). Keep set.
     accelerationDevices = config.nori.gpu.nvidiaDevices;
   };
-
-  /*
-    Point immich-server at aurora's ML over tailnet. mkForce because
-    the upstream module sets this env at the same priority pointing
-    at the local ML port; we override to the remote aurora endpoint.
-  */
-  systemd.services.immich-server.environment.IMMICH_MACHINE_LEARNING_URL =
-    lib.mkForce "http://${config.nori.hosts.aurora.tailnetIp}:3003";
-
-  /*
-    ML-side knobs (tunings, harden entry, resource caps) DROPPED with
-    the aurora migration. Workstation no longer runs the ML unit, so
-    any override targeting immich-machine-learning here produces a
-    unit with no ExecStart — systemd refuses to load it and activation
-    fails. Aurora-side tuning lives in modules/machines/aurora/default.nix.
-  */
 
   # Joins `media` to read the user-organized photo tree if you point
   # External Library at it.

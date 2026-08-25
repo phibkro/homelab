@@ -66,7 +66,6 @@
     description = "Always-on family data and application tier";
     systemModules = [ ];
     workloads = [
-      "btrbk-replication"
       "calibre-web"
       "filmder"
       "glance"
@@ -78,7 +77,6 @@
       "navidrome"
       "paperless"
       "radicale"
-      "restic-target"
       "samba"
       "suwayomi"
       "syncthing"

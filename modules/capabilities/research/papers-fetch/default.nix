@@ -7,6 +7,12 @@
 
 let
   cfg = config.nori.papersFetch;
+  # arxiv 3.0.0 caps requests below 2.34 even though its used API remains
+  # compatible with nixpkgs' 2.34.x. Match the established calibre-web
+  # relaxation and remove this when upstream broadens the dependency.
+  arxivRelaxed = pkgs.python3Packages.arxiv.overridePythonAttrs (old: {
+    pythonRelaxDeps = (old.pythonRelaxDeps or [ ]) ++ [ "requests" ];
+  });
 
   /*
     The resolver lives as a standalone Python file (./papers-fetch.py) so it
@@ -18,7 +24,7 @@ let
   */
   fetchScript = pkgs.writers.writePython3Bin "papers-fetch-core" {
     libraries = with pkgs.python3Packages; [
-      arxiv
+      arxivRelaxed
       habanero
       httpx
     ];

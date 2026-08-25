@@ -24,9 +24,11 @@ let
   outputHosts = lib.sort builtins.lessThan (lib.attrNames inputs.self.nixosConfigurations);
 
   rootsCorrect =
-    deployment.sourceRoots."modules/services/jellyfin" == [ "workstation" ]
+    deployment.sourceRoots."modules/services/attic" == [ "aurora" ]
+    && deployment.sourceRoots."modules/services/jellyfin" == [ "workstation" ]
     && deployment.sourceRoots."modules/services/arr" == [ "workstation" ]
-    && deployment.sourceRoots."modules/services/filmder" == [ "aurora" ]
+    && deployment.sourceRoots."modules/services/filmder" == [ "workstation" ]
+    && deployment.sourceRoots."modules/infra/backup/restic-target" == [ "aurora" ]
     && deployment.sourceRoots."modules/infra/networking/caddy" == [ "pi" ];
 
   targetsCorrect =
@@ -40,7 +42,6 @@ if
   &&
     deployment.activationOrder == [
       "aurora"
-      "pavilion"
       "workstation"
       "pi"
     ]

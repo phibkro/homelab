@@ -61,12 +61,11 @@ jobs:
         # Local `just rebuild` / `nix flake check` stay pure → real package.
         run: HOMELAB_CI=1 nix flake check --impure --print-build-logs
 
-  # Build the appliance closure on native ARM instead of making either the
-  # workstation emulate aarch64 or the production Pi compile while serving
-  # DNS and the entry plane. This job only proves the closure: it receives no
-  # deployment credentials and never activates a host.
-  pi-build:
-    runs-on: ubuntu-24.04-arm
+  # Build the converged workstation closure on the standard x86 runner. This
+  # job only proves the closure: it receives no deployment credentials and
+  # never activates a host.
+  workstation-build:
+    runs-on: ubuntu-latest
     # Mapped here because the secrets context is unavailable to a step-level
     # `if`, and the publish step must skip cleanly while these are unset.
     #
@@ -89,12 +88,12 @@ jobs:
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
             experimental-features = nix-command flakes
 
-      - name: build Pi system closure
+      - name: build workstation system closure
         id: closure
         run: |
           path="$(
-            nix build \
-              .#nixosConfigurations.pi.config.system.build.toplevel \
+            HOMELAB_CI=1 nix build \
+              .#nixosConfigurations.workstation.config.system.build.toplevel \
               --no-link \
               --print-out-paths \
               --print-build-logs \
@@ -103,11 +102,9 @@ jobs:
           )"
           echo "path=${path}" >> "${GITHUB_OUTPUT}"
 
-      # This runner is the only native aarch64 builder in the fleet.
       # Publishing the closure lets the workstation substitute it instead of
-      # recompiling linux-rpi under binfmt emulation, which is where that
-      # cost currently lands. Skipped while the R2 credentials are unset, so
-      # the job stays green until they exist.
+      # rebuilding locally. Skipped while the R2 credentials are unset, so the
+      # job stays green until they exist.
       - name: publish closure to the homelab cache
         if: env.R2_ACCESS_KEY_ID != '' && env.CACHE_BUCKET != ''
         env:
@@ -121,8 +118,8 @@ jobs:
           # want-mass-query and priority are recorded in nix-cache-info by the
           # first upload and are awkward to change afterwards. Priority 45 puts
           # this cache after cache.nixos.org (40), which is right: upstream
-          # serves almost everything, and this bucket only adds the aarch64
-          # paths upstream does not build.
+          # serves almost everything, and this bucket only adds the paths
+          # this flake does not publish upstream.
           nix copy \
             --to "s3://${CACHE_BUCKET}?endpoint=${CACHE_ENDPOINT}&region=auto&compression=zstd&want-mass-query=true&priority=45&secret-key=${key}" \
             "${{ steps.closure.outputs.path }}"

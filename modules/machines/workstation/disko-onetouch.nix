@@ -1,16 +1,14 @@
 _: {
   /*
-    Seagate OneTouch 5TB external HDD — restic backup target.
-    Physically relocated from workstation to aurora on 2026-06-11 (P13
-    of the aurora migration); same drive, same ext4 partition, same
-    mount path. Workstation reaches this repo over SFTP via the
-    `restic` chrooted user defined in modules/infra/backup/
-    the restic-target inventory workload.
+    Seagate OneTouch 5TB external HDD — local restic backup target.
+    The physical drive is mounted on workstation at /mnt/backup; the
+    existing ext4 partition and repository names are preserved so the
+    moved drive is reused without reinitialization.
 
-    By-id is stable across the host move — USB drives are identified
-    by their controller serial, not the host's USB port topology.
+    By-id is stable across host moves — USB drives are identified by
+    their controller serial, not the host's USB port topology.
     `usb-Seagate_One_Touch_HDD_00000000NABNR6G2-0:0` (trailing -0:0 is
-    LUN 0) is the same string that worked on workstation.
+    LUN 0) is the existing identity for this drive.
 
     Re-running disko on this drive WIPES IT. The drive is already
     formatted and populated — disko-time partitioning ONLY needs to

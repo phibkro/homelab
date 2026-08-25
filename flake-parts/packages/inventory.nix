@@ -63,20 +63,17 @@
 
             HOMELAB_DEPLOYMENT_INDEX=${deploymentIndex} \
               bash ${../../scripts/deployment-plan.sh} --changed-since HEAD > changed.json
-            jq -e '.hosts == ["aurora"] and .activationOrder == ["aurora"]' changed.json
+            jq -e '.hosts == ["workstation"] and .activationOrder == ["workstation"]' changed.json
 
             # Selection unions --host with --workload, and activationOrder is
-            # DERIVED from that set rather than copied. This used to be shown
-            # with the macbook (a target absent from activationOrder because it
-            # was home-manager, not NixOS); with the Mac retired, the entry-plane
-            # rule carries it instead and carries it better — pi sorts first in
-            # hosts yet must activate LAST, so backends are up before the proxy
-            # fronts them.
+            # derived from that set. The converged workstation is the only
+            # NixOS target, so both selectors resolve to the same host and
+            # activation order.
             HOMELAB_DEPLOYMENT_INDEX=${deploymentIndex} \
               bash ${../../scripts/deployment-plan.sh} \
-                --host pi --workload jellyfin > selected.json
+                --host workstation --workload jellyfin > selected.json
             jq -e \
-              '.hosts == ["pi", "workstation"] and .activationOrder == ["workstation", "pi"]' \
+              '.hosts == ["workstation"] and .activationOrder == ["workstation"]' \
               selected.json
 
             touch "$out"

@@ -8,16 +8,12 @@
 /**
   ## aurora — Asus N552V · Intel Skylake-H i7-6700HQ · 12 GB DDR4 · NVIDIA GTX 950M
 
-  Retired gaming laptop repurposed as the family-vault host. Dead
+  Retired gaming laptop repurposed as an off-host backup appliance. Dead
   battery, but otherwise solid: always-on AC, lid closed, runs headless.
 
-   - **119 GB LiteOn SSD (`/dev/sda`)** — root + boot + `/nix`. btrfs
-     subvols; no impermanence (immich-ml's CLIP/face weights are ~2 GB
-     and worth keeping across reboots).
-   - **932 GB Toshiba HDD (`/dev/sdb`)** — `/mnt/family/{photos,home-videos,
-     projects,library,archive}`. The family vault.
-   - **External Seagate OneTouch USB HDD** — `/mnt/backup/onetouch`,
-     restic vault for both pi and workstation backups. SFTP-served via
+   - **119 GB LiteOn SSD (`/dev/sda`)** — root + boot + `/nix`.
+   - **External Seagate OneTouch USB HDD** — `/mnt/backup`,
+     restic vault for workstation backups. SFTP-served through
      the chrooted `restic` user.
 
   Derived from `nixos-generate-config --no-filesystems` on the live
@@ -26,16 +22,13 @@
 
   ## GPU posture
 
-  NVIDIA GTX 950M (Maxwell) handles immich-ml CLIP + face recognition
-  via the legacy_535 driver branch (`hardware.nvidia.package =
-  config.boot.kernelPackages.nvidiaPackages.legacy_535`). Not enough
-  VRAM for LLM inference — that stays on workstation's 5060 Ti.
+  The NVIDIA GTX 950M remains available through the legacy_535 driver branch,
+  but Aurora no longer runs Immich ML or the GPU exporter.
 
   ## Why workhorse role
 
-  Has GPU, compute, and durable state, so the broad hardware role remains
-  `workhorse`. Its narrower family-vault purpose is expressed by the inventory
-  profile rather than another host-role enum.
+  The existing `workhorse` role permits durable backup storage. Aurora's
+  narrower purpose is explicit in its inventory workload: `restic-target`.
 */
 
 {

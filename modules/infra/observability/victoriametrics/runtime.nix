@@ -27,17 +27,6 @@
       };
       scrape_configs = [
         {
-          job_name = "gatus-workstation";
-          metrics_path = "/metrics";
-          scheme = "http";
-          static_configs = [
-            {
-              targets = [ "${config.nori.hosts.workstation.tailnetIp}:8082" ];
-              labels.host = "workstation";
-            }
-          ];
-        }
-        {
           job_name = "gatus-pi";
           metrics_path = "/metrics";
           scheme = "http";
@@ -64,10 +53,6 @@
               labels.host = "workstation";
             }
             {
-              targets = [ "${config.nori.hosts.pavilion.tailnetIp}:9100" ];
-              labels.host = "pavilion";
-            }
-            {
               targets = [ "${config.nori.hosts.aurora.tailnetIp}:9100" ];
               labels.host = "aurora";
             }
@@ -83,10 +68,6 @@
               labels.host = "workstation";
             }
             {
-              targets = [ "${config.nori.hosts.pavilion.tailnetIp}:9256" ];
-              labels.host = "pavilion";
-            }
-            {
               targets = [ "${config.nori.hosts.aurora.tailnetIp}:9256" ];
               labels.host = "aurora";
             }
@@ -94,8 +75,8 @@
         }
         /*
           GPU power + utilisation from nvidia-gpu-exporter (modules/
-          infra/observability/nvidia-gpu-exporter/). Only hosts with NVIDIA
-          devices run the exporter; pavilion + pi silently absent.
+          infra/observability/nvidia-gpu-exporter/). Only workstation
+          runs the exporter in the current topology.
         */
         {
           job_name = "nvidia-gpu";
@@ -105,10 +86,6 @@
             {
               targets = [ "${config.nori.hosts.workstation.tailnetIp}:9835" ];
               labels.host = "workstation";
-            }
-            {
-              targets = [ "${config.nori.hosts.aurora.tailnetIp}:9835" ];
-              labels.host = "aurora";
             }
           ];
         }

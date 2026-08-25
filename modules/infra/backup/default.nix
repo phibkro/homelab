@@ -640,6 +640,9 @@ in
           in
           lib.nameValuePair "restic-backups-${jobName}-${target}" {
             unitConfig.OnFailure = [ "notify@restic-backups-${jobName}-${target}.service" ];
+            unitConfig.RequiresMountsFor = lib.mkIf (lib.hasPrefix "/" tgt.repository) [
+              tgt.repository
+            ];
             serviceConfig.ExecStartPre = lib.mkBefore [ "${preUnlockScript}" ];
           }
         ) activePairs

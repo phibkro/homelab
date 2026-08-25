@@ -7,17 +7,16 @@
 
 let
   /*
-    Subvolume keys for btrbk's `volume."X".subvolume` are paths
-    *relative to the volume root*. Derive them from nori.fs by
-    stripping the volume-root prefix; entries under /mnt/media live
-    on the media volume, the rest live on the root volume.
+    Classify nori.fs paths by their physical btrfs namespace. Family
+    paths must never fall through to the root namespace: their source
+    filesystem is the Toshiba vault mounted at /mnt/family.
   */
   inherit (config.nori) fs;
 
   onMedia = _: f: lib.hasPrefix "/mnt/media/" f.path;
-  onRoot = n: f: !(onMedia n f); # everything not under /mnt/...
-  # @downloads is re-derivable; intentionally excluded from snapshots
-  # (DESIGN tier table). Filter `re-derivable` tier out.
+  onFamily = _: f: lib.hasPrefix "/mnt/family/" f.path;
+  onRoot = n: f: !(onMedia n f) && !(onFamily n f);
+  # @downloads is re-derivable; intentionally excluded from snapshots.
   isSnapshotted = _: f: f.tier != "re-derivable";
 
   rootSubvols = lib.mapAttrs' (_: f: lib.nameValuePair (lib.removePrefix "/" f.path) { }) (
@@ -27,13 +26,16 @@ let
   mediaSubvols = lib.mapAttrs' (_: f: lib.nameValuePair (lib.removePrefix "/mnt/media/" f.path) { }) (
     lib.filterAttrs (n: f: onMedia n f && isSnapshotted n f) fs
   );
+
+  familySubvols = lib.mapAttrs' (
+    _: f: lib.nameValuePair (lib.removePrefix "/mnt/family/" f.path) { }
+  ) (lib.filterAttrs (n: f: onFamily n f && f.tier == "irreplaceable") fs);
 in
 /*
   Selected only by the Workstation `backup-source` system profile. btrbk
-  snapshots the IronWolf
-  subvols + the SN750 root, both physically on workstation; the
-  activation script also enables a btrfs quota on /mnt/media/downloads
-  (workstation-specific path).
+  snapshots the workstation's root, optional non-re-derivable media
+  subvolumes, and the family vault; the activation script also enables
+  the btrfs quota on /mnt/media/downloads.
 */
 {
   /**
@@ -41,59 +43,78 @@ in
     deletion" recovery path per RECOVERY.md RTO targets (target: <15 min
     to restore an accidentally-deleted file).
 
-    Two instances, one per btrfs filesystem:
-      root (SN750):    /home, /srv/share, /var/lib  → /.snapshots
-      media (IronWolf): /mnt/media/{photos,...}     → /mnt/media/.snapshots
+    Instances are split by physical btrfs namespace:
+      root (SN750):       /home, /srv/share, /var/lib → /.snapshots
+      media (IronWolf):   non-re-derivable /mnt/media/* → /mnt/media/.snapshots
+      family (Toshiba):   irreplaceable /mnt/family/* → /mnt/family/.snapshots
 
-    Subvolume lists derived from nori.fs by tier filter (anything
-    `tier != re-derivable`); @var/lib added explicitly because it's
-    NixOS-managed StateDirectory, not a structural FS location.
+    The media instance is declared only when nori.fs has a non-re-derivable
+    media entry. The family filter is explicit so family paths can never
+    become root subvolume names.
 
-    Subvolumes intentionally NOT snapshotted:
+    @var/lib is added explicitly because it is a NixOS-managed StateDirectory,
+    not a structural FS location. Intentionally excluded:
       @       (system root — covered by NixOS generations)
       @nix    (re-derivable from the flake)
-      @downloads (re-derivable per DESIGN tier table — filtered out)
+      @downloads (re-derivable — filtered out)
 
-    Retention conservative for first run; tune per disk growth.
+    Retention is conservative for first run; tune per disk growth.
   */
-
   services.btrbk = {
-    instances.root = {
-      onCalendar = "daily";
-      settings = {
-        snapshot_preserve_min = "2d";
-        snapshot_preserve = "7d 4w 6m";
-        snapshot_dir = ".snapshots";
-        timestamp_format = "long";
-        volume."/" = {
-          /*
-            rootSubvols has `home` + `srv/share` from nori.fs (user
-            tier). var/lib is a btrfs subvolume but not in nori.fs
-            (StateDirectory paths are NixOS-managed, not a structural
-            FS location services consume) — added explicitly.
-          */
-          subvolume = rootSubvols // {
-            "var/lib" = { };
+    instances = {
+      root = {
+        onCalendar = "daily";
+        settings = {
+          snapshot_preserve_min = "2d";
+          snapshot_preserve = "7d 4w 6m";
+          snapshot_dir = ".snapshots";
+          timestamp_format = "long";
+          volume."/" = {
+            /*
+              rootSubvols has `home` + `srv/share` from nori.fs (user
+              tier). var/lib is a btrfs subvolume but not in nori.fs
+              (StateDirectory paths are NixOS-managed, not a structural
+              FS location services consume) — added explicitly.
+            */
+            subvolume = rootSubvols // {
+              "var/lib" = { };
+            };
           };
         };
       };
-    };
 
-    instances.media = {
-      onCalendar = "daily";
-      settings = {
-        snapshot_preserve_min = "2d";
-        snapshot_preserve = "14d 8w 12m";
-        snapshot_dir = ".snapshots";
-        timestamp_format = "long";
-        volume."/mnt/media".subvolume = mediaSubvols;
+      family = {
+        onCalendar = "daily";
+        settings = {
+          snapshot_preserve_min = "2d";
+          snapshot_preserve = "14d 8w 12m";
+          snapshot_dir = ".snapshots";
+          timestamp_format = "long";
+          volume."/mnt/family".subvolume = familySubvols;
+        };
+      };
+    }
+    // lib.optionalAttrs (mediaSubvols != { }) {
+      media = {
+        onCalendar = "daily";
+        settings = {
+          snapshot_preserve_min = "2d";
+          snapshot_preserve = "14d 8w 12m";
+          snapshot_dir = ".snapshots";
+          timestamp_format = "long";
+          volume."/mnt/media".subvolume = mediaSubvols;
+        };
       };
     };
   };
 
   # Alert via ntfy template in modules/infra/observability/ntfy/notify.nix.
   systemd.services.btrbk-root.unitConfig.OnFailure = [ "notify@btrbk-root.service" ];
-  systemd.services.btrbk-media.unitConfig.OnFailure = [ "notify@btrbk-media.service" ];
+  systemd.services.btrbk-family.unitConfig.OnFailure = [ "notify@btrbk-family.service" ];
+  systemd.services.btrbk-family.unitConfig.RequiresMountsFor = [ "/mnt/family" ];
+  systemd.services.btrbk-media = lib.mkIf (mediaSubvols != { }) {
+    unitConfig.OnFailure = [ "notify@btrbk-media.service" ];
+  };
 
   /*
     ── btrfs qgroup quota on @downloads ────────────────────────────
@@ -108,12 +129,10 @@ in
     stays open (delete from @downloads to free; quota doesn't apply
     to the system pool's metadata budget).
 
-    Headroom math (snapshot 2026-05-16): @downloads = 3.2 TiB, other
-    subvols = 462 GiB, total used ~3.66 TiB on a 3.64 TiB drive (the
-    drive itself is the bottleneck). 3.3 TiB cap allows ~100 GiB more
-    in-flight downloads to land before qBit stalls; the other 365 GiB
-    of @downloads headroom on the drive stays available for the other
-    subvols (photos growth especially).
+    Headroom math (snapshot 2026-05-16): @downloads = 3.2 TiB on the
+    IronWolf, with legacy family copies retained on that filesystem
+    but no longer mounted. The 3.3 TiB cap leaves recovery headroom
+    for btrfs metadata and the active downloads workload.
 
     Tune via the 3300G literal below. Adjust upward if the other
     subvols grow such that the budget for @downloads needs to shrink.
@@ -129,20 +148,23 @@ in
     effect after rescan completes.
 
     IMPORTANT — target path: /mnt/media itself is NOT a mountpoint
-    (each subvol mounts directly under it: /mnt/media/{downloads,
-    photos,...}). Targeting /mnt/media resolves to the root filesystem
-    (SN750) and enables quotas there — wrong FS, expensive. Use a real
-    IronWolf mountpoint instead. /mnt/media/downloads is the canonical
-    choice (it's the subvol we're capping anyway). subvolume list also
-    needs a real mountpoint to enumerate.
+    (the downloads subvolume mounts directly under it). Targeting
+    /mnt/media resolves to the root filesystem (SN750) and enables
+    quotas there — wrong FS, expensive. Use /mnt/media/downloads, the
+    real IronWolf mountpoint and the subvolume being capped. The family
+    namespace is separate at /mnt/family and is not part of this quota.
   */
   system.activationScripts.btrfs-quota-media.text = ''
-    ${pkgs.btrfs-progs}/bin/btrfs quota enable /mnt/media/downloads >/dev/null 2>&1 || true
-    downloads_id=$(${pkgs.btrfs-progs}/bin/btrfs subvolume list /mnt/media/downloads \
-      | ${pkgs.gawk}/bin/awk '$NF == "@downloads" { print $2 }')
-    if [ -n "$downloads_id" ]; then
-      ${pkgs.btrfs-progs}/bin/btrfs qgroup limit 3300G "0/$downloads_id" /mnt/media/downloads \
-        || echo "WARNING: failed to set @downloads quota (rescan in progress?)"
+    if ${pkgs.util-linux}/bin/mountpoint -q /mnt/media/downloads; then
+      ${pkgs.btrfs-progs}/bin/btrfs quota enable /mnt/media/downloads >/dev/null 2>&1 || true
+      downloads_id=$(${pkgs.btrfs-progs}/bin/btrfs subvolume list /mnt/media/downloads \
+        | ${pkgs.gawk}/bin/awk '$NF == "@downloads" { print $2 }')
+      if [ -n "$downloads_id" ]; then
+        ${pkgs.btrfs-progs}/bin/btrfs qgroup limit 3300G "0/$downloads_id" /mnt/media/downloads \
+          || echo "WARNING: failed to set @downloads quota (rescan in progress?)"
+      fi
+    else
+      echo "WARNING: /mnt/media/downloads is not mounted; skipping IronWolf quota setup"
     fi
   '';
 }

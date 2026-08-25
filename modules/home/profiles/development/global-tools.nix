@@ -14,6 +14,7 @@
     nixd
     nil
     devenv
+    nodejs
   ];
 
   programs.git = {
