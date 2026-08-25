@@ -173,6 +173,29 @@ in
               `extraOptions`).
             '';
           };
+          /*
+            Whether restic may auto-initialize the per-job repo on
+            first push (`services.restic.backups.*.initialize`).
+            Default true. Set false on a target whose repository base
+            is being (re)located: with auto-init disabled, a job whose
+            repo hasn't been migrated to the new base FAILS LOUDLY on
+            every run ("unable to open config file") instead of
+            silently initializing an empty repo and orphaning the
+            snapshot history at the old path. Re-enable (or flip this
+            back per-target) only after the migration recipe ran —
+            see the onetouch namespace switch notes in
+            modules/infra/backup/restic.nix.
+          */
+          initialize = mkOption {
+            type = types.bool;
+            default = true;
+            description = ''
+              Passed through to `services.restic.backups.<job>-<target>.initialize`.
+              Leave true for stable targets. Set false while the
+              target's repository base is migrating so an unmigrated
+              job errors instead of forking its history.
+            '';
+          };
         };
       }
     );
@@ -591,7 +614,7 @@ in
             inherit (cfg) exclude;
             repository = "${tgt.repository}/${jobName}";
             passwordFile = config.sops.secrets.restic-password.path;
-            initialize = true;
+            inherit (tgt) initialize;
             backupPrepareCommand = cfg.prepareCommand;
             timerConfig = {
               OnCalendar = cfg.timer;
