@@ -318,7 +318,7 @@ table — disambiguates the role for hosts that share a typed
 role but differ in shape (e.g. workstation “sleep-friendly
 compute” vs aurora “always-on family vault”; both are
 ` workhorse `). Empty string when the role itself is the
-full story (pavilion: ` agent `).
+full story (for example, ` agent `).
 
 
 
