@@ -73,7 +73,7 @@ Driver split:
    on 26.05; Blackwell support landed.
  - **aurora** (GTX 950M, Maxwell) — `legacy_535` branch (Maxwell GPUs
    are out of the production branch's supported list).
- - **pavilion, pi** — no GPU; `nori.gpu.nvidiaDevices = [ ]` default.
+ - **pi** — no GPU; `nori.gpu.nvidiaDevices = [ ]` default.
 
 Fallback ladder if production breaks: `production` → `beta` →
 `latest` → explicit `mkDriver` pin.
