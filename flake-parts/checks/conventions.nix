@@ -25,6 +25,7 @@
             "*/manifests/*.nix"
             "modules/services/arr/runtime.nix"
             "modules/services/arr/shared.nix"
+            "modules/services/lib.nix"
           ];
           /**
             Generate a `case` glob from a list of patterns, joined with
