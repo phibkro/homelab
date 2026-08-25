@@ -41,9 +41,9 @@ in
       /*
         RAPL — CPU + DRAM energy counters via /sys/class/powercap/
         intel-rapl/. Despite the name, registers AMD energy counters
-        too (Zen+; verified on workstation 2026-06-07). pavilion's
-        Phenom II era CPU has no RAPL; collector reports no metrics
-        there, no harm. Power = rate(node_rapl_*_joules_total[5m]).
+        too (Zen+; verified on workstation 2026-06-07). Older CPUs
+        without RAPL simply expose no metrics. Power =
+        rate(node_rapl_*_joules_total[5m]).
       */
       "rapl"
     ];

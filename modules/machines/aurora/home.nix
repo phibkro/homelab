@@ -5,7 +5,7 @@
 
   Minimal. Aurora is the headless family-vault host; operator SSHs in
   from a privileged-tier machine for occasional maintenance. No
-  desktop, no claude-code, no agent harnesses — that's pavilion's job.
+  desktop, no claude-code, no agent harnesses; interactive workloads live elsewhere.
 
   Imports the shared core: starship + git + direnv + the operator CLI
   baseline (just, ripgrep, comma, tmux, sops/age, devenv, nixd, nil) —

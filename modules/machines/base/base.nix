@@ -253,10 +253,9 @@ in
     nix flake refs); codenames are aesthetic. Theme: polar / penguin.
     See modules/infra/hosts.nix for the full mapping.
 
-    Gated on rust-motd not being enabled — pavilion + aurora opt in
-    to rust-motd for live battery/cpu/memory/service data; this
-    static banner is the fallback for hosts that don't (pi,
-    workstation).
+    Gated on rust-motd not being enabled — aurora opts in for live
+    battery/cpu/memory/service data; this static banner is the fallback
+    for hosts that don't (pi, workstation).
   */
   environment.etc.motd =
     let

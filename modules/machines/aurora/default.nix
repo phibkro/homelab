@@ -102,8 +102,7 @@
   /*
     ── Boot ───────────────────────────────────────────────────────────
     2016 laptop with UEFI — assume systemd-boot. If first boot reveals
-    legacy BIOS, flip to GRUB (see modules/machines/pavilion/default.nix for
-    the BIOS-mode shape).
+    legacy BIOS, flip to GRUB using the standard BIOS-mode shape.
   */
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
@@ -120,7 +119,7 @@
 
   /*
     ── Stay awake when folded ────────────────────────────────────────
-    Same defense-in-depth as pavilion (see comment there):
+    Defense-in-depth for unattended operation:
       1. logind lid handlers ignore
       2. systemd sleep/suspend/hibernate targets masked
       3. wifi power-save off via udev
@@ -149,7 +148,7 @@
 
   /*
     Wifi via iwd. No impermanence here, so /var/lib/iwd persists on
-    the @root subvol — no /persist binds needed (unlike pavilion).
+    the @root subvol; no /persist binds needed.
     SSID + PSK dropped at install time; rotate via
     `iwctl station wlp2s0 connect <SSID>`. See
     [[nixos-anywhere-first-install-gotchas]].
@@ -235,7 +234,7 @@
 
   /*
     Operator pubkey for both nori (interactive) and root (deploys).
-    Same key as pavilion + other lab hosts. See
+    Same key as other lab hosts. See
     [[nixos-anywhere-first-install-gotchas]] for the rationale on
     baking these into the host config rather than relying on ssh-copy-id.
   */
@@ -247,8 +246,8 @@
   ];
 
   /*
-    Console-fallback password — same TEMP placeholder pattern as
-    pavilion. Operator rotates via `mkpasswd -m yescrypt`, paste,
+    Console-fallback password — same TEMP placeholder pattern as other
+    first-install hosts. Operator rotates via `mkpasswd -m yescrypt`, paste,
     redeploy. Or sops-encrypt + hashedPasswordFile.
   */
   users.users.nori.hashedPassword = "$y$j9T$tpPHfhX/.CWM6TKcQThdq/$cfEGxBsEhlBcv3ulkVxNsHNyjrpHsYDPdTeTsOu/Vb7";

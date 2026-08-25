@@ -82,10 +82,9 @@
 
     /*
       nix-community/impermanence — "erase your darlings" mechanism.
-      Opt-in per host. Consumed by machines/pavilion (agent quarantine):
-      pavilion uses btrfs-rollback rather than tmpfs root (3.6 GB RAM
-      ceiling) — the impermanence module is FS-agnostic; the rollback
-      service in pavilion's default.nix provides the clean state on disk.
+      Retained for future opt-in host use; the former quarantine host used
+      btrfs rollback rather than a tmpfs root, demonstrating that the module
+      is filesystem-agnostic.
     */
     impermanence.url = "github:nix-community/impermanence";
 

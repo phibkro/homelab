@@ -25,9 +25,9 @@
 
 let
   /*
-    notify@ template lives in modules/infra/observability/ntfy/notify.nix. Hosts
-    that don't import it (pavilion — agent-quarantine, no notify
-    infrastructure) shouldn't get OnFailure pointed at a missing unit.
+    notify@ template lives in modules/infra/observability/ntfy/notify.nix.
+    Hosts that don't import it shouldn't get OnFailure pointed at a missing
+    unit.
   */
   hasNotifyTemplate = config.systemd.services ? "notify@";
 in

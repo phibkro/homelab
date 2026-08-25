@@ -24,7 +24,7 @@
     Auth posture (hardened 2026-06-15 per docs/runbooks/ntfy-auth-
     bootstrap.md): `auth-default-access = "deny"` — no anonymous
     publish/subscribe. Threat model is agentic workloads on tailnet
-    (e.g. pavilion) spoofing alerts; locking publish closes that
+    (for example, agent hosts) spoofing alerts; locking publish closes that
     surface even before anything starts using the local hub.
     `/v1/health` stays unauthenticated by upstream design, so Gatus's
     monitor probe on the alert.${nori.domain} route keeps working.

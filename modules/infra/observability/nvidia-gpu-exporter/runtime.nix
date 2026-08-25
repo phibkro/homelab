@@ -15,7 +15,7 @@
 
   Conditional on `config.nori.gpu.nvidiaDevices != [ ]` — same gate
   the immich + ollama services use, so only hosts that have NVIDIA
-  devices run the exporter. pi + pavilion silently skip.
+  devices run the exporter; pi silently skips.
 */
 
 let

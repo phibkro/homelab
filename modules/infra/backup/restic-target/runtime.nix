@@ -8,7 +8,7 @@
   /**
     Restic backup target — chrooted SFTP-only user.
 
-    Lets remote hosts (workstation, future pi/pavilion) push restic
+    Lets remote hosts (workstation and future peers) push restic
     snapshots to this host's /mnt/backup. The `restic` user has no
     shell, no port forwarding, and an OpenSSH ChrootDirectory locking
     them to /mnt/backup. Repository paths in the workstation's
