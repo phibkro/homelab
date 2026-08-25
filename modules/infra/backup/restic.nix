@@ -156,9 +156,70 @@ in
 
   # Backup target registry — schema in modules/infra/backup/default.nix.
   nori.backupTargets = {
+    /*
+      The `/${hostName}` prefix is load-bearing, not cosmetic. sshd
+      refuses a ChrootDirectory that is group/other-writable, so the
+      chroot root (/mnt/backup on aurora) is permanently root:root
+      0755 — the `restic` SFTP user can never mkdir there. Pushing
+      to the bare chroot root therefore made `initialize = true`
+      structurally impossible for any repo that didn't already
+      exist: every NEW nori.backups.<job> failed its first push with
+      "MkdirAll /<job>/snapshots: permission denied" until an
+      operator hand-created the dir on aurora. Bit
+      herdr-projects-mcp 2026-08-12; see
+      docs/reports/20260814-030203-restic-backups-herdr-projects-mcp-onetouch-failure.md.
+
+      Under a per-host namespace the parent of every per-job repo is
+      restic-owned (provisioned by the restic-target workload from
+      the same inventory host names), so restic creates job repos
+      itself and a new job needs no aurora-side step. Same shape the
+      entry plane already uses for `/pi`; it also removes the
+      job-name collision between hosts that the 2026-06 `/caddy` +
+      `/authelia` race hit.
+
+      Migration gate (`initialize = false` below): flipping this
+      path while legacy repos still sit at the chroot root would let
+      every timer initialize an EMPTY repo under /<hostName>/ and
+      orphan its snapshot history at the old path — silent data
+      loss by config drift. With auto-init disabled, each backup
+      unit instead fails loudly ("unable to open config file")
+      until its repo is migrated. One-time operator sequence, run
+      BEFORE activating this config (aurora side):
+
+        ns=<hostName>                       # e.g. workstation or pi
+        sudo mkdir -p /mnt/backup/$ns
+        sudo chown restic:restic /mnt/backup/$ns
+        sudo chmod 0700 /mnt/backup/$ns
+        # move each legacy chroot-root repo into the namespace
+        # (skip dirs that don't exist; leave /mnt/backup itself
+        # alone — it must stay root-owned for sshd's chroot):
+        for job in herdr-projects-mcp <other-jobs>; do
+          sudo mv /mnt/backup/$job /mnt/backup/$ns/$job
+        done
+        # Moved repos stay VALID at the new path — restic opens them
+        # unchanged; do NOT re-init (it would fail "config file
+        # already exists"). Only a job that never had a successful
+        # legacy push has no repo anywhere: while gated it fails
+        # loudly by design; init it once from the client holding the
+        # password (workstation), reusing the unit's own transport:
+        #   sudo env RESTIC_PASSWORD="$(sudo cat /run/secrets/restic-password)" \
+        #     restic -o 'sftp.command=ssh -o BatchMode=yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/etc/ssh/aurora_known_hosts -i /run/secrets/restic-ssh-key restic@aurora.saola-matrix.ts.net -s sftp' \
+        #     --repo 'sftp:restic@aurora.saola-matrix.ts.net:/workstation/<job>' init
+
+      After activation, verify with the next timer run (or
+      `systemctl start restic-backups-<job>-onetouch`) before
+      removing this gate.
+      */
+
     onetouch = {
-      repository = "sftp:restic@aurora.saola-matrix.ts.net:";
-      description = "OneTouch HDD relocated to aurora 2026-06-11; reached over SFTP via the chrooted `restic` user on aurora (see modules/machines/aurora/disko-onetouch.nix + the restic-target workload).";
+      /*
+        Gate for THIS switch (see block above): auto-init off so an
+        unmigrated job errors instead of silently forking history.
+        Flip back to true once /mnt/backup/<hostName>/ holds every
+        migrated repo and one successful push per job has landed.
+      */
+      initialize = false;
+      repository = "sftp:restic@aurora.saola-matrix.ts.net:/${config.networking.hostName}";
       extraOptions = [
         "sftp.command='${pkgs.openssh}/bin/ssh -o BatchMode=yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/etc/ssh/aurora_known_hosts -i /run/secrets/restic-ssh-key restic@aurora.saola-matrix.ts.net -s sftp'"
       ];
