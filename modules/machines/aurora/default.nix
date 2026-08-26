@@ -31,6 +31,19 @@
     ./hardware.nix
     ../workstation/disko-onetouch.nix
   ];
+  /*
+    Aurora's OneTouch backs the always-on Attic daemon. Do not let the
+    generic USB automount idle timeout unmount its storage while the daemon
+    is serving or seeding cache data; a disappearing BindPaths mount stops
+    atticd and turns cache pushes into 502 responses.
+  */
+  fileSystems."/mnt/backup".options = lib.mkForce [
+    "defaults"
+    "noatime"
+    "nofail"
+    "x-systemd.device-timeout=30s"
+  ];
+
 
   /*
     Aurora doesn't proxy syncthing through Caddy (the sync.* lanRoute
