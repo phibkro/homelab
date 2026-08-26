@@ -65,6 +65,14 @@ Make the bad state unrepresentable, not detected. A runtime check on a property 
 - Tests encode WHYT, not WHAT. A test that can't fail when the business rule changes is wrong.
 - Fail loud: "done" with anything silently skipped is a lie. Surface uncertainty
 
+### Fix what you find
+An issue you encounter is yours to fix, whoever introduced it. Do not route a
+defect back to its author or scope it out as "not my work" — leaving a known-
+broken thing behind poisons everything downstream of it. Boundaries: preserve
+uncommitted operator work (fix around it, flag it), get operator authority
+before destructive or external effects, and fix at the source rather than
+papering over symptoms or relitigating someone's design.
+
 
 ### Single source of truth
 Every fact has one authoritative home; everything else references it or is generated from it. Two copies of a fact is a representable illegal state, they can disagree (the DB "update anomaly"). Kill the disagreement by construction, not by remembering to sync.
