@@ -1,0 +1,4 @@
+interface:
+  display_name: "devenv"
+  short_description: "Build and operate provider-neutral devenv environments against the exact project version."
+  default_prompt: "Apply the pinned devenv version, shared module lifecycle, concern references, and operator safety boundaries to this task."

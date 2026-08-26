@@ -16,6 +16,7 @@ let
   simpleEnglishSkill = ./simple-english;
   writingPythonSkill = ./writing-python;
   effectV4Skill = ./effect-v4-engineer;
+  devenvSkill = ./devenv;
 
   /*
     Pinned upstream skill trees consumed directly from flake inputs. Skills
@@ -99,6 +100,8 @@ in
       installed package.
     */
     (bothSurfaces "effect-v4-engineer" effectV4Skill)
+
+    (bothSurfaces "devenv" devenvSkill)
 
     /*
       Foldkit AI integration, skill half: the framework's own Elm-architecture
