@@ -870,7 +870,10 @@ in
               }
             '';
         in
-        lib.concatStringsSep "\n" (lib.mapAttrsToList routeBlock routes)
+        ''
+          bind ${config.nori.lanIp}
+        ''
+        + lib.concatStringsSep "\n" (lib.mapAttrsToList routeBlock routes)
         + ''
 
           # Unknown or network-ineligible hosts fail closed. This catch-all

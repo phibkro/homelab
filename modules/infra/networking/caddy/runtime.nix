@@ -101,6 +101,7 @@ in
       domain:
       lib.nameValuePair "http://*.${domain}" {
         extraConfig = ''
+          bind ${config.nori.lanIp}
           @legacySubdomain header_regexp Host ^([^.]+)\.${lib.escapeRegex domain}$
           redir @legacySubdomain https://{re.legacySubdomain.1}.${config.nori.domain}{uri} 301
         '';
