@@ -121,6 +121,23 @@
     */
     pagu.url = "github:phibkro/pagu";
     pagu.inputs.nixpkgs.follows = "nixpkgs";
+
+    /*
+      Foldkit — Effect-based Elm-architecture frontend framework. Pinned as
+      a plain source tree so agent skills (foldkit, generate-program,
+      audit-program) can be mirrored from skills/ into every harness surface
+      without evaluating the upstream repo. Bump the pin deliberately.
+    */
+    foldkit-src.url = "github:foldkit/foldkit/07b0f05a3f5a866be3359b53fee05b20c81268f7";
+    foldkit-src.flake = false;
+
+    /*
+      Effect-TS/skills — upstream agent skills for Effect work (effect-ts
+      repo-onboarding guidance + effect-v3-to-v4 migration workflow).
+      Same source-tree consumption as foldkit-src.
+    */
+    effect-skills.url = "github:Effect-TS/skills/28822c9e19998876a6b0e0d97877442012ed4391";
+    effect-skills.flake = false;
   };
 
   outputs =

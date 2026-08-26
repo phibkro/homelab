@@ -112,6 +112,23 @@
         "type": "github"
       }
     },
+    "effect-skills": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786406003,
+        "narHash": "sha256-jBUJzjTg7hrR33L7FD2YY3qSjYprj5lluzst1L0P+g4=",
+        "owner": "Effect-TS",
+        "repo": "skills",
+        "rev": "28822c9e19998876a6b0e0d97877442012ed4391",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Effect-TS",
+        "repo": "skills",
+        "rev": "28822c9e19998876a6b0e0d97877442012ed4391",
+        "type": "github"
+      }
+    },
     "firefox-gnome-theme": {
       "flake": false,
       "locked": {
@@ -184,6 +201,23 @@
       "original": {
         "owner": "numtide",
         "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "foldkit-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1787720517,
+        "narHash": "sha256-7t5Ju4KlvmABBY3eZhuWm+xIlbThACmzXxiYIftl5ds=",
+        "owner": "foldkit",
+        "repo": "foldkit",
+        "rev": "07b0f05a3f5a866be3359b53fee05b20c81268f7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "foldkit",
+        "repo": "foldkit",
+        "rev": "07b0f05a3f5a866be3359b53fee05b20c81268f7",
         "type": "github"
       }
     },
@@ -502,7 +536,9 @@
       "inputs": {
         "claudex": "claudex",
         "disko": "disko",
+        "effect-skills": "effect-skills",
         "flake-parts": "flake-parts",
+        "foldkit-src": "foldkit-src",
         "herdr": "herdr",
         "home-manager": "home-manager",
         "impermanence": "impermanence",

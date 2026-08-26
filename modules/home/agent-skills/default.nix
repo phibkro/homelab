@@ -8,7 +8,7 @@
 /**
   Provider-neutral operator skills. Keep the canonical source here and expose
   the same directory to every installed agent surface so procedure and safety
-  policy cannot drift between Claude and Codex.
+  policy cannot drift between OMP, Claude Code, and Codex.
 */
 
 let
@@ -18,27 +18,44 @@ let
   effectV4Skill = ./effect-v4-engineer;
 
   /*
+    Pinned upstream skill trees consumed directly from flake inputs. Skills
+    are read-only guidance, so a source pin per repo is the whole version
+    contract: bumping the input bumps every surface at once.
+  */
+  foldkitSkills = "${inputs.foldkit-src}/skills";
+  effectSkills = "${inputs.effect-skills}/skills";
+
+  /*
     One source, every surface. Two copies of a procedure is a representable
     illegal state, and it had already gone wrong: ~/.codex/skills/herdr was an
     undeclared source checkout whose SKILL.md sat 150 lines away from the
     pinned copy Claude reads, so the two providers were following different
     control-plane contracts.
   */
-  bothSurfaces = name: source: {
-    ".claude/skills/${name}" = {
-      inherit source;
-      recursive = true;
+  bothSurfaces =
+    name: source:
+    {
+      ".omp/agent/skills/${name}" = {
+        inherit source;
+        recursive = true;
+      };
+      ".claude/skills/${name}" = {
+        inherit source;
+        recursive = true;
+      };
+      ".codex/skills/${name}" = {
+        inherit source;
+        recursive = true;
+      };
     };
-    ".codex/skills/${name}" = {
-      inherit source;
-      recursive = true;
-    };
-  };
 
-  bothSurfacesFile = path: source: {
-    ".claude/skills/${path}".source = source;
-    ".codex/skills/${path}".source = source;
-  };
+  bothSurfacesFile =
+    path: source:
+    {
+      ".omp/agent/skills/${path}".source = source;
+      ".claude/skills/${path}".source = source;
+      ".codex/skills/${path}".source = source;
+    };
 in
 {
   home.packages = [
@@ -82,6 +99,27 @@ in
       installed package.
     */
     (bothSurfaces "effect-v4-engineer" effectV4Skill)
+
+    /*
+      Foldkit AI integration, skill half: the framework's own Elm-architecture
+      framing, app generator, and audit workflow, mirrored from the pinned
+      upstream tree. The other half — live runtime inspection — is the
+      foldkit-devtools MCP server registered in each Foldkit project's
+      .omp/mcp.json (clamor today).
+    */
+    (bothSurfaces "foldkit" "${foldkitSkills}/foldkit")
+    (bothSurfaces "generate-program" "${foldkitSkills}/generate-program")
+    (bothSurfaces "audit-program" "${foldkitSkills}/audit-program")
+
+    /*
+      Effect v4 AI tooling, upstream half: mikearnaldi's Effect-TS/skills —
+      effect-ts points agents at the installed package's own AGENTS.md (the
+      authoritative v4 API reference), effect-v3-to-v4 drives migrations from
+      the generated migration reference. Complements effect-v4-engineer,
+      which stays homelab-owned policy rather than duplicated upstream prose.
+    */
+    (bothSurfaces "effect-ts" "${effectSkills}/effect-ts")
+    (bothSurfaces "effect-v3-to-v4" "${effectSkills}/effect-v3-to-v4")
 
     /*
       Pagu remains installed as an agent-launch runtime, but its discoverable
