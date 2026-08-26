@@ -871,6 +871,8 @@ in
             '';
         in
         ''
+          # Tailscale Funnel owns the tailnet address's :443 listener; Caddy
+          # serves LAN and subnet-routed clients on the appliance address.
           bind ${config.nori.lanIp}
         ''
         + lib.concatStringsSep "\n" (lib.mapAttrsToList routeBlock routes)
