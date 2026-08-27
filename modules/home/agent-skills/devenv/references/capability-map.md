@@ -69,16 +69,16 @@ specific CLI release.
 `devenv processes` has these public subcommands:
 
 - `up [PROCESSES...]`, with `--detach`, `--mode single|before|after|all`, and strict
-  port flags;
-- `attach`;
-- `down`;
-- `wait [--timeout SECONDS]`;
-- `list`;
-- `status NAME`;
-- `logs NAME [--lines N] [--stdout|--stderr]`;
-- `restart NAME`;
-- `start [NAME] [--detach]`; and
-- `stop [NAME]`;
+  port flags.
+- `attach`.
+- `down`.
+- `wait [--timeout SECONDS]`.
+- `list`.
+- `status NAME`.
+- `logs NAME [--lines N] [--stdout|--stderr]`.
+- `restart NAME`.
+- `start [NAME] [--detach]`.
+- `stop [NAME]`.
 - `help [COMMAND]`.
 
 ### Nested task commands
@@ -86,22 +86,22 @@ specific CLI release.
 `devenv tasks` has these public subcommands:
 
 - `run [TASKS...]`, with `--mode single|before|after|all`, `--show-output`, repeated
-  `--input KEY=VALUE`, and `--input-json JSON`; and
-- `list`, with `--json` for machine-readable output;
+  `--input KEY=VALUE`, and `--input-json JSON`.
+- `list`, with `--json` for machine-readable output.
 - `help [COMMAND]`.
 
 ### Nested container and input commands
 
 `devenv container` has:
 
-- `build NAME`;
-- `copy NAME [--registry REGISTRY] [--copy-args ...]`; and
-- `run NAME [--copy-args ...]`;
+- `build NAME`.
+- `copy NAME [--registry REGISTRY] [--copy-args ...]`.
+- `run NAME [--copy-args ...]`.
 - `help [COMMAND]`.
 
 `devenv inputs` has:
 
-- `add NAME URI [--follows INPUT]`;
+- `add NAME URI [--follows INPUT]`.
 - `help [COMMAND]`.
 
 ### Global options
