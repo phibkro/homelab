@@ -33,30 +33,26 @@ let
     pinned copy Claude reads, so the two providers were following different
     control-plane contracts.
   */
-  bothSurfaces =
-    name: source:
-    {
-      ".omp/agent/skills/${name}" = {
-        inherit source;
-        recursive = true;
-      };
-      ".claude/skills/${name}" = {
-        inherit source;
-        recursive = true;
-      };
-      ".codex/skills/${name}" = {
-        inherit source;
-        recursive = true;
-      };
+  bothSurfaces = name: source: {
+    ".omp/agent/skills/${name}" = {
+      inherit source;
+      recursive = true;
     };
+    ".claude/skills/${name}" = {
+      inherit source;
+      recursive = true;
+    };
+    ".codex/skills/${name}" = {
+      inherit source;
+      recursive = true;
+    };
+  };
 
-  bothSurfacesFile =
-    path: source:
-    {
-      ".omp/agent/skills/${path}".source = source;
-      ".claude/skills/${path}".source = source;
-      ".codex/skills/${path}".source = source;
-    };
+  bothSurfacesFile = path: source: {
+    ".omp/agent/skills/${path}".source = source;
+    ".claude/skills/${path}".source = source;
+    ".codex/skills/${path}".source = source;
+  };
 in
 {
   home.packages = [

@@ -44,7 +44,6 @@
     "x-systemd.device-timeout=30s"
   ];
 
-
   /*
     Aurora doesn't proxy syncthing through Caddy (the sync.* lanRoute
     is workstation-pinned). Expose the WebUI on tailnet directly for
