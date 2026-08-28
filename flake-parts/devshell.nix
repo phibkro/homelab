@@ -31,6 +31,7 @@
           statix
           deadnix
           nh
+          nix-output-monitor
           ripgrep
         ];
       };

@@ -140,6 +140,13 @@ default: rebuild
 @build *args:
     nh os build . -H $(hostname) {{args}}
 
+# Build the flashable Pi SD image with derivation progress and elapsed-time output.
+@build-pi-image out_link="/tmp/pi-nixos-sd-image" *args:
+    nix develop --command nom build \
+      .#nixosConfigurations.pi.config.system.build.sdImage \
+      --out-link {{out_link}} \
+      {{args}}
+
 # Ideal for iterating on visual / UX changes (icon themes, Hyprland
 # binds, fonts) without polluting the boot menu with throwaway
 # generations. Once happy: `just rebuild` to persist as the new default.
