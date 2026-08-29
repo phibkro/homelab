@@ -30,6 +30,8 @@
   nspr,
   nss,
   pango,
+  qt5,
+  qt6,
   systemd,
   xdg-utils,
 }:
@@ -75,8 +77,14 @@ stdenv.mkDerivation (finalAttrs: {
     nspr
     nss
     pango
+    qt5.qtbase
+    qt6.qtbase
     systemd
   ];
+
+  # The archive carries both glibc and musl Node prebuilds. This derivation is
+  # the x86_64-linux glibc realization; the musl variants are never selected.
+  autoPatchelfIgnoreMissingDeps = [ "libc.musl-x86_64.so.1" ];
 
   unpackPhase = ''
     runHook preUnpack
