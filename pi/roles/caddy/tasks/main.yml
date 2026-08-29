@@ -71,6 +71,8 @@
       - run
       - --rm
       - --network=host
+      - --env
+      - CF_API_TOKEN
       - --volume=/opt/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - "{{ caddy_image }}"
       - caddy
