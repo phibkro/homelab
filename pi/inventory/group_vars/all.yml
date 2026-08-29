@@ -1,5 +1,6 @@
 ---
 pi_timezone: Europe/Oslo
+pi_hostname: pi
 pi_admin_port: 8081
 pi_dns_port: 53
 pi_disable_disk_swap: true

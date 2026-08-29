@@ -16,6 +16,11 @@
   community.general.timezone:
     name: "{{ pi_timezone }}"
 
+- name: Set the appliance hostname
+  ansible.builtin.hostname:
+    name: "{{ pi_hostname }}"
+    use: systemd
+
 - name: Create the journald drop-in directory
   ansible.builtin.file:
     path: /etc/systemd/journald.conf.d
