@@ -3,6 +3,9 @@
   pkgs,
   ...
 }:
+let
+  chatgpt = pkgs.callPackage ./chatgpt-linux.nix { };
+in
 /**
   Pure home-manager module — same shape as every other
   modules/machines/<n>/home.nix. The home-manager-as-NixOS-module wrapper
@@ -19,6 +22,7 @@
   programs.home-manager.enable = true;
 
   home.packages = [
+    chatgpt # OpenAI's official Linux preview, pinned from its signed Debian repository
     pkgs.chromium # wrapped Chromium for browser automation and ChatGPT Work agents
     pkgs.nvtopPackages.nvidia # GPU monitor (NVIDIA-only build, smaller closure)
     pkgs.ncdu # interactive disk usage browser
@@ -37,25 +41,6 @@
     pkgs.home-manager
     pkgs.pulseaudio # pactl — PipeWire/PulseAudio sink/card/port inspection (e.g. fix jack desync after replug)
   ];
-
-  /*
-    OpenAI does not publish a Linux ChatGPT desktop binary. Keep the
-    workstation on the official web client and present it as a dedicated app
-    window through the already-managed Chromium profile instead of installing
-    an unofficial Electron wrapper.
-  */
-  xdg.desktopEntries.chatgpt = {
-    name = "ChatGPT";
-    genericName = "AI assistant";
-    comment = "Open ChatGPT in a dedicated application window";
-    exec = "${pkgs.chromium}/bin/chromium --app=https://chatgpt.com/";
-    icon = "applications-internet";
-    terminal = false;
-    categories = [
-      "Network"
-      "Utility"
-    ];
-  };
 
   /*
     home-manager owns ~/.bashrc — lets fzf/zoxide auto-source.
