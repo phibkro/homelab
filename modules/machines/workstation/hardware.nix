@@ -15,10 +15,8 @@
      `@nix`, `@var-lib`, `@var-log`). disko at `./disko.nix`.
    - **Corsair MP510 960 GB NVMe** — local restic target at
      `/mnt/backup-local`. disko at `./disko-mp510.nix`.
-   - **Seagate IronWolf Pro 4 TB (USB)** — `@downloads` + `@streaming`
-     for arr stack throughput. disko at `./disko-media.nix`.
-   - **Toshiba HDD** — family vault at `/mnt/family/*`.
-     disko at `./disko-family.nix`.
+   - **Seagate IronWolf Pro 4 TB (USB)** — downloads plus canonical family
+     datasets under `/mnt/media/*`. disko at `./disko-media.nix`.
 
   ## NVMe enumeration warning
 

@@ -36,12 +36,12 @@
       role = "workhorse";
       roleOneLiner = "always-on converged desktop/server";
       codename = "emperor";
-      hardware = "Ryzen 5600X · 32 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) · WD SN750 1 TB NVMe + Corsair MP510 960 GB NVMe + Seagate IronWolf Pro 4 TB USB + Toshiba family-vault HDD";
+      hardware = "Ryzen 5600X · 32 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) · WD SN750 1 TB NVMe + Corsair MP510 960 GB NVMe + Seagate IronWolf Pro 4 TB USB";
       primaryJob = ''
         Always-on graphical workstation and homelab server:
         GPU services (Ollama / Jellyfin NVENC), `*arr` stack +
-        qBittorrent, family-vault services and Samba shares on the
-        attached Toshiba disk. Backups write locally to the MP510 and
+        qBittorrent, family services and Samba shares on the attached
+        IronWolf disk. Backups write locally to the MP510 and
         off-host to Aurora's OneTouch restic vault.
       '';
     };

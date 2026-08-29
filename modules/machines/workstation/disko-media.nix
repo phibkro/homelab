@@ -13,18 +13,37 @@ _: {
       path = "/mnt/media/downloads";
       tier = "re-derivable";
     };
+    photos = {
+      path = "/mnt/media/photos";
+      tier = "irreplaceable";
+      samba = { };
+    };
+    home-videos = {
+      path = "/mnt/media/home-videos";
+      tier = "irreplaceable";
+      samba = { };
+    };
+    projects = {
+      path = "/mnt/media/projects";
+      tier = "irreplaceable";
+      samba = { };
+    };
+    library = {
+      path = "/mnt/media/library";
+      tier = "irreplaceable";
+      samba.ownerTmpfilesRule = false;
+    };
+    archive = {
+      path = "/mnt/media/archive";
+      tier = "irreplaceable";
+      samba.ownerTmpfilesRule = false;
+    };
   };
 
   /*
     Declarative partition layout for workstation's IronWolf Pro media
-    drive. The canonical family datasets now live on the Toshiba family
-    vault imported from disko-family.nix; this module mounts only the
-    re-derivable downloads tree and its snapshot area.
-
-    The legacy family subvolumes remain declared below without mountpoints.
-    Disko therefore retains/creates those physical subvolumes without
-    mounting them, preserving their on-disk data while the canonical
-    service-facing paths resolve under /mnt/family.
+    drive. It carries both re-derivable downloads and the canonical family
+    datasets. This is the live, pre-Toshiba-cutover layout.
 
       nix run github:nix-community/disko/latest -- \
         --mode disko modules/machines/workstation/disko-media.nix
@@ -74,14 +93,41 @@ _: {
                     "noatime"
                   ];
                 };
-                # These legacy family subvolumes stay on the IronWolf but
-                # are intentionally unmounted. The canonical copies live
-                # on the Toshiba family vault at /mnt/family/*.
-                "@photos" = { };
-                "@home-videos" = { };
-                "@projects" = { };
-                "@library" = { };
-                "@archive" = { };
+                "@photos" = {
+                  mountpoint = "/mnt/media/photos";
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
+                };
+                "@home-videos" = {
+                  mountpoint = "/mnt/media/home-videos";
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
+                };
+                "@projects" = {
+                  mountpoint = "/mnt/media/projects";
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
+                };
+                "@library" = {
+                  mountpoint = "/mnt/media/library";
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
+                };
+                "@archive" = {
+                  mountpoint = "/mnt/media/archive";
+                  mountOptions = [
+                    "compress=zstd:3"
+                    "noatime"
+                  ];
+                };
                 "@snapshots" = {
                   /*
                     Mounted so btrbk can write IronWolf-side snapshots

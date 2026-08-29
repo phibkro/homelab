@@ -19,7 +19,6 @@
     ./disko.nix
     ./disko-media.nix
     ./disko-mp510.nix
-    ./disko-family.nix
   ];
 
   # networking.hostName injected from the registry key in flake.nix.
@@ -201,15 +200,15 @@
   };
 
   # Pre-create the shared family-library and FLAC staging trees. The
-  # family-library paths moved here with the Toshiba family vault; root:media
+  # family-library paths live on the IronWolf media filesystem; root:media
   # 02775 lets calibre-web, Komga, suwayomi, and Syncthing create content.
   systemd.tmpfiles.rules = [
-    "d /mnt/family/library            02775 root media - -"
-    "d /mnt/family/library/books      02775 root media - -"
-    "d /mnt/family/library/comics     02775 root media - -"
-    "d /mnt/family/library/manga      02775 root media - -"
-    "d /mnt/family/library/music      02775 root media - -"
-    "d /mnt/family/library/papers     02775 root media - -"
+    "d /mnt/media/library            02775 root media - -"
+    "d /mnt/media/library/books      02775 root media - -"
+    "d /mnt/media/library/comics     02775 root media - -"
+    "d /mnt/media/library/manga      02775 root media - -"
+    "d /mnt/media/library/music      02775 root media - -"
+    "d /mnt/media/library/papers     02775 root media - -"
     "d /mnt/media/staging             0755  root root  - -"
     "d /mnt/media/staging/music-flac  2775  root media - -"
   ];

@@ -45,10 +45,12 @@ let
 
   runtimePathsResolve =
     workstation.systemd.services.music-ingest.environment.MUSIC_INGEST_MASTER
-    == "/mnt/family/library/music"
-    && lib.elem "/mnt/family/library/music" workstation.nori.harden.lidarr.binds
-    && workstation.services.navidrome.settings.MusicFolder == "/mnt/family/library/music"
-    && workstation.nori.harden.navidrome.readOnlyBinds == [ "/mnt/family/library/music" ];
+    == "/mnt/media/library/music"
+    && lib.elem "/mnt/media/library/music" workstation.nori.harden.lidarr.binds
+    && workstation.services.navidrome.settings.MusicFolder == "/mnt/media/library/music"
+    && workstation.nori.harden.navidrome.readOnlyBinds == [ "/mnt/media/library/music" ]
+    && !(workstation.fileSystems ? "/mnt/family/library")
+    && workstation.fileSystems."/mnt/media/library".device == "/dev/disk/by-partlabel/disk-media-root";
 in
 if music == expected && relationshipsResolve && runtimePathsResolve then
   "ok — music dataset is canonical and every runtime resolves its host-local path"

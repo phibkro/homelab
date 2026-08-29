@@ -82,7 +82,8 @@ in
           };
         };
       };
-
+    }
+    // lib.optionalAttrs (familySubvols != { }) {
       family = {
         onCalendar = "daily";
         settings = {
@@ -110,8 +111,10 @@ in
 
   # Alert via ntfy template in modules/infra/observability/ntfy/notify.nix.
   systemd.services.btrbk-root.unitConfig.OnFailure = [ "notify@btrbk-root.service" ];
-  systemd.services.btrbk-family.unitConfig.OnFailure = [ "notify@btrbk-family.service" ];
-  systemd.services.btrbk-family.unitConfig.RequiresMountsFor = [ "/mnt/family" ];
+  systemd.services.btrbk-family = lib.mkIf (familySubvols != { }) {
+    unitConfig.OnFailure = [ "notify@btrbk-family.service" ];
+    unitConfig.RequiresMountsFor = [ "/mnt/family" ];
+  };
   systemd.services.btrbk-media = lib.mkIf (mediaSubvols != { }) {
     unitConfig.OnFailure = [ "notify@btrbk-media.service" ];
   };
