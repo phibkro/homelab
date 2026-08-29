@@ -25,7 +25,7 @@ Models make the heuristics make sense.
 
 | Term | Meaning | Source |
 |---|---|---|
-| **workhorse** | Host role: services land here by default — GPU, state-heavy, the HTTP entry plane. The `role` field on the host. | `modules/infra/hosts.nix` (`role`); set in `flake.nix` `identityFor` |
+| **workhorse** | Host role: services land here by default — desktop, GPU, state-heavy, storage, and application workloads. The HTTP entry plane is an appliance concern because it must remain available independently of the workhorse. The `role` field on the host. | `modules/infra/hosts.nix` (`role`); declared in `inventory/hosts.nix` |
 | **appliance** | Host role: only services that must survive the workhorse's failure (observability, alerting, DNS) or are network-appliance functions (subnet routing, exit node). Drives the placement assertion (appliance hosts can't use `paths`-based backups). | `modules/infra/hosts.nix`; assertion in `modules/infra/backup/default.nix` |
 | **`nori.<X>`** | The repo's infra-concern option family — one declarative input, many generated outputs. Reader + collected-Writer shape. | `modules/infra/<concern>/`; see § "Infra-concern interface deep-dive" below |
 | **Reader (concern)** | `nori.<X>` flavor that hosts *produce* and workloads *read*: host-scoped context (`nori.hosts`, `nori.gpu`, `nori.fs`). Set in `modules/machines/default.nix:identityFor` / `hardware.nix` / `disko*.nix`. | `modules/infra/hosts.nix` · `modules/infra/capabilities/gpu.nix` · `modules/infra/storage/default.nix` |

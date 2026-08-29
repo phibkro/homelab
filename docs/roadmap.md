@@ -29,12 +29,15 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
   known-internal and random-host 404s. Confirm the router preserves the real
   client source IP.
 
-- **Single-host cutover.** The declared topology now converges every NixOS
-  profile and workload on `workstation`; `inventory/hosts.nix` and generated
-  deployment outputs are the source of truth. Aurora, Pi, and Pavilion remain
-  historical migration context only. Physical data and credential cutover is
-  still operator-gated; do not remove or repurpose old disks before verifying
-  the workstation mounts and service state.
+- **Finish the Pi appliance migration.** The intended steady state is a
+  two-machine operational core: Pi owns the failure-independent network
+  appliance plane (DNS, HTTPS entry, identity, monitoring, alerting, Tailscale
+  routing, and appliance backups), while workstation owns desktop, storage,
+  applications, compute, and GPU workloads. `inventory/hosts.nix` remains the
+  topology authority while `pi/` provisions the replacement Debian/Ansible/
+  Podman realization. Complete the physical reboot, off-LAN, and restore gates
+  in `design-specs/ansible-pi-plan-b.md` before retiring the NixOS Pi rollback
+  path. Aurora remains the off-host backup vault; Pavilion is historical.
 
 - **Sunshine remote-desktop pairing.** Deployed (`modules/machines/desktop/sunshine.nix`); NVENC builds confirmed (`h264/hevc/av1_nvenc`). Outstanding: one-time Moonlight pairing.
 
@@ -75,7 +78,10 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
   - **Native OIDC:** Komga could move from forward-auth to per-user OIDC if family members start wanting separate read-history; Spring Security OAuth2 config is verbose but doable.
   - **Skip / problematic:** Jellyfin (mobile/TV clients bypass cookie-based forward-auth; native SSO plugin has sharp historical edges). Radicale CalDAV clients can't follow forward-auth redirects, must stay on htpasswd. Glance/Gatus are intentionally public. Syncthing is single-admin. ntfy push API path exemption ends up too permissive to be worth gating the web UI alone.
 
-- **Lower-priority appliance split.** Glance and Radicale now converge on workstation. Reconsider a separate appliance only if measured workstation downtime justifies another failure domain.
+- **Lower-priority appliance additions.** Glance and Radicale remain on
+  workstation: neither must move to Pi merely because it is lightweight. Move
+  another service onto the appliance only when its function must survive a
+  workstation outage and it fits the Pi's bounded-write posture.
 
 ## Promotion register (from `docs/invariants.md`)
 
@@ -105,6 +111,9 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 - **Noctalia v5 evaluation.** [Noctalia](https://github.com/noctalia-dev/noctalia) is a Quickshell-based (Qt6/QML) all-in-one Wayland desktop shell — launcher + notifications + lock screen + idle behavior + OSDs + dock + wallpapers + multi-monitor. Persona now owns the workstation wallpaper, launcher, media surface, native notifications, and OSDs; Noctalia would consolidate the remaining hyprlock + hyprsunset + wayland-pipewire-idle-inhibit concerns behind one shell. **Cost of switching:** v5 is in alpha with breaking config/behaviour changes between releases; replacing the pinned Persona integration and mature individual tools trades known behavior for active churn. **Trigger to revisit:** v5 reaches stable and materially replaces the remaining session daemons. Today's status quo is Persona Quickshell + fuzzel-backed rice palette + hyprlock + Hyprsunset + PipeWire idle inhibit, all wired declaratively through NixOS/Home Manager.
 
-- **Maintenance suppression for Gatus (G3).** The single-host topology removes the former cross-host rebuild race. A local maintenance flag may still be useful if planned workstation rebuilds create noisy alerts; add it only after observing that failure mode.
+- **Maintenance suppression for Gatus (G3).** The Pi/workstation split means a
+  planned workstation rebuild can create noisy backend alerts while the Pi and
+  Gatus remain healthy. Add a maintenance flag only after observing that
+  failure mode; do not suppress genuine appliance or WAN failures.
 
 - **Network-layer DNS/egress policy.** The correct layer for "force all LAN egress through Blocky and block public-resolver fall-throughs" is a real router (OPNsense/OpenWRT/pfSense) behind a bridge-mode modem, with nftables PREROUTING REDIRECT on :53 and a DoH-IP blocklist on the WAN-facing side. Today the Genexis ISP modem doesn't bridge-mode and a real router isn't budgeted, so the same policy is enforced one layer lower at `modules/infra/tailnet-appliance.nix` (pi-as-tailnet-exit-node DNAT). Limits documented in that file's header: only catches devices routing through pi, can't help LAN-only hardcoded-DNS devices, and DoH egress to non-listed IPs slips through. When a real router lands, this effect goes away; the same `nori.tailnet.appliances` registry drives the router's nftables generator instead. **Trigger to revisit:** ISP allowing Genexis bridge mode *or* a competent router (~$200) enters the budget.
