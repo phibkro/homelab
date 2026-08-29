@@ -25,6 +25,19 @@
   networking.useDHCP = lib.mkDefault true;
 
   /*
+    DHCP still advertises the Genexis router as DNS, but it cannot resolve the
+    inventory-derived home.phibkro.org records served by Pi-hole. Prefer the
+    appliance explicitly on the workstation so builds and service checks do
+    not depend on the pending router-wide DHCP DNS cutover. Keep one public
+    resolver as degraded-mode fallback for internet names while Pi is down;
+    internal names intentionally remain unavailable in that state.
+  */
+  networking.nameservers = [
+    config.nori.hosts.pi.lanIp
+    "1.1.1.1"
+  ];
+
+  /*
     Add the operator user to the `media` group so shell access and
     services running as `nori` can write to the media and family-library
     trees, which are owned root:media 02775 by the shared media setup.
