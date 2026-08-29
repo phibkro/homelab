@@ -96,7 +96,6 @@ in
   */
   systemd.services.attic-cache-seed = {
     description = "Publish the active system closure to the homelab Attic cache";
-    wantedBy = [ "multi-user.target" ];
     wants = [ "network-online.target" ];
     after = [ "network-online.target" ];
     environment.XDG_CONFIG_HOME = atticClientConfig;
@@ -110,7 +109,6 @@ in
 
   systemd.services.attic-cache-watch = {
     description = "Publish new Nix store paths to the homelab Attic cache";
-    wantedBy = [ "multi-user.target" ];
     wants = [ "network-online.target" ];
     after = [ "network-online.target" ];
     environment.XDG_CONFIG_HOME = atticClientConfig;
@@ -118,6 +116,24 @@ in
       ExecStart = "${lib.getExe pkgs.attic-client} watch-store nori --jobs 2";
       Restart = "on-failure";
       RestartSec = "60s";
+    };
+  };
+
+  # Cache publication is an optional accelerator. Start it after activation so
+  # an unavailable off-host cache cannot veto an otherwise healthy rebuild.
+  systemd.timers.attic-cache-seed = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnActiveSec = "2m";
+      OnUnitActiveSec = "1d";
+      Unit = "attic-cache-seed.service";
+    };
+  };
+  systemd.timers.attic-cache-watch = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnActiveSec = "2m";
+      Unit = "attic-cache-watch.service";
     };
   };
 

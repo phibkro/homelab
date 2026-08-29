@@ -107,7 +107,7 @@ pkgs.testers.runNixOSTest {
       nori.hosts = {
         pi = {
           tailnetIp = "100.0.0.1";
-          lanIp = "10.0.0.10";
+          lanIp = "10.0.0.20";
           role = "appliance";
           roleOneLiner = "";
           codename = "test-pi";
@@ -116,7 +116,7 @@ pkgs.testers.runNixOSTest {
         };
         workstation = {
           tailnetIp = "100.0.0.2";
-          lanIp = "10.0.0.20";
+          lanIp = "10.0.0.10";
           role = "workhorse";
           roleOneLiner = "test workhorse";
           codename = "test-station";
@@ -128,6 +128,12 @@ pkgs.testers.runNixOSTest {
       networking.hostName = "pi";
       nori.domain = "test.lan";
       nori.lanIp = lib.mkForce "10.0.0.20";
+      networking.interfaces.eth1.ipv4.addresses = [
+        {
+          address = "10.0.0.20";
+          prefixLength = 32;
+        }
+      ];
 
       # Test routes — exercise the lanRoutes → blocky.customDNS
       # auto-generation pipeline. Two routes so we can verify both
@@ -386,11 +392,11 @@ pkgs.testers.runNixOSTest {
     with subtest("OIDC discovery: /.well-known/openid-configuration via caddy"):
         # Caddy must route `auth.test.lan` to authelia (127.0.0.1:9091).
         # --resolve overrides DNS (the VM's blocky resolves to
-        # 10.0.0.20 — the nori.lanIp synthetic addr — which isn't
-        # bound on this single-node test; localhost is). -k skips
+        # 10.0.0.20 — the Pi entry-plane address, bound as a secondary
+        # test-interface address in this single-node test). -k skips
         # cert verification because caddy uses internal CA.
         meta = pi.succeed(
-            "curl -fsS -k --resolve auth.test.lan:443:127.0.0.1 "
+            "curl -fsS -k --resolve auth.test.lan:443:10.0.0.20 "
             "https://auth.test.lan/.well-known/openid-configuration"
         )
         # Real OIDC discovery doc must include the issuer we configured.
@@ -413,7 +419,7 @@ pkgs.testers.runNixOSTest {
         # The body shape comes from authelia's REST API contract.
         login = pi.succeed(
             "curl -fsS -k -c /tmp/cookies.txt -b /tmp/cookies.txt "
-            "--resolve auth.test.lan:443:127.0.0.1 "
+            "--resolve auth.test.lan:443:10.0.0.20 "
             "-X POST -H 'Content-Type: application/json' "
             '-d \'{"username":"nori","password":"test-password-do-not-use-in-prod","keepMeLoggedIn":false,"targetURL":"https://auth.test.lan/"}\' '
             "https://auth.test.lan/api/firstfactor"
@@ -425,7 +431,7 @@ pkgs.testers.runNixOSTest {
         # persisted across the request boundary.
         state = pi.succeed(
             "curl -fsS -k -b /tmp/cookies.txt "
-            "--resolve auth.test.lan:443:127.0.0.1 "
+            "--resolve auth.test.lan:443:10.0.0.20 "
             "https://auth.test.lan/api/state"
         )
         # `authentication_level >= 1` means the session is authenticated.
@@ -451,7 +457,7 @@ pkgs.testers.runNixOSTest {
         # verify (caddy returns it as the proxy response).
         unauth_status = pi.succeed(
             "curl -s -o /dev/null -w '%{http_code}' "
-            "-k --resolve gated.test.lan:443:127.0.0.1 "
+            "-k --resolve gated.test.lan:443:10.0.0.20 "
             "https://gated.test.lan/"
         ).strip()
         # Authelia returns 401 on /api/verify failure; caddy
@@ -466,7 +472,7 @@ pkgs.testers.runNixOSTest {
         # caddy proxies through to the backend.
         authed = pi.succeed(
             "curl -fsS -k -b /tmp/cookies.txt "
-            "--resolve gated.test.lan:443:127.0.0.1 "
+            "--resolve gated.test.lan:443:10.0.0.20 "
             "https://gated.test.lan/"
         ).strip()
         assert authed == "gated-backend-ok", (
@@ -478,7 +484,7 @@ pkgs.testers.runNixOSTest {
         # /api branch.
         exempt = pi.succeed(
             "curl -fsS -k "
-            "--resolve gated.test.lan:443:127.0.0.1 "
+            "--resolve gated.test.lan:443:10.0.0.20 "
             "https://gated.test.lan/api/v3/whatever"
         ).strip()
         assert exempt == "api-exempt-ok", (

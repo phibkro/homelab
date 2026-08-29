@@ -336,8 +336,8 @@ let
         host:
         lib.elem cacheUrl host.config.nix.settings.extra-substituters
         && lib.elem cacheKey host.config.nix.settings.extra-trusted-public-keys
-        && host.config.systemd.services.attic-cache-watch.wantedBy == [ "multi-user.target" ]
-        && host.config.systemd.services.attic-cache-seed.wantedBy == [ "multi-user.target" ]
+        && host.config.systemd.timers.attic-cache-watch.wantedBy == [ "timers.target" ]
+        && host.config.systemd.timers.attic-cache-seed.wantedBy == [ "timers.target" ]
       ) (lib.attrValues hosts);
       aurora = hosts.aurora.config;
     in
