@@ -138,7 +138,7 @@ prevents idle-sleep during ambient sound. Full debt note in
 | Host | Codename | Role | Tailnet | LAN | Hardware | Primary job |
 |---|---|---|---|---|---|---|
 | **aurora** | aurora | `workhorse` (off-host backup vault) | `100.101.67.111` | — | Asus N552V · Intel Skylake-H i7-6700HQ · 12 GB DDR4 · NVIDIA GTX 950M (legacy_535) · OneTouch USB | Off-host backup appliance. The chrooted restic SFTP target stores workstation backups on the OneTouch HDD, preserving a second chassis and power-failure domain. |
-| **pi** | fairy | `appliance` (always-on entry plane) | `100.111.21.92` | `192.168.1.225` | Raspberry Pi 4 8 GB · aarch64 · USB-boot from Samsung FIT 128 GB | HTTP entry plane (Caddy + Authelia + Blocky-authoritative, LE wildcard cert on `*.${nori.domain}`), observability hub, alert plane, Tailscale subnet router + exit node. |
+| **pi** | fairy | `appliance` (always-on entry plane) | `100.100.71.3` | `192.168.1.225` | Raspberry Pi 4 8 GB · aarch64 · USB-boot from Samsung FIT 128 GB | HTTP entry plane (Caddy + Authelia + Blocky-authoritative, LE wildcard cert on `*.${nori.domain}`), observability hub, alert plane, Tailscale subnet router + exit node. |
 | **workstation** | emperor | `workhorse` (always-on converged desktop/server) | `100.81.5.122` | `192.168.1.181` | Ryzen 5600X · 32 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) · WD SN750 1 TB NVMe + Corsair MP510 960 GB NVMe + Seagate IronWolf Pro 4 TB USB | Always-on graphical workstation and homelab server: GPU services (Ollama / Jellyfin NVENC), `*arr` stack + qBittorrent, family services and Samba shares on the attached IronWolf disk. Backups write locally to the MP510 and off-host to Aurora's OneTouch restic vault. |
 
 ## Registry schema (`nori.hosts.<name>.*`)
@@ -167,6 +167,7 @@ attribute set of (submodule)
 
 *Declared by:*
  - [<nixpkgs/modules/infra/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//modules/infra/hosts.nix)
+
 
 
 
@@ -343,5 +344,3 @@ string
 
 *Declared by:*
  - [<nixpkgs/modules/infra/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//modules/infra/hosts.nix)
-
-
