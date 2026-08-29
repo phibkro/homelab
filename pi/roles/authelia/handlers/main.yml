@@ -1,0 +1,9 @@
+---
+- name: Restart Authelia
+  containers.podman.podman_container:
+    name: "{{ authelia_container_name }}"
+    state: started
+    restart: true
+  when:
+    - authelia_enabled | bool
+    - podman_available | bool

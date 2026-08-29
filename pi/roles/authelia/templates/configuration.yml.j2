@@ -1,0 +1,69 @@
+server:
+  address: {{ ("tcp://" ~ authelia_bind_address ~ ":" ~ (authelia_port | string) ~ "/") | to_json }}
+
+log:
+  level: {{ authelia_log_level | to_json }}
+
+theme: {{ authelia_theme | to_json }}
+
+authentication_backend:
+  file:
+    path: {{ ("/config/" ~ (authelia_users_database_file | basename)) | to_json }}
+    password:
+      algorithm: argon2
+
+session:
+  cookies:
+    - domain: {{ authelia_cookie_domain | to_json }}
+      authelia_url: {{ authelia_url | to_json }}
+      name: {{ "authelia_session" | to_json }}
+
+storage:
+  local:
+    path: {{ authelia_storage_path | to_json }}
+
+notifier:
+  filesystem:
+    filename: {{ authelia_notification_file | to_json }}
+
+access_control:
+  default_policy: {{ authelia_access_control_default_policy | to_json }}
+  rules:
+{% if authelia_access_control_rules | length == 0 %}
+    []
+{% else %}
+{% for rule in authelia_access_control_rules %}
+    - domain: {{ rule.domain | to_json }}
+      policy: {{ rule.policy | to_json }}
+{% if rule.subject is defined %}
+      subject: {{ rule.subject | to_json }}
+{% endif %}
+{% if rule.methods is defined %}
+      methods: {{ rule.methods | to_json }}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+identity_providers:
+  oidc:
+    clients:
+{% if authelia_oidc_clients | length == 0 %}
+      []
+{% else %}
+{% for client in authelia_oidc_clients %}
+      - client_id: {{ client.client_id | to_json }}
+        client_name: {{ client.client_name | to_json }}
+        client_secret: '{% raw %}{{ secret "/run/secrets/oidc-{% endraw %}{{ client.client_id }}{% raw %}-client-secret-hash" }}{% endraw %}'
+        public: false
+        authorization_policy: {{ client.authorization_policy | to_json }}
+        redirect_uris: {{ client.redirect_uris | to_json }}
+        scopes: {{ client.scopes | to_json }}
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+{% if 'offline_access' in client.scopes %}
+          - refresh_token
+{% endif %}
+{% endfor %}
+{% endif %}

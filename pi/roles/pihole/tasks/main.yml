@@ -1,4 +1,17 @@
 ---
+- name: Validate the explicit Pi-hole listener contract
+  ansible.builtin.assert:
+    that:
+      - pihole_lan_address | length > 0
+      - pihole_lan_address not in ['0.0.0.0', '::']
+      - pihole_dns_port | int > 0
+      - pihole_dns_port | int < 65536
+      - pihole_tailnet_address == '' or pihole_tailnet_address not in ['0.0.0.0', '::']
+      - pihole_tailnet_address == '' or pihole_tailnet_address != pihole_lan_address
+    fail_msg: >-
+      Pi-hole DNS requires concrete LAN and optional tailnet addresses plus a
+      valid DNS port; wildcard bindings are not allowed.
+
 - name: Create the Pi-hole application directory
   ansible.builtin.file:
     path: "{{ item.path }}"
@@ -11,6 +24,58 @@
       mode: "0750"
     - path: /opt/pihole/dnsmasq.d
       mode: "0755"
+
+- name: Ensure Podman restart waits for the Tailscale interface
+  ansible.builtin.file:
+    path: /etc/systemd/system/podman-restart.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when:
+    - podman_available | bool
+    - pihole_tailnet_address | length > 0
+
+- name: Configure boot ordering for the tailnet DNS publication
+  ansible.builtin.template:
+    src: podman-restart-pihole.conf.j2
+    dest: /etc/systemd/system/podman-restart.service.d/10-pihole-tailscale.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd after Pi-hole boot ordering changes
+  when:
+    - podman_available | bool
+    - pihole_tailnet_address | length > 0
+
+- name: Remove tailnet boot ordering when no tailnet listener is configured
+  ansible.builtin.file:
+    path: /etc/systemd/system/podman-restart.service.d/10-pihole-tailscale.conf
+    state: absent
+  notify: Reload systemd after Pi-hole boot ordering changes
+  when:
+    - pihole_tailnet_address | length == 0
+
+- name: Wait for the declared Tailscale DNS address
+  ansible.builtin.command:
+    argv:
+      - ip
+      - -4
+      - addr
+      - show
+      - dev
+      - "{{ pi_tailnet_interface }}"
+  register: pihole_tailnet_interface
+  changed_when: false
+  retries: "{{ pihole_tailnet_ready_retries }}"
+  delay: "{{ pihole_tailnet_ready_delay }}"
+  until:
+    - pihole_tailnet_interface.rc == 0
+    - pihole_tailnet_address ~ '/' in pihole_tailnet_interface.stdout
+  when:
+    - podman_available | bool
+    - pihole_tailnet_address | length > 0
+    - not ansible_check_mode
 
 - name: Render inventory-derived local DNS records
   ansible.builtin.template:
@@ -41,10 +106,16 @@
       FTLCONF_dns_listeningMode: ALL
       FTLCONF_dns_upstreams: "{{ pihole_upstream_dns | join(';') }}"
       FTLCONF_misc_etc_dnsmasq_d: "true"
-    publish:
-      - "{{ pi_service_bind_address }}:{{ pi_dns_port }}:53/tcp"
-      - "{{ pi_service_bind_address }}:{{ pi_dns_port }}:53/udp"
-      - "{{ pi_service_bind_address }}:{{ pi_admin_port }}:80/tcp"
+    publish: >-
+      {{ [
+        pihole_lan_address ~ ':' ~ pihole_dns_port ~ ':53/tcp',
+        pihole_lan_address ~ ':' ~ pihole_dns_port ~ ':53/udp'
+      ] + ([] if pihole_tailnet_address | length == 0 else [
+        pihole_tailnet_address ~ ':' ~ pihole_dns_port ~ ':53/tcp',
+        pihole_tailnet_address ~ ':' ~ pihole_dns_port ~ ':53/udp'
+      ]) + [
+        pihole_lan_address ~ ':' ~ pi_admin_port ~ ':80/tcp'
+      ] }}
     volume:
       - pihole-data:/etc/pihole
       - /opt/pihole/dnsmasq.d:/etc/dnsmasq.d:ro
@@ -56,8 +127,8 @@
 
 - name: Wait for Pi-hole DNS
   ansible.builtin.wait_for:
-    host: "{{ '127.0.0.1' if pi_service_bind_address == '0.0.0.0' else pi_service_bind_address }}"
-    port: "{{ pi_dns_port }}"
+    host: "{{ pihole_lan_address }}"
+    port: "{{ pihole_dns_port }}"
     timeout: 120
   when: not ansible_check_mode
 

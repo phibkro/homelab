@@ -1,0 +1,245 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+mode=apply
+case "${1:-}" in
+  --dry-run) mode=dry-run ;;
+  --cleanup) mode=cleanup ;;
+  --apply|'') ;;
+  *)
+    echo "usage: $0 [--apply|--dry-run|--cleanup]" >&2
+    exit 64
+    ;;
+esac
+
+if [[ -z "${CLOUDFLARE_API_TOKEN:-}" && -n "${CREDENTIALS_DIRECTORY:-}" ]]; then
+  CLOUDFLARE_API_TOKEN=$(<"${CREDENTIALS_DIRECTORY}/cloudflare-api-token")
+fi
+: "${CLOUDFLARE_API_TOKEN:?CLOUDFLARE_API_TOKEN is required}"
+: "${DDNS_ZONE_NAME:?DDNS_ZONE_NAME is required}"
+: "${DDNS_HOSTNAMES_JSON:?DDNS_HOSTNAMES_JSON is required}"
+: "${DDNS_MANAGED_COMMENT:?DDNS_MANAGED_COMMENT is required}"
+: "${DDNS_PUBLIC_IPV4_URL:?DDNS_PUBLIC_IPV4_URL is required}"
+: "${DDNS_API_BASE_URL:?DDNS_API_BASE_URL is required}"
+: "${DDNS_TTL:?DDNS_TTL is required}"
+: "${DDNS_PROXIED:?DDNS_PROXIED is required}"
+
+curl_bin=${DDNS_CURL_BIN:-curl}
+response_file=$(mktemp)
+trap 'rm -f "$response_file"' EXIT
+
+die() {
+  echo "cloudflare-ddns: $*" >&2
+  exit 1
+}
+
+valid_ipv4() {
+  local ip=$1 octet
+  local -a octets
+  [[ "$ip" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || return 1
+  IFS=. read -r -a octets <<<"$ip"
+  for octet in "${octets[@]}"; do
+    ((10#$octet <= 255)) || return 1
+  done
+}
+
+public_ipv4() {
+  local ip=$1 a b c
+  local -a octets
+  valid_ipv4 "$ip" || return 1
+  IFS=. read -r -a octets <<<"$ip"
+  a=${octets[0]}; b=${octets[1]}; c=${octets[2]}
+  ((a >= 1 && a <= 223)) || return 1
+  ((a != 10 && a != 127 && a != 0)) || return 1
+  ((a != 100 || b < 64 || b > 127)) || return 1
+  ((a != 169 || b != 254)) || return 1
+  ((a != 172 || b < 16 || b > 31)) || return 1
+  ((a != 192 || b != 168)) || return 1
+  ((a != 192 || b != 0 || c != 0)) || return 1
+  ((a != 192 || b != 0 || c != 2)) || return 1
+  ((a != 192 || b != 0 || c != 9)) || return 1
+  ((a != 198 || b < 18 || b > 19)) || return 1
+  ((a != 198 || b != 51 || c != 100)) || return 1
+  ((a != 203 || b != 0 || c != 113)) || return 1
+  ((a != 192 || b != 88 || c != 99)) || return 1
+  ((a != 192 || b != 31 || c != 196)) || return 1
+  ((a != 192 || b != 52 || c != 193)) || return 1
+  ((a != 192 || b != 175 || c != 48)) || return 1
+  # The above exclusions cover all private, link-local, CGNAT, documentation,
+  # benchmarking, multicast, and protocol-reserved IPv4 ranges.
+  return 0
+}
+
+url_encode() {
+  jq -rn --arg value "$1" '$value | @uri'
+}
+
+api_request() {
+  local method=$1 endpoint=$2 data=${3:-} status
+  local -a args
+  args=(
+    --silent --show-error --connect-timeout 10 --max-time 30
+    --request "$method"
+    --header @-
+    --output "$response_file"
+    --write-out '%{http_code}'
+    "${DDNS_API_BASE_URL}${endpoint}"
+  )
+  if [[ -n "$data" ]]; then
+    args+=(--data "$data")
+  fi
+  status=$(printf 'Authorization: Bearer %s\nContent-Type: application/json\n' "$CLOUDFLARE_API_TOKEN" | "$curl_bin" "${args[@]}" || true)
+  [[ "$status" =~ ^2[0-9][0-9]$ ]] || {
+    jq -r '.errors[]?.message // empty' "$response_file" >&2 || true
+    die "Cloudflare API ${method} ${endpoint} returned HTTP ${status:-unknown}"
+  }
+  jq -e '.success == true' "$response_file" >/dev/null || {
+    jq -r '.errors[]?.message // "unknown Cloudflare API error"' "$response_file" >&2
+    die "Cloudflare API ${method} ${endpoint} reported failure"
+  }
+}
+
+[[ "$DDNS_PROXIED" == false ]] || die 'DDNS_PROXIED must be false; public records are always DNS-only'
+[[ "$DDNS_PUBLIC_IPV4_URL" == https://api.ipify.org ]] || die 'DDNS_PUBLIC_IPV4_URL must be https://api.ipify.org'
+[[ "$DDNS_API_BASE_URL" == https://api.cloudflare.com/client/v4 ]] || die 'DDNS_API_BASE_URL must be https://api.cloudflare.com/client/v4'
+[[ "$CLOUDFLARE_API_TOKEN" != *$'\r'* && "$CLOUDFLARE_API_TOKEN" != *$'\n'* ]] || die 'Cloudflare API token contains a newline'
+(( ${#CLOUDFLARE_API_TOKEN} >= 20 )) || die 'Cloudflare API token is too short'
+[[ "$DDNS_ZONE_NAME" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$ ]] || die 'DDNS_ZONE_NAME is invalid'
+if [[ ! "$DDNS_TTL" =~ ^[0-9]+$ ]] || ((DDNS_TTL < 1)); then
+  die 'DDNS_TTL must be a positive integer'
+fi
+
+jq -e 'type == "array" and all(.[]; type == "string")' <<<"$DDNS_HOSTNAMES_JSON" >/dev/null \
+  || die 'DDNS_HOSTNAMES_JSON must be a JSON string array'
+hostnames=()
+while IFS= read -r hostname; do
+  hostnames+=("$hostname")
+done < <(jq -r '.[]' <<<"$DDNS_HOSTNAMES_JSON")
+if (( ${#hostnames[@]} > 0 )); then
+  for hostname in "${hostnames[@]}"; do
+    [[ "$hostname" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$ ]] || die "invalid exact hostname: ${hostname}"
+    [[ "$hostname" != "*."* ]] || die "wildcard hostname is not allowed: ${hostname}"
+    [[ "$hostname" == *".${DDNS_ZONE_NAME}" ]] || die "hostname is outside DDNS_ZONE_NAME: ${hostname}"
+  done
+fi
+
+if [[ "$mode" != cleanup && ${#hostnames[@]} -eq 0 ]]; then
+  die 'at least one exact hostname is required outside cleanup mode'
+fi
+
+if [[ "$mode" != cleanup ]]; then
+  if [[ -n "${DDNS_PUBLIC_IPV4:-}" ]]; then
+    public_ipv4=$DDNS_PUBLIC_IPV4
+  else
+    public_ipv4=$($curl_bin --ipv4 --fail-with-body --silent --show-error --connect-timeout 10 --max-time 20 "$DDNS_PUBLIC_IPV4_URL")
+  fi
+  public_ipv4=${public_ipv4//$'\r'/}
+  public_ipv4=${public_ipv4//$'\n'/}
+  public_ipv4 "$public_ipv4" || die "public IPv4 endpoint did not return a public IPv4 address: ${public_ipv4}"
+fi
+
+if [[ "$mode" == dry-run ]]; then
+  echo "cloudflare-ddns dry-run: public IPv4 ${public_ipv4}"
+fi
+
+zone_name_encoded=$(url_encode "$DDNS_ZONE_NAME")
+api_request GET "/zones?name=${zone_name_encoded}&status=active&per_page=2"
+[[ $(jq '.result | length' "$response_file") == 1 ]] || die "expected exactly one active Cloudflare zone: ${DDNS_ZONE_NAME}"
+zone_id=$(jq -r '.result[0].id' "$response_file")
+[[ "$zone_id" =~ ^[a-f0-9]{32}$ ]] || die 'Cloudflare returned an invalid zone ID'
+
+cleanup_owned_records() {
+  all_records_file=$(mktemp)
+  trap 'rm -f "$response_file" "$all_records_file"' EXIT
+  printf '[]' >"$all_records_file"
+  page=1
+  while :; do
+    api_request GET "/zones/${zone_id}/dns_records?type=A&per_page=100&page=${page}"
+    jq -e '.result | type == "array"' "$response_file" >/dev/null || die 'Cloudflare returned malformed DNS records'
+    jq -s '.[0] + .[1].result' "$all_records_file" "$response_file" >"${all_records_file}.next"
+    mv "${all_records_file}.next" "$all_records_file"
+    jq -e --argjson expected_page "$page" \
+      '.result_info | type == "object"
+       and (.page | type == "number") and .page == $expected_page
+       and (.per_page | type == "number") and .per_page >= 1
+       and (.total_pages | type == "number") and .total_pages >= 1
+       and (.total_count | type == "number") and .total_count >= 0' \
+      "$response_file" >/dev/null || die 'Cloudflare returned malformed pagination metadata'
+    total_pages=$(jq -r '.result_info.total_pages' "$response_file")
+    [[ "$total_pages" =~ ^[0-9]+$ ]] || die 'Cloudflare returned malformed pagination'
+    ((page >= total_pages)) && break
+    ((page++))
+  done
+  while IFS= read -r record_json; do
+    record_type=$(jq -r '.type // empty' <<<"$record_json")
+    record_comment=$(jq -r '.comment // empty' <<<"$record_json")
+    record_name=$(jq -r '.name // empty' <<<"$record_json")
+    [[ "$record_type" == A && "$record_comment" == "$DDNS_MANAGED_COMMENT" ]] || continue
+    if jq -e --arg name "$record_name" --argjson desired "$DDNS_HOSTNAMES_JSON" \
+      '($desired | index($name)) == null' >/dev/null; then
+      record_id=$(jq -r '.id // empty' <<<"$record_json")
+      [[ "$record_id" =~ ^[a-f0-9]{32}$ ]] || die "Cloudflare returned an invalid owned record ID: ${record_name}"
+      if [[ "$mode" == dry-run ]]; then
+        echo "would remove ${record_name} (owned stale A record)"
+      else
+        api_request DELETE "/zones/${zone_id}/dns_records/${record_id}"
+        echo "removed ${record_name} (owned stale A record)"
+      fi
+    fi
+  done < <(jq -c '.[]' "$all_records_file")
+}
+
+cleanup_owned_records
+[[ "$mode" == cleanup ]] && exit 0
+
+for hostname in "${hostnames[@]}"; do
+  hostname_encoded=$(url_encode "$hostname")
+  api_request GET "/zones/${zone_id}/dns_records?name=${hostname_encoded}&per_page=100"
+  record_count=$(jq '.result | length' "$response_file")
+  ((record_count <= 1)) || die "multiple DNS records exist for managed hostname: ${hostname}"
+
+  if ((record_count == 0)); then
+    record_json=$(jq -cn \
+      --arg name "$hostname" \
+      --arg content "$public_ipv4" \
+      --arg comment "$DDNS_MANAGED_COMMENT" \
+      --argjson ttl "$DDNS_TTL" \
+      --argjson proxied "$DDNS_PROXIED" \
+      '{type:"A",name:$name,content:$content,ttl:$ttl,proxied:$proxied,comment:$comment}')
+    if [[ "$mode" == dry-run ]]; then
+      echo "would create ${hostname} -> ${public_ipv4} (A, DNS-only)"
+    else
+      api_request POST "/zones/${zone_id}/dns_records" "$record_json"
+      echo "created ${hostname} -> ${public_ipv4}"
+    fi
+    continue
+  fi
+
+  record_type=$(jq -r '.result[0].type' "$response_file")
+  [[ "$record_type" == A ]] || die "managed hostname has a non-A record: ${hostname} (${record_type})"
+  record_comment=$(jq -r '.result[0].comment // empty' "$response_file")
+  [[ "$record_comment" == "$DDNS_MANAGED_COMMENT" ]] || die "refusing to modify unmanaged record: ${hostname}"
+  record_id=$(jq -r '.result[0].id' "$response_file")
+  [[ "$record_id" =~ ^[a-f0-9]{32}$ ]] || die "Cloudflare returned an invalid record ID: ${hostname}"
+  record_json=$(jq -cn \
+    --arg name "$hostname" \
+    --arg content "$public_ipv4" \
+    --arg comment "$DDNS_MANAGED_COMMENT" \
+    --argjson ttl "$DDNS_TTL" \
+    --argjson proxied "$DDNS_PROXIED" \
+    '{type:"A",name:$name,content:$content,ttl:$ttl,proxied:$proxied,comment:$comment}')
+
+  if jq -e --arg ip "$public_ipv4" --arg name "$hostname" \
+    --arg comment "$DDNS_MANAGED_COMMENT" --argjson ttl "$DDNS_TTL" \
+    --argjson proxied "$DDNS_PROXIED" \
+    '.result[0] | .type == "A" and .name == $name and .content == $ip
+     and (.ttl | tonumber) == $ttl and .proxied == $proxied and (.comment // "") == $comment' \
+    "$response_file" >/dev/null; then
+    echo "unchanged ${hostname} -> ${public_ipv4}"
+  elif [[ "$mode" == dry-run ]]; then
+    echo "would update ${hostname} -> ${public_ipv4} (A, DNS-only)"
+  else
+    api_request PUT "/zones/${zone_id}/dns_records/${record_id}" "$record_json"
+    echo "updated ${hostname} -> ${public_ipv4}"
+  fi
+done

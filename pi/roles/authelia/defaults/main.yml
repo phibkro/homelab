@@ -1,0 +1,43 @@
+---
+authelia_enabled: true
+
+# Authelia 4.39.20 multi-architecture image. Keep this reference immutable;
+# update it only as a deliberate dependency change after ARM64 validation.
+authelia_image: >-
+  ghcr.io/authelia/authelia:4.39.20@sha256:1b363e9279e742397966333f364e0876ae02bf5c876de73e83af6d48c57ff51b
+authelia_container_name: authelia
+authelia_config_dir: /etc/authelia
+authelia_secret_dir: /etc/authelia/secrets
+authelia_state_dir: /var/lib/authelia
+authelia_config_file: /etc/authelia/configuration.yml
+authelia_users_database_file: /etc/authelia/users_database.yml
+authelia_port: 9091
+authelia_bind_address: "{{ pi_service_bind_address }}"
+authelia_uid: 8000
+authelia_gid: 9000
+authelia_system_user: authelia
+authelia_system_group: authelia
+authelia_log_level: info
+authelia_theme: dark
+authelia_cookie_domain: "{{ pi_domain }}"
+authelia_url: "https://auth.{{ pi_domain }}"
+authelia_storage_path: /var/lib/authelia/db.sqlite3
+authelia_notification_file: /var/lib/authelia/notification.txt
+authelia_access_control_default_policy: one_factor
+authelia_access_control_rules: []
+
+# The integration layer must provide these values from SecretSpec. Empty
+# defaults make role syntax checks possible while the task assertions fail
+# closed for an actual deployment.
+authelia_jwt_secret: ""
+authelia_session_secret: ""
+authelia_storage_encryption_key: ""
+authelia_oidc_hmac_secret: ""
+authelia_oidc_issuer_private_key: ""
+authelia_users_database: ""
+
+# Each item must provide client_id, client_name, authorization_policy,
+# redirect_uris, and scopes. Its secret hash is supplied separately in
+# authelia_oidc_client_secret_hashes keyed by client_id.
+authelia_oidc_clients: []
+authelia_oidc_client_secret_hashes: {}

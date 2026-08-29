@@ -1,0 +1,32 @@
+[Unit]
+Description=Reconcile exact homelab internet DNS records in Cloudflare
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/cloudflare-ddns --apply
+EnvironmentFile=/etc/cloudflare-ddns/config
+User=cloudflare-ddns
+Group=cloudflare-ddns
+LoadCredential=cloudflare-api-token:/etc/cloudflare-ddns/credentials
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/cloudflare-ddns
+CapabilityBoundingSet=
+LockPersonality=true
+MemoryDenyWriteExecute=true
+PrivateDevices=true
+ProtectClock=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+SystemCallFilter=@system-service
+SystemCallArchitectures=native

@@ -1,0 +1,11 @@
+[Unit]
+Description=Reconcile homelab internet DNS records periodically
+
+[Timer]
+OnBootSec={{ ddns_on_boot_sec }}
+OnUnitActiveSec={{ ddns_interval }}
+Persistent=true
+Unit=cloudflare-ddns.service
+
+[Install]
+WantedBy=timers.target

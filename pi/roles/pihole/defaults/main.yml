@@ -1,0 +1,9 @@
+---
+# Pi-hole's DNS listener is deliberately published on these two concrete host
+# addresses. Leave the tailnet address empty only for the disposable VM,
+# where Tailscale is installed but not enrolled.
+pihole_lan_address: "{{ pi_service_bind_address }}"
+pihole_tailnet_address: ""
+pihole_dns_port: "{{ pi_dns_port }}"
+pihole_tailnet_ready_retries: 60
+pihole_tailnet_ready_delay: 2

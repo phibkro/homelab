@@ -1,0 +1,12 @@
+---
+ddns_enabled: false
+ddns_zone_name: ""
+ddns_hostnames: []
+ddns_api_token: ""
+ddns_managed_comment: Managed by homelab nori.lanRoutes reachability=internet
+ddns_public_ipv4_url: https://api.ipify.org
+ddns_api_base_url: https://api.cloudflare.com/client/v4
+ddns_ttl: 1
+ddns_proxied: false
+ddns_on_boot_sec: 2m
+ddns_interval: 5m

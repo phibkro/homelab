@@ -1,0 +1,211 @@
+---
+- name: Validate the DDNS contract
+  ansible.builtin.assert:
+    that:
+      - ddns_zone_name | length > 0
+      - ddns_zone_name is match('^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$')
+      - ddns_api_token | length >= 20
+      - ddns_hostnames | length > 0
+      - ddns_hostnames | unique | length == ddns_hostnames | length
+      - ddns_ttl | int >= 1
+      - ddns_proxied is false
+      - ddns_managed_comment | length > 0
+      - ddns_managed_comment is not search('[\r\n]')
+      - ddns_public_ipv4_url == 'https://api.ipify.org'
+      - ddns_api_base_url == 'https://api.cloudflare.com/client/v4'
+    fail_msg: DDNS requires a zone, a root-only API token, and at least one exact hostname.
+  when: ddns_enabled | bool
+  no_log: true
+
+- name: Validate each DDNS hostname
+  ansible.builtin.assert:
+    that:
+      - item is match('^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)*$')
+      - item != ddns_zone_name
+      - item is match('.*\.' ~ (ddns_zone_name | regex_escape) ~ '$')
+      - not item.startswith('*.')
+    fail_msg: "DDNS hostname must be an exact non-wildcard name below ddns_zone_name: {{ item }}"
+  loop: "{{ ddns_hostnames }}"
+  when: ddns_enabled | bool
+
+- name: Install DDNS runtime dependencies
+  ansible.builtin.apt:
+    name:
+      - curl
+      - jq
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: ddns_enabled | bool
+
+- name: Create the least-privilege DDNS service user
+  ansible.builtin.user:
+    name: cloudflare-ddns
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+    home: /var/empty
+  when: ddns_enabled | bool
+
+- name: Create the DDNS configuration directory
+  ansible.builtin.file:
+    path: /etc/cloudflare-ddns
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: ddns_enabled | bool
+
+- name: Create the local executable directory
+  ansible.builtin.file:
+    path: /usr/local/libexec
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: ddns_enabled | bool
+
+- name: Create the DDNS state directory
+  ansible.builtin.file:
+    path: /var/lib/cloudflare-ddns
+    state: directory
+    owner: root
+    group: cloudflare-ddns
+    mode: "0750"
+  when: ddns_enabled | bool
+
+- name: Install the root-only Cloudflare credentials
+  ansible.builtin.copy:
+    dest: /etc/cloudflare-ddns/credentials
+    content: "CLOUDFLARE_API_TOKEN={{ ddns_api_token }}\n"
+    owner: root
+    group: root
+    mode: "0400"
+  no_log: true
+  when: ddns_enabled | bool
+
+- name: Render the explicit DDNS configuration
+  ansible.builtin.template:
+    src: cloudflare-ddns.env.j2
+    dest: /etc/cloudflare-ddns/config
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd manager
+  when: ddns_enabled | bool
+
+- name: Install the Cloudflare DDNS updater
+  ansible.builtin.template:
+    src: cloudflare-ddns.sh.j2
+    dest: /usr/local/libexec/cloudflare-ddns
+    owner: root
+    group: root
+    mode: "0750"
+  notify: Reload systemd manager
+  when: ddns_enabled | bool
+
+- name: Install the Cloudflare DDNS service
+  ansible.builtin.template:
+    src: cloudflare-ddns.service.j2
+    dest: /etc/systemd/system/cloudflare-ddns.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd manager
+    - Restart DDNS timer
+  when: ddns_enabled | bool
+
+- name: Install the Cloudflare DDNS timer
+  ansible.builtin.template:
+    src: cloudflare-ddns.timer.j2
+    dest: /etc/systemd/system/cloudflare-ddns.timer
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd manager
+    - Restart DDNS timer
+  when: ddns_enabled | bool
+
+- name: Enable and start the Cloudflare DDNS timer
+  ansible.builtin.systemd_service:
+    name: cloudflare-ddns.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when:
+    - ddns_enabled | bool
+    - not ansible_check_mode
+
+- name: Run the first DDNS reconciliation
+  ansible.builtin.systemd_service:
+    name: cloudflare-ddns.service
+    state: started
+  when:
+    - ddns_enabled | bool
+    - not ansible_check_mode
+
+- name: Inspect the DDNS runtime before disabled-state cleanup
+  ansible.builtin.stat:
+    path: /usr/local/libexec/cloudflare-ddns
+  register: ddns_runtime
+  when: not ddns_enabled | bool
+
+- name: Require credentials for disabled-state record cleanup
+  ansible.builtin.assert:
+    that:
+      - ddns_zone_name | length > 0
+      - ddns_api_token | length >= 20
+    fail_msg: DDNS disable cleanup requires the previous zone and API token inputs.
+  when:
+    - not ddns_enabled | bool
+    - ddns_runtime.stat.exists
+  no_log: true
+
+- name: Stop the DDNS timer before disabling the role
+  ansible.builtin.systemd_service:
+    name: cloudflare-ddns.timer
+    enabled: false
+    state: stopped
+  when:
+    - not ddns_enabled | bool
+    - ddns_runtime.stat.exists
+    - not ansible_check_mode
+
+- name: Remove only owned Cloudflare records before disabling the role
+  ansible.builtin.command:
+    argv:
+      - /usr/local/libexec/cloudflare-ddns
+      - --cleanup
+  environment:
+    CLOUDFLARE_API_TOKEN: "{{ ddns_api_token }}"
+    DDNS_ZONE_NAME: "{{ ddns_zone_name }}"
+    DDNS_HOSTNAMES_JSON: "{{ ddns_hostnames | to_json }}"
+    DDNS_MANAGED_COMMENT: "{{ ddns_managed_comment }}"
+    DDNS_PUBLIC_IPV4_URL: "{{ ddns_public_ipv4_url }}"
+    DDNS_API_BASE_URL: "{{ ddns_api_base_url }}"
+    DDNS_TTL: "{{ ddns_ttl }}"
+    DDNS_PROXIED: "false"
+  changed_when: true
+  no_log: true
+  when:
+    - not ddns_enabled | bool
+    - ddns_runtime.stat.exists
+    - not ansible_check_mode
+
+- name: Remove disabled DDNS runtime files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/systemd/system/cloudflare-ddns.timer
+    - /etc/systemd/system/cloudflare-ddns.service
+    - /etc/cloudflare-ddns/config
+    - /etc/cloudflare-ddns/credentials
+    - /usr/local/libexec/cloudflare-ddns
+    - /var/lib/cloudflare-ddns
+  notify: Reload systemd manager
+  when:
+    - not ddns_enabled | bool
+    - ddns_runtime.stat.exists

@@ -1,0 +1,10 @@
+---
+- name: Reload systemd manager
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Restart DDNS timer
+  ansible.builtin.systemd_service:
+    name: cloudflare-ddns.timer
+    state: restarted
+    daemon_reload: true

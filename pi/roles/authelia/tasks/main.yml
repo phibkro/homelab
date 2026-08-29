@@ -1,0 +1,311 @@
+---
+- name: Require the Authelia integration inputs
+  ansible.builtin.assert:
+    that:
+      - authelia_image is match('^ghcr\\.io/authelia/authelia:[^@ ]+@sha256:[0-9a-f]{64}$')
+      - authelia_bind_address == pi_service_bind_address
+      - authelia_bind_address is match('^[0-9]+(\\.[0-9]+){3}$')
+      - authelia_bind_address not in ['0.0.0.0', '255.255.255.255']
+      - authelia_port | int >= 1
+      - authelia_port | int <= 65535
+      - authelia_config_file | dirname == authelia_config_dir
+      - authelia_users_database_file | dirname == authelia_config_dir
+      - authelia_secret_dir | dirname == authelia_config_dir
+      - authelia_storage_path | dirname == authelia_state_dir
+      - authelia_notification_file | dirname == authelia_state_dir
+      - authelia_uid | int > 0
+      - authelia_gid | int > 0
+      - authelia_jwt_secret | length >= 32
+      - authelia_session_secret | length >= 32
+      - authelia_storage_encryption_key | length >= 32
+      - authelia_oidc_hmac_secret | length >= 32
+      - authelia_oidc_issuer_private_key | length > 0
+      - authelia_users_database | length > 0
+      - authelia_oidc_clients | length > 0
+      - >-
+        (authelia_oidc_clients | map(attribute='client_id') | list | unique | length)
+        == (authelia_oidc_clients | length)
+      - >-
+        (authelia_oidc_clients | selectattr('client_name', 'defined') | list | length)
+        == (authelia_oidc_clients | length)
+      - >-
+        (authelia_oidc_clients | selectattr('authorization_policy', 'defined') | list | length)
+        == (authelia_oidc_clients | length)
+      - >-
+        (authelia_oidc_clients | selectattr('redirect_uris', 'defined') | list | length)
+        == (authelia_oidc_clients | length)
+      - >-
+        (authelia_oidc_clients | selectattr('scopes', 'defined') | list | length)
+        == (authelia_oidc_clients | length)
+      - >-
+        (authelia_oidc_clients | map(attribute='client_id') | list | sort)
+        == (authelia_oidc_client_secret_hashes | dict2items | map(attribute='key') | list | sort)
+      - >-
+        (authelia_oidc_clients | map(attribute='client_id') | list)
+        | select('match', '^[A-Za-z0-9._-]+$') | list
+        | length == (authelia_oidc_clients | length)
+      - >-
+        (authelia_oidc_client_secret_hashes | dict2items | map(attribute='value') | list)
+        | select('string') | list | length
+        == (authelia_oidc_client_secret_hashes | length)
+      - >-
+        ((authelia_oidc_client_secret_hashes | dict2items | map(attribute='value')
+        | select('string') | map('length') | list | min | default(0, true)) >= 20)
+    fail_msg: >-
+      Authelia requires a digest-pinned image and SecretSpec-provided
+      credentials (JWT, session, storage, OIDC HMAC, issuer key, and users DB).
+  no_log: true
+  when: authelia_enabled | bool
+
+- name: Remove Authelia when explicitly disabled
+  containers.podman.podman_container:
+    name: "{{ authelia_container_name }}"
+    state: absent
+  when:
+    - not authelia_enabled | bool
+    - podman_available | bool
+
+- name: Create the fixed Authelia service group
+  ansible.builtin.group:
+    name: "{{ authelia_system_group }}"
+    gid: "{{ authelia_gid }}"
+    system: true
+  when: authelia_enabled | bool
+
+- name: Create the fixed non-root Authelia service user
+  ansible.builtin.user:
+    name: "{{ authelia_system_user }}"
+    uid: "{{ authelia_uid }}"
+    group: "{{ authelia_system_group }}"
+    system: true
+    create_home: false
+    home: /nonexistent
+    shell: /usr/sbin/nologin
+  when: authelia_enabled | bool
+
+- name: Create Authelia configuration and state directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - path: "{{ authelia_config_dir }}"
+      mode: "0750"
+    - path: "{{ authelia_secret_dir }}"
+      mode: "0750"
+    - path: "{{ authelia_state_dir }}"
+      mode: "0770"
+  loop_control:
+    label: "{{ item.path }}"
+  notify: Restart Authelia
+  when: authelia_enabled | bool
+
+- name: Grant the Authelia service group access to its directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: root
+    group: "{{ authelia_system_group }}"
+    state: directory
+  loop:
+    - "{{ authelia_config_dir }}"
+    - "{{ authelia_secret_dir }}"
+    - "{{ authelia_state_dir }}"
+  when: authelia_enabled | bool
+
+- name: Install Authelia base secret files
+  ansible.builtin.copy:
+    content: "{{ item.value }}\n"
+    dest: "{{ authelia_secret_dir }}/{{ item.name }}"
+    owner: root
+    group: "{{ authelia_system_group }}"
+    mode: "0440"
+  loop:
+    - name: jwt-secret
+      value: "{{ authelia_jwt_secret }}"
+    - name: session-secret
+      value: "{{ authelia_session_secret }}"
+    - name: storage-encryption-key
+      value: "{{ authelia_storage_encryption_key }}"
+    - name: oidc-hmac-secret
+      value: "{{ authelia_oidc_hmac_secret }}"
+    - name: oidc-issuer-private-key
+      value: "{{ authelia_oidc_issuer_private_key }}"
+  register: authelia_base_secrets
+  no_log: true
+  when: authelia_enabled | bool
+
+- name: Install the Authelia users database
+  ansible.builtin.copy:
+    content: "{{ authelia_users_database }}"
+    dest: "{{ authelia_users_database_file }}"
+    owner: root
+    group: "{{ authelia_system_group }}"
+    mode: "0440"
+  register: authelia_users_database_file_result
+  no_log: true
+  when: authelia_enabled | bool
+
+- name: Install OIDC client secret hashes
+  ansible.builtin.copy:
+    content: "{{ item.value }}\n"
+    dest: "{{ authelia_secret_dir }}/oidc-{{ item.key }}-client-secret-hash"
+    owner: root
+    group: "{{ authelia_system_group }}"
+    mode: "0440"
+  loop: "{{ authelia_oidc_client_secret_hashes | dict2items }}"
+  register: authelia_oidc_secret_files
+  no_log: true
+  when: authelia_enabled | bool
+
+- name: Find obsolete Authelia OIDC client secret hashes
+  ansible.builtin.find:
+    paths: "{{ authelia_secret_dir }}"
+    patterns: oidc-*-client-secret-hash
+    file_type: file
+    recurse: false
+  register: authelia_existing_oidc_secret_files
+  changed_when: false
+  when: authelia_enabled | bool
+
+- name: Remove obsolete Authelia OIDC client secret hashes
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ authelia_existing_oidc_secret_files.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  when:
+    - authelia_enabled | bool
+    - >-
+      (item.path | basename) not in
+      (authelia_oidc_clients | map(attribute='client_id') | map('regex_replace', '^(.*)$', 'oidc-\\1-client-secret-hash') | list)
+  register: authelia_obsolete_oidc_secret_files
+
+- name: Render the Authelia configuration
+  ansible.builtin.template:
+    src: configuration.yml.j2
+    dest: "{{ authelia_config_file }}"
+    owner: root
+    group: "{{ authelia_system_group }}"
+    mode: "0640"
+  register: authelia_config
+  notify: Restart Authelia
+  when: authelia_enabled | bool
+
+- name: Pull the pinned Authelia image
+  containers.podman.podman_image:
+    name: "{{ authelia_image }}"
+    source: pull
+    force: false
+  when:
+    - authelia_enabled | bool
+    - podman_available | bool
+
+- name: Validate the Authelia configuration
+  ansible.builtin.command:
+    argv:
+      - podman
+      - run
+      - --rm
+      - --network=host
+      - --env
+      - X_AUTHELIA_CONFIG=/config/configuration.yml
+      - --env
+      - X_AUTHELIA_CONFIG_FILTERS=template
+      - --env
+      - AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE=/run/secrets/jwt-secret
+      - --env
+      - AUTHELIA_SESSION_SECRET_FILE=/run/secrets/session-secret
+      - --env
+      - AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE=/run/secrets/storage-encryption-key
+      - --env
+      - AUTHELIA_IDENTITY_PROVIDERS_OIDC_HMAC_SECRET_FILE=/run/secrets/oidc-hmac-secret
+      - --env
+      - AUTHELIA_IDENTITY_PROVIDERS_OIDC_ISSUER_PRIVATE_KEY_FILE=/run/secrets/oidc-issuer-private-key
+      - --volume={{ authelia_config_dir }}:/config:ro
+      - --volume={{ authelia_secret_dir }}:/run/secrets:ro
+      - --volume={{ authelia_state_dir }}:/var/lib/authelia:rw
+      - --user={{ authelia_uid }}:{{ authelia_gid }}
+      - "{{ authelia_image }}"
+      - authelia
+      - config
+      - validate
+      - --config=/config/configuration.yml
+      - --config.experimental.filters=template
+  register: authelia_validation
+  changed_when: false
+  no_log: true
+  when:
+    - authelia_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Run the Authelia container
+  containers.podman.podman_container:
+    name: "{{ authelia_container_name }}"
+    image: "{{ authelia_image }}"
+    state: started
+    restart_policy: always
+    pull: never
+    network: host
+    user: "{{ authelia_uid }}:{{ authelia_gid }}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    recreate: >-
+      {{ authelia_config.changed
+         or authelia_base_secrets.changed
+         or authelia_users_database_file_result.changed
+         or authelia_oidc_secret_files.changed
+         or authelia_obsolete_oidc_secret_files.changed }}
+    env:
+      TZ: "{{ pi_timezone }}"
+      X_AUTHELIA_CONFIG: /config/configuration.yml
+      X_AUTHELIA_CONFIG_FILTERS: template
+      AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE: /run/secrets/jwt-secret
+      AUTHELIA_SESSION_SECRET_FILE: /run/secrets/session-secret
+      AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE: /run/secrets/storage-encryption-key
+      AUTHELIA_IDENTITY_PROVIDERS_OIDC_HMAC_SECRET_FILE: /run/secrets/oidc-hmac-secret
+      AUTHELIA_IDENTITY_PROVIDERS_OIDC_ISSUER_PRIVATE_KEY_FILE: /run/secrets/oidc-issuer-private-key
+    volume:
+      - "{{ authelia_config_dir }}:/config:ro"
+      - "{{ authelia_secret_dir }}:/run/secrets:ro"
+      - "{{ authelia_state_dir }}:/var/lib/authelia:rw"
+  register: authelia_container
+  no_log: true
+  when:
+    - authelia_enabled | bool
+    - podman_available | bool
+
+- name: Wait for Authelia HTTP health endpoint
+  ansible.builtin.uri:
+    url: "http://{{ authelia_bind_address }}:{{ authelia_port }}/api/health"
+    status_code: 200
+    timeout: 10
+    return_content: true
+  register: authelia_health
+  changed_when: false
+  until: authelia_health.status | default(0) == 200
+  retries: 12
+  delay: 5
+  when:
+    - authelia_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Require the expected Authelia health response
+  ansible.builtin.assert:
+    that:
+      - authelia_health.status == 200
+      - authelia_health.content | trim == 'OK'
+    fail_msg: Authelia did not return the expected healthy response.
+  when:
+    - authelia_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode

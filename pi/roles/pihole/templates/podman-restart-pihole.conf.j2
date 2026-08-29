@@ -1,0 +1,12 @@
+[Unit]
+# A published tailnet address does not exist until tailscaled has initialized
+# tailscale0. This ordering keeps podman-restart from starting Pi-hole too
+# early after a reboot.
+Wants=network-online.target tailscaled.service
+After=network-online.target tailscaled.service
+
+[Service]
+# tailscaled.service being active only means its daemon is running; the
+# address itself can appear later. Hold Podman restart until this exact host
+# address exists, avoiding a failed bind during boot.
+ExecStartPre=/bin/sh -c 'attempt=0; while [ "$attempt" -lt "{{ pihole_tailnet_ready_retries }}" ]; do /usr/sbin/ip -4 -o addr show dev "{{ pi_tailnet_interface }}" | /usr/bin/grep -Fq " {{ pihole_tailnet_address }}/" && exit 0; attempt=$((attempt + 1)); /usr/bin/sleep "{{ pihole_tailnet_ready_delay }}"; done; exit 1'
