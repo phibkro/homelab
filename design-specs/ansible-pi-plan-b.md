@@ -46,6 +46,40 @@ DNS through a rootful, systemd-restored Podman Pi-hole container.
 - Keep enrollment disabled unless an external auth key and explicit inventory
   choice request it; tailnet route approval remains an operator action.
 
+## Current verified state (2026-08-29)
+
+- The live appliance is the Debian/Ansible/Podman Plan B host at
+  `192.168.1.225`. Pi-hole DNS is available on port 53 and its temporary
+  direct administration fallback is `http://192.168.1.225:8081/admin/`.
+- The disposable ARM64 QEMU guest has passed two convergences, including the
+  Caddy/Pi-hole HTTPS canary (HTTP 308 redirect, Pi-hole login redirect, and
+  unknown-host rejection), and passed the same contract after a guest reboot.
+  The same Caddy configuration is deployed on the physical Pi: its trusted
+  certificate, HTTP 308 redirect, Pi-hole login redirect, unknown-host 404,
+  and zero-change second convergence were verified from the workstation.
+- Router DHCP DNS cutover, physical reboot/power-cycle, and tailnet-client DNS
+  checks remain pending. The Pi is not currently enrolled in Tailscale, so
+  off-LAN DNS has not been accepted.
+- The Genexis router continues to provide DHCP. Its DNS setting has not been
+  changed as part of this canary.
+
+## Rollback artifact and safety boundary
+
+The previously built NixOS image was copied as a rollback artifact and its
+compressed bytes were verified before this migration continued:
+
+```text
+Source: /tmp/pi-nixos-sd-image/sd-image/nixos-image-sd-card-26.11.20260822.2c423e0-aarch64-linux.img.zst
+Backup: /home/nori/Downloads/nixos-pi-backup-2026-08-29.img.zst
+SHA-256 (source and backup): fb8728306032039eb982f151046357be454627c54177e7a0fe443fed1b695d0b
+```
+
+The backup is not flashed or activated. The live appliance remains the
+Debian Plan B system. Until physical reboot acceptance passes, retain the
+direct Pi-hole administration fallback on port 8081. A failed Caddy
+cutover must leave DNS on port 53 and this fallback available; do not change
+router or tailnet DNS until the acceptance gates below pass.
+
 ## Migration backlog after the tracer bullet
 
 The Pi-hole DNS service is live, but its administration UI is temporarily
@@ -64,13 +98,16 @@ work is deployed and verified in order.
 
 ### HTTPS entry and identity plane
 
-- [ ] Deploy Caddy with inventory-derived routes and certificate storage.
-- [ ] Serve the Pi-hole administration UI through Caddy over HTTPS on its
-  inventory-declared hostname; retain its application authentication and stop
-  advertising port 8081 as the normal operator entry point.
-- [ ] Verify certificate issuance/renewal, HTTP-to-HTTPS redirect, DNS and web
-  access from LAN and tailnet clients before restricting direct port 8081
-  access further.
+Completed Caddy canary work:
+
+- [x] Exercise the Caddy/Pi-hole HTTPS contract in the disposable ARM64 VM,
+  including idempotent convergence and recovery after a guest reboot.
+- [x] Deploy Caddy with inventory-derived routes and persistent certificate
+  storage on the physical appliance.
+- [x] Serve the Pi-hole administration UI through Caddy over trusted HTTPS on
+  its inventory-declared hostname while retaining application authentication.
+- [ ] Verify the accepted HTTPS and DNS contract from a tailnet client and
+  exercise certificate renewal before restricting direct port 8081 access.
 - [ ] Deploy Authelia and restore the inventory-declared OIDC clients and
   access policies.
 - [ ] Deploy Cloudflare DDNS for routes explicitly marked internet-reachable.
@@ -94,3 +131,25 @@ work is deployed and verified in order.
   NixOS/Blocky service layout to the Debian/Ansible/Podman layout.
 - [ ] Retire the old NixOS Pi deployment path only after the new appliance has
   passed the reboot and restore checks.
+
+## Acceptance matrix
+
+Run these checks in order. “Pending” means the check has not been accepted;
+passing the QEMU canary does not satisfy a physical or off-LAN row.
+
+| Plane | Client or condition | Check and expected result | Status |
+| --- | --- | --- | --- |
+| DNS | Appliance/LAN baseline | Query `@192.168.1.225` for an internal record and a public name; Pi-hole answers and public resolution succeeds. | Verify again after cutover |
+| DNS | Wired LAN client | Renew its DHCP lease, confirm the intended router/Pi-hole resolver, and resolve both an internal record and a public name. | Pending router DHCP DNS cutover |
+| DNS | Wi-Fi LAN client | Repeat the wired-client checks over Wi-Fi, including lease renewal and both internal/public names. | Pending router DHCP DNS cutover |
+| DNS | Off-LAN tailnet client | Enroll the Pi, approve the route as applicable, point tailnet DNS at it, and resolve both names from a client not on the LAN. | Pending; Pi is not enrolled |
+| HTTPS | Disposable ARM64 QEMU guest | `just pi test` verifies HTTP 308, Pi-hole HTTPS login redirect, unknown-host 404, idempotence, and recovery after guest reboot. | Complete (canary only) |
+| HTTPS | Physical LAN client | Verify the inventory hostname, trusted certificate, redirect/login contract, unknown-host rejection, and idempotent deployment. | Complete from workstation |
+| HTTPS | Physical tailnet client and renewal | Repeat the HTTPS contract off-LAN and exercise the renewal path before removing normal access to port 8081. | Pending Tailscale enrollment |
+| Recovery | Physical reboot/power-cycle | Reboot the Pi and confirm DNS, Caddy HTTPS, and all accepted services recover without another Ansible run. | Pending |
+| Rollback | Caddy or DNS cutover failure | Keep Pi-hole DNS on port 53 and restore the direct admin fallback at `http://192.168.1.225:8081/admin/`; defer router/tailnet DNS changes and revert only the failed service. | Fallback documented; exercise pending |
+| Rollback | NixOS image recovery | Preserve `/home/nori/Downloads/nixos-pi-backup-2026-08-29.img.zst`; verify SHA-256 against `fb8728306032039eb982f151046357be454627c54177e7a0fe443fed1b695d0b` before any restore or flash. | Artifact verified; not activated |
+
+The physical reboot, restore drill, and off-LAN checks are cutover gates. Do
+not mark the migration complete or retire the Nix path until all three, plus
+the service and monitoring checks, are accepted.

@@ -60,6 +60,7 @@
   register: tailscale_status
   changed_when: false
   failed_when: false
+  no_log: true
   when: tailscale_install | bool
 
 - name: Require an enrollment key when enrollment is requested
@@ -102,3 +103,22 @@
     - tailscale_enroll | bool
     - tailscale_status.rc == 0
     - (tailscale_status.stdout | from_json).BackendState == 'Running'
+
+- name: Verify Tailscale enrollment is running
+  ansible.builtin.command: tailscale status --json
+  register: tailscale_enrollment_status
+  changed_when: false
+  failed_when: false
+  no_log: true
+  when: tailscale_enroll | bool
+
+- name: Require a running Tailscale backend after enrollment
+  ansible.builtin.assert:
+    that:
+      - tailscale_enrollment_status.rc == 0
+      - >-
+        (tailscale_enrollment_status.stdout | default('{}', true) | from_json).BackendState
+        == 'Running'
+    fail_msg: Tailscale enrollment did not reach the Running state.
+  no_log: true
+  when: tailscale_enroll | bool

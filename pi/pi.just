@@ -18,6 +18,10 @@
 @deploy:
     devenv shell -- secretspec run --profile production -- bash scripts/run-production.sh deploy
 
+# Enroll the physical Pi into Tailscale after exact target confirmation.
+@enroll:
+    devenv shell -- secretspec run --profile production -- bash scripts/run-production.sh enroll
+
 # Check or interactively populate the production SecretSpec profile.
 @secrets:
     devenv shell -- secrets
