@@ -1,14 +1,10 @@
 modelRoles:
-  default: opencode-go/muse-spark-1.2-contributor
-  smol: opencode-go/muse-spark-1.2-contributor
-  slow: opencode-go/muse-spark-1.2-contributor
-  plan: opencode-go/muse-spark-1.2-contributor
-  designer: opencode-go/muse-spark-1.2-contributor
-  commit: opencode-go/muse-spark-1.2-contributor
-  tiny: opencode-go/muse-spark-1.2-contributor
-  task: opencode-go/muse-spark-1.2-contributor
-  advisor: opencode-go/muse-spark-1.2-contributor
-  # vision remains unset because Muse Spark is text-only; retain OMP's image-capable vision role.
+  default: openai-codex/gpt-5.6-sol:high
+  smol: openai-codex/gpt-5.6-luna:high
+  slow: opencode-go/glm-5.3-flash
+  designer: opencode-go/glm-5.3-flash
+  tiny: openai-codex/gpt-5.6-luna:high
+  advisor: opencode-go/glm-5.3-flash
 modelProviderOrder:
   - openai-codex
   - anthropic
@@ -30,33 +26,12 @@ defaultThinkingLevel: auto
 
 retry:
   fallbackChains:
-    default:
-      - openai-codex/gpt-5.6-luna
-      - opencode-go/deepseek-v4-flash
-    smol:
-      - openai-codex/gpt-5.6-luna:high
-      - opencode-go/deepseek-v4-flash
-    slow:
-      - openai-codex/gpt-5.6-luna:high
-      - opencode-go/deepseek-v4-flash
-    plan:
-      - openai-codex/gpt-5.6-luna:high
-      - opencode-go/deepseek-v4-flash
-    designer:
-      - openai-codex/gpt-5.6-luna
-      - opencode-go/deepseek-v4-flash
-    commit:
-      - openai-codex/gpt-5.6-luna
-      - opencode-go/deepseek-v4-flash
-    tiny:
-      - openai-codex/gpt-5.6-luna:high
-      - opencode-go/deepseek-v4-flash
-    task:
-      - openai-codex/gpt-5.6-luna:max
-      - opencode-go/deepseek-v4-flash
-    advisor:
-      - openai-codex/gpt-5.6-luna:high
-      - opencode-go/deepseek-v4-flash
+    opencode-go/glm-5.3-flash:
+      - openai-codex/gpt-5.6-sol
+    openai-codex/gpt-5.6-sol:
+      - opencode-go/glm-5.3-flash
+    openai-codex/gpt-5.6-luna:
+      - opencode-go/glm-5.3-flash
 
 interruptMode: wait
 
