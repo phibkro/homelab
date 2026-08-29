@@ -2,13 +2,15 @@ metrics: {{ gatus_metrics_enabled | bool | to_json }}
 storage:
   type: {{ gatus_storage_type | to_json }}
 web:
-  address: {{ gatus_web_address | to_json }}
+  address: {{ (gatus_render_web_address | default(gatus_web_address)) | to_json }}
   port: {{ gatus_port | int }}
 alerting:
   ntfy:
     url: {{ gatus_ntfy_url | to_json }}
     topic: "${NTFY_CHANNEL}"
+{% if gatus_ntfy_token_path | length > 0 %}
     token: "${NTFY_PUBLISHER_TOKEN}"
+{% endif %}
     priority: {{ gatus_ntfy_priority | int }}
 endpoints:
 {% if gatus_endpoints | length == 0 %}

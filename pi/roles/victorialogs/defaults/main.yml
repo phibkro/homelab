@@ -5,7 +5,7 @@ victorialogs_image: >-
   docker.io/victoriametrics/victoria-logs:v1.52.0@sha256:47b820890d64c4575a2a0a46415dcd8a4fd59a0f1fcd6a377693d7aea639442e
 victorialogs_bind_address: "{{ pi_service_bind_address }}"
 victorialogs_bind_port: 9428
-victorialogs_health_address: 127.0.0.1
+victorialogs_health_address: "{{ victorialogs_bind_address }}"
 victorialogs_data_dir: /var/lib/victorialogs
 victorialogs_container_user: "65532:65532"
 victorialogs_retention_period: 14d

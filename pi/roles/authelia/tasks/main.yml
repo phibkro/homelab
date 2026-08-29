@@ -19,7 +19,7 @@
       - authelia_session_secret | length >= 32
       - authelia_storage_encryption_key | length >= 32
       - authelia_oidc_hmac_secret | length >= 32
-      - authelia_oidc_issuer_private_key | length > 0
+      - authelia_oidc_issuer_private_key is search('-----BEGIN (RSA )?PRIVATE KEY-----')
       - authelia_users_database | length > 0
       - authelia_oidc_clients | length > 0
       - >-
@@ -42,8 +42,8 @@
         == (authelia_oidc_client_secret_hashes | dict2items | map(attribute='key') | list | sort)
       - >-
         (authelia_oidc_clients | map(attribute='client_id') | list)
-        | select('match', '^[A-Za-z0-9._-]+$') | list
-        | length == (authelia_oidc_clients | length)
+        | select('match', '^[A-Za-z0-9._-]+$') | list | length
+        == (authelia_oidc_clients | length)
       - >-
         (authelia_oidc_client_secret_hashes | dict2items | map(attribute='value') | list)
         | select('string') | list | length
@@ -88,7 +88,7 @@
     path: "{{ item.path }}"
     state: directory
     owner: root
-    group: root
+    group: "{{ authelia_system_group }}"
     mode: "{{ item.mode }}"
   loop:
     - path: "{{ authelia_config_dir }}"
@@ -99,19 +99,6 @@
       mode: "0770"
   loop_control:
     label: "{{ item.path }}"
-  notify: Restart Authelia
-  when: authelia_enabled | bool
-
-- name: Grant the Authelia service group access to its directories
-  ansible.builtin.file:
-    path: "{{ item }}"
-    owner: root
-    group: "{{ authelia_system_group }}"
-    state: directory
-  loop:
-    - "{{ authelia_config_dir }}"
-    - "{{ authelia_secret_dir }}"
-    - "{{ authelia_state_dir }}"
   when: authelia_enabled | bool
 
 - name: Install Authelia base secret files
@@ -179,8 +166,9 @@
   when:
     - authelia_enabled | bool
     - >-
-      (item.path | basename) not in
-      (authelia_oidc_clients | map(attribute='client_id') | map('regex_replace', '^(.*)$', 'oidc-\\1-client-secret-hash') | list)
+      (item.path | basename) not in (authelia_oidc_clients
+      | map(attribute='client_id')
+      | map('regex_replace', '^(.*)$', 'oidc-\\1-client-secret-hash') | list)
   register: authelia_obsolete_oidc_secret_files
 
 - name: Render the Authelia configuration
@@ -197,8 +185,9 @@
 - name: Pull the pinned Authelia image
   containers.podman.podman_image:
     name: "{{ authelia_image }}"
-    source: pull
+    pull: true
     force: false
+  changed_when: false
   when:
     - authelia_enabled | bool
     - podman_available | bool
@@ -222,8 +211,6 @@
       - AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE=/run/secrets/storage-encryption-key
       - --env
       - AUTHELIA_IDENTITY_PROVIDERS_OIDC_HMAC_SECRET_FILE=/run/secrets/oidc-hmac-secret
-      - --env
-      - AUTHELIA_IDENTITY_PROVIDERS_OIDC_ISSUER_PRIVATE_KEY_FILE=/run/secrets/oidc-issuer-private-key
       - --volume={{ authelia_config_dir }}:/config:ro
       - --volume={{ authelia_secret_dir }}:/run/secrets:ro
       - --volume={{ authelia_state_dir }}:/var/lib/authelia:rw
@@ -236,7 +223,7 @@
       - --config.experimental.filters=template
   register: authelia_validation
   changed_when: false
-  no_log: true
+  no_log: "{{ not pi_emulation_mode | bool }}"
   when:
     - authelia_enabled | bool
     - podman_available | bool
@@ -257,7 +244,7 @@
     security_opt:
       - no-new-privileges:true
     tmpfs:
-      - /tmp:rw,noexec,nosuid,size=16m
+      /tmp: rw,noexec,nosuid,size=16m
     recreate: >-
       {{ authelia_config.changed
          or authelia_base_secrets.changed
@@ -272,7 +259,6 @@
       AUTHELIA_SESSION_SECRET_FILE: /run/secrets/session-secret
       AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE: /run/secrets/storage-encryption-key
       AUTHELIA_IDENTITY_PROVIDERS_OIDC_HMAC_SECRET_FILE: /run/secrets/oidc-hmac-secret
-      AUTHELIA_IDENTITY_PROVIDERS_OIDC_ISSUER_PRIVATE_KEY_FILE: /run/secrets/oidc-issuer-private-key
     volume:
       - "{{ authelia_config_dir }}:/config:ro"
       - "{{ authelia_secret_dir }}:/run/secrets:ro"
@@ -294,17 +280,6 @@
   until: authelia_health.status | default(0) == 200
   retries: 12
   delay: 5
-  when:
-    - authelia_enabled | bool
-    - podman_available | bool
-    - not ansible_check_mode
-
-- name: Require the expected Authelia health response
-  ansible.builtin.assert:
-    that:
-      - authelia_health.status == 200
-      - authelia_health.content | trim == 'OK'
-    fail_msg: Authelia did not return the expected healthy response.
   when:
     - authelia_enabled | bool
     - podman_available | bool

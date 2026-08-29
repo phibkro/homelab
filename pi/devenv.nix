@@ -4,6 +4,7 @@
   packages = with pkgs; [
     ansible
     ansible-lint
+    caddy
     cloud-utils
     curl
     dig
@@ -41,7 +42,8 @@
       roles \
       tests/vm
     ansible-lint playbooks/pi.yml
-    shellcheck scripts/*.sh ../.githooks/pre-commit
+    shellcheck scripts/*.sh scripts/tests/*.sh scripts/tests/fixtures/nix \
+      roles/caddy/tests/*.sh ../.githooks/pre-commit
     roles/pihole/tests/test_contract.sh
     roles/authelia/tests/test_contract.sh
     roles/ddns/tests/test-contract.sh
@@ -52,19 +54,23 @@
     roles/victorialogs/tests/test_contract.sh
     roles/vector/tests/test_contract.sh
     roles/backup/tests/test_contract.sh
+    roles/caddy/tests/test_contract.sh
+    roles/caddy/tests/test_render.sh
+    scripts/tests/generate-inventory.test.sh
     generated_inventory="$(generate-inventory)"
     jq --exit-status \
       '(.pi_appliances.hosts | keys) == ["pi"]
        and .pi_appliances.hosts.pi.pi_domain == "home.phibkro.org"
        and .pi_appliances.hosts.pi.pihole_lan_address == "192.168.1.225"
        and .pi_appliances.hosts.pi.pihole_tailnet_address == "100.100.71.3"
-       and .pi_appliances.hosts.pi.pi_routes == [{
-         name: "pihole",
-         hostname: "pihole.home.phibkro.org",
-         upstream_address: "192.168.1.225",
-         upstream_port: 8081,
-         reachability: "internal"
-       }]' \
+       and (.pi_appliances.hosts.pi.pi_routes | any(.name == "pihole"))
+       and (.pi_appliances.hosts.pi.pi_routes | any(.name == "auth"))
+       and (.pi_appliances.hosts.pi.pi_routes | length > 1)
+       and .pi_appliances.hosts.pi.ddns_hostnames == [
+         "audio.home.phibkro.org",
+         "media.home.phibkro.org",
+         "requests.home.phibkro.org"
+       ]' \
       "$generated_inventory" >/dev/null
     ansible-inventory --inventory "$generated_inventory" --list \
       | jq --exit-status \

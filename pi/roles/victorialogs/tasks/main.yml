@@ -6,6 +6,7 @@
       - victorialogs_bind_address | length > 0
       - victorialogs_bind_address is string
       - victorialogs_bind_address not in ['0.0.0.0', '::', '::0']
+      - victorialogs_health_address == victorialogs_bind_address
       - victorialogs_bind_port | int > 0
       - victorialogs_bind_port | int < 65536
       - victorialogs_data_dir | length > 0

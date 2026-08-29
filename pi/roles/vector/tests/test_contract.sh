@@ -24,6 +24,13 @@ rg -q '/etc/machine-id:/etc/machine-id:ro' "$role_dir/tasks/main.yml" || fail "m
 rg -q 'getent' "$role_dir/tasks/main.yml" || fail "journal group must be resolved by name"
 rg -q 'Validate Vector executable and journald runtime' "$role_dir/tasks/main.yml" || fail "journald runtime validation is missing"
 rg -q 'validate' "$role_dir/tasks/main.yml" || fail "Vector config validation is missing"
+rg -q 'current_boot_only: true' "$role_dir/templates/vector.yaml.j2" \
+  || fail "Vector journald input must use the systemd 257-compatible cursor mode"
+rg -q '/var/lib/vector:rw,noexec,nosuid,size=16m' "$role_dir/tasks/main.yml" \
+  || fail "Vector validation does not use ephemeral writable state"
+if rg -Uq '      - validate\n      - --config' "$role_dir/tasks/main.yml"; then
+  fail "Vector 0.58 validate expects configuration paths positionally"
+fi
 rg -q 'recreate:.*vector_containerfile.changed' "$role_dir/tasks/main.yml" || fail "custom image changes must recreate the container"
 rg -q 'no-new-privileges' "$role_dir/tasks/main.yml" || fail "hardening is missing"
 rg -q 'cap_drop:' "$role_dir/tasks/main.yml" || fail "capability drop is missing"

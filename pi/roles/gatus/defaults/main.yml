@@ -11,11 +11,14 @@ gatus_image: >-
 # The container uses host networking so probes can reach the appliance's
 # concrete LAN and tailnet addresses. Firewall policy remains the integration
 # layer's responsibility.
-gatus_web_address: 0.0.0.0
+# Bind the host-networked listener to the same concrete LAN address used by
+# the integration layer; wildcard listeners are not part of this appliance.
+gatus_web_address: "{{ pi_service_bind_address }}"
 gatus_bind_address: "{{ pi_service_bind_address }}"
 gatus_port: 8082
 gatus_config_dir: /etc/gatus
 gatus_config_file: /etc/gatus/config.yaml
+gatus_validation_config_file: /etc/gatus/validation.yaml
 gatus_uid: 65532
 gatus_gid: 65532
 
@@ -31,6 +34,8 @@ gatus_ntfy_url: https://ntfy.sh
 gatus_ntfy_channel: ""
 # SecretSpec integration supplies this path. It must contain only the bearer
 # token; it is read under no_log and never emitted by the role.
+# Optional for the off-host public ntfy.sh route. Required when
+# gatus_ntfy_url is changed to the authenticated local ntfy endpoint.
 gatus_ntfy_token_path: ""
 gatus_ntfy_environment_file: /etc/gatus/ntfy.env
 gatus_ntfy_priority: 4

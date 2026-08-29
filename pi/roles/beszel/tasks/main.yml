@@ -6,6 +6,7 @@
       - beszel_bind_address | length > 0
       - beszel_bind_address is string
       - beszel_bind_address not in ['0.0.0.0', '::', '::0']
+      - beszel_health_address == beszel_bind_address
       - beszel_bind_port | int > 0
       - beszel_bind_port | int < 65536
       - beszel_data_dir | length > 0

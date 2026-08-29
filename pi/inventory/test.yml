@@ -15,4 +15,17 @@ all:
           pi_lan_address: 10.0.2.15
           pi_lan_cidr: 10.0.2.0/24
           pi_service_bind_address: 10.0.2.15
+          authelia_log_level: debug
           tailscale_apt_suite: bookworm
+          # DDNS mutates external Cloudflare records and is intentionally
+          # excluded from the disposable guest. All appliance-local roles
+          # remain enabled and receive safe-shaped credentials from
+          # scripts/test-vm.sh.
+          ddns_enabled: false
+          # One job exercises the complete backup runner/service/timer path.
+          # Production's full manifest remains covered by role contracts.
+          pi_backup_jobs:
+            - name: pihole
+              paths:
+                - /var/lib/containers/storage/volumes/pihole-data/_data
+                - /opt/pihole/dnsmasq.d/05-homelab-local-records.conf

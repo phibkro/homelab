@@ -23,6 +23,9 @@ table inet appliance_filter {
     iifname "{{ pi_tailnet_interface }}" tcp dport 22 accept
     iifname "{{ pi_tailnet_interface }}" udp dport {{ pi_dns_port }} accept
     iifname "{{ pi_tailnet_interface }}" tcp dport {{ pi_dns_port }} accept
+{% if pi_tailnet_tcp_ports | default([]) | length > 0 %}
+    iifname "{{ pi_tailnet_interface }}" tcp dport { {{ pi_tailnet_tcp_ports | map('int') | join(', ') }} } accept
+{% endif %}
 {% if caddy_enabled %}
     iifname "{{ pi_tailnet_interface }}" tcp dport { {{ caddy_http_port }}, {{ caddy_https_port }} } accept
 {% endif %}

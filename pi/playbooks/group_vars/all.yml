@@ -54,6 +54,157 @@ caddy_image: >-
   {{ 'localhost/homelab-caddy:2.10.2-cloudflare-0.2.4'
      if caddy_build_custom_image else caddy_runtime_image }}
 
+# Appliance identity and access plane. Secret values are injected by
+# SecretSpec into the environment at execution time; no plaintext belongs in
+# inventory or Git.
+authelia_jwt_secret: "{{ lookup('env', 'AUTHELIA_JWT_SECRET') }}"
+authelia_session_secret: "{{ lookup('env', 'AUTHELIA_SESSION_SECRET') }}"
+authelia_storage_encryption_key: "{{ lookup('env', 'AUTHELIA_STORAGE_ENCRYPTION_KEY') }}"
+authelia_oidc_hmac_secret: "{{ lookup('env', 'AUTHELIA_OIDC_HMAC_SECRET') }}"
+authelia_oidc_issuer_private_key: "{{ lookup('env', 'AUTHELIA_OIDC_ISSUER_PRIVATE_KEY') }}"
+authelia_users_database: "{{ lookup('env', 'AUTHELIA_USERS_DATABASE') }}"
+authelia_oidc_clients:
+  - client_id: metrics
+    client_name: Beszel
+    authorization_policy: one_factor
+    redirect_uris:
+      - "https://metrics.{{ pi_domain }}/api/oauth2-redirect"
+    scopes: [openid, profile, email, groups]
+  - client_id: photos
+    client_name: Immich
+    authorization_policy: one_factor
+    redirect_uris:
+      - "https://photos.{{ pi_domain }}/auth/login"
+    scopes: [openid, profile, email, groups]
+  - client_id: news
+    client_name: Miniflux
+    authorization_policy: one_factor
+    redirect_uris:
+      - "https://news.{{ pi_domain }}/oauth2/oidc/callback"
+    scopes: [openid, profile, email, groups]
+  - client_id: vault
+    client_name: Vaultwarden
+    authorization_policy: one_factor
+    redirect_uris:
+      - "https://vault.{{ pi_domain }}/identity/connect/oidc-signin"
+    scopes: [openid, profile, email, groups, offline_access]
+authelia_oidc_client_secret_hashes:
+  metrics: "{{ lookup('env', 'OIDC_METRICS_CLIENT_SECRET_HASH') }}"
+  photos: "{{ lookup('env', 'OIDC_PHOTOS_CLIENT_SECRET_HASH') }}"
+  news: "{{ lookup('env', 'OIDC_NEWS_CLIENT_SECRET_HASH') }}"
+  vault: "{{ lookup('env', 'OIDC_VAULT_CLIENT_SECRET_HASH') }}"
+
+# Dynamic public records are derived from the inventory's internet routes.
+# These defaults keep the contract explicit until generated host vars provide
+# an authoritative list.
+ddns_enabled: true
+ddns_zone_name: "{{ pi_domain }}"
+ddns_api_token: "{{ lookup('env', 'CLOUDFLARE_DDNS_API_TOKEN') }}"
+# The generated production inventory supplies ddns_hostnames from the typed
+# internet-route catalog. Keeping this empty prevents a stale hand-maintained
+# list from changing Cloudflare records.
+ddns_hostnames: []
+
+# ntfy is provisioned before Gatus so host-local alert producers can use its
+# authenticated route; Gatus itself remains on the off-host public route.
+ntfy_publisher_token: "{{ lookup('env', 'NTFY_PUBLISHER_TOKEN') }}"
+ntfy_publisher_password_hash: "{{ lookup('env', 'NTFY_PUBLISHER_PASSWORD_HASH') }}"
+ntfy_agents_channel: "{{ lookup('env', 'NTFY_AGENTS_CHANNEL') }}"
+ntfy_alert_routes:
+  operator:
+    url: https://ntfy.sh
+    topic: "{{ lookup('env', 'NTFY_OPERATOR_TOPIC') }}"
+    topic_file: "{{ ntfy_operator_topic_file }}"
+    token_file: ""
+  agents:
+    url: "{{ ntfy_alert_url }}"
+    topic: "{{ ntfy_agents_channel }}"
+    topic_file: "{{ ntfy_agents_topic_file }}"
+    token_file: "{{ ntfy_publisher_token_file }}"
+
+# Gatus is the appliance/operator monitor, so its failure notifications stay
+# on the off-host ntfy.sh route and remain available during a local ntfy outage.
+gatus_ntfy_channel: "{{ ntfy_alert_routes.operator.topic }}"
+gatus_ntfy_url: https://ntfy.sh
+# A local ntfy token must never be sent to ntfy.sh. Set this path only when
+# gatus_ntfy_url is changed to the authenticated local HTTP endpoint.
+gatus_ntfy_token_path: ""
+gatus_endpoints:
+  - name: pihole-dns
+    url: "tcp://{{ pi_service_bind_address }}:{{ pi_dns_port }}"
+  - name: pihole-admin
+    url: "http://{{ pi_service_bind_address }}:{{ pi_admin_port }}/admin/"
+    conditions: ["[STATUS] == 302"]
+  - name: authelia
+    url: "http://{{ pi_service_bind_address }}:{{ authelia_port }}/api/health"
+  - name: ntfy
+    url: "http://{{ pi_service_bind_address }}:{{ ntfy_port }}/v1/health"
+  - name: beszel
+    url: "http://{{ pi_service_bind_address }}:{{ beszel_bind_port }}{{ beszel_health_path }}"
+  - name: victoriametrics
+    url: "http://{{ pi_service_bind_address }}:{{ victoriametrics_bind_port }}/health"
+  - name: victorialogs
+    url: "http://{{ pi_service_bind_address }}:{{ victorialogs_bind_port }}/health"
+
+victoriametrics_scrape_jobs:
+  - job_name: gatus
+    static_configs:
+      - targets:
+          - "{{ pi_service_bind_address }}:{{ gatus_port }}"
+  - job_name: victoriametrics
+    static_configs:
+      - targets:
+          - "{{ pi_service_bind_address }}:{{ victoriametrics_bind_port }}"
+
+vector_victorialogs_endpoint: >-
+  http://{{ pi_service_bind_address }}:{{ victorialogs_bind_port }}/insert/elasticsearch/
+
+# Every job is a narrow, explicit state manifest. The backup role rejects
+# paths outside its immutable allowlist and never infers additional paths.
+pi_backup_restic_password: "{{ lookup('env', 'RESTIC_PASSWORD') }}"
+pi_backup_ssh_private_key: "{{ lookup('env', 'RESTIC_SSH_PRIVATE_KEY') }}"
+pi_backup_jobs:
+  - name: pihole
+    paths:
+      - /var/lib/containers/storage/volumes/pihole-data/_data
+      - /opt/pihole/dnsmasq.d/05-homelab-local-records.conf
+  - name: caddy
+    paths:
+      - /opt/caddy/data
+      - /opt/caddy/config
+  - name: authelia
+    paths:
+      - /etc/authelia/configuration.yml
+      - /etc/authelia/users_database.yml
+      - /var/lib/authelia
+  - name: ntfy
+    paths:
+      - /var/cache/ntfy
+      - /var/lib/ntfy
+  - name: beszel
+    paths:
+      - /var/lib/beszel
+  - name: victoriametrics
+    paths:
+      - /var/lib/victoriametrics
+      - /etc/victoriametrics
+  - name: victorialogs
+    paths:
+      - /var/lib/victorialogs
+  - name: vector
+    paths:
+      - /var/lib/vector
+      - /etc/vector
+
+# These ports are tailnet-reachable diagnostics/observability listeners via
+# the Pi's advertised LAN subnet. The service roles bind pi_lan_address; they
+# are not wildcard listeners and public HTTP remains limited to Caddy 80/443.
+pi_tailnet_tcp_ports:
+  - "{{ gatus_port }}"
+  - "{{ beszel_bind_port }}"
+  - "{{ victoriametrics_bind_port }}"
+  - "{{ victorialogs_bind_port }}"
+
 # Emulation fallback only. Production receives inventory-derived records from
 # scripts/generate-inventory.sh.
 pihole_local_dns_records:

@@ -8,7 +8,10 @@
       - ntfy_port | int >= 1
       - ntfy_port | int <= 65535
       - ntfy_port | int != pi_admin_port | int
-      - ntfy_base_url is match('^https://[^[:space:]]+$')
+      - ntfy_container_port | int >= 1024
+      - ntfy_container_port | int <= 65535
+      - ntfy_base_url is match('^https://[^ ]+$')
+      - ntfy_base_url is not search('\\s')
       - ntfy_auth_default_access == 'deny-all'
       - ntfy_enable_anonymous_read | type_debug == 'bool'
       - ntfy_publisher_username is match('^[A-Za-z0-9._-]+$')
@@ -18,11 +21,13 @@
         ntfy_publisher_password_hash is match('^\$2[aby]\$(0[4-9]|[12][0-9]|3[0-1])\$[./A-Za-z0-9]{53}$')
       - ntfy_publisher_password_hash is not search('[\r\n]')
       - ntfy_agents_channel is match('^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$')
-      - ntfy_alert_routes.operator.url is match('^https://[^[:space:]]+$')
+      - ntfy_alert_routes.operator.url is match('^https://[^ ]+$')
+      - ntfy_alert_routes.operator.url is not search('\\s')
       - ntfy_alert_routes.operator.topic is match('^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$')
       - ntfy_alert_routes.operator.topic_file == ntfy_operator_topic_file
       - ntfy_alert_routes.operator.token_file == ''
-      - ntfy_alert_routes.agents.url is match('^http://[^[:space:]]+$')
+      - ntfy_alert_routes.agents.url is match('^http://[^ ]+$')
+      - ntfy_alert_routes.agents.url is not search('\\s')
       - ntfy_alert_routes.agents.topic == ntfy_agents_channel
       - ntfy_alert_routes.agents.topic_file == ntfy_agents_topic_file
       - ntfy_alert_routes.agents.token_file == ntfy_publisher_token_file
@@ -88,6 +93,15 @@
     mode: "0600"
   register: ntfy_environment
   no_log: true
+  when: ntfy_enabled | bool
+
+- name: Create the local service-helper directory
+  ansible.builtin.file:
+    path: /usr/local/libexec
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
   when: ntfy_enabled | bool
 
 - name: Render the host-local nori-alert emitter
@@ -159,9 +173,10 @@
 - name: Pull the pinned ntfy image
   containers.podman.podman_image:
     name: "{{ ntfy_image }}"
-    source: pull
+    pull: true
     force: false
   register: ntfy_image_pull
+  changed_when: false
   when:
     - ntfy_enabled | bool
     - podman_available | bool
@@ -182,11 +197,11 @@
     security_opt:
       - no-new-privileges:true
     tmpfs:
-      - /tmp:rw,noexec,nosuid,size=16m
+      /tmp: rw,noexec,nosuid,size=16m
     env_file:
       - "{{ ntfy_config_dir }}/ntfy.env"
     publish:
-      - "{{ ntfy_bind_address }}:{{ ntfy_port }}:80/tcp"
+      - "{{ ntfy_bind_address }}:{{ ntfy_port }}:{{ ntfy_container_port }}/tcp"
     volume:
       - "{{ ntfy_cache_dir }}:/var/cache/ntfy:rw"
       - "{{ ntfy_state_dir }}:/var/lib/ntfy:rw"
@@ -197,8 +212,7 @@
          or ntfy_topic_files.changed
          or ntfy_notify_helper.changed
          or ntfy_token_file.changed
-         or ntfy_notify_unit.changed
-         or ntfy_image_pull.changed }}
+         or ntfy_notify_unit.changed }}
   register: ntfy_container
   no_log: true
   when:

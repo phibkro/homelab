@@ -8,6 +8,7 @@ ntfy_image: >-
 ntfy_container_name: ntfy
 ntfy_bind_address: "{{ pi_service_bind_address }}"
 ntfy_port: 8091
+ntfy_container_port: 8080
 ntfy_base_url: "https://alert.{{ pi_domain }}"
 ntfy_alert_url: "http://{{ ntfy_bind_address }}:{{ ntfy_port }}"
 ntfy_config_dir: /opt/ntfy/config

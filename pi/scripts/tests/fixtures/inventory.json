@@ -1,0 +1,54 @@
+{
+  "site": {
+    "domain": "home.example",
+    "deprecatedDomains": ["nori.lan"],
+    "entryPlaneHost": "pi"
+  },
+  "hosts": {
+    "pi": {"lanIp": "192.168.1.225", "tailnetIp": "100.100.71.3"},
+    "workstation": {"lanIp": "192.168.1.181", "tailnetIp": "100.81.5.122"}
+  },
+  "workloads": {
+    "authelia": {
+      "active": true,
+      "endpoints": {"auth": {"port": 9091, "runsOn": "pi", "audience": "public"}}
+    },
+    "calibre-web": {
+      "active": true,
+      "endpoints": {
+        "books": {
+          "port": 8084,
+          "runsOn": "workstation",
+          "audience": "family",
+          "forwardAuth": {"exemptPaths": ["/api/*"]}
+        }
+      }
+    },
+    "jellyfin": {
+      "active": true,
+      "endpoints": {
+        "media": {
+          "port": 8096,
+          "runsOn": "workstation",
+          "audience": "family",
+          "reachability": "internet"
+        }
+      }
+    },
+    "immich": {
+      "active": true,
+      "endpoints": {
+        "photos": {
+          "port": 2283,
+          "runsOn": "workstation",
+          "audience": "family",
+          "oidc": {"redirectPath": "/auth/login"}
+        }
+      }
+    },
+    "disabled": {
+      "active": false,
+      "endpoints": {"must-not-route": {"port": 6553, "runsOn": "workstation"}}
+    }
+  }
+}

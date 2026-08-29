@@ -1,5 +1,6 @@
 server:
   address: {{ ("tcp://" ~ authelia_bind_address ~ ":" ~ (authelia_port | string) ~ "/") | to_json }}
+  disable_healthcheck: true
 
 log:
   level: {{ authelia_log_level | to_json }}
@@ -46,14 +47,20 @@ access_control:
 
 identity_providers:
   oidc:
+    jwks:
+      - key_id: homelab-rs256
+        algorithm: RS256
+        use: sig
+        key: {{ '{{ secret "/run/secrets/oidc-issuer-private-key" | mindent 10 "|" | msquote }}' }}
     clients:
 {% if authelia_oidc_clients | length == 0 %}
       []
 {% else %}
 {% for client in authelia_oidc_clients %}
+{% set client_secret_file = '/run/secrets/oidc-' ~ client.client_id ~ '-client-secret-hash' %}
       - client_id: {{ client.client_id | to_json }}
         client_name: {{ client.client_name | to_json }}
-        client_secret: '{% raw %}{{ secret "/run/secrets/oidc-{% endraw %}{{ client.client_id }}{% raw %}-client-secret-hash" }}{% endraw %}'
+        client_secret: {{ '{{ secret "' ~ client_secret_file ~ '" }}' }}
         public: false
         authorization_policy: {{ client.authorization_policy | to_json }}
         redirect_uris: {{ client.redirect_uris | to_json }}

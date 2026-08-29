@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/../../.." && pwd)"
+readonly script_dir repo_root
+
+fixture="$script_dir/fixtures/inventory.json"
+fake_bin="$(mktemp -d)"
+output="$(mktemp)"
+unsafe_fixture="$(mktemp)"
+same_port_fixture="$(mktemp)"
+collision_fixture="$(mktemp)"
+string_paths_fixture="$(mktemp)"
+cleanup() {
+  rm -rf "$fake_bin" "$output" "$unsafe_fixture" "$same_port_fixture" \
+    "$collision_fixture" "$string_paths_fixture"
+}
+trap cleanup EXIT
+
+cp "$script_dir/fixtures/nix" "$fake_bin/nix"
+chmod 0755 "$fake_bin/nix"
+
+PATH="$fake_bin:$PATH" \
+  INVENTORY_FIXTURE="$fixture" \
+  "$repo_root/pi/scripts/generate-inventory.sh" "$output" >/dev/null
+
+jq --exit-status '
+  (.pi_appliances.hosts | keys) == ["pi"]
+  and .pi_appliances.hosts.pi.pi_routes == [
+    {
+      name: "pihole",
+      hostname: "pihole.home.example",
+      upstream_address: "192.168.1.225",
+      upstream_port: 8081,
+      scheme: "http",
+      reachability: "internal",
+      audience: "operator",
+      auth: "none",
+      forward_auth_exempt_paths: [],
+      forward_auth_upstream: null,
+      oidc_redirect_path: null,
+      upstream_host_header: null,
+      upstream_origin_header: null
+    },
+    {
+      name: "auth",
+      hostname: "auth.home.example",
+      upstream_address: "192.168.1.225",
+      upstream_port: 9091,
+      scheme: "http",
+      reachability: "internal",
+      audience: "public",
+      auth: "none",
+      forward_auth_exempt_paths: [],
+      forward_auth_upstream: "192.168.1.225:9091",
+      oidc_redirect_path: null,
+      upstream_host_header: null,
+      upstream_origin_header: null
+    },
+    {
+      name: "books",
+      hostname: "books.home.example",
+      upstream_address: "100.81.5.122",
+      upstream_port: 8084,
+      scheme: "http",
+      reachability: "internal",
+      audience: "family",
+      auth: "forward-auth",
+      forward_auth_exempt_paths: ["/api/*"],
+      forward_auth_upstream: "192.168.1.225:9091",
+      oidc_redirect_path: null,
+      upstream_host_header: null,
+      upstream_origin_header: null
+    },
+    {
+      name: "media",
+      hostname: "media.home.example",
+      upstream_address: "100.81.5.122",
+      upstream_port: 8096,
+      scheme: "http",
+      reachability: "internet",
+      audience: "family",
+      auth: "none",
+      forward_auth_exempt_paths: [],
+      forward_auth_upstream: "192.168.1.225:9091",
+      oidc_redirect_path: null,
+      upstream_host_header: null,
+      upstream_origin_header: null
+    },
+    {
+      name: "photos",
+      hostname: "photos.home.example",
+      upstream_address: "100.81.5.122",
+      upstream_port: 2283,
+      scheme: "http",
+      reachability: "internal",
+      audience: "family",
+      auth: "oidc",
+      forward_auth_exempt_paths: [],
+      forward_auth_upstream: "192.168.1.225:9091",
+      oidc_redirect_path: "/auth/login",
+      upstream_host_header: null,
+      upstream_origin_header: null
+    }
+  ]
+  and (.pi_appliances.hosts.pi.pi_routes | length == 5)
+  and .pi_appliances.hosts.pi.ddns_hostnames == ["media.home.example"]
+  and .pi_appliances.hosts.pi.pi_deprecated_domains == ["nori.lan"]
+  and (.pi_appliances.hosts.pi.pihole_local_dns_records
+       | any(.[]; .names[] == "books.home.example"))
+  and (.pi_appliances.hosts.pi.pihole_local_dns_records
+       | any(.[]; .names[] == "pihole.nori.lan"))
+  and (.pi_appliances.hosts.pi.pihole_local_dns_records
+       | all(.[]; .address == "192.168.1.225" or .address == "192.168.1.181"))
+  and ([.pi_appliances.hosts.pi.pihole_local_dns_records[] | .names[]]
+       | length == (unique | length))
+' "$output" >/dev/null
+
+echo "inventory generator contract: PASS"
+
+jq 'del(.workloads.authelia)' "$fixture" >"$unsafe_fixture"
+if PATH="$fake_bin:$PATH" INVENTORY_FIXTURE="$unsafe_fixture" \
+  "$repo_root/pi/scripts/generate-inventory.sh" "$output" >/dev/null 2>&1; then
+  echo "inventory generator contract: forward-auth without Authelia was accepted" >&2
+  exit 1
+fi
+
+echo "inventory generator safety contract: PASS"
+
+# Reusing a backend port is safe when the upstream addresses differ.
+jq '.workloads."calibre-web".endpoints.books.port = 9091' \
+  "$fixture" >"$same_port_fixture"
+PATH="$fake_bin:$PATH" INVENTORY_FIXTURE="$same_port_fixture" \
+  "$repo_root/pi/scripts/generate-inventory.sh" "$output" >/dev/null
+
+# The same address and port would make Caddy's backend socket ambiguous.
+jq '.workloads."calibre-web".endpoints.books.runsOn = "pi"
+    | .workloads."calibre-web".endpoints.books.port = 9091' \
+  "$fixture" >"$collision_fixture"
+if PATH="$fake_bin:$PATH" INVENTORY_FIXTURE="$collision_fixture" \
+  "$repo_root/pi/scripts/generate-inventory.sh" "$output" >/dev/null 2>&1; then
+  echo "inventory generator contract: duplicate backend socket was accepted" >&2
+  exit 1
+fi
+
+echo "inventory generator socket-collision contract: PASS"
+
+jq '.workloads."calibre-web".endpoints.books.forwardAuth.exemptPaths = "/api/*"' \
+  "$fixture" >"$string_paths_fixture"
+if PATH="$fake_bin:$PATH" INVENTORY_FIXTURE="$string_paths_fixture" \
+  "$repo_root/pi/scripts/generate-inventory.sh" "$output" >/dev/null 2>&1; then
+  echo "inventory generator contract: string forward-auth paths were accepted" >&2
+  exit 1
+fi
+
+echo "inventory generator path-shape contract: PASS"

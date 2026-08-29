@@ -22,7 +22,7 @@ for file in "$defaults_file" "$tasks_file" "$env_template" "$alert_config_templa
   [[ -f "$file" ]] || fail "missing role file: $file"
 done
 
-for variable in ntfy_image ntfy_bind_address ntfy_port ntfy_publisher_token \
+for variable in ntfy_image ntfy_bind_address ntfy_port ntfy_container_port ntfy_publisher_token \
   ntfy_publisher_password_hash ntfy_agents_channel ntfy_alert_url \
   ntfy_operator_topic_file ntfy_agents_topic_file ntfy_alert_routes; do
   rg -q "^${variable}:" "$defaults_file" \
@@ -33,8 +33,13 @@ rg -q 'docker\.io/binwiederhier/ntfy:v2\.27\.0@sha256:[0-9a-f]{64}' "$defaults_f
   || fail "ntfy image is not pinned to a full manifest digest"
 rg -q '^ntfy_port: 8091$' "$defaults_file" \
   || fail "ntfy must use the port reserved beside Pi-hole's temporary 8081"
+rg -q '^ntfy_container_port: 8080$' "$defaults_file" \
+  || fail "non-root ntfy must listen on an unprivileged container port"
 rg -Fq "      - ntfy_publisher_token is match('^tk_[A-Za-z0-9]{29}$')" "$tasks_file" \
   || fail "publisher token must use ntfy's 32-character tk_ format"
+if rg -Fq '[^[:space:]]' "$tasks_file"; then
+  fail "Ansible regexes must not use unsupported POSIX character classes"
+fi
 if ! rg -Fq "ntfy_publisher_password_hash is match" "$tasks_file" \
   || ! rg -Fq '\$2[aby]\$' "$tasks_file"; then
   fail "publisher password must be a bcrypt hash"
@@ -96,16 +101,20 @@ rg -q '^NTFY_AUTH_ACCESS=everyone:agents-topic:ro$' "$fixture_env_dir/anonymous-
   || fail "true anonymous-read setting did not render the scoped ACL"
 
 rg -q 'env_file:' "$tasks_file" || fail "root-only env file is not passed to Podman"
+rg -q 'path: /usr/local/libexec' "$tasks_file" || fail "service-helper directory is not created"
 rg -q 'restart_policy: always' "$tasks_file" || fail "restart policy is missing"
 rg -q 'read_only: true' "$tasks_file" || fail "container filesystem is not read-only"
 rg -q 'cap_drop:' "$tasks_file" || fail "container capabilities are not dropped"
 rg -q 'no-new-privileges:true' "$tasks_file" || fail "no-new-privileges is missing"
 rg -q 'ntfy_cache_dir.*:/var/cache/ntfy' "$tasks_file" || fail "cache volume is not persistent"
 rg -q 'ntfy_state_dir.*:/var/lib/ntfy' "$tasks_file" || fail "auth/state volume is not persistent"
-rg -q 'ntfy_bind_address.*ntfy_port.*80/tcp' "$tasks_file" || fail "host port publication is missing"
+rg -q 'ntfy_bind_address.*ntfy_port.*ntfy_container_port' "$tasks_file" \
+  || fail "host port publication is missing"
+rg -q '^NTFY_LISTEN_HTTP=:.*ntfy_container_port' "$env_template" \
+  || fail "internal listener is not explicitly unprivileged"
 rg -q '/v1/health' "$tasks_file" || fail "health endpoint check is missing"
-rg -q 'ntfy_image_pull\.changed' "$tasks_file" \
-  || fail "image pull changes must recreate the container"
+rg -q 'register: ntfy_image_pull' "$tasks_file" \
+  || fail "pinned image reconciliation is missing"
 rg -q 'Remove role-owned ntfy files when explicitly disabled' "$tasks_file" \
   || fail "disabled-state cleanup is missing"
 for path in 'ntfy_publisher_token_file' 'ntfy_operator_topic_file' \

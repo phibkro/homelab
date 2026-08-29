@@ -14,6 +14,8 @@ done
 
 rg -q 'pi_backup_jobs: \[\]' "$role_dir/defaults/main.yml" || fail "manifest must be explicit"
 rg -q 'pi_backup_approved_source_prefixes:' "$role_dir/vars/main.yml" || fail "immutable source allowlist is missing"
+rg -q 'item in pi_backup_effective_source_prefixes' "$role_dir/tasks/main.yml" \
+  || fail "manifest paths are not checked against the exact allowlist"
 rg -q '/var/lib/containers/storage/volumes/pihole-data/_data' "$role_dir/vars/main.yml" || fail "Pi-hole volume path is not narrowly approved"
 rg -q '/opt/caddy/data' "$role_dir/vars/main.yml" || fail "Caddy data path is not approved"
 rg -q '/etc/authelia/configuration.yml' "$role_dir/vars/main.yml" || fail "Authelia config path is not approved"
@@ -44,6 +46,10 @@ rg -q 'check-weekly' "$role_dir/tasks/main.yml" || fail "weekly metadata check u
 rg -q 'check-monthly' "$role_dir/tasks/main.yml" || fail "monthly data check unit missing"
 rg -q 'pi_backup_metadata_check_schedule: "Sun \*-\*-\* 05:30:00"' "$role_dir/defaults/main.yml" || fail "weekly check schedule drifted"
 rg -q 'pi_backup_data_check_schedule: "\*-\*-01 06:00:00"' "$role_dir/defaults/main.yml" || fail "monthly check schedule is not staggered"
+rg -q '^OnCalendar=\{\{ timer_schedule \}\}$' "$role_dir/templates/timer.j2" \
+  || fail "systemd calendar expression must not contain literal shell quotes"
+rg -q "schedule.*is not search" "$role_dir/tasks/main.yml" \
+  || fail "calendar expressions must reject unit-file line injection"
 rg -q 'pi_backup_tailscale_identity_enabled: false' "$role_dir/defaults/main.yml" || fail "Tailscale backup is not opt-in"
 rg -q 'pi_backup_tailscale_identity_paths' "$role_dir/tasks/main.yml" || fail "Tailscale explicit path assertion missing"
 rg -q 'pi_backup_restore_dir' "$role_dir/templates/restore-disposable.sh.j2" || fail "disposable restore root missing"

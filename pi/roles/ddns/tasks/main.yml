@@ -77,11 +77,14 @@
 - name: Install the root-only Cloudflare credentials
   ansible.builtin.copy:
     dest: /etc/cloudflare-ddns/credentials
-    content: "CLOUDFLARE_API_TOKEN={{ ddns_api_token }}\n"
+    # systemd LoadCredential exposes this file directly to the updater.  The
+    # updater consumes the raw token, not an EnvironmentFile assignment.
+    content: "{{ ddns_api_token }}\n"
     owner: root
     group: root
     mode: "0400"
   no_log: true
+  register: ddns_credentials
   when: ddns_enabled | bool
 
 - name: Render the explicit DDNS configuration
@@ -92,6 +95,7 @@
     group: root
     mode: "0644"
   notify: Reload systemd manager
+  register: ddns_config
   when: ddns_enabled | bool
 
 - name: Install the Cloudflare DDNS updater
@@ -102,6 +106,7 @@
     group: root
     mode: "0750"
   notify: Reload systemd manager
+  register: ddns_updater
   when: ddns_enabled | bool
 
 - name: Install the Cloudflare DDNS service
@@ -114,6 +119,7 @@
   notify:
     - Reload systemd manager
     - Restart DDNS timer
+  register: ddns_service
   when: ddns_enabled | bool
 
 - name: Install the Cloudflare DDNS timer
@@ -126,6 +132,7 @@
   notify:
     - Reload systemd manager
     - Restart DDNS timer
+  register: ddns_timer
   when: ddns_enabled | bool
 
 - name: Enable and start the Cloudflare DDNS timer
@@ -145,6 +152,12 @@
   when:
     - ddns_enabled | bool
     - not ansible_check_mode
+    - >-
+      ddns_credentials.changed | default(false)
+      or ddns_config.changed | default(false)
+      or ddns_updater.changed | default(false)
+      or ddns_service.changed | default(false)
+      or ddns_timer.changed | default(false)
 
 - name: Inspect the DDNS runtime before disabled-state cleanup
   ansible.builtin.stat:

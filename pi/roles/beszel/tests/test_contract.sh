@@ -10,6 +10,8 @@ fail() { echo "beszel role contract: $*" >&2; exit 1; }
 rg -q '^beszel_image:' "$role_dir/defaults/main.yml" || fail "image input is missing"
 rg -q 'beszel_image.*sha256:' "$role_dir/tasks/main.yml" || fail "immutable image assertion is missing"
 rg -q 'beszel_bind_port.*8090' "$role_dir/defaults/main.yml" || fail "port 8090 is missing"
+rg -q '^beszel_health_address:.*beszel_bind_address' "$role_dir/defaults/main.yml" \
+  || fail "health probe must use the concrete published listener"
 rg -q 'beszel_data_dir' "$role_dir/tasks/main.yml" || fail "persistent state is missing"
 rg -q 'no-new-privileges' "$role_dir/tasks/main.yml" || fail "hardening is missing"
 rg -q 'cap_drop:' "$role_dir/tasks/main.yml" || fail "capability drop is missing"

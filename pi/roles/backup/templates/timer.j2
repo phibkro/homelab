@@ -3,7 +3,7 @@
 Description=Timer for Pi restic {{ timer_kind }} — {{ timer_job.name }}
 
 [Timer]
-OnCalendar={{ timer_schedule | quote }}
+OnCalendar={{ timer_schedule }}
 Persistent=true
 RandomizedDelaySec={{ pi_backup_randomized_delay }}
 Unit=pi-restic-{{ timer_kind }}-{{ timer_job.name }}.service

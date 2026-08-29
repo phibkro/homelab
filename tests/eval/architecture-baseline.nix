@@ -367,7 +367,7 @@ let
       dashboard = false;
     };
     alert = {
-      port = 8081;
+      port = 8091;
       runsOn = "pi";
       audience = "operator";
       exposeOnTailnet = false;

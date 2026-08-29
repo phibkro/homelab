@@ -9,6 +9,12 @@ fail() { echo "victoriametrics role contract: $*" >&2; exit 1; }
 [[ -f "$role_dir/templates/prometheus.yml.j2" ]] || fail "scrape config template is missing"
 [[ -f "$role_dir/templates/victoriametrics.service.j2" ]] || fail "systemd unit is missing"
 rg -q 'victoriametrics_image.*sha256:' "$role_dir/tasks/main.yml" || fail "immutable image assertion is missing"
+rg -q '^victoriametrics_image_digest: sha256:[0-9a-f]{64}$' "$role_dir/defaults/main.yml" \
+  || fail "immutable image digest is missing"
+rg -Fq '@{{ victoriametrics_image_digest }}' "$role_dir/defaults/main.yml" \
+  || fail "image must reference the exact digest variable"
+rg -q '^victoriametrics_health_address:.*victoriametrics_bind_address' "$role_dir/defaults/main.yml" \
+  || fail "health probe must use the concrete published listener"
 rg -q 'victoriametrics_bind_port.*8428' "$role_dir/defaults/main.yml" || fail "port 8428 is missing"
 rg -q 'victoriametrics_retention_period.*14d' "$role_dir/defaults/main.yml" || fail "14-day retention is missing"
 rg -q 'victoriametrics_scrape_jobs' "$role_dir/templates/prometheus.yml.j2" || fail "explicit scrape inputs are missing"

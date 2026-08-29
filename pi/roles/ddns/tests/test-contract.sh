@@ -14,6 +14,11 @@ grep -Fq -- 'DELETE' "$script"
 grep -Fq -- 'ProtectSystem=strict' "$role_dir/templates/cloudflare-ddns.service.j2"
 grep -Fq -- 'User=cloudflare-ddns' "$role_dir/templates/cloudflare-ddns.service.j2"
 grep -Fq -- 'LoadCredential=' "$role_dir/templates/cloudflare-ddns.service.j2"
+grep -Fq -- 'content: "{{ ddns_api_token }}\n"' "$role_dir/tasks/main.yml"
+if grep -Fq -- 'content: "CLOUDFLARE_API_TOKEN={{ ddns_api_token }}' "$role_dir/tasks/main.yml"; then
+  echo 'credentials file must contain the raw token consumed by LoadCredential' >&2
+  exit 1
+fi
 grep -Fq -- 'ProtectControlGroups=true' "$role_dir/templates/cloudflare-ddns.service.j2"
 grep -Fq -- 'RestrictSUIDSGID=true' "$role_dir/templates/cloudflare-ddns.service.j2"
 grep -Fq -- 'SystemCallFilter=@system-service' "$role_dir/templates/cloudflare-ddns.service.j2"
@@ -21,6 +26,8 @@ grep -Fq -- 'fail-with-body' "$script"
 grep -Fq -- 'not ddns_enabled' "$role_dir/tasks/main.yml"
 grep -Fq -- 'state: absent' "$role_dir/tasks/main.yml"
 grep -Fq -- 'page=' "$role_dir/templates/cloudflare-ddns.sh.j2"
+grep -Fq -- 'ddns_credentials.changed | default(false)' "$role_dir/tasks/main.yml"
+grep -Fq -- 'ddns_timer.changed | default(false)' "$role_dir/tasks/main.yml"
 
 tmp_dir=$(mktemp -d)
 trap 'rm -rf "$tmp_dir"' EXIT

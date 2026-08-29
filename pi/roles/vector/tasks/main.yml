@@ -132,11 +132,12 @@
       - --rm
       - --entrypoint
       - /usr/bin/vector
+      - --tmpfs
+      - /var/lib/vector:rw,noexec,nosuid,size=16m
       - --volume
       - "{{ vector_config_dir }}/vector.yaml:/etc/vector/vector.yaml:ro"
       - "{{ vector_image }}"
       - validate
-      - --config
       - /etc/vector/vector.yaml
   changed_when: false
   when:

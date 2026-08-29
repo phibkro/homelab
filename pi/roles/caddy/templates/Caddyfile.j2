@@ -8,6 +8,14 @@
 {% endif %}
 }
 
+{% for domain in pi_deprecated_domains | default([]) %}
+http://*.{{ domain }} {
+  bind {{ pi_service_bind_address }}
+  @legacySubdomain header_regexp Host ^([^.]+)\.{{ domain | regex_escape }}$
+  redir @legacySubdomain https://{re.legacySubdomain.1}.{{ pi_domain }}{uri} 301
+}
+
+{% endfor %}
 *.{{ pi_domain }} {
   bind {{ pi_service_bind_address }}
 {% if caddy_tls_mode == 'internal' %}
@@ -21,12 +29,35 @@
 {% for route in pi_routes %}
   @{{ route.name }} {
     host {{ route.hostname }}
-{% if route.reachability == 'internal' %}
+{% if route.reachability | default('internal') == 'internal' %}
     client_ip private_ranges 100.64.0.0/10
 {% endif %}
   }
   handle @{{ route.name }} {
-    reverse_proxy http://{{ route.upstream_address }}:{{ route.upstream_port }}
+{% if route.auth | default('none') == 'forward-auth' %}
+{% if route.forward_auth_exempt_paths | length > 0 %}
+    @{{ route.name }}AuthNeeded {
+      not path {{ route.forward_auth_exempt_paths | join(' ') }}
+    }
+    forward_auth @{{ route.name }}AuthNeeded http://{{ route.forward_auth_upstream }} {
+      uri /api/verify?rd=https://auth.{{ pi_domain }}
+      copy_headers Remote-User Remote-Email Remote-Name Remote-Groups
+    }
+{% else %}
+    forward_auth http://{{ route.forward_auth_upstream }} {
+      uri /api/verify?rd=https://auth.{{ pi_domain }}
+      copy_headers Remote-User Remote-Email Remote-Name Remote-Groups
+    }
+{% endif %}
+{% endif %}
+    reverse_proxy {{ route.scheme | default('http') }}://{{ route.upstream_address }}:{{ route.upstream_port }} {
+{% if route.upstream_host_header is defined and route.upstream_host_header %}
+      header_up Host {{ route.upstream_host_header }}
+{% endif %}
+{% if route.upstream_origin_header is defined and route.upstream_origin_header %}
+      header_up Origin {{ route.upstream_origin_header }}
+{% endif %}
+    }
   }
 
 {% endfor %}

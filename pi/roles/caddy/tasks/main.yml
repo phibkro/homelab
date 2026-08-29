@@ -1,4 +1,54 @@
 ---
+- name: Validate the Caddy domain contract
+  ansible.builtin.assert:
+    that:
+      - pi_domain is match('^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$')
+      - >-
+        pi_deprecated_domains | default([])
+        | reject('match', '^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$')
+        | list | length == 0
+    fail_msg: Invalid Caddy domain input; refusing to render proxy directives.
+  when: caddy_enabled | bool
+
+- name: Validate the inventory-derived Caddy route contract
+  ansible.builtin.assert:
+    that:
+      - item.name is string
+      - item.name is match('^[a-z][a-z0-9-]*$')
+      - item.hostname is string
+      - item.hostname is match('^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$')
+      - item.upstream_address is string
+      - item.upstream_address | length > 0
+      - item.upstream_address is match('^[a-zA-Z0-9][a-zA-Z0-9.:-]*$')
+      - item.upstream_port | int > 0
+      - item.upstream_port | int < 65536
+      - (item.scheme | default('http')) in ['http', 'https']
+      - (item.reachability | default('internal')) in ['internal', 'internet']
+      - (item.reachability | default('internal')) != 'internet' or (item.audience | default('operator')) != 'operator'
+      - (item.auth | default('none')) in ['none', 'oidc', 'forward-auth']
+      - (item.auth | default('none')) != 'forward-auth' or item.forward_auth_upstream is string
+      - >-
+        (item.auth | default('none')) != 'forward-auth'
+        or item.forward_auth_upstream is match('^[a-zA-Z0-9][a-zA-Z0-9.:-]*:[0-9]{1,5}$')
+      - (item.auth | default('none')) != 'forward-auth' or item.forward_auth_exempt_paths is sequence
+      - (item.auth | default('none')) != 'forward-auth' or item.forward_auth_exempt_paths is not string
+      - >-
+        (item.forward_auth_exempt_paths | default([]))
+        | reject('match', '^/[^\\s{}]*$') | list | length == 0
+      - >-
+        item.upstream_host_header is not defined or item.upstream_host_header is none
+        or item.upstream_host_header is match('^[a-zA-Z0-9][a-zA-Z0-9.:-]*$')
+      - >-
+        item.upstream_origin_header is not defined or item.upstream_origin_header is none
+        or item.upstream_origin_header is match('^https?://[a-zA-Z0-9][a-zA-Z0-9.:-]*$')
+    fail_msg: >-
+      Invalid inventory-derived Caddy route {{ item.name | default('unknown') }};
+      refusing to render a potentially unsafe proxy.
+  loop: "{{ pi_routes }}"
+  loop_control:
+    label: "{{ item.name | default('unknown') }}"
+  when: caddy_enabled | bool
+
 - name: Create the Caddy application directories
   ansible.builtin.file:
     path: "{{ item.path }}"

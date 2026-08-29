@@ -43,9 +43,14 @@
           - pi_routes | length > 0
           - pi_routes | map(attribute='name') | unique | length == pi_routes | length
           - pi_routes | map(attribute='hostname') | unique | length == pi_routes | length
-          - pi_routes | map(attribute='upstream_port') | map('int') | unique | length == pi_routes | length
+          - >-
+            (
+              pi_routes | map(attribute='upstream_address')
+              | zip(pi_routes | map(attribute='upstream_port'))
+              | map('join', ':') | unique | list | length
+            ) == (pi_routes | length)
           - pi_routes | map(attribute='reachability') | difference(['internal', 'internet']) | length == 0
-        fail_msg: Appliance routes require unique names, hostnames, and backend ports.
+        fail_msg: Appliance routes require unique names, hostnames, and backend address-port sockets.
 
     - name: Reject wildcard production service bindings
       ansible.builtin.assert:
@@ -53,10 +58,49 @@
           - pi_emulation_mode | bool or pi_service_bind_address != '0.0.0.0'
         fail_msg: Production services must bind to the inventory-declared LAN address.
 
+    - name: Validate the explicit tailnet diagnostic port list
+      ansible.builtin.assert:
+        that:
+          - item is number or (item is string and item is match('^[0-9]+$'))
+          - item | int >= 1
+          - item | int <= 65535
+        fail_msg: Tailnet diagnostic ports must be numeric TCP ports from 1 through 65535.
+      loop: "{{ pi_tailnet_tcp_ports | default([]) }}"
+      loop_control:
+        label: "{{ item }}"
+
+    - name: Require unique tailnet diagnostic ports
+      ansible.builtin.assert:
+        that:
+          - >-
+            (pi_tailnet_tcp_ports | default([]) | map('int') | list | unique | length)
+            == (pi_tailnet_tcp_ports | default([]) | length)
+        fail_msg: Tailnet diagnostic ports must be unique.
+
+    - name: Require subnet-bound services for diagnostic exposure
+      ansible.builtin.assert:
+        that:
+          - >-
+            (pi_tailnet_tcp_ports | default([]) | length == 0)
+            or pi_service_bind_address == pi_lan_address
+        fail_msg: >-
+          Tailnet diagnostic ports are subnet-reachable listeners; services
+          must bind the declared LAN address rather than a wildcard or an
+          unrelated interface.
+
   roles:
     - role: base
     - role: firewall
     - role: tailscale
     - role: podman
     - role: pihole
+    - role: authelia
+    - role: ddns
+    - role: ntfy
+    - role: victorialogs
+    - role: vector
+    - role: victoriametrics
+    - role: beszel
+    - role: gatus
+    - role: backup
     - role: caddy

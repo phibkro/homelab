@@ -10,13 +10,15 @@
 
 - name: Assemble the explicit Pi backup manifest
   ansible.builtin.set_fact:
-    pi_backup_effective_jobs: >-
+    pi_backup_effective_jobs: >- # noqa: var-naming[no-role-prefix] - public Pi backup namespace
       {{ pi_backup_jobs + ([{
         'name': pi_backup_tailscale_identity_job_name,
         'paths': pi_backup_tailscale_identity_paths
       }] if pi_backup_tailscale_identity_enabled | bool else []) }}
-    pi_backup_effective_source_prefixes: >-
-      {{ pi_backup_approved_source_prefixes + (['/var/lib/tailscale/tailscaled.state'] if pi_backup_tailscale_identity_enabled | bool else []) }}
+    pi_backup_effective_source_prefixes: >- # noqa: var-naming[no-role-prefix] - public Pi backup namespace
+      {{ pi_backup_approved_source_prefixes
+         + (['/var/lib/tailscale/tailscaled.state']
+            if pi_backup_tailscale_identity_enabled | bool else []) }}
   changed_when: false
 
 - name: Validate the explicit Pi backup contract
@@ -31,7 +33,9 @@
       - pi_backup_repository_prefix == '/pi'
       - pi_backup_max_age_hours | int > 0
       - pi_backup_aurora_known_host == pi_backup_pinned_aurora_known_host
-      - pi_backup_aurora_known_host == 'aurora.saola-matrix.ts.net ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKnfMYRv1a3CGvnL0e82w/Z1RK7aOqS3k8JvMYbD8NET'
+      - >-
+        pi_backup_aurora_known_host == 'aurora.saola-matrix.ts.net ssh-ed25519
+        AAAAC3NzaC1lZDI1NTE5AAAAIKnfMYRv1a3CGvnL0e82w/Z1RK7aOqS3k8JvMYbD8NET'
     fail_msg: >-
       Pi backups require an explicit state manifest, SecretSpec credentials,
       and the pinned Aurora SFTP destination contract.
@@ -48,7 +52,10 @@
       - item.paths is not string
       - item.paths | length > 0
       - item.paths | select('match', '^/') | list | length == item.paths | length
-      - item.paths | select('in', ['/','/var','/var/lib','/var/lib/containers','/home','/srv','/srv/share']) | list | length == 0
+      - >-
+        item.paths | select('in',
+        ['/','/var','/var/lib','/var/lib/containers','/home','/srv','/srv/share'])
+        | list | length == 0
       - item.paths | select('search', '[*?]') | list | length == 0
       - item.paths | select('search', '^/(root|etc/restic|run/secrets)(/|$)') | list | length == 0
       - item.paths | select('in', ['/var/lib/containers','/var/lib/containerd','/var/lib/podman']) | list | length == 0
@@ -56,6 +63,7 @@
       - (item.excludes | default([])) | select('match', '^/') | list | length == (item.excludes | default([]) | length)
       - (item.excludes | default([])) | select('search', '[*?]') | list | length == 0
       - item.schedule | default(pi_backup_default_schedule) | length > 0
+      - item.schedule | default(pi_backup_default_schedule) is not search('[\\r\\n]')
     fail_msg: >-
       Each Pi backup job needs a safe name and a non-empty list of concrete
       state paths. Whole filesystem/container roots and globs are forbidden.
@@ -64,19 +72,12 @@
     label: "{{ item.name | default('unnamed') }}"
   when: pi_backup_enabled | bool
 
-- name: Validate every manifest path belongs to an allowed source prefix
+- name: Validate every manifest path is explicitly approved
   ansible.builtin.assert:
     that:
-      - >-
-        {% set ns = namespace(allowed=false) %}
-        {% for prefix in pi_backup_effective_source_prefixes %}
-        {% if item == prefix or item.startswith(prefix ~ '/') %}
-        {% set ns.allowed = true %}
-        {% endif %}
-        {% endfor %}
-        {{ ns.allowed }}
+      - item in pi_backup_effective_source_prefixes
     fail_msg: >-
-      Backup path {{ item }} is outside the immutable approved Pi state paths.
+      Backup path {{ item }} is not one of the immutable approved Pi state paths.
   loop: "{{ pi_backup_effective_jobs | map(attribute='paths') | flatten }}"
   loop_control:
     label: "{{ item }}"
@@ -86,16 +87,23 @@
   ansible.builtin.assert:
     that:
       - (pi_backup_jobs | map(attribute='name') | list | unique | length) == (pi_backup_jobs | length)
-  fail_msg: Pi backup job names must be unique because they become systemd and repository names.
+    fail_msg: Pi backup job names must be unique because they become systemd and repository names.
   when: pi_backup_enabled | bool
 
 - name: Validate the explicit Tailscale identity opt-in
   ansible.builtin.assert:
     that:
       - (pi_backup_tailscale_identity_enabled | bool) or (pi_backup_tailscale_identity_paths | length == 0)
-      - (not (pi_backup_tailscale_identity_enabled | bool)) or (pi_backup_tailscale_identity_paths == pi_backup_tailscale_identity_approved_paths)
-      - (not (pi_backup_tailscale_identity_enabled | bool)) or (pi_backup_tailscale_identity_job_name not in (pi_backup_jobs | map(attribute='name') | list))
-      - pi_backup_tailscale_identity_paths | select('match', '^/') | list | length == pi_backup_tailscale_identity_paths | length
+      - >-
+        (not (pi_backup_tailscale_identity_enabled | bool))
+        or (pi_backup_tailscale_identity_paths == pi_backup_tailscale_identity_approved_paths)
+      - >-
+        (not (pi_backup_tailscale_identity_enabled | bool))
+        or (pi_backup_tailscale_identity_job_name not in
+        (pi_backup_jobs | map(attribute='name') | list))
+      - >-
+        pi_backup_tailscale_identity_paths | select('match', '^/') | list
+        | length == pi_backup_tailscale_identity_paths | length
       - pi_backup_tailscale_identity_paths | select('search', '[*?]') | list | length == 0
     fail_msg: Tailscale identity backup is opt-in and requires explicit absolute paths.
   when: pi_backup_enabled | bool
@@ -155,7 +163,9 @@
     loop_var: backup_job
     label: "{{ backup_job.name }}"
   vars:
-    job_repository: "sftp:{{ pi_backup_aurora_user }}@{{ pi_backup_aurora_host }}:{{ pi_backup_repository_prefix }}/{{ backup_job.name }}"
+    job_repository: >-
+      sftp:{{ pi_backup_aurora_user }}@{{ pi_backup_aurora_host }}:
+      {{ pi_backup_repository_prefix }}/{{ backup_job.name }}
   notify:
     - Reload systemd after Pi backup changes
     - Restart Pi backup freshness timer
@@ -175,7 +185,9 @@
   vars:
     maintenance_job: "{{ maintenance_pair[0] }}"
     maintenance_kind: "{{ maintenance_pair[1] }}"
-    job_repository: "sftp:{{ pi_backup_aurora_user }}@{{ pi_backup_aurora_host }}:{{ pi_backup_repository_prefix }}/{{ maintenance_job.name }}"
+    job_repository: >-
+      sftp:{{ pi_backup_aurora_user }}@{{ pi_backup_aurora_host }}:
+      {{ pi_backup_repository_prefix }}/{{ maintenance_job.name }}
   notify: Reload systemd after Pi backup changes
   when: pi_backup_enabled | bool
 
@@ -212,7 +224,12 @@
   vars:
     timer_job: "{{ timer_pair[0] }}"
     timer_kind: "{{ timer_pair[1] }}"
-    timer_schedule: "{{ timer_job.schedule | default(pi_backup_default_schedule) if timer_kind == 'backup' else (pi_backup_prune_schedule if timer_kind == 'prune' else (pi_backup_metadata_check_schedule if timer_kind == 'check-weekly' else pi_backup_data_check_schedule)) }}"
+    timer_schedule: >-
+      {{ timer_job.schedule | default(pi_backup_default_schedule)
+         if timer_kind == 'backup'
+         else pi_backup_prune_schedule if timer_kind == 'prune'
+         else pi_backup_metadata_check_schedule if timer_kind == 'check-weekly'
+         else pi_backup_data_check_schedule }}
   notify: Reload systemd after Pi backup changes
   when: pi_backup_enabled | bool
 
@@ -244,15 +261,20 @@
   notify: Reload systemd after Pi backup changes
   when: pi_backup_enabled | bool
 
+- name: Initialize the expected owned Pi backup artifact list
+  ansible.builtin.set_fact:
+    pi_backup_expected_runtime_files: # noqa: var-naming[no-role-prefix] - public Pi backup namespace
+      - /usr/local/libexec/pi-restic-freshness
+      - /usr/local/libexec/pi-restic-restore-disposable
+      - /etc/systemd/system/pi-restic-freshness.service
+      - /etc/systemd/system/pi-restic-freshness.timer
+  changed_when: false
+  when: pi_backup_enabled | bool
+
 - name: Build the expected owned Pi backup artifact list
   ansible.builtin.set_fact:
-    pi_backup_expected_runtime_files: >-
-      {{ (pi_backup_expected_runtime_files | default([
-        '/usr/local/libexec/pi-restic-freshness',
-        '/usr/local/libexec/pi-restic-restore-disposable',
-        '/etc/systemd/system/pi-restic-freshness.service',
-        '/etc/systemd/system/pi-restic-freshness.timer'
-      ])) + [
+    pi_backup_expected_runtime_files: >- # noqa: var-naming[no-role-prefix] - public Pi backup namespace
+      {{ pi_backup_expected_runtime_files + [
         '/usr/local/libexec/pi-restic-backup-' ~ item.name,
         '/usr/local/libexec/pi-restic-prune-' ~ item.name,
         '/usr/local/libexec/pi-restic-check-weekly-' ~ item.name,
@@ -265,7 +287,7 @@
         '/etc/systemd/system/pi-restic-prune-' ~ item.name ~ '.timer',
         '/etc/systemd/system/pi-restic-check-weekly-' ~ item.name ~ '.timer',
         '/etc/systemd/system/pi-restic-check-monthly-' ~ item.name ~ '.timer'
-      ]) }}
+      ] }}
   loop: "{{ pi_backup_effective_jobs }}"
   loop_control:
     label: "{{ item.name }}"
@@ -281,7 +303,7 @@
     contains: "homelab-pi-backup-role: managed"
     read_whole_file: true
     file_type: file
-  register: pi_backup_stale_candidates
+  register: pi_backup_stale_candidates # noqa: var-naming[no-role-prefix] - public Pi backup namespace
   changed_when: false
   when: pi_backup_enabled | bool
 
@@ -344,7 +366,7 @@
     contains: "homelab-pi-backup-role: managed"
     read_whole_file: true
     file_type: file
-  register: pi_backup_owned_files
+  register: pi_backup_owned_files # noqa: var-naming[no-role-prefix] - public Pi backup namespace
   changed_when: false
   when: not pi_backup_enabled | bool
 

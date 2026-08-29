@@ -51,7 +51,7 @@
     enable = true;
     settings = {
       base-url = "https://alert.${config.nori.domain}";
-      listen-http = ":8081";
+      listen-http = ":8091";
       auth-default-access = "deny";
       auth-file = "/var/lib/ntfy-sh/user.db";
       behind-proxy = false;
@@ -74,7 +74,7 @@
     The alert endpoint is declared by manifests/server.nix. Open the
     backend port on the tailnet so Caddy can reach it.
   */
-  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8081 ];
+  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8091 ];
 
   nori.backups.ntfy.skip = "Hub on appliance host (pi). Pi flash anti-write posture; auth db tiny (one publisher row), recreated from sops + manual ntfy user add if lost.";
 }

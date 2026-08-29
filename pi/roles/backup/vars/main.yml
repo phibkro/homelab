@@ -1,11 +1,13 @@
 ---
+# These pi_backup_* names are part of the playbook's public boundary contract;
+# their narrow no-role-prefix exemptions are kept on each declaration.
 # This is a trust anchor, not an operator-editable connection setting.  The
 # task assertion also requires any supplied input to equal this exact line.
-pi_backup_pinned_aurora_known_host: >-
+pi_backup_pinned_aurora_known_host: >- # noqa: var-naming[no-role-prefix]
   aurora.saola-matrix.ts.net ssh-ed25519
   AAAAC3NzaC1lZDI1NTE5AAAAIKnfMYRv1a3CGvnL0e82w/Z1RK7aOqS3k8JvMYbD8NET
 
-pi_backup_approved_source_prefixes:
+pi_backup_approved_source_prefixes: # noqa: var-naming[no-role-prefix]
   - /var/lib/containers/storage/volumes/pihole-data/_data
   - /opt/pihole/dnsmasq.d/05-homelab-local-records.conf
   - /opt/caddy/data
@@ -23,5 +25,5 @@ pi_backup_approved_source_prefixes:
   - /etc/vector
 
 # Only this node-state file is approved for the sensitive Tailscale opt-in.
-pi_backup_tailscale_identity_approved_paths:
+pi_backup_tailscale_identity_approved_paths: # noqa: var-naming[no-role-prefix]
   - /var/lib/tailscale/tailscaled.state

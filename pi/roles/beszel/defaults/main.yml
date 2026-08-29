@@ -8,6 +8,6 @@ beszel_bind_address: "{{ pi_service_bind_address }}"
 beszel_bind_port: 8090
 beszel_data_dir: /var/lib/beszel
 beszel_container_user: "1000:1000"
-beszel_health_address: 127.0.0.1
+beszel_health_address: "{{ beszel_bind_address }}"
 beszel_health_path: /api/health
 beszel_user_creation: "true"

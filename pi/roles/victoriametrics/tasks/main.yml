@@ -6,6 +6,7 @@
       - victoriametrics_bind_address | length > 0
       - victoriametrics_bind_address is string
       - victoriametrics_bind_address not in ['0.0.0.0', '::', '::0']
+      - victoriametrics_health_address == victoriametrics_bind_address
       - victoriametrics_bind_port | int > 0
       - victoriametrics_bind_port | int < 65536
       - victoriametrics_data_dir | length > 0
@@ -81,10 +82,18 @@
 - name: Validate the rendered VictoriaMetrics scrape configuration
   ansible.builtin.assert:
     that:
-      - (lookup('ansible.builtin.template', role_path + '/templates/prometheus.yml.j2') | from_yaml).scrape_configs | length > 0
-      - (lookup('ansible.builtin.template', role_path + '/templates/prometheus.yml.j2') | from_yaml).scrape_configs is sequence
-      - (lookup('ansible.builtin.template', role_path + '/templates/prometheus.yml.j2') | from_yaml).scrape_configs | reject('mapping') | list | length == 0
-      - (lookup('ansible.builtin.template', role_path + '/templates/prometheus.yml.j2') | from_yaml).global.scrape_interval == '30s'
+      - >-
+        (lookup('ansible.builtin.template', role_path + '/templates/prometheus.yml.j2') | from_yaml)
+        .scrape_configs | length > 0
+      - >-
+        (lookup('ansible.builtin.template', role_path + '/templates/prometheus.yml.j2') | from_yaml)
+        .scrape_configs is sequence
+      - >-
+        (lookup('ansible.builtin.template', role_path + '/templates/prometheus.yml.j2') | from_yaml)
+        .scrape_configs | reject('mapping') | list | length == 0
+      - >-
+        (lookup('ansible.builtin.template', role_path + '/templates/prometheus.yml.j2') | from_yaml)
+        .global.scrape_interval == '30s'
     fail_msg: The VictoriaMetrics scrape configuration must parse and contain at least one job.
   changed_when: false
   when: victoriametrics_enabled | bool

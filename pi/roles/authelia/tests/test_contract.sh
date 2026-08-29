@@ -20,6 +20,7 @@ rg -q 'AUTHELIA_.*_FILE' "$tasks_file"
 rg -q 'mode: "0440"' "$tasks_file"
 rg -Fq 'user: "{{ authelia_uid }}:{{ authelia_gid }}"' "$tasks_file"
 rg -q 'read_only: true' "$tasks_file"
+rg -q 'disable_healthcheck: true' "$config_template"
 rg -q 'cap_drop:' "$tasks_file"
 rg -q 'no-new-privileges:true' "$tasks_file"
 rg -q 'authelia_uid: 8000' "$role_root/defaults/main.yml"
@@ -32,6 +33,13 @@ fi
 # PBKDF2 hashes stay outside Git and outside the static YAML.
 rg -q 'X_AUTHELIA_CONFIG_FILTERS' "$tasks_file"
 rg -q 'secret "/run/secrets/oidc-' "$config_template"
+rg -q '^    jwks:' "$config_template"
+rg -q 'algorithm: RS256' "$config_template"
+rg -q 'mindent 10' "$config_template"
+if rg -q 'AUTHELIA_IDENTITY_PROVIDERS_OIDC_ISSUER_PRIVATE_KEY_FILE' "$tasks_file"; then
+  echo "deprecated issuer_private_key environment mapping must not be used with JWKS" >&2
+  exit 1
+fi
 rg -q 'subject:' "$config_template"
 rg -q 'methods:' "$config_template"
 rg -q 'authelia_obsolete_oidc_secret_files' "$tasks_file"
