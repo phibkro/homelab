@@ -20,6 +20,15 @@
     name: "{{ pi_hostname }}"
     use: systemd
 
+- name: Keep the appliance hostname locally resolvable
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1\s+'
+    line: "127.0.1.1 {{ pi_hostname }}"
+    owner: root
+    group: root
+    mode: "0644"
+
 - name: Create the journald drop-in directory
   ansible.builtin.file:
     path: /etc/systemd/journald.conf.d
@@ -39,12 +48,32 @@
   when: pi_volatile_journal | bool
   notify: Restart journald
 
+- name: Inspect active swap devices
+  ansible.builtin.command:
+    argv:
+      - swapon
+      - --show=NAME
+      - --noheadings
+      - --raw
+  register: base_active_swap_devices
+  changed_when: false
+  check_mode: false
+  when: pi_disable_disk_swap | bool
+
 - name: Disable configured disk swap
-  ansible.builtin.command: swapoff --all
-  when:
-    - pi_disable_disk_swap | bool
-    - ansible_facts.swaptotal_mb | int > 0
+  ansible.builtin.command:
+    argv:
+      - swapoff
+      - "{{ item }}"
+  loop: >-
+    {{ base_active_swap_devices.stdout_lines
+       | default([])
+       | reject('match', '^/dev/zram')
+       | list }}
+  loop_control:
+    label: "{{ item }}"
   changed_when: true
+  when: pi_disable_disk_swap | bool
 
 - name: Prevent disk swap activation from fstab
   ansible.builtin.replace:
