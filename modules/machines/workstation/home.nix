@@ -39,6 +39,25 @@
   ];
 
   /*
+    OpenAI does not publish a Linux ChatGPT desktop binary. Keep the
+    workstation on the official web client and present it as a dedicated app
+    window through the already-managed Chromium profile instead of installing
+    an unofficial Electron wrapper.
+  */
+  xdg.desktopEntries.chatgpt = {
+    name = "ChatGPT";
+    genericName = "AI assistant";
+    comment = "Open ChatGPT in a dedicated application window";
+    exec = "${pkgs.chromium}/bin/chromium --app=https://chatgpt.com/";
+    icon = "applications-internet";
+    terminal = false;
+    categories = [
+      "Network"
+      "Utility"
+    ];
+  };
+
+  /*
     home-manager owns ~/.bashrc — lets fzf/zoxide auto-source.
 
     initExtra: Herdr blast-radius isolation. Every Herdr pane starts an
