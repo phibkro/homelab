@@ -44,7 +44,15 @@
     shellcheck scripts/*.sh ../.githooks/pre-commit
     generated_inventory="$(generate-inventory)"
     jq --exit-status \
-      '.pi_appliances.hosts | keys == ["pi"]' \
+      '(.pi_appliances.hosts | keys) == ["pi"]
+       and .pi_appliances.hosts.pi.pi_domain == "home.phibkro.org"
+       and .pi_appliances.hosts.pi.pi_routes == [{
+         name: "pihole",
+         hostname: "pihole.home.phibkro.org",
+         upstream_address: "192.168.1.225",
+         upstream_port: 8081,
+         reachability: "internal"
+       }]' \
       "$generated_inventory" >/dev/null
     ansible-inventory --inventory "$generated_inventory" --list \
       | jq --exit-status \
@@ -53,6 +61,7 @@
     secretspec schema --profile production >/dev/null
     PI_VM_SSH_KEY=/tmp/not-used \
       PIHOLE_WEB_PASSWORD=syntax-only-password \
+      CLOUDFLARE_ACME_TOKEN=syntax-only-cloudflare-token \
       ansible-playbook --syntax-check playbooks/pi.yml
   '';
 

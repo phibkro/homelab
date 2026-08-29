@@ -1,0 +1,36 @@
+{
+  admin off
+  email {{ caddy_acme_email }}
+  http_port {{ caddy_http_port }}
+  https_port {{ caddy_https_port }}
+{% if caddy_tls_mode == 'cloudflare' %}
+  acme_ca https://acme-v02.api.letsencrypt.org/directory
+{% endif %}
+}
+
+*.{{ pi_domain }} {
+  bind {{ pi_service_bind_address }}
+{% if caddy_tls_mode == 'internal' %}
+  tls internal
+{% else %}
+  tls {
+    dns cloudflare {env.CF_API_TOKEN}
+  }
+{% endif %}
+
+{% for route in pi_routes %}
+  @{{ route.name }} {
+    host {{ route.hostname }}
+{% if route.reachability == 'internal' %}
+    client_ip private_ranges 100.64.0.0/10
+{% endif %}
+  }
+  handle @{{ route.name }} {
+    reverse_proxy http://{{ route.upstream_address }}:{{ route.upstream_port }}
+  }
+
+{% endfor %}
+  handle {
+    respond 404
+  }
+}

@@ -10,6 +10,13 @@ pi_lan_address: 192.168.1.225
 pi_lan_cidr: 192.168.1.0/24
 pi_service_bind_address: "{{ pi_lan_address }}"
 pi_tailnet_interface: tailscale0
+pi_domain: home.phibkro.org
+pi_routes:
+  - name: pihole
+    hostname: "pihole.{{ pi_domain }}"
+    upstream_address: "{{ pi_service_bind_address }}"
+    upstream_port: "{{ pi_admin_port }}"
+    reachability: internal
 
 tailscale_install: true
 tailscale_enroll: false
@@ -28,6 +35,22 @@ pihole_web_password: "{{ lookup('env', 'PIHOLE_WEB_PASSWORD') }}"
 pihole_upstream_dns:
   - 1.1.1.1
   - 9.9.9.9
+
+caddy_enabled: true
+caddy_http_port: 80
+caddy_https_port: 443
+caddy_tls_mode: "{{ 'internal' if pi_emulation_mode else 'cloudflare' }}"
+caddy_acme_email: philib.krogh@gmail.com
+caddy_cloudflare_api_token: "{{ lookup('env', 'CLOUDFLARE_ACME_TOKEN') }}"
+caddy_builder_image: >-
+  docker.io/library/caddy:2.10.2-builder-alpine@sha256:4cff3ae272ea05842adb4546e35961e4947aeea65f80fa1eb62a35b960e84971
+caddy_runtime_image: >-
+  docker.io/library/caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+caddy_cloudflare_plugin: github.com/caddy-dns/cloudflare@v0.2.4
+caddy_build_custom_image: "{{ not pi_emulation_mode }}"
+caddy_image: >-
+  {{ 'localhost/homelab-caddy:2.10.2-cloudflare-0.2.4'
+     if caddy_build_custom_image else caddy_runtime_image }}
 
 # Emulation fallback only. Production receives inventory-derived records from
 # scripts/generate-inventory.sh.

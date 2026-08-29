@@ -27,6 +27,26 @@
         fail_msg: Set PIHOLE_WEB_PASSWORD to at least 12 characters.
       no_log: true
 
+    - name: Require the production ACME credential
+      ansible.builtin.assert:
+        that:
+          - caddy_cloudflare_api_token | length >= 20
+        fail_msg: Set CLOUDFLARE_ACME_TOKEN before deploying production HTTPS.
+      no_log: true
+      when:
+        - caddy_enabled | bool
+        - caddy_tls_mode == 'cloudflare'
+
+    - name: Validate the appliance route contract
+      ansible.builtin.assert:
+        that:
+          - pi_routes | length > 0
+          - pi_routes | map(attribute='name') | unique | length == pi_routes | length
+          - pi_routes | map(attribute='hostname') | unique | length == pi_routes | length
+          - pi_routes | map(attribute='upstream_port') | map('int') | unique | length == pi_routes | length
+          - pi_routes | map(attribute='reachability') | difference(['internal', 'internet']) | length == 0
+        fail_msg: Appliance routes require unique names, hostnames, and backend ports.
+
     - name: Reject wildcard production service bindings
       ansible.builtin.assert:
         that:
@@ -39,3 +59,4 @@
     - role: tailscale
     - role: podman
     - role: pihole
+    - role: caddy

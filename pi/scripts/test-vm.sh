@@ -50,7 +50,7 @@ qemu-system-aarch64 \
   -bios "$firmware" \
   -drive "if=virtio,format=qcow2,file=$overlay" \
   -drive "if=virtio,format=raw,readonly=on,file=$seed" \
-  -netdev "user,id=net0,hostfwd=tcp:127.0.0.1:2222-:22,hostfwd=tcp:127.0.0.1:8053-:53,hostfwd=udp:127.0.0.1:8053-:53,hostfwd=tcp:127.0.0.1:8081-:8081" \
+  -netdev "user,id=net0,hostfwd=tcp:127.0.0.1:2222-:22,hostfwd=tcp:127.0.0.1:8053-:53,hostfwd=udp:127.0.0.1:8053-:53,hostfwd=tcp:127.0.0.1:8081-:8081,hostfwd=tcp:127.0.0.1:8080-:80,hostfwd=tcp:127.0.0.1:8443-:443" \
   -device virtio-net-pci,netdev=net0 \
   >"$qemu_log" 2>&1 &
 readonly qemu_pid=$!
@@ -108,6 +108,55 @@ wait_for_dns() {
   return 1
 }
 
+wait_for_https() {
+  for _ in $(seq 1 60); do
+    if curl --fail --insecure --silent --max-time 5 --output /dev/null \
+      --resolve pihole.home.phibkro.org:8443:127.0.0.1 \
+      https://pihole.home.phibkro.org:8443/admin/; then
+      return 0
+    fi
+    sleep 2
+  done
+  echo "Caddy HTTPS did not proxy the Pi-hole administration UI" >&2
+  return 1
+}
+
+verify_https_contract() {
+  local redirect_status
+  local proxy_headers
+  local proxy_status
+  local unknown_status
+
+  redirect_status="$(curl --silent --max-time 10 --output /dev/null --write-out '%{http_code}' \
+    --resolve pihole.home.phibkro.org:8080:127.0.0.1 \
+    http://pihole.home.phibkro.org:8080/admin/)"
+  proxy_headers="$state_dir/proxy-headers"
+  proxy_status="$(curl --insecure --silent --max-time 10 --output /dev/null \
+    --dump-header "$proxy_headers" --write-out '%{http_code}' \
+    --resolve pihole.home.phibkro.org:8443:127.0.0.1 \
+    https://pihole.home.phibkro.org:8443/admin/)"
+  unknown_status="$(curl --insecure --silent --max-time 10 --output /dev/null --write-out '%{http_code}' \
+    --resolve unknown.home.phibkro.org:8443:127.0.0.1 \
+    https://unknown.home.phibkro.org:8443/)"
+
+  if [[ "$redirect_status" != "308" ]]; then
+    echo "Expected HTTP-to-HTTPS 308, got $redirect_status" >&2
+    return 1
+  fi
+  if [[ "$proxy_status" != "302" ]]; then
+    echo "Expected Pi-hole HTTPS redirect status 302, got $proxy_status" >&2
+    return 1
+  fi
+  if ! grep -Eqi '^location: /admin/login' "$proxy_headers"; then
+    echo "HTTPS proxy response did not contain Pi-hole's login redirect" >&2
+    return 1
+  fi
+  if [[ "$unknown_status" != "404" ]]; then
+    echo "Expected unknown HTTPS host status 404, got $unknown_status" >&2
+    return 1
+  fi
+}
+
 wait_for_ssh
 wait_for_cloud_init
 
@@ -120,6 +169,8 @@ if ! grep -Eq 'changed=0 +unreachable=0 +failed=0' <<<"$second_run"; then
 fi
 
 wait_for_dns
+wait_for_https
+verify_https_contract
 
 ssh_guest sudo systemctl reboot || true
 for _ in $(seq 1 30); do
@@ -130,3 +181,5 @@ for _ in $(seq 1 30); do
 done
 wait_for_ssh
 wait_for_dns
+wait_for_https
+verify_https_contract

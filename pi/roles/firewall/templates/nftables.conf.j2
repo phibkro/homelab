@@ -16,11 +16,16 @@ table inet appliance_filter {
 
     ip saddr {{ pi_lan_cidr }} tcp dport 22 accept
     ip saddr {{ pi_lan_cidr }} udp dport {{ pi_dns_port }} accept
-    ip saddr {{ pi_lan_cidr }} tcp dport { {{ pi_dns_port }}, {{ pi_admin_port }} } accept
+    ip saddr {{ pi_lan_cidr }} tcp dport {
+      {{ pi_dns_port }}, {{ pi_admin_port }}{% if caddy_enabled %}, {{ caddy_http_port }}, {{ caddy_https_port }}{% endif %}
+    } accept
 
     iifname "{{ pi_tailnet_interface }}" tcp dport 22 accept
     iifname "{{ pi_tailnet_interface }}" udp dport {{ pi_dns_port }} accept
     iifname "{{ pi_tailnet_interface }}" tcp dport {{ pi_dns_port }} accept
+{% if caddy_enabled %}
+    iifname "{{ pi_tailnet_interface }}" tcp dport { {{ caddy_http_port }}, {{ caddy_https_port }} } accept
+{% endif %}
   }
 
   chain forward {

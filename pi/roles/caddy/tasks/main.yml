@@ -1,0 +1,170 @@
+---
+- name: Create the Caddy application directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - path: /opt/caddy
+      mode: "0750"
+    - path: /opt/caddy/build
+      mode: "0750"
+    - path: /opt/caddy/data
+      mode: "0750"
+    - path: /opt/caddy/config
+      mode: "0750"
+  when: caddy_enabled | bool
+
+- name: Render the pinned Caddy image build
+  ansible.builtin.template:
+    src: Containerfile.j2
+    dest: /opt/caddy/build/Containerfile
+    owner: root
+    group: root
+    mode: "0640"
+  register: caddy_containerfile
+  when:
+    - caddy_enabled | bool
+    - caddy_build_custom_image | bool
+
+- name: Render the inventory-derived Caddy configuration
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: /opt/caddy/Caddyfile
+    owner: root
+    group: root
+    mode: "0640"
+  register: caddy_config
+  when: caddy_enabled | bool
+
+- name: Remove the stale local Caddy image after a build definition change
+  containers.podman.podman_image:
+    name: "{{ caddy_image }}"
+    state: absent
+  when:
+    - caddy_enabled | bool
+    - podman_available | bool
+    - caddy_build_custom_image | bool
+    - caddy_containerfile.changed
+
+- name: Build the pinned Caddy image
+  containers.podman.podman_image:
+    name: "{{ caddy_image }}"
+    path: /opt/caddy/build
+    state: build
+    pull: false
+    build:
+      file: /opt/caddy/build/Containerfile
+      format: oci
+  register: caddy_image_build
+  when:
+    - caddy_enabled | bool
+    - podman_available | bool
+    - caddy_build_custom_image | bool
+
+- name: Validate the rendered Caddy configuration
+  ansible.builtin.command:
+    argv:
+      - podman
+      - run
+      - --rm
+      - --network=host
+      - --volume=/opt/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - "{{ caddy_image }}"
+      - caddy
+      - validate
+      - --config
+      - /etc/caddy/Caddyfile
+      - --adapter
+      - caddyfile
+  environment:
+    CF_API_TOKEN: "{{ caddy_cloudflare_api_token }}"
+  changed_when: false
+  no_log: "{{ caddy_tls_mode == 'cloudflare' }}"
+  when:
+    - caddy_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Inspect the production Caddy modules
+  ansible.builtin.command:
+    argv:
+      - podman
+      - run
+      - --rm
+      - "{{ caddy_image }}"
+      - caddy
+      - list-modules
+  register: caddy_modules
+  changed_when: false
+  when:
+    - caddy_enabled | bool
+    - podman_available | bool
+    - caddy_build_custom_image | bool
+    - not ansible_check_mode
+
+- name: Require the Cloudflare DNS module in production Caddy
+  ansible.builtin.assert:
+    that:
+      - "'dns.providers.cloudflare' in caddy_modules.stdout_lines"
+    fail_msg: The production Caddy image lacks dns.providers.cloudflare.
+  when:
+    - caddy_enabled | bool
+    - podman_available | bool
+    - caddy_build_custom_image | bool
+    - not ansible_check_mode
+
+- name: Run the Caddy container
+  containers.podman.podman_container:
+    name: caddy
+    image: "{{ caddy_image }}"
+    state: started
+    recreate: >-
+      {{ caddy_config.changed
+         or (caddy_image_build.changed | default(false)) }}
+    restart_policy: always
+    pull: never
+    network: host
+    env:
+      CF_API_TOKEN: "{{ caddy_cloudflare_api_token }}"
+    command:
+      - caddy
+      - run
+      - --config
+      - /etc/caddy/Caddyfile
+      - --adapter
+      - caddyfile
+    volume:
+      - /opt/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /opt/caddy/data:/data
+      - /opt/caddy/config:/config
+  no_log: "{{ caddy_tls_mode == 'cloudflare' }}"
+  register: caddy_container
+  when:
+    - caddy_enabled | bool
+    - podman_available | bool
+
+- name: Wait for Caddy HTTPS
+  ansible.builtin.wait_for:
+    host: "{{ pi_service_bind_address }}"
+    port: "{{ caddy_https_port }}"
+    timeout: 120
+  when:
+    - caddy_enabled | bool
+    - not ansible_check_mode
+
+- name: Report Caddy convergence
+  ansible.builtin.debug:
+    msg: >-
+      {% if not podman_available %}
+      Caddy runtime checks deferred until the planned Podman package exists.
+      {% elif ansible_check_mode %}
+      Caddy runtime would converge in deployment.
+      {% else %}
+      Caddy image changed={{ caddy_image_build.changed | default(false) }};
+      container changed={{ caddy_container.changed }};
+      config changed={{ caddy_config.changed }}.
+      {% endif %}
+  when: caddy_enabled | bool

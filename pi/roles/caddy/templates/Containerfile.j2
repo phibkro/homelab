@@ -1,0 +1,8 @@
+FROM {{ caddy_builder_image }} AS builder
+
+RUN xcaddy build \
+  --with {{ caddy_cloudflare_plugin }}
+
+FROM {{ caddy_runtime_image }}
+
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy
