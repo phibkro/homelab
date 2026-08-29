@@ -18,14 +18,20 @@
   libdrm,
   libnotify,
   libusb1,
+  libx11,
+  libxcomposite,
+  libxdamage,
+  libxext,
+  libxfixes,
   libxkbcommon,
+  libxrandr,
+  libxcb,
   mesa,
   nspr,
   nss,
   pango,
   systemd,
   xdg-utils,
-  xorg,
 }:
 
 stdenv.mkDerivation (finalAttrs: {
@@ -57,19 +63,19 @@ stdenv.mkDerivation (finalAttrs: {
     libdrm
     libnotify
     libusb1
+    libx11
+    libxcomposite
+    libxdamage
+    libxext
+    libxfixes
     libxkbcommon
+    libxrandr
+    libxcb
     mesa
     nspr
     nss
     pango
     systemd
-    xorg.libX11
-    xorg.libXcomposite
-    xorg.libXdamage
-    xorg.libXext
-    xorg.libXfixes
-    xorg.libXrandr
-    xorg.libxcb
   ];
 
   unpackPhase = ''
