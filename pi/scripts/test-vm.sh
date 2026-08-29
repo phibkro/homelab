@@ -82,6 +82,21 @@ wait_for_ssh() {
   return 1
 }
 
+wait_for_cloud_init() {
+  for _ in $(seq 1 120); do
+    if ssh_guest test -f /var/lib/cloud/instance/boot-finished; then
+      sleep 3
+      if ssh_guest true; then
+        return 0
+      fi
+    fi
+    sleep 2
+  done
+  echo "ARM64 guest cloud-init did not finish with stable SSH" >&2
+  tail -100 "$qemu_log" >&2
+  return 1
+}
+
 wait_for_dns() {
   for _ in $(seq 1 60); do
     if dig +time=2 +tries=1 @127.0.0.1 -p 8053 pi.hole A; then
@@ -94,6 +109,7 @@ wait_for_dns() {
 }
 
 wait_for_ssh
+wait_for_cloud_init
 
 ansible-playbook -i pi/inventory/test.yml pi/playbooks/pi.yml
 second_run="$(ansible-playbook -i pi/inventory/test.yml pi/playbooks/pi.yml)"

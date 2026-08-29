@@ -19,6 +19,7 @@ tailscale_advertise_routes:
   - 192.168.1.0/24
 tailscale_advertise_exit_node: true
 tailscale_accept_dns: false
+tailscale_apt_suite: trixie
 tailscale_apt_key_sha256: 3e03dacf222698c60b8e2f990b809ca1b3e104de127767864284e6c228f1fb39
 
 pihole_image: >-

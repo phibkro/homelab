@@ -15,3 +15,4 @@ all:
           pi_lan_address: 10.0.2.15
           pi_lan_cidr: 10.0.2.0/24
           pi_service_bind_address: 10.0.2.15
+          tailscale_apt_suite: bookworm

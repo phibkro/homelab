@@ -43,7 +43,13 @@
     ansible-lint playbooks/pi.yml
     shellcheck scripts/*.sh ../.githooks/pre-commit
     generated_inventory="$(generate-inventory)"
-    jq --exit-status '.pi_appliances.hosts == ["pi"]' "$generated_inventory" >/dev/null
+    jq --exit-status \
+      '.pi_appliances.hosts | keys == ["pi"]' \
+      "$generated_inventory" >/dev/null
+    ansible-inventory --inventory "$generated_inventory" --list \
+      | jq --exit-status \
+        '.pi_appliances.hosts == ["pi"]
+         and ._meta.hostvars.pi.ansible_host != null' >/dev/null
     secretspec schema --profile production >/dev/null
     PI_VM_SSH_KEY=/tmp/not-used \
       PIHOLE_WEB_PASSWORD=syntax-only-password \

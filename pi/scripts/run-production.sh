@@ -22,8 +22,19 @@ fi
 
 inventory="$(bash "$repo_root/pi/scripts/generate-inventory.sh")"
 readonly inventory
-target="$(jq --raw-output '._meta.hostvars.pi.ansible_host' "$inventory")"
+target="$(jq --raw-output '.pi_appliances.hosts.pi.ansible_host' "$inventory")"
 readonly target
+
+resolved_inventory="$(ansible-inventory --inventory "$inventory" --list)"
+readonly resolved_inventory
+if ! jq --exit-status \
+  --arg target "$target" \
+  '.pi_appliances.hosts == ["pi"]
+   and ._meta.hostvars.pi.ansible_host == $target' \
+  <<<"$resolved_inventory" >/dev/null; then
+  echo "Generated inventory did not resolve exactly one expected Pi target" >&2
+  exit 1
+fi
 
 if ! ssh-keygen -F "$target" -f "$known_hosts" >/dev/null; then
   echo "No pinned SSH key for $target in $known_hosts" >&2
@@ -42,10 +53,15 @@ known_hosts_dir="$(cd "$(dirname "$known_hosts")" && pwd)"
 readonly known_hosts_dir
 known_hosts_absolute="$known_hosts_dir/$(basename "$known_hosts")"
 readonly known_hosts_absolute
+ssh_extra_vars="$(jq --null-input --compact-output \
+  --arg common_args \
+    "-o StrictHostKeyChecking=yes -o UserKnownHostsFile=$known_hosts_absolute" \
+  '{ansible_ssh_common_args: $common_args}')"
+readonly ssh_extra_vars
 
 args=(
   --inventory "$inventory"
-  --extra-vars "ansible_ssh_common_args=-o StrictHostKeyChecking=yes -o UserKnownHostsFile=$known_hosts_absolute"
+  --extra-vars "$ssh_extra_vars"
   --diff
   "$repo_root/pi/playbooks/pi.yml"
 )

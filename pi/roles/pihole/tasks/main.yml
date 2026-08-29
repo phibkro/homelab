@@ -25,6 +25,7 @@
   containers.podman.podman_volume:
     name: pihole-data
     state: present
+  when: podman_available | bool
 
 - name: Run the Pi-hole container
   containers.podman.podman_container:
@@ -49,17 +50,27 @@
       - /opt/pihole/dnsmasq.d:/etc/dnsmasq.d:ro
     cap_add:
       - NET_ADMIN
-  no_log: true
+  no_log: "{{ not pi_emulation_mode }}"
   register: pihole_container
+  when: podman_available | bool
 
 - name: Wait for Pi-hole DNS
   ansible.builtin.wait_for:
     host: "{{ '127.0.0.1' if pi_service_bind_address == '0.0.0.0' else pi_service_bind_address }}"
     port: "{{ pi_dns_port }}"
     timeout: 120
+  when: not ansible_check_mode
 
 - name: Report Pi-hole convergence
   ansible.builtin.debug:
     msg: >-
+      {% if not podman_available %}
+      Pi-hole runtime checks deferred until the planned Podman package exists;
+      local records changed={{ pihole_local_records.changed }}.
+      {% elif ansible_check_mode %}
+      Pi-hole runtime would converge in deployment;
+      local records changed={{ pihole_local_records.changed }}.
+      {% else %}
       Pi-hole container changed={{ pihole_container.changed }};
       local records changed={{ pihole_local_records.changed }}.
+      {% endif %}

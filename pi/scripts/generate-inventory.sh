@@ -15,8 +15,8 @@ nix eval --json "$repo_root#lib.noriInventory" | jq \
     | $inventory.hosts.pi.lanIp as $pi_lan_ip
     | ([$inventory.workloads[]?.endpoints? | keys[]] | unique) as $routes
     | {
-        _meta: {
-          hostvars: {
+        pi_appliances: {
+          hosts: {
             pi: {
               ansible_host: $pi_lan_ip,
               ansible_user: $ansible_user,
@@ -48,17 +48,14 @@ nix eval --json "$repo_root#lib.noriInventory" | jq \
               )
             }
           }
-        },
-        pi_appliances: {
-          hosts: ["pi"]
         }
       }
   ' >"$output"
 
 jq --exit-status \
-  '._meta.hostvars.pi.pi_lan_address != null
-   and (.pi_appliances.hosts == ["pi"])
-   and (._meta.hostvars.pi.pihole_local_dns_records | length > 2)' \
+  '.pi_appliances.hosts.pi.pi_lan_address != null
+   and (.pi_appliances.hosts | keys == ["pi"])
+   and (.pi_appliances.hosts.pi.pihole_local_dns_records | length > 2)' \
   "$output" >/dev/null
 
 printf '%s\n' "$output"

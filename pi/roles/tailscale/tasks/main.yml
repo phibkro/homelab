@@ -19,19 +19,15 @@
   when: tailscale_install | bool
 
 - name: Configure the Tailscale stable repository
-  ansible.builtin.deb822_repository:
-    name: tailscale
-    types:
-      - deb
-    uris:
-      - https://pkgs.tailscale.com/stable/debian
-    suites:
-      - bookworm
-    components:
-      - main
-    signed_by: /usr/share/keyrings/tailscale-archive-keyring.gpg
-    enabled: true
-    state: present
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/tailscale.list
+    owner: root
+    group: root
+    mode: "0644"
+    content: >-
+      deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg]
+      https://pkgs.tailscale.com/stable/debian
+      {{ tailscale_apt_suite }} main
   when: tailscale_install | bool
 
 - name: Install Tailscale
