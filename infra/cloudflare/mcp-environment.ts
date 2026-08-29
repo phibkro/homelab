@@ -11,7 +11,7 @@ export const OPERATOR_EMAIL = "philib.krogh@gmail.com";
 
 export const cloudflareProviders = Cloudflare.providers();
 
-const mcpControlDependencies = Layer.unwrap(
+export const cloudflareControlDependencies = Layer.unwrap(
   Config.redacted("cloudflare_mcp_api_token").pipe(
     Effect.map((apiToken) =>
       Layer.merge(
@@ -29,8 +29,7 @@ const mcpControlDependencies = Layer.unwrap(
 
 const mcpDnsProviders = Mcp.dnsProviders().pipe(Layer.provide(cloudflareProviders));
 const mcpControlProviders = Mcp.controlProviders().pipe(
-  Layer.provide(mcpControlDependencies),
+  Layer.provide(cloudflareControlDependencies),
 );
 
 export const mcpProviders = Layer.merge(mcpDnsProviders, mcpControlProviders);
-

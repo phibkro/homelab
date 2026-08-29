@@ -72,6 +72,7 @@ export interface DnsRecordProps {
   content: string;
   proxied?: boolean;
   comment?: string;
+  dependency?: string;
 }
 
 export type DnsRecord = ResourceType<

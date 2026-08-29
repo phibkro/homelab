@@ -6,7 +6,10 @@
 }:
 
 let
-  tunnelId = "9fc33815-3e6c-41dc-9858-8e01fe79ecda";
+  architectureRoute = builtins.fromJSON (
+    builtins.readFile ../../../infra/cloudflare/routes/canvas-plugin-architecture.json
+  );
+  tunnelId = architectureRoute.tunnelId;
   hindsightHostname = "hindsight-origin.phibkro.org";
   projectsHostname = "projects-origin.phibkro.org";
   hindsightOriginPort = config.nori.lanRoutes.memory-origin.port;
@@ -23,6 +26,8 @@ let
         service: http://127.0.0.1:${toString hindsightOriginPort}
       - hostname: ${projectsHostname}
         service: http://127.0.0.1:${toString projectsOriginPort}
+      - hostname: ${architectureRoute.hostname}
+        service: http://${architectureRoute.originHost}:${toString architectureRoute.originPort}
       - service: http_status:404
   '';
 in
