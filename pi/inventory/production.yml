@@ -1,0 +1,7 @@
+---
+# Documentation-only fail-closed inventory. Production commands exclusively use
+# the ephemeral inventory generated from lib.noriInventory.
+all:
+  children:
+    pi_appliances:
+      hosts: {}

@@ -1,0 +1,38 @@
+---
+pi_timezone: Europe/Oslo
+pi_admin_port: 8081
+pi_dns_port: 53
+pi_disable_disk_swap: true
+pi_volatile_journal: true
+pi_emulation_mode: false
+pi_lan_address: 192.168.1.225
+pi_lan_cidr: 192.168.1.0/24
+pi_service_bind_address: "{{ pi_lan_address }}"
+pi_tailnet_interface: tailscale0
+
+tailscale_install: true
+tailscale_enroll: false
+tailscale_auth_key: "{{ lookup('env', 'TAILSCALE_AUTH_KEY') }}"
+tailscale_hostname: pi
+tailscale_advertise_routes:
+  - 192.168.1.0/24
+tailscale_advertise_exit_node: true
+tailscale_accept_dns: false
+tailscale_apt_key_sha256: 3e03dacf222698c60b8e2f990b809ca1b3e104de127767864284e6c228f1fb39
+
+pihole_image: >-
+  docker.io/pihole/pihole@sha256:f7d1be836e3bc608b56d82fc9904f5a831cdfbc0dc9c6d58f94e4c985c70038b
+pihole_web_password: "{{ lookup('env', 'PIHOLE_WEB_PASSWORD') }}"
+pihole_upstream_dns:
+  - 1.1.1.1
+  - 9.9.9.9
+
+# Emulation fallback only. Production receives inventory-derived records from
+# scripts/generate-inventory.sh.
+pihole_local_dns_records:
+  - address: 192.168.1.181
+    names:
+      - workstation.lan
+  - address: 192.168.1.225
+    names:
+      - pi.lan

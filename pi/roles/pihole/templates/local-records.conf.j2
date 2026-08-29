@@ -1,0 +1,6 @@
+# Generated from pihole_local_dns_records. Do not edit on the appliance.
+{% for record in pihole_local_dns_records %}
+{% for name in record.names %}
+address=/{{ name }}/{{ record.address }}
+{% endfor %}
+{% endfor %}

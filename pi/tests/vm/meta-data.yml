@@ -1,0 +1,3 @@
+---
+instance-id: homelab-pi-ansible-test
+local-hostname: pi-emulated

@@ -1,0 +1,21 @@
+---
+- name: Install nftables
+  ansible.builtin.apt:
+    name: nftables
+    state: present
+
+- name: Render the appliance firewall
+  ansible.builtin.template:
+    src: nftables.conf.j2
+    dest: /etc/nftables.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: nft --check --file %s
+  register: firewall_config
+
+- name: Enable the appliance firewall
+  ansible.builtin.service:
+    name: nftables
+    enabled: true
+    state: "{{ 'restarted' if firewall_config.changed else 'started' }}"

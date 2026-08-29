@@ -1,0 +1,33 @@
+#!/usr/sbin/nft -f
+
+flush ruleset
+
+table inet appliance_filter {
+  chain input {
+    type filter hook input priority filter; policy drop;
+
+    iifname "lo" accept
+    ct state established,related accept
+    ct state invalid drop
+
+    ip protocol icmp accept
+    ip6 nexthdr ipv6-icmp accept
+    udp dport 41641 accept
+
+    ip saddr {{ pi_lan_cidr }} tcp dport 22 accept
+    ip saddr {{ pi_lan_cidr }} udp dport {{ pi_dns_port }} accept
+    ip saddr {{ pi_lan_cidr }} tcp dport { {{ pi_dns_port }}, {{ pi_admin_port }} } accept
+
+    iifname "{{ pi_tailnet_interface }}" tcp dport 22 accept
+    iifname "{{ pi_tailnet_interface }}" udp dport {{ pi_dns_port }} accept
+    iifname "{{ pi_tailnet_interface }}" tcp dport {{ pi_dns_port }} accept
+  }
+
+  chain forward {
+    type filter hook forward priority filter; policy accept;
+  }
+
+  chain output {
+    type filter hook output priority filter; policy accept;
+  }
+}

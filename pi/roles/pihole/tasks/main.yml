@@ -1,0 +1,65 @@
+---
+- name: Create the Pi-hole application directory
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - path: /opt/pihole
+      mode: "0750"
+    - path: /opt/pihole/dnsmasq.d
+      mode: "0755"
+
+- name: Render inventory-derived local DNS records
+  ansible.builtin.template:
+    src: local-records.conf.j2
+    dest: /opt/pihole/dnsmasq.d/05-homelab-local-records.conf
+    owner: root
+    group: root
+    mode: "0644"
+  register: pihole_local_records
+
+- name: Create the Pi-hole data volume
+  containers.podman.podman_volume:
+    name: pihole-data
+    state: present
+
+- name: Run the Pi-hole container
+  containers.podman.podman_container:
+    name: pihole
+    image: "{{ pihole_image }}"
+    hostname: pi
+    state: started
+    restart_policy: always
+    pull: missing
+    env:
+      TZ: "{{ pi_timezone }}"
+      FTLCONF_webserver_api_password: "{{ pihole_web_password }}"
+      FTLCONF_dns_listeningMode: ALL
+      FTLCONF_dns_upstreams: "{{ pihole_upstream_dns | join(';') }}"
+      FTLCONF_misc_etc_dnsmasq_d: "true"
+    publish:
+      - "{{ pi_service_bind_address }}:{{ pi_dns_port }}:53/tcp"
+      - "{{ pi_service_bind_address }}:{{ pi_dns_port }}:53/udp"
+      - "{{ pi_service_bind_address }}:{{ pi_admin_port }}:80/tcp"
+    volume:
+      - pihole-data:/etc/pihole
+      - /opt/pihole/dnsmasq.d:/etc/dnsmasq.d:ro
+    cap_add:
+      - NET_ADMIN
+  no_log: true
+  register: pihole_container
+
+- name: Wait for Pi-hole DNS
+  ansible.builtin.wait_for:
+    host: "{{ '127.0.0.1' if pi_service_bind_address == '0.0.0.0' else pi_service_bind_address }}"
+    port: "{{ pi_dns_port }}"
+    timeout: 120
+
+- name: Report Pi-hole convergence
+  ansible.builtin.debug:
+    msg: >-
+      Pi-hole container changed={{ pihole_container.changed }};
+      local records changed={{ pihole_local_records.changed }}.

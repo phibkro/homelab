@@ -79,6 +79,7 @@ import 'modules/infra/observability/observability.just'
 import 'modules/infra/networking/networking.just'
 import 'modules/services/services.just'
 import 'secrets/auth.just'
+mod pi 'pi/pi.just'
 
 # Default recipe — rebuild this host.
 default: rebuild

@@ -1,0 +1,41 @@
+---
+- name: Converge the Pi entry appliance
+  hosts: pi_appliances
+  become: true
+  gather_facts: true
+  pre_tasks:
+    - name: Validate the supported operating-system family
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.os_family == "Debian"
+        fail_msg: >-
+          Plan B supports Raspberry Pi OS or Debian only; found
+          {{ ansible_facts.distribution }}.
+
+    - name: Require an ARM64 production target
+      ansible.builtin.assert:
+        that:
+          - pi_emulation_mode | bool or ansible_facts.architecture in ['aarch64', 'arm64']
+        fail_msg: >-
+          Production target must be ARM64; set pi_emulation_mode only in the
+          disposable test inventory.
+
+    - name: Require a Pi-hole web password
+      ansible.builtin.assert:
+        that:
+          - pihole_web_password | length >= 12
+        fail_msg: Set PIHOLE_WEB_PASSWORD to at least 12 characters.
+      no_log: true
+
+    - name: Reject wildcard production service bindings
+      ansible.builtin.assert:
+        that:
+          - pi_emulation_mode | bool or pi_service_bind_address != '0.0.0.0'
+        fail_msg: Production services must bind to the inventory-declared LAN address.
+
+  roles:
+    - role: base
+    - role: firewall
+    - role: tailscale
+    - role: podman
+    - role: pihole

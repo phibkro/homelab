@@ -1,0 +1,11 @@
+#cloud-config
+users:
+  - name: ansible
+    groups:
+      - sudo
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - __SSH_PUBLIC_KEY__
+package_update: false
+ssh_pwauth: false
