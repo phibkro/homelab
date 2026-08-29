@@ -42,10 +42,15 @@
       tests/vm
     ansible-lint playbooks/pi.yml
     shellcheck scripts/*.sh ../.githooks/pre-commit
+    roles/pihole/tests/test_contract.sh
+    roles/authelia/tests/test_contract.sh
+    roles/ddns/tests/test-contract.sh
     generated_inventory="$(generate-inventory)"
     jq --exit-status \
       '(.pi_appliances.hosts | keys) == ["pi"]
        and .pi_appliances.hosts.pi.pi_domain == "home.phibkro.org"
+       and .pi_appliances.hosts.pi.pihole_lan_address == "192.168.1.225"
+       and .pi_appliances.hosts.pi.pihole_tailnet_address == "100.100.71.3"
        and .pi_appliances.hosts.pi.pi_routes == [{
          name: "pihole",
          hostname: "pihole.home.phibkro.org",

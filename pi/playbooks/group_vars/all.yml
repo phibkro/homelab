@@ -9,6 +9,8 @@ pi_emulation_mode: false
 pi_lan_address: 192.168.1.225
 pi_lan_cidr: 192.168.1.0/24
 pi_service_bind_address: "{{ pi_lan_address }}"
+pihole_lan_address: "{{ pi_lan_address }}"
+pihole_tailnet_address: ""
 pi_tailnet_interface: tailscale0
 pi_domain: home.phibkro.org
 pi_routes:

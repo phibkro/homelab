@@ -13,6 +13,7 @@ nix eval --json "$repo_root#lib.noriInventory" | jq \
   '
     . as $inventory
     | $inventory.hosts.pi.lanIp as $pi_lan_ip
+    | $inventory.hosts.pi.tailnetIp as $pi_tailnet_ip
     | ([$inventory.workloads[]?.endpoints? | keys[]] | unique) as $routes
     | [
         {
@@ -31,6 +32,8 @@ nix eval --json "$repo_root#lib.noriInventory" | jq \
               ansible_user: $ansible_user,
               pi_lan_address: $pi_lan_ip,
               pi_service_bind_address: $pi_lan_ip,
+              pihole_lan_address: $pi_lan_ip,
+              pihole_tailnet_address: $pi_tailnet_ip,
               pi_domain: $inventory.site.domain,
               pi_routes: $appliance_routes,
               pihole_local_dns_records: (
@@ -72,6 +75,8 @@ nix eval --json "$repo_root#lib.noriInventory" | jq \
 
 jq --exit-status \
   '.pi_appliances.hosts.pi.pi_lan_address != null
+   and .pi_appliances.hosts.pi.pihole_lan_address == .pi_appliances.hosts.pi.pi_lan_address
+   and .pi_appliances.hosts.pi.pihole_tailnet_address != null
    and (.pi_appliances.hosts | keys == ["pi"])
    and (.pi_appliances.hosts.pi.pi_routes | length == 1)
    and (.pi_appliances.hosts.pi.pi_routes[0].hostname
