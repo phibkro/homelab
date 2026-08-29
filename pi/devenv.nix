@@ -51,6 +51,7 @@
     roles/victoriametrics/tests/test_contract.sh
     roles/victorialogs/tests/test_contract.sh
     roles/vector/tests/test_contract.sh
+    roles/backup/tests/test_contract.sh
     generated_inventory="$(generate-inventory)"
     jq --exit-status \
       '(.pi_appliances.hosts | keys) == ["pi"]

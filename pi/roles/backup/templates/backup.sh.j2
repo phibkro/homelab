@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# homelab-pi-backup-role: managed
+set -Eeuo pipefail
+umask 077
+
+readonly repository={{ job_repository | quote }}
+readonly state_dir={{ pi_backup_state_dir | quote }}/{{ backup_job.name | quote }}
+readonly cache_dir={{ pi_backup_cache_dir | quote }}
+readonly restic_bin=/usr/bin/restic
+
+mkdir -p "$state_dir" "$cache_dir"
+export RESTIC_PASSWORD_FILE={{ pi_backup_password_file | quote }}
+export RESTIC_CACHE_DIR="$cache_dir"
+
+restic_options=(
+  -o "sftp.command=ssh -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile={{ pi_backup_known_hosts_file }} -o ConnectTimeout=15 -i {{ pi_backup_ssh_key_file }} {{ pi_backup_aurora_user }}@{{ pi_backup_aurora_host }} -s sftp"
+)
+paths=(
+{% for path in backup_job.paths %}
+  {{ path | quote }}
+{% endfor %}
+)
+excludes=(
+{% for path in backup_job.excludes | default([]) %}
+  --exclude={{ path | quote }}
+{% endfor %}
+)
+
+"$restic_bin" "${restic_options[@]}" -r "$repository" unlock || true
+if ! "$restic_bin" "${restic_options[@]}" -r "$repository" cat config >/dev/null 2>&1; then
+  "$restic_bin" "${restic_options[@]}" -r "$repository" init
+fi
+"$restic_bin" "${restic_options[@]}" -r "$repository" backup \
+  --tag "pi:{{ backup_job.name }}" \
+  "${excludes[@]}" \
+  "${paths[@]}"
+
+date --iso-8601=seconds >"$state_dir/last-success.tmp"
+mv -f -- "$state_dir/last-success.tmp" "$state_dir/last-success"

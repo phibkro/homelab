@@ -1,0 +1,42 @@
+---
+# Plan B backup role.  The caller must provide the complete, explicit state
+# manifest in pi_backup_jobs; this role deliberately has no guessed paths.
+pi_backup_enabled: true
+pi_backup_jobs: []
+
+pi_backup_aurora_host: aurora.saola-matrix.ts.net
+pi_backup_aurora_user: restic
+pi_backup_repository_prefix: "/pi"
+pi_backup_aurora_known_host: "{{ pi_backup_pinned_aurora_known_host }}"
+
+# SecretSpec supplies these values at execution time.  They are never
+# rendered into a unit or command line; only root-readable files receive
+# them.
+pi_backup_restic_password: "{{ lookup('env', 'RESTIC_PASSWORD') }}"
+pi_backup_ssh_private_key: "{{ lookup('env', 'RESTIC_SSH_PRIVATE_KEY') }}"
+pi_backup_secret_dir: /etc/restic
+pi_backup_password_file: /etc/restic/pi-password
+pi_backup_ssh_key_file: /etc/restic/aurora_ssh_key
+pi_backup_known_hosts_file: /etc/restic/aurora_known_hosts
+
+pi_backup_state_dir: /var/lib/pi-restic
+pi_backup_cache_dir: /var/cache/pi-restic
+pi_backup_restore_dir: /var/lib/pi-restic-restore
+pi_backup_max_age_hours: 36
+pi_backup_randomized_delay: 15m
+
+pi_backup_default_schedule: "*-*-* 03:15:00"
+pi_backup_default_keep_daily: 7
+pi_backup_default_keep_weekly: 4
+pi_backup_default_keep_monthly: 12
+pi_backup_default_keep_yearly: 0
+pi_backup_prune_schedule: "*-*-01 04:30:00"
+pi_backup_metadata_check_schedule: "Sun *-*-* 05:30:00"
+pi_backup_data_check_schedule: "*-*-01 06:00:00"
+
+# Backing up Tailscale's node identity is sensitive and opt-in.  Enabling it
+# without an explicit path manifest is an error; the role never infers this
+# path or adds it to another job automatically.
+pi_backup_tailscale_identity_enabled: false
+pi_backup_tailscale_identity_paths: []
+pi_backup_tailscale_identity_job_name: tailscale-identity

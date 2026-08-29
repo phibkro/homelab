@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# homelab-pi-backup-role: managed
+set -Eeuo pipefail
+umask 077
+
+if (( $# < 1 || $# > 2 )); then
+  echo "usage: $0 JOB [SNAPSHOT]" >&2
+  exit 64
+fi
+job=$1
+snapshot=${2:-latest}
+if [[ ! "$job" =~ ^[a-z0-9][a-z0-9-]{0,62}$ ]]; then
+  echo "invalid job name" >&2
+  exit 64
+fi
+if [[ ! "$snapshot" =~ ^[A-Za-z0-9._:@+-]+$ ]]; then
+  echo "invalid snapshot selector" >&2
+  exit 64
+fi
+
+readonly base={{ pi_backup_restore_dir | quote }}
+[[ -d "$base" && ! -L "$base" ]] || { echo "restore directory is not a real directory" >&2; exit 1; }
+temporary_destination=$(mktemp -d -- "$base/.${job}.XXXXXX")
+trap 'rm -rf -- "$temporary_destination"' EXIT
+
+repository="sftp:{{ pi_backup_aurora_user }}@{{ pi_backup_aurora_host }}:{{ pi_backup_repository_prefix }}/$job"
+export RESTIC_PASSWORD_FILE={{ pi_backup_password_file | quote }}
+export RESTIC_CACHE_DIR={{ pi_backup_cache_dir | quote }}
+restic_options=(
+  -o "sftp.command=ssh -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile={{ pi_backup_known_hosts_file }} -o ConnectTimeout=15 -i {{ pi_backup_ssh_key_file }} {{ pi_backup_aurora_user }}@{{ pi_backup_aurora_host }} -s sftp"
+)
+
+echo "restoring $job snapshot $snapshot into disposable staging directory"
+/usr/bin/restic "${restic_options[@]}" -r "$repository" restore "$snapshot" --target "$temporary_destination"
+destination="$base/$job-$(date +%Y%m%d-%H%M%S)-$RANDOM"
+[[ "$destination" == "$base/"* ]] || { echo "restore destination escaped disposable root" >&2; exit 1; }
+if [[ -e "$destination" || -L "$destination" ]]; then
+  echo "restore destination already exists" >&2
+  exit 1
+fi
+mv -T -- "$temporary_destination" "$destination"
+trap - EXIT
+echo "restore available in disposable directory: $destination"

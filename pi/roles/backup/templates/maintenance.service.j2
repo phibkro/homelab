@@ -1,0 +1,24 @@
+# homelab-pi-backup-role: managed
+[Unit]
+Description=Pi restic {{ unit_kind }} — {{ unit_job.name }} on Aurora
+Wants=network-online.target
+After=network-online.target tailscaled.service
+OnFailure=notify@pi-restic-{{ unit_kind }}-{{ unit_job.name }}.service
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/usr/local/libexec/pi-restic-{{ unit_kind }}-{{ unit_job.name }}
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+PrivateDevices=true
+ReadWritePaths={{ pi_backup_cache_dir }}
+CapabilityBoundingSet=
+LockPersonality=true
+SystemCallFilter=@system-service
+TimeoutStartSec=6h

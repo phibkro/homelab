@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# homelab-pi-backup-role: managed
+set -Eeuo pipefail
+umask 077
+
+readonly repository={{ job_repository | quote }}
+readonly cache_dir={{ pi_backup_cache_dir | quote }}
+readonly restic_bin=/usr/bin/restic
+export RESTIC_PASSWORD_FILE={{ pi_backup_password_file | quote }}
+export RESTIC_CACHE_DIR="$cache_dir"
+
+restic_options=(
+  -o "sftp.command=ssh -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile={{ pi_backup_known_hosts_file }} -o ConnectTimeout=15 -i {{ pi_backup_ssh_key_file }} {{ pi_backup_aurora_user }}@{{ pi_backup_aurora_host }} -s sftp"
+)
+
+"$restic_bin" "${restic_options[@]}" -r "$repository" unlock || true
+{% if maintenance_kind == 'prune' %}
+"$restic_bin" "${restic_options[@]}" -r "$repository" forget --prune \
+  --keep-daily {{ maintenance_job.keep_daily | default(pi_backup_default_keep_daily) }} \
+  --keep-weekly {{ maintenance_job.keep_weekly | default(pi_backup_default_keep_weekly) }} \
+  --keep-monthly {{ maintenance_job.keep_monthly | default(pi_backup_default_keep_monthly) }}{% if (maintenance_job.keep_yearly | default(pi_backup_default_keep_yearly) | int) > 0 %} \
+  --keep-yearly {{ maintenance_job.keep_yearly | default(pi_backup_default_keep_yearly) }}{% endif %}
+{% elif maintenance_kind == 'check-monthly' %}
+"$restic_bin" "${restic_options[@]}" -r "$repository" check --read-data-subset=10%
+{% else %}
+"$restic_bin" "${restic_options[@]}" -r "$repository" check
+{% endif %}

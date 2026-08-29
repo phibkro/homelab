@@ -1,0 +1,27 @@
+---
+# This is a trust anchor, not an operator-editable connection setting.  The
+# task assertion also requires any supplied input to equal this exact line.
+pi_backup_pinned_aurora_known_host: >-
+  aurora.saola-matrix.ts.net ssh-ed25519
+  AAAAC3NzaC1lZDI1NTE5AAAAIKnfMYRv1a3CGvnL0e82w/Z1RK7aOqS3k8JvMYbD8NET
+
+pi_backup_approved_source_prefixes:
+  - /var/lib/containers/storage/volumes/pihole-data/_data
+  - /opt/pihole/dnsmasq.d/05-homelab-local-records.conf
+  - /opt/caddy/data
+  - /opt/caddy/config
+  - /etc/authelia/configuration.yml
+  - /etc/authelia/users_database.yml
+  - /var/lib/authelia
+  - /var/cache/ntfy
+  - /var/lib/ntfy
+  - /var/lib/beszel
+  - /var/lib/victoriametrics
+  - /etc/victoriametrics
+  - /var/lib/victorialogs
+  - /var/lib/vector
+  - /etc/vector
+
+# Only this node-state file is approved for the sensitive Tailscale opt-in.
+pi_backup_tailscale_identity_approved_paths:
+  - /var/lib/tailscale/tailscaled.state

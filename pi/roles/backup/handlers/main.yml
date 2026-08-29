@@ -1,0 +1,12 @@
+---
+- name: Reload systemd after Pi backup changes
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Restart Pi backup freshness timer
+  ansible.builtin.systemd_service:
+    name: pi-restic-freshness.timer
+    state: restarted
+  when:
+    - pi_backup_enabled | bool
+    - not ansible_check_mode

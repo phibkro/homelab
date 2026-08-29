@@ -1,0 +1,11 @@
+# homelab-pi-backup-role: managed
+[Unit]
+Description=Hourly freshness check for Pi restic snapshots
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=1h
+Unit=pi-restic-freshness.service
+
+[Install]
+WantedBy=timers.target

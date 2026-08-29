@@ -1,0 +1,12 @@
+# homelab-pi-backup-role: managed
+[Unit]
+Description=Timer for Pi restic {{ timer_kind }} — {{ timer_job.name }}
+
+[Timer]
+OnCalendar={{ timer_schedule | quote }}
+Persistent=true
+RandomizedDelaySec={{ pi_backup_randomized_delay }}
+Unit=pi-restic-{{ timer_kind }}-{{ timer_job.name }}.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# homelab-pi-backup-role: managed
+set -Eeuo pipefail
+
+readonly now=$(date +%s)
+readonly max_age=$(({{ pi_backup_max_age_hours }} * 3600))
+export RESTIC_PASSWORD_FILE={{ pi_backup_password_file | quote }}
+export RESTIC_CACHE_DIR={{ pi_backup_cache_dir | quote }}
+fail=0
+{% for backup_job in pi_backup_effective_jobs %}
+repository={{ ('sftp:' ~ pi_backup_aurora_user ~ '@' ~ pi_backup_aurora_host ~ ':' ~ pi_backup_repository_prefix ~ '/' ~ backup_job.name) | quote }}
+snapshot_json=$(
+  /usr/bin/restic -o "sftp.command=ssh -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile={{ pi_backup_known_hosts_file }} -o ConnectTimeout=15 -i {{ pi_backup_ssh_key_file }} {{ pi_backup_aurora_user }}@{{ pi_backup_aurora_host }} -s sftp" \
+    -r "$repository" snapshots --latest 1 --json 2>/dev/null
+) || snapshot_json=''
+snapshot_time=$(printf '%s' "$snapshot_json" | sed -n 's/.*"time":"\([^"]*\)".*/\1/p' | head -n 1)
+if [[ -z "$snapshot_time" ]]; then
+  echo "missing remote backup snapshot: {{ backup_job.name }}" >&2
+  fail=1
+elif ! snapshot_epoch=$(date --date="$snapshot_time" +%s 2>/dev/null); then
+  echo "unparseable remote backup timestamp: {{ backup_job.name }}" >&2
+  fail=1
+elif (( now - snapshot_epoch > max_age )); then
+  echo "stale remote backup snapshot: {{ backup_job.name }}" >&2
+  fail=1
+fi
+{% endfor %}
+exit "$fail"
