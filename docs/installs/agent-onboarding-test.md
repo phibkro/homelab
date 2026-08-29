@@ -95,7 +95,7 @@ All three are wrap-up failures; fix and re-run.
 ```nix
 nori.lanRoutes.widget = {
   port = 9000;
-  host = "100.100.71.3";   # pi tailnet IP
+  host = "100.111.21.92";   # pi tailnet IP
 };
 ```
 

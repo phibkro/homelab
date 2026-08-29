@@ -5,7 +5,7 @@
 # Health checks live in `tests/tests.just § test-observability` (scrape
 # targets up, per-host series, pi heartbeat, gatus probes).
 #
-# Pi tailnet IP (100.100.71.3) is hardcoded here — stable; avoids an
+# Pi tailnet IP (100.111.21.92) is hardcoded here — stable; avoids an
 # extra nix-eval per invocation. If pi's tailnet identity ever changes,
 # update here + in tests/tests.just simultaneously.
 
@@ -25,6 +25,6 @@
 #
 # Query the central VictoriaLogs index via LogsQL. Cross-host, fan-out included.
 @query-logs query:
-    curl -sG "http://100.100.71.3:9428/select/logsql/query" \
+    curl -sG "http://100.111.21.92:9428/select/logsql/query" \
         --data-urlencode 'query={{query}}' \
       | (command -v jq >/dev/null && jq . || cat)

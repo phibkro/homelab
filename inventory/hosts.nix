@@ -61,7 +61,7 @@
       "ntfy-notify"
     ];
     identity = {
-      tailnetIp = "100.100.71.3";
+      tailnetIp = "100.111.21.92";
       lanIp = "192.168.1.225";
       role = "appliance";
       roleOneLiner = "always-on entry plane";

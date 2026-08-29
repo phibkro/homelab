@@ -47,7 +47,7 @@ Atomic. Same as `bad-config.md`. Verify internal routing with `curl -k https://u
 
 ### Option C — temporary tailnet DNS failover (if pi will be down for hours)
 
-Edit Tailscale admin UI → DNS → Global nameservers. Replace pi (`100.100.71.3`) with workstation (`100.81.5.122`). Tailnet devices get DNS within ~60s. **Caddy is still down**, so `*.home.phibkro.org` will resolve to pi's now-dead LAN IP — combine with Option D below or point devices at backend tailnet IPs directly.
+Edit Tailscale admin UI → DNS → Global nameservers. Replace pi (`100.111.21.92`) with workstation (`100.81.5.122`). Tailnet devices get DNS within ~60s. **Caddy is still down**, so `*.home.phibkro.org` will resolve to pi's now-dead LAN IP — combine with Option D below or point devices at backend tailnet IPs directly.
 
 ### Option D — promote workstation to entry plane (extended outage only)
 
