@@ -1,5 +1,9 @@
 # Canvas architecture workbench tunnel
 
+> Superseded by `0004-general-dev-share.md`. The requested two-label hostname
+> exposed a paid multi-level TLS dependency, so the implementation moved to a
+> first-level, Access-protected sharing adapter reusable by every dev server.
+
 ## User journey
 
 While the Rust semantic explorer development server is running on the

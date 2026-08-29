@@ -1,6 +1,6 @@
 {
-  "hostname": "canvas-plugin.architecture.phibkro.org",
+  "hostname": "dev.phibkro.org",
   "originHost": "127.0.0.1",
-  "originPort": 8788,
+  "originPort": 8787,
   "tunnelId": "9fc33815-3e6c-41dc-9858-8e01fe79ecda"
 }

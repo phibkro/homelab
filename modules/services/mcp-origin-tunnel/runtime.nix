@@ -6,10 +6,10 @@
 }:
 
 let
-  architectureRoute = builtins.fromJSON (
-    builtins.readFile ../../../infra/cloudflare/routes/canvas-plugin-architecture.json
+  devShareRoute = builtins.fromJSON (
+    builtins.readFile ../../../infra/cloudflare/routes/dev-share.json
   );
-  tunnelId = architectureRoute.tunnelId;
+  tunnelId = devShareRoute.tunnelId;
   hindsightHostname = "hindsight-origin.phibkro.org";
   projectsHostname = "projects-origin.phibkro.org";
   hindsightOriginPort = config.nori.lanRoutes.memory-origin.port;
@@ -26,10 +26,50 @@ let
         service: http://127.0.0.1:${toString hindsightOriginPort}
       - hostname: ${projectsHostname}
         service: http://127.0.0.1:${toString projectsOriginPort}
-      - hostname: ${architectureRoute.hostname}
-        service: http://${architectureRoute.originHost}:${toString architectureRoute.originPort}
+      - hostname: ${devShareRoute.hostname}
+        service: http://${devShareRoute.originHost}:${toString devShareRoute.originPort}
       - service: http_status:404
   '';
+  devShareCore =
+    pkgs.runCommand "dev-share-core"
+      {
+        nativeBuildInputs = [
+          pkgs.rustc
+          pkgs.stdenv.cc
+        ];
+      }
+      ''
+        rustc --edition=2024 --test ${../../../tools/dev-share.rs} -o dev-share-tests
+        ./dev-share-tests
+        mkdir -p $out/bin
+        rustc --edition=2024 ${../../../tools/dev-share.rs} -o $out/bin/dev-share
+      '';
+  devShareCaddyConfig = pkgs.writeText "dev-share.Caddyfile" ''
+    {
+      admin off
+      auto_https off
+    }
+
+    http://${devShareRoute.originHost}:${toString devShareRoute.originPort} {
+      bind ${devShareRoute.originHost}
+      reverse_proxy {$DEV_SHARE_ORIGIN}
+    }
+  '';
+  devShare = pkgs.writeShellApplication {
+    name = "dev-share";
+    runtimeInputs = [
+      pkgs.caddy
+      pkgs.cloudflared
+      pkgs.qrencode
+      pkgs.util-linux
+    ];
+    text = ''
+      export DEV_SHARE_PUBLIC_URL=https://${devShareRoute.hostname}
+      export DEV_SHARE_CADDY_CONFIG=${devShareCaddyConfig}
+      export DEV_SHARE_LOCK_FILE="''${XDG_RUNTIME_DIR:?}/dev-share.lock"
+      exec ${devShareCore}/bin/dev-share "$@"
+    '';
+  };
 in
 {
   assertions = [
@@ -58,6 +98,8 @@ in
   nori.backups.mcp-origin-tunnel.skip = "Stateless — tunnel configuration is generated from Nix and credentials are managed by SOPS.";
 
   nori.harden.mcp-origin-cloudflared = { };
+
+  environment.systemPackages = [ devShare ];
 
   systemd.services.mcp-origin-cloudflared = {
     description = "Shared Cloudflare Tunnel for authenticated MCP origins";

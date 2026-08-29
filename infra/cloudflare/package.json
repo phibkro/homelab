@@ -9,11 +9,11 @@
     "deploy": "sops exec-env ../../secrets/apps.yaml 'alchemy deploy'",
     "deploy:projects": "sops exec-env ../../secrets/apps.yaml 'alchemy deploy projects.alchemy.run.ts'",
     "deploy:projects-relay": "sops exec-env ../../secrets/apps.yaml 'alchemy deploy projects-relay.alchemy.run.ts'",
-    "deploy:architecture": "sops exec-env ../../secrets/apps.yaml 'alchemy deploy architecture.alchemy.run.ts'",
+    "deploy:dev-share": "sops exec-env ../../secrets/apps.yaml 'alchemy deploy dev-share.alchemy.run.ts'",
     "plan": "sops exec-env ../../secrets/apps.yaml 'alchemy plan'",
     "plan:projects": "sops exec-env ../../secrets/apps.yaml 'alchemy plan projects.alchemy.run.ts'",
     "plan:projects-relay": "sops exec-env ../../secrets/apps.yaml 'alchemy plan projects-relay.alchemy.run.ts'",
-    "plan:architecture": "sops exec-env ../../secrets/apps.yaml 'alchemy plan architecture.alchemy.run.ts'",
+    "plan:dev-share": "sops exec-env ../../secrets/apps.yaml 'alchemy plan dev-share.alchemy.run.ts'",
     "destroy": "sops exec-env ../../secrets/apps.yaml 'alchemy destroy'",
     "typecheck": "tsc --noEmit"
   },

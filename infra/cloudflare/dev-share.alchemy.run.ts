@@ -3,7 +3,7 @@ import * as Output from "alchemy/Output";
 import * as State from "alchemy/State";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
-import route from "./routes/canvas-plugin-architecture.json" with { type: "json" };
+import route from "./routes/dev-share.json" with { type: "json" };
 import {
   cloudflareControlDependencies,
   cloudflareProviders,
@@ -23,7 +23,9 @@ export default Alchemy.Stack(
   },
   Effect.gen(function* () {
     const access = yield* Access.SelfHostedApplication("ArchitectureAccess", {
-      name: "Canvas plugin architecture workbench",
+      // Stack and resource IDs intentionally retain their original names so
+      // Alchemy updates the existing objects instead of creating two owners.
+      name: "Workstation dev share",
       hostname: route.hostname,
       email: OPERATOR_EMAIL,
       sessionDuration: "24h",
@@ -33,7 +35,7 @@ export default Alchemy.Stack(
       hostname: route.hostname,
       content: `${route.tunnelId}.cfargotunnel.com`,
       proxied: true,
-      comment: "Managed by homelab Alchemy: Access-protected Canvas architecture workbench",
+      comment: "Managed by homelab Alchemy: Access-protected workstation dev share",
       dependency: access.applicationId,
     });
 
