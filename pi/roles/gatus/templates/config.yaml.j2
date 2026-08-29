@@ -1,0 +1,33 @@
+metrics: {{ gatus_metrics_enabled | bool | to_json }}
+storage:
+  type: {{ gatus_storage_type | to_json }}
+web:
+  address: {{ gatus_web_address | to_json }}
+  port: {{ gatus_port | int }}
+alerting:
+  ntfy:
+    url: {{ gatus_ntfy_url | to_json }}
+    topic: "${NTFY_CHANNEL}"
+    token: "${NTFY_PUBLISHER_TOKEN}"
+    priority: {{ gatus_ntfy_priority | int }}
+endpoints:
+{% if gatus_endpoints | length == 0 %}
+  []
+{% else %}
+{% for endpoint in gatus_endpoints %}
+  - name: {{ endpoint.name | to_json }}
+    url: {{ endpoint.url | to_json }}
+    interval: {{ endpoint.interval | default('60s', true) | to_json }}
+{% if endpoint.conditions is defined and endpoint.conditions | length > 0 %}
+    conditions: {{ endpoint.conditions | default(['[STATUS] == 200'], true) | to_json }}
+{% elif endpoint.url.startswith('tcp://') %}
+    conditions: ["[CONNECTED] == true"]
+{% else %}
+    conditions: ["[STATUS] == 200"]
+{% endif %}
+    alerts:
+      - type: ntfy
+        failure-threshold: {{ endpoint.failure_threshold | default(3, true) | int }}
+        send-on-resolved: {{ endpoint.send_on_resolved | default(true, true) | bool | to_json }}
+{% endfor %}
+{% endif %}

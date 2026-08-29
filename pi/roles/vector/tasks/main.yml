@@ -1,0 +1,237 @@
+---
+- name: Validate the explicit Vector contract
+  ansible.builtin.assert:
+    that:
+      - vector_base_image is match('^.+@sha256:[0-9a-f]{64}$')
+      - vector_data_dir | length > 0
+      - vector_config_dir | length > 0
+      - vector_container_user | length > 0
+      - vector_journal_group_name | length > 0
+      - vector_bind_address is string
+      - vector_bind_address | length > 0
+      - vector_bind_address not in ['0.0.0.0', '::', '::0']
+      - vector_api_address is string
+      - vector_api_address | length > 0
+      - vector_api_address is not match('^(0\\.0\\.0\\.0|::)(:|$)')
+      - vector_victorialogs_endpoint is match('^https?://.+/insert/elasticsearch/?$')
+    fail_msg: Vector requires an immutable image, journal state, and explicit VictoriaLogs endpoint.
+  when: vector_enabled | bool
+
+- name: Resolve the systemd-journal group by name
+  ansible.builtin.command:
+    argv:
+      - getent
+      - group
+      - "{{ vector_journal_group_name }}"
+  register: vector_journal_group
+  changed_when: false
+  check_mode: false
+  when: vector_enabled | bool
+
+- name: Require the systemd-journal group
+  ansible.builtin.assert:
+    that:
+      - vector_journal_group.rc == 0
+      - vector_journal_group.stdout.split(':') | length >= 3
+      - vector_journal_group.stdout.split(':')[2] | int > 0
+    fail_msg: The host must provide a systemd-journal group for Vector read access.
+  when: vector_enabled | bool
+
+- name: Set the resolved systemd-journal group ID
+  ansible.builtin.set_fact:
+    vector_journal_group_id: "{{ vector_journal_group.stdout.split(':')[2] }}"
+  when: vector_enabled | bool
+
+- name: Create Vector directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - path: "{{ vector_data_dir }}"
+      owner: "{{ vector_container_user.split(':')[0] }}"
+      group: "{{ vector_container_user.split(':')[1] }}"
+      mode: "0750"
+    - path: "{{ vector_config_dir }}"
+      owner: root
+      group: root
+      mode: "0755"
+  when: vector_enabled | bool
+
+- name: Create Vector image build directory
+  ansible.builtin.file:
+    path: "{{ vector_build_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  when: vector_enabled | bool
+
+- name: Render Vector journald to VictoriaLogs configuration
+  ansible.builtin.template:
+    src: vector.yaml.j2
+    dest: "{{ vector_config_dir }}/vector.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+  register: vector_config
+  notify: Restart Vector
+  when: vector_enabled | bool
+
+- name: Render the pinned Vector journald image build
+  ansible.builtin.template:
+    src: Containerfile.j2
+    dest: "{{ vector_build_dir }}/Containerfile"
+    owner: root
+    group: root
+    mode: "0640"
+  register: vector_containerfile
+  when:
+    - vector_enabled | bool
+    - podman_available | bool
+
+- name: Build the Vector journald image
+  containers.podman.podman_image:
+    name: "{{ vector_image }}"
+    path: "{{ vector_build_dir }}"
+    state: build
+    pull: true
+    build:
+      file: "{{ vector_build_dir }}/Containerfile"
+      format: oci
+  when:
+    - vector_enabled | bool
+    - podman_available | bool
+
+- name: Validate Vector executable and journald runtime
+  ansible.builtin.command:
+    argv:
+      - podman
+      - run
+      - --rm
+      - --entrypoint
+      - /bin/sh
+      - "{{ vector_image }}"
+      - -c
+      - >-
+        test -x /usr/bin/vector && command -v journalctl >/dev/null
+        && ldconfig -p | grep -q 'libsystemd.so.0'
+  changed_when: false
+  when:
+    - vector_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Validate the rendered Vector configuration before restart
+  ansible.builtin.command:
+    argv:
+      - podman
+      - run
+      - --rm
+      - --entrypoint
+      - /usr/bin/vector
+      - --volume
+      - "{{ vector_config_dir }}/vector.yaml:/etc/vector/vector.yaml:ro"
+      - "{{ vector_image }}"
+      - validate
+      - --config
+      - /etc/vector/vector.yaml
+  changed_when: false
+  when:
+    - vector_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Render Vector systemd unit
+  ansible.builtin.template:
+    src: vector.service.j2
+    dest: /etc/systemd/system/vector.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd after Vector changes
+    - Restart Vector
+  when: vector_enabled | bool
+
+- name: Create Vector container
+  containers.podman.podman_container:
+    name: vector
+    image: "{{ vector_image }}"
+    state: present
+    recreate: "{{ vector_containerfile.changed | default(false) }}"
+    pull: missing
+    user: "{{ vector_container_user }}"
+    group_add:
+      - "{{ vector_journal_group_id }}"
+    network: host
+    command:
+      - --config
+      - /etc/vector/vector.yaml
+    volume:
+      - "{{ vector_config_dir }}/vector.yaml:/etc/vector/vector.yaml:ro"
+      - "{{ vector_data_dir }}:/var/lib/vector"
+      - /run/log/journal:/run/log/journal:ro
+      - /var/log/journal:/var/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+    security_opt:
+      - no-new-privileges
+    cap_drop:
+      - ALL
+    read_only: true
+    read_only_tmpfs: true
+    restart_policy: "no"
+  register: vector_container
+  notify: Restart Vector
+  when:
+    - vector_enabled | bool
+    - podman_available | bool
+
+- name: Enable and start Vector systemd unit
+  ansible.builtin.systemd_service:
+    name: vector.service
+    enabled: true
+    state: started
+    daemon_reload: true
+  when:
+    - vector_enabled | bool
+    - podman_available | bool
+
+- name: Check Vector API health
+  ansible.builtin.uri:
+    url: "http://{{ vector_bind_address }}:{{ vector_bind_port }}/health"
+    status_code: 200
+  register: vector_health
+  retries: 30
+  delay: 2
+  until: vector_health.status == 200
+  changed_when: false
+  when:
+    - vector_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Stop and disable Vector when disabled
+  ansible.builtin.systemd_service:
+    name: vector.service
+    state: stopped
+    enabled: false
+  failed_when: false
+  when: not vector_enabled | bool
+
+- name: Remove the Vector systemd unit when disabled
+  ansible.builtin.file:
+    path: /etc/systemd/system/vector.service
+    state: absent
+  notify: Reload systemd after Vector changes
+  when: not vector_enabled | bool
+
+- name: Remove the Vector container when disabled
+  containers.podman.podman_container:
+    name: vector
+    state: absent
+  when:
+    - not vector_enabled | bool
+    - podman_available | bool

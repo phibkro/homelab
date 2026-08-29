@@ -1,0 +1,8 @@
+[Unit]
+Description=Send ntfy urgent alert for failed unit %i after recovery window
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/sleep {{ ntfy_notify_recovery_window_seconds }}
+ExecStart=/usr/local/libexec/ntfy-notify %i
+TimeoutStartSec={{ ntfy_notify_recovery_window_seconds + 60 }}s

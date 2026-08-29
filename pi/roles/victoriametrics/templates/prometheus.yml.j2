@@ -1,0 +1,6 @@
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+
+scrape_configs:
+{{ victoriametrics_scrape_jobs | to_nice_yaml(indent=2, width=1337) | indent(2, true) }}

@@ -1,0 +1,8 @@
+FROM {{ vector_base_image }}
+
+USER root
+RUN apt-get update \
+    && apt-get install --no-install-recommends --yes systemd libsystemd0 \
+    && rm -rf /var/lib/apt/lists/*
+
+USER 1000:1000

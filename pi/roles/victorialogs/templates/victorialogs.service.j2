@@ -1,0 +1,18 @@
+[Unit]
+Description=VictoriaLogs single-node log database (Podman)
+Requires=podman.service
+Wants=network-online.target
+After=network-online.target podman.service
+RequiresMountsFor={{ victorialogs_data_dir }}
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/podman start --attach victorialogs
+ExecStop=/usr/bin/podman stop --time 20 victorialogs
+Restart=always
+RestartSec=10
+TimeoutStartSec=120
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,36 @@
+---
+gatus_enabled: true
+gatus_container_name: gatus
+
+# Gatus 5.36.0 publishes linux/amd64, linux/arm/v7, and linux/arm64
+# manifests under this immutable image index digest. Source:
+# https://hub.docker.com/layers/twinproduction/gatus/v5.36.0/images/sha256-5b52c2cb60aad6b47ff2613e13799ae19aebb9a90fc53e207c34ccae4b3a54d6
+gatus_image: >-
+  docker.io/twinproduction/gatus:v5.36.0@sha256:c5f210d095fa78e6efaa20ffeb14803f2ba4f10615e16a6d12087697149617f0
+
+# The container uses host networking so probes can reach the appliance's
+# concrete LAN and tailnet addresses. Firewall policy remains the integration
+# layer's responsibility.
+gatus_web_address: 0.0.0.0
+gatus_bind_address: "{{ pi_service_bind_address }}"
+gatus_port: 8082
+gatus_config_dir: /etc/gatus
+gatus_config_file: /etc/gatus/config.yaml
+gatus_uid: 65532
+gatus_gid: 65532
+
+# Parent inventory supplies the complete generated probe list. Each item must
+# provide name and url; interval, conditions, failure_threshold and
+# send_on_resolved are accepted as explicit per-probe overrides.
+gatus_endpoints: []
+
+gatus_metrics_enabled: true
+gatus_storage_type: memory
+gatus_delay_start_seconds: 60
+gatus_ntfy_url: https://ntfy.sh
+gatus_ntfy_channel: ""
+# SecretSpec integration supplies this path. It must contain only the bearer
+# token; it is read under no_log and never emitted by the role.
+gatus_ntfy_token_path: ""
+gatus_ntfy_environment_file: /etc/gatus/ntfy.env
+gatus_ntfy_priority: 4

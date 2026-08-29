@@ -1,0 +1,114 @@
+---
+- name: Validate the explicit Beszel hub contract
+  ansible.builtin.assert:
+    that:
+      - beszel_image is match('^.+@sha256:[0-9a-f]{64}$')
+      - beszel_bind_address | length > 0
+      - beszel_bind_address is string
+      - beszel_bind_address not in ['0.0.0.0', '::', '::0']
+      - beszel_bind_port | int > 0
+      - beszel_bind_port | int < 65536
+      - beszel_data_dir | length > 0
+      - beszel_container_user | length > 0
+    fail_msg: Beszel requires an immutable image, explicit listener, and persistent state.
+  when: beszel_enabled | bool
+
+- name: Create Beszel state directory
+  ansible.builtin.file:
+    path: "{{ beszel_data_dir }}"
+    state: directory
+    owner: "{{ beszel_container_user.split(':')[0] }}"
+    group: "{{ beszel_container_user.split(':')[1] }}"
+    mode: "0750"
+  when: beszel_enabled | bool
+
+- name: Render Beszel systemd unit
+  ansible.builtin.template:
+    src: beszel.service.j2
+    dest: /etc/systemd/system/beszel.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd after Beszel changes
+    - Restart Beszel hub
+  when: beszel_enabled | bool
+
+- name: Create Beszel hub container
+  containers.podman.podman_container:
+    name: beszel
+    image: "{{ beszel_image }}"
+    state: present
+    pull: missing
+    user: "{{ beszel_container_user }}"
+    publish:
+      - "{{ beszel_bind_address }}:{{ beszel_bind_port }}:8090/tcp"
+    env:
+      USER_CREATION: "{{ beszel_user_creation }}"
+    volume:
+      - "{{ beszel_data_dir }}:/beszel_data"
+    security_opt:
+      - no-new-privileges
+    cap_drop:
+      - ALL
+    read_only: true
+    read_only_tmpfs: true
+    healthcheck: "/beszel health --url http://localhost:8090"
+    healthcheck_interval: 120s
+    healthcheck_timeout: 10s
+    healthcheck_retries: 3
+    healthcheck_start_period: 5s
+    restart_policy: "no"
+  register: beszel_container
+  notify: Restart Beszel hub
+  no_log: true
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+
+- name: Enable and start Beszel systemd unit
+  ansible.builtin.systemd_service:
+    name: beszel.service
+    enabled: true
+    state: started
+    daemon_reload: true
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+
+- name: Wait for Beszel health endpoint
+  ansible.builtin.uri:
+    url: "http://{{ beszel_health_address }}:{{ beszel_bind_port }}{{ beszel_health_path }}"
+    status_code: 200
+  register: beszel_health
+  retries: 30
+  delay: 2
+  until: beszel_health.status == 200
+  changed_when: false
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Stop and disable Beszel when disabled
+  ansible.builtin.systemd_service:
+    name: beszel.service
+    state: stopped
+    enabled: false
+  failed_when: false
+  when: not beszel_enabled | bool
+
+- name: Remove the Beszel systemd unit when disabled
+  ansible.builtin.file:
+    path: /etc/systemd/system/beszel.service
+    state: absent
+  notify: Reload systemd after Beszel changes
+  when: not beszel_enabled | bool
+
+- name: Remove the Beszel container when disabled
+  containers.podman.podman_container:
+    name: beszel
+    state: absent
+  when:
+    - not beszel_enabled | bool
+    - podman_available | bool

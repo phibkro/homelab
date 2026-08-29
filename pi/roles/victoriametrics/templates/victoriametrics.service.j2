@@ -1,0 +1,18 @@
+[Unit]
+Description=VictoriaMetrics single-node TSDB (Podman)
+Requires=podman.service
+Wants=network-online.target
+After=network-online.target podman.service
+RequiresMountsFor={{ victoriametrics_data_dir }} {{ victoriametrics_config_dir }}
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/podman start --attach victoriametrics
+ExecStop=/usr/bin/podman stop --time 20 victoriametrics
+Restart=always
+RestartSec=10
+TimeoutStartSec=120
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

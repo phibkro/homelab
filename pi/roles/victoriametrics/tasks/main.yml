@@ -1,0 +1,179 @@
+---
+- name: Validate the explicit VictoriaMetrics contract
+  ansible.builtin.assert:
+    that:
+      - victoriametrics_image is match('^.+@sha256:[0-9a-f]{64}$')
+      - victoriametrics_bind_address | length > 0
+      - victoriametrics_bind_address is string
+      - victoriametrics_bind_address not in ['0.0.0.0', '::', '::0']
+      - victoriametrics_bind_port | int > 0
+      - victoriametrics_bind_port | int < 65536
+      - victoriametrics_data_dir | length > 0
+      - victoriametrics_container_user | length > 0
+      - victoriametrics_retention_period | length > 0
+      - victoriametrics_scrape_jobs is sequence
+      - victoriametrics_scrape_jobs is not string
+      - victoriametrics_scrape_jobs | length > 0
+      - victoriametrics_scrape_jobs | reject('mapping') | list | length == 0
+    fail_msg: VictoriaMetrics requires an immutable image, explicit listener, state, retention, and scrape inputs.
+  when: victoriametrics_enabled | bool
+
+- name: Validate each VictoriaMetrics scrape job
+  ansible.builtin.assert:
+    that:
+      - item is mapping
+      - item.job_name is defined
+      - item.job_name is string
+      - item.job_name | length > 0
+      - item.static_configs is defined
+      - item.static_configs is sequence
+      - item.static_configs is not string
+      - item.static_configs | length > 0
+    fail_msg: Each VictoriaMetrics job needs a name and nonempty static_configs list.
+  loop: "{{ victoriametrics_scrape_jobs }}"
+  loop_control:
+    label: "{{ item.job_name | default('invalid') }}"
+  when: victoriametrics_enabled | bool
+
+- name: Validate each VictoriaMetrics static target list
+  ansible.builtin.assert:
+    that:
+      - item.1 is mapping
+      - item.1.targets is defined
+      - item.1.targets is sequence
+      - item.1.targets is not string
+      - item.1.targets | length > 0
+    fail_msg: Each VictoriaMetrics static config needs a nonempty targets list.
+  loop: "{{ victoriametrics_scrape_jobs | subelements('static_configs', skip_missing=true) }}"
+  loop_control:
+    label: "{{ item.0.job_name | default('invalid') }}"
+  when: victoriametrics_enabled | bool
+
+- name: Create VictoriaMetrics directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - path: "{{ victoriametrics_data_dir }}"
+      owner: "{{ victoriametrics_container_user.split(':')[0] }}"
+      group: "{{ victoriametrics_container_user.split(':')[1] }}"
+      mode: "0750"
+    - path: "{{ victoriametrics_config_dir }}"
+      owner: root
+      group: root
+      mode: "0755"
+  when: victoriametrics_enabled | bool
+
+- name: Render VictoriaMetrics scrape configuration
+  ansible.builtin.template:
+    src: prometheus.yml.j2
+    dest: "{{ victoriametrics_config_dir }}/prometheus.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  register: victoriametrics_config
+  notify: Restart VictoriaMetrics
+  when: victoriametrics_enabled | bool
+
+- name: Validate the rendered VictoriaMetrics scrape configuration
+  ansible.builtin.assert:
+    that:
+      - (lookup('ansible.builtin.template', role_path + '/templates/prometheus.yml.j2') | from_yaml).scrape_configs | length > 0
+      - (lookup('ansible.builtin.template', role_path + '/templates/prometheus.yml.j2') | from_yaml).scrape_configs is sequence
+      - (lookup('ansible.builtin.template', role_path + '/templates/prometheus.yml.j2') | from_yaml).scrape_configs | reject('mapping') | list | length == 0
+      - (lookup('ansible.builtin.template', role_path + '/templates/prometheus.yml.j2') | from_yaml).global.scrape_interval == '30s'
+    fail_msg: The VictoriaMetrics scrape configuration must parse and contain at least one job.
+  changed_when: false
+  when: victoriametrics_enabled | bool
+
+- name: Render VictoriaMetrics systemd unit
+  ansible.builtin.template:
+    src: victoriametrics.service.j2
+    dest: /etc/systemd/system/victoriametrics.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd after VictoriaMetrics changes
+    - Restart VictoriaMetrics
+  when: victoriametrics_enabled | bool
+
+- name: Create VictoriaMetrics container
+  containers.podman.podman_container:
+    name: victoriametrics
+    image: "{{ victoriametrics_image }}"
+    state: present
+    pull: missing
+    user: "{{ victoriametrics_container_user }}"
+    publish:
+      - "{{ victoriametrics_bind_address }}:{{ victoriametrics_bind_port }}:8428/tcp"
+    command:
+      - -httpListenAddr=:8428
+      - -storageDataPath=/victoria-metrics-data
+      - -promscrape.config=/etc/victoriametrics/prometheus.yml
+      - "-retentionPeriod={{ victoriametrics_retention_period }}"
+    volume:
+      - "{{ victoriametrics_data_dir }}:/victoria-metrics-data"
+      - "{{ victoriametrics_config_dir }}/prometheus.yml:/etc/victoriametrics/prometheus.yml:ro"
+    security_opt:
+      - no-new-privileges
+    cap_drop:
+      - ALL
+    read_only: true
+    read_only_tmpfs: true
+    restart_policy: "no"
+  register: victoriametrics_container
+  notify: Restart VictoriaMetrics
+  when:
+    - victoriametrics_enabled | bool
+    - podman_available | bool
+
+- name: Enable and start VictoriaMetrics systemd unit
+  ansible.builtin.systemd_service:
+    name: victoriametrics.service
+    enabled: true
+    state: started
+    daemon_reload: true
+  when:
+    - victoriametrics_enabled | bool
+    - podman_available | bool
+
+- name: Wait for VictoriaMetrics health endpoint
+  ansible.builtin.uri:
+    url: "http://{{ victoriametrics_health_address }}:{{ victoriametrics_bind_port }}/health"
+    status_code: 200
+  register: victoriametrics_health
+  retries: 30
+  delay: 2
+  until: victoriametrics_health.status == 200
+  changed_when: false
+  when:
+    - victoriametrics_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Stop and disable VictoriaMetrics when disabled
+  ansible.builtin.systemd_service:
+    name: victoriametrics.service
+    state: stopped
+    enabled: false
+  failed_when: false
+  when: not victoriametrics_enabled | bool
+
+- name: Remove the VictoriaMetrics systemd unit when disabled
+  ansible.builtin.file:
+    path: /etc/systemd/system/victoriametrics.service
+    state: absent
+  notify: Reload systemd after VictoriaMetrics changes
+  when: not victoriametrics_enabled | bool
+
+- name: Remove the VictoriaMetrics container when disabled
+  containers.podman.podman_container:
+    name: victoriametrics
+    state: absent
+  when:
+    - not victoriametrics_enabled | bool
+    - podman_available | bool

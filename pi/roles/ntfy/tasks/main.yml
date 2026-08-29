@@ -1,0 +1,234 @@
+---
+- name: Validate the explicit ntfy integration contract
+  ansible.builtin.assert:
+    that:
+      - ntfy_image is match('^docker\.io/binwiederhier/ntfy:v[0-9]+\.[0-9]+\.[0-9]+@sha256:[0-9a-f]{64}$')
+      - ntfy_bind_address is match('^[0-9]+(\.[0-9]+){3}$')
+      - ntfy_bind_address not in ['0.0.0.0', '255.255.255.255']
+      - ntfy_port | int >= 1
+      - ntfy_port | int <= 65535
+      - ntfy_port | int != pi_admin_port | int
+      - ntfy_base_url is match('^https://[^[:space:]]+$')
+      - ntfy_auth_default_access == 'deny-all'
+      - ntfy_enable_anonymous_read | type_debug == 'bool'
+      - ntfy_publisher_username is match('^[A-Za-z0-9._-]+$')
+      - ntfy_publisher_token is match('^tk_[A-Za-z0-9]{29}$')
+      - ntfy_publisher_token is not search('[\r\n]')
+      - >-
+        ntfy_publisher_password_hash is match('^\$2[aby]\$(0[4-9]|[12][0-9]|3[0-1])\$[./A-Za-z0-9]{53}$')
+      - ntfy_publisher_password_hash is not search('[\r\n]')
+      - ntfy_agents_channel is match('^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$')
+      - ntfy_alert_routes.operator.url is match('^https://[^[:space:]]+$')
+      - ntfy_alert_routes.operator.topic is match('^[A-Za-z0-9][A-Za-z0-9_-]{2,63}$')
+      - ntfy_alert_routes.operator.topic_file == ntfy_operator_topic_file
+      - ntfy_alert_routes.operator.token_file == ''
+      - ntfy_alert_routes.agents.url is match('^http://[^[:space:]]+$')
+      - ntfy_alert_routes.agents.topic == ntfy_agents_channel
+      - ntfy_alert_routes.agents.topic_file == ntfy_agents_topic_file
+      - ntfy_alert_routes.agents.token_file == ntfy_publisher_token_file
+      - ntfy_notify_recovery_window_seconds | int > 0
+    fail_msg: >-
+      ntfy requires a digest-pinned image, a concrete bind address, the
+      dedicated 8091-class port, and SecretSpec-provided auth inputs.
+  no_log: true
+  when: ntfy_enabled | bool
+
+- name: Remove ntfy when explicitly disabled
+  containers.podman.podman_container:
+    name: "{{ ntfy_container_name }}"
+    state: absent
+  when:
+    - not ntfy_enabled | bool
+    - podman_available | bool
+
+- name: Remove role-owned ntfy files when explicitly disabled
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ ntfy_config_dir }}/ntfy.env"
+    - "{{ ntfy_publisher_token_file }}"
+    - "{{ ntfy_operator_topic_file }}"
+    - "{{ ntfy_agents_topic_file }}"
+    - /etc/default/ntfy-alert
+    - /usr/local/libexec/nori-alert
+    - /usr/local/libexec/ntfy-notify
+    - /etc/systemd/system/notify@.service
+  notify: Reload systemd after ntfy unit changes
+  when: not ntfy_enabled | bool
+
+- name: Create ntfy configuration, cache, and state directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - path: "{{ ntfy_config_dir }}"
+      owner: root
+      group: root
+      mode: "0750"
+    - path: "{{ ntfy_cache_dir }}"
+      owner: "{{ ntfy_uid }}"
+      group: "{{ ntfy_gid }}"
+      mode: "0750"
+    - path: "{{ ntfy_state_dir }}"
+      owner: "{{ ntfy_uid }}"
+      group: "{{ ntfy_gid }}"
+      mode: "0750"
+  when: ntfy_enabled | bool
+
+- name: Render ntfy's root-only provisioning environment
+  ansible.builtin.template:
+    src: ntfy.env.j2
+    dest: "{{ ntfy_config_dir }}/ntfy.env"
+    owner: root
+    group: root
+    mode: "0600"
+  register: ntfy_environment
+  no_log: true
+  when: ntfy_enabled | bool
+
+- name: Render the host-local nori-alert emitter
+  ansible.builtin.template:
+    src: nori-alert.j2
+    dest: /usr/local/libexec/nori-alert
+    owner: root
+    group: root
+    mode: "0750"
+  register: ntfy_alert_emitter
+  when: ntfy_enabled | bool
+
+- name: Render non-secret nori-alert runtime configuration
+  ansible.builtin.template:
+    src: ntfy-alert.env.j2
+    dest: /etc/default/ntfy-alert
+    owner: root
+    group: root
+    mode: "0644"
+  register: ntfy_alert_config
+  when: ntfy_enabled | bool
+
+- name: Install root-only topic files for each alert route
+  ansible.builtin.copy:
+    content: "{{ item.value.topic }}\n"
+    dest: "{{ item.value.topic_file }}"
+    owner: root
+    group: root
+    mode: "0400"
+  loop: "{{ ntfy_alert_routes | dict2items }}"
+  loop_control:
+    label: "{{ item.key }} topic"
+  register: ntfy_topic_files
+  no_log: true
+  when: ntfy_enabled | bool
+
+- name: Render the systemd failed-unit notifier helper
+  ansible.builtin.template:
+    src: ntfy-notify.j2
+    dest: /usr/local/libexec/ntfy-notify
+    owner: root
+    group: root
+    mode: "0750"
+  register: ntfy_notify_helper
+  when: ntfy_enabled | bool
+
+- name: Install the root-only publisher token for host-local alerts
+  ansible.builtin.copy:
+    content: "{{ ntfy_publisher_token }}\n"
+    dest: "{{ ntfy_publisher_token_file }}"
+    owner: root
+    group: root
+    mode: "0400"
+  register: ntfy_token_file
+  no_log: true
+  when: ntfy_enabled | bool
+
+- name: Render the systemd notify template
+  ansible.builtin.template:
+    src: notify@.service.j2
+    dest: /etc/systemd/system/notify@.service
+    owner: root
+    group: root
+    mode: "0644"
+  register: ntfy_notify_unit
+  notify: Reload systemd after ntfy unit changes
+  when: ntfy_enabled | bool
+
+- name: Pull the pinned ntfy image
+  containers.podman.podman_image:
+    name: "{{ ntfy_image }}"
+    source: pull
+    force: false
+  register: ntfy_image_pull
+  when:
+    - ntfy_enabled | bool
+    - podman_available | bool
+
+- name: Run ntfy with non-root and filesystem hardening
+  containers.podman.podman_container:
+    name: "{{ ntfy_container_name }}"
+    image: "{{ ntfy_image }}"
+    state: started
+    command:
+      - serve
+    restart_policy: always
+    pull: never
+    user: "{{ ntfy_uid }}:{{ ntfy_gid }}"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    env_file:
+      - "{{ ntfy_config_dir }}/ntfy.env"
+    publish:
+      - "{{ ntfy_bind_address }}:{{ ntfy_port }}:80/tcp"
+    volume:
+      - "{{ ntfy_cache_dir }}:/var/cache/ntfy:rw"
+      - "{{ ntfy_state_dir }}:/var/lib/ntfy:rw"
+    recreate: >-
+      {{ ntfy_environment.changed
+         or ntfy_alert_emitter.changed
+         or ntfy_alert_config.changed
+         or ntfy_topic_files.changed
+         or ntfy_notify_helper.changed
+         or ntfy_token_file.changed
+         or ntfy_notify_unit.changed
+         or ntfy_image_pull.changed }}
+  register: ntfy_container
+  no_log: true
+  when:
+    - ntfy_enabled | bool
+    - podman_available | bool
+
+- name: Wait for the ntfy health endpoint
+  ansible.builtin.uri:
+    url: "http://{{ ntfy_bind_address }}:{{ ntfy_port }}/v1/health"
+    status_code: 200
+    timeout: 10
+    return_content: true
+  register: ntfy_health
+  changed_when: false
+  until: ntfy_health.status | default(0) == 200
+  retries: 12
+  delay: 5
+  when:
+    - ntfy_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Report ntfy convergence
+  ansible.builtin.debug:
+    msg: >-
+      {% if not podman_available %}
+      ntfy runtime checks deferred until the planned Podman package exists.
+      {% elif ansible_check_mode %}
+      ntfy runtime would converge on host port {{ ntfy_port }}.
+      {% else %}
+      ntfy container changed={{ ntfy_container.changed }} and /v1/health is OK.
+      {% endif %}
+  when: ntfy_enabled | bool

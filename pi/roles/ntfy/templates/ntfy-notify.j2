@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+unit="${1:?unit argument required}"
+if ! systemctl is-failed "$unit" --quiet; then
+  exit 0
+fi
+
+tail_text="$(journalctl -u "$unit" -n 8 --no-pager 2>&1 | tail -c 800)"
+host_name="$(hostname --static)"
+printf -v alert_body '%s remains in systemd\x27s failed state on %s after the recovery window. Recent journal:\n\n%s\n\nDiagnose: journalctl -u %s' \
+  "$unit" "$host_name" "$tail_text" "$unit"
+/usr/local/libexec/nori-alert \
+  --audience operator \
+  --severity urgent \
+  --category service-failure \
+  --title "$host_name: $unit persistently failed" \
+  --body "$alert_body" || true

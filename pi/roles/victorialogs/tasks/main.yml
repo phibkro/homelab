@@ -1,0 +1,114 @@
+---
+- name: Validate the explicit VictoriaLogs contract
+  ansible.builtin.assert:
+    that:
+      - victorialogs_image is match('^.+@sha256:[0-9a-f]{64}$')
+      - victorialogs_bind_address | length > 0
+      - victorialogs_bind_address is string
+      - victorialogs_bind_address not in ['0.0.0.0', '::', '::0']
+      - victorialogs_bind_port | int > 0
+      - victorialogs_bind_port | int < 65536
+      - victorialogs_data_dir | length > 0
+      - victorialogs_container_user | length > 0
+      - victorialogs_retention_period | length > 0
+      - victorialogs_max_disk_usage_percent | int > 0
+      - victorialogs_max_disk_usage_percent | int <= 100
+    fail_msg: VictoriaLogs requires an immutable image, explicit listener, state, and bounded retention.
+  when: victorialogs_enabled | bool
+
+- name: Create VictoriaLogs state directory
+  ansible.builtin.file:
+    path: "{{ victorialogs_data_dir }}"
+    state: directory
+    owner: "{{ victorialogs_container_user.split(':')[0] }}"
+    group: "{{ victorialogs_container_user.split(':')[1] }}"
+    mode: "0750"
+  when: victorialogs_enabled | bool
+
+- name: Render VictoriaLogs systemd unit
+  ansible.builtin.template:
+    src: victorialogs.service.j2
+    dest: /etc/systemd/system/victorialogs.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd after VictoriaLogs changes
+    - Restart VictoriaLogs
+  when: victorialogs_enabled | bool
+
+- name: Create VictoriaLogs container
+  containers.podman.podman_container:
+    name: victorialogs
+    image: "{{ victorialogs_image }}"
+    state: present
+    pull: missing
+    user: "{{ victorialogs_container_user }}"
+    publish:
+      - "{{ victorialogs_bind_address }}:{{ victorialogs_bind_port }}:9428/tcp"
+    command:
+      - -httpListenAddr=:9428
+      - -storageDataPath=/victoria-logs-data
+      - "-retentionPeriod={{ victorialogs_retention_period }}"
+      - "-retention.maxDiskUsagePercent={{ victorialogs_max_disk_usage_percent }}"
+    volume:
+      - "{{ victorialogs_data_dir }}:/victoria-logs-data"
+    security_opt:
+      - no-new-privileges
+    cap_drop:
+      - ALL
+    read_only: true
+    read_only_tmpfs: true
+    restart_policy: "no"
+  register: victorialogs_container
+  notify: Restart VictoriaLogs
+  when:
+    - victorialogs_enabled | bool
+    - podman_available | bool
+
+- name: Enable and start VictoriaLogs systemd unit
+  ansible.builtin.systemd_service:
+    name: victorialogs.service
+    enabled: true
+    state: started
+    daemon_reload: true
+  when:
+    - victorialogs_enabled | bool
+    - podman_available | bool
+
+- name: Wait for VictoriaLogs health endpoint
+  ansible.builtin.uri:
+    url: "http://{{ victorialogs_health_address }}:{{ victorialogs_bind_port }}/health"
+    status_code: 200
+  register: victorialogs_health
+  retries: 30
+  delay: 2
+  until: victorialogs_health.status == 200
+  changed_when: false
+  when:
+    - victorialogs_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Stop and disable VictoriaLogs when disabled
+  ansible.builtin.systemd_service:
+    name: victorialogs.service
+    state: stopped
+    enabled: false
+  failed_when: false
+  when: not victorialogs_enabled | bool
+
+- name: Remove the VictoriaLogs systemd unit when disabled
+  ansible.builtin.file:
+    path: /etc/systemd/system/victorialogs.service
+    state: absent
+  notify: Reload systemd after VictoriaLogs changes
+  when: not victorialogs_enabled | bool
+
+- name: Remove the VictoriaLogs container when disabled
+  containers.podman.podman_container:
+    name: victorialogs
+    state: absent
+  when:
+    - not victorialogs_enabled | bool
+    - podman_available | bool

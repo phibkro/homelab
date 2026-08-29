@@ -1,0 +1,13 @@
+---
+# Upstream multi-platform index and the ARM64 manifest are both immutable.
+# The digest is recorded from the upstream container registry release page.
+beszel_enabled: true
+beszel_image: >-
+  docker.io/henrygd/beszel:0.18.8@sha256:4c51486968efa0b0a702c1b0967966a2e06fb250b7418f3072d2488faea27c51
+beszel_bind_address: "{{ pi_service_bind_address }}"
+beszel_bind_port: 8090
+beszel_data_dir: /var/lib/beszel
+beszel_container_user: "1000:1000"
+beszel_health_address: 127.0.0.1
+beszel_health_path: /api/health
+beszel_user_creation: "true"

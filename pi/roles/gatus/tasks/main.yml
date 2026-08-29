@@ -1,0 +1,279 @@
+---
+- name: Validate the explicit Gatus runtime contract
+  ansible.builtin.assert:
+    that:
+      - gatus_image is match('^docker\.io/twinproduction/gatus:v[0-9.]+@sha256:[0-9a-f]{64}$')
+      - gatus_web_address | length > 0
+      - gatus_web_address not in ['0.0.0.0', '::'] or gatus_bind_address | length > 0
+      - gatus_bind_address is match('^[0-9]+(\.[0-9]+){3}$')
+      - gatus_bind_address not in ['0.0.0.0', '255.255.255.255']
+      - gatus_port | int >= 1
+      - gatus_port | int <= 65535
+      - gatus_uid | int > 0
+      - gatus_gid | int > 0
+      - gatus_delay_start_seconds | int >= 0
+      - gatus_storage_type == 'memory'
+      - gatus_ntfy_url is match('^https://[^ ]+$')
+      - gatus_ntfy_channel | length > 0
+      - gatus_ntfy_channel is not search('[\r\n]')
+      - gatus_ntfy_token_path | length > 0
+      - gatus_ntfy_environment_file | dirname == gatus_config_dir
+    fail_msg: >-
+      Gatus requires a digest-pinned image, concrete bind address, memory-only
+      storage, and SecretSpec-provided ntfy channel/token inputs.
+  no_log: true
+  when: gatus_enabled | bool
+
+- name: Validate each parent-supplied Gatus endpoint
+  ansible.builtin.assert:
+    that:
+      - item.name is defined
+      - item.name is string
+      - item.name | length > 0
+      - item.name is not search('[\r\n]')
+      - item.url is defined
+      - item.url is string
+      - item.url | length > 0
+      - item.url is not search('[\r\n]')
+      - item.interval is not defined or (item.interval is string and item.interval | length > 0)
+      - >-
+        item.conditions is not defined
+        or (item.conditions is sequence and item.conditions is not string
+        and (item.conditions | select('string') | list | length) == (item.conditions | length))
+      - item.failure_threshold is not defined or item.failure_threshold | int > 0
+    fail_msg: Every Gatus endpoint needs a non-empty name and URL plus valid optional probe settings.
+  loop: "{{ gatus_endpoints }}"
+  loop_control:
+    label: "{{ item.name | default('unnamed') }}"
+  when: gatus_enabled | bool
+
+- name: Require unique Gatus endpoint names
+  ansible.builtin.assert:
+    that:
+      - >-
+        (gatus_endpoints | selectattr('name', 'defined') | map(attribute='name') | list | unique | length)
+        == (gatus_endpoints | selectattr('name', 'defined') | list | length)
+    fail_msg: Gatus endpoint names must be unique.
+  when: gatus_enabled | bool
+
+- name: Create the Gatus configuration directory
+  ansible.builtin.file:
+    path: "{{ gatus_config_dir }}"
+    state: directory
+    owner: "{{ gatus_uid }}"
+    group: "{{ gatus_gid }}"
+    mode: "0750"
+  when: gatus_enabled | bool
+
+- name: Render the Gatus configuration
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: "{{ gatus_config_file }}"
+    owner: "{{ gatus_uid }}"
+    group: "{{ gatus_gid }}"
+    mode: "0440"
+  register: gatus_config
+  when: gatus_enabled | bool
+
+- name: Check that the SecretSpec ntfy token exists
+  ansible.builtin.stat:
+    path: "{{ gatus_ntfy_token_path }}"
+  register: gatus_ntfy_token_stat
+  no_log: true
+  when:
+    - gatus_enabled | bool
+    - not ansible_check_mode
+
+- name: Require the SecretSpec ntfy token file
+  ansible.builtin.assert:
+    that:
+      - gatus_ntfy_token_stat.stat.exists
+      - gatus_ntfy_token_stat.stat.isreg
+      - gatus_ntfy_token_stat.stat.size | int > 0
+    fail_msg: The configured Gatus ntfy token path must be a non-empty regular file.
+  no_log: true
+  when:
+    - gatus_enabled | bool
+    - not ansible_check_mode
+
+- name: Read the ntfy token without exposing its value
+  ansible.builtin.slurp:
+    src: "{{ gatus_ntfy_token_path }}"
+  register: gatus_ntfy_token
+  no_log: true
+  when:
+    - gatus_enabled | bool
+    - not ansible_check_mode
+
+- name: Validate the ntfy token format without exposing its value
+  ansible.builtin.assert:
+    that:
+      - (gatus_ntfy_token.content | b64decode | trim) is match('^tk_[A-Za-z0-9_-]{17,}$')
+    fail_msg: The configured Gatus ntfy token must be a valid tk_ token.
+  no_log: true
+  when:
+    - gatus_enabled | bool
+    - not ansible_check_mode
+
+- name: Render the Gatus ntfy environment file
+  ansible.builtin.copy:
+    content: |-
+      NTFY_CHANNEL={{ gatus_ntfy_channel }}
+      NTFY_PUBLISHER_TOKEN={{ gatus_ntfy_token.content | b64decode | trim }}
+    dest: "{{ gatus_ntfy_environment_file }}"
+    owner: root
+    group: root
+    mode: "0400"
+  register: gatus_ntfy_environment
+  no_log: true
+  when:
+    - gatus_enabled | bool
+    - not ansible_check_mode
+
+- name: Pull the pinned Gatus image
+  containers.podman.podman_image:
+    name: "{{ gatus_image }}"
+    source: pull
+    force: false
+  register: gatus_image_pull
+  when:
+    - gatus_enabled | bool
+    - podman_available | bool
+
+- name: Validate the rendered Gatus configuration before starting the service
+  ansible.builtin.command:
+    argv:
+      - timeout
+      - 30s
+      - podman
+      - run
+      - --rm
+      - --network=none
+      - --env-file={{ gatus_ntfy_environment_file }}
+      - --env
+      - GATUS_CONFIG_PATH=/config
+      - --env
+      - GATUS_DELAY_START_SECONDS=0
+      - --volume={{ gatus_config_file }}:/config/config.yaml:ro
+      - --user={{ gatus_uid }}:{{ gatus_gid }}
+      - --read-only
+      - --cap-drop=ALL
+      - --security-opt=no-new-privileges:true
+      - "{{ gatus_image }}"
+  register: gatus_config_validation
+  changed_when: false
+  failed_when: gatus_config_validation.rc not in [0, 124, 143]
+  no_log: true
+  when:
+    - gatus_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Run the Gatus container
+  containers.podman.podman_container:
+    name: "{{ gatus_container_name }}"
+    image: "{{ gatus_image }}"
+    state: started
+    restart_policy: always
+    pull: never
+    network: host
+    user: "{{ gatus_uid }}:{{ gatus_gid }}"
+    recreate: >-
+      {{ gatus_config.changed
+         or (gatus_ntfy_environment.changed | default(false))
+         or (gatus_image_pull.changed | default(false)) }}
+    env_file:
+      - "{{ gatus_ntfy_environment_file }}"
+    env:
+      GATUS_CONFIG_PATH: /config
+      GATUS_DELAY_START_SECONDS: "{{ gatus_delay_start_seconds }}"
+    volume:
+      - "{{ gatus_config_file }}:/config/config.yaml:ro"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+  register: gatus_container
+  no_log: true
+  when:
+    - gatus_enabled | bool
+    - podman_available | bool
+
+- name: Wait for the Gatus HTTP listener
+  ansible.builtin.wait_for:
+    host: "{{ gatus_bind_address }}"
+    port: "{{ gatus_port }}"
+    timeout: 120
+  when:
+    - gatus_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Verify the Gatus health endpoint
+  ansible.builtin.uri:
+    url: "http://{{ gatus_bind_address }}:{{ gatus_port }}/health"
+    method: GET
+    status_code: 200
+    timeout: 10
+    return_content: false
+  register: gatus_health
+  until: gatus_health.status | default(0) == 200
+  retries: 30
+  delay: 2
+  changed_when: false
+  when:
+    - gatus_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Verify the Gatus Prometheus metrics endpoint
+  ansible.builtin.uri:
+    url: "http://{{ gatus_bind_address }}:{{ gatus_port }}/metrics"
+    method: GET
+    status_code: 200
+    timeout: 10
+    return_content: false
+  register: gatus_metrics
+  until: gatus_metrics.status | default(0) == 200
+  retries: 30
+  delay: 2
+  changed_when: false
+  when:
+    - gatus_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Remove Gatus when explicitly disabled
+  containers.podman.podman_container:
+    name: "{{ gatus_container_name }}"
+    state: absent
+  when:
+    - not gatus_enabled | bool
+    - podman_available | bool
+
+- name: Remove disabled Gatus configuration
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ gatus_config_file }}"
+    - "{{ gatus_ntfy_environment_file }}"
+  when: not gatus_enabled | bool
+
+- name: Report Gatus convergence
+  ansible.builtin.debug:
+    msg: >-
+      {% if not podman_available %}
+      Gatus runtime checks deferred until the planned Podman package exists;
+      configuration changed={{ gatus_config.changed | default(false) }}.
+      {% elif ansible_check_mode %}
+      Gatus runtime would converge with {{ gatus_endpoints | length }} probes.
+      {% else %}
+      Gatus container changed={{ gatus_container.changed | default(false) }};
+      configuration changed={{ gatus_config.changed | default(false) }};
+      health and metrics endpoints verified.
+      {% endif %}
+  when: gatus_enabled | bool

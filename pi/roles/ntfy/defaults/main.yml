@@ -1,0 +1,51 @@
+---
+# ntfy's official image is a multi-architecture manifest (amd64, arm64,
+# arm/v6, and arm/v7). Keep the manifest digest pinned so the Pi does not
+# silently change binaries on a later convergence.
+ntfy_enabled: true
+ntfy_image: >-
+  docker.io/binwiederhier/ntfy:v2.27.0@sha256:f2419f405127afa868f10985c1a41449e673477cee1eb19994339a5ae8b592e7
+ntfy_container_name: ntfy
+ntfy_bind_address: "{{ pi_service_bind_address }}"
+ntfy_port: 8091
+ntfy_base_url: "https://alert.{{ pi_domain }}"
+ntfy_alert_url: "http://{{ ntfy_bind_address }}:{{ ntfy_port }}"
+ntfy_config_dir: /opt/ntfy/config
+ntfy_cache_dir: /var/cache/ntfy
+ntfy_state_dir: /var/lib/ntfy
+ntfy_uid: 65532
+ntfy_gid: 65532
+ntfy_timezone: "{{ pi_timezone }}"
+ntfy_behind_proxy: false
+ntfy_auth_default_access: deny-all
+ntfy_enable_login: true
+ntfy_enable_anonymous_read: false
+
+# The token is intentionally an explicit integration input. An empty default
+# makes role syntax checks possible while deployment fails closed.
+ntfy_publisher_token: ""
+ntfy_publisher_password_hash: ""
+ntfy_agents_channel: ""
+ntfy_publisher_username: publisher
+ntfy_publisher_token_file: "{{ ntfy_config_dir }}/publisher-token"
+ntfy_operator_topic_file: "{{ ntfy_config_dir }}/operator-topic"
+ntfy_agents_topic_file: "{{ ntfy_config_dir }}/agents-topic"
+
+# Operator alerts deliberately remain on public ntfy.sh so they survive a Pi
+# outage. Agent traffic uses the local hub to avoid consuming ntfy.sh quota.
+# Topic values are secrets and are written to root-only files by the role.
+ntfy_alert_routes:
+  operator:
+    url: https://ntfy.sh
+    topic: ""
+    topic_file: "{{ ntfy_operator_topic_file }}"
+    token_file: ""
+  agents:
+    url: "{{ ntfy_alert_url }}"
+    topic: "{{ ntfy_agents_channel }}"
+    topic_file: "{{ ntfy_agents_topic_file }}"
+    token_file: "{{ ntfy_publisher_token_file }}"
+
+# Host-local alert delivery. Public clients use ntfy_base_url through Caddy;
+# local systemd producers use the HTTP backend to avoid a TLS trust dependency.
+ntfy_notify_recovery_window_seconds: 120

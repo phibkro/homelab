@@ -1,0 +1,16 @@
+---
+# Vector's upstream image is multi-platform; pin its immutable index digest.
+vector_enabled: true
+vector_base_image: >-
+  docker.io/timberio/vector:0.58.0-debian@sha256:1c1ea358c617ea0b23003d5af87f7a678b30f8f7096437e680380c47fc13d2d9
+vector_image: localhost/homelab-vector:0.58.0-journald
+vector_build_dir: /opt/vector/build
+vector_data_dir: /var/lib/vector
+vector_config_dir: /etc/vector
+vector_container_user: "1000:1000"
+vector_journal_group_name: systemd-journal
+vector_victorialogs_endpoint: ""
+vector_victorialogs_api_version: v8
+vector_bind_address: 127.0.0.1
+vector_bind_port: 8686
+vector_api_address: 127.0.0.1:8686

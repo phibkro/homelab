@@ -1,0 +1,18 @@
+[Unit]
+Description=Vector journald log shipper (Podman)
+Requires=podman.service systemd-journald.service
+Wants=network-online.target
+After=systemd-journald.service network-online.target podman.service
+RequiresMountsFor={{ vector_data_dir }} {{ vector_config_dir }}
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/podman start --attach vector
+ExecStop=/usr/bin/podman stop --time 20 vector
+Restart=always
+RestartSec=10
+TimeoutStartSec=120
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

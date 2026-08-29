@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# The appliance-side equivalent of nori.alerts' nori-alert emit point. It
+# deliberately reads the token at send time; the token is never embedded in
+# this executable or exposed in Ansible output. Non-secret paths and endpoint
+# are loaded from /etc/default/ntfy-alert so this file remains valid shell.
+readonly config_file=/etc/default/ntfy-alert
+[[ -r "$config_file" ]] || { echo "nori-alert: runtime configuration unreadable" >&2; exit 1; }
+# shellcheck source=/dev/null
+source "$config_file"
+audience=""
+severity="info"
+category=""
+title=""
+body=""
+extra_tags=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --audience) audience="$2"; shift 2 ;;
+    --severity) severity="$2"; shift 2 ;;
+    --category) category="$2"; shift 2 ;;
+    --title) title="$2"; shift 2 ;;
+    --body) body="$2"; shift 2 ;;
+    --tags) extra_tags="$2"; shift 2 ;;
+    *) echo "nori-alert: unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+if [[ -z "$body" && ! -t 0 ]]; then
+  body="$(cat)"
+fi
+[[ -n "$audience" ]] || { echo "nori-alert: --audience required" >&2; exit 2; }
+[[ -n "$title" ]] || { echo "nori-alert: --title required" >&2; exit 2; }
+
+case "$audience" in
+  operator)
+    route_url="${NTFY_ALERT_ROUTE_OPERATOR_URL:?}"
+    topic_file="${NTFY_ALERT_ROUTE_OPERATOR_TOPIC_FILE:?}"
+    token_file="${NTFY_ALERT_ROUTE_OPERATOR_TOKEN_FILE:-}"
+    ;;
+  agents)
+    route_url="${NTFY_ALERT_ROUTE_AGENTS_URL:?}"
+    topic_file="${NTFY_ALERT_ROUTE_AGENTS_TOPIC_FILE:?}"
+    token_file="${NTFY_ALERT_ROUTE_AGENTS_TOKEN_FILE:-}"
+    ;;
+  *) echo "nori-alert: no route for audience=$audience" >&2; exit 1 ;;
+esac
+
+[[ -r "$topic_file" ]] || { echo "nori-alert: topic secret unreadable" >&2; exit 1; }
+topic="$(<"$topic_file")"
+[[ -n "$topic" ]] || { echo "nori-alert: topic secret is empty" >&2; exit 1; }
+endpoint="${route_url%/}/$topic"
+
+case "$severity" in
+  urgent) priority=urgent; severity_tag=rotating_light ;;
+  warning) priority=high; severity_tag=warning ;;
+  info) priority=default; severity_tag=information_source ;;
+  *) echo "nori-alert: invalid severity: $severity" >&2; exit 2 ;;
+esac
+
+tags="$severity_tag"
+[[ -z "$category" ]] || tags="$tags,$category"
+[[ -z "$extra_tags" ]] || tags="$tags,$extra_tags"
+
+echo "nori-alert audience=$audience severity=$severity category=${category:-none} title=\"$title\"" >&2
+curl_args=(--retry 2 --retry-connrefused \
+  -H "Title: $title" \
+  -H "Priority: $priority" \
+  -H "Tags: $tags" \
+  --data-binary "$body")
+if [[ -n "$token_file" ]]; then
+  [[ -r "$token_file" ]] || { echo "nori-alert: publisher token unreadable" >&2; exit 1; }
+  curl_args+=( -H "Authorization: Bearer $(<"$token_file")" )
+fi
+curl -fsS "${curl_args[@]}" "$endpoint" >/dev/null
