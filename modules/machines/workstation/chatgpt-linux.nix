@@ -30,8 +30,6 @@
   nspr,
   nss,
   pango,
-  qt5,
-  qt6,
   systemd,
   xdg-utils,
 }:
@@ -77,14 +75,24 @@ stdenv.mkDerivation (finalAttrs: {
     nspr
     nss
     pango
-    qt5.qtbase
-    qt6.qtbase
     systemd
   ];
 
-  # The archive carries both glibc and musl Node prebuilds. This derivation is
-  # the x86_64-linux glibc realization; the musl variants are never selected.
-  autoPatchelfIgnoreMissingDeps = [ "libc.musl-x86_64.so.1" ];
+  /*
+    The archive carries both glibc and musl Node prebuilds; only glibc is
+    selected on this host. It also carries optional Qt 5 and Qt 6 desktop-
+    integration shims, neither of which Hyprland loads. Pulling both Qt stacks
+    into one derivation triggers Nix's deliberate mixed-Qt-hook rejection.
+  */
+  autoPatchelfIgnoreMissingDeps = [
+    "libc.musl-x86_64.so.1"
+    "libQt5Core.so.5"
+    "libQt5Gui.so.5"
+    "libQt5Widgets.so.5"
+    "libQt6Core.so.6"
+    "libQt6Gui.so.6"
+    "libQt6Widgets.so.6"
+  ];
 
   unpackPhase = ''
     runHook preUnpack
