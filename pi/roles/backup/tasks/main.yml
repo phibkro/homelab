@@ -135,7 +135,7 @@
 
 - name: Install the root-only Aurora SSH identity
   ansible.builtin.copy:
-    content: "{{ pi_backup_ssh_private_key }}"
+    content: "{{ pi_backup_ssh_private_key | trim }}\n"
     dest: "{{ pi_backup_ssh_key_file }}"
     owner: root
     group: root

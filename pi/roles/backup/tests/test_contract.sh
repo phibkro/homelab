@@ -29,6 +29,8 @@ rg -q 'IdentitiesOnly=yes' "$role_dir/templates/maintenance.sh.j2" || fail "SSH 
 rg -q 'mode: "0400"' "$role_dir/tasks/main.yml" || fail "root-only secret mode missing"
 rg -q 'pi_backup_restic_password' "$role_dir/tasks/main.yml" || fail "restic password input missing"
 rg -q 'pi_backup_ssh_private_key' "$role_dir/tasks/main.yml" || fail "SSH key input missing"
+rg -q 'content: "\{\{ pi_backup_ssh_private_key | trim \}\}\\n"' "$role_dir/tasks/main.yml" \
+  || fail "SSH key file must end with exactly one newline"
 ! rg -q 'pi_backup_restic_password|pi_backup_ssh_private_key' "$role_dir/templates" || fail "secret content is rendered into runtime templates"
 rg -q 'no_log: true' "$role_dir/tasks/main.yml" || fail "secret installation is not hidden from task output"
 rg -q 'keep-daily' "$role_dir/templates/maintenance.sh.j2" || fail "retention missing"
