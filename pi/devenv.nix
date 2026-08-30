@@ -47,9 +47,12 @@
     roles/pihole/tests/test_contract.sh
     roles/authelia/tests/test_contract.sh
     roles/ddns/tests/test-contract.sh
+    roles/firewall/tests/test_contract.sh
     roles/gatus/tests/test_contract.sh
     roles/ntfy/tests/test_contract.sh
     roles/beszel/tests/test_contract.sh
+    roles/beszel_agent/tests/test_contract.sh
+    roles/heartbeat/tests/test_contract.sh
     roles/victoriametrics/tests/test_contract.sh
     roles/victorialogs/tests/test_contract.sh
     roles/vector/tests/test_contract.sh
@@ -66,6 +69,12 @@
        and (.pi_appliances.hosts.pi.pi_routes | any(.name == "pihole"))
        and (.pi_appliances.hosts.pi.pi_routes | any(.name == "auth"))
        and (.pi_appliances.hosts.pi.pi_routes | length > 1)
+       and ([.pi_appliances.hosts.pi.authelia_oidc_clients[].client_id] | sort)
+         == ["metrics", "news", "photos", "vault"]
+       and (.pi_appliances.hosts.pi.gatus_endpoints | length > 7)
+       and (.pi_appliances.hosts.pi.gatus_endpoints | any(.name == "media"))
+       and ([.pi_appliances.hosts.pi.victoriametrics_scrape_jobs[].job_name] | sort)
+         == ["gatus", "node", "nvidia-gpu", "process", "victoriametrics"]
        and .pi_appliances.hosts.pi.ddns_hostnames == [
          "audio.home.phibkro.org",
          "media.home.phibkro.org",

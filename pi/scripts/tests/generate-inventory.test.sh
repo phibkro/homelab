@@ -12,9 +12,10 @@ unsafe_fixture="$(mktemp)"
 same_port_fixture="$(mktemp)"
 collision_fixture="$(mktemp)"
 string_paths_fixture="$(mktemp)"
+inactive_exporters_fixture="$(mktemp)"
 cleanup() {
   rm -rf "$fake_bin" "$output" "$unsafe_fixture" "$same_port_fixture" \
-    "$collision_fixture" "$string_paths_fixture"
+    "$collision_fixture" "$string_paths_fixture" "$inactive_exporters_fixture"
 }
 trap cleanup EXIT
 
@@ -117,6 +118,67 @@ jq --exit-status '
        | length == (unique | length))
 ' "$output" >/dev/null
 
+jq --exit-status '
+  .pi_appliances.hosts.pi.authelia_oidc_clients == [
+    {
+      client_id: "photos",
+      client_name: "Immich",
+      authorization_policy: "one_factor",
+      redirect_uris: ["https://photos.home.example/auth/login"],
+      scopes: ["openid", "profile", "email", "groups"]
+    }
+  ]
+  and ([.pi_appliances.hosts.pi.gatus_endpoints[] | .name]
+       | .[0:7]
+       == ["pihole-dns", "pihole-admin", "station-blocky-dns", "station-ssh",
+           "station-caddy", "aurora-ssh", "aurora-samba"])
+  and (.pi_appliances.hosts.pi.gatus_endpoints
+       | any(.[]; .name == "auth"
+                    and .url == "http://192.168.1.225:9091/api/health"
+                    and .conditions == ["[STATUS] == 200"])
+       and any(.[]; .name == "books"
+                    and .url == "http://100.81.5.122:8084/"
+                    and .interval == "60s")
+       and any(.[]; .name == "media"
+                    and .url == "http://100.81.5.122:8096/health"
+                    and .failure_threshold == 5)
+       and any(.[]; .name == "photos"
+                    and .url == "http://100.81.5.122:2283/api/server/ping"
+                    and .interval == "30s"))
+  and .pi_appliances.hosts.pi.victoriametrics_scrape_jobs == [
+    {
+      job_name: "gatus",
+      static_configs: [{targets: ["192.168.1.225:8082"]}]
+    },
+    {
+      job_name: "victoriametrics",
+      static_configs: [{targets: ["192.168.1.225:8428"]}]
+    },
+    {
+      job_name: "node",
+      static_configs: [
+        {targets: ["100.81.5.122:9100"], labels: {host: "workstation"}},
+        {targets: ["100.101.67.111:9100"], labels: {host: "aurora"}}
+      ]
+    },
+    {
+      job_name: "process",
+      static_configs: [
+        {targets: ["100.81.5.122:9256"], labels: {host: "workstation"}},
+        {targets: ["100.101.67.111:9256"], labels: {host: "aurora"}}
+      ]
+    },
+    {
+      job_name: "nvidia-gpu",
+      static_configs: [
+        {targets: ["100.81.5.122:9835"], labels: {host: "workstation"}}
+      ]
+    }
+  ]
+' "$output" >/dev/null
+
+echo "inventory generator phase-two contract: PASS"
+
 echo "inventory generator contract: PASS"
 
 jq 'del(.workloads.authelia)' "$fixture" >"$unsafe_fixture"
@@ -155,3 +217,17 @@ if PATH="$fake_bin:$PATH" INVENTORY_FIXTURE="$string_paths_fixture" \
 fi
 
 echo "inventory generator path-shape contract: PASS"
+
+jq '.workloads["node-exporter"].active = false
+    | .workloads["nvidia-gpu-exporter"].active = false' \
+  "$fixture" >"$inactive_exporters_fixture"
+PATH="$fake_bin:$PATH" INVENTORY_FIXTURE="$inactive_exporters_fixture" \
+  "$repo_root/pi/scripts/generate-inventory.sh" "$output" >/dev/null
+jq --exit-status '
+  .pi_appliances.hosts.pi.victoriametrics_scrape_jobs == [
+    {job_name: "gatus", static_configs: [{targets: ["192.168.1.225:8082"]}]},
+    {job_name: "victoriametrics", static_configs: [{targets: ["192.168.1.225:8428"]}]}
+  ]
+' "$output" >/dev/null
+
+echo "inventory generator inactive-exporter contract: PASS"

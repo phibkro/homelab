@@ -12,7 +12,7 @@ in
   endpoints.auth = {
     port = 9091;
     runsOn = site.entryPlaneHost;
-    monitor = { };
+    monitor.path = "/api/health";
     audience = "public";
     dashboard = {
       title = "Authelia";

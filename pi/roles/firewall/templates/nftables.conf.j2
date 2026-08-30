@@ -1,6 +1,8 @@
 #!/usr/sbin/nft -f
 
-flush ruleset
+# Replace only the appliance-owned table. Flushing the global ruleset removes
+# Podman's netavark NAT/forwarding tables and strands every running container.
+delete table inet appliance_filter
 
 table inet appliance_filter {
   chain input {

@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+
+# systemd copies the root-only source into a transient credential directory.
+# Keep the URL out of argv, the unit, and journal output.
+url_file="${CREDENTIALS_DIRECTORY:?}/healthchecks-url"
+IFS= read -r url <"${url_file}"
+[ -n "${url}" ]
+
+exec /usr/bin/curl \
+  --fail \
+  --silent \
+  --output /dev/null \
+  --max-time {{ heartbeat_timeout_sec | int }} \
+  --retry {{ heartbeat_retry_count | int }} \
+  --retry-delay {{ heartbeat_retry_delay_sec | int }} \
+  --proto '=https' \
+  "${url}" 2>/dev/null

@@ -1,0 +1,169 @@
+---
+- name: Validate the explicit Beszel agent contract
+  ansible.builtin.assert:
+    that:
+      - beszel_agent_image is match('^.+@sha256:[0-9a-f]{64}$')
+      - beszel_agent_public_key is string
+      - beszel_agent_public_key | length > 0
+      - beszel_agent_public_key is match('^ssh-(ed25519|rsa|ecdsa-[^ ]+) [^\r\n ]+( [^\r\n]+)?$')
+      - beszel_agent_public_key is not search('[\r\n]')
+      - beszel_agent_listen_port | int >= 1
+      - beszel_agent_listen_port | int <= 65535
+      - beszel_agent_health_address is string
+      - beszel_agent_health_address | length > 0
+      - beszel_agent_health_address not in ['0.0.0.0', '::', '::0']
+      - beszel_agent_config_dir | length > 0
+      - beszel_agent_environment_file | dirname == beszel_agent_config_dir
+      - beszel_agent_data_dir | length > 0
+      - beszel_agent_container_user is match('^[0-9]+:[0-9]+$')
+    fail_msg: >-
+      Beszel agent requires a digest-pinned image, one SSH public key,
+      an explicit listener, and a writable state directory.
+  no_log: true
+  when: beszel_agent_enabled | bool
+
+- name: Remove Beszel agent when explicitly disabled
+  containers.podman.podman_container:
+    name: "{{ beszel_agent_container_name }}"
+    state: absent
+  when:
+    - not beszel_agent_enabled | bool
+    - podman_available | default(false) | bool
+
+- name: Stop and disable the Beszel agent unit when explicitly disabled
+  ansible.builtin.systemd_service:
+    name: beszel-agent.service
+    state: stopped
+    enabled: false
+  failed_when: false
+  when: not beszel_agent_enabled | bool
+
+- name: Remove Beszel agent unit and environment when explicitly disabled
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/systemd/system/beszel-agent.service
+    - "{{ beszel_agent_environment_file }}"
+  notify: Reload systemd after Beszel agent changes
+  when: not beszel_agent_enabled | bool
+
+- name: Create Beszel agent directories
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - path: "{{ beszel_agent_config_dir }}"
+      owner: root
+      group: root
+      mode: "0750"
+    - path: "{{ beszel_agent_data_dir }}"
+      owner: "{{ beszel_agent_container_user.split(':')[0] }}"
+      group: "{{ beszel_agent_container_user.split(':')[1] }}"
+      mode: "0750"
+  when: beszel_agent_enabled | bool
+
+- name: Render the root-only Beszel agent environment
+  ansible.builtin.copy:
+    content: |-
+      KEY={{ beszel_agent_public_key }}
+      LISTEN={{ beszel_agent_listen_port }}
+    dest: "{{ beszel_agent_environment_file }}"
+    owner: root
+    group: root
+    mode: "0400"
+  register: beszel_agent_environment
+  no_log: true
+  when: beszel_agent_enabled | bool
+
+- name: Render the Beszel agent systemd unit
+  ansible.builtin.template:
+    src: beszel-agent.service.j2
+    dest: /etc/systemd/system/beszel-agent.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd after Beszel agent changes
+    - Restart Beszel agent
+  when: beszel_agent_enabled | bool
+
+- name: Pull the pinned Beszel agent image
+  containers.podman.podman_image:
+    name: "{{ beszel_agent_image }}"
+    pull: true
+    force: false
+  register: beszel_agent_image_pull
+  changed_when: false
+  when:
+    - beszel_agent_enabled | bool
+    - podman_available | default(false) | bool
+
+- name: Create the Beszel agent container
+  containers.podman.podman_container:
+    name: "{{ beszel_agent_container_name }}"
+    image: "{{ beszel_agent_image }}"
+    state: present
+    restart_policy: "no"
+    pull: never
+    network: host
+    user: "{{ beszel_agent_container_user }}"
+    env_file:
+      - "{{ beszel_agent_environment_file }}"
+    volume:
+      - "{{ beszel_agent_data_dir }}:/var/lib/beszel-agent:rw"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      /tmp: rw,noexec,nosuid,size=16m
+    recreate: "{{ beszel_agent_environment.changed | default(false) }}"
+  register: beszel_agent_container
+  notify: Restart Beszel agent
+  no_log: true
+  when:
+    - beszel_agent_enabled | bool
+    - podman_available | default(false) | bool
+
+- name: Enable and start the Beszel agent systemd unit
+  ansible.builtin.systemd_service:
+    name: beszel-agent.service
+    enabled: true
+    state: started
+    daemon_reload: true
+  when:
+    - beszel_agent_enabled | bool
+    - podman_available | default(false) | bool
+
+- name: Wait for the Beszel agent listener
+  ansible.builtin.wait_for:
+    host: "{{ beszel_agent_health_address }}"
+    port: "{{ beszel_agent_listen_port }}"
+    timeout: 120
+  when:
+    - beszel_agent_enabled | bool
+    - podman_available | default(false) | bool
+    - not ansible_check_mode
+
+- name: Verify the Beszel agent healthcheck
+  ansible.builtin.command:
+    argv:
+      - podman
+      - exec
+      - "{{ beszel_agent_container_name }}"
+      - /agent
+      - health
+  register: beszel_agent_health
+  changed_when: false
+  retries: 30
+  delay: 2
+  until: beszel_agent_health.rc == 0
+  when:
+    - beszel_agent_enabled | bool
+    - podman_available | default(false) | bool
+    - not ansible_check_mode

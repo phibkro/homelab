@@ -1,0 +1,18 @@
+---
+# The role is enabled when selected by the Pi appliance. Deployment must
+# provide the secret ping URL explicitly; an empty URL fails the contract.
+heartbeat_enabled: true
+heartbeat_url: ""
+
+heartbeat_secret_dir: /etc/heartbeat
+heartbeat_secret_file: "{{ heartbeat_secret_dir }}/healthchecks-url"
+heartbeat_helper_path: /usr/local/libexec/heartbeat
+heartbeat_service_unit: /etc/systemd/system/heartbeat.service
+heartbeat_timer_unit: /etc/systemd/system/heartbeat.timer
+
+heartbeat_on_boot_sec: 30s
+heartbeat_interval: 60s
+heartbeat_accuracy_sec: 5s
+heartbeat_timeout_sec: 10
+heartbeat_retry_count: 2
+heartbeat_retry_delay_sec: 5

@@ -4,6 +4,40 @@
     name: nftables
     state: present
 
+- name: Create the nftables service drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/nftables.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Bootstrap the appliance table before nftables loads its scoped rules
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/nftables.service.d/appliance-table.conf
+    content: |-
+      [Service]
+      ExecStartPre=-/usr/sbin/nft add table inet appliance_filter
+    owner: root
+    group: root
+    mode: "0644"
+  register: firewall_service_dropin
+
+- name: Ensure the appliance-owned firewall table exists for scoped replacement
+  ansible.builtin.command:
+    argv:
+      - nft
+      - add
+      - table
+      - inet
+      - appliance_filter
+  register: firewall_table
+  changed_when: false
+  failed_when:
+    - firewall_table.rc != 0
+    - "'File exists' not in firewall_table.stderr"
+  when: not ansible_check_mode
+
 - name: Render the appliance firewall
   ansible.builtin.template:
     src: nftables.conf.j2
@@ -13,9 +47,11 @@
     mode: "0644"
     validate: nft --check --file %s
   register: firewall_config
+  notify: Apply appliance firewall rules without flushing Podman tables
 
 - name: Enable the appliance firewall
-  ansible.builtin.service:
+  ansible.builtin.systemd_service:
     name: nftables
     enabled: true
-    state: "{{ 'restarted' if firewall_config.changed else 'started' }}"
+    state: started
+    daemon_reload: "{{ firewall_service_dropin.changed }}"

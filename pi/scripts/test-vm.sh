@@ -17,8 +17,26 @@ readonly qemu_log="$state_dir/qemu.log"
 readonly ansible_log="$state_dir/ansible.log"
 readonly reuse_vm="${PI_VM_REUSE:-false}"
 readonly keep_vm_on_failure="${PI_VM_KEEP_ON_FAILURE:-false}"
+readonly ignore_host_load="${PI_VM_IGNORE_HOST_LOAD:-false}"
 
 mkdir -p "$cache_dir" "$state_dir"
+
+if [[ "$ignore_host_load" != true ]]; then
+  available_kib="$(awk '/^MemAvailable:/ { print $2 }' /proc/meminfo)"
+  if [[ -z "$available_kib" || "$available_kib" -lt 8388608 ]]; then
+    echo "Refusing ARM emulation with less than 8 GiB memory available" >&2
+    exit 1
+  fi
+  if systemctl list-units --state=activating,running --plain --no-legend \
+    'restic-backups-*.service' | grep -q .; then
+    echo "Refusing ARM emulation while a restic backup is active" >&2
+    exit 1
+  fi
+  if pgrep -f 'nix flake check' >/dev/null; then
+    echo "Refusing ARM emulation while nix flake check is active" >&2
+    exit 1
+  fi
+fi
 
 if [[ ! -s "$base_image" ]]; then
   curl --fail --location --output "$base_image.part" "$image_url"
@@ -105,6 +123,8 @@ export NTFY_PUBLISHER_TOKEN="tk_aaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 export NTFY_PUBLISHER_PASSWORD_HASH="\$2b\$12\$aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 export NTFY_AGENTS_CHANNEL="agents-topic"
 export NTFY_OPERATOR_TOPIC="operator-topic"
+beszel_agent_public_key="$(<"$ssh_key.pub")"
+export BESZEL_AGENT_PUBLIC_KEY="$beszel_agent_public_key"
 export RESTIC_PASSWORD="emulation-restic-password-000000000000"
 export RESTIC_SSH_PRIVATE_KEY='-----BEGIN OPENSSH PRIVATE KEY-----
 emulation-only

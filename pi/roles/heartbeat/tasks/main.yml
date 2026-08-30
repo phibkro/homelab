@@ -1,0 +1,175 @@
+---
+- name: Validate the explicit healthchecks heartbeat contract
+  ansible.builtin.assert:
+    that:
+      - heartbeat_url is string
+      - heartbeat_url | length > 0
+      - heartbeat_url | length <= 512
+      - heartbeat_url == (heartbeat_url | trim)
+      - heartbeat_url is not search('[\\r\\n\\t ]')
+      - >-
+        heartbeat_url is match(
+        '^https://(hc-ping\\.com|healthchecks\\.io)/[A-Za-z0-9][A-Za-z0-9._~/-]*$'
+        )
+      - heartbeat_on_boot_sec is string
+      - heartbeat_on_boot_sec is match('^[0-9]+(us|ms|s|min|h|d|w|month|y)$')
+      - heartbeat_interval is string
+      - heartbeat_interval is match('^[0-9]+(us|ms|s|min|h|d|w|month|y)$')
+      - heartbeat_accuracy_sec is string
+      - heartbeat_accuracy_sec is match('^[0-9]+(us|ms|s|min|h|d|w|month|y)$')
+      - heartbeat_timeout_sec is integer
+      - heartbeat_timeout_sec is not boolean
+      - heartbeat_timeout_sec > 0
+      - heartbeat_retry_count is integer
+      - heartbeat_retry_count is not boolean
+      - heartbeat_retry_count >= 0
+      - heartbeat_retry_delay_sec is integer
+      - heartbeat_retry_delay_sec is not boolean
+      - heartbeat_retry_delay_sec >= 0
+    fail_msg: >-
+      Heartbeat requires an explicit HTTPS healthchecks.io or hc-ping.com URL
+      and positive timeout/retry settings.
+  no_log: true
+  when: heartbeat_enabled | bool
+
+- name: Install the heartbeat runtime dependency
+  ansible.builtin.apt:
+    name: curl
+    state: present
+    update_cache: false
+  when: heartbeat_enabled | bool
+
+- name: Create the root-only heartbeat secret directory
+  ansible.builtin.file:
+    path: "{{ heartbeat_secret_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  when: heartbeat_enabled | bool
+
+- name: Install the root-only healthchecks URL
+  ansible.builtin.copy:
+    content: "{{ heartbeat_url | trim }}\n"
+    dest: "{{ heartbeat_secret_file }}"
+    owner: root
+    group: root
+    mode: "0400"
+  register: heartbeat_secret
+  no_log: true
+  when: heartbeat_enabled | bool
+
+- name: Create the root-owned local executable directory
+  ansible.builtin.file:
+    path: /usr/local/libexec
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: heartbeat_enabled | bool
+
+- name: Install the secret-free heartbeat helper
+  ansible.builtin.template:
+    src: heartbeat.sh.j2
+    dest: "{{ heartbeat_helper_path }}"
+    owner: root
+    group: root
+    mode: "0750"
+  register: heartbeat_helper
+  notify: Reload systemd manager after heartbeat unit changes
+  when: heartbeat_enabled | bool
+
+- name: Install the hardened heartbeat service
+  ansible.builtin.template:
+    src: heartbeat.service.j2
+    dest: "{{ heartbeat_service_unit }}"
+    owner: root
+    group: root
+    mode: "0644"
+  register: heartbeat_service
+  notify: Reload systemd manager after heartbeat unit changes
+  when: heartbeat_enabled | bool
+
+- name: Install the heartbeat timer
+  ansible.builtin.template:
+    src: heartbeat.timer.j2
+    dest: "{{ heartbeat_timer_unit }}"
+    owner: root
+    group: root
+    mode: "0644"
+  register: heartbeat_timer
+  notify:
+    - Reload systemd manager after heartbeat unit changes
+    - Restart heartbeat timer after schedule changes
+  when: heartbeat_enabled | bool
+
+- name: Enable and start the heartbeat timer
+  ansible.builtin.systemd_service:
+    name: heartbeat.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when:
+    - heartbeat_enabled | bool
+    - not ansible_check_mode
+
+- name: Run an immediate heartbeat validation after material changes
+  ansible.builtin.systemd_service:
+    name: heartbeat.service
+    state: started
+    daemon_reload: true
+  register: heartbeat_live_run
+  no_log: true
+  when:
+    - heartbeat_enabled | bool
+    - not ansible_check_mode
+    - >-
+      heartbeat_secret.changed | default(false)
+      or heartbeat_helper.changed | default(false)
+      or heartbeat_service.changed | default(false)
+      or heartbeat_timer.changed | default(false)
+
+- name: Verify the last heartbeat exited successfully without reading its URL
+  ansible.builtin.command:
+    argv:
+      - systemctl
+      - show
+      - heartbeat.service
+      - --property=ExecMainStatus
+      - --value
+  register: heartbeat_status
+  changed_when: false
+  failed_when: heartbeat_status.rc != 0 or heartbeat_status.stdout | trim != '0'
+  no_log: true
+  when:
+    - heartbeat_enabled | bool
+    - not ansible_check_mode
+
+- name: Inspect heartbeat unit before disabled-state cleanup
+  ansible.builtin.stat:
+    path: "{{ heartbeat_timer_unit }}"
+  register: heartbeat_timer_stat
+  when: not heartbeat_enabled | bool
+
+- name: Stop and disable the heartbeat timer
+  ansible.builtin.systemd_service:
+    name: heartbeat.timer
+    enabled: false
+    state: stopped
+  when:
+    - not heartbeat_enabled | bool
+    - heartbeat_timer_stat.stat.exists
+    - not ansible_check_mode
+
+- name: Remove heartbeat role-owned runtime files when disabled
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ heartbeat_timer_unit }}"
+    - "{{ heartbeat_service_unit }}"
+    - "{{ heartbeat_helper_path }}"
+    - "{{ heartbeat_secret_file }}"
+    - "{{ heartbeat_secret_dir }}"
+  notify: Reload systemd manager after heartbeat unit changes
+  when: not heartbeat_enabled | bool

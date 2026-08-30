@@ -6,12 +6,28 @@
   },
   "hosts": {
     "pi": {"lanIp": "192.168.1.225", "tailnetIp": "100.100.71.3"},
-    "workstation": {"lanIp": "192.168.1.181", "tailnetIp": "100.81.5.122"}
+    "workstation": {
+      "lanIp": "192.168.1.181",
+      "tailnetIp": "100.81.5.122",
+      "workloads": ["calibre-web", "jellyfin", "immich", "node-exporter", "nvidia-gpu-exporter"]
+    },
+    "aurora": {
+      "lanIp": null,
+      "tailnetIp": "100.101.67.111",
+      "workloads": ["node-exporter"]
+    }
   },
   "workloads": {
     "authelia": {
       "active": true,
-      "endpoints": {"auth": {"port": 9091, "runsOn": "pi", "audience": "public"}}
+      "endpoints": {
+        "auth": {
+          "port": 9091,
+          "runsOn": "pi",
+          "audience": "public",
+          "monitor": {"path": "/api/health", "conditions": ["[STATUS] == 200"]}
+        }
+      }
     },
     "calibre-web": {
       "active": true,
@@ -20,7 +36,8 @@
           "port": 8084,
           "runsOn": "workstation",
           "audience": "family",
-          "forwardAuth": {"exemptPaths": ["/api/*"]}
+          "forwardAuth": {"exemptPaths": ["/api/*"]},
+          "monitor": {}
         }
       }
     },
@@ -31,7 +48,8 @@
           "port": 8096,
           "runsOn": "workstation",
           "audience": "family",
-          "reachability": "internet"
+          "reachability": "internet",
+          "monitor": {"path": "/health", "failureThreshold": 5}
         }
       }
     },
@@ -42,13 +60,29 @@
           "port": 2283,
           "runsOn": "workstation",
           "audience": "family",
-          "oidc": {"redirectPath": "/auth/login"}
+          "oidc": {
+            "clientName": "Immich",
+            "redirectPath": "/auth/login",
+            "authorizationPolicy": "one_factor",
+            "scopes": ["openid", "profile", "email", "groups"]
+          },
+          "monitor": {"path": "/api/server/ping", "interval": "30s"}
         }
       }
     },
     "disabled": {
       "active": false,
       "endpoints": {"must-not-route": {"port": 6553, "runsOn": "workstation"}}
+    },
+    "node-exporter": {
+      "active": true,
+      "hosts": ["workstation", "aurora"],
+      "endpoints": {}
+    },
+    "nvidia-gpu-exporter": {
+      "active": true,
+      "hosts": ["workstation"],
+      "endpoints": {}
     }
   }
 }

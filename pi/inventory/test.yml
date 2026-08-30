@@ -22,6 +22,9 @@ all:
           # remain enabled and receive safe-shaped credentials from
           # scripts/test-vm.sh.
           ddns_enabled: false
+          # Never emit a synthetic liveness ping to an external service from
+          # the disposable guest; the role's helper has an offline contract.
+          heartbeat_enabled: false
           # One job exercises the complete backup runner/service/timer path.
           # Production's full manifest remains covered by role contracts.
           pi_backup_jobs:

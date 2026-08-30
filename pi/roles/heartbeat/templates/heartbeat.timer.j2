@@ -1,0 +1,11 @@
+[Unit]
+Description=Dead-man-switch heartbeat to healthchecks.io
+
+[Timer]
+OnBootSec={{ heartbeat_on_boot_sec }}
+OnUnitActiveSec={{ heartbeat_interval }}
+AccuracySec={{ heartbeat_accuracy_sec }}
+Unit=heartbeat.service
+
+[Install]
+WantedBy=timers.target

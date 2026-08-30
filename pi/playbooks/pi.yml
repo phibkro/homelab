@@ -101,6 +101,8 @@
     - role: vector
     - role: victoriametrics
     - role: beszel
+    - role: beszel_agent
     - role: gatus
+    - role: heartbeat
     - role: backup
     - role: caddy

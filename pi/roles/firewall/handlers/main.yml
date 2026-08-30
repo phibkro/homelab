@@ -1,0 +1,8 @@
+---
+- name: Apply appliance firewall rules without flushing Podman tables
+  ansible.builtin.command:
+    argv:
+      - nft
+      - --file
+      - /etc/nftables.conf
+  changed_when: true

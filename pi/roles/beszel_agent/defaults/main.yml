@@ -1,0 +1,21 @@
+---
+# The upstream default agent image is a scratch-based multi-architecture
+# manifest (including linux/arm64). Keep the manifest digest pinned so a
+# later convergence cannot silently replace the agent binary.
+beszel_agent_enabled: true
+beszel_agent_container_name: beszel-agent
+beszel_agent_image: >-
+  docker.io/henrygd/beszel-agent:0.18.8@sha256:3b1939746690e423072b4a99bf4c4af6dd9562a68978a33738a3c4a4cc000c39
+
+# The key is public trust material, but is still delivered through the
+# operator's secret-input mechanism rather than committed to inventory.
+beszel_agent_public_key: ""
+beszel_agent_environment_file: /etc/beszel-agent/agent.env
+beszel_agent_config_dir: /etc/beszel-agent
+
+# Host networking is required for interface metrics. The agent listens on its
+# standard SSH port; health_address is only the local verification target.
+beszel_agent_listen_port: 45876
+beszel_agent_health_address: 127.0.0.1
+beszel_agent_data_dir: /var/lib/beszel-agent
+beszel_agent_container_user: "65532:65532"

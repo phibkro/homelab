@@ -122,6 +122,11 @@ ntfy_alert_routes:
     topic_file: "{{ ntfy_agents_topic_file }}"
     token_file: "{{ ntfy_publisher_token_file }}"
 
+# Beszel agent trust material is the hub's SSH public key. It is not a
+# credential, but SecretSpec remains the single deployment-input boundary.
+beszel_agent_public_key: "{{ lookup('env', 'BESZEL_AGENT_PUBLIC_KEY') }}"
+heartbeat_url: "{{ lookup('env', 'HEARTBEAT_PI_URL') }}"
+
 # Gatus is the appliance/operator monitor, so its failure notifications stay
 # on the off-host ntfy.sh route and remain available during a local ntfy outage.
 gatus_ntfy_channel: "{{ ntfy_alert_routes.operator.topic }}"
@@ -202,6 +207,7 @@ pi_backup_jobs:
 pi_tailnet_tcp_ports:
   - "{{ gatus_port }}"
   - "{{ beszel_bind_port }}"
+  - "{{ beszel_agent_listen_port }}"
   - "{{ victoriametrics_bind_port }}"
   - "{{ victorialogs_bind_port }}"
 

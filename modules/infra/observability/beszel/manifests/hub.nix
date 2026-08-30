@@ -13,7 +13,7 @@ in
   endpoints.metrics = {
     port = 8090;
     runsOn = site.entryPlaneHost;
-    monitor = { };
+    monitor.path = "/api/health";
     audience = "operator";
     oidc = {
       clientName = "Beszel";
