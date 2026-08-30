@@ -98,7 +98,9 @@ authelia_oidc_client_secret_hashes:
 # These defaults keep the contract explicit until generated host vars provide
 # an authoritative list.
 ddns_enabled: true
-ddns_zone_name: "{{ pi_domain }}"
+# Cloudflare's authoritative zone is the parent of the private service
+# namespace. Keep these explicit: pi_domain is not a Cloudflare zone ID.
+ddns_zone_name: phibkro.org
 ddns_api_token: "{{ lookup('env', 'CLOUDFLARE_DDNS_API_TOKEN') }}"
 # The generated production inventory supplies ddns_hostnames from the typed
 # internet-route catalog. Keeping this empty prevents a stale hand-maintained
