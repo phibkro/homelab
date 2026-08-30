@@ -64,6 +64,7 @@ let
       pkgs.nix
       pkgs.coreutils
       pkgs.systemd
+      pkgs.util-linux
     ];
     text = ''
       UNIT="''${1:?agent-fix: unit name required}"
@@ -73,6 +74,14 @@ let
       # 1. recovery window — most transient failures self-heal in the backoff.
       sleep ${toString window}
       if systemctl is-active "$UNIT" --quiet; then
+        exit 0
+      fi
+
+      # One incident may fail many sibling units at once. Serialize globally
+      # so those OnFailure edges cannot fan out into concurrent agents/builds.
+      exec 9>/var/lib/agent-fix/dispatch.lock
+      if ! flock --nonblock 9; then
+        echo "agent-fix: another incident is already being handled; skipping $UNIT" >&2
         exit 0
       fi
 
@@ -332,6 +341,9 @@ in
                 "PATH=/etc/profiles/per-user/${cfg.user}/bin:/run/current-system/sw/bin:/run/wrappers/bin"
               ];
               StateDirectory = "agent-fix";
+              MemoryHigh = "4G";
+              MemoryMax = "8G";
+              CPUQuota = "400%";
               # recovery window + agent runtime + flake check headroom.
               TimeoutStartSec = "${toString (window + 2400)}s";
               ExecStart = "${agentFix}/bin/agent-fix %i";

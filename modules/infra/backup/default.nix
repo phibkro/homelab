@@ -173,6 +173,16 @@ in
               `extraOptions`).
             '';
           };
+          tailnetPeer = mkOption {
+            type = types.nullOr types.str;
+            default = null;
+            example = "aurora.example-tailnet.ts.net";
+            description = ''
+              Explicit Tailscale peer required by this target. Non-null adds
+              a bounded connectivity and MagicDNS preflight to every generated
+              backup unit before restic is allowed to run.
+            '';
+          };
         };
       }
     );
@@ -596,6 +606,8 @@ in
             timerConfig = {
               OnCalendar = cfg.timer;
               Persistent = true;
+              RandomizedDelaySec = "6h";
+              FixedRandomDelay = true;
             };
             inherit (cfg) pruneOpts;
             inherit (tgt) extraOptions environmentFile;
@@ -628,6 +640,7 @@ in
           { jobName, target, ... }:
           let
             tgt = config.nori.backupTargets.${target};
+            peer = if tgt.tailnetPeer == null then "" else tgt.tailnetPeer;
             # RAW, not escapeShellArg'd: the sftp.command value carries
             # shell-quotes meant to be stripped (see restic.nix mkCheckScript).
             # Escaping preserved them literally, so this pre-unlock silently
@@ -637,13 +650,29 @@ in
             preUnlockScript = pkgs.writeShellScript "restic-${jobName}-${target}-pre-unlock" ''
               ${pkgs.restic}/bin/restic ${resticOpts} unlock 2>/dev/null || true
             '';
+            peerPreflightScript = pkgs.writeShellScript "restic-${jobName}-${target}-peer-preflight" ''
+              for attempt in $(${pkgs.coreutils}/bin/seq 1 60); do
+                if ${pkgs.tailscale}/bin/tailscale ping --timeout=2s -c 1 ${lib.escapeShellArg peer} >/dev/null 2>&1 \
+                  && ${pkgs.getent}/bin/getent ahostsv4 ${lib.escapeShellArg peer} >/dev/null; then
+                  exit 0
+                fi
+                ${pkgs.coreutils}/bin/sleep 5
+              done
+              echo "backup target peer unavailable after 5 minutes: ${peer}" >&2
+              exit 1
+            '';
           in
           lib.nameValuePair "restic-backups-${jobName}-${target}" {
             unitConfig.OnFailure = [ "notify@restic-backups-${jobName}-${target}.service" ];
             unitConfig.RequiresMountsFor = lib.mkIf (lib.hasPrefix "/" tgt.repository) [
               tgt.repository
             ];
-            serviceConfig.ExecStartPre = lib.mkBefore [ "${preUnlockScript}" ];
+            wants = lib.optionals (tgt.tailnetPeer != null) [ "tailscaled.service" ];
+            after = lib.optionals (tgt.tailnetPeer != null) [ "tailscaled.service" ];
+            serviceConfig.ExecStartPre = lib.mkBefore (
+              lib.optionals (tgt.tailnetPeer != null) [ "${peerPreflightScript}" ]
+              ++ [ "${preUnlockScript}" ]
+            );
           }
         ) activePairs
       );

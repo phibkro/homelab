@@ -127,6 +127,7 @@ in
     onetouch = {
       repository = "sftp:restic@aurora.saola-matrix.ts.net:";
       description = "OneTouch HDD on Aurora; reached over SFTP through the chrooted restic user.";
+      tailnetPeer = "aurora.saola-matrix.ts.net";
       extraOptions = [
         "sftp.command='${pkgs.openssh}/bin/ssh -o BatchMode=yes -o IdentitiesOnly=yes -o UserKnownHostsFile=/etc/ssh/aurora_known_hosts -i /run/secrets/restic-ssh-key restic@aurora.saola-matrix.ts.net -s sftp'"
       ];
@@ -254,8 +255,10 @@ in
     restore plan (per SERVICES.md Pattern B). Not in nori.fs because it's
     NixOS service state, not a structural FS location.
 
-    Both the local MP510 and Aurora's OneTouch receive this tier. The MP510
-    gives fast local restore; Aurora preserves an off-host failure domain.
+    Aurora's OneTouch receives this tier through restic. The local MP510
+    already contains the same irreplaceable paths as Btrfs replicas; writing
+    a second restic copy onto that device wastes its backup capacity without
+    adding a failure domain.
   */
   nori.backups.media-irreplaceable = {
     include =
@@ -263,9 +266,6 @@ in
       ++ [ "/var/lib/immich/backups" ];
     tier = "irreplaceable";
     timer = "*-*-* 03:30:00";
-    targets = [
-      "mp510"
-      "onetouch"
-    ];
+    targets = [ "onetouch" ];
   };
 }
