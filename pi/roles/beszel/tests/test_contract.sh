@@ -17,6 +17,8 @@ rg -q 'no-new-privileges' "$role_dir/tasks/main.yml" || fail "hardening is missi
 rg -q 'cap_drop:' "$role_dir/tasks/main.yml" || fail "capability drop is missing"
 rg -q 'read_only: true' "$role_dir/tasks/main.yml" || fail "read-only rootfs is missing"
 rg -q 'healthcheck:' "$role_dir/tasks/main.yml" || fail "container healthcheck is missing"
+rg -q 'healthcheck:.*http://127\.0\.0\.1:8090' "$role_dir/tasks/main.yml" \
+  || fail "container healthcheck must use the IPv4 listener"
 rg -q '^\[Unit\]' "$role_dir/templates/beszel.service.j2" || fail "systemd unit is missing"
 rg -q 'podman start --attach beszel' "$role_dir/templates/beszel.service.j2" || fail "boot restore is missing"
 rg -q 'uri:' "$role_dir/tasks/main.yml" || fail "health check is missing"
