@@ -26,8 +26,10 @@ rg -q 'Validate Vector executable and journald runtime' "$role_dir/tasks/main.ym
 rg -q 'validate' "$role_dir/tasks/main.yml" || fail "Vector config validation is missing"
 rg -q 'current_boot_only: true' "$role_dir/templates/vector.yaml.j2" \
   || fail "Vector journald input must use the systemd 257-compatible cursor mode"
-rg -q '/var/lib/vector:rw,noexec,nosuid,size=16m,uid=\{\{ vector_container_user.*gid=\{\{ vector_container_user' "$role_dir/tasks/main.yml" \
+rg -q '/var/lib/vector:rw,noexec,nosuid,size=16m' "$role_dir/tasks/main.yml" \
   || fail "Vector validation does not use ephemeral writable state"
+rg -Uq 'Validate the rendered Vector configuration.*\n(.|\n)*      - --user\n      - 0:0' "$role_dir/tasks/main.yml" \
+  || fail "Vector config validation must own its disposable state"
 if rg -Uq '      - validate\n      - --config' "$role_dir/tasks/main.yml"; then
   fail "Vector 0.58 validate expects configuration paths positionally"
 fi
