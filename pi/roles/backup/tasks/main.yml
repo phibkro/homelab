@@ -333,6 +333,30 @@
     - pi_backup_enabled | bool
     - item.path not in pi_backup_expected_runtime_files
 
+- name: Inspect initial Pi backup completion markers
+  ansible.builtin.stat:
+    path: "{{ pi_backup_state_dir }}/{{ item.name }}/last-success"
+  loop: "{{ pi_backup_effective_jobs }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: pi_backup_initial_markers # noqa: var-naming[no-role-prefix] - public Pi backup namespace
+  when:
+    - pi_backup_enabled | bool
+    - not ansible_check_mode
+
+- name: Create missing initial Pi backup snapshots sequentially
+  ansible.builtin.systemd_service:
+    name: "pi-restic-backup-{{ item.item.name }}.service"
+    state: started
+    daemon_reload: true
+  loop: "{{ pi_backup_initial_markers.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  when:
+    - pi_backup_enabled | bool
+    - not ansible_check_mode
+    - not item.stat.exists
+
 - name: Enable Pi backup timers
   ansible.builtin.systemd_service:
     name: "pi-restic-{{ item.1 }}-{{ item.0.name }}.timer"

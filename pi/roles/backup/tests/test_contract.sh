@@ -36,6 +36,10 @@ rg -q -- '--read-data-subset=10%' "$role_dir/templates/maintenance.sh.j2" || fai
 rg -q 'cat config' "$role_dir/templates/backup.sh.j2" || fail "idempotent repository initialization check missing"
 rg -q 'restic.*init' "$role_dir/templates/backup.sh.j2" || fail "repository initialization missing"
 rg -q 'last-success' "$role_dir/templates/backup.sh.j2" || fail "freshness marker missing"
+rg -q 'Create missing initial Pi backup snapshots sequentially' "$role_dir/tasks/main.yml" \
+  || fail "initial snapshots are not created before freshness monitoring"
+rg -q 'pi_backup_initial_markers.results' "$role_dir/tasks/main.yml" \
+  || fail "initial backup creation is not marker-gated"
 rg -q 'snapshots --latest 1 --json' "$role_dir/templates/freshness.sh.j2" || fail "remote freshness query missing"
 rg -q 'pi_backup_effective_jobs' "$role_dir/templates/freshness.sh.j2" || fail "freshness does not cover effective manifest"
 rg -q 'stale owned Pi backup artifacts' "$role_dir/tasks/main.yml" || fail "stale artifact cleanup missing"
