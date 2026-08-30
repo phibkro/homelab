@@ -103,7 +103,7 @@ api_request() {
 [[ "$DDNS_PUBLIC_IPV4_URL" == https://api.ipify.org ]] || die 'DDNS_PUBLIC_IPV4_URL must be https://api.ipify.org'
 [[ "$DDNS_API_BASE_URL" == https://api.cloudflare.com/client/v4 ]] || die 'DDNS_API_BASE_URL must be https://api.cloudflare.com/client/v4'
 [[ "$CLOUDFLARE_API_TOKEN" != *$'\r'* && "$CLOUDFLARE_API_TOKEN" != *$'\n'* ]] || die 'Cloudflare API token contains a newline'
-(( ${#CLOUDFLARE_API_TOKEN} >= 20 )) || die 'Cloudflare API token is too short'
+[[ "$CLOUDFLARE_API_TOKEN" == ????????????????????* ]] || die 'Cloudflare API token is too short'
 [[ "$DDNS_ZONE_NAME" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$ ]] || die 'DDNS_ZONE_NAME is invalid'
 if [[ ! "$DDNS_TTL" =~ ^[0-9]+$ ]] || ((DDNS_TTL < 1)); then
   die 'DDNS_TTL must be a positive integer'
@@ -115,7 +115,7 @@ hostnames=()
 while IFS= read -r hostname; do
   hostnames+=("$hostname")
 done < <(jq -r '.[]' <<<"$DDNS_HOSTNAMES_JSON")
-if (( ${#hostnames[@]} > 0 )); then
+if [[ -v 'hostnames[0]' ]]; then
   for hostname in "${hostnames[@]}"; do
     [[ "$hostname" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$ ]] || die "invalid exact hostname: ${hostname}"
     [[ "$hostname" != "*."* ]] || die "wildcard hostname is not allowed: ${hostname}"
@@ -123,7 +123,7 @@ if (( ${#hostnames[@]} > 0 )); then
   done
 fi
 
-if [[ "$mode" != cleanup && ${#hostnames[@]} -eq 0 ]]; then
+if [[ "$mode" != cleanup && ! -v 'hostnames[0]' ]]; then
   die 'at least one exact hostname is required outside cleanup mode'
 fi
 
