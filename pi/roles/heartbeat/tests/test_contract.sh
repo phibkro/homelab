@@ -33,6 +33,8 @@ rg -q 'content: "\{\{ heartbeat_url' "$tasks_file" || fail "secret URL is not in
 rg -q 'no_log: true' "$tasks_file" || fail "secret tasks are not hidden"
 rg -q 'LoadCredential=healthchecks-url:' "$service_file" || fail "systemd credential handoff is missing"
 rg -q 'CREDENTIALS_DIRECTORY' "$helper_file" || fail "helper does not use transient credentials"
+rg -A7 -F 'name: Install the secret-free heartbeat helper' "$tasks_file" \
+  | rg -q 'mode: "0755"' || fail "DynamicUser cannot execute the heartbeat helper"
 if rg -q 'heartbeat_url|https://hc-ping|https://healthchecks\\.io' "$service_file" "$helper_file"; then
   fail "secret or endpoint is embedded in runtime templates"
 fi
