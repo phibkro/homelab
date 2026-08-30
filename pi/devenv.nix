@@ -66,6 +66,7 @@
        and .pi_appliances.hosts.pi.pi_domain == "home.phibkro.org"
        and .pi_appliances.hosts.pi.pihole_lan_address == "192.168.1.225"
        and .pi_appliances.hosts.pi.pihole_tailnet_address == "100.100.71.3"
+       and .pi_appliances.hosts.pi.pi_backup_aurora_address == "100.101.67.111"
        and (.pi_appliances.hosts.pi.pi_routes | any(.name == "pihole"))
        and (.pi_appliances.hosts.pi.pi_routes | any(.name == "auth"))
        and (.pi_appliances.hosts.pi.pi_routes | length > 1)

@@ -20,6 +20,8 @@ rg -q '/var/lib/containers/storage/volumes/pihole-data/_data' "$role_dir/vars/ma
 rg -q '/opt/caddy/data' "$role_dir/vars/main.yml" || fail "Caddy data path is not approved"
 rg -q '/etc/authelia/configuration.yml' "$role_dir/vars/main.yml" || fail "Authelia config path is not approved"
 rg -q 'pi_backup_aurora_host: aurora\.saola-matrix\.ts\.net' "$role_dir/defaults/main.yml" || fail "Aurora host contract missing"
+rg -q 'HostName=\{\{ pi_backup_aurora_address \}\}' "$role_dir/templates/backup.sh.j2" || fail "Aurora tailnet address override missing"
+rg -q 'HostKeyAlias=\{\{ pi_backup_aurora_host \}\}' "$role_dir/templates/backup.sh.j2" || fail "Aurora host-key alias missing"
 rg -q 'pi_backup_repository_prefix: "/pi"' "$role_dir/defaults/main.yml" || fail "Aurora repository prefix missing"
 rg -q 'StrictHostKeyChecking=yes' "$role_dir/templates/backup.sh.j2" || fail "strict host verification missing"
 rg -q 'UserKnownHostsFile=' "$role_dir/templates/backup.sh.j2" || fail "pinned known_hosts missing"

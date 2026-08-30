@@ -15,6 +15,7 @@ all:
           pi_lan_address: 10.0.2.15
           pi_lan_cidr: 10.0.2.0/24
           pi_service_bind_address: 10.0.2.15
+          pi_backup_aurora_address: 100.101.67.111
           authelia_log_level: debug
           tailscale_apt_suite: bookworm
           # DDNS mutates external Cloudflare records and is intentionally

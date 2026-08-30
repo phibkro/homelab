@@ -222,6 +222,7 @@ nix eval --json "$repo_root#lib.noriInventory" | jq \
               pi_service_bind_address: $pi.lanIp,
               pihole_lan_address: $pi.lanIp,
               pihole_tailnet_address: $pi.tailnetIp,
+              pi_backup_aurora_address: $aurora.tailnetIp,
               pi_domain: $domain,
               pi_deprecated_domains: $inventory.site.deprecatedDomains,
               pi_routes: $appliance_routes,
@@ -275,6 +276,7 @@ jq --exit-status \
    | .pi_appliances.hosts.pi.pi_lan_address != null
    and .pi_appliances.hosts.pi.pihole_lan_address == .pi_appliances.hosts.pi.pi_lan_address
    and .pi_appliances.hosts.pi.pihole_tailnet_address != null
+   and .pi_appliances.hosts.pi.pi_backup_aurora_address != null
    and (.pi_appliances.hosts | keys == ["pi"])
    and (.pi_appliances.hosts.pi.pi_routes | length > 1)
    and ([ $routes[] | .name ] | unique | length == ($routes | length))
