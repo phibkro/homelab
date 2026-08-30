@@ -15,6 +15,8 @@ grep -Fq -- 'ProtectSystem=strict' "$role_dir/templates/cloudflare-ddns.service.
 grep -Fq -- 'User=cloudflare-ddns' "$role_dir/templates/cloudflare-ddns.service.j2"
 grep -Fq -- 'LoadCredential=' "$role_dir/templates/cloudflare-ddns.service.j2"
 grep -Fq -- 'content: "{{ ddns_api_token }}\n"' "$role_dir/tasks/main.yml"
+grep -A7 -F -- 'name: Install the Cloudflare DDNS updater' "$role_dir/tasks/main.yml" \
+  | grep -Fq -- 'group: cloudflare-ddns'
 if grep -Fq -- 'content: "CLOUDFLARE_API_TOKEN={{ ddns_api_token }}' "$role_dir/tasks/main.yml"; then
   echo 'credentials file must contain the raw token consumed by LoadCredential' >&2
   exit 1
