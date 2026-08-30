@@ -133,7 +133,7 @@
       - --entrypoint
       - /usr/bin/vector
       - --tmpfs
-      - /var/lib/vector:rw,noexec,nosuid,size=16m
+      - "/var/lib/vector:rw,noexec,nosuid,size=16m,uid={{ vector_container_user.split(':')[0] }},gid={{ vector_container_user.split(':')[1] }}"
       - --volume
       - "{{ vector_config_dir }}/vector.yaml:/etc/vector/vector.yaml:ro"
       - "{{ vector_image }}"
