@@ -23,9 +23,15 @@ rg -q 'pi_backup_aurora_host: aurora\.saola-matrix\.ts\.net' "$role_dir/defaults
 rg -q 'HostName=\{\{ pi_backup_aurora_address \}\}' "$role_dir/templates/backup.sh.j2" || fail "Aurora tailnet address override missing"
 rg -q 'HostKeyAlias=\{\{ pi_backup_aurora_host \}\}' "$role_dir/templates/backup.sh.j2" || fail "Aurora host-key alias missing"
 rg -q 'pi_backup_repository_prefix: "/pi"' "$role_dir/defaults/main.yml" || fail "Aurora repository prefix missing"
+[[ $(rg -c "'sftp:'.*~.*':' ~" "$role_dir/tasks/main.yml") -eq 2 ]] \
+  || fail "backup and maintenance repository host/path separators must be concatenated explicitly"
 rg -q 'StrictHostKeyChecking=yes' "$role_dir/templates/backup.sh.j2" || fail "strict host verification missing"
 rg -q 'UserKnownHostsFile=' "$role_dir/templates/backup.sh.j2" || fail "pinned known_hosts missing"
 rg -q 'IdentitiesOnly=yes' "$role_dir/templates/maintenance.sh.j2" || fail "SSH identity pin missing"
+for template in backup.sh.j2 maintenance.sh.j2 freshness.sh.j2 restore-disposable.sh.j2; do
+  rg -q 'sftp\.connections=1' "$role_dir/templates/$template" \
+    || fail "$template permits unsafe concurrent SFTP sessions"
+done
 rg -q 'mode: "0400"' "$role_dir/tasks/main.yml" || fail "root-only secret mode missing"
 rg -q 'pi_backup_restic_password' "$role_dir/tasks/main.yml" || fail "restic password input missing"
 rg -q 'pi_backup_ssh_private_key' "$role_dir/tasks/main.yml" || fail "SSH key input missing"
@@ -68,6 +74,10 @@ for service in backup.service.j2 maintenance.service.j2 freshness.service.j2; do
   rg -q '^User=root$' "$role_dir/templates/$service" || fail "$service is not root-owned"
   rg -q '^ProtectSystem=strict$' "$role_dir/templates/$service" || fail "$service lacks filesystem protection"
 done
+rg -q '^CapabilityBoundingSet=CAP_DAC_READ_SEARCH$' "$role_dir/templates/backup.service.j2" \
+  || fail "backup jobs cannot read protected service state"
+rg -q '^CapabilityBoundingSet=$' "$role_dir/templates/maintenance.service.j2" \
+  || fail "remote-only maintenance must remain capability-free"
 ! rg -q '/var/lib/containers|/var/lib/[^ ]*containers' "$role_dir/defaults" "$role_dir/templates" || fail "broad container storage path found"
 ! rg -q 'state: absent.*pi_backup_repository|pi_backup_repository.*state: absent' "$role_dir/tasks" "$role_dir/templates" || fail "repository cleanup is destructive"
 echo 'ok - Pi backup role contract'

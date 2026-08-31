@@ -165,8 +165,10 @@
     label: "{{ backup_job.name }}"
   vars:
     job_repository: >-
-      sftp:{{ pi_backup_aurora_user }}@{{ pi_backup_aurora_host }}:
-      {{ pi_backup_repository_prefix }}/{{ backup_job.name }}
+      {{
+        'sftp:' ~ pi_backup_aurora_user ~ '@' ~ pi_backup_aurora_host ~ ':' ~
+        pi_backup_repository_prefix ~ '/' ~ backup_job.name
+      }}
   notify:
     - Reload systemd after Pi backup changes
     - Restart Pi backup freshness timer
@@ -187,8 +189,10 @@
     maintenance_job: "{{ maintenance_pair[0] }}"
     maintenance_kind: "{{ maintenance_pair[1] }}"
     job_repository: >-
-      sftp:{{ pi_backup_aurora_user }}@{{ pi_backup_aurora_host }}:
-      {{ pi_backup_repository_prefix }}/{{ maintenance_job.name }}
+      {{
+        'sftp:' ~ pi_backup_aurora_user ~ '@' ~ pi_backup_aurora_host ~ ':' ~
+        pi_backup_repository_prefix ~ '/' ~ maintenance_job.name
+      }}
   notify: Reload systemd after Pi backup changes
   when: pi_backup_enabled | bool
 

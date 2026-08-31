@@ -70,6 +70,22 @@
       PasswordAuthentication no
   '';
 
+  # The chroot root must stay root-owned, so remote SFTP clients cannot create
+  # their own top-level namespace. Provision the Pi namespace and its complete
+  # repository boundary explicitly; clients only populate repository contents.
+  systemd.tmpfiles.rules = map
+    (name: "d /mnt/backup/pi/${name} 0700 restic restic -")
+    [
+      "authelia"
+      "beszel"
+      "caddy"
+      "ntfy"
+      "pihole"
+      "vector"
+      "victorialogs"
+      "victoriametrics"
+    ];
+
   /*
     No service state of its own — the authorized_keys + Match block
     are declarative, the snapshot data is the remote restic clients'

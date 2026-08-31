@@ -27,6 +27,7 @@ repository="sftp:{{ pi_backup_aurora_user }}@{{ pi_backup_aurora_host }}:{{ pi_b
 export RESTIC_PASSWORD_FILE={{ pi_backup_password_file | quote }}
 export RESTIC_CACHE_DIR={{ pi_backup_cache_dir | quote }}
 restic_options=(
+  -o "sftp.connections=1"
   -o "sftp.command=ssh -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o HostName={{ pi_backup_aurora_address }} -o HostKeyAlias={{ pi_backup_aurora_host }} -o UserKnownHostsFile={{ pi_backup_known_hosts_file }} -o ConnectTimeout=15 -i {{ pi_backup_ssh_key_file }} {{ pi_backup_aurora_user }}@{{ pi_backup_aurora_host }} -s sftp"
 )
 

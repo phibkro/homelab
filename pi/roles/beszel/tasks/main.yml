@@ -56,7 +56,9 @@
     read_only_tmpfs: true
     # The hub listens on IPv4. Debian resolves localhost to ::1 first, which
     # makes the image's health command fail despite a healthy HTTP endpoint.
-    healthcheck: "/beszel health --url http://127.0.0.1:8090"
+    # The distroless image has no shell. Use exec form so Podman invokes the
+    # Beszel binary directly instead of wrapping the probe in `/bin/sh -c`.
+    healthcheck: "CMD /beszel health --url http://127.0.0.1:8090"
     healthcheck_interval: 120s
     healthcheck_timeout: 10s
     healthcheck_retries: 3

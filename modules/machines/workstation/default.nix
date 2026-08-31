@@ -142,12 +142,6 @@
   # the existing enrolled node; extraUpFlags only apply during first login.
   services.tailscale.extraSetFlags = [ "--accept-dns=true" ];
 
-  # Publishing currently traverses Caddy on the Pi. Keep the optional client
-  # quiescent until the phase-two appliance routes (including cache.*) deploy;
-  # otherwise its 404 retry loop makes every workstation activation fail.
-  systemd.timers.attic-cache-seed.wantedBy = lib.mkForce [ ];
-  systemd.timers.attic-cache-watch.wantedBy = lib.mkForce [ ];
-
   /*
     CI-only stub for davinci-resolve. It's unfree → not on cache.nixos.org →
     every `nix flake check` in CI rebuilds a multi-GB binary repackage
