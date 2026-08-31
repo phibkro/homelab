@@ -83,6 +83,7 @@ nix eval --json "$repo_root#lib.noriInventory" | jq \
           client_id: .name,
           client_name: .endpoint.oidc.clientName,
           authorization_policy: (.endpoint.oidc.authorizationPolicy // "one_factor"),
+          token_endpoint_auth_method: .endpoint.oidc.tokenEndpointAuthMethod,
           redirect_uris: [
             ("https://" + .hostname + .endpoint.oidc.redirectPath)
           ],

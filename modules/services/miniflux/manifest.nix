@@ -15,6 +15,7 @@
     oidc = {
       clientName = "Miniflux";
       redirectPath = "/oauth2/oidc/callback";
+      tokenEndpointAuthMethod = "client_secret_basic";
       secretEnvName = "OAUTH2_CLIENT_SECRET";
     };
   };

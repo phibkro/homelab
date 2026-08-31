@@ -38,6 +38,12 @@
         (authelia_oidc_clients | selectattr('scopes', 'defined') | list | length)
         == (authelia_oidc_clients | length)
       - >-
+        (authelia_oidc_clients | selectattr('token_endpoint_auth_method', 'defined') | list | length)
+        == (authelia_oidc_clients | length)
+      - >-
+        (authelia_oidc_clients | map(attribute='token_endpoint_auth_method') | list
+        | difference(['client_secret_basic', 'client_secret_post']) | length) == 0
+      - >-
         (authelia_oidc_clients | map(attribute='client_id') | list | sort)
         == (authelia_oidc_client_secret_hashes | dict2items | map(attribute='key') | list | sort)
       - >-

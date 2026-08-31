@@ -167,6 +167,7 @@ let
         oidc = {
           clientName = "Test App";
           redirectPath = "/callback";
+          tokenEndpointAuthMethod = "client_secret_basic";
         };
       };
     };

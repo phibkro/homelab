@@ -67,24 +67,28 @@ authelia_oidc_clients:
   - client_id: metrics
     client_name: Beszel
     authorization_policy: one_factor
+    token_endpoint_auth_method: client_secret_basic
     redirect_uris:
       - "https://metrics.{{ pi_domain }}/api/oauth2-redirect"
     scopes: [openid, profile, email, groups]
   - client_id: photos
     client_name: Immich
     authorization_policy: one_factor
+    token_endpoint_auth_method: client_secret_post
     redirect_uris:
       - "https://photos.{{ pi_domain }}/auth/login"
     scopes: [openid, profile, email, groups]
   - client_id: news
     client_name: Miniflux
     authorization_policy: one_factor
+    token_endpoint_auth_method: client_secret_basic
     redirect_uris:
       - "https://news.{{ pi_domain }}/oauth2/oidc/callback"
     scopes: [openid, profile, email, groups]
   - client_id: vault
     client_name: Vaultwarden
     authorization_policy: one_factor
+    token_endpoint_auth_method: client_secret_basic
     redirect_uris:
       - "https://vault.{{ pi_domain }}/identity/connect/oidc-signin"
     scopes: [openid, profile, email, groups, offline_access]

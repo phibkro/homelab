@@ -21,6 +21,7 @@ let
     client_secret = ''{{ secret "/run/secrets/oidc-${name}-client-secret-hash" }}'';
     public = false;
     authorization_policy = route.oidc.authorizationPolicy;
+    token_endpoint_auth_method = route.oidc.tokenEndpointAuthMethod;
     redirect_uris = [ "https://${name}.${config.nori.domain}${route.oidc.redirectPath}" ];
     inherit (route.oidc) scopes;
 

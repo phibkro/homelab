@@ -124,6 +124,7 @@ jq --exit-status '
       client_id: "photos",
       client_name: "Immich",
       authorization_policy: "one_factor",
+      token_endpoint_auth_method: "client_secret_post",
       redirect_uris: ["https://photos.home.example/auth/login"],
       scopes: ["openid", "profile", "email", "groups"]
     }

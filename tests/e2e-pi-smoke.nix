@@ -158,6 +158,7 @@ pkgs.testers.runNixOSTest {
         oidc = {
           clientName = "Test App";
           redirectPath = "/oauth/callback";
+          tokenEndpointAuthMethod = "client_secret_basic";
         };
       };
 

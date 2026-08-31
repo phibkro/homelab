@@ -15,6 +15,7 @@
     oidc = {
       clientName = "Vaultwarden";
       redirectPath = "/identity/connect/oidc-signin";
+      tokenEndpointAuthMethod = "client_secret_basic";
       secretEnvName = "SSO_CLIENT_SECRET";
       scopes = [
         "openid"

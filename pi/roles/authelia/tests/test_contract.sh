@@ -45,6 +45,8 @@ rg -q 'methods:' "$config_template"
 rg -q 'authelia_obsolete_oidc_secret_files' "$tasks_file"
 rg -q '== \(authelia_oidc_client_secret_hashes' "$tasks_file"
 rg -q 'authelia_oidc_clients \| length > 0' "$tasks_file"
+rg -q 'token_endpoint_auth_method' "$config_template"
+rg -q "client_secret_post" "$tasks_file"
 rg -Fq "map('length')" "$tasks_file"
 if rg -q "select\('length'" "$tasks_file"; then
   exit 1

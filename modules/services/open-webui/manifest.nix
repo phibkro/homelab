@@ -22,6 +22,7 @@ in
           oidc = {
             clientName = "Open WebUI";
             redirectPath = "/oauth/oidc/callback";
+            tokenEndpointAuthMethod = "client_secret_basic";
           };
           dashboard = {
             title = "Open WebUI";

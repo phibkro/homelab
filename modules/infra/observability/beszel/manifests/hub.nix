@@ -18,6 +18,7 @@ in
     oidc = {
       clientName = "Beszel";
       redirectPath = "/api/oauth2-redirect";
+      tokenEndpointAuthMethod = "client_secret_basic";
     };
     dashboard = {
       title = "Beszel";

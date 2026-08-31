@@ -134,6 +134,7 @@ in
       oidc = {
         clientName  = "Open WebUI";
         redirectPath = "/oauth/oidc/callback";
+        tokenEndpointAuthMethod = "client_secret_basic";
       };
     };
     ```
@@ -606,6 +607,13 @@ in
                         PocketBase:  /api/oauth2-redirect
                         Vaultwarden: /identity/connect/oidc-signin
                     '';
+                  };
+                  tokenEndpointAuthMethod = mkOption {
+                    type = types.enum [
+                      "client_secret_basic"
+                      "client_secret_post"
+                    ];
+                    description = "OAuth 2.0 token endpoint authentication method required by the client.";
                   };
                   scopes = mkOption {
                     type = types.listOf types.str;

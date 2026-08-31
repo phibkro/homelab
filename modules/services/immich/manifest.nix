@@ -16,6 +16,7 @@
     oidc = {
       clientName = "Immich";
       redirectPath = "/auth/login";
+      tokenEndpointAuthMethod = "client_secret_post";
     };
     dashboard = {
       title = "Immich";

@@ -64,6 +64,7 @@
             "clientName": "Immich",
             "redirectPath": "/auth/login",
             "authorizationPolicy": "one_factor",
+            "tokenEndpointAuthMethod": "client_secret_post",
             "scopes": ["openid", "profile", "email", "groups"]
           },
           "monitor": {"path": "/api/server/ping", "interval": "30s"}
