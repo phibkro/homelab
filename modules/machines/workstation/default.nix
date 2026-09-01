@@ -261,10 +261,12 @@
                  system services (sshd, caddy, blocky, tailscaled) stay
                  alive — recoverable from a TTY or remote SSH.
 
-    Numbers leave ≥4 GiB physical + 8 GiB swap headroom for kernel,
-    system slice, and a brief grace for terminating processes. Track
-    the actual session footprint in process-exporter (ROADMAP #45) and
-    tighten if normal heavy use stays well under.
+    The resident-memory limits are percentages so installing more RAM increases
+    useful session capacity without silently invalidating this containment policy.
+    MemoryMax reserves 12.5% of physical RAM for the kernel and system
+    services; MemoryHigh starts reclaim another 12.5 percentage points
+    earlier. Track the actual session footprint and tighten if normal heavy
+    use stays well under.
 
     SECOND CALIBRATION — the 2026-07-09 thrash-freeze: these caps alone
     did NOT protect against it, because they bound RESIDENT memory only.
@@ -277,12 +279,17 @@
     additions close both halves of that gap:
 
     MemorySwapMax = bounds the slice's SWAP separately (cgroup-v2
-                    memory.swap.max). When the slice has swapped 16 GiB,
-                    reclaim can no longer spill; resident then climbs to
-                    MemoryMax and the kernel kills INSIDE the slice —
-                    the same contained-kill story as before, restored.
-                    Worst-case slice footprint: 28 + 16 = 44 GiB, leaving
-                    system services (jellyfin swaps ~2 GiB) the rest.
+                    memory.swap.max). Systemd resolves percentages against
+                    total configured swap, not physical RAM. Keep the
+                    calibrated allowance absolute at 16 GiB on this host;
+                    50% would currently permit ~24 GiB because zram and the
+                    32 GiB disk swap are both counted. Revisit the absolute
+                    budget explicitly after the planned RAM upgrade. Reclaim
+                    can no longer spill past 16 GiB; resident then climbs to
+                    MemoryMax and the kernel kills INSIDE the slice — the same
+                    contained-kill story as before, restored. The remaining
+                    swap stays available to system services and termination
+                    grace.
     oomd 50%      = the pressure backstop for the livelock case hard
                     caps can miss: sustained memory-pressure ≥50% on the
                     user slice kills the worst-offending cgroup before
@@ -305,8 +312,8 @@
     2026-07-20-oomd-agent-fleet-kill.md.
   */
   systemd.services."user@".serviceConfig = {
-    MemoryHigh = "24G";
-    MemoryMax = "28G";
+    MemoryHigh = "75%";
+    MemoryMax = "87.5%";
     MemorySwapMax = "16G";
     ManagedOOMMemoryPressureLimit = "50%";
   };
@@ -320,8 +327,8 @@
     Single-user machine; the UID-specific name is fine.
   */
   systemd.slices."user-1000".sliceConfig = {
-    MemoryHigh = "24G";
-    MemoryMax = "28G";
+    MemoryHigh = "75%";
+    MemoryMax = "87.5%";
     MemorySwapMax = "16G";
     ManagedOOMMemoryPressure = "kill";
     ManagedOOMMemoryPressureLimit = "50%";

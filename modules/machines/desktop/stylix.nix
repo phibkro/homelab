@@ -83,6 +83,10 @@
       light = "Papirus-Light";
     };
 
+    # This machine uses tuigreet, not ReGreet; do not generate an unused
+    # greeter theme or let that target inspect the custom tuigreet command.
+    targets.regreet.enable = false;
+
     /*
       Fonts — Material-aligned sans (Roboto) + JetBrainsMono Nerd for
       mono. Noto covers fallback for missing glyphs; configured at

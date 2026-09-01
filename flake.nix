@@ -119,7 +119,7 @@
       co-packaged `pagu-box` compatibility PEP from one revision. Advance the
       pin deliberately.
     */
-    pagu.url = "github:phibkro/pagu";
+    pagu.url = "github:phibkro/pagu/a17fb721522b2081275efb2cbed2a92422fa4ba1";
     pagu.inputs.nixpkgs.follows = "nixpkgs";
 
     /*

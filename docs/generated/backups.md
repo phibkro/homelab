@@ -390,7 +390,7 @@ therefore change with configuration instead of being duplicated in prose.
 | `jellyseerr` | `service` | `mp510`<br>`onetouch` | `/var/lib/private/jellyseerr` |
 | `komga` | `service` | `mp510`<br>`onetouch` | `/var/lib/komga` |
 | `lidarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/lidarr` |
-| `media-irreplaceable` | `irreplaceable` | `mp510`<br>`onetouch` | `/mnt/media/archive`<br>`/mnt/media/home-videos`<br>`/mnt/media/library`<br>`/mnt/media/photos`<br>`/mnt/media/projects`<br>`/var/lib/immich/backups` |
+| `media-irreplaceable` | `irreplaceable` | `onetouch` | `/mnt/media/archive`<br>`/mnt/media/home-videos`<br>`/mnt/media/library`<br>`/mnt/media/photos`<br>`/mnt/media/projects`<br>`/var/lib/immich/backups` |
 | `miniflux` | `service` | `mp510`<br>`onetouch` | `/var/backup/postgresql/miniflux.sql.gz` |
 | `navidrome` | `service` | `mp510`<br>`onetouch` | `/var/lib/private/navidrome`<br>`/var/backup/navidrome` |
 | `paperless` | `irreplaceable` | `mp510`<br>`onetouch` | `/var/backup/postgresql/paperless.sql.gz` |

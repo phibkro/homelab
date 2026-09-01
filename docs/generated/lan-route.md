@@ -137,6 +137,7 @@ nori.lanRoutes.chat = {
   oidc = {
     clientName  = "Open WebUI";
     redirectPath = "/oauth/oidc/callback";
+    tokenEndpointAuthMethod = "client_secret_basic";
   };
 };
 ```
@@ -894,6 +895,22 @@ string
 ```nix
 "OAUTH_CLIENT_SECRET"
 ```
+
+*Declared by:*
+ - `modules/infra/networking`
+
+
+
+## nori.lanRoutes.<name>.oidc.tokenEndpointAuthMethod
+
+
+
+OAuth 2.0 token endpoint authentication method required by the client.
+
+
+
+*Type:*
+one of “client_secret_basic”, “client_secret_post”
 
 *Declared by:*
  - `modules/infra/networking`

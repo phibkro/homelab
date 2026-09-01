@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  pkgs,
   ...
 }:
 let
@@ -33,6 +34,20 @@ in
   programs.waybar = {
     enable = true;
     systemd.enable = true;
+    /*
+      Waybar 0.15.0 forgets to free vanished StatusNotifier watch records.
+      Carry the verified upstream MIT-licensed fix until nixpkgs ships it:
+      https://github.com/Alexays/Waybar/commit/78f6cde232147ee98986edd3cacfe9c6570bd7ec
+    */
+    package = pkgs.waybar.overrideAttrs (old: {
+      patches = (old.patches or [ ]) ++ [
+        (pkgs.fetchurl {
+          name = "waybar-free-vanished-sni-watches.diff";
+          url = "https://github.com/Alexays/Waybar/commit/78f6cde232147ee98986edd3cacfe9c6570bd7ec.diff";
+          hash = "sha256-n9zMxOYcsQv82xOqE3TRBkQC5qYRgmJBL92XxY7Odec=";
+        })
+      ];
+    });
     settings = {
       mainBar = {
         layer = "top";
@@ -88,7 +103,7 @@ in
           format-icons = {
             default = [ msVolume ];
           };
-          on-click = "pwvucontrol";
+          on-click = "${pkgs.systemd}/bin/systemctl --user start pwvucontrol.service";
           scroll-step = 5;
           tooltip-format = "{volume}% — click for mixer";
         };
@@ -161,6 +176,25 @@ in
           font-size: 16px;
       }
     '';
+  };
+
+  /*
+    Own the mixer as its own session service. Launching it directly from a
+    Waybar click charged its GTK process and retained file cache to Waybar's
+    cgroup, which made the resource detector report the bar as the owner.
+  */
+  systemd.user.services.pwvucontrol = {
+    Unit = {
+      Description = "PipeWire volume control";
+      PartOf = [ config.wayland.systemd.target ];
+      After = [ config.wayland.systemd.target ];
+      ConditionEnvironment = "WAYLAND_DISPLAY";
+    };
+    Service = {
+      Type = "exec";
+      ExecStart = "${pkgs.pwvucontrol}/bin/pwvucontrol";
+      Restart = "no";
+    };
   };
 
   /*

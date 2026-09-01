@@ -170,7 +170,6 @@ attribute set of (submodule)
 
 
 
-
 ## nori.hosts.<name>.codename
 
 
@@ -344,3 +343,5 @@ string
 
 *Declared by:*
  - [<nixpkgs/modules/infra/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//modules/infra/hosts.nix)
+
+

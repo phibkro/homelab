@@ -294,6 +294,10 @@ in
           max_float() { awk -v l="$1" -v r="$2" 'BEGIN { print (l + 0 >= r + 0) ? l : r }'; }
 
           severity="ok"
+          # Historical windows may open an incident, but only a signal that is
+          # still current may authorize a same-severity reminder after the
+          # cooldown. Otherwise avg300 pages again while merely decaying.
+          repeatable_breach=0
           bump() {
             case "$1:$severity" in
               critical:*) severity="critical" ;;
@@ -322,6 +326,7 @@ in
           tasks="$(cut -d' ' -f4 /proc/loadavg | cut -d/ -f2)"
           if [ "$tasks" -ge ${toString cfg.taskCeiling} ]; then
             bump critical
+            repeatable_breach=1
             add_breach "task-count CRITICAL: $tasks kernel tasks (limit ${toString cfg.taskCeiling}) — usually a process leak, not real work.
           Triage: ps -eLo comm --no-headers | sort | uniq -c | sort -rn | head ; ps -eo pid,ppid,etimes,comm --sort=etimes | head -20"
           fi
@@ -335,9 +340,11 @@ in
           fi
           if [ "$swap_pct" -ge ${toString cfg.swapUsed.criticalPct} ]; then
             bump critical
+            repeatable_breach=1
             add_breach "swap-used CRITICAL: $swap_pct% (limit ${toString cfg.swapUsed.criticalPct}%)"
           elif [ "$swap_pct" -ge ${toString cfg.swapUsed.warnPct} ]; then
             bump warn
+            repeatable_breach=1
             add_breach "swap-used WARN: $swap_pct% (limit ${toString cfg.swapUsed.warnPct}%)"
           fi
 
@@ -346,9 +353,11 @@ in
           mem_some="''${mem_some:-0}"
           if float_ge "$mem_some" ${toString cfg.pressureSome.criticalPct}; then
             bump critical
+            repeatable_breach=1
             add_breach "host-some-pressure CRITICAL: $mem_some% (limit ${toString cfg.pressureSome.criticalPct}%) over the last 10s."
           elif float_ge "$mem_some" ${toString cfg.pressureSome.warnPct}; then
             bump warn
+            repeatable_breach=1
             add_breach "host-some-pressure WARN: $mem_some% (limit ${toString cfg.pressureSome.warnPct}%)"
           fi
 
@@ -380,9 +389,11 @@ in
 
           if [ -n "$scope_crit" ]; then
             bump critical
+            repeatable_breach=1
             add_breach "agent-scope CRITICAL:$scope_crit (limit ${toString cfg.pressureSome.criticalPct}%) — a specific agent pane is thrashing, not just the host aggregate."
           elif [ -n "$scope_warn" ]; then
             bump warn
+            repeatable_breach=1
             add_breach "agent-scope WARN:$scope_warn (limit ${toString cfg.pressureSome.warnPct}%)"
           fi
 
@@ -392,7 +403,8 @@ in
 
           should_alert=0
           if [ "$severity" != "ok" ]; then
-            if [ "$severity" != "$last_severity" ] || [ $((now_epoch - last_alert_epoch)) -ge ${toString cfg.cooldownSeconds} ]; then
+            if [ "$severity" != "$last_severity" ] \
+              || { [ "$repeatable_breach" -eq 1 ] && [ $((now_epoch - last_alert_epoch)) -ge ${toString cfg.cooldownSeconds} ]; }; then
               should_alert=1
             fi
           fi

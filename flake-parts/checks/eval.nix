@@ -193,6 +193,18 @@
           '';
 
         /**
+          The desktop resource detector must measure cgroup working set rather
+          than inactive file cache retained after a child process exits.
+        */
+        steady-state-resource-alert-working-set =
+          let
+            detectorScript = builtins.head inputs.self.nixosConfigurations.workstation.config.home-manager.users.nori.systemd.user.services.steady-state-resource-alert.Service.ExecStart;
+          in
+          import ../../tests/eval/steady-state-resource-alert.nix {
+            inherit pkgs detectorScript;
+          };
+
+        /**
           Docs-fresh — committed generated artifacts must match
           what the generators would produce right now. Catches the
           drift class where a schema change lands but the docs/

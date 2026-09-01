@@ -233,7 +233,7 @@ pkgs.testers.runNixOSTest {
         # it. End-to-end this validates: pi's caddy auto-vhost, the
         # `routeHost` resolution function, vlan reachability both ways.
         pi.wait_for_unit("caddy.service")
-        pi.wait_for_open_port(443)
+        pi.wait_for_open_port(443, "${piIp}")
         response = workstation.succeed(
             "curl -fsS -k --resolve crossapp.test.lan:443:${piIp} "
             "https://crossapp.test.lan/"

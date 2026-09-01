@@ -19,6 +19,9 @@ in
   ];
 
   home.stateVersion = "26.05"; # match host's system.stateVersion
+  # Stylix supplies the cursor package/name/size; Home Manager now requires
+  # generation to be enabled explicitly instead of inferring it from values.
+  home.pointerCursor.enable = true;
   programs.home-manager.enable = true;
 
   home.packages = [
@@ -123,8 +126,8 @@ in
     extends the same "contain inside the slice" story to the swap
     axis, mirroring what MemorySwapMax does for user@ in default.nix.
 
-    Verified live at the time of the incident via `systemctl --user
-    set-property herdr.slice MemoryHigh=12G MemoryMax=16G
+    The original absolute calibration was verified live at the time of the
+    incident via `systemctl --user set-property herdr.slice MemoryHigh=12G MemoryMax=16G
     ManagedOOMMemoryPressure=kill ManagedOOMSwap=kill` — that command
     does not survive a reboot, hence codifying it here.
 
@@ -138,18 +141,18 @@ in
     threshold and its victim selection unchanged: they remain the
     livelock backstop.
 
-    Numbers: 24G leaves 4G below user-1000.slice's 28G MemoryMax
-    (default.nix) for the desktop session + everything else outside the
-    fleet. The 20G soft cap similarly leaves 4G before the parent's 24G
-    MemoryHigh. Tighten if the desktop approaches its reserve; further
-    loosening requires more physical RAM or fewer concurrent resident
-    sessions, not a weaker oomd threshold.
+    Percentages preserve the containment ratios as physical RAM changes:
+    Herdr's 75% hard cap remains 12.5 percentage points below the enclosing
+    user slice's 87.5%, and its 62.5% soft cap remains 12.5 points below the
+    parent's 75%. At 32 GiB these resolve to the measured 24/20 GiB caps; at
+    64 GiB they become 48/40 GiB. Tighten if the desktop approaches its
+    reserve; do not weaken the oomd pressure threshold.
   */
   systemd.user.slices.herdr = {
     Unit.Description = "Herdr agent lanes (one scope per pane)";
     Slice = {
-      MemoryHigh = "20G";
-      MemoryMax = "24G";
+      MemoryHigh = "62.5%";
+      MemoryMax = "75%";
       ManagedOOMMemoryPressure = "kill";
       ManagedOOMSwap = "kill";
       /*

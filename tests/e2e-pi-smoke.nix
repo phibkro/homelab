@@ -372,7 +372,7 @@ pkgs.testers.runNixOSTest {
         # synthetic backends — upstreams aren't reachable in this
         # single-node test.
         pi.wait_for_unit("caddy.service")
-        pi.wait_for_open_port(443)
+        pi.wait_for_open_port(443, "10.0.0.20")
 
     with subtest("authelia-main.service starts + binds :9091"):
         # The real load-bearing Phase 6 check. Authelia parses every

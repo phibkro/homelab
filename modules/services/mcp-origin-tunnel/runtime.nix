@@ -9,7 +9,7 @@ let
   devShareRoute = builtins.fromJSON (
     builtins.readFile ../../../infra/cloudflare/routes/dev-share.json
   );
-  tunnelId = devShareRoute.tunnelId;
+  inherit (devShareRoute) tunnelId;
   hindsightHostname = "hindsight-origin.phibkro.org";
   projectsHostname = "projects-origin.phibkro.org";
   hindsightOriginPort = config.nori.lanRoutes.memory-origin.port;

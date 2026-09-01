@@ -670,8 +670,7 @@ in
             wants = lib.optionals (tgt.tailnetPeer != null) [ "tailscaled.service" ];
             after = lib.optionals (tgt.tailnetPeer != null) [ "tailscaled.service" ];
             serviceConfig.ExecStartPre = lib.mkBefore (
-              lib.optionals (tgt.tailnetPeer != null) [ "${peerPreflightScript}" ]
-              ++ [ "${preUnlockScript}" ]
+              lib.optionals (tgt.tailnetPeer != null) [ "${peerPreflightScript}" ] ++ [ "${preUnlockScript}" ]
             );
           }
         ) activePairs
