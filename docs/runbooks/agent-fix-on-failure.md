@@ -5,7 +5,7 @@ is dispatched to diagnose + propose a fix as a **PR**. The PR opens **whether or
 not the fix succeeds** — it's the durable indicator that a system is failing and
 a started thread to fix it. PR-only: the agent never deploys.
 
-**Armed on** (`modules/machines/workstation/default.nix`):
+**Armed on** (`infra/workstation/default.nix`):
 `restic-check-weekly` · `restic-check-monthly` · `btrbk-root` · `btrbk-media`.
 
 ## Flow
@@ -69,7 +69,7 @@ journalctl -u agent-fix@restic-check-weekly.service -f
 
 ## Arm / disarm
 
-`nori.agentFix.units = [ … ];` in `modules/machines/workstation/default.nix`
+`nori.agentFix.units = [ … ];` in `infra/workstation/default.nix`
 (empty list = template deployed but nothing auto-triggers). `provider` defaults
 to `claude`; `cooldownSeconds` defaults to 6h.
 

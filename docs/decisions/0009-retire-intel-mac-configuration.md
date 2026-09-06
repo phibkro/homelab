@@ -26,16 +26,16 @@ The operator confirmed the Mac is no longer in use.
 Retire the Intel Mac configuration entirely. The flake manages NixOS hosts
 only and no longer emits `homeConfigurations`.
 
-Removed: the `macbook` inventory entry, `modules/machines/macbook/`,
-`flake-parts/home.nix`, the standalone home factory at `modules/home/
+Removed: the `macbook` inventory entry, `nix/hosts/macbook/`,
+`nix/flake-parts/home.nix`, the standalone home factory at `nix/home/ <!-- path-coherence: skip — retired historical implementation -->
 default.nix`, the `standaloneHomes` projection, and the `home-manager-darwin`
 / `tilth-darwin` / `pagu-darwin` inputs with their `x86_64-darwin` branches in
-`modules/home/claude-code/`.
+`nix/home/claude-code/`.
 
 Retained deliberately:
 
 - **`nixpkgs-stable`** — still the source for HandBrake
-  (`modules/home/profiles/creative/video.nix`), the exception ADR-0006
+  (`profiles/home/creative/video.nix`), the exception ADR-0006
   anticipated. Its URL still names the 26.05 *darwin* branch, which is now
   cosmetically misleading; that branch carries every platform, so the pin is
   wrong in name only. Repointing it re-resolves HandBrake and is therefore a
@@ -57,7 +57,7 @@ Retained deliberately:
   always Tailscale plus a browser, never the flake. Sunshine's Moonlight
   client is likewise not flake-managed.
 - Tailscale ACLs still name a `macbook` device under `tag:privileged`
-  (`modules/machines/pavilion/default.nix`). ACLs live in the Tailscale admin
+  (`nix/hosts/pavilion/default.nix`). ACLs live in the Tailscale admin <!-- path-coherence: skip — retired historical implementation -->
   UI, not this flake, so that text is left alone until the device is removed
   there.
 

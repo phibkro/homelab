@@ -5,6 +5,8 @@ result-*
 .devenv/
 node_modules/
 .alchemy/
+.ansible/
+.artifacts/
 
 # Python helpers (including repo-managed agent skills)
 __pycache__/

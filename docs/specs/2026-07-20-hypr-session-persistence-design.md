@@ -138,7 +138,7 @@ are listed in the restore report as manual follow-ups — loud, not skipped.
 
 ### Packaging
 
-Everything lives in `modules/home/desktop/hypr-rice/`: two Nix-wrapped scripts
+Everything lives in `nix/home/desktop/hypr-rice/`: two Nix-wrapped scripts
 (daemon + CLI) with closed-over dependencies, one systemd user service
 (`WantedBy=graphical-session.target`), state under XDG state dir. Optional:
 expose `restore`/`save` through the existing rice-command palette.

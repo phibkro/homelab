@@ -2,31 +2,31 @@
 date: 2026-06-17
 status: EXECUTED — Phases 0-6 landed 2026-06-17 (Phase 5 cleanup + Phase 6 scope-alignment as follow-on per docs/specs/2026-06-17-scope-aligned-tree.md)
 seed: Stage 2.5 redirect; operator framing 2026-06-17 (PaaS lens + dual-access split)
-summary: Restructure the codebase under modules/ as the single root, with services/ (workloads) and infra/<concern>/ (hosting platform) as the load-bearing split. Apply the PaaS lens to name infra sub-concerns; separate audience access from capabilities access. Use default.nix per folder; move enumeration logic into modules/<tree>/default.nix; thin flake.nix to dep-injection.
+summary: Restructure the codebase under nix/ as the single root, with services/ (workloads) and infra/<concern>/ (hosting platform) as the load-bearing split. Apply the PaaS lens to name infra sub-concerns; separate audience access from capabilities access. Use default.nix per folder; move enumeration logic into nix/<tree>/default.nix; thin flake.nix to dep-injection.
 executed-as:
   - Phase 0   175b822  revert vaultwarden split (wrong axis)
-  - Phase 1   0b8c384  backup → modules/infra/backup/
+  - Phase 1   0b8c384  backup → nix/modules/system/backup/
   - Phase 1.5 47d373c  path-coherence flake check
-  - Phase 2   280fd7e  flake.nix trim (→ modules/machines + modules/home factories)
-  - Phase 3a  ec3a58f  storage → modules/infra/storage/
-  - Phase 3b  73a803b  capabilities → modules/infra/capabilities/
-  - Phase 3c  3406078  networking → modules/infra/networking/
-  - Phase 3d  72022cf  access → modules/infra/access/
-  - Phase 3e  f0539e3  observability → modules/infra/observability/
+  - Phase 2   280fd7e  flake.nix trim (→ nix/machines + nix/home factories)
+  - Phase 3a  ec3a58f  storage → nix/modules/system/storage/
+  - Phase 3b  73a803b  capabilities → nix/modules/system/capabilities/
+  - Phase 3c  3406078  networking → nix/modules/system/networking/
+  - Phase 3d  72022cf  access → nix/modules/system/access/
+  - Phase 3e  f0539e3  observability → nix/modules/system/observability/
   - Phase 3f  9d63fd5  drain effects/
   - doc-pass  3cc23a9  CLAUDE.md + module-authoring.md + glossary.md +
                        documentation-writing.md aligned
-  - Phase 4   5e35815  /home → modules/home; /machines → modules/machines.
+  - Phase 4   5e35815  /home → nix/home; /machines → nix/machines.
                        path-coherence refined to skip relative imports;
                        tailnetIp lint scope expanded; chromecast
                        allowlist; 3 generated docs regenerated.
   - Phase 5a  4e9cb36  machines/default.nix explicit imports + key-set assert
-  - Phase 5b  63b7225  delete modules/dev (per-project concern)
+  - Phase 5b  63b7225  delete nix/dev (per-project concern)
   - Phase 5c  b7e9a84  extract lint to /lint at root + ripgrep
   - Phase 5d  2c2cf38  demote path-coherence + multi-line-comments to
                        one-off scripts; delete doc-coherence
-  - Phase 6a  7bb8a82  modules/common → modules/machines/base
-  - Phase 6b  2bb9de7  modules/desktop → modules/machines/desktop
+  - Phase 6a  7bb8a82  nix/common → nix/hosts/base
+  - Phase 6b  2bb9de7  nix/desktop → nix/hosts/desktop
 verification: byte-equal nix eval on representative trees per phase;
               8 flake checks pass post-Phase-5d pruning (was 11
               pre-Phase-5d); 4 NixOS hosts unchanged behaviorally;
@@ -42,7 +42,7 @@ Stage 2.5 redirect. The vaultwarden concern-split (Stage 2.5 v1) was the wrong a
 ```
 problem                                  symptom
 ─────────────────────────────────────────────────────────────────
-modules/infra/ became a dumping        13 files of mixed shapes:
+nix/modules/system/ became a dumping        13 files of mixed shapes:
 ground for "Nix-y things that aren't     effect handlers, policies,
 services"                                registries, leaf config
                                          
@@ -142,7 +142,7 @@ infra/capabilities/   capabilities access (nori.harden, FS
 ## The cut
 
 ```
-modules/
+nix/
   services/                workloads — user-installed applications
                            consuming the platform
     vaultwarden.nix          (REVERT the Stage 2.5 v1 split)
@@ -216,7 +216,7 @@ modules/
     default.nix              ENUMERATOR — readDir + base injection
                              + mkHost wrapper + identityFor +
                              hostRegistry
-    base.nix                 universal NixOS bits (was modules/
+    base.nix                 universal NixOS bits (was nix/
                              common/) — or common/ folder if
                              granular split kept
     workstation/
@@ -232,16 +232,16 @@ modules/
 
   home/                    home-manager / desktop env
     default.nix              ENUMERATOR for homeConfigurations
-    base.nix                 desktop env baseline (was modules/
+    base.nix                 desktop env baseline (was nix/
                              desktop/)
     nori/
     hermes/
     claude-code/
 
   lint/                    meta-tool: code-quality dispatcher
-                           (was modules/lint/)
+                           (was nix/lint/)
   dev/                     meta-tool: mkDevShell composer
-                           (was modules/dev/)
+                           (was nix/dev/)
 ```
 
 ## Dependency direction (no cycles)
@@ -279,7 +279,7 @@ personal conventions retired
 
 ## On `services.<X>.enable = true` (architectural note)
 
-The `enable = bool` toggle separates SCHEMA visibility from ACTIVATION. In a multi-host system, every host imports the full `modules/services` bundle to see route declarations and option schemas; only some hosts activate specific daemons via `enable = true`. If imports activated, the cross-host split-module pattern (route schema visible on workstation; daemon running on aurora) collapses.
+The `enable = bool` toggle separates SCHEMA visibility from ACTIVATION. In a multi-host system, every host imports the full `nix/services` bundle to see route declarations and option schemas; only some hosts activate specific daemons via `enable = true`. If imports activated, the cross-host split-module pattern (route schema visible on workstation; daemon running on aurora) collapses.
 
 This is load-bearing. The convention isn't arbitrary — it's the mechanism that makes per-service-folder cross-host wiring work in Nix.
 
@@ -320,10 +320,10 @@ This is load-bearing. The convention isn't arbitrary — it's the mechanism that
    site to read per route. Splitting adds two declaration
    sites for the same route.
 
-4. modules/common/ → modules/machines/base.nix vs
-   modules/machines/common/
+4. nix/common/ → nix/hosts/base.nix vs
+   nix/hosts/common/
    
-   Current modules/common/ has ~10 files. Two options:
+   Current nix/common/ has ~10 files. Two options:
      (α) machines/base.nix as one file that imports
          common/ subfiles
      (β) machines/common/ folder (10 files) with siblings
@@ -349,16 +349,16 @@ This is load-bearing. The convention isn't arbitrary — it's the mechanism that
    IronWolf-USB) stay per-machine.
 
 6. flake.nix what stays
-   After enumeration moves to modules/{machines,home}/
+   After enumeration moves to nix/{machines,home}/
    default.nix:
      stays: inputs, system + pkgs binding, devShells,
-            packages.docs-* (move to modules/?), checks
-            (move to modules/lint/?), formatter
+            packages.docs-* (move to nix/?), checks
+            (move to nix/lint/?), formatter
      leaves: mkHost, identityFor, hostRegistry, machine
             enumeration, home enumeration
    
    Open: do checks.${system} and packages.${system} move
-   into modules/, or stay in flake.nix as output wiring?
+   into nix/, or stay in flake.nix as output wiring?
    Lean stay — they're flake outputs by nature.
 
 7. apps/ vs services/ — final call
@@ -401,10 +401,10 @@ Phase 0 — clean slate
   - Single commit
 
 Phase 1 — pilot ONE infra concern: backup
-  - Move modules/infra/backup/default.nix → modules/infra/backup/
+  - Move nix/modules/system/backup/default.nix → nix/modules/system/backup/
     default.nix
-  - Move modules/services/backup/{restic,btrbk,verify}.nix →
-    modules/infra/backup/{restic,btrbk,verify}.nix
+  - Move nix/modules/services/backup/{restic,btrbk,verify}.nix →
+    nix/modules/system/backup/{restic,btrbk,verify}.nix
   - Update imports in machines/<*>/default.nix +
     flake.nix's services bundle
   - Update routing tables in CLAUDE.md / docs/
@@ -416,12 +416,12 @@ Phase 1 — pilot ONE infra concern: backup
   - Single commit
 
 Phase 2 — flake.nix trim
-  - Create modules/machines/default.nix with mkHost +
+  - Create nix/lib/machines.nix with mkHost +
     identityFor + hostRegistry + nixosConfigurations
   - flake.nix imports + re-exports
   - Verify: nix flake check; all hosts still eval; build
     workstation closure still byte-equal
-  - Create modules/home/default.nix with
+  - Create nix/home/default.nix with
     homeConfigurations.macbook
   - Same verification
 
@@ -444,15 +444,15 @@ Phase 3 — bulk move infra concerns (one PR per concern)
     - Single commit per concern
 
 Phase 4 — machines + home rewire (EXECUTED 2026-06-17)
-  - /machines/* → modules/machines/* (siblings of the factory's default.nix)
-  - /home/* → modules/home/* (siblings of the factory's default.nix)
+  - /machines/* → nix/hosts/* (siblings of the factory's default.nix)
+  - /home/* → nix/home/* (siblings of the factory's default.nix)
   - flake.nix:177 machinesPath: ./machines → ./modules/machines
-  - modules/home/default.nix:34 ../../machines → ../machines (macbook ref)
+  - nix/home/default.nix:34 ../../machines → ../machines (macbook ref)
   - All other home.nix imports (../../home/X.nix from machines/<host>/)
     PRESERVE because both trees moved by equal depth.
-  - Lint scope expansions: diskoUsesById to modules/machines/;
-    migrationPhase consolidated to modules/.
-  - tailnetIp lint coverage grew to include modules/machines/<host>/;
+  - Lint scope expansions: diskoUsesById to nix/hosts/;
+    migrationPhase consolidated to nix/.
+  - tailnetIp lint coverage grew to include nix/hosts/<host>/;
     chromecast appliance (100.94.135.114) added to allowlist.
   - path-coherence check refined to skip relative-path imports
     (the existing regex captured `home/X.nix` from `../../home/X.nix`
@@ -462,20 +462,20 @@ Phase 4 — machines + home rewire (EXECUTED 2026-06-17)
   - 3 generated docs regenerated (lan-route, topology, dev-shell).
 
 Deferred from Phase 4 (separate spec):
-  - modules/common/ → modules/machines/common/ or base.nix
-    (decision NOT made — `modules/common/` reads cleanly as the
+  - nix/common/ → nix/hosts/common/ or base.nix
+    (decision NOT made — `nix/common/` reads cleanly as the
      "shared baseline imported by every NixOS host" and the
-     move would obscure that. Keeping it at modules/common/.)
-  - modules/desktop/ → modules/home/base.nix (deferred; desktop/
+     move would obscure that. Keeping it at nix/common/.)
+  - nix/desktop/ → nix/home/base.nix (deferred; desktop/
     is NixOS-system-scope, not home-scope; rename only if scope
     clarification surfaces.)
 
 Phase 5 — leaves + meta-tools
-  - modules/infra/motd.nix → modules/infra/motd.nix or
-    modules/machines/base/
-  - modules/lint/ stays
-  - modules/dev/ stays
-  - modules/infra/ deleted (empty)
+  - nix/modules/system/motd.nix → nix/modules/system/motd.nix or
+    nix/modules/system/base/
+  - nix/lint/ stays
+  - nix/dev/ stays
+  - nix/modules/system/ deleted (empty)
 
 Phase 6 — docs cleanup
   - module-authoring.md rewrites for the new shape

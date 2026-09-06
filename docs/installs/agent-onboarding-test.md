@@ -1,227 +1,85 @@
 ---
-summary: The measure for the wrap-up loop — questions a fresh agent should answer
-  from CLAUDE.md plus on-demand reads; failures indicate doc gaps to fix.
+summary: A fresh-agent exercise graded against current inventory, source and command behavior.
 ---
 
 # Agent onboarding test
 
-A fresh agent (no prior session context) should be able to answer these from `CLAUDE.md` plus on-demand reads of files it references. If the agent has to invent details or reach for tribal knowledge, the test failed — and the wrap-up rubric ("On every structural change", "On session end") needs adjusting.
+Use this after changing repository structure or agent instructions. Start a fresh
+agent with the prompt below. Its answers must cite files and observed output;
+this document deliberately contains no copied host table or expected IP address.
 
-## Why this exists
+> Read AGENTS.md, follow its routes, and answer the questions below. Inspect only;
+> do not activate, deploy, edit credentials, reset SSH trust or run heavy tests.
+> Name uncertainty instead of guessing. Record the revision and dirty state.
 
-Wrap-up has a set value (the rubric in CLAUDE.md) but no measure. Without a measurement mechanism, the loop is open and drift accumulates silently. This file is the measure: a fresh agent's actual performance against expected shape, run periodically, indicating doc gaps as failures.
+## Questions
 
-See "On every structural change" + "On session end" in CLAUDE.md for the rubric this tests.
+1. Which hosts are managed, and which backend manages each? What are their
+   selected workloads? Which host receives a NixOS build target?
+2. Locate Jellyfin's placement, endpoint declaration and implementation. Explain
+   how changing a profile can change placement without editing the runtime.
+3. Locate the current backup policy. Distinguish declared intent, enabled
+   scheduling and evidence of a recoverable live backup.
+4. Where would you add a workload's shared endpoint metadata, NixOS implementation
+   and Pi implementation? How do you select which backend owns it?
+5. How do modules reference a host's identity without copying an address? Trace
+   the fact from inventory into a consumer.
+6. Select checks for an inventory-only change, a Nix runtime change and a Pi role
+   change. Which checks can establish real convergence or restore behavior?
+7. What does bare `just` do? Which commands build, test disposable machines, or
+   activate a live system? Is `activate-test` an offline preview?
+8. What should happen when SSH reports a changed key, or a storage change names
+   an NVMe enumeration rather than a verified disk identity?
+9. Which source generates global harness instructions? Which guide owns project
+   instructions? Where should a newly discovered procedural gap be repaired?
+10. How do you preserve an operator's dirty work and identify the exact content
+    your checks verified? What evidence is still missing before deployment?
 
-## How to run
+## Grade against the source
 
-Dispatch a subagent (or fresh Claude session) with this prompt:
+First capture the facts from the same checkout the agent inspected:
 
-> You are a fresh agent with zero prior context on this homelab project. Read `CLAUDE.md` first to orient. Then for each numbered question below, give a terse answer (~3 bullet points) using only files reachable from CLAUDE.md's routing table. Cite the source file for each answer.
->
-> Don't read the "Expected (shape)" sections until AFTER you've answered them — those are grading rubrics, not hints.
->
-> If information seems missing, note that as a potential gap rather than inventing. The test exists to surface gaps.
-
-Then compare answers to **Expected (shape)** below. Failures classify into:
-
-- **Knowledge gap** — info isn't documented anywhere → add it
-- **Routing gap** — info is documented but not reachable from CLAUDE.md's routing → fix routing
-- **Foregrounding gap** — reachable but not where the agent looks first → reposition in CLAUDE.md
-
-All three are wrap-up failures; fix and re-run.
-
----
-
-## Q1: Service placement — what runs where?
-
-**Tests**: topology mental model (highest-frequency knowledge).
-
-**Question**: For each of these, name the host(s) it runs on and the one-line reason: Beszel hub, ntfy server, Blocky, Caddy, Authelia, Jellyfin, ntfy `notify@` template.
-
-**Expected (shape)**:
-- Beszel hub → pi (appliance survives workhorse outages — forensics use case)
-- ntfy server → pi (alert plane survives workhorse outages)
-- Blocky → pi authoritative + workstation self-hosted secondary (LE wildcard issuance prerequisite + LAN-side fallback if pi is down)
-- Caddy → pi (entry plane; LE wildcard cert on `*.${nori.domain}` — ADR-0003 + ADR-0004)
-- Authelia → pi (SSO co-located with Caddy on the entry plane)
-- Jellyfin → workstation (media volume + GPU)
-- ntfy `notify@` template → pi + workstation + aurora (each host posts to ntfy.sh with its own hostname so the alert source is unambiguous)
-
-**Source**: `docs/reference/topology.md` "Service placement" and `docs/reference/services.md`.
-
----
-
-## Q2: Placement rule — workhorse vs appliance
-
-**Tests**: the bias / decision rule.
-
-**Question**: How do you decide if a new service belongs on the workhorse host or the appliance host?
-
-**Expected (shape)**:
-- Default = workhorse
-- Appliance only when fate-sharing breaks the function (observability, alerting, DNS — must survive workhorse failure)
-- Pi has 8 GiB + anti-write storage; not for heavy state or daily writes
-
-**Source**: CLAUDE.md "What's the bias → Workhorse-by-default, appliance-by-exception".
-
----
-
-## Q3: Adding a new HTTPS service
-
-**Tests**: convention for service module shape.
-
-**Question**: You're adding a service `widget` that serves HTTP on port 9000. What abstractions and files do you touch?
-
-**Expected (shape)**:
-- New file `modules/services/widget.nix` <!-- path-coherence: skip — onboarding-test placeholder -->
-- Enable the upstream module (`services.widget.enable = true`)
-- Default-deny FS hardening: `nori.harden.widget = { binds = [...]; readOnlyBinds = [...]; };` (`every-service-has-fs-hardening` flake check enforces presence)
-- `nori.lanRoutes.widget = { port = 9000; monitor = { }; };`
-- `nori.backups.widget = { paths = [...] | skip = "..."; };`
-- Add the manifest explicitly to `inventory/workloads.nix` and place it through
-  `inventory/profiles.nix` or a host deviation
-
-**Source**: `.claude/skills/add-service/` (procedure) + `docs/reference/module-authoring.md` (shape).
-
----
-
-## Q4: Cross-host reference
-
-**Tests**: registry pattern (introduced in commit `444423f`).
-
-**Question**: You see this in a service module. Is it right? If wrong, what's the fix?
-
-```nix
-nori.lanRoutes.widget = {
-  port = 9000;
-  host = "100.100.71.3";   # pi tailnet IP
-};
+```bash
+git rev-parse HEAD
+git status --short
+inventory_file=$(mktemp /tmp/homelab-onboarding.XXXXXX.json)
+nix eval --json .#lib.noriInventory > "$inventory_file"
+just --dry-run
+just --list
 ```
 
-**Expected (shape)**:
-- Wrong — IP literal
-- Should use `config.nori.hosts.pi.tailnetIp` (the topology registry)
-- Registry schema: `modules/infra/hosts.nix`; values: `flake.nix` `identityFor`
-- Topology coupling lives in the host name in the lookup, not in the IP
+Apply this jq projection to the inventory JSON (`jq '<projection>' "$inventory_file"`):
 
-**Source**: `docs/reference/topology.md` "Topology registry (`nori.hosts`)", `modules/infra/hosts.nix` header.
+<!-- onboarding-query:start -->
+```jq
+{
+  hosts: (.hosts | map_values({kind, profiles, workloads})),
+  jellyfin: .workloads.jellyfin,
+  backup: (.backup | {enabled, targetName, targetHost, mountPoint}),
+  deployment: .deployment
+}
+```
+<!-- onboarding-query:end -->
 
----
+The inventory query is also exercised by `routing-coherence` when supplied the
+public inventory JSON in its Nix check. No answer key needs synchronizing when
+hosts, placement or backup policy change.
 
-## Q5: Backup intent — schema + placement
+| Questions | Acceptance source |
+|---|---|
+| 1–3 | Evaluated public inventory above; runtime modules and live evidence where claimed |
+| 4–5 | `inventory/default.nix`, [module authoring](../reference/module-authoring.md), relevant manifest and generator/consumer |
+| 6–7 | `Justfile`, `infra/pi/pi.just`, [testing methodology](../reference/testing-methodology.md), dry-run output |
+| 8 | Root `AGENTS.md`, production SSH runner, [recovery constraints](../reference/recovery.md) |
+| 9 | Root/scoped `AGENTS.md`, `users/nori/programs/agent-soul/SOUL.md`, relevant procedure |
+| 10 | Observed Git state, test logs and [deployment gates](../reference/deployment.md) |
 
-**Tests**: backup contract + host-aware assertion.
+Pass each answer only if it is supported, reachable through the guides, and
+separates source behavior from runtime observations. An unsupported claim of
+safe activation, valid SSH identity, or working backups fails the exercise even
+if other answers are correct.
 
-**Question**: What does `nori.backups.<n>` require, and when do you use `include` vs `skip`? What's the constraint on appliance hosts?
-
-**Expected (shape)**:
-- Exactly one of `include` or `skip` (assertion enforces; never both, never neither)
-- `include = [ ... ]` for content to back up (lowers internally to upstream `services.restic.backups.<n>.paths`)
-- `skip = "<reason>"` for explicit opt-out (covered elsewhere, stateless, intentionally re-derivable)
-- Appliance hosts (`role = "appliance"`) cannot use `include` — host-aware assertion fails eval (anti-write storage posture)
-
-**Source**: `modules/infra/backup/default.nix` (schema + assertions), `docs/reference/storage.md` "Backup intent abstraction".
-
----
-
-## Q6: FS hardening abstraction
-
-**Tests**: `nori.harden` shape + the principle behind it.
-
-**Question**: How does a service module declare default-deny FS-namespace hardening today? What's the principle, and what enforces that you don't forget?
-
-**Expected (shape)**:
-- `nori.harden.<systemd-unit-name> = { binds = [...]; readOnlyBinds = [...]; protectHome = true|false|null; };` (schema in `modules/infra/capabilities/default.nix`)
-- Generator emits `ProtectHome = mkForce true` + `TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ]` + `BindPaths` + `BindReadOnlyPaths` on the systemd unit
-- `protectHome = null` skips the directive (preserves upstream NixOS module's value, e.g. syncthing where upstream is opinionated)
-- Principle: default-deny FS namespace; compromised service can't browse host paths it doesn't need
-- Enforcement: `every-service-has-fs-hardening` flake check fails the build if any `modules/services/*.nix` (outside the excluded list) lacks a `nori.harden.<n>` declaration
-
-**Source**: `docs/reference/module-authoring.md` "Filesystem hardening", `docs/decisions/0000-rationales.md` "Default-deny filesystem access", `modules/infra/capabilities/default.nix`.
-
----
-
-## Q7: DynamicUser symlink trap
-
-**Tests**: critical gotcha awareness.
-
-**Question**: A service `foo` declared with `DynamicUser = true` has state at `/var/lib/foo`. You write `nori.backups.foo.paths = [ "/var/lib/foo" ]`. What happens?
-
-**Expected (shape)**:
-- Backup snapshot is empty (3 files / 0 bytes) — restic stores symlinks AS symlinks
-- `/var/lib/foo` is a symlink to `/var/lib/private/foo`
-- Fix: `nori.backups.foo.paths = [ "/var/lib/private/foo" ]`
-- The DynamicUser-symlink assertion in `modules/infra/backup/default.nix` catches this at eval time (lists known DynamicUser services explicitly)
-
-**Source**: `Mnemopi recall: gotcha-dynamicuser-statedirectory-symlink`, `modules/infra/backup/default.nix` assertion.
-
----
-
-## Q8: Adding a new host
-
-**Tests**: filesystem-as-source-of-truth model (registry refactor).
-
-**Question**: Walk through adding a new host called `nori-foo` (workhorse, tailnet IP `100.99.0.5`, no static LAN lease).
-
-**Expected (shape)**:
-- Create folder: `mkdir machines/nori-foo`
-- Add `identityFor.nori-foo = { tailnetIp = "100.99.0.5"; lanIp = null; role = "workhorse"; };` in `flake.nix`
-- Write `modules/machines/nori-foo/default.nix` (imports + concerns) and `hardware.nix` — don't redeclare `networking.hostName` (injected from folder name) <!-- path-coherence: skip — onboarding-test placeholder -->
-- Add host's age public key to `.sops.yaml`, run `sops updatekeys secrets/secrets.yaml`
-- First boot + `tailscale up`
-
-**Source**: `.claude/skills/add-host/` (procedure) + `docs/reference/topology.md` "Adding a host".
-
----
-
-## Q9: NVMe safety — hard rule
-
-**Tests**: project's hardest rule.
-
-**Question**: You need to write a disko config for a new NVMe drive. What's the rule, and why?
-
-**Expected (shape)**:
-- Use `/dev/disk/by-id/...` paths, never `/dev/nvmeN`
-- NVMe enumeration is unstable across reboots — `nvme0n1` was the NixOS root at install, became Windows after a reboot
-- Ignoring this risks wiping the wrong drive
-- Verify by-id mapping via `ls /dev/disk/by-id/` before any destructive command
-
-**Source**: CLAUDE.md "Hard rules", `Mnemopi recall: gotcha-nvme-enumeration`, `docs/reference/recovery.md` "Permanent constraints".
-
----
-
-## Q10: Process meta — when to update CLAUDE.md
-
-**Tests**: per-change rubric awareness.
-
-**Question**: You just landed a structural refactor (e.g., introduced a new abstraction or pattern). What do you do for a fresh agent's sake before moving on?
-
-**Expected (shape)**:
-- Invoke the `/on-structural-change` skill — don't wait for session end. Externalize the change so the next amnesiac agent lands productively (ADR-0001's filter: a practice transfers iff it externalizes knowledge or verifies a claim).
-- Stale active examples in CLAUDE.md / docs/reference/ → fix immediately (highest-cost drift class)
-- Pattern used twice or more → codify as a procedure skill (under `.claude/skills/`)
-- New convention agents should follow → `docs/reference/module-authoring.md` (shape) + `docs/invariants.md` (which rung of the enforcement ladder), ideally backed by a flake check / module assertion
-- Hard-won mistake → retain one self-contained Mnemopi memory named `gotcha-<technology>-<symptom>`
-- Cross-session fact (preferences, project state, host topology) → retain a Mnemopi memory
-
-**Source**: `.claude/skills/on-structural-change/SKILL.md` (the procedure) + `docs/invariants.md` § "Decision tree — when to add a rule" + `docs/decisions/0001-agentic-homelab-practices.md` (the why).
-
----
-
-## Scoring
-
-- **9-10 correct in shape** → wrap-up was comprehensive
-- **7-8 correct** → identify which doc tier missed; fix the gap class and retest
-- **< 7** → doc tree has structural gaps; revisit "On session end" rubric thoroughness, possibly add categories
-
-A "correct" answer covers the shape's load-bearing points (not exact wording). Phrasing differences are fine; missing or wrong concepts aren't.
-
-## Cadence
-
-Run after any of:
-- Major structural refactor (new abstraction, registry, cross-host pattern, etc.)
-- A session where the user pushed back on "is this clear enough for a fresh agent?"
-- Quarterly check-in (every ~10-20 sessions at hobby cadence)
-
-When new patterns land that don't fit existing questions, add a question. The test should grow with the project; ~10-15 questions is the right size, beyond which retire questions for stable knowledge.
+Classify failures as missing knowledge, broken routing, misleading commands or
+unsupported inference. Fix the canonical source or the narrowest guide and
+repeat the failed questions. The shell coherence checks verify routing and query
+shape; this exercise verifies whether an agent can use them effectively.

@@ -1,0 +1,19 @@
+let
+  site = import ../../inventory/site.nix;
+in
+{
+  kind = "service";
+  hostRoles = [ "appliance" ];
+  runtimeModule = ./nixos.nix;
+  tags = [
+    "observability"
+    "stateful"
+  ];
+
+  endpoints.logs = {
+    port = 9428;
+    runsOn = site.entryPlaneHost;
+    monitor.path = "/health";
+    audience = "operator";
+  };
+}

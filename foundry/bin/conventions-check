@@ -7,7 +7,7 @@
 # Per repo:
 #   1. skip if listed in .conventions-exceptions (declared divergence = OK)
 #   2. presence contract: STATE.md exists and declares a Lifecycle;
-#      AGENTS.md exists or is a symlink; design-specs/ when lifecycle >= spec
+#      AGENTS.md exists or is a symlink; docs/specs/ when lifecycle >= spec
 #   3. stamped generated artifacts match the foundry profile@v1 (bytes for
 #      configs; stub/skeleton shape for AGENTS.md and STATE.md). In a
 #      package.json repo, missing lint configs are drift unless declared.
@@ -236,7 +236,7 @@ check_repo() {
 				"STATE.md must declare Lifecycle: <idea|spec|spec-frozen|build|park|archive>"
 		elif [[ $lifecycle != idea && ! -d $repo/design-specs ]]; then
 			report_declared_or_drift design-specs \
-				"design-specs/ required once lifecycle >= spec (now: $lifecycle)"
+				"docs/specs/ required once lifecycle >= spec (now: $lifecycle)"
 		fi
 	fi
 

@@ -13,7 +13,7 @@ flagged as drift by `conventions-check`; record real divergences in
   Now / Next / Blocked. Agents read it first; keep it current.
 - **Agent doc:** this file is THE agent doc. Where a harness wants CLAUDE.md,
   it is a symlink to AGENTS.md. Never a second prose copy.
-- **Specs:** design work lives in `design-specs/`. Lifecycle ≥ spec requires
+- **Specs:** design work lives in `docs/specs/`. Lifecycle ≥ spec requires
   that directory to exist.
 - **Lifecycle gates:** idea → spec → spec-frozen → build → park → archive, one
   executable gate per transition (defined in the conventions contract).

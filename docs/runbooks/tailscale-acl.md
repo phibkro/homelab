@@ -45,12 +45,12 @@ curl -s -u "${API_KEY}:" \
   > docs/runbooks/tailscale-acl.json
 ```
 
-## What's in the ACL today (high-level)
+## Recorded ACL intent (verify against the live policy)
 
 Cross-reference against the JSON to make sure these intents are still encoded:
 
 - **SSH ACL: `action: accept`** for all tag:operator → tag:operator paths (eliminates per-session reauth dance; see [[just-remote-tailnet-hostnames]]).
-- **`tag:agent` quarantine** — pavilion's tag, restricted to Ollama (`workstation:11434`) + outbound `:443`. Verify pavilion CANNOT reach privileged-host SSH (`workstation:22`); the agent role must not gain an operator path.
+- **`tag:agent` quarantine** — historical laptop policy retained in the ACL snapshot. Pavilion is retired; inspect the live ACL and current tag members before applying it. Any future agent-tagged device must not gain privileged-host SSH through this policy.
 - **`tag:family` member tags** — phones + tablets join with this tag; their access scope is the family-tier subset of routes.
 - **Per-host subnet/exit-node approvals** — pi is the subnet router + exit node; these need re-approval in admin UI on every key rotation.
 

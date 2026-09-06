@@ -1,6 +1,7 @@
 # Root drive failure
 
-**RTO**: <1 day. Bare metal rebuild from flake + restic restore of state.
+**Recovery target**: <1 day for rebuild; state recovery depends on surviving,
+verified archives. Backups are currently disabled.
 
 ## Symptom
 
@@ -17,9 +18,13 @@ The WD Black SN750 NVMe (NixOS root) is dead, dying, or otherwise unrecoverable.
 
 ## Procedure
 
-### 0. Verify Windows drive is untouched
+### 0. Preserve the other disks
 
-The Corsair MP510 (Windows) is on a different NVMe slot. Disko configs are by-id-pinned to prevent target confusion. **Re-read `Mnemopi recall: gotcha-nvme-enumeration`** before any partition operation.
+The MP510 is the other SSD and contains preserved historical archives; its
+old Windows label is stale. Preserve MP510, the cold IronWolf Pro, and any
+connected OneTouch. Match model and serial to stable by-id paths before an
+explicitly approved partition operation. Inspect the evaluated disko scope;
+it must contain only the replacement root disk.
 
 ### 1. Boot the NixOS minimal installer USB
 
@@ -52,10 +57,10 @@ cd /tmp/homelab
 ```bash
 sudo nix --extra-experimental-features 'nix-command flakes' \
   run github:nix-community/disko/latest -- \
-  --mode disko modules/machines/workstation/disko.nix
+  --mode disko infra/workstation/disko.nix
 ```
 
-This wipes the new root drive (by-id pinned to whatever the new SN750's serial is — **edit `modules/machines/workstation/disko.nix` first if the serial changed**) and creates the six-subvolume btrfs layout.
+This wipes the new root drive (by-id pinned to whatever the new SN750's serial is — **edit `infra/workstation/disko.nix` first if the serial changed**) and creates the six-subvolume btrfs layout.
 
 ### 5. Install
 
@@ -63,7 +68,7 @@ This wipes the new root drive (by-id pinned to whatever the new SN750's serial i
 sudo nixos-install --flake /tmp/homelab#workstation --no-root-password
 ```
 
-Reboots into the freshly-installed system.
+After installation succeeds, reboot into the installed system.
 
 ### 6. First boot — recover sops
 
@@ -74,49 +79,62 @@ Two paths:
 - **You backed up the old `/etc/ssh/ssh_host_ed25519_key`** before the failure: place it at `/etc/ssh/ssh_host_ed25519_key` on the new install. Reboot. sops works again.
 - **You didn't back up the key**: re-key sops. Boot into a barely-functional system (services that need secrets will fail), generate the new pubkey via `ssh-to-age`, edit `.sops.yaml` and re-encrypt `secrets/secrets.yaml` from another host that has the existing age key.
 
-The first path is preferred. Add the SSH host key to your "irreplaceable" backup tier going forward — it's tiny and prevents a real recovery hassle.
+Preserve any existing recovery key securely. Re-encryption is a separate
+approved credential operation; do not assume a key backup exists.
 
 ### 7. Restore state from restic
 
-The new install has empty `/var/lib`, empty `/home`, etc. Restore from whichever restic repository is closest. **Two local targets, both alive in a single-SSD-failure scenario** — OneTouch + Ironwolf are independent USB drives.
+The new install has empty service and user state. Verify the existing MP510
+mount at `/mnt/backup-local` and inspect repository snapshots before restoring.
+OneTouch is a planned, disabled destination; inspect any historical archives
+without assuming their existence or coverage. Backup password files are not
+automatically materialized while backups are disabled. Use a protected recovery
+credential file obtained through its authorized provider.
+Stop affected services and inspect snapshot paths before writing restored data.
 
-Restore path (substitute `<repo>` with any service whose state you need):
-
-```bash
-sudo RESTIC_PASSWORD_FILE=/run/secrets/restic-password \
-  restic -r /mnt/backup/<repo> restore latest --target /        # OneTouch (ext4)
-# Same restore via Ironwolf if OneTouch is offline:
-sudo RESTIC_PASSWORD_FILE=/run/secrets/restic-password \
-  restic -r /mnt/backup-local/<repo> restore latest --target /  # Ironwolf (btrfs)
+```text
+sudo restic -r /mnt/backup-local/<repo> --password-file <protected-credential-file> snapshots
+sudo restic -r /mnt/backup-local/<repo> --password-file <protected-credential-file> restore <snapshot-id> --target <disposable-directory>
 ```
 
-Pick by what you need first:
+Validate the restored files, then copy the selected state into its intended
+location while affected services remain stopped. Follow database-specific
+restore procedures for logical dumps; do not overwrite a running database.
+
+Historical repository names below are inspection leads, not verified coverage.
+List snapshots and inspect their contents before selecting a restore:
 
 | Repo | Why early |
 |---|---|
 | `user-data` | `/home/nori`, `/srv/share`, `/srv/nori`, agent state, secrets/age |
-| `media-irreplaceable` | Pre-roll for `@photos`, `@home-videos`, `@projects` |
-| `vaultwarden`, `immich`, etc. | Service state (run `just test-backups` to confirm freshness post-restore) |
+| `media-irreplaceable` | Observed directory was only approximately 40 KiB; no usable media snapshots verified |
+| `vaultwarden`, `immich`, etc. | Inspect for actual service state and consistent dumps |
 
-If both local targets are offline:
-- Out-of-band: restic snapshots are content-addressed, so even a partially-readable local repo can yield restorable data via `restic recover`
-- No cloud off-site by design — see `docs/decisions/0002-aurora-as-family-vault.md`. Total-apartment loss is an accepted residual risk.
+If MP510 is unavailable, inspect preserved historical archives and their
+credentials. There is no independent active backup target in the two-host
+configuration. Do not assume `restic recover` repairs unreadable data: it
+recovers unreferenced snapshots, not damaged disk blocks.
 
 ### 8. Re-import IronWolf media
 
-The IronWolf is on a different drive — its data survives an SN750 failure. After install, the disko config in `disko-media.nix` recognizes the existing filesystem; `nixos-rebuild switch` mounts it without reformatting. **Do NOT re-run disko on the IronWolf** — that wipes it.
+IronWolf is a separate cold-data drive and may survive an isolated SN750 failure; inspect its health and contents. After install, the disko config in `disko-media.nix` recognizes the existing filesystem; `nixos-rebuild switch` mounts it without reformatting. **Do NOT re-run disko on the IronWolf** — that wipes it.
 
-### 9. Verify the safety net
+### 9. Verify recovery and record gaps
 
-```bash
-sudo systemctl list-timers 'restic-*' 'btrbk-*'
-just test-backups   # asserts both targets have fresh snapshots per repo
-sudo systemctl start restic-check-weekly.service
-```
+Verify mounted disk identities, restored file contents, database validity,
+service health, and operator access. Record the snapshot IDs actually used and
+any missing state. Retained local btrfs snapshots and application dumps help
+with logical failures but do not provide independent disk-loss protection.
 
-All green + `just test-backups` PASS = recovery complete.
+The [OneTouch cutover runbook](onetouch-backup-cutover.md) owns later backup
+activation. Keep backups disabled until its connection, destination identity,
+and backup/restore journey are verified; no timer-check result substitutes
+for that evidence.
 
 ## Don't forget
 
-- Tailscale state is in `/var/lib/tailscale`. Restored from restic. If that doesn't work, run `sudo tailscale up` on the new host and approve in the admin console.
-- TLS for `*.home.phibkro.org` is Let's Encrypt via ACME DNS-01 against Cloudflare (ADR-0004). Caddy reissues automatically on first start; the Cloudflare API token lives in sops (`cloudflare_acme_token`). Recovery doesn't require any per-device CA install — modern devices trust ISRG roots natively. If ACME 429s during recovery (rate limit), the issued certs persist in `/var/lib/caddy/.local/share/caddy/certificates/` and survive restic restore of `/var/lib/caddy`.
+- Tailscale state may need re-enrollment if no usable state copy exists.
+  Re-enrollment and external approval remain explicit operator actions.
+- Pi owns the HTTPS entry plane through Ansible. Rebuilding workstation does
+  not restore Pi's certificate, authentication, or network state; use the
+  [Pi failure runbook](pi-failure.md) when that appliance is also affected.

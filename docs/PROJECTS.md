@@ -152,14 +152,14 @@ inspects/merges the stack in batch when they have time; a lane sitting idle
 The **1:1 is generative**: if a spec needs two PRs, it was two specs — so it
 self-enforces right-sized problem specs (one felt journey each).
 
-Live design-specs live in **`design-specs/`** per repo — a DISTINCT directory,
+Live design-specs live in **`docs/specs/`** per repo — a DISTINCT directory,
 kept separate from existing `docs/decisions/`, `docs/specs/`, etc. so it doesn't
 overlap. Trivial mechanical changes skip the loop — it's for **units of intent**.
 
 **Workers are BOUND to their active design-spec** (2026-07-22 — learned from an
 engineer that free-lanced a 2421-line off-spec mega-commit after losing its spec
 to compaction). A worker builds ONLY against its bound spec, re-reads it, and
-**reloads it from the `design-specs/` file after any compaction** — the spec is a
+**reloads it from the `docs/specs/` file after any compaction** — the spec is a
 durable file precisely so compaction can't sever the binding. Drift symptoms
 (free-lancing, bundling multiple specs into one commit, jumping a HOLD) mean the
 worker came off its spec — the lead resets it to the spec (bank the work, redo as
@@ -360,7 +360,7 @@ herdr agent list                      # enumerate (scope caveat below)
 `~/.claude/settings.json` is generated. The canonical MCP trust configuration
 lives in:
 
-`/srv/share/projects/homelab/modules/home/claude-code/default.nix`
+`/srv/share/projects/homelab/users/nori/programs/claude-code/default.nix`
 
 Do not copy its booleans or server lists here: they change independently and a
 copied snapshot has already drifted. A project `.mcp.json` declares the server
@@ -399,7 +399,7 @@ the per-project doc, not here.
 
 `STATE.md` is the mission-state file (Lifecycle: idea→spec→spec-frozen→build
 →park→archive, one gate per transition). `AGENTS.md` is the one agent doc;
-CLAUDE.md is a symlink to it. Specs live in `design-specs/`. Profile source =
+CLAUDE.md is a symlink to it. Specs live in `docs/specs/`. Profile source =
 homelab/foundry/ — generate via reef, check drift via
 `homelab/foundry/bin/conventions-check`. Converge-on-contact: cold repos
 converge whenever an agent next touches them. Real divergence gets declared in

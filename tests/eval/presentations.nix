@@ -16,7 +16,6 @@ let
   compiler = import ../../inventory;
   workloadCatalog = import ../../inventory/workloads.nix { inherit lib; };
   workstation = inputs.self.nixosConfigurations.workstation.config;
-  pi = inputs.self.nixosConfigurations.pi.config;
   statusServices = inventory.status.services;
   portalServices = inventory.portal.services;
 
@@ -108,9 +107,9 @@ let
         "operator"
       ];
 
-  deprecatedDomainPolicyWorks =
-    pi.services.caddy.virtualHosts ? "http://*.nori.lan"
-    && pi.services.blocky.settings.customDNS.mapping."media.nori.lan" == pi.nori.lanIp;
+  entryPlaneOwnershipIsExplicit =
+    inventory.hosts.${inventory.site.entryPlaneHost}.kind == "ansible"
+    && !(builtins.hasAttr inventory.site.entryPlaneHost inputs.self.nixosConfigurations);
   glanceSettings = builtins.toJSON workstation.services.glance.settings;
   portalUsesCanonicalDomain =
     lib.hasInfix "https://media.home.phibkro.org" glanceSettings
@@ -140,7 +139,7 @@ if
   && invalidPublicationFails { audience = "operator"; }
   && edgeHostnameCollisionFails
   && portalPolicyWorks
-  && deprecatedDomainPolicyWorks
+  && entryPlaneOwnershipIsExplicit
   && portalUsesCanonicalDomain
   && entryPlaneEndpointsFollowSite
 then
@@ -152,7 +151,7 @@ else
     Portal policy:   ${toString portalPolicyWorks}
     Status safe:     ${toString statusIsInternetSafe}
     Edge collision:  ${toString edgeHostnameCollisionFails}
-    Legacy aliases:  ${toString deprecatedDomainPolicyWorks}
+    Entry ownership: ${toString entryPlaneOwnershipIsExplicit}
     Portal domains:  ${toString portalUsesCanonicalDomain}
     Entry plane:     ${toString entryPlaneEndpointsFollowSite}
   ''

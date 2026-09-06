@@ -14,7 +14,7 @@ btrbk retention (`7d 4w 6m` on root, `14d 8w 12m` on media) works in the steady 
 
 Pre-2026-05-14 prevention gaps that let this happen:
 
-- No free-space alerts (added 2026-05-14 — `modules/infra/observability/disk-alert/`).
+- No free-space alerts (added 2026-05-14 — `services/disk-alert/`).
 - No Sonarr/Radarr/Lidarr `MinimumFreeSpaceWhenImporting` setting. Set per-instance via UI on first-run — see the *arr modules' setup comments.
 
 ## Diagnose
@@ -36,7 +36,7 @@ Box-specific names worth remembering:
 - *arr stack: `sonarr radarr lidarr bazarr`.
 - qBittorrent state dir: `/var/lib/qBittorrent/qBittorrent/` (config, data, incomplete, downloads, cache). The 100s-of-GB consumer when wedged is `incomplete/`.
 - Root snapshots: `/.snapshots/{home,lib,share}.<YYYYMMDD>T<HHMM>`.
-- Media snapshots: `/mnt/media/.snapshots/{archive,home-videos,library,photos,projects}.<...>`. `@downloads` is **not** snapshotted (re-derivable tier per `modules/infra/storage/default.nix`) — deleting from `/mnt/media/downloads/` frees space immediately.
+- Media snapshots: `/mnt/media/.snapshots/{archive,home-videos,library,photos,projects}.<...>`. `@downloads` is **not** snapshotted (re-derivable tier per `infra/common/nixos/storage/default.nix`) — deleting from `/mnt/media/downloads/` frees space immediately.
 
 ## Stage 1 — stop the writers
 

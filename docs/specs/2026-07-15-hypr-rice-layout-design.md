@@ -6,11 +6,11 @@ status: implemented
 
 # Hyprland rice extraction + layout shorthand
 
-> **Follow-up:** [`2026-07-15-hypr-rice-layout-follow-up-design.md`](./2026-07-15-hypr-rice-layout-follow-up-design.md) supersedes this delivery's shortcut assignment, native target-order mapping, workspace-selection order, workspace identity key, and structural `.` empty-cell semantics. This document remains authoritative for the extraction and original shorthand/runtime foundation.
+> **Follow-up:** [`2026-07-15-hypr-rice-layout-follow-up-design.md`](2026-07-15-hypr-rice-layout-follow-up-design.md) supersedes this delivery's shortcut assignment, native target-order mapping, workspace-selection order, workspace identity key, and structural `.` empty-cell semantics. This document remains authoritative for the extraction and original shorthand/runtime foundation.
 
 ## Context
 
-Before extraction, the workstation rice was split between the system desktop bundle, shared Home Manager desktop modules, `modules/machines/workstation/home.nix`, `modules/machines/workstation/hyprland.lua`, and `tests/tests.just`. The coherent Hyprland implementation was embedded in the workstation caller: bind data, helper commands, layer state, Lua templating, and the current focused-window `tile-ratio` command.
+Before extraction, the workstation rice was split between the system desktop bundle, shared Home Manager desktop modules, `nix/hosts/workstation/home.nix`, `nix/hosts/workstation/hyprland.lua`, and `tests/tests.just`. The coherent Hyprland implementation was embedded in the workstation caller: bind data, helper commands, layer state, Lua templating, and the current focused-window `tile-ratio` command.
 
 The immediate layout need is smaller than CSS, Tailwind, TSX, or window selectors. The operator wants one shortcut that accepts either:
 
@@ -27,7 +27,7 @@ and applies that shape to the current workspace's native tiled layout targets. H
 
 After activation:
 
-1. The internal opinionated rice implementation lives under `modules/home/desktop/hypr-rice/`; workstation Home Manager retains unrelated personal and host policy.
+1. The internal opinionated rice implementation lives under `nix/home/desktop/hypr-rice/`; workstation Home Manager retains unrelated personal and host policy.
 2. `SUPER+R` opens a Fuzzel prompt for a weighted-row or area-grid expression.
 3. A valid expression becomes the current workspace's native Hyprland custom layout.
 4. Invalid syntax, geometry, grouped-window state, limits, or initial arity changes no rice state or workspace rule and reports a direct error.
@@ -79,7 +79,7 @@ After activation:
 Keep the repository's scope-aligned top-level layout:
 
 ```text
-modules/
+nix/
 ├── machines/
 │   ├── desktop/                         # NixOS system/session adapter
 │   └── workstation/
@@ -94,11 +94,11 @@ modules/
             └── helpers.nix              # packaged commands + generated artifacts
 ```
 
-`modules/machines/desktop/hyprland.nix` remains the system adapter owning Hyprland, UWSM, portals, polkit, and RTKit. The Home Manager rice keeps `package = null` and `portalPackage = null`, preserving one system-owned Hyprland package.
+`nix/modules/system/desktop/hyprland.nix` remains the system adapter owning Hyprland, UWSM, portals, polkit, and RTKit. The Home Manager rice keeps `package = null` and `portalPackage = null`, preserving one system-owned Hyprland package.
 
 ### Home Manager interface
 
-This delivery is an internal opinionated extraction. `modules/home/desktop/default.nix` imports `./hypr-rice`; the import is the interface. The module moves the current Ghostty, Zen, Zed, Snappy Switcher, monitor, startup, and floating-window policy intact rather than introducing a shallow option mirror during a behavior-preserving extraction.
+This delivery is an internal opinionated extraction. `nix/home/desktop/default.nix` imports `./hypr-rice`; the import is the interface. The module moves the current Ghostty, Zen, Zed, Snappy Switcher, monitor, startup, and floating-window policy intact rather than introducing a shallow option mirror during a behavior-preserving extraction.
 
 Bindings, layers, helper names, parser implementation, layout state, generated manifests, modifier masks, application commands/classes, and window geometry remain private. A generic public interface is a separate design task after a second real desktop consumer exists.
 
@@ -274,9 +274,9 @@ hypr-layout-menu
 
 ## Extraction map
 
-### Move into `modules/home/desktop/hypr-rice/`
+### Move into `nix/home/desktop/hypr-rice/`
 
-From `modules/machines/workstation/home.nix`:
+From `nix/hosts/workstation/home.nix`:
 
 - bind constructors and declarations;
 - cheatsheet generation;
@@ -284,7 +284,7 @@ From `modules/machines/workstation/home.nix`:
 - layer registry and spacer class;
 - Home Manager Hyprland ownership and Lua template generation.
 
-Move `modules/machines/workstation/hyprland.lua` beside the module intact for this internal opinionated delivery. Parameterizing monitor, startup, application classes, and floating geometry is deferred.
+Move `nix/hosts/workstation/hyprland.lua` beside the module intact for this internal opinionated delivery. Parameterizing monitor, startup, application classes, and floating geometry is deferred.
 
 ### Keep workstation-owned
 

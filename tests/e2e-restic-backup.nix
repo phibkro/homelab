@@ -11,12 +11,12 @@
   Scenario:
    - One workstation-shaped node (role=workhorse so it can legally
      have a LOCAL target — appliance hosts can't, per the placement
-     assertion in modules/infra/backup/default.nix).
+     assertion in infra/common/nixos/backup.nix).
    - A local restic target at /var/lib/test-restic-repo.
    - A real `nori.backups.testjob.include = [ "/var/lib/test-source" ]`
      declaration.
    - Pre-seed /var/lib/test-source/marker.txt with a known string.
-   - testScript fires the generated restic-backups-testjob-localtest
+   - testScript fires the generated restic-backups-testjob-onetouch
      unit, waits for completion, then uses restic itself to verify
      the snapshot exists AND contains the marker file. End-to-end.
 
@@ -46,12 +46,14 @@ pkgs.testers.runNixOSTest {
     {
       imports = [
         inputs.sops-nix.nixosModules.sops
-        ../modules/infra/hosts.nix
-        ../modules/infra/capabilities
-        ../modules/infra/storage
-        ../modules/infra/backup
-        ../modules/infra/backup/restic.nix
-        ../modules/infra/networking
+        ../infra/common/nixos/inventory.nix
+        ../infra/common/nixos/hosts.nix
+        ../infra/common/nixos/service-hardening.nix
+        ../infra/common/nixos/storage
+        ../infra/common/nixos/backup.nix
+        ../services/restic-backup/nixos.nix
+        ../services/restic-target/nixos.nix
+        ../infra/common/nixos/routes.nix
       ];
 
       environment.etc."sops-test-age.txt".source = ./keys/test-age.txt;
@@ -86,19 +88,36 @@ pkgs.testers.runNixOSTest {
         primaryJob = "backup roundtrip";
       };
 
-      # Local target — restic creates the directory + inits the repo
-      # on first run (initialize=true is the backup module's default).
-      nori.backupTargets.localtest = {
-        repository = "/var/lib/test-restic-repo";
-        description = "in-VM local restic repo for the roundtrip test";
+      # A real mounted filesystem exercises the production mount guard.
+      nori.inventory.backup =
+        let
+          backup = import ../inventory/backup.nix;
+        in
+        backup
+        // {
+          enabled = true;
+          targetName = "onetouch";
+          mountPoint = "/var/lib/test-restic-repo";
+          pi = backup.pi // {
+            authorizedKey = lib.removeSuffix "\n" (builtins.readFile ./keys/restic-test.pub);
+          };
+        };
+      services.openssh.enable = true;
+      environment.etc."restic-test-key" = {
+        source = ./keys/restic-test;
+        mode = "0600";
+      };
+      virtualisation.fileSystems."/var/lib/test-restic-repo" = {
+        device = "tmpfs";
+        fsType = "tmpfs";
       };
 
       # Real backup job — same shape every prod service declares.
-      # Pin to the localtest target so we don't also try the
+      # Pin to the onetouch target so we don't also try the
       # nonexistent prod targets.
       nori.backups.testjob = {
         include = [ "/var/lib/test-source" ];
-        targets = [ "localtest" ];
+        targets = [ "onetouch" ];
       };
 
       # Pre-seed the source data so the snapshot has something
@@ -127,6 +146,7 @@ pkgs.testers.runNixOSTest {
     };
 
   testScript = ''
+    import shlex
     start_all()
     workstation.wait_for_unit("multi-user.target")
 
@@ -140,17 +160,17 @@ pkgs.testers.runNixOSTest {
         # The fanout name is restic-backups-<job>-<target>.service.
         # initialize=true on a fresh target creates the repo lazily.
         workstation.succeed(
-            "systemctl start restic-backups-testjob-localtest.service"
+            "systemctl start restic-backups-testjob-onetouch.service"
         )
         # Wait for the oneshot to leave activating state.
         workstation.wait_until_succeeds(
-            "systemctl is-active restic-backups-testjob-localtest.service "
-            "|| systemctl show -p Result restic-backups-testjob-localtest.service "
+            "systemctl is-active restic-backups-testjob-onetouch.service "
+            "|| systemctl show -p Result restic-backups-testjob-onetouch.service "
             "| grep -q success",
             timeout=60,
         )
         result = workstation.succeed(
-            "systemctl show -p Result --value restic-backups-testjob-localtest.service"
+            "systemctl show -p Result --value restic-backups-testjob-onetouch.service"
         ).strip()
         assert result == "success", f"backup unit Result={result!r}"
 
@@ -159,7 +179,7 @@ pkgs.testers.runNixOSTest {
         # take to verify a restore. Exercises the password file +
         # repo location at the same time.
         # Each (job, target) lands in <target.repository>/<jobName>
-        # — the fanout shape from modules/infra/backup/default.nix.
+        # — the fanout shape from infra/common/nixos/backup.nix.
         env = (
             "RESTIC_PASSWORD_FILE=/run/secrets/restic-password "
             "RESTIC_REPOSITORY=/var/lib/test-restic-repo/testjob "
@@ -177,5 +197,34 @@ pkgs.testers.runNixOSTest {
         assert "/var/lib/test-source/marker.txt" in ls, (
             f"marker.txt missing from snapshot: {ls!r}"
         )
+        workstation.succeed(f"{env} restic restore latest --target /tmp/restore")
+        workstation.succeed("cmp /var/lib/test-source/marker.txt /tmp/restore/var/lib/test-source/marker.txt")
+
+    with subtest("Pi transport backs up and restores through the production SFTP jail"):
+        workstation.wait_for_unit("sshd.service")
+        workstation.succeed("systemctl start restic-target-directories.service")
+        assert workstation.succeed("systemctl show -p Result --value restic-target-directories.service").strip() == "success"
+        workstation.succeed("awk '{print \"localhost \" $1 \" \" $2}' /etc/ssh/ssh_host_ed25519_key.pub > /tmp/restic-known-hosts")
+        transport = "ssh -i /etc/restic-test-key -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/tmp/restic-known-hosts restic@localhost -s sftp"
+        remote = f"RESTIC_PASSWORD_FILE=/run/secrets/restic-password restic -o sftp.connections=1 -o 'sftp.command={transport}' -r sftp:restic@localhost:/pihole"
+        workstation.succeed(f"{remote} init </dev/null")
+        workstation.succeed(f"{remote} backup /var/lib/test-source </dev/null")
+        workstation.succeed(f"{remote} restore latest --target /tmp/pi-restore </dev/null")
+        workstation.succeed("cmp /var/lib/test-source/marker.txt /tmp/pi-restore/var/lib/test-source/marker.txt")
+        sftp = "sftp -b - -i /etc/restic-test-key -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/tmp/restic-known-hosts restic@localhost"
+        workstation.fail(f"echo 'get /../../testjob/config /tmp/escaped' | {sftp}")
+        workstation.execute("timeout 5 ssh -i /etc/restic-test-key -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/tmp/restic-known-hosts restic@localhost 'touch /tmp/shell-escaped' </dev/null")
+        workstation.succeed("test ! -e /tmp/shell-escaped")
+        workstation.succeed("test ! -e /tmp/escaped")
+
+    with subtest("missing backup mount cannot write onto root filesystem"):
+        workstation.succeed("systemctl stop $(systemd-escape --path --suffix=mount /var/lib/test-restic-repo)")
+        workstation.succeed("systemctl mask --runtime $(systemd-escape --path --suffix=mount /var/lib/test-restic-repo)")
+        workstation.fail("systemctl start restic-backups-testjob-onetouch.service")
+        workstation.succeed("test ! -e /var/lib/test-restic-repo/testjob")
+        # Match production's systemd execution boundary. An early SSH failure
+        # must not inherit and disrupt the test driver's control terminal.
+        status, output = workstation.execute("systemd-run --wait --pipe --collect --setenv=PATH=/run/current-system/sw/bin /bin/sh -c " + shlex.quote(remote + " snapshots 2>&1"))
+        assert status != 0 and "unable to start the sftp session" in output, output
   '';
 }

@@ -1,7 +1,7 @@
 /**
   nori.lint — declarative grep-rule registry + lowering to a single
   `nix flake check` derivation. Shares the Reader+Writer data shape
-  with the `nori.<X>` effect family in modules/infra/, but lives
+  with the `nori.<X>` effect family in infra/common/nixos/, but lives
   outside that folder because lint is dev-time tooling — affects
   `nix flake check`, not running system state.
 
@@ -22,7 +22,7 @@
   in {
     lint = lintLib.makeLintCheck {
       rules = (builtins.fromTOML (builtins.readFile ./modules/lint/rules.toml)).rules;
-      sourceRoot = ./.;
+      sourceRoot = .;
     };
   }
   ```
@@ -60,8 +60,8 @@ let
                         value is the literal regex: `pattern = '\$pbkdf2-'`.
                         With Nix-declared rules, double-escape: `"\\$pbkdf2-"`.
       scope           — required list of strings. Paths under sourceRoot
-                        that grep walks (e.g. `[ "modules/" ]` or
-                        `[ "modules/machines/" ]`).
+                        that grep walks (e.g. `[ "services/" ]` or
+                        `[ "infra/workstation/" ]`).
       message         — required string. Operator-facing explanation
                         when the rule fires. Should name the right thing
                         to do, not just identify the violation.
@@ -124,14 +124,20 @@ let
 
   /*
     Self-exclude: the lint module IS the rule source (the patterns
-    live as string data in modules/lint/rules.toml; the dispatcher
+    live as string data in nix/lint/rules.toml; the dispatcher
     mentions them in comments). Without this exclusion every pattern
     rule fires against its own declaration — a false positive that
     masks real violations. The lint source isn't subject to the rules
     it defines, the same way a grammar file isn't subject to its own
     grammar.
   */
-  selfExcludeChain = " | grep -vE '^lint/'";
+  /*
+    The service tree now holds both former Nix sources and the Ansible
+    implementation moved from pi/. The latter was outside the historical
+    nix/ lint scope, so keep that boundary explicit while scanning every
+    other service asset recursively.
+  */
+  selfExcludeChain = " | grep -vE '^(lint/|services/[^/]+/ansible/)'";
 
   lowerRule =
     name: rule:

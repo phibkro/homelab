@@ -1,0 +1,7 @@
+---
+- name: Retire scheduled backups while preserving recovery data
+  hosts: pi_appliances
+  become: true
+  gather_facts: false
+  roles:
+    - restic-backup/ansible

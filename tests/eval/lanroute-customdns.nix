@@ -37,12 +37,12 @@ let
     specialArgs = { inherit inputs; };
     modules = [
       inputs.sops-nix.nixosModules.sops
-      ../../modules/infra/hosts.nix
-      ../../modules/infra/capabilities
-      ../../modules/infra/storage
-      ../../modules/infra/backup
-      ../../modules/infra/networking
-      ../../modules/infra/networking/blocky/runtime.nix
+      ../../infra/common/nixos/hosts.nix
+      ../../infra/common/nixos/service-hardening.nix
+      ../../infra/common/nixos/storage
+      ../../infra/common/nixos/backup.nix
+      ../../infra/common/nixos/routes.nix
+      ../../services/blocky/nixos.nix
       (
         { lib, ... }:
         {
@@ -82,7 +82,8 @@ let
             description = "test";
           };
           # Real sops, test recipient — same wiring as the nixosTest
-          # at tests/e2e-pi-smoke.nix. The age key path is a literal
+          # by the reusable module test at tests/e2e-pi-smoke.nix. The age key
+          # path is a literal
           # string (not a nix-store path) because sops-nix refuses
           # store-path keyFiles. At eval time the file doesn't need to
           # exist — only at activation, which this layer never runs.

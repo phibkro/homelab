@@ -9,7 +9,7 @@ regenerate: nix build .#docs-lan-route
 Two-section artifact:
 
  1. Networking-concern overview — RFC 145 doc-comments
-    extracted from `modules/infra/networking/default.nix`.
+    extracted from `infra/common/nixos/routes.nix`.
  2. `nori.lanRoutes.<name>.*` schema reference — option
     fields extracted via `nixosOptionsDoc`.
 
@@ -29,7 +29,7 @@ generators). Adapter siblings:
                         (consumed inline by lan-route)
 
 Authelia (the OIDC daemon) is access-concern, not networking;
-lives at `modules/infra/access/` (Phase 3d). lan-route generates
+lives at `services/authelia/nixos.nix`. lan-route generates
 the sops-templated OIDC secrets here; authelia consumes them.
 
 ## Three zones, default-deny
@@ -125,7 +125,7 @@ under `*.${domain}`. Each entry generates ALL of:
  - Tailnet firewall hole (if `exposeOnTailnet`)
  - sops raw + hash secrets + env-file template (if `oidc` is
    set) — Authelia client list assembly lives in
-   `modules/infra/access/authelia/runtime.nix`, reading back
+   `services/authelia/nixos.nix`, reading back
    `config.nori.lanRoutes` from here. Hash material stays in
    sops; the authelia config-filter injects it at runtime.
 
@@ -154,7 +154,7 @@ read this rather than hardcoding the literal.
 Split-horizon DNS: Blocky is authoritative for ` *.<domain> ` on the
 LAN/tailnet (resolves to ` nori.lanIp `). Public DNS contains records
 only for routes whose ` reachability ` is explicitly ` internet `;
-` modules/infra/networking/cloudflare-ddns/runtime.nix ` reconciles
+` services/cloudflare-ddns/nixos.nix ` reconciles
 those exact, DNS-only IPv4 records to the residential WAN address.
 All other names remain internal. Caddy obtains real Let’s Encrypt
 certs via DNS-01 using the existing Cloudflare token in sops, so
@@ -186,7 +186,7 @@ string
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -196,7 +196,7 @@ string
 
 LAN IP that service-domain names resolve to. Derived from the
 nori.hosts registry as “the unique host with role=workhorse
-and a non-null lanIp” (see modules/infra/hosts.nix). When
+and a non-null lanIp” (see infra/common/nixos/hosts.nix). When
 a future second workhorse with a static LAN lease lands, the
 derivation fails eval — surfaces the ambiguity instead of
 silently picking workstation.
@@ -206,12 +206,11 @@ every client to be on tailnet to reach any service — a sharp
 edge for LAN-resident devices that can’t or don’t run tailscale
 (chromecasts, printers, occasional guest devices). Using the
 LAN IP lets those clients hit services directly. Tailnet
-clients off-LAN still reach the same address via Pi’s subnet
-route advertisement (services.tailscale.useRoutingFeatures =
-“server” in modules/machines/pi/default.nix); the client side needs
+clients off-LAN still reach the same address via Pi’s Ansible-managed
+subnet route advertisement (` services/tailscale/ansible `); the client side needs
 –accept-routes set in its tailscaled config.
 
-Consumers: Blocky’s forwarder mode (modules/infra/networking/blocky/runtime.nix)
+Consumers: Blocky’s forwarder mode (services/blocky/nixos.nix)
 and the Blocky DNS generator below. Both want a single “where
 does the service namespace live” address.
 
@@ -231,7 +230,7 @@ string
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -270,7 +269,7 @@ attribute set of (submodule)
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -311,7 +310,7 @@ fits.
 
 
 *Type:*
-one of “operator”, “family”, “public”
+one of “family”, “operator”, “public”
 
 
 
@@ -322,7 +321,7 @@ one of “operator”, “family”, “public”
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -356,7 +355,7 @@ null
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -383,7 +382,7 @@ false
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -401,7 +400,7 @@ server-rendered”), not feature-list.
 string
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -419,7 +418,7 @@ first (most-clicked), Admin last.
 one of “Consume”, “Acquire”, “Personal”, “Projects”, “Admin”
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -439,7 +438,7 @@ Calibre-web, Komga, Beszel, …)
 string
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -458,7 +457,7 @@ as a parenthetical for the monitor widget —
 string
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -486,7 +485,7 @@ false
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -520,7 +519,7 @@ break under cookie-based forward-auth.
 Authelia uptime becomes load-bearing: an Authelia outage
 returns 502 for every forward-auth’d route. SSH-tunnel to
 the backend port directly as the recovery escape hatch.
-See modules/infra/access/authelia/runtime.nix for the upstream.
+See services/authelia/nixos.nix for the upstream.
 
 
 
@@ -536,7 +535,7 @@ null
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -567,7 +566,7 @@ list of string
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -594,7 +593,7 @@ null
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -624,7 +623,7 @@ list of string
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -650,7 +649,7 @@ signed integer
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -675,7 +674,7 @@ string
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -699,7 +698,7 @@ string
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -742,7 +741,7 @@ null
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -753,7 +752,7 @@ null
 If set, this route gets:
 
  - an Authelia OIDC client entry (assembled by
-   modules/infra/access/authelia/runtime.nix from this declaration)
+   services/authelia/nixos.nix from this declaration)
  - a sops secret named ` oidc-<name>-client-secret `
  - a sops env-file template named ` oidc-<name>-env `
    containing ` <secretEnvName>=<raw> `, ready to wire as
@@ -778,7 +777,7 @@ null
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -802,7 +801,7 @@ string
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -818,7 +817,7 @@ Display name shown on Authelia consent screen.
 string
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -838,7 +837,7 @@ Vaultwarden: /identity/connect/oidc-signin
 string
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -869,7 +868,7 @@ list of string
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -897,7 +896,7 @@ string
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -913,7 +912,7 @@ OAuth 2.0 token endpoint authentication method required by the client.
 one of “client_secret_basic”, “client_secret_post”
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -929,7 +928,7 @@ Backend TCP port (validated 0-65535 at eval time).
 16 bit unsigned integer; between 0 and 65535 (both inclusive)
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -955,7 +954,7 @@ false
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -996,7 +995,7 @@ one of “internal”, “internet”
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -1028,7 +1027,7 @@ a service crosses machines, which IS the act of declaring
 an HTTP route. The three concerns (service / route /
 location) degenerate at host-local and unify at
 cross-machine. See
-` docs/reports/2026-06-17-runson-coupling-analysis.md `
+` docs/archive/reports/2026-06-17-runson-coupling-analysis.md `
 for the full analysis + algebraic forward-extension
 (failover / loadbalance / sequential).
 
@@ -1042,11 +1041,11 @@ string
 *Example:*
 
 ```nix
-"aurora"
+"workstation"
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -1070,7 +1069,7 @@ one of “http”, “https”
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -1107,7 +1106,7 @@ null
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 
 
@@ -1143,6 +1142,6 @@ null
 ```
 
 *Declared by:*
- - `modules/infra/networking`
+ - `infra/common/nixos/routes.nix`
 
 

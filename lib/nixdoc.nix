@@ -1,6 +1,6 @@
 /*
   Helpers for generating per-option reference markdown from NixOS
-  module-system schemas. Used by every `flake-parts/packages/docs-*.nix`
+  module-system schemas. Used by every `lib/flake-parts/packages/docs-*.nix`
   derivation.
 
   Pattern taken from rustdoc / jsdoc / Zig doc-comment generation,
@@ -32,7 +32,7 @@ let
     artifact is byte-stable across builds (the docs-fresh check would
     otherwise fire on every commit because the store path's hash
     differs each rebuild). The output is the literal repo-relative
-    path (e.g. `modules/infra/networking`) — readable, stable, no
+    path (e.g. `infra/common/nixos/routes.nix`) — readable, stable, no
     regex syntax leaking into rendered docs.
   */
   stripStorePrefix =
@@ -162,7 +162,7 @@ let
         cat > $out <<HEADER
         ---
         generated: true
-        source: flake-parts/packages/docs-${name}.nix
+        source: lib/flake-parts/packages/docs-${name}.nix
         regenerate: nix build .#docs-${name}
         ---
 

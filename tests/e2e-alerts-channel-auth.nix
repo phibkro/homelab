@@ -5,7 +5,7 @@
   onto a self-hosted hub that denies anonymous publish; CRITICAL INFRA
   alerts deliberately stay on ntfy.sh (uptime-independent of the
   homelab). The split is structural — per-channel `baseUrl` +
-  `authTokenSecret` (modules/infra/observability/alerts.nix) — not a
+  `authTokenSecret` (infra/common/nixos/alerts.nix) — not a
   convention two producers have to remember. This test proves the
   structure holds by running the real nori-alert binary against a stub
   receiver and inspecting the actual HTTP request it sent:
@@ -42,7 +42,7 @@ pkgs.testers.runNixOSTest {
     {
       imports = [
         inputs.sops-nix.nixosModules.sops
-        ../modules/infra/observability/alerts.nix
+        ../infra/common/nixos/alerts.nix
       ];
 
       environment.etc."sops-test-age.txt".source = ./keys/test-age.txt;

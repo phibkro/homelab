@@ -1,13 +1,13 @@
 ---
 name: add-oidc-client
-description: USE WHEN bootstrapping a new Authelia OIDC client for a service that wants SSO via `auth.nori.lan` — generates raw+hash secrets, pastes into sops, declares the route's `oidc` block, wires the consuming systemd unit. Hash material lives ONLY in sops (Authelia's `template` filter reads at startup); the `forbidden-patterns` flake check fails the build on stray `$pbkdf2-` strings.
+description: USE WHEN bootstrapping a new Authelia OIDC client for a service that wants SSO via `auth.nori.lan` — generates raw+hash secrets, pastes into sops, declares the route's `oidc` block, wires the consuming systemd unit. Hash material lives ONLY in sops (Authelia's `template` filter reads at startup); the `lint` flake check fails the build on stray `$pbkdf2-` strings.
 ---
 
 # Bootstrap a new Authelia OIDC client
 
 OIDC clients are auto-generated from `nori.lanRoutes.<n>.oidc`. The abstraction owns the Authelia client entry, the sops secret(s), and the env-file template; the consuming service module owns its own systemd wiring (`EnvironmentFile`, `SupplementaryGroups`) and the non-secret OIDC env vars (provider URL, client_id, etc.).
 
-**Hash material lives only in sops.** Authelia's `template` config-filter (`X_AUTHELIA_CONFIG_FILTERS=template`, set in `authelia.nix`) reads the PBKDF2 hash from `/run/secrets/oidc-<n>-client-secret-hash` at startup and substitutes it into the YAML config before parsing — zero hash material in committed Nix. Enforced by the `forbidden-patterns` flake check; a stray inline `$pbkdf2-` string fails `nix flake check`.
+**Hash material lives only in sops.** Authelia's `template` config-filter (`X_AUTHELIA_CONFIG_FILTERS=template`, set in `services/authelia/nixos.nix`) reads the PBKDF2 hash from `/run/secrets/oidc-<n>-client-secret-hash` at startup and substitutes it into the YAML config before parsing — zero hash material in committed Nix. Enforced by the `lint` flake check; a stray inline `$pbkdf2-` string fails `nix flake check`.
 
 ## Steps
 
@@ -34,7 +34,7 @@ Single-quote the hash so YAML doesn't interpret the `$` chars. Single-quote the 
 
 ### 3. Declare the route's `oidc` block
 
-In the service's manifest (`modules/services/<svc>/manifest.nix`) — the manifest is the single source of truth for the route and public-safe authentication policy:
+In the service's manifest (`services/<svc>/manifest.nix`) — the manifest is the single source of truth for the route and public-safe authentication policy:
 
 ```nix
 nori.lanRoutes.<name> = {

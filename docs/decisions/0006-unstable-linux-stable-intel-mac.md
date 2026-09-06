@@ -15,7 +15,7 @@ A single `nixpkgs` and Home Manager pair cannot express both lifecycles honestly
 
 The primary `nixpkgs` input tracks `nixos-unstable`; all NixOS hosts and their embedded Home Manager configurations follow it. The primary Home Manager input tracks its rolling branch and follows primary nixpkgs.
 
-The MacBook uses separate `nixpkgs-stable` and `home-manager-darwin` inputs pinned to the matching 26.05 release branches. `flake-parts/home.nix` passes those inputs explicitly to the standalone Mac factory.
+The MacBook uses separate `nixpkgs-stable` and `home-manager-darwin` inputs pinned to the matching 26.05 release branches. `nix/flake-parts/home.nix` passes those inputs explicitly to the standalone Mac factory. <!-- path-coherence: skip — retired historical implementation -->
 
 Package-specific release inputs are removed once unstable carries the required package. Ollama therefore returns to `pkgs.ollama-cuda`. A broken unstable leaf may temporarily consume a package from `nixpkgs-stable` with an adjacent removal condition; HandBrake's currently non-applying ffmpeg patch is the first such exception.
 

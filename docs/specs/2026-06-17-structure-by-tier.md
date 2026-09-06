@@ -15,14 +15,14 @@ Operator framing (paraphrased from session 2026-06-17):
 
 > "It's almost tiered. Packages are stateless bundles of concern. Services are stateful. Packages are easily divisible / distributable. Distributed stateful services is where the complexity lives."
 
-> "Storage policy is described in docs but dumped into modules/effects by category instead of by concern. Could be useful to group by concern, coupling, and by function."
+> "Storage policy is described in docs but dumped into nix/effects by category instead of by concern. Could be useful to group by concern, coupling, and by function."
 
 ## The structural mismatch
 
 Today, modules are organized by SHAPE (what they look like syntactically), not by CONCERN (what question they answer):
 
 ```
-modules/infra/      Reader/collected-Writer schemas (the SHAPE)
+nix/modules/system/      Reader/collected-Writer schemas (the SHAPE)
   ├── lan-route.nix       routes + access + location
   ├── backup.nix          backup intent
   ├── replication.nix     btrbk send/receive policy
@@ -36,7 +36,7 @@ modules/infra/      Reader/collected-Writer schemas (the SHAPE)
   ├── restart-policy.nix     restart-on-failure shape
   └── tailnet-appliance.nix  appliance hardening
 
-modules/services/     Per-service modules (the SHAPE)
+nix/modules/services/     Per-service modules (the SHAPE)
   ├── arr/                  *arr stack subgroup
   ├── backup/               backup engines (restic + btrbk + verify)
   ├── beszel/               beszel hub + agent split
@@ -102,7 +102,7 @@ This means `nori.lanRoutes.<X>` no longer lives in `effects/lan-route.nix` as a 
 ```
 WAS                                     IS
 ────────────────────────────────────────────────────────────────
-effects/lan-route.nix                   lib/lan-route.nix
+effects/lan-route.nix                   nix/lib/lan-route.nix
   options.nori.lanRoutes (schema)         option type definition
   config (collected generators)           generator functions
 
@@ -211,14 +211,14 @@ Phase 5  Each generator (diagrams, drives, caps) lands as a
          separate sprint after the relevant tier-of-modules
          has migrated.
 
-Phase 6  effects/ thins out as schemas-only or moves under lib/.
+Phase 6  effects/ thins out as schemas-only or moves under nix/lib/.
          services/ becomes the home of all service declarations
          in per-service folders.
 ```
 
 ## Out of scope of this spec
 
-- effects/ → lib/ rename (Phase 6+)
+- effects/ → nix/lib/ rename (Phase 6+)
 - The R1 D2 diagram generator (Phase 5+)
 - The K6 drives table generator (Phase 5+)
 - The R2 location-policy extraction (still rule-of-three deferred)

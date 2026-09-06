@@ -1,54 +1,20 @@
 ---
-description: USE WHEN a structural change just landed — a new abstraction, pattern, convention, flake check, host, or cross-cutting decision fresh agents would need to know about. Triggers: "we just landed X", "what doc tier needs updating?", "after this commit, anything else?". Also auto-invoke after committing a new file in `modules/infra/`, a new flake check, or a new host folder. Decides which doc tier (or skill, or memory) needs updating. Runs IMMEDIATELY after the change, not at session end — drift compounds.
-when_to_use: A structural change just landed (or is about to) — phrases like "we just landed <abstraction>", "after this commit, anything else?", "what doc tier needs updating?", "I just merged X, what's the followup?". Also auto-invoke after committing a new file in `modules/infra/`, a new flake check, a new convention-codifying assertion, or a new host folder.
+name: on-structural-change
+description: Keep imports, generators, checks and current documentation coherent when moving homelab code or changing ownership.
 ---
 
-# On every structural change — refresh the doc tier
+Read `docs/README.md` for document ownership and
+`docs/reference/module-authoring.md` for implementation ownership.
 
-A "structural change" introduces a new pattern, abstraction, module shape, constraint, or convention that a fresh agent's mental model needs and that isn't obvious from one file's syntax.
+Preserve dirty operator work. Change canonical declarations first, then update
+consumers and regenerate projections. Directory moves must repair Nix imports,
+Just fragments, deployment source roots, tests, agent instruction sources and
+current documentation. Inventory remains the host enumeration authority.
 
-Examples in this project: the `nori.<...>` family of attrset-keyed declarative options in `modules/infra/`, the topology registry, the cross-host service split pattern, the appliance/workhorse role split, each new flake check.
+Keep historical plans and incident evidence under `docs/archive/`; current
+runbooks must describe the deployed backend. Link to canonical facts instead
+of maintaining another host/service list in a skill.
 
-## The question to ask
-
-**What would a fresh agent need to know that they couldn't derive from the code alone?**
-
-If the answer is "nothing — it's self-documenting via flake check + module headers + assertions", you're done. If the answer is anything else, route the update to the right tier.
-
-## Routing table
-
-| Symptom | Action |
-|---|---|
-| Active example in `CLAUDE.md` or any tier-2 reference doc (`TOPOLOGY.md`, `STORAGE.md`, `NETWORK.md`, `SERVICES.md`, `MODULES.md`, `ENFORCEMENT.md`, `RECOVERY.md`, `RATIONALES.md`) is now stale | Fix immediately. Drift acted on by the next agent is the highest-cost class. |
-| New pattern used twice or more, with non-deterministic decisions per use | Codify as a skill in `.claude/skills/<n>/`. The cross-host service split → `relocate-to-pi` is the precedent. |
-| New convention agents should follow (rule, not example) | Add the shape to `docs/reference/module-authoring.md`; add the rule + its rung to `docs/invariants.md`. Ideally backed by a flake check or module assertion. Rules in prose drift; rules in code don't. |
-| Hard-won mistake worth surfacing (subtle gotcha, footgun) | Retain one self-contained Mnemopi memory named `gotcha-<technology>-<symptom>`. Preserve trigger, diagnosis, corrective action, safety rationale, exact commands, and failure signatures. |
-| Cross-session fact (preferences, project state, host topology) | Retain it in Mnemopi. Don't duplicate what's already canonical in code or docs. |
-| Stale enumeration / count that mirrors code cardinality | Replace with a category description + live oracle (`nix flake show .#checks`, `just list-ports`, `ls modules/infra/`). Per `feedback/stratify_by_leverage` memory. |
-
-## Specific patterns this session has seen
-
-- **New `nori.<X>` lib module** → mention in CLAUDE.md "Composable abstractions" bias bullet (the family list); update docs/reference/module-authoring.md "Service module template" if the abstraction changes how services declare their own config; deep-dive lives in CONCEPTS.md § "Effect interface deep-dive"
-- **New flake check** → no doc enumeration needed if you describe the category instead; if the check enforces a new convention, mention the convention in docs/reference/module-authoring.md and the rule + rung in docs/invariants.md
-- **New host** → TOPOLOGY.md § "Hosts at a glance" + `flake.nix` `identityFor` (eval enforces the latter); maybe `add-host` skill if the path is new
-- **New cross-host split** → if it's the third instance, extract `mkCrossHostService` (rule of three); update `relocate-to-pi` skill
-- **Stale doc artifact noticed** → fix it now, not at session end. The cost of an immediate update is small; the cost of a fresh agent acting on stale information is large.
-
-## What NOT to do
-
-- **Don't batch for session end.** Drift compounds. The cost asymmetry favors immediate updates.
-- **Don't update docs that derive from code** — a list mirroring `modules/infra/` contents is drift-prone; describe the pattern + point at `ls modules/infra/`. (See `feedback/stratify_by_leverage` memory.)
-- **Don't add to CLAUDE.md when a skill is the right home** — skills load on demand; CLAUDE.md is always-loaded context cost.
-- **Don't write a procedure prose section when the procedure is non-deterministic and reusable** — extract to a skill instead.
-- **Don't codify a pattern that's only been used once.** Wait for the third concrete use. Two instances look like a pattern but are often coincidence; the third reveals the actual axis of variation.
-
-## Verification
-
-After updating:
-
-```bash
-nix flake check       # new conventions backed by code shouldn't break anything
-git diff --stat       # confirms only doc-tier files changed (vs accidental code edits)
-```
-
-There's an open Outstanding item to add a content-drift flake check — until that lands, this skill is the manual replacement for catching doc/code drift.
+For mechanical moves, compare evaluated inventory before and after. Run
+`just check-migration`, relevant backend checks, and generated-document freshness.
+Report source checks separately from build, VM and production observations.

@@ -439,4 +439,4 @@ Until then, mouse editing on `lua:rice` is unsupported. The explicit workaround 
 - [Hyprland 0.55.4 drag controller](https://github.com/hyprwm/Hyprland/blob/v0.55.4/src/layout/supplementary/DragController.cpp)
 - [Hyprland 0.55.4 workspace implementation](https://github.com/hyprwm/Hyprland/blob/v0.55.4/src/desktop/Workspace.cpp)
 - [Hyprland 0.55.4 official manual layout](https://github.com/hyprwm/Hyprland/blob/v0.55.4/example/layouts/manual.lua)
-- [Original rice layout design](./2026-07-15-hypr-rice-layout-design.md)
+- [Original rice layout design](2026-07-15-hypr-rice-layout-design.md)

@@ -146,7 +146,7 @@ Per-drive concerns (Samba shares, `nori.fs.<X>` declarations, the backup-target 
 
 ### Reversibility
 
-The migration plan (`docs/plans/2026-06-11-aurora-migration.md`) calls out per-phase reversibility. The Nix-only phases (P1-P8) are `git revert`-able. The MP510 wipe (P9) and the IronWolf subvol deletes (P14) are one-way; both are gated on verified copies of the affected data being present elsewhere. The OneTouch physical move (P13) is reversible by re-plugging into workstation. Service state migrations (P11) are recoverable from the pre-migration restic snapshot.
+The migration plan (`docs/archive/plans/2026-06-11-aurora-migration.md`) calls out per-phase reversibility. The Nix-only phases (P1-P8) are `git revert`-able. The MP510 wipe (P9) and the IronWolf subvol deletes (P14) are one-way; both are gated on verified copies of the affected data being present elsewhere. The OneTouch physical move (P13) is reversible by re-plugging into workstation. Service state migrations (P11) are recoverable from the pre-migration restic snapshot.
 
 ## Alternatives considered
 
@@ -204,10 +204,10 @@ Discussed under "Decision" above. The residual risk profile (total apartment los
 
 ## See also
 
-- Plan: `docs/plans/2026-06-11-aurora-migration.md` (the *how*)
+- Plan: `docs/archive/plans/2026-06-11-aurora-migration.md` (the *how*)
 - `docs/reference/storage.md` § value tiers — vocabulary used here
 - `docs/reference/topology.md` § service placement — the fate-sharing test this ADR honours
 - ADR-0001 § "Code is the single source of truth" — the practice that makes the per-host opt-in registry the authoritative answer to "where does X run?"
-- `modules/infra/backup/default.nix` — `nori.backupTargets` (remote-URL support already landed)
-- `modules/infra/storage/default.nix` — `nori.fs` (the `samba` block extension is part of P4)
-- `modules/infra/networking/default.nix` — extensions for `port` auto-aggregation + `upstreams` land in P1
+- `infra/common/nixos/backup.nix` — `nori.backupTargets` (remote-URL support already landed)
+- `infra/common/nixos/storage/default.nix` — `nori.fs` (the `samba` block extension is part of P4)
+- `infra/common/nixos/routes.nix` — extensions for `port` auto-aggregation + `upstreams` land in P1

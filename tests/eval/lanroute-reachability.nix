@@ -24,11 +24,11 @@ let
     specialArgs = { inherit inputs; };
     modules = [
       inputs.sops-nix.nixosModules.sops
-      ../../modules/infra/hosts.nix
-      ../../modules/infra/capabilities
-      ../../modules/infra/storage
-      ../../modules/infra/backup
-      ../../modules/infra/networking
+      ../../infra/common/nixos/hosts.nix
+      ../../infra/common/nixos/service-hardening.nix
+      ../../infra/common/nixos/storage
+      ../../infra/common/nixos/backup.nix
+      ../../infra/common/nixos/routes.nix
       (
         { lib, ... }:
         {

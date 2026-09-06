@@ -1,10 +1,6 @@
 name: flake check
 
-# Runs `nix flake check` on every push to main and on every pull
-# request. Closes the gap that `.githooks/pre-commit` skips on Macs
-# without nix on PATH (which is most commits, since the working tree
-# lives on a Mac and nix runs on the host). Anything that bypasses
-# pre-commit gets caught here before merge.
+# Static checks and closure builds run without deployment credentials.
 
 on:
   push:
@@ -53,32 +49,46 @@ jobs:
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
             experimental-features = nix-command flakes
 
-      - name: nix flake check
+      - name: fast Nix checks
         # HOMELAB_CI=1 + --impure activate the CI-only davinci-resolve stub
-        # (modules/machines/workstation/default.nix): the unfree, uncached
+        # (infra/workstation/default.nix): the unfree, uncached
         # multi-GB binary repackage would otherwise rebuild every run (~40 min,
         # and it SIGTERM'd a run at the runner's disk/time limit on 2026-07-18).
         # Local `just rebuild` / `nix flake check` stay pure → real package.
-        run: HOMELAB_CI=1 nix flake check --impure --print-build-logs
+        run: HOMELAB_CI=1 nix develop --impure --command bash scripts/check-nix.sh fast --impure
+
+  nix-vms:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            experimental-features = nix-command flakes
+            max-jobs = 1
+            cores = 2
+      - name: disposable NixOS runtime checks
+        run: HOMELAB_CI=1 nix develop --impure --command bash scripts/check-nix.sh vm --impure
+
+  pi-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            experimental-features = nix-command flakes
+      - name: Pi lint, contracts, inventory, and Ansible syntax
+        # Root flake.lock pins devenv; infra/pi/devenv.lock pins the appliance tools.
+        run: nix develop --command just pi::check
 
   # Build the converged workstation closure on the standard x86 runner. This
   # job only proves the closure: it receives no deployment credentials and
   # never activates a host.
   workstation-build:
     runs-on: ubuntu-latest
-    # Mapped here because the secrets context is unavailable to a step-level
-    # `if`, and the publish step must skip cleanly while these are unset.
-    #
-    # The endpoint is a secret rather than a variable although it is not a
-    # credential: it embeds the Cloudflare account id, it is interpolated into
-    # a command line, and this repository is public, so only a secret is
-    # masked in the build log.
-    env:
-      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-      NIX_SIGNING_KEY: ${{ secrets.NIX_SIGNING_KEY }}
-      CACHE_ENDPOINT: ${{ secrets.HOMELAB_CACHE_ENDPOINT }}
-      CACHE_BUCKET: ${{ vars.HOMELAB_CACHE_BUCKET }}
     steps:
       - uses: actions/checkout@v5
 
@@ -92,7 +102,7 @@ jobs:
         id: closure
         run: |
           path="$(
-            HOMELAB_CI=1 nix build \
+            HOMELAB_CI=1 nix build --impure \
               .#nixosConfigurations.workstation.config.system.build.toplevel \
               --no-link \
               --print-out-paths \
@@ -101,25 +111,3 @@ jobs:
               --option cores 2
           )"
           echo "path=${path}" >> "${GITHUB_OUTPUT}"
-
-      # Publishing the closure lets the workstation substitute it instead of
-      # rebuilding locally. Skipped while the R2 credentials are unset, so the
-      # job stays green until they exist.
-      - name: publish closure to the homelab cache
-        if: env.R2_ACCESS_KEY_ID != '' && env.CACHE_BUCKET != ''
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        run: |
-          umask 077
-          key="$(mktemp)"
-          trap 'rm -f "${key}"' EXIT
-          printf '%s' "${NIX_SIGNING_KEY}" > "${key}"
-          # want-mass-query and priority are recorded in nix-cache-info by the
-          # first upload and are awkward to change afterwards. Priority 45 puts
-          # this cache after cache.nixos.org (40), which is right: upstream
-          # serves almost everything, and this bucket only adds the paths
-          # this flake does not publish upstream.
-          nix copy \
-            --to "s3://${CACHE_BUCKET}?endpoint=${CACHE_ENDPOINT}&region=auto&compression=zstd&want-mass-query=true&priority=45&secret-key=${key}" \
-            "${{ steps.closure.outputs.path }}"

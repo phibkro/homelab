@@ -1,61 +1,19 @@
 #!/usr/bin/env bash
-# Pre-commit hook: validate flake before allowing the commit.
-#
-# Runs `nix flake check` which evaluates all hosts and runs the
-# checks defined in flake.nix (statix + deadnix + nixfmt format).
-#
-# Skips gracefully if `nix` isn't on PATH — most commits are made
-# from the Mac which doesn't have nix locally; CI / nori-station /
-# a future contributor with Nix installed catches issues there.
-# To enable full local validation: install nix-darwin (or just the
-# upstream nix installer) on your Mac.
-#
-# Enabling this hook (one-time, per clone):
-#   git config core.hooksPath .githooks
-
-set -e
-
-staged_files="$(git diff --cached --name-only)"
-
-if grep -qE '^pi/' <<<"$staged_files"; then
-  if ! command -v devenv >/dev/null 2>&1; then
-    printf '\033[31m[pre-commit] devenv is required for Pi checks.\033[0m\n' >&2
-    exit 1
-  fi
-
-  printf '[pre-commit] applying safe Pi fixes…\n' >&2
-  (cd pi && devenv shell -- fix)
-
-  if ! git diff --quiet -- pi; then
-    printf '\033[31m[pre-commit] Pi fixes changed files; review and stage them.\033[0m\n' >&2
-    exit 1
-  fi
-
-  printf '[pre-commit] running Pi static analysis…\n' >&2
-  (cd pi && devenv shell -- check)
-fi
-
-# Only run the flake check for staged Nix sources.
-if ! grep -qE '\.nix$|^flake\.lock$' <<<"$staged_files"; then
-  exit 0
-fi
-
-if ! command -v nix >/dev/null 2>&1; then
-  printf '\033[33m[pre-commit] nix not on PATH — skipping flake check.\033[0m\n' >&2
-  printf '\033[33m            Push will validate via host rebuild; consider installing nix locally.\033[0m\n' >&2
-  exit 0
-fi
-
-printf '[pre-commit] running nix flake check…\n' >&2
-
-# --no-warn-dirty silences the dirty-tree warning during pre-commit.
-# Format / statix / deadnix run as part of the checks defined in
-# flake.nix; eval validates host configs.
-if ! nix flake check --no-warn-dirty 2>&1; then
-  printf '\033[31m[pre-commit] nix flake check FAILED.\033[0m\n' >&2
-  printf '\033[31m            Fix the errors above (or run nix fmt for formatting).\033[0m\n' >&2
-  printf '\033[31m            Emergency bypass: git commit --no-verify.\033[0m\n' >&2
-  exit 1
-fi
-
-printf '\033[32m[pre-commit] checks passed.\033[0m\n' >&2
+# Enable with: git config core.hooksPath .githooks
+# Validate the index in isolation; never format or stage operator files.
+set -euo pipefail
+root="$(git rev-parse --show-toplevel)"
+cd "$root"
+command -v nix >/dev/null || { echo '[pre-commit] Nix is required; no checks were run.' >&2; exit 1; }
+snapshot="$(mktemp -d "${TMPDIR:-/tmp}/homelab-staged.XXXXXXXX")"
+trap 'rm -rf "$snapshot"' EXIT
+git checkout-index --all --prefix="$snapshot/"
+# Git hooks may inherit an alternate index. Never propagate it to the fixture.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
+cd "$snapshot"
+git init --quiet
+git add --all --force
+printf '[pre-commit] checking exact staged snapshot (Nix + Pi static checks)…\n' >&2
+nix develop --command bash scripts/check-nix.sh fast
+nix develop --command just pi::check
+printf '[pre-commit] staged snapshot passed; operator index and working files preserved.\n' >&2

@@ -117,11 +117,11 @@ just query-logs 'unit:restic-backups-* "snapshot " | tail 5'
 - **No retention beyond 14 days** (or whatever `-retentionPeriod` is set on pi). Older entries are pruned at merge time.
 - **No structured query before Vector parsed it.** If a service emits plain text inside `_msg`, only full-text search works on the content — `parsed.*` is empty.
 - **No log-based alerting** is wired through ntfy yet. Gatus + restic `OnFailure` cover the synthetic-health side; log-pattern alerts would need a separate `services.vector` route into `alert.nori.lan`.
-- **No backup of the index itself.** Pi's `@restic-local` would catch it via the future `nori.backups.victorialogs.paths` if we change the `.skip` rationale — right now it's intentionally skipped (event history is rebuild-from-zero acceptable).
+- **Pi backup scope** comes from `inventory/backup.nix`, including the VictoriaLogs job. See `docs/runbooks/onetouch-backup-cutover.md` for deployment and restore verification.
 
 ## Where things live
 
-- Pi daemon module: `modules/infra/observability/victorialogs/runtime.nix`
-- Workstation/pi shipper: `modules/infra/observability/vector.nix`
-- Caddy route + Gatus monitor + Glance entry: `modules/infra/observability/victorialogs/manifest.nix`
-- Grafana datasource: `modules/infra/observability/grafana/runtime.nix` (`ops.home.phibkro.org` → "VictoriaLogs")
+- Pi daemon module: `services/victorialogs/nixos.nix`
+- Workstation/pi shipper: `services/vector/nixos.nix`
+- Caddy route + Gatus monitor + Glance entry: `services/victorialogs/manifest.nix`
+- Grafana datasource: `services/grafana/nixos.nix` (`ops.home.phibkro.org` → "VictoriaLogs")

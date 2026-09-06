@@ -149,5 +149,5 @@ Trigger: any of
 - Sprint 3 (`feat(checks): Phase 3d — nori.lint TOML registry`) +
   Sprint 4 (`feat(checks): promote function-named-subdomains`) —
   precedents for promotion-via-flake-check; but those are grep-shaped
-  and live in `modules/lint/`. This one is eval-shaped and lives in
+  and live in `nix/lint/`. This one is eval-shaped and lives in
   the host module system or flake checks directly.

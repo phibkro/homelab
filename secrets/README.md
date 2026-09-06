@@ -18,7 +18,7 @@ secrets file, just `sops secrets/<name>.yaml` and start adding keys.
 
 ## Per-secret file routing
 
-`modules/machines/base/sops.nix` sets `sops.defaultSopsFile =
+`infra/common/nixos/sops.nix` sets `sops.defaultSopsFile =
 ../../secrets/secrets.yaml`, so secrets without an explicit
 `sopsFile` declaration read from there. To route a secret at a
 different file, override per-secret:
@@ -38,7 +38,7 @@ secret is genuinely scoped to one project (`heim-payload-secret`,
 `heim-revalidate-secret` — those mean nothing outside Payload CMS).
 
 Convention:
-- **Homelab service secrets** (used by `modules/services/<service>/runtime.nix` to run the service itself) → `secrets.yaml` (default file, no override needed).
+- **Homelab service secrets** (used by `services/<service>/nixos.nix` to run the service itself) → `secrets.yaml` (default file, no override needed).
 - **Self-deployed app secrets** (used by personal projects: filmder, heim, drinks, finnbydel) → `apps.yaml` (override `sopsFile` per declaration).
 
 ## SecretSpec
@@ -147,7 +147,7 @@ the host with the declared owner / mode.
 ## Agent-access boundary
 
 This repo's coding agent (Claude) writes the unencrypted *wiring*:
-`modules/machines/base/sops.nix`, `.sops.yaml`, this README, and `sops.secrets.X`
+`infra/common/nixos/sops.nix`, `.sops.yaml`, this README, and `sops.secrets.X`
 declarations inside service modules. The agent **must not have access
 to your age private key** (`~/.config/sops/age/keys.txt`); without it,
 encrypted secrets are gibberish to anything other than you and the

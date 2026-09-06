@@ -31,7 +31,7 @@ only at:
 
 - Eval time (when an operator queries `nix repl` or hits an error)
 - Editor tooling, if any (the Nix LSP exposes them)
-- Anyone manually reading `modules/infra/<X>.nix`
+- Anyone manually reading `nix/modules/system/<X>.nix`
 
 Meanwhile, `docs/reference/*.md` paraphrases the same information in
 prose, which:
@@ -101,9 +101,9 @@ shouldn't carry. The schema details migrate to the generated layer.
 ### Out of scope
 
 - Generating docs from `description` fields on service modules
-  (e.g. `modules/services/*.nix`). Service modules don't carry rich
+  (e.g. `nix/modules/services/*.nix`). Service modules don't carry rich
   enough option descriptions today; the value/cost is worse than
-  for `modules/infra/`.
+  for `nix/modules/system/`.
 - Replacing all hand-maintained reference docs with generated ones.
   The hand-maintained docs carry doctrine the schema can't.
 

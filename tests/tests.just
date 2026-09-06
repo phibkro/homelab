@@ -18,9 +18,9 @@
 # Adding a new test-<X>: drop it here, add it to the `test` composite
 # below if it should run as part of the standard suite. The flake
 # check `infra-concerns-have-tests` (flake.nix) enforces that any new
-# Reader-shaped infra concern has a matching recipe — that check
-# greps for `^@?test-<X>:` in Justfile and walks `import` lines, so
-# tests.just is in-scope.
+# Reader-shaped infra schema is explicitly accounted for. Runtime-observable
+# effects must name a matching recipe; the check scans every imported *.just
+# fragment, so tests.just is in scope.
 
 # Catches the silent class where metrics exist somewhere but not where the
 # converged host expects them. Every declared scrape target must be up,
@@ -91,7 +91,7 @@
     echo
     [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
 
-# Use after a multi-effect deploy (anything touching modules/effects/
+# Use after a multi-effect deploy (anything touching nix/effects/
 # or home/) to verify declared intent landed at every runtime layer.
 #
 # Composite: all runtime-introspection recipes + the eval suite.
@@ -132,7 +132,7 @@
                  --apply 'r: builtins.attrNames r' 2>/dev/null \
                | nix shell nixpkgs#jq -c jq -r '.[]')
     domain=$(nix eval --raw "${flake_ref}.nori.domain" 2>/dev/null)
-    # nori.lanIp is overridden to pi's lanIp in modules/common — every
+    # nori.lanIp is overridden to pi's lanIp in nix/common — every
     # declared route's customDNS entry resolves here regardless of
     # `runsOn`, because pi runs the entry-plane Caddy.
     expected_ip=$(nix eval --raw "${flake_ref}.nori.lanIp" 2>/dev/null)
@@ -347,7 +347,7 @@
     [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
 
 # Each `nori.replicas.<X>` declares a cross-host dataset replica with
-# a freshness budget. The verifier (modules/effects/replication.nix)
+# a freshness budget. The verifier (nix/effects/replication.nix)
 # emits a per-replica oneshot on the target host; this test reads the
 # registry, finds entries targeting THIS host, and asserts each
 # verifier unit completed cleanly within the freshness budget.
@@ -731,7 +731,7 @@
 # Unit test: hypr-session capture/logd/cli/restore bats suites.
 @test-hypr-session:
     nix shell nixpkgs#bats nixpkgs#jq nixpkgs#socat -c \
-      bats modules/home/desktop/hypr-rice/hypr-session/tests/*.bats
+      bats users/nori/programs/desktop/hypr-rice/hypr-session/tests/*.bats
 
 # VM-tier e2e (layer 2 nixosTest) for hypr-session: boots a real
 # Hyprland on virtio-gpu/llvmpipe inside QEMU — structurally isolated
@@ -750,9 +750,10 @@
 
 # Open the nixosTest driver interactively — boot the VM ONCE, iterate
 # on testScript fragments without rebuilding. The big iteration-loop
-# win for layer 2 (nixosTest) work. Default to e2e-pi-smoke; pass a
+# win for layer 2 (nixosTest) work. Default to the reusable entry-plane
+# module contract; pass a
 # different test name to open another driver.
-@e2e-shell test="e2e-pi-smoke":
+@e2e-shell test="e2e-entry-plane-modules":
     nix run .#checks.x86_64-linux.{{test}}.driverInteractive
 
 # Run all layer-1 eval tests — sub-second checks of schema +
@@ -768,26 +769,6 @@
           '.checks."x86_64-linux" | to_entries | map(select(.key | startswith("eval-"))) | .[].key' | \
         sed 's|^|.#checks.x86_64-linux.|')
 
-# Measures whether session wrap-ups left enough context for a fresh
-# agent to perform — closes the otherwise-open loop on the "On every
-# structural change" / "On session end" rubrics. See
-# docs/agent-onboarding-test.md.
-# Run after major refactors or when the user pushes back on doc clarity.
-#
-# Test a fresh agent's onboarding: print the prompt to dispatch through the orientation drill.
+# Print the source-backed fresh-agent onboarding exercise.
 @test-agent-onboarding:
-    @echo "Onboarding test — dispatch a fresh subagent (or fresh Claude session) with:"
-    @echo ""
-    @echo "  You are a fresh agent with zero prior context on this homelab project."
-    @echo "  Read CLAUDE.md first to orient. Then for each numbered question in"
-    @echo "  docs/agent-onboarding-test.md, give a terse answer (~3 bullets)"
-    @echo "  using only files reachable from CLAUDE.md's routing table. Cite the"
-    @echo "  source file. Don't read the 'Expected (shape)' sections until AFTER"
-    @echo "  you've answered — those are grading rubrics, not hints."
-    @echo ""
-    @echo "Then compare answers to 'Expected (shape)' in each question. Failures:"
-    @echo "  - knowledge gap (info missing)"
-    @echo "  - routing gap (info exists but unreachable from CLAUDE.md)"
-    @echo "  - foregrounding gap (reachable but not where the agent looks first)"
-    @echo ""
-    @echo "Fix the gap and re-run."
+    cat docs/installs/agent-onboarding-test.md

@@ -50,7 +50,7 @@ Each PR (= one feature or in-depth improvement, not fixes) deserves its own:
 |---|---|---|
 | **Preamble** | Design + planning. State the goal, name the right answer first, capture decisions. | Brainstorming notes, a `docs/specs/` stub, or an ADR draft |
 | **Execution** | The actual code/docs work. Commit-by-commit, surfacing diffs. | Commits on a branch |
-| **Reporting** | What got done, what surfaced, what was deferred. | PR description + commit messages + linked `docs/reports/` |
+| **Reporting** | What got done, what surfaced, what was deferred. | PR description + commit messages + linked `docs/archive/reports/` |
 | **Reflection** | What worked, what didn't, what to do differently next time. | Notes back to operator / memory entries / SKILL updates |
 
 The execution phase has its own cadence; the planning + reporting + reflection are session-bookends.
@@ -142,11 +142,11 @@ Operator's framing in the 2026-06-16 session:
 
 ## When this becomes a plan
 
-After `docs/plans/2026-06-16-docs-deep-sweep.md` wraps (phases 3a-3d + remaining 3b sweeps land). Then:
+After `docs/archive/plans/2026-06-16-docs-deep-sweep.md` wraps (phases 3a-3d + remaining 3b sweeps land). Then:
 
 - Operator + agent session to walk the open questions and decide ceremony-by-ceremony
 - Produce ADR-0005 (or similar) capturing the workflow shape
-- Produce a `docs/plans/` entry for implementation if any tooling needs to land
+- Produce a `docs/archive/plans/` entry for implementation if any tooling needs to land
 - Update SKILL.md files (`wrap-session`, `wrap-feature`, etc.) to reflect chosen ceremonies
 
 ## Worked example — 2026-06-16 docs deep-sweep sprint retro
@@ -219,7 +219,7 @@ not the answer to it.
 ## References
 
 - `docs/decisions/0001-agentic-homelab-practices.md` — the ADR this work would revise (or extend); explicitly rejected feature branches on the "no humans to coordinate" axis. The new argument changes the axis.
-- `docs/plans/2026-06-16-docs-deep-sweep.md` — parent plan; this research session waits for it to finish
+- `docs/archive/plans/2026-06-16-docs-deep-sweep.md` — parent plan; this research session waits for it to finish
 - `docs/specs/2026-06-16-lint-rule-schema.md` — Phase 3d spec that triggered this meta-observation
 - `home/claude-code/skills/wrap-session/SKILL.md` — existing end-of-session ceremony
 - `home/claude-code/skills/wrap-feature/SKILL.md` — existing per-feature ceremony

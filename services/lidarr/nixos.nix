@@ -1,0 +1,55 @@
+{ config, ... }:
+let
+  musicDataset = config.nori.inventory.datasets.music;
+  musicPath = "${config.nori.fs.library.path}/${musicDataset.storage.relativePath}";
+in
+{
+  /*
+    Lidarr — music management. Same role as Sonarr/Radarr but for music:
+    watches Prowlarr for releases, hands grabs to qBittorrent, hardlinks
+    finished tracks into the music library. Library lives under
+    @library (curated tier — irreplaceable), specifically
+    `${nori.fs.library.path}/music`. Sibling tiers under library:
+    books (calibre-web), comics (komga). Navidrome and Jellyfin on
+    workstation read the same local music library.
+
+    First-run setup:
+      1. Visit https://music.${nori.domain}
+      2. Set admin password
+      3. Settings → Media Management → Root Folders →
+           /mnt/media/library/music
+      3a. Settings → Media Management → "Importing" →
+            "Minimum Free Space When Importing" → 5 GB.
+            See sonarr.nix for the rationale + qbittorrent.nix for the
+            wedge this prevents.
+      4. Settings → Download Clients → Add → qBittorrent
+           Host: localhost  Port: 8083
+           Username/Password: from qBittorrent
+           Category: music-lidarr
+      5. Copy Lidarr's API key from Settings → General → API Key.
+         In Prowlarr (indexers.home.phibkro.org) → Settings → Apps → Add →
+         Lidarr.
+      6. Add Artists / Albums via the UI.
+  */
+  services.lidarr = {
+    enable = true;
+    user = "lidarr";
+    group = "lidarr";
+    openFirewall = false;
+  };
+
+  # See sonarr.nix for the env-var override + auth-disabled rationale.
+  systemd.services.lidarr.environment = {
+    LIDARR__AUTH__METHOD = "Forms";
+    LIDARR__AUTH__REQUIRED = "DisabledForLocalAddresses";
+  };
+
+  users.users.lidarr.extraGroups = [ "media" ];
+
+  nori.harden.lidarr.binds = [
+    config.nori.fs.downloads.path
+    musicPath
+  ];
+
+  nori.backups.lidarr.include = [ "/var/lib/lidarr" ];
+}

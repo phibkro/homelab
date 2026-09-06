@@ -30,8 +30,8 @@ collaboration.
 
 ## Host: workstation (Sunshine)
 
-New module `modules/desktop/sunshine.nix`, imported via
-`modules/desktop/default.nix`. `modules/desktop/` is Linux/Hyprland-only
+New module `nix/desktop/sunshine.nix`, imported via
+`nix/desktop/default.nix`. `nix/desktop/` is Linux/Hyprland-only
 and is **not** imported by the darwin MacBook (it imports only
 `../../home/pc.nix`), so Sunshine is workstation-only by construction.
 

@@ -1,0 +1,6 @@
+---
+# Service realizations intentionally live below services/<name>/ansible. The
+# playbook names those nested roles directly so Ansible cannot silently select
+# a second wrapper role after the repository reorganization.
+skip_list:
+  - role-name[path]

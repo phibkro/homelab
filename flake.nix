@@ -1,10 +1,11 @@
 {
   description = "nori infrastructure (NixOS) — workstation and future lab hosts";
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     /*
       A stable pin kept only for packages that need one — currently just
-      handbrake (modules/home/profiles/creative/video.nix). Still on the
+      handbrake (profiles/home/creative/video.nix). Still on the
       26.05 *darwin* branch, a leftover of the retired Intel Mac
       (ADR-0006, superseded); the branch carries every platform, so this is
       cosmetically wrong rather than broken. Repointing it re-resolves
@@ -18,7 +19,7 @@
       (one input → multiple outputs) that `nori.<X>` modules use at the
       NixOS layer, applied to the flake-output layer. Lets each check /
       package / devshell live in its own file with a typed interface.
-      Eval doc: docs/plans/2026-06-21-dendritic-evaluation.md.
+      Eval doc: docs/archive/plans/2026-06-21-dendritic-evaluation.md.
     */
     flake-parts.url = "github:hercules-ci/flake-parts";
     flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
@@ -28,11 +29,18 @@
       whose nixos-unstable channel cut lags far behind upstream. Don't
       mass-overlay from this; resolve specific lags one package at a
       time. Currently consumed by:
-        modules/machines/desktop/apps.nix → zed-editor (nixos-unstable shipping
+        profiles/desktop/nixos/apps.nix → zed-editor (nixos-unstable shipping
           v0.232.3 as of 2026-05-07, master shipping v1.1.6; months of
           Linux/Wayland/file-watcher fixes in the gap)
     */
     nixpkgs-master.url = "github:NixOS/nixpkgs/master";
+
+    /*
+      Numtide's daily-updated, CI-tested agent package set. Keep its own
+      nixpkgs pin: upstream recommends this direct-package path so package and
+      dependency versions advance together and remain eligible for its cache.
+    */
+    llm-agents.url = "github:numtide/llm-agents.nix";
 
     disko.url = "github:nix-community/disko/latest";
     disko.inputs.nixpkgs.follows = "nixpkgs";
@@ -55,7 +63,7 @@
     /*
       snappy-switcher — Hyprland alt-tab overlay. Not in nixpkgs;
       upstream ships a flake. Bindings + daemon autostart live in
-      modules/home/desktop/hypr-rice/hyprland.lua (ALT+Tab MRU global, SUPER+Tab
+      users/nori/programs/desktop/hypr-rice/hyprland.lua (ALT+Tab MRU global, SUPER+Tab
       workspace-local).
     */
     snappy-switcher.url = "github:OpalAayan/snappy-switcher";
@@ -75,23 +83,13 @@
       Stylix — single-input system-wide theming. Same
       Reader+collected-Writer shape as the lab's `nori.<X>` effect
       family — fits cleanly. Workstation imports the NixOS module
-      via modules/machines/desktop/stylix.nix.
+      via profiles/desktop/nixos/stylix.nix.
     */
     stylix.url = "github:danth/stylix";
     stylix.inputs.nixpkgs.follows = "nixpkgs";
 
-    /*
-      nix-community/impermanence — "erase your darlings" mechanism.
-      Retained for future opt-in host use; the former quarantine host used
-      btrfs rollback rather than a tmpfs root, demonstrating that the module
-      is filesystem-agnostic.
-    */
-    impermanence.url = "github:nix-community/impermanence";
-
     tilth.url = "github:jahala/tilth";
     tilth.inputs.nixpkgs.follows = "nixpkgs";
-    rtk-src.url = "github:rtk-ai/rtk";
-    rtk-src.flake = false;
     stacklit-src.url = "github:glincker/stacklit";
     stacklit-src.flake = false;
 
@@ -149,18 +147,18 @@
       # perSystem or flake fragment. Adding a new output = new file +
       # one line here (or auto-discovery via haumea if the tree grows).
       imports = [
-        ./flake-parts/formatter.nix
-        ./flake-parts/devshell.nix
-        ./flake-parts/machines.nix
-        ./flake-parts/packages/docs-backups.nix
-        ./flake-parts/packages/docs-fs.nix
-        ./flake-parts/packages/docs-replicas.nix
-        ./flake-parts/packages/inventory.nix
-        ./flake-parts/packages/docs-helpers.nix
-        ./flake-parts/checks/conventions.nix
-        ./flake-parts/checks/lint.nix
-        ./flake-parts/checks/e2e.nix
-        ./flake-parts/checks/eval.nix
+        ./lib/flake-parts/formatter.nix
+        ./lib/flake-parts/devshell.nix
+        ./lib/flake-parts/machines.nix
+        ./lib/flake-parts/packages/docs-backups.nix
+        ./lib/flake-parts/packages/docs-fs.nix
+        ./lib/flake-parts/packages/docs-replicas.nix
+        ./lib/flake-parts/packages/inventory.nix
+        ./lib/flake-parts/packages/docs-helpers.nix
+        ./lib/flake-parts/checks/conventions.nix
+        ./lib/flake-parts/checks/lint.nix
+        ./lib/flake-parts/checks/e2e.nix
+        ./lib/flake-parts/checks/eval.nix
       ];
 
     };

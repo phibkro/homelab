@@ -10,64 +10,46 @@ Repository-wide patterns for *writing* modules. Rules and how they're checked li
 
 ## Repository structure
 
-```
-flake.nix                          inputs + thin flake-parts composition
-flake-parts/                       output concerns: machines, homes, packages,
-                                   checks, formatter, dev shell
-inventory/                         pure pre-module control plane
-  hosts.nix                        identity, profiles, local deviations
-  profiles.nix                     explicit reusable system compositions
-  workloads.nix                    manifest aggregation
-  datasets.nix                     authoritative shared-data contracts
-  site.nix                         canonical and deprecated namespaces
-  default.nix                      compiler + public-safe projections
-modules/
-  machines/                        NixOS factory + host realizations
-    default.nix                    inventory-backed mkHost
-    base/ desktop/                 reusable low-level system modules
-    <host>/                        hardware, storage, local deviations, home
-  profiles/                        reusable system capability adapters
-  infra/                           PaaS platform — the hosting layer
-    inventory.nix                  typed injected inventory projection
-    backup/ storage/ networking/   collected intent + runtime adapters
-    access/ observability/
-    capabilities/                  service filesystem/GPU capabilities
-    hosts.nix                      compatibility host identity projection
-  services/                        hosted workloads
-    <workload>/manifest.nix        pure catalog + endpoint metadata
-    <workload>/runtime.nix         local NixOS realization + effects
-    arr/                           intentionally coupled acquisition cluster
-  home/                            Home Manager capabilities and profiles
-    profiles/core.nix              smallest interactive-user baseline
-    profiles/development/          global and security-sensitive agent tools
-    profiles/desktop/              session, productivity, communication, research
-    profiles/creative/             audio and video capabilities
-    desktop/hypr-rice/             public option + private rice runtime/tests
-tests/                             eval, fixtures, VM/e2e, runtime recipes
-scripts/                           checks, deployment planner, operator tools
-secrets/
-  secrets.yaml · apps.yaml         sops-encrypted; excluded from projections
+```text
+inventory/                    shared hosts, workloads, profiles, backup and dataset facts
+services/                     direct service manifests and concrete realizations
+infra/
+  workstation/               workstation hardware, disks and physical bindings
+  pi/                        Ansible appliance, inventory adapter and VM tests
+  common/                    shared NixOS and Ansible host mechanisms
+  cloudflare/                external infrastructure configuration
+profiles/                     reusable NixOS and Home Manager compositions
+users/nori/                   identity, Home Manager selection and program implementations
+roles/                        shared access-policy vocabulary
+lib/                          flake outputs, host factory and documentation helpers
+products/status/              independently built public status application
+secrets/                      encrypted values and operator procedures
+tests/                        shared evaluation and integration checks
+scripts/                      cross-project operator utilities
 docs/
-  roadmap.md                       outcome backlog
-  specs/ · decisions/              accepted designs + durable rationale
-  reference/ · runbooks/           current truth + executable operations
-  plans/ · reports/                retained plans + retrospective evidence
-.claude/
-  skills/                          procedure skills (load on demand)
+  reference/ runbooks/         current architecture and executable operations
+  specs/ decisions/           accepted contracts and durable rationale
+  generated/                  reproducible inventory and schema projections
+  archive/                    historical plans and reports
 ```
 
 **Layout principle (PaaS lens):** the homelab IS a hosting provider for self-hosted family-tier services. The split mirrors what a PaaS layers:
 
 - `inventory/` — **control plane**: secret-free identity, placement, manifests,
   datasets, and projections evaluated before the NixOS fixed point.
-- `modules/services/` — **workloads**: pure manifests plus local runtime
-  realizations for applications consuming the platform.
-- `modules/infra/` — **platform** (HOW the system works: storage, networking, access control, observability, backup, capabilities). The hosting layer.
-- `modules/profiles/` — **system compositions** selected explicitly by inventory.
-- `modules/machines/` — **realizations**: hardware, storage, local deviations,
-  and the inventory-backed configuration factory.
-- `modules/home/` — **user capabilities** and standalone/NixOS Home Manager
-  compositions.
+- `services/` — **workloads**: a pure manifest, shared implementation, and each
+  concrete realization that actually exists. `services/music-ingest/nixos.nix`
+  is the first direct realization; no dispatcher or empty backend matrix sits
+  in front of it.
+- `infra/common/nixos/` — **platform**: shared storage, networking, access,
+  observability, backup, and capability mechanisms.
+- `profiles/` — **reusable compositions** selected explicitly by inventory.
+- `infra/<machine>/` — **physical bindings**: paths, filesystem identities,
+  and integration that varies with one concrete machine.
+- `users/<name>/` — **identity and preferences**: Home Manager selection and
+  program implementations owned by one user.
+- `roles/` — **access policy vocabulary** used by schemas and presentation.
+- `lib/` — **evaluation and build helpers**; it contains no runtime ownership.
 
 Dependency direction is inventory → platform/profile selection → realization.
 Runtime modules write narrow local effects such as `nori.backups` and
@@ -76,20 +58,20 @@ importing every runtime.
 
 ## Configuration derivation from inventory
 
-`inventory/hosts.nix` explicitly enumerates every NixOS and standalone Home
-Manager target. `modules/machines/default.nix` compiles profile modules and
-selected workload runtimes before calling `lib.nixosSystem`; it never chooses
-imports from `config` or descriptive tags.
+`inventory/hosts.nix` explicitly enumerates every managed host and its
+deployment owner. `lib/machines.nix` compiles profile modules and
+selected workload runtimes only for NixOS-owned hosts before calling
+`lib.nixosSystem`; it never chooses imports from `config` or descriptive tags.
 
 | Inventory kind | Produces |
 |---|---|
 | `kind = "nixos"` | `nixosConfigurations.<name>` plus an ordered deployment target |
-| `kind = "home-manager"` | `homeConfigurations.<name>` plus a build-only deployment target |
+| `kind = "ansible"` | explicit `plan`, `apply`, and `verify` commands; never a `nixosConfiguration` or Nix build target |
 
 Every NixOS host gets the same shared Home Manager wrapper from the factory and
-imports its declared `homeModule`. Standalone entries use
-`modules/home/default.nix`. Host home files remain ordinary Home Manager modules
-on both operating systems.
+imports its declared `homeModule`. Ansible hosts retain inventory profiles for
+logical workload placement, but their system realization is owned exclusively
+by their declared management root and deployment commands.
 
 ## Concerns compose host identity
 
@@ -106,34 +88,37 @@ hardware/storage realization, and genuine local deviations:
 
 A typical host inventory entry:
 
-<!-- path-coherence: skip-block — illustrative fenced example; ./hardware.nix and ./disko.nix are siblings of the host file shown in the comment header (modules/machines/workstation/), not this doc -->
+<!-- path-coherence: skip-block — illustrative fenced example; ./hardware.nix and ./disko.nix are siblings under infra/workstation/, not this doc -->
 
 ```nix
 # inventory/hosts.nix
 workstation = {
   kind = "nixos";
-  systemModule = ../modules/machines/workstation;
-  homeModule = ../modules/machines/workstation/home.nix;
+  managementRoot = "infra/workstation";
+  systemModule = ../infra/workstation;
+  homeModule = ../users/nori/home.nix;
   profiles = [ "base" "desktop" "media-compute" "observability-agent" ];
-  workloads = [ "gatus" "disk-alert" ]; # genuine deviations only
+  workloads = [ "disk-alert" ]; # genuine deviations only
   identity = { /* public-safe topology */ };
 };
 ```
 
 <!-- path-coherence: end-skip -->
 
-`inventory/profiles.nix` is the reviewed composition surface. Tags describe and
+`profiles/default.nix` is the reviewed composition surface. Tags describe and
 support queries; they never deploy a runtime.
 
 ### Coupling vs categorization
 
-Within `modules/services/`, folders usually own one manifest/runtime pair.
-Additional nesting signals real implementation coupling, not a loose category:
+Within `services/`, one folder owns a service's manifest, implementation, and
+real realizations. Name the varying dimension in the file: `nixos.nix` means
+the NixOS realization. Add another file or directory only when a second actual
+realization needs it; do not pre-create a Cartesian hierarchy.
 
 | Cluster | Coupling |
 |---|---|
-| `arr/` | Sonarr/Radarr/Lidarr/Bazarr/Jellyseerr/Prowlarr/qBittorrent — reference each other via API; share `/mnt/media/streaming` via the `media` group + `arr/shared.nix` tmpfiles |
-| single workload directory | `manifest.nix` is global and pure; `runtime.nix` is placement-local |
+| `profiles/media-acquisition/` | Sonarr/Radarr/Lidarr/Bazarr/Jellyseerr/Prowlarr/qBittorrent — reference each other via API and share `/mnt/media/streaming` plus the `media` group |
+| direct workload directory | `manifest.nix` is global and pure; `nixos.nix` is the deployable NixOS realization |
 
 Infrastructure-owned daemons such as Caddy, Blocky, exporters, and alerting keep
 their manifests next to their platform adapter. The compiler aggregates both
@@ -147,10 +132,11 @@ contain no secret values, host-local state, or NixOS `config` dependency.
 <!-- path-coherence: skip-block — illustrative workload paths -->
 
 ```nix
-# modules/services/example/manifest.nix
+# services/example/manifest.nix
 {
   kind = "service";
-  runtimeModule = ./runtime.nix;
+  hostRoles = [ "workhorse" ];
+  runtimeModule = ./nixos.nix;
   tags = [ "family-tier" ];
   endpoints.example = {
     port = 1234;
@@ -167,7 +153,7 @@ contain no secret values, host-local state, or NixOS `config` dependency.
 }
 ```
 
-The runtime owns local implementation and collected effects:
+The concrete realization owns its backend translation and collected effects:
 
 ```nix
 { config, lib, pkgs, ... }:
@@ -191,19 +177,24 @@ The runtime owns local implementation and collected effects:
   # nori.backups.<service>.skip = "<reason>";
 
   # SQLite-backed services: use Pattern C2 (VACUUM INTO + flock)
-  # See modules/services/navidrome/runtime.nix for canonical implementation.
+  # See services/navidrome/nixos.nix for canonical implementation.
 }
 ```
 
 Add the manifest to `inventory/workloads.nix`, then place its identifier in one
-explicit profile or host deviation. Never activate from a tag or directory scan.
+explicit profile or host deviation. Profiles are only recurring compositions;
+a one-machine service belongs directly on that host. Import its physical
+binding explicitly from the machine composition. Never activate from a tag,
+directory scan, or generic realization dispatcher.
 
 <!-- path-coherence: end-skip -->
 
-**After landing:**
+**Verify, then activate within operator authorization:**
 
 ```
-just preview      → activate without boot entry
+just check        → fast Nix checks
+just build        → build without activation
+just activate-test → change live system without boot entry
 just test         → runs all introspection tests (test-hypr / -backups / -routes / -observability)
 just show-pending-diff      → review diff before push
 just rebuild      → persist
@@ -211,7 +202,7 @@ just rebuild      → persist
 
 ## Filesystem hardening (`nori.harden`)
 
-The default-deny systemd FS-namespace block (`ProtectHome = mkForce true`, `TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ]`, plus `BindPaths` / `BindReadOnlyPaths` for what's let back in) lives behind the `nori.harden` abstraction in `modules/infra/capabilities/default.nix`.
+The default-deny systemd FS-namespace block (`ProtectHome = mkForce true`, `TemporaryFileSystem = [ "/mnt:ro" "/srv:ro" ]`, plus `BindPaths` / `BindReadOnlyPaths` for what's let back in) lives behind the `nori.harden` abstraction in `infra/common/nixos/service-hardening.nix`.
 
 ```nix
 nori.harden.<unit> = {
@@ -221,7 +212,13 @@ nori.harden.<unit> = {
 };
 ```
 
-The `every-service-has-fs-hardening` flake check fails the build if any `modules/services/*.nix` is missing a `nori.harden.<n>` declaration (excluded list: aggregators, framework, ntfy/notify, samba's legitimate /srv exception).
+The `every-service-has-fs-hardening` flake check scans concrete catalog service
+modules under `services/` and fails when one lacks a `nori.harden.<n>`
+declaration. Aggregators, manifests, ntfy/notify, Samba's legitimate `/srv`
+exception, and OS mechanisms that were outside the pre-migration catalog scan
+are excluded explicitly. Expanding that policy to those mechanisms requires a
+separate state, backup, and namespace audit; the reorganization does not invent
+new policy to satisfy a wider filesystem scan.
 
 Verify a service's effective namespace:
 
@@ -250,7 +247,7 @@ users.users.<svc>.extraGroups = [ "media" ];
 
 This is what makes the qBittorrent → *arr hardlink-on-import flow work — distinct uids, shared gid, group-writable files (set via qBittorrent's `UMask=0002`). Without it the kernel's `fs.protected_hardlinks=1` makes `link()` fail with EPERM and *arr silently falls back to reflink/copy. See `Mnemopi recall: gotcha-arr-reflinks-not-hardlinks`.
 
-Canonical doc: `modules/services/arr/shared.nix` header comment.
+Canonical doc: `profiles/media-acquisition/resources.nix` header comment.
 
 ## Secrets: sops-nix patterns
 
@@ -306,7 +303,7 @@ NixOS services using `DynamicUser=yes` (open-webui, ollama, ntfy-sh, beszel-hub,
 |---|---|
 | Can't `chown <name>:<name>` — users don't exist statically | `chown --reference=<existing-file>` to copy ownership from a sibling |
 | `/run/secrets/*` is `0440 root:keys` | `SupplementaryGroups = [ "keys" ]` to grant access |
-| `StateDirectory` is `/var/lib/private/<name>` symlinked to `/var/lib/<name>` | Target the real path: `nori.backups.<n>.paths = [ "/var/lib/private/<name>" ];`. Restic stores symlinks AS symlinks → pointing at `/var/lib/<name>` produces a 0-byte snapshot. A self-maintaining assertion in `modules/infra/backup/default.nix` (derived from `config.systemd.services` introspection) catches this at eval time. Deep dive: `Mnemopi recall: gotcha-dynamicuser-statedirectory-symlink` |
+| `StateDirectory` is `/var/lib/private/<name>` symlinked to `/var/lib/<name>` | Target the real path: `nori.backups.<n>.include = [ "/var/lib/private/<name>" ];`. Restic stores symlinks AS symlinks → pointing at `/var/lib/<name>` produces a 0-byte snapshot. A self-maintaining assertion in `infra/common/nixos/backup.nix` (derived from `config.systemd.services` introspection) catches this at eval time. Deep dive: `Mnemopi recall: gotcha-dynamicuser-statedirectory-symlink` |
 
 Adding a new OIDC client → `/add-oidc-client` (procedure skill — bootstrap, sops paste, route declaration, systemd wiring).
 
@@ -316,15 +313,15 @@ Packages and config live at one of four scopes. Pick the **lowest** scope that g
 
 | Scope | Where | Audience | Examples |
 |---|---|---|---|
-| **System floor** | `modules/machines/base/base.nix` `environment.systemPackages` | Every host (incl. pi, which has no home-manager); root, sshd, system services | `bat curl dig fd git htop just ripgrep tmux tree vim wget` |
-| **System desktop** | `modules/machines/desktop/` | System/session integration, display manager, drivers, audio, fonts | Hyprland, greetd, PipeWire, Stylix, Sunshine |
-| **User core** | `modules/home/profiles/core.nix` | Every interactive machine where nori is the operator | starship, Git, direnv, common CLI baseline |
-| **User capability** | `modules/home/profiles/{desktop,creative,development}/` | Homes selecting a coherent reusable capability | communication, research, video, audio, global development, agentic tools |
-| **Per-machine user** | `modules/machines/<host>/home.nix` `home.packages` | One specific machine | workstation: `nvtop` (NVIDIA), `compsize` (btrfs), Hyprland binds; Mac: `bun pnpm ffmpeg`, `home.file."Library/Fonts/..."` |
+| **System floor** | `infra/common/nixos/base.nix` `environment.systemPackages` | NixOS hosts; root, sshd, system services | `bat curl dig fd git htop just ripgrep tmux tree vim wget` |
+| **System desktop** | `profiles/desktop/nixos/` | System/session integration, display manager, drivers, audio, fonts | Hyprland, greetd, PipeWire, Stylix, Sunshine |
+| **User core** | `profiles/home/core.nix` | Every interactive machine where nori is the operator | starship, Git, direnv, common CLI baseline |
+| **User capability** | `profiles/home/{desktop,creative,development}/` | Homes selecting a coherent reusable capability | communication, research, video, audio, global development, agentic tools |
+| **Per-machine user** | `users/nori/workstation.nix` `home.packages` | One specific machine | workstation: `nvtop` (NVIDIA), `compsize` (btrfs), Hyprland binds |
 
 Decision rules:
 
-- Needed by root / system services / pi? → **system floor**
+- Needed by NixOS root / system services? → **system floor**; Pi packages belong in Ansible roles.
 - Required to create the Linux graphical system/session? → **system desktop**
 - Interactive operator tool, every machine? → **user core**
 - Reusable user-facing function with its own security or product concern? → **user capability**
@@ -339,19 +336,19 @@ capability.
 
 ## Dev shells
 
-Dev environments are a per-project concern, not a homelab capability. Each repo owns its own (devenv / direnv / `nix shell` / project flake `devShells`). The homelab repo itself has a lean `devShells.default` for editing — `nixfmt`, `statix`, `deadnix`, `nh`, `ripgrep`. No cross-project shell library lives here anymore.
+Dev environments are a per-project concern, not a homelab capability. Each repo owns its own (devenv / direnv / `nix shell` / project flake `devShells`). For this repo, `devenv shell` is the preferred explicit entry point and `.envrc` selects the same environment automatically. It includes the tools used by the documented workflows and runs the music-ingest runtime suite through `devenv test`. The lean `devShells.default` remains available through `nix develop` for compatibility. No cross-project shell library lives here anymore.
 
 ## Dev workflow
 
-`Justfile` at repo root for common workflows. Install: `pkgs.just` already in `modules/machines/base/base.nix`; `brew install just` on macOS.
+`Justfile` at repo root for common workflows. Install: `pkgs.just` already in `infra/common/nixos/base.nix`; `brew install just` on macOS.
 
 ```sh
-just                          # default: rebuild via rsync + nh os switch
-just <recipe> [<host>]        # all recipes accept optional host arg
+just                          # default: list available operator commands
+just --list                   # inspect arguments for the selected recipe
 just show-status                   # failed units + disk + restic/btrbk timer summary
 just show-logs <unit>              # last 50 journal lines
 just check                    # nix flake check
-just plan-deploy origin/main  # read-only affected-host/build plan
+just plan-deploy <comparison-base> # read-only plan; choose main, upstream, or the deployed commit
 just deploy                   # git push + nh os switch from origin (no rsync)
 just rollback                 # previous generation
 just backup <repo>            # immediately run restic-backups-<repo>
@@ -361,30 +358,25 @@ just --list                   # all recipes
 
 `nh os switch` is the rebuild engine — replaces `nixos-rebuild`. Internal sudo (don't prefix); shows ADDED/REMOVED/CHANGED diff before activating.
 
-Default host is `workstation`; pass another to deploy elsewhere. SSH targets via Tailnet MagicDNS.
+NixOS commands target workstation. Pi has its own `pi::` commands; do not pass
+Pi to a NixOS rebuild recipe. Inspect `just --list` for each recipe’s arguments.
 
-### Distributed builds, not cross-compilation
+### Pi is an Ansible target
 
-Pi builds are slow on aarch64. The optimization is **distributed build to a remote builder**: build on workstation (x86_64 with aarch64-binfmt + qemu-user), copy the closure to pi, activate. This is *not* cross-compilation — cross-compilation in nixpkgs is rougher than expected for full system closures.
-
-```nix
-# On workstation:
-boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
-```
-
-```sh
-# Deploy to Pi using workstation as builder:
-nh os switch --target-host pi --build-host workstation .#pi
-```
+Use `just pi::check`, `just pi::test`, and `just pi::plan` before approved
+`just pi::deploy`. There is no production `nixosConfigurations.pi` and no Pi
+NixOS closure to cross-build. Existing Nix entry-plane adapter tests remain
+useful for their own implementation and shared contracts; they do not test
+production Ansible behavior.
 
 ### Disko at install
 
-Disk layouts in `modules/machines/<host>/disko*.nix` from day zero. First install:
+Disk layouts in `infra/<host>/disko*.nix` from day zero. First install:
 
 1. Boot NixOS minimal installer USB
 2. SSH into installer or work locally
 3. Clone the flake to `/tmp/homelab`
-4. `nix --experimental-features 'nix-command flakes' run github:nix-community/disko/latest -- --mode disko /tmp/homelab/modules/machines/workstation/disko.nix`
+4. `nix --experimental-features 'nix-command flakes' run github:nix-community/disko/latest -- --mode disko /tmp/homelab/infra/workstation/disko.nix`
 5. `nixos-install --flake /tmp/homelab#workstation`
 6. Reboot, set password on first login, push generated flake.lock
 
@@ -399,5 +391,5 @@ Detailed step-by-step in `docs/installs/baremetal.md`. `nixos-anywhere` is the f
 | Attribution | Follow the active agent/provider policy; do not invent a co-author |
 | Formatter | `nixfmt` (set as the flake formatter) |
 | Linter | `statix` (anti-patterns) + `deadnix` (unused bindings) |
-| Pre-commit | `.githooks/pre-commit` runs `nix flake check`; skips gracefully if nix isn't on PATH (Mac case); CI catches the skipped commits |
+| Pre-commit | `.githooks/pre-commit` checks an isolated snapshot of the exact index with fast Nix and Pi static checks; missing tools fail explicitly; it never fixes the working tree |
 | Branching | Small routine changes may remain atomic on `main`; multi-phase or high-blast-radius migrations use a worktree branch and operator-reviewed PR |

@@ -56,7 +56,7 @@ First (only) eligible trigger: **backup failures — restic + btrbk.**
   else round-robin. Revisit if a real quota endpoint is found.
 - **Incident report quality** — the PR body carries: what failed, root
   cause, the fix, how it was validated, and what to watch. Backward-
-  looking companion to a `docs/reports/` entry when the failure is novel.
+  looking companion to a `docs/archive/reports/` entry when the failure is novel.
 - **Cheap-first** — a oneshot + dispatch; no long-running supervisor.
 
 ## Architecture
@@ -85,7 +85,7 @@ operator reviews → merge → deploy
 
 ### Load-bearing findings (from reading the primitives)
 
-Reuse `agent-dispatch` (modules/home/agent-dispatch.sh) rather than invoking
+Reuse `agent-dispatch` (nix/home/agent-dispatch.sh) rather than invoking
 claude/codex directly — it already provides the "boxed agent WITH model
 access" primitive, bounded depth + slots. Two constraints it imposes shape
 the design and resolve the spec's open questions:
@@ -109,7 +109,7 @@ Backup unit names to wire `OnFailure = [ "agent-fix@<unit>.service" ]` onto
 
 | Piece | Home | Notes |
 |---|---|---|
-| `agent-fix@` oneshot | new NixOS module `modules/infra/observability/agent-fix.nix` | generalises the `notify@` pattern; shares the recovery window |
+| `agent-fix@` oneshot | new NixOS module `nix/modules/system/observability/agent-fix.nix` | generalises the `notify@` pattern; shares the recovery window |
 | eligibility | `nori.agentFix.<unit>.enable` (or a tag on `nori.backups`) | default-deny allowlist |
 | prompt builder | script inside the unit | journal + exit code + git log + module path |
 | provider router | small script | v1: least-recent-429; reads claudex journal |

@@ -4,7 +4,7 @@ summary: Schema design for `nori.lint` — a Reader+Writer dispatcher that unifi
   by a Nix dispatcher. Replaces scripts/checks/forbidden-patterns.sh. Graduated
   to implementation 2026-06-16; this spec retained for the design-trail it
   records.
-status: graduated to implementation (2026-06-16). Code at modules/lint/
+status: graduated to implementation (2026-06-16). Code at nix/lint/
   (default.nix dispatcher + rules.toml registry); reference doc in
   docs/invariants.md § "Custom flake checks". Spec preserved for the open-
   questions trail + the data-vs-control-plane reasoning that informed the
@@ -17,18 +17,18 @@ trigger: Phase 3c (bash extraction) committed 2026-06-16; operator surfaced the
 # Spec — `nori.lint` rule schema (Phase 3d)
 
 > **Graduated to implementation 2026-06-16.** The spec stays as the
-> design-trail record; live code is in `modules/lint/`. Two refinements vs
+> design-trail record; live code is in `nix/lint/`. Two refinements vs
 > this spec landed during execution:
 >
-> 1. **Location** — operator pushed back on `modules/infra/lint.nix`;
+> 1. **Location** — operator pushed back on `nix/modules/system/lint.nix`;
 >    `effects/` is for Reader+Writer modules that affect SYSTEM state
 >    (filesystem, network, hardening). Lint is dev-time tooling, so it
->    lives at `modules/lint/` as a new top-level category.
+>    lives at `nix/lint/` as a new top-level category.
 > 2. **Config format** — operator surfaced that rules are pure data,
 >    not Nix code. Rules moved from the proposed `rules.nix` (Nix
 >    attrset) to `rules.toml` (TOML data), parsed via `builtins.fromTOML`.
 >    Clean data / control plane split; portable if dispatcher language
->    ever changes. See `modules/lint/default.nix` header for the
+>    ever changes. See `nix/lint/default.nix` header for the
 >    rationale.
 
 ## Goal
@@ -42,7 +42,7 @@ Same shape as `nori.lanRoutes` (one declarative input → many generators), `nor
 ```
 Current (Phase 3c)                       Proposed (Phase 3d)
 ──────────────────                       ───────────────────
-N walks of modules/ per script           One walk; rules visit each file once
+N walks of nix/ per script           One walk; rules visit each file once
 ~8 rules × ~140 lines bash               ~8 rules × ~5 lines attrset
 Bash arrays as the only abstraction      Typed schema (mkOption + submodule)
 Hard to filter ("security-only run")     Trivial — filter the attrset
@@ -60,7 +60,7 @@ options.nori.lint = mkOption {
     options = {
       scope = mkOption {
         type = types.listOf types.str;
-        example = [ "modules/" "machines/" ];
+        example = [ "nix/" "machines/" ];
         description = "Paths the engine grep-walks for this rule.";
       };
       pattern = mkOption {
@@ -74,7 +74,7 @@ options.nori.lint = mkOption {
       excludeFiles = mkOption {
         type = types.listOf types.str;
         default = [ ];
-        example = [ "modules/infra/networking/default.nix" ];
+        example = [ "nix/modules/system/networking/default.nix" ];
         description = "File paths exempted from the rule.";
       };
       excludePatterns = mkOption {
@@ -158,8 +158,8 @@ From `scripts/checks/routing-coherence.sh`:
 3. **Per-rule grep flags.** Some rules use `-rn`, others `-rln`, others `-rEn`. Standardize to `-rEn` or expose a `flags` field? Probably standardize; the field is one more variable to drift.
 4. **Dispatcher language.** Bash today (matches existing posture). Could be Python/Rust later. The Reader stays the same; the Writer changes. Decide whether to bake the assumption that there can be multiple dispatchers (e.g., `dispatchLintRules-grep` + `dispatchLintRules-treesitter` later) into the schema design now.
 5. **Where do the rules live in the tree?** Options:
-   - `modules/infra/lint.nix` — schema + dispatcher live together; rules are declared in flake.nix `checks` section.
-   - `modules/lint/<rule-tag>.nix` — one file per rule category. More files but cleaner per-rule co-location.
+   - `nix/modules/system/lint.nix` — schema + dispatcher live together; rules are declared in flake.nix `checks` section.
+   - `nix/lint/<rule-tag>.nix` — one file per rule category. More files but cleaner per-rule co-location.
    - `flake.nix` — rules + dispatcher all there. Most concentrated; loses the deep-modules property.
 
 ## Out of scope for Phase 3d
@@ -182,8 +182,8 @@ The other two scripts (doc-coherence, routing-coherence) decision-bound to quest
 
 ## References
 
-- `docs/plans/2026-06-16-docs-deep-sweep.md` — parent plan; this spec is a follow-up sub-phase
+- `docs/archive/plans/2026-06-16-docs-deep-sweep.md` — parent plan; this spec is a follow-up sub-phase
 - `scripts/checks/forbidden-patterns.sh` — the rules to translate
-- `modules/infra/networking/default.nix` — canonical shape of a `nori.<X>` effect with mkOption + types.submodule + assertions; serves as the structural template
-- `modules/infra/backup/default.nix` — second worked example
+- `nix/modules/system/networking/default.nix` — canonical shape of a `nori.<X>` effect with mkOption + types.submodule + assertions; serves as the structural template
+- `nix/modules/system/backup/default.nix` — second worked example
 - `docs/invariants.md` — the catalog this lint system enforces against (every `[law: foo]` row maps to a flake check; this consolidates them)

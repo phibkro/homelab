@@ -62,14 +62,14 @@ When file A's comment refers to file B's behavior, apply this test:
 
 Worked examples (from `git show fb1edfc`, the auth-perimeter run):
 
-* **KEEP**: `authelia.nix` cookies-domain comment that references Caddy
+* **KEEP**: `services/authelia/nixos.nix` cookies-domain comment that references Caddy
   terminating TLS. The Caddy reference explains why the cookie domain
-  is `nori.lan` — load-bearing decision in authelia.nix.
-* **KEEP**: `caddy.nix` firewall comment that references `nori.lanIp`
-  in `modules/infra/networking/default.nix`. The reference explains why caddy
+  is `nori.lan` — load-bearing decision in `services/authelia/nixos.nix`.
+* **KEEP**: `services/caddy/nixos.nix` firewall comment that references `nori.lanIp`
+  in `infra/common/nixos/routes.nix`. The reference explains why caddy
   can listen globally (the resolution chain `*.nori.lan → nori.lanIp`
   determines which interface traffic arrives on).
-* **CUT**: `authelia.nix` preamble that restates Caddy's reverse-proxy
+* **CUT**: `services/authelia/nixos.nix` preamble that restates Caddy's reverse-proxy
   framing without adding why-it-matters-here. Pure paraphrase of
   Caddy's role.
 
@@ -142,7 +142,7 @@ Naming convention by tree:
 | `.claude/skills/<name>/SKILL.md`  | lower-kebab-case; verb-object                                                |
 | Mnemopi gotcha memory             | `gotcha-<technology>-<symptom>`                                              |
 | `scripts/*.sh`                    | lower-kebab-case; verb-object or noun-prefix-procedural                   |
-| `modules/services/<svc>/`        | lower-kebab-case; `manifest.nix` + `runtime.nix`                          |
+| `services/<svc>/`                 | lower-kebab-case; `manifest.nix` + concrete realization files             |
 
 ### 3. Recipe / skill names
 
@@ -276,7 +276,7 @@ What to grep for specifically:
   unclear, ask before applying.
 
 * **Don't drift across the stated boundary.** If asked to audit
-  `modules/services/arr/`, stop at the directory boundary. Audit the
+  `services/recyclarr/`, stop at the directory boundary. Audit the
   `default.nix` import shape but don't reach into sibling dirs to
   "complete the picture" unless asked.
 
@@ -316,7 +316,7 @@ including:
   verbose, it earns rent.
 
 * **Does not exceed the user's stated scope.** If asked to audit
-  `modules/services/arr/`, stop at the boundary — don't drift into
+  `services/recyclarr/`, stop at the boundary — don't drift into
   adjacent dirs unless asked.
 
 * **Does not lean aggressive on borderline cuts.** When the
@@ -329,11 +329,10 @@ including:
 * `docs/reference/documentation-writing.md` — full taxonomy + anti-patterns +
   the amnesiac-imitation feedback loop
 * `git log --grep "chore(comments):"` — worked examples; 40+ files
-  audited across `modules/infra/`, `home/`, `machines/`,
-  `modules/services/arr/`
+  audited across the former system, home, machine, and acquisition trees
 * `git log --grep "^docs:" --grep "^just:"` — the docs + Justfile
   rename commits (read for the rename rationale + USE-WHEN convention)
-* `git show f5e3634 3e985ec` — the modules/services/arr/ test run +
+* `git show f5e3634 3e985ec` — the former acquisition-tree test run +
   the lean-keep restoration commit (worked examples of where the
   earns-rent filter ran too strict, and what restoration looks like)
 * `CLAUDE.md` § "Style for prose" + § "What's the bias" — the

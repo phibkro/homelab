@@ -34,12 +34,14 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
   appliance plane (DNS, HTTPS entry, identity, monitoring, alerting, Tailscale
   routing, and appliance backups), while workstation owns desktop, storage,
   applications, compute, and GPU workloads. `inventory/hosts.nix` remains the
-  topology authority while `pi/` provisions the replacement Debian/Ansible/
+  topology authority while `infra/pi/` provisions the replacement Debian/Ansible/
   Podman realization. Complete the physical reboot, off-LAN, and restore gates
-  in `design-specs/ansible-pi-plan-b.md` before retiring the NixOS Pi rollback
-  path. Aurora remains the off-host backup vault; Pavilion is historical.
+  in `docs/specs/ansible-pi-plan-b.md`. Ansible is now the sole live
+  deployment owner; the verified NixOS image remains only as an offline
+  rollback artifact. Connect and verify OneTouch, then enable backups using
+  `docs/runbooks/onetouch-backup-cutover.md`; Aurora and Pavilion are retired.
 
-- **Sunshine remote-desktop pairing.** Deployed (`modules/machines/desktop/sunshine.nix`); NVENC builds confirmed (`h264/hevc/av1_nvenc`). Outstanding: one-time Moonlight pairing.
+- **Sunshine remote-desktop pairing.** Deployed (`services/sunshine/nixos.nix`); NVENC builds confirmed (`h264/hevc/av1_nvenc`). Outstanding: one-time Moonlight pairing.
 
   Pairing steps:
 
@@ -50,7 +52,7 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
   **Fallback** if NVIDIA KMS capture black-screens: `capSysAdmin = false` (wlr capture — Hyprland is wlroots-based) + rebuild.
 
-  Design + plan: `docs/specs/2026-05-22-sunshine-remote-host-design.md`, `docs/plans/2026-05-22-sunshine-remote-host.md`.
+  Design + plan: `docs/specs/2026-05-22-sunshine-remote-host-design.md`, `docs/archive/plans/2026-05-22-sunshine-remote-host.md`.
 
 - **MemoryHigh caps on heavy services** — process-exporter publishes `namedprocess_namegroup_memory_bytes{memtype="resident",groupname=…,host=…}` for the converged workstation. Wait ≥7 days after deployment, identify the slowest-growing services, and cap each via `systemd.services.<n>.serviceConfig.MemoryHigh = "…G"`. Premature to cap blindly. Sample query: `topk(10, max_over_time(namedprocess_namegroup_memory_bytes{memtype="resident"}[7d]) - min_over_time(namedprocess_namegroup_memory_bytes{memtype="resident"}[7d])) / 1024 / 1024`. Special interest: `immich-machine-learning` (PyTorch).
 
@@ -92,14 +94,13 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 | ~~`disko-uses-by-id`~~ | ✓ `[law: lint.diskoUsesById]` (landed 2026-06-16, nori.lint TOML registry) | `/dev/nvme[0-9]` or `/dev/sda[0-9]?` leakage (NVMe enum drift wipes wrong disk) |
 | ~~`function-named-subdomains`~~ | ✓ `[law: lint.functionNamedSubdomains]` (landed 2026-06-16) | service-name leakage in `nori.lanRoutes` |
 | ~~`audience-enforces-auth`~~ | ✓ `[structural: module assertion]` (landed 2026-06-21) | `audience="family"` without `oidc` / `forwardAuth` / explicit `noAuthReason` |
-| ~~`infra-concerns-have-tests`~~ | ✓ `[law: infra-concerns-have-tests]` (landed 2026-06-21) | every `modules/infra/<X>/` with Reader-shaped `options.nori.*` has matching `test-*` recipe (mapping in `flake.nix § checks.infra-concerns-have-tests`) |
+| ~~`infra-concerns-have-tests`~~ | ✓ `[law: infra-concerns-have-tests]` (landed 2026-06-21) | every shared `options.nori.*` schema is discovered and explicitly registered; runtime-observable effects name a matching `test-*` recipe, while exact hardware/projection exceptions name their evaluation evidence |
 | ~~`workhorse-vs-appliance-placement`~~ | ✓ `[law: eval-workload-role-placement]` (landed 2026-07-22; pure inventory assertion) | service placement matches the typed roles declared by its manifest |
-| ~~`systemd-execstart-resolves`~~ | ✗ REJECTED 2026-06-21 (zero catch rate on this codebase — every ExecStart already `${pkgs.foo}/bin/baz`; nix eval validates. See `docs/plans/2026-06-21-improve-audit.md § #4`) | — |
+| ~~`systemd-execstart-resolves`~~ | ✗ REJECTED 2026-06-21 (zero catch rate on this codebase — every ExecStart already `${pkgs.foo}/bin/baz`; nix eval validates. See `docs/archive/plans/2026-06-21-improve-audit.md § #4`) | — |
 
 ## Idea backlog (no commitment)
 
-- **UPS for workstation.** Single PSU is a non-goal for HA, but mid-write power loss on USB-attached IronWolf is a real recovery scenario. Cheap (~1500–3000 NOK for 600VA) insurance.
-- **IronWolf Pro from USB to internal SATA.** When SATA capacity becomes available (PCIe HBA). USB enclosures have their own failure mode at the controller level.
+- **UPS for workstation.** Single PSU is a non-goal for HA, but mid-write power loss on the attached IronWolf is a real recovery scenario. Cheap (~1500–3000 NOK for 600VA) insurance.
 - **`common-cpu-amd-pstate`** module on workstation hardware.
 - **NVIDIA Wayland edge cases** (multi-monitor VRR, suspend/resume nuances). Not blocking; document fixes in `hardware.nix` as encountered.
 - **CUDA/Ollama drift.** Ollama bundles its own CUDA libs; verify at install and pin nixpkgs version if it doesn't.
@@ -116,4 +117,12 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
   Gatus remain healthy. Add a maintenance flag only after observing that
   failure mode; do not suppress genuine appliance or WAN failures.
 
-- **Network-layer DNS/egress policy.** The correct layer for "force all LAN egress through Blocky and block public-resolver fall-throughs" is a real router (OPNsense/OpenWRT/pfSense) behind a bridge-mode modem, with nftables PREROUTING REDIRECT on :53 and a DoH-IP blocklist on the WAN-facing side. Today the Genexis ISP modem doesn't bridge-mode and a real router isn't budgeted, so the same policy is enforced one layer lower at `modules/infra/tailnet-appliance.nix` (pi-as-tailnet-exit-node DNAT). Limits documented in that file's header: only catches devices routing through pi, can't help LAN-only hardcoded-DNS devices, and DoH egress to non-listed IPs slips through. When a real router lands, this effect goes away; the same `nori.tailnet.appliances` registry drives the router's nftables generator instead. **Trigger to revisit:** ISP allowing Genexis bridge mode *or* a competent router (~$200) enters the budget.
+- **Network-layer DNS/egress policy.** The correct layer for "force all LAN
+  egress through Blocky and block public-resolver fall-throughs" is a real
+  router (OPNsense/OpenWRT/pfSense) behind a bridge-mode modem. Today the
+  Genexis ISP modem does not bridge and a real router is not budgeted, so the
+  policy lives one layer lower in `infra/pi/ansible/roles/firewall` and
+  `services/tailscale/ansible`. It only catches devices routing through Pi, cannot help
+  LAN-only hardcoded-DNS devices, and cannot block unlisted DoH endpoints.
+  **Trigger to revisit:** ISP allowing Genexis bridge mode *or* a competent
+  router (~$200) enters the budget.

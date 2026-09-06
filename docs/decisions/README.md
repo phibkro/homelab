@@ -12,7 +12,7 @@ Write an ADR when:
 
 - The decision is non-obvious and someone will ask "why" later.
 - Alternatives were considered and rejected on substantive grounds.
-- Reversing the choice would require coordinated changes across multiple modules/hosts.
+- Reversing the choice would require coordinated changes across multiple hosts.
 - A current convention is being changed (an ADR can supersede a previous ADR).
 
 Don't write an ADR for:

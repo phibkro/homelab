@@ -110,7 +110,7 @@ REFACTOR  consolidate; ensure the test still passes on the cleanest
 Eval tests look like:
 
 ```nix
-# tests/eval/lanroute-port-uniqueness.nix
+# tests/eval/lanroute-port-validation.nix
 let
   config = ... eval a NixOS config with two routes on the same port ... ;
 in
@@ -118,7 +118,7 @@ in
   "ok"
 ```
 
-Run: `nix-instantiate --eval tests/eval/lanroute-port-uniqueness.nix`.
+Run: `nix-instantiate --eval tests/eval/lanroute-port-validation.nix`.
 Sub-second. Add to flake checks via `runCommand`.
 
 ### nixosTest (layer 2)
@@ -163,7 +163,7 @@ REFACTOR  factor common queries; document the lever (leverage /
           volatility / opacity / blast-radius) the test covers.
 ```
 
-Full guidance for layer 3 lives at [`runtime-tests.md`](./runtime-tests.md).
+Full guidance for layer 3 lives at [`runtime-tests.md`](runtime-tests.md).
 That doc names the four-lever framework for deciding whether a runtime
 test pays off; this doc cross-references it.
 
@@ -206,7 +206,7 @@ The canonical "add a new homelab service" flow (combining
 `/add-service` skill + this methodology):
 
 ```
-1.  RED at layer 1   write tests/eval/<service>-schema.nix asserting
+1.  RED at layer 1   write a focused `tests/eval/` schema check asserting
                      `config.services.<service>.<important-option>` =
                      the expected default OR a specific value.
 

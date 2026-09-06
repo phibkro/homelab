@@ -1,7 +1,8 @@
 # Music: phone → FLAC staging → master library
 
-The live acquisition path for lossless music. Declarative behavior lives in
-`nori.musicIngest`; Syncthing folder membership remains runtime-managed.
+The lossless-music acquisition path. Declarative bindings live in
+`nori.services.music-ingest`; Syncthing folder membership remains
+runtime-managed and must be observed separately.
 
 ## Flow
 
@@ -10,13 +11,16 @@ phone /Music/flac
   └─ Syncthing (send/receive)
        └─ workstation /mnt/media/staging/music-flac
             └─ music-ingest.timer
-                 └─ MOVE stable FLAC + cover art
-                      └─ /mnt/media/library/music (irreplaceable master)
+                 └─ claim stable FLAC + cover art atomically
+                      └─ /mnt/media/staging/.music-ingest-inflight
+                           └─ verified publish
+                                └─ /mnt/media/library/music (irreplaceable master)
 ```
 
-The move removes the staging copy, so Syncthing propagates the deletion back to
-the phone. Listening is served from the master by Navidrome; there is no local
-Opus mirror or Tonic dependency.
+The ingest removes only the claim it owns after durable publication. Syncthing
+can observe the removed staging entry; actual propagation to the phone depends
+on runtime folder membership and connectivity. Listening is served from the
+master by Navidrome; there is no local Opus mirror or Tonic dependency.
 
 ## Load-bearing invariant
 
@@ -24,31 +28,36 @@ Opus mirror or Tonic dependency.
 only to transient staging outside `/mnt/media/library`. A phone or Syncthing
 error can therefore damage staging, never the irreplaceable master.
 
-The module asserts that staging is not nested under the master path. Keep the
-phone structurally absent from the master folder rather than relying on a
-pause toggle.
+The module asserts that staging, inflight, and master are pairwise disjoint in
+both ancestor directions. Staging and inflight must share a filesystem so the
+claim rename is atomic. Keep the phone structurally absent from the master
+folder rather than relying on a pause toggle.
 
 ## Live units and paths
 
 | Item | Value |
 |---|---|
-| Option | `nori.musicIngest` |
-| Manifest | `modules/services/music-ingest/manifest.nix` |
-| Runtime | `modules/services/music-ingest/runtime.nix` |
+| Option | `nori.services.music-ingest` |
+| Manifest | `services/music-ingest/manifest.nix` |
+| Runtime | `services/music-ingest/nixos.nix` |
+| Workstation binding | `infra/workstation/music-ingest.nix` |
 | Timer | `music-ingest.timer` |
 | Staging | `/mnt/media/staging/music-flac` |
+| Inflight claims | `/mnt/media/staging/.music-ingest-inflight` |
 | Master | `/mnt/media/library/music` |
 | Conflict quarantine | `<staging>/.conflicts/` |
 
-A file moves only after its mtime exceeds the stability window and no
+A file is claimed only after its mtime exceeds the stability window and no
 Syncthing temporary sibling exists. Existing identical files are deduplicated;
 different content at the same relative path is quarantined while the master is
-left untouched. The crash-safe path is copy → fsync → rename → unlink.
+left untouched. The crash-safe path is staging → atomic inflight claim →
+master-local copy → fsync → rename → remove owned claim. Interrupted claims are
+processed before new staging files on the next sweep.
 
 ## Runtime Syncthing shape
 
 ```text
-master  "Music"          workstation + aurora only; phone absent
+master  "Music"          workstation; phone absent (check runtime membership)
 staging "Music-Staging"  workstation + phone; send/receive
 ```
 
@@ -72,8 +81,9 @@ when onboarding or replacing a device.
 ```bash
 sudo systemctl start music-ingest.service
 journalctl -u music-ingest.service
-nix shell nixpkgs#b3sum --command bash modules/services/music-ingest/music-ingest.test.sh
+devenv test
 ```
 
-The test covers stability guards, deduplication, conflict quarantine,
-permissions, nested paths, cover art, and rerun idempotence.
+The test covers stability guards, durable claim recovery, replacement and
+destination races, deduplication, conflict quarantine, permissions, path
+escapes, nested paths, cover art, serialization, and rerun idempotence.

@@ -16,11 +16,11 @@ The rice currently has four independent Fuzzel surfaces:
 
 | Surface | Current entry | Source |
 |---|---|---|
-| Applications | `SUPER+SPACE` → raw `fuzzel` | `modules/home/desktop/hypr-rice/hyprland.lua` |
-| System actions | `SUPER+P` → `cmd-menu` | `modules/home/desktop/hypr-rice/default.nix` |
-| Keyboard help | `SUPER+H` → `hypr-cheatsheet` | `modules/home/desktop/hypr-rice/default.nix` |
-| Workspace layout | `SUPER+SHIFT+R` → `hypr-layout-menu` | `modules/home/desktop/hypr-rice/hypr-layout-menu.sh` |
-| Focused ratio | `SUPER+R` → `tile-ratio` | `modules/home/desktop/hypr-rice/tile-ratio.sh` |
+| Applications | `SUPER+SPACE` → raw `fuzzel` | `nix/home/desktop/hypr-rice/hyprland.lua` |
+| System actions | `SUPER+P` → `cmd-menu` | `nix/home/desktop/hypr-rice/default.nix` |
+| Keyboard help | `SUPER+H` → `hypr-cheatsheet` | `nix/home/desktop/hypr-rice/default.nix` |
+| Workspace layout | `SUPER+SHIFT+R` → `hypr-layout-menu` | `nix/home/desktop/hypr-rice/hypr-layout-menu.sh` |
+| Focused ratio | `SUPER+R` → `tile-ratio` | `nix/home/desktop/hypr-rice/tile-ratio.sh` |
 
 The menus repeat command labels, bindings, action semantics, dependencies, and cancellation behavior in different shapes. `SUPER+SHIFT+E` also exits Hyprland immediately and sits one key away from `SUPER+SHIFT+R`; an accidental press terminated the desktop session. Exit must become palette-only and confirmation-gated.
 
@@ -387,5 +387,5 @@ Verification is never redirected to the active desktop.
 
 ## Related designs
 
-- [`2026-07-15-hypr-rice-layout-follow-up-design.md`](./2026-07-15-hypr-rice-layout-follow-up-design.md) — layout identity and deferred `hypr-space` boundary.
-- [`2026-07-15-hypr-rice-layout-design.md`](./2026-07-15-hypr-rice-layout-design.md) — rice extraction and native layout foundation.
+- [`2026-07-15-hypr-rice-layout-follow-up-design.md`](2026-07-15-hypr-rice-layout-follow-up-design.md) — layout identity and deferred `hypr-space` boundary.
+- [`2026-07-15-hypr-rice-layout-design.md`](2026-07-15-hypr-rice-layout-design.md) — rice extraction and native layout foundation.

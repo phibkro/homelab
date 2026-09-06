@@ -21,7 +21,7 @@ prose  →  comment  →  runtime-introspection  →  test  →  type / lint / C
 
 | Rung | Mechanism | When it fires | Self-defending? | Use when |
 |---|---|---|---|---|
-| `[law: <check>]` | `flake.nix checks.${system}` derivation; CI fails on divergence. Token must match a real check (`nix flake show .#checks`). | `nix flake check` (CI + pre-commit) | yes — can't merge violation | claim is fully expressible as code-vs-rule check |
+| `[law: <check>]` | `flake.nix checks.${system}` derivation; CI fails on divergence. Token must match a real check (`nix flake show .#checks`). | `just check` (fast); `just check-all` (full) | yes — can't merge violation | claim is fully expressible as code-vs-rule check |
 | `[structural]` | Bad state unrepresentable by construction (typed `audience` enum, required host folder + registry entry both fail eval). | NixOS eval phase | yes (until refactor breaks the construction) | dangerous state can be locked out at the type/API surface |
 | `[runtime-introspection]` | `just test-<X>` recipe queries live registries against the declared intent (see `docs/reference/runtime-tests.md`). | operator-triggered post-deploy | yes when run; silent if forgotten | declaration ↔ runtime gap is silent and the registry is queryable |
 | Comment | `# invariant: …` next to load-bearing code. | reader-time only | no — passive prompt | the why matters at this exact code site |
@@ -39,7 +39,7 @@ Strongest rung each claim has reached. `[prose: unchecked]` entries are promotio
 | **Security & isolation** | |
 | Every service module declares `nori.harden.<unit>` (or names an exclusion) | `[law: every-service-has-fs-hardening]` |
 | Every service has backup intent (`nori.backups.<svc>.paths` or `.skip = <reason>`) | `[law: every-service-has-backup-intent]` + `[runtime-introspection: just test-backups]` (fresh snapshot per target ≤25h) |
-| Default-deny firewall — only Caddy ports open by default | `[structural]` (modules/machines/base firewall config) |
+| Default-deny firewall — only Caddy ports open by default | `[structural]` (`infra/common/nixos/routes.nix` plus the Caddy realization) |
 | Tailnet is the auth perimeter; Authelia only for per-user identity | `[structural]` (the `audience` enum forces the choice at the type level) |
 | `disko*.nix` configs reference disks by `/dev/disk/by-id/*`, never `/dev/nvmeN` | `[law: lint.diskoUsesById]` (promoted 2026-06-16; nori.lint TOML registry) |
 | Sops-encrypted secrets stay in `secrets/secrets.yaml`; encryption itself is structural | `[structural]` (sops policy file `.sops.yaml`) |
@@ -47,17 +47,17 @@ Strongest rung each claim has reached. `[prose: unchecked]` entries are promotio
 | **Topology & roles** | |
 | Pi runs only appliance-safe services; every workload placement matches a typed role declared by its manifest | `[structural]` (closed role enum + pure inventory assertion) + `[law: eval-workload-role-placement]` |
 | Cross-host service split: daemon on one host, client/proxy on every consumer; cross-host refs via `nori.hosts` registry | `[structural]` (the registry IS the wiring) |
-| Each host has one folder at `machines/<n>/`; identity registered in `nori.hosts`; eval fails if folder + registry don't both land | `[law: add-host eval check]` (via `add-host` skill's exit invariant) |
+| Each managed host has one entry in `inventory/hosts.nix` with one explicit backend; NixOS entries name system/home modules and Ansible entries name plan/apply/verify commands; the inventory compiler rejects incomplete or inconsistent declarations | `[structural]` (`inventory/default.nix` + `lib/machines.nix`) |
 | **lanRoutes** | |
-| One `nori.lanRoutes` entry generates Caddy vhost + Blocky DNS + Gatus monitor consistently | `[structural]` (single schema → multiple generators in `modules/infra/networking/default.nix`) + `[runtime-introspection: just test-routes]` (Caddy + DNS + HTTPS all reachable per declared route) |
-| `audience: operator` routes get no Authelia overlay; `family` gets OIDC; `public` is intentionally open | `[structural]` (typed `audience` enum, generators branch on it) |
+| One `nori.lanRoutes` entry generates Caddy vhost + Blocky DNS + Gatus monitor consistently | `[structural]` (single schema → multiple generators in `infra/common/nixos/routes.nix`) + `[runtime-introspection: just test-routes]` (Caddy + DNS + HTTPS all reachable per declared route) |
+| Route declarations combine audience and reachability: operator routes cannot be internet-reachable; family routes must declare OIDC, forward-auth, or a documented no-auth reason; public-status routes cannot use operator audience | `[structural]` (evaluation assertions in `infra/common/nixos/routes.nix`) |
 | Cloudflare edge-owned hostnames cannot also be claimed by internal `lanRoutes` | `[structural]` (pure inventory assertion) + `[law: eval-presentations]` (negative split-horizon collision fixture) |
 | Service names function over brand (`uptime`, not `gatus`; `chat`, not `ollama`) unless brand IS identity | `[law: lint.functionNamedSubdomains]` (promoted 2026-06-16; nori.lint TOML denylist of 13 upstream brands with clean function-name mappings) |
 | **systemd units** | |
 | Every `Restart=on-failure` unit's `ExecStart` is smoke-tested before landing (prevents restart-loop bombs that break the next `switch-to-configuration` — incident 2026-06-03 in `Mnemopi recall: gotcha-systemd-restart-loop-bombs`) | `[prose: unchecked]` — promote? flake check resolving each `ExecStart` to a real nix-store binary path |
 | **Convention shapes** | |
 | `nori.<X>` effects are one input → multiple generators (Reader + collected-Writer interface) | `[structural]` (the abstraction shape itself; documented in `docs/glossary.md` § effect-interface deep-dive) |
-| Adding `modules/infra/<X>.nix` ships with a `just test-<X>` runtime introspection recipe | `[prose: unchecked]` — promote? meta-check that every Reader+Writer-shaped effect file has a matching test recipe in `Justfile`. See `docs/reference/runtime-tests.md` § "Next potential test targets" |
+| Adding a Reader+Writer concern under `infra/common/nixos/` ships with a `just test-<X>` runtime introspection recipe | `[prose: unchecked]` — promote? meta-check that every Reader+Writer-shaped effect file has a matching test recipe in `Justfile`. See `docs/reference/runtime-tests.md` § "Next potential test targets" |
 | A service module owns *everything* about its service in one file (no fan-out) | `[prose: unchecked]` — promote? per-service file boundary check |
 | Rule of three before extracting an abstraction | `[judgment]` |
 | Iterate-to-stable, then codify | `[judgment]` |
@@ -90,7 +90,7 @@ assertions = [
 ];
 ```
 
-Live examples in `modules/infra/networking/default.nix` (port uniqueness, name regex, redirectPath shape). Use when a rule depends on multiple options together — derived properties, uniqueness across attrs, conditional requirements.
+Live examples in `infra/common/nixos/routes.nix` (port uniqueness, name regex, redirectPath shape). Use when a rule depends on multiple options together — derived properties, uniqueness across attrs, conditional requirements.
 
 ### Custom flake checks
 
@@ -101,7 +101,7 @@ For grep-shaped rules, the canonical home is `nori.lint` — a Reader (rule regi
 ```toml
 [rules.<name>]
 pattern = '<extended-regex>'        # literal string: backslashes verbatim
-scope = ["modules/"]                # paths grep walks
+scope = ["infra/"]             # paths grep walks
 excludeFiles = ["allowlist.nix"]    # optional per-rule file exemptions
 excludePatterns = ['known-ok']      # optional per-rule substring exemptions
 tags = ["security", "topology"]     # optional, for future filtering
@@ -114,9 +114,12 @@ Dispatcher lives at `lint/default.nix`; wired in `flake.nix` via `lintLib.makeLi
 
 Live examples in the `lint` check: `pbkdf2` (no inline OIDC hashes), `caddyVirtualHosts` + `blockyCustomDNS` (single-source via `nori.lanRoutes`), `caddyAcmeInternal` + `gatusNtfyUrl` (gotcha patterns), `tailnetIp` (no host `100.x.y.z` literals outside `inventory/hosts.nix`), `noriLan` (legacy alias migration), `migrationPhase` (no decaying phase tokens), `diskoUsesById` (NVMe safety). Plus standalone derivations for non-grep rules: `every-service-has-fs-hardening`, `every-service-has-backup-intent`, `routing-coherence`.
 
-Migration-era checks `path-coherence` and `multi-line-comments` were demoted to one-off scripts (Phase 5d, 2026-06-17) — invoked via `just check-migration`. Not part of `nix flake check` by default because steady-state catch-rate is near-nil; the convention is set and new code inherits it. Re-promote during active restructure phases if drift volume warrants.
+`just check-migration` checks source-path coherence during restructures. The
+migration-only consecutive-comment scanner was retired in the two-host cleanup:
+it enforced a historical formatting preference rather than configuration
+behavior. Nix formatting remains enforced by the pinned formatter in CI.
 
-The `path-coherence` script is the comment-narrative counterpart to `routing-coherence`. It walks `.nix` files + selected docs and verifies every `modules/.../*.nix` reference resolves to an actual file. Path-string drift was a silent failure mode that bulk-sed migrations leave behind; the script turns it into a CI-style error during restructure phases. Three escape hatches: paths with `<placeholder>` syntax check against a glob (must match at least one file); lines annotated with `path-coherence: skip` are ignored; files containing `path-coherence: skip-file` (illustrative tutorials, skill prose) skip wholesale; block-scoped via `path-coherence: skip-block ... end-skip` for fenced markdown examples.
+The `path-coherence` script is the comment-narrative counterpart to `routing-coherence`. It walks `.nix` files + selected docs and verifies repository-root `.nix` path references resolve to actual files. Path-string drift was a silent failure mode that bulk-sed migrations leave behind; the script turns it into a CI-style error during restructure phases. Three escape hatches: paths with `<placeholder>` syntax check against a glob (must match at least one file); lines annotated with `path-coherence: skip` are ignored; files containing `path-coherence: skip-file` (illustrative tutorials, skill prose) skip wholesale; block-scoped via `path-coherence: skip-block ... end-skip` for fenced markdown examples.
 
 If a rule needs AST awareness, graduate to a tree-sitter-nix wrapper. Not currently present; introduce only when grep stops being enough. The data/control plane split (TOML rules + Nix dispatcher) makes the Writer-swap cheap when that day comes.
 
@@ -134,7 +137,7 @@ Live recipes:
 
 ### CI gate
 
-`.github/workflows/check.yml` runs `nix flake check` on every push and pull_request. Backstop for cases where pre-commit was skipped: commits from a Mac without nix on PATH (the most common case here), `git commit --no-verify`, agents that bypass the hook. The check itself is just `nix flake check --print-build-logs`; everything in the rungs above runs through it.
+`.github/workflows/check.yml` runs the Nix checks and Pi static checks on pushes and pull requests. CI backs up the local gates; it does not execute operator-triggered live introspection or establish production health. See the workflow for exact jobs and commands.
 
 ## Decision tree — when to add a rule
 
@@ -160,15 +163,15 @@ When you write the words **"we should always..."** or **"don't ever..."** in pro
 
 ## Live `nori.<X>` enforcement — worked example
 
-The effect-interface family in `modules/infra/` is enforced by all five rungs simultaneously:
+The effect-interface family in `infra/common/nixos/` is enforced by all five rungs simultaneously:
 
 | Rung | Example |
 |---|---|
 | Type | `port`, `audience`, `scheme`, name regex on `nori.lanRoutes.<n>` |
-| Assertion | port uniqueness; paths-XOR-skip on `nori.backups`; appliance role can't use `paths`; DynamicUser `StateDirectory` symlink-trap check |
+| Assertion | port uniqueness; include-XOR-skip on `nori.backups`; appliance includes must target remote repositories; DynamicUser `StateDirectory` symlink-trap check |
 | Flake check | `every-service-has-fs-hardening`, `every-service-has-backup-intent`, `lint` (TOML rule registry; 10 rules covering security, topology, gotchas, migration drift, NVMe safety, doc hygiene) |
 | **Runtime introspection** | `just test-backups` (per-target snapshot ≤25h), `just test-routes` (Caddy + DNS + HTTPS per route), `just test-observability` (scrape targets up, per-host series, heartbeat <90s) |
-| CI gate | All of the above run on every push via `.github/workflows/check.yml` |
+| CI gate | Declared Nix checks and Pi static checks run via `.github/workflows/check.yml`; live introspection remains an operator-run check |
 
 ## Promotion work-list
 
@@ -178,17 +181,15 @@ The effect-interface family in `modules/infra/` is enforced by all five rungs si
 - `workhorse-vs-appliance-placement` → `[law: eval-workload-role-placement]` (2026-07-22) — workload manifests declare a non-empty set from the shared typed host-role vocabulary; the pure inventory compiler rejects every resolved placement whose host role is outside that set before NixOS module evaluation.
 - `disko-uses-by-id` → `[law: lint.diskoUsesById]` (2026-06-16) — was register item #1; the rule that tested the "add a rule = one TOML block" Goal motivating the nori.lint refactor.
 - `function-named-subdomains` → `[law: lint.functionNamedSubdomains]` (2026-06-16) — TOML denylist of 13 upstream brand names with clean function-name mappings (gatus→uptime, ntfy→alert, …). Audited current tree: zero real violations (operator's branded apps `filmder`/`heim` legitimately have brand-as-identity).
-- `audience-enforces-auth` → `[structural: module assertion]` (2026-06-21) — `audience="family"` requires `oidc`, `forwardAuth`, or explicit `noAuthReason` per `modules/infra/networking/default.nix` assertion. Two legitimate exceptions annotated (radicale, jellyfin).
-- `infra-concerns-have-tests` → `[law: infra-concerns-have-tests]` (2026-06-21) — every `modules/infra/<X>/` with a Reader-shaped `options.nori.*` schema must ship a matching test-* recipe per the lookup table in `flake.nix § checks.infra-concerns-have-tests`. Mapping: backup→test-backups, capabilities→test-harden, networking→test-routes, observability→test-observability, storage→test-fs, access→test-authelia.
-- `systemd-execstart-resolves` → REJECTED (2026-06-21) — vetted after audit proposed it; grep finds zero literal-path ExecStarts in `modules/`, every one is `${pkgs.foo}/bin/baz` interpolation which nix eval already validates. Real incident class (bad flags, 2026-06-03) handled by `Mnemopi recall: gotcha-systemd-restart-loop-bombs` at the prose+memory rung. See `docs/plans/2026-06-21-improve-audit.md § finding #4`.
+- `audience-enforces-auth` → `[structural: module assertion]` (2026-06-21) — `audience="family"` requires `oidc`, `forwardAuth`, or explicit `noAuthReason` per `infra/common/nixos/routes.nix` assertion. Two legitimate exceptions annotated (radicale, jellyfin).
+- `infra-concerns-have-tests` → `[law: infra-concerns-have-tests]` (2026-06-21) — recursively discovers every shared `options.nori.*` schema and rejects any unaccounted file. Runtime-observable effects map to a matching `test-*` recipe in `lib/flake-parts/checks/conventions.nix`, including replication→test-replicas. The hardware-bound GPU schema and read-only host/inventory projections name their narrower evaluation/build evidence explicitly; they were outside the original `*/default.nix` runtime-test discovery.
+- `systemd-execstart-resolves` → REJECTED (2026-06-21) — vetted after audit proposed it; grep finds zero literal-path ExecStarts in `nix/`, every one is `${pkgs.foo}/bin/baz` interpolation which nix eval already validates. Real incident class (bad flags, 2026-06-03) handled by `Mnemopi recall: gotcha-systemd-restart-loop-bombs` at the prose+memory rung. See `docs/archive/plans/2026-06-21-improve-audit.md § finding #4`.
 
 Others (the `[judgment]` ones) stay where they are — they're not staleness risks.
 
 ## Code style enforcement
 
-`nix flake check` runs `statix` (anti-patterns) + `deadnix` (unused bindings) + `nixfmt` (format) automatically. Pre-commit hook in `.githooks/pre-commit` runs the same on staged `.nix` changes.
-
-Bypass with `git commit --no-verify` for emergencies only — CI catches what pre-commit skipped.
+`just check` runs the fast Nix checks, including statix, deadnix and formatting checks. `just check-all` also includes runtime VM suites. The pre-commit hook validates an isolated exact-index snapshot with fast Nix and Pi static checks, fails on missing tools, and never fixes the working tree. Run formatting or fixes explicitly. Hook and CI results cover their tested content, not subsequent edits.
 
 ## Citation pattern
 

@@ -5,15 +5,16 @@ summary: Phase 4 step-by-step — disko-applied bare-metal NixOS install on work
 
 # Phase 4: NixOS install on workstation (disko-based)
 
-Bare-metal install. The flake's `modules/machines/workstation/disko.nix` declares
+Bare-metal install. The flake's `infra/workstation/disko.nix` declares
 the partition layout; disko applies it; `nixos-install` writes the
 system. No manual `parted` or `mkfs` — the layout is in version control.
 
 Read this whole document before starting. As-of-Phase-5+ note: this
-doc was written for the original April 2026 install. The OneTouch
-referenced in earlier steps is now the live restic backup target —
-don't let the same drive be both "rollback insurance for the install"
-and "in-use restic repo" without thinking through the dependency.
+doc was written for the original April 2026 install. OneTouch is a
+prepared but disabled restic destination pending a verified connection;
+it is not current backup coverage. Keep it disconnected during install
+and don't use the same drive for both rollback insurance and an in-use
+restic repository.
 Use a different external drive for the partclone-rollback backup if
 you're re-running this on an existing workstation.
 
@@ -94,7 +95,7 @@ nix --experimental-features 'nix-command flakes' \
 ```
 
 What this does:
-- Wipes and re-partitions `/dev/nvme0n1` per `modules/machines/workstation/disko.nix`.
+- Wipes and re-partitions `/dev/nvme0n1` per `infra/workstation/disko.nix`.
 - Creates the ESP (vfat, label `BOOT`) and btrfs filesystem (label
   `nixos`) with six subvolumes.
 - Mounts everything under `/mnt/` ready for `nixos-install`.
@@ -195,12 +196,12 @@ Phase 4 is done when all four work.
 ## What this install does NOT do (deferred)
 
 - **`flake.lock` capture and commit** — see step 7. Easy to miss.
-- **Service migration.** Tailscale comes up by virtue of
-  `services.tailscale` in `modules/machines/base/`. Phase 5 services
+- **Service activation.** Tailscale comes up through
+  `services/tailscale/nixos.nix`. Hosted services
   (Samba, Ollama, Jellyfin, Immich, the *arr stack, Glance,
-  Radicale, Syncthing, etc.) come up via `modules/services/` —
+  Radicale, Syncthing, etc.) come up via `services/` —
   the host imports the whole "server concern" via
-  `modules/machines/workstation/default.nix`.
+  `infra/workstation/default.nix`.
 - **Tailscale identity restore.** Fresh `tailscale up` registers a *new*
   node. The old `workstation` from Ubuntu lingers as expired in the
   admin console. Either delete it now or restore `/var/lib/tailscale/`
@@ -208,7 +209,7 @@ Phase 4 is done when all four work.
 - **IronWolf Pro reformat.** Phase 2. Separate operation; runs when
   you have a free evening.
 - **OneTouch as restic target.** Phase 5+ — see
-  `modules/machines/workstation/disko-onetouch.nix`. <!-- path-coherence: skip — historical install doc; file moved to machines/aurora/ when OneTouch relocated 2026-06-11 --> Don't run that disko
+  `nix/hosts/workstation/disko-onetouch.nix`. <!-- path-coherence: skip — historical install doc; file moved to machines/aurora/ when OneTouch relocated 2026-06-11 --> Don't run that disko
   config until the OneTouch's existing data has been migrated off
   (any Phase-1 backups it held are now on @archive on IronWolf;
   the migration is in `git log` around the OneTouch transition).

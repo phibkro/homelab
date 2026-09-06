@@ -1,7 +1,7 @@
 # Bump the pagu pin (guidance ↔ installed binary)
 
 **What**: homelab's `pagu` flake input pins a *published* revision. Agent
-guidance — `modules/home/agent-soul/SOUL.md`, the generated
+guidance — `users/nori/programs/agent-soul/SOUL.md`, the generated
 `~/.codex/AGENTS.md`, and the `pagu` skill installed from
 `${inputs.pagu}/skills/pagu` — describes whatever that pin contains. Local pagu
 commits are invisible to this machine until the pin moves.
@@ -38,7 +38,7 @@ written but not yet live:
 | `--harness` validated at the CLI boundary | — |
 | vendored deps + `--cached-only` (hermetic start) | — |
 
-`modules/infra/backup/agent-fix.nix` deliberately calls `pagu-box`, **not**
+`services/agent-fix/nixos.nix` deliberately calls `pagu-box`, **not**
 `pagu box`, for exactly this reason. Move it after the bump, not before —
 `pagu box` against the current pin is parsed as a harness name and exits 64,
 which would break backup-failure repair at the worst moment.
@@ -53,7 +53,7 @@ nix eval --raw .#nixosConfigurations.workstation.config.home-manager.users.nori.
 Diff that store path's `SKILL.md` against `/srv/share/projects/pagu/skills/pagu/SKILL.md`.
 Identical means the pin carries the guidance agents will read. A difference is
 the drift this runbook exists to prevent — the skill is installed for **both**
-Claude and Codex from one pinned source (`modules/home/agent-skills/`), so they
+Claude and Codex from one pinned source (`users/nori/programs/agent-skills/`), so they
 cannot disagree with each other, only with the working tree.
 
 ## Related

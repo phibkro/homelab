@@ -1,104 +1,38 @@
 #!/usr/bin/env just --justfile
-# Common workflows for the nori homelab flake.
-#
-# Recipes default to running LOCALLY — on whichever host you invoke
-# them from. Cross-host execution composes via the `remote` recipe:
-#
-#   just rebuild                            # build the host you're sitting on
-#   just remote workstation rebuild         # rsync working tree to workstation
-#                                            # + run `just rebuild` there
-#   just remote workstation show-status     # ssh + run `just show-status` there
-#   just remote workstation show-logs sshd  # forwarded args work
-#
-# Implications:
-#   - On macOS / Mac dev box: most recipes don't make sense locally
-#     (Mac isn't a NixOS host). Use `just remote <host> <recipe>`.
-#   - Inside Zed-remote SSH'd into a NixOS host: plain `just rebuild`
-#     builds that host — no rsync-back-to-self absurdity.
-#
-# Install: `brew install just` on macOS; `pkgs.just` (already in
-# common/base.nix systemPackages) on NixOS hosts.
-#
-# ── Recipe-authoring conventions ──────────────────────────────────
-#
-# 1. **Naming: verb-object.** A recipe name carries both a VERB and
-#    an OBJECT (`list-ports`, `show-logs`, `generate-oidc-key`,
-#    `test-hypr`). Single-verb names (`rebuild`, `preview`, `boot`,
-#    `deploy`) are OK only when the object is "this host's current
-#    config" — implicit + universal. Pure nouns (`pending`, `status`,
-#    `ports`) are wrong: no verb means unclear what the recipe does.
-#
-# 2. **The LAST `#` comment line above a recipe is its `just --list`
-#    description.** `just --list` shows only that line; multi-line
-#    doc-blocks lose all but the last. Write the last line as a
-#    self-contained one-liner. Multi-line elaboration goes ABOVE that
-#    one-liner, not below.
-#
-# 3. **Cluster naming.** Test recipes are `test-<thing>`; build flow
-#    is `build/preview/rebuild/boot/rollback`; observation is `show-X`,
-#    `list-X`, `query-X`; generation is `generate-X`. Match the cluster
-#    when adding a new recipe so `just --list | grep ^<verb>-` finds it.
-#
-# 4. **Co-location.** Recipes coupled to a single concern live with
-#    that concern, imported below:
-#
-#       Concern                              Recipes here          Fragment
-#       ─────────                            ──────────────        ────────
-#       tests (all layers)                   test-*, e2e-shell     tests/tests.just
-#       backup                               backup, check-restic, modules/infra/backup/backup.just
-#                                            restore-drill,
-#                                            list-snapshots
-#       observability                        show-logs, follow,    modules/infra/observability/observability.just
-#                                            query-logs
-#       networking (lanRoutes)               list-ports            modules/infra/networking/networking.just
-#       services layer                       deploy-app            modules/services/services.just
-#       secrets / auth                       generate-oidc-key     secrets/auth.just
-#
-#    Root Justfile carries cross-concern verbs (build/deploy/inspect/
-#    push-gate) that aren't coupled to a single module subtree. Adding
-#    a new concern with its own surface = drop a `<concern>.just` next
-#    to the code + add one `import` line below.
 
 default_host := "workstation"
 user         := "nori"
 remote_path  := "/tmp/nix-migration"
 tailnet      := "saola-matrix.ts.net"
 
-# The converged workstation is the homelab's only NixOS host.
 # Used by `rebuild-homelab` to keep the one-host flow explicit.
 homelab_hosts := "workstation"
 
-# rsync flags — BSD openrsync compatible (Mac default rsync is openrsync;
 # some GNU flags like --info=stats2 fail silently). See docs/gotchas.md.
-rsync_args := "-aH --no-owner --no-group --partial --delete --exclude='.git' --exclude='result' --exclude='inventory-*'"
+rsync_args := "-aH --no-owner --no-group --partial --delete --exclude='.git' --exclude='.worktrees' --exclude='.devenv' --exclude='node_modules' --exclude='result' --exclude='inventory-*'"
 
 # ── Imports (co-located concern fragments) ─────────────────────────
 import 'tests/tests.just'
-import 'modules/infra/backup/backup.just'
-import 'modules/infra/observability/observability.just'
-import 'modules/infra/networking/networking.just'
-import 'modules/services/services.just'
+import 'tests/backup.just'
+import 'tests/observability.just'
+import 'tests/networking.just'
+import 'tests/services.just'
 import 'secrets/auth.just'
-mod pi 'pi/pi.just'
+mod pi 'infra/pi/pi.just'
 
-# Default recipe — rebuild this host.
-default: rebuild
+# Default recipe is read-only help.
+default: list
 
 # Show all recipes with their docs.
 @list:
     just --list --justfile {{justfile()}}
 
-# === remote — composition primitive ===
 
-# Run a recipe on another host via tailnet SSH.
-# Rsyncs the local working tree to {{remote_path}} on <host>, then runs
-# `just <recipe>` there. Args after <recipe> forward to the recipe.
 # Usage: just remote <host> <recipe> [<args>...]
 @remote host +recipe:
     rsync {{rsync_args}} ./ {{user}}@{{host}}.{{tailnet}}:{{remote_path}}/
     ssh -t {{user}}@{{host}}.{{tailnet}} 'cd {{remote_path}} && just {{recipe}}'
 
-# === build / deploy (local) ===
 
 # Derive affected build targets from inventory and changes since a Git ref.
 @plan-deploy base="origin/main":
@@ -108,11 +42,6 @@ default: rebuild
 @rebuild *args:
     nh os switch . -H $(hostname) {{args}}
 
-# Sequential rebuild: local first, then each remote host.
-# Use after any change that affects the host — most commonly adding a
-# `nori.lanRoutes.<n>` entry. `just rebuild` only touches whichever
-# host you're sitting on; this keeps the host set explicit
-# ({{homelab_hosts}}) and avoids silent split-brain.
 # Build + activate workstation from the working tree.
 @rebuild-homelab *args:
     for h in {{homelab_hosts}}; do \
@@ -125,10 +54,6 @@ default: rebuild
       fi; \
     done
 
-# Build a remote host's config HERE and deploy the closure — the target
-# compiles NOTHING. This is useful when operating from a Mac or another
-# machine: the converged workstation receives the closure and activation
-# runs via passwordless remote sudo.
 # Usage: just push <host> [extra nixos-rebuild args]
 @push host *args:
     nixos-rebuild switch \
@@ -141,19 +66,8 @@ default: rebuild
 @build *args:
     nh os build . -H $(hostname) {{args}}
 
-# Build the flashable Pi SD image with derivation progress and elapsed-time output.
-@build-pi-image out_link="/tmp/pi-nixos-sd-image" *args:
-    nix develop --command nom build \
-      .#nixosConfigurations.pi.config.system.build.sdImage \
-      --out-link {{out_link}} \
-      {{args}}
-
-# Ideal for iterating on visual / UX changes (icon themes, Hyprland
-# binds, fonts) without polluting the boot menu with throwaway
-# generations. Once happy: `just rebuild` to persist as the new default.
-#
 # Activate the rebuild for the current session only — reverts on reboot.
-@preview *args:
+@activate-test *args:
     nh os test . -H $(hostname) {{args}}
 
 # Activate at next boot only (for kernel/initrd changes).
@@ -164,17 +78,11 @@ default: rebuild
 @rollback:
     sudo nixos-rebuild switch --rollback
 
-# Build + activate from origin's main branch (no working-tree state).
 # Useful for "deploy what's on github" without touching the local tree.
 @deploy:
     nh os switch github:phibkro/homelab -H $(hostname)
 
-# === push gate ===
 
-# The operator's review surface for the push gate (CLAUDE.md § How to
-# operate). Agents must run this (or `git log -p origin/main..HEAD`)
-# before any `git push` and get explicit OK.
-#
 # Show local commits queued for push — full diff + subjects between `main` and `origin/main`.
 @show-pending-diff:
     #!/usr/bin/env bash
@@ -192,19 +100,27 @@ default: rebuild
     # pager even when piped (so operator can scroll on phone).
     git log -p --reverse origin/main..HEAD | delta --paging=always
 
-# === validate ===
 
-# Run nix flake check (statix + deadnix + nixfmt + eval) locally.
+# Run non-VM Nix checks; no host activation.
 @check:
-    nix --extra-experimental-features "nix-command flakes" flake check
+    bash scripts/check-nix.sh fast
 
-# Migration-era one-off checks (path-coherence, multi-line-comments).
-# Not part of nix flake check by design — they served the restructure
-# phases and have near-nil catch-rate at steady state. Run on demand
+# Run all Nix checks, including disposable VMs.
+@check-all:
+    nix --extra-experimental-features "nix-command flakes" flake check --max-jobs 1
+
+# Run all disposable NixOS VMs, or one exact check name.
+@check-vm name="":
+    bash scripts/check-nix.sh vm {{quote(name)}}
+
 # during restructures or when a long-running drift is suspected.
 @check-migration:
     bash lint/checks/path-coherence.sh .
-    bash lint/checks/multi-line-comments.sh .
+    bash tests/path-coherence_test.sh lint/checks/path-coherence.sh
+
+# Run the music-ingest real-filesystem acceptance journey in its pinned shell.
+@test-music-ingest:
+    devenv test
 
 # Format all .nix files via the project formatter (nixfmt via nixfmt-tree).
 @fmt:
@@ -214,23 +130,7 @@ default: rebuild
 @update-flake:
     nix --extra-experimental-features "nix-command flakes" flake update
 
-# === inspect / iterate ===
 
-# Wraps snowfallorg/nix-editor (-i: in-place). Preserves comments +
-# style. Doesn't activate — pair with `just preview` to test, `just
-# rebuild` to commit, or `git checkout` to revert.
-#
-# The repo is module-graph not single-file, so the operator picks
-# the file — nix-editor is honest about its scope: it won't infer
-# where in the import tree a brand-new attribute belongs.
-#
-# Quoting: shell-quote the whole value-expression so Nix-level quotes
-# (for strings) survive. For complex exprs / attrsets, edit by hand.
-#
-# Usage:
-#   just set modules/desktop/stylix.nix stylix.image '"${pkgs.nixos-artwork.wallpapers.dracula}/share/.../image.png"'
-#   just set modules/services/blocky.nix services.blocky.enable false
-#
 # AST-splice a scalar into a `.nix` file, then run the project formatter. Complex exprs: edit by hand.
 @set file attr value:
     # nix-editor's -f flag uses nixpkgs-fmt; project uses nixfmt via
@@ -240,16 +140,8 @@ default: rebuild
     nix fmt -- '{{file}}'
     @echo "--- diff ---"
     @git --no-pager diff -- '{{file}}' | head -30
-    @echo "--- next: just preview (try) → just rebuild (commit) — or git checkout '{{file}}' to revert ---"
+    @echo "--- review the diff, then explicitly activate with just activate-test or just rebuild ---"
 
-# In-terminal search.nixos.org/options scoped to THIS flake's eval,
-# not generic nixpkgs. Pass the dotted attribute path; trailing `.*`
-# for everything under a prefix.
-#
-# Usage:
-#   just show-option services.tailscale.enable
-#   just show-option stylix.iconTheme.package
-#
 # Show a NixOS option from THIS flake's eval — type, default, current value, description.
 @show-option path:
     @echo "=== type ===" && \
@@ -261,8 +153,6 @@ default: rebuild
     echo "=== description ===" && \
     nix eval --raw .#nixosConfigurations.$(hostname).options.{{path}}.description 2>/dev/null || echo "(no description)"
 
-# Quick health summary: failed units, disk usage, restic + btrbk timer
-# state. Cross-concern (touches systemd + disks + restic), so lives at
 # root rather than under any one infra subtree.
 @show-status:
     echo "=== failed units ==="
@@ -274,19 +164,12 @@ default: rebuild
     echo "=== timers (restic + btrbk) ==="
     systemctl list-timers "restic-*" "btrbk-*" --no-pager 2>/dev/null || true
 
-# === ssh — explicit cross-host shell ===
 
 # Drop into another host's shell.
 @ssh host=default_host:
     ssh {{user}}@{{host}}.{{tailnet}}
 
-# === doc quality ===
 
-# Reading the whole doc to find the right section is wasteful when
-# the `## ` headings already index it. Pair with the editor / Read
-# tool to load only the relevant section.
-# Usage: just generate-toc gotchas | just generate-toc architecture
-#
 # Generate a table-of-contents from a doc's `## ` section headings — entry-point into long docs.
 @generate-toc doc:
     grep '^## ' docs/{{doc}}.md | sed 's/^## /  /'

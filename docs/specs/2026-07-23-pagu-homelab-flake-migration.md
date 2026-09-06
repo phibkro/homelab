@@ -28,7 +28,7 @@ is split across shell behavior:
 - `flake.nix` exposes `pagu-box` and `pagu-box-darwin` inputs;
 - `agent-dispatch` translates depth, parent mode, provider, Herdr state, and
   read-only intent into legacy launcher flags;
-- `modules/home/claude-code/default.nix` builds a second `box` wrapper that
+- `nix/home/claude-code/default.nix` builds a second `box` wrapper that
   inspects argv and injects homelab/journal exceptions;
 - tests assert the generated legacy argv rather than a strict policy artifact;
 - ordinary dispatch launches the box directly, so it cannot exercise pagu's
@@ -387,7 +387,7 @@ on fetching the archived standalone repository or inventing a new launcher.
 - pagu `schemas/profile-grant-v0.schema.json`
 - pagu `profiles/worker.json` and `profiles/orchestrator.json`
 - homelab `flake.nix` pagu inputs
-- homelab `modules/home/profiles/development/agentic-workstation.nix`
-- homelab `modules/home/agent-dispatch.sh`
-- homelab `modules/home/claude-code/default.nix`
-- homelab `modules/machines/macbook/home.nix`
+- homelab `nix/home/profiles/development/agentic-workstation.nix`
+- homelab `nix/home/agent-dispatch.sh`
+- homelab `nix/home/claude-code/default.nix`
+- homelab `nix/hosts/macbook/home.nix`

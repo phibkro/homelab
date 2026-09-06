@@ -111,29 +111,29 @@ This is the PaaS scheduler shape applied at eval time. k8s does it at runtime vi
 ```
 present today                                what shape
 ─────────────────────────────────────────────────────────────────
-modules/infra/hosts.nix                      schema (Reader)
+nix/modules/system/hosts.nix                      schema (Reader)
   options.nori.hosts.<name>.{tailnetIp,
     lanIp, codename, hardware, primaryJob,
     roleOneLiner, role}
 
-modules/machines/default.nix                 values
+nix/lib/machines.nix                 values
   identityFor (the 4 hosts' actual
   identity + role declarations)
 
-modules/infra/placement.nix                  negative assertions
+nix/modules/system/placement.nix                  negative assertions
   - role="appliance" cannot use nori.backups
     with paths
   - role="agent" cannot use nori.backups at all
 
-modules/services/<X>.nix                     ad-hoc tags
+nix/modules/services/<X>.nix                     ad-hoc tags
   nori.services.<X>.tags = [ "family-tier"
                               "stateful" ]
 
-modules/services/<X>.nix                     activation flags
+nix/modules/services/<X>.nix                     activation flags
   nori.services.<X>.enable = true
   (per-host opt-in)
 
-modules/infra/networking/default.nix         per-route location
+nix/modules/system/networking/default.nix         per-route location
   nori.lanRoutes.<X>.runsOn = "<hostname>"   pointing at a host
                                              (single, not capability-
                                               based)
@@ -173,12 +173,12 @@ Q1   Naming: nori.hosts vs nori.machines vs nori.compute
                                 resource" in glossary; minimal churn
      (β) nori.machines       — broader; covers clients/agents
                                 naturally; clashes namespace-wise
-                                with modules/machines/ folder
+                                with nix/hosts/ folder
      (γ) nori.compute        — PaaS terminology; clear; new word
      
      Lean: (β) — the broader term is honest; the folder clash is
      namespace vs filesystem-path (different dimensions).
-     modules/machines/ is the FACTORY; nori.machines is the
+     nix/hosts/ is the FACTORY; nori.machines is the
      REGISTRY. They reference different things.
 
 Q2   Role enum shape: extend or replace?
@@ -265,7 +265,7 @@ Q7   Migration path: replace or extend in-place?
 
 Q8   Replication.nix in this scope?
      
-     Currently modules/infra/storage/replication.nix declares
+     Currently nix/modules/system/storage/replication.nix declares
      nori.replicas.<X>.{source, target}.host references. Those
      hosts would become machine references under the new schema.
      
@@ -334,7 +334,7 @@ Phase 5 — runsOn multi-host (R2 algebraic extension)
 
 Phase 6 — Cleanup
   Remove the negative-only placement.nix assertions (subsumed by
-  the resolver). identityFor in modules/machines/default.nix
+  the resolver). identityFor in nix/lib/machines.nix
   shrinks (capability flags move into the data).
   Topology-generated.md regenerated; documentation updates.
 ```

@@ -1,6 +1,6 @@
 ---
 generated: true
-source: flake-parts/packages/docs-replicas.nix
+source: lib/flake-parts/packages/docs-replicas.nix
 regenerate: nix build .#docs-replicas
 ---
 
@@ -27,28 +27,26 @@ below emits a per-replica verifier oneshot on the *target* host
 (where the snapshot must land): if the latest snapshot is older
 than `maxAgeHours`, the unit fails → notify@ alerts via ntfy.
 
-The replicator itself (e.g. btrfs send/receive timer aurora →
-workstation MP510 for `/mnt/family/*`) lands in P15 — this
-module only defines the registry + the verifier so the freshness
-check is wired before any replicas actually exist. On hosts with
-zero matching entries the writer is a clean no-op (no units
-emitted) and `just test-replicas` exits 0 with "no replicas
-declared".
+This module defines the registry and verifier, not the replication
+transport. A caller declaring replicas must supply that transport.
+With no matching entries it emits no verifier units, and
+`just test-replicas` reports "no replicas declared".
 
 ### Examples
 
-Service-tier shape:
+Illustrative shape for a future two-btrfs-host deployment; this is
+not an active workstation-to-Pi replication policy:
 
 ```nix
 nori.replicas.family-photos = {
-  source       = { host = "aurora";      path = "/mnt/family/photos"; };
-  target       = { host = "workstation"; path = "/mnt/family-replica/photos"; };
+  source       = { host = "source-host"; path = "/data/photos"; };
+  target       = { host = "replica-host"; path = "/replicas/photos"; };
   mechanism    = "btrfs-send-receive";
   maxAgeHours  = 25;  # daily cadence + 1h slack
 };
 ```
 
-See `docs/plans/2026-06-11-aurora-migration.md` § P5/P15.
+Historical design: `docs/archive/plans/2026-06-11-aurora-migration.md` § P5/P15.
 
 ## `homelab.replicas.config` {#function-library-homelab.replicas.config}
 
@@ -83,7 +81,7 @@ attribute set of (submodule)
 ```
 
 *Declared by:*
- - `modules/infra/storage/replication.nix`
+ - `infra/common/nixos/storage/replication.nix`
 
 
 
@@ -112,7 +110,7 @@ positive integer, meaning >0
 ```
 
 *Declared by:*
- - `modules/infra/storage/replication.nix`
+ - `infra/common/nixos/storage/replication.nix`
 
 
 
@@ -121,8 +119,7 @@ positive integer, meaning >0
 
 
 How the source is propagated. Only ` btrfs-send-receive `
-is supported today (aurora HDD → workstation MP510, both
-btrfs). Other mechanisms (zfs send, rsync) would extend
+is supported by the schema; both endpoints must use btrfs. Other mechanisms (zfs send, rsync) would extend
 this enum when a use case arrives.
 
 
@@ -131,7 +128,7 @@ this enum when a use case arrives.
 value “btrfs-send-receive” (singular enum)
 
 *Declared by:*
- - `modules/infra/storage/replication.nix`
+ - `infra/common/nixos/storage/replication.nix`
 
 
 
@@ -147,7 +144,7 @@ Host + path where the dataset originates.
 submodule
 
 *Declared by:*
- - `modules/infra/storage/replication.nix`
+ - `infra/common/nixos/storage/replication.nix`
 
 
 
@@ -163,7 +160,7 @@ Source host name (key into ` nori.hosts `).
 string
 
 *Declared by:*
- - `modules/infra/storage/replication.nix`
+ - `infra/common/nixos/storage/replication.nix`
 
 
 
@@ -179,7 +176,7 @@ Source filesystem path (typically a btrfs subvolume).
 absolute path
 
 *Declared by:*
- - `modules/infra/storage/replication.nix`
+ - `infra/common/nixos/storage/replication.nix`
 
 
 
@@ -195,7 +192,7 @@ Host + path where the replica lands.
 submodule
 
 *Declared by:*
- - `modules/infra/storage/replication.nix`
+ - `infra/common/nixos/storage/replication.nix`
 
 
 
@@ -211,7 +208,7 @@ Target host name (key into ` nori.hosts `).
 string
 
 *Declared by:*
- - `modules/infra/storage/replication.nix`
+ - `infra/common/nixos/storage/replication.nix`
 
 
 
@@ -227,6 +224,6 @@ Target filesystem path (subvolume receiving the replica).
 absolute path
 
 *Declared by:*
- - `modules/infra/storage/replication.nix`
+ - `infra/common/nixos/storage/replication.nix`
 
 

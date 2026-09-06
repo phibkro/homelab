@@ -10,7 +10,9 @@
 
 let
   inventory = import ../../inventory { inherit lib; };
-  hostNames = lib.attrNames inventory.internal.hosts;
+  # Ansible profiles still express logical workload placement, but they must
+  # never be projected into NixOS system modules.
+  hostNames = inventory.internal.nixosHostNames;
 
   hostsSelecting =
     modulePath:
@@ -20,26 +22,18 @@ let
     ) hostNames;
 
   actual = {
-    vector = hostsSelecting ../../modules/infra/observability/vector.nix;
-    btrbk = hostsSelecting ../../modules/infra/backup/btrbk.nix;
-    restic = hostsSelecting ../../modules/infra/backup/restic.nix;
-    restore-drill = hostsSelecting ../../modules/infra/backup/verify.nix;
-    tailnet-appliance = hostsSelecting ../../modules/infra/tailnet-appliance.nix;
-    entry-plane-role = hostsSelecting ../../modules/profiles/entry-plane.nix;
-    research = hostsSelecting ../../modules/profiles/research.nix;
+    vector = hostsSelecting ../../services/vector/nixos.nix;
+    btrbk = hostsSelecting ../../services/btrbk/nixos.nix;
+    restic = hostsSelecting ../../services/restic-backup/nixos.nix;
+    restore-drill = hostsSelecting ../../services/restore-drill/nixos.nix;
+    research = hostsSelecting ../../profiles/research/nixos.nix;
   };
 
   expected = {
-    vector = [
-      "aurora"
-      "pi"
-      "workstation"
-    ];
+    vector = [ "workstation" ];
     btrbk = [ "workstation" ];
     restic = [ "workstation" ];
     restore-drill = [ "workstation" ];
-    tailnet-appliance = [ "pi" ];
-    entry-plane-role = [ "pi" ];
     research = [ "workstation" ];
   };
 in

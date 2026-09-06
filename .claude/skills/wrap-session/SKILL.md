@@ -12,7 +12,7 @@ A new agent with zero context should be able to read `CLAUDE.md` + `git log --on
 - Working tree: !`git status --short`
 - Pending unpushed commits: !`git log --oneline @{u}.. 2>/dev/null || echo "(branch not tracking remote)"`
 - Recent commit history: !`git log --oneline -10`
-- Active memory: !`ls /home/nori/.claude/projects/-home-nori-Downloads-homelab/memory/active/ 2>/dev/null`
+- Active memory: !`ls "$HOME/.claude/projects/-srv-share-projects/memory/active/" 2>/dev/null`
 - Failed units (station): !`systemctl --failed --no-pager 2>&1 | head`
 
 ## Procedure
@@ -40,7 +40,7 @@ If a *new pattern* landed twice or more during the session, that's the rule-of-t
 
 ### 3. Update auto-memory (if cross-conversation facts shifted)
 
-Memory lives in `/home/nori/.claude/projects/-home-nori-Downloads-homelab/memory/`. Don't duplicate what's already in CLAUDE.md — memory is for cross-project / user-personal facts.
+Memory lives in `$HOME/.claude/projects/-srv-share-projects/memory/`. Don't duplicate what's already in CLAUDE.md — memory is for cross-project / user-personal facts.
 
 - New active item the next session needs to pick up → write to `memory/active/<slug>.md` + index in `MEMORY.md`
 - Resolved item from `memory/active/` → move to `memory/archive/` + drop the line from `MEMORY.md`

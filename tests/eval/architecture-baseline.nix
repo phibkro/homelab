@@ -17,10 +17,10 @@
 */
 
 let
+  inventory = inputs.self.lib.noriInventory;
+  compiledInventory = import ../../inventory { inherit lib; };
   hosts = inputs.self.nixosConfigurations;
   homes = {
-    aurora = hosts.aurora.config.home-manager.users.nori;
-    pi = hosts.pi.config.home-manager.users.nori;
     workstation = hosts.workstation.config.home-manager.users.nori;
   };
 
@@ -28,7 +28,7 @@ let
     homeName: packageName:
     lib.any (package: lib.getName package == packageName) homes.${homeName}.home.packages;
 
-  agentSoulPath = ../../modules/home/agent-soul/SOUL.md;
+  agentSoulPath = ../../users/nori/programs/agent-soul/SOUL.md;
   agentSoul = builtins.readFile agentSoulPath;
   agentHarnessesShareSoul =
     homes.workstation.home.file.".claude/CLAUDE.md".source == agentSoulPath
@@ -37,30 +37,25 @@ let
       ".omp/agent/AGENTS.md"
     ];
 
-  actualWorkloads = lib.mapAttrs (_: host: host.config.nori.inventory.currentWorkloads) hosts;
+  actualWorkloads = lib.mapAttrs (_: host: host.workloads) inventory.hosts;
 
   expectedWorkloads = {
-    aurora = [
-      "attic"
-      "beszel-agent"
-      "node-exporter"
-      "restic-target"
-    ];
     pi = [
       "authelia"
       "beszel-agent"
       "beszel-hub"
-      "blocky"
       "caddy"
       "cloudflare-ddns"
       "gatus"
       "heartbeat"
       "ntfy-notify"
       "ntfy-server"
+      "pihole"
       "victorialogs-server"
       "victoriametrics"
     ];
     workstation = [
+      "attic"
       "bazarr"
       "beszel-agent"
       "calibre-web"
@@ -92,6 +87,7 @@ let
       "radarr"
       "radicale"
       "recyclarr"
+      "restic-target"
       "samba"
       "sonarr"
       "stremio"
@@ -103,39 +99,35 @@ let
 
   authMode =
     route:
-    if route.oidc != null then
+    if (route.oidc or null) != null then
       "oidc"
-    else if route.forwardAuth != null then
+    else if (route.forwardAuth or null) != null then
       "forward-auth"
-    else if route.noAuthReason != null then
+    else if (route.noAuthReason or null) != null then
       "exception"
     else
       "none";
 
   routeFingerprint = route: {
-    inherit (route)
-      port
-      runsOn
-      audience
-      exposeOnTailnet
-      ;
+    inherit (route) port runsOn;
+    audience = route.audience or "operator";
+    exposeOnTailnet = route.exposeOnTailnet or false;
     auth = authMode route;
-    monitored = route.monitor != null;
-    dashboard = route.dashboard != null;
+    monitored = (route.monitor or null) != null;
+    dashboard = (route.dashboard or null) != null;
   };
 
-  actualRoutes = lib.mapAttrs (_: routeFingerprint) hosts.pi.config.nori.lanRoutes;
+  actualRoutes = lib.mapAttrs (_: routeFingerprint) compiledInventory.internal.lanRoutes;
 
   migratedRuntimePlacements = {
     authelia = [ "pi" ];
     bazarr = [ "workstation" ];
     beszel-agent = [
-      "aurora"
       "pi"
       "workstation"
     ];
     beszel-hub = [ "pi" ];
-    blocky = [ "pi" ];
+    pihole = [ "pi" ];
     caddy = [ "pi" ];
     calibre-web = [ "workstation" ];
     disk-alert = [ "workstation" ];
@@ -153,10 +145,7 @@ let
     miniflux = [ "workstation" ];
     music-ingest = [ "workstation" ];
     navidrome = [ "workstation" ];
-    node-exporter = [
-      "aurora"
-      "workstation"
-    ];
+    node-exporter = [ "workstation" ];
     nvidia-gpu-exporter = [ "workstation" ];
     ntfy-notify = [
       "pi"
@@ -192,17 +181,11 @@ let
     workloadName: host: builtins.hasAttr (runtimeEvidenceName workloadName) host.config.nori.backups;
   runtimePlacementCorrect = lib.all (
     workloadName:
-    lib.all
-      (
-        hostName:
-        hasMigratedRuntime workloadName hosts.${hostName}
-        == lib.elem hostName migratedRuntimePlacements.${workloadName}
-      )
-      [
-        "aurora"
-        "pi"
-        "workstation"
-      ]
+    lib.all (
+      hostName:
+      hasMigratedRuntime workloadName hosts.${hostName}
+      == lib.elem hostName migratedRuntimePlacements.${workloadName}
+    ) (lib.attrNames hosts)
   ) (lib.attrNames migratedRuntimePlacements);
 
   migratedCatalogEndpoints = {
@@ -237,55 +220,29 @@ let
     victoriametrics.tsdb = "pi";
     vaultwarden.vault = "workstation";
   };
-  catalogVisibleEverywhere =
-    lib.all
-      (
-        hostName:
-        lib.all (
-          workloadName:
-          lib.all (
-            endpointName:
-            hosts.${hostName}.config.nori.inventory.workloads.${workloadName}.endpoints.${endpointName}.runsOn
-            == migratedCatalogEndpoints.${workloadName}.${endpointName}
-          ) (lib.attrNames migratedCatalogEndpoints.${workloadName})
-        ) (lib.attrNames migratedCatalogEndpoints)
-      )
-      [
-        "aurora"
-        "pi"
-        "workstation"
-      ];
+  catalogVisibleEverywhere = lib.all (
+    workloadName:
+    lib.all (
+      endpointName:
+      inventory.workloads.${workloadName}.endpoints.${endpointName}.runsOn
+      == migratedCatalogEndpoints.${workloadName}.${endpointName}
+    ) (lib.attrNames migratedCatalogEndpoints.${workloadName})
+  ) (lib.attrNames migratedCatalogEndpoints);
 
   lifecycleStateCorrect =
-    lib.all
-      (
-        hostName:
-        hosts.${hostName}.config.nori.inventory.workloads.ollama.active
-        && !hosts.${hostName}.config.nori.inventory.workloads.open-webui.active
-        && hosts.${hostName}.config.nori.inventory.workloads.open-webui.endpoints == { }
-        && !hosts.${hostName}.config.nori.inventory.workloads.qbittorrent.active
-        && hosts.${hostName}.config.nori.inventory.workloads.qbittorrent.endpoints == { }
-      )
-      [
-        "aurora"
-        "pi"
-        "workstation"
-      ]
+    inventory.workloads.ollama.active
+    && !inventory.workloads.open-webui.active
+    && inventory.workloads.open-webui.endpoints == { }
+    && !inventory.workloads.qbittorrent.active
+    && inventory.workloads.qbittorrent.endpoints == { }
     && !hosts.workstation.config.services.qbittorrent.enable;
 
-  papersFetchCompatibility =
-    lib.all
-      (
-        hostName:
-        lib.any (
-          package: lib.getName package == "papers-fetch"
-        ) hosts.${hostName}.config.environment.systemPackages == (hostName == "workstation")
-      )
-      [
-        "aurora"
-        "pi"
-        "workstation"
-      ];
+  papersFetchCompatibility = lib.all (
+    hostName:
+    lib.any (
+      package: lib.getName package == "papers-fetch"
+    ) hosts.${hostName}.config.environment.systemPackages == (hostName == "workstation")
+  ) (lib.attrNames hosts);
 
   systemProfileRealizationCorrect = hosts.workstation.config.programs.hyprland.enable;
 
@@ -338,14 +295,18 @@ let
         && lib.elem cacheKey host.config.nix.settings.extra-trusted-public-keys
         && host.config.systemd.timers.attic-cache-watch.wantedBy == [ "timers.target" ]
         && host.config.systemd.timers.attic-cache-seed.wantedBy == [ "timers.target" ]
+        && host.config.systemd.services.attic-cache-watch.serviceConfig.Type == "exec"
+        && host.config.systemd.services.attic-cache-seed.serviceConfig.Type == "exec"
+        && host.config.systemd.services.attic-cache-watch.serviceConfig.RestartMode == "direct"
+        && host.config.systemd.services.attic-cache-seed.serviceConfig.RestartMode == "direct"
       ) (lib.attrValues hosts);
-      aurora = hosts.aurora.config;
+      workstation = hosts.workstation.config;
     in
     everyHostPublishes
-    && aurora.services.atticd.enable
-    && aurora.services.atticd.settings.storage.path == "/mnt/backup/attic"
-    && aurora.services.atticd.settings.garbage-collection.default-retention-period == "30 days"
-    && aurora.systemd.services.attic-cache-bootstrap.wantedBy == [ "multi-user.target" ];
+    && workstation.services.atticd.enable
+    && workstation.services.atticd.settings.storage.path == "/mnt/backup-local/attic"
+    && workstation.services.atticd.settings.garbage-collection.default-retention-period == "30 days"
+    && workstation.systemd.services.attic-cache-bootstrap.wantedBy == [ "multi-user.target" ];
 
   expectedRoutes = {
     agents = {
@@ -405,7 +366,7 @@ let
     };
     cache = {
       port = 5000;
-      runsOn = "aurora";
+      runsOn = "workstation";
       audience = "operator";
       exposeOnTailnet = true;
       auth = "exception";

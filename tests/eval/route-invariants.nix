@@ -9,7 +9,7 @@
   Eval test — cross-product invariants over `nori.lanRoutes`.
 
   Layer 1: pure NixOS-eval, sub-second. Verifies that the module
-  assertions in `modules/infra/networking/default.nix` actually FIRE
+  assertions in `infra/common/nixos/routes.nix` actually FIRE
   on the failure modes they're written for — the "test the test"
   pattern. Without this, a regression that drops an assertion would
   silently pass `nix flake check` because no production config
@@ -47,11 +47,11 @@ let
       specialArgs = { inherit inputs; };
       modules = [
         inputs.sops-nix.nixosModules.sops
-        ../../modules/infra/hosts.nix
-        ../../modules/infra/capabilities
-        ../../modules/infra/storage
-        ../../modules/infra/backup
-        ../../modules/infra/networking
+        ../../infra/common/nixos/hosts.nix
+        ../../infra/common/nixos/service-hardening.nix
+        ../../infra/common/nixos/storage
+        ../../infra/common/nixos/backup.nix
+        ../../infra/common/nixos/routes.nix
         (
           { lib, ... }:
           {
@@ -203,5 +203,5 @@ else
     public OIDC/internal auth: success=${toString internetOidcInternalAuthResult.success} (expected: false)
 
     If any of these flipped, a regression in
-    modules/infra/networking/default.nix dropped a module assertion.
+    infra/common/nixos/routes.nix dropped a module assertion.
   ''

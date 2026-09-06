@@ -47,11 +47,11 @@ let
   # extracted to keep node configs readable.
   homelabBundle = [
     inputs.sops-nix.nixosModules.sops
-    ../modules/infra/hosts.nix
-    ../modules/infra/capabilities
-    ../modules/infra/storage
-    ../modules/infra/backup
-    ../modules/infra/networking
+    ../infra/common/nixos/hosts.nix
+    ../infra/common/nixos/service-hardening.nix
+    ../infra/common/nixos/storage
+    ../infra/common/nixos/backup.nix
+    ../infra/common/nixos/routes.nix
   ];
 
   # Synthetic nori.hosts registry — used by both nodes. Tailnet IPs
@@ -80,7 +80,8 @@ let
   };
 
   # Common boot scaffolding + the test-mode caddy + sops overrides
-  # already proven in tests/e2e-pi-smoke.nix. Imported by both node
+  # already proven by the reusable entry-plane module test in
+  # tests/e2e-pi-smoke.nix. Imported by both node
   # configs to keep the per-node bodies focused on host-specific
   # wiring.
   commonNodeModule =
@@ -124,8 +125,8 @@ pkgs.testers.runNixOSTest {
     {
       imports = homelabBundle ++ [
         commonNodeModule
-        ../modules/infra/networking/blocky/runtime.nix
-        ../modules/infra/networking/caddy/runtime.nix
+        ../services/blocky/nixos.nix
+        ../services/caddy/nixos.nix
       ];
 
       networking.hostName = "pi";

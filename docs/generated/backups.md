@@ -1,6 +1,6 @@
 ---
 generated: true
-source: flake-parts/packages/docs-backups.nix
+source: lib/flake-parts/packages/docs-backups.nix
 regenerate: nix build .#docs-backups
 ---
 
@@ -23,7 +23,7 @@ own concern folders; importing this platform module never places one.
 # backups concern — overview {#sec-functions-library-backups}
 
 
-## `homelab.backups.options.nori.backupTargets` {#function-library-homelab.backups.options.nori.backupTargets}
+## `homelab.backups.options.nori.backupDelivery.enable` {#function-library-homelab.backups.options.nori.backupDelivery.enable}
 
 nori.backups + nori.backupTargets — declarative restic backup model.
 
@@ -41,9 +41,9 @@ The generator fans out: each (job, target) pair becomes its own
 `services.restic.backups.<job>-<target>` and corresponding
 `restic-backups-<job>-<target>.service` systemd unit with its own
 OnFailure → notify@ wiring. That's deliberate — independent units
-mean independent failure modes. A wedged OneTouch USB controller
-(2026-06-04 incident) doesn't take down the mp510-local backups,
-and ntfy alerts disambiguate which target failed.
+mean independent failure modes: an unavailable remote destination
+does not prevent local backups, and ntfy alerts identify which
+target failed.
 
 Service modules look like:
 
@@ -90,7 +90,7 @@ Each entry MUST set exactly one of:
 The two-state schema forces every service module to make an
 explicit decision rather than silently being uncovered. The
 paired flake check (` every-service-has-backup-intent ` in
-flake.nix) enforces that every modules/services/\*\*.nix
+flake.nix) enforces that every registered service runtime
 contains a nori.backups.<n> declaration.
 
 Active backups (those with non-null ` include `) fan out across
@@ -132,7 +132,7 @@ attribute set of (submodule)
 ```
 
 *Declared by:*
- - `modules/infra/backup`
+ - `infra/common/nixos/backup.nix`
 
 
 
@@ -171,7 +171,7 @@ list of string
 ```
 
 *Declared by:*
- - `modules/infra/backup`
+ - `infra/common/nixos/backup.nix`
 
 
 
@@ -202,7 +202,7 @@ null
 ```
 
 *Declared by:*
- - `modules/infra/backup`
+ - `infra/common/nixos/backup.nix`
 
 
 
@@ -231,7 +231,7 @@ null
 ```
 
 *Declared by:*
- - `modules/infra/backup`
+ - `infra/common/nixos/backup.nix`
 
 
 
@@ -259,7 +259,7 @@ list of string
 ````
 
 *Declared by:*
- - `modules/infra/backup`
+ - `infra/common/nixos/backup.nix`
 
 
 
@@ -286,7 +286,7 @@ null
 ```
 
 *Declared by:*
- - `modules/infra/backup`
+ - `infra/common/nixos/backup.nix`
 
 
 
@@ -315,7 +315,7 @@ lib.attrNames config.nori.backupTargets
 ```
 
 *Declared by:*
- - `modules/infra/backup`
+ - `infra/common/nixos/backup.nix`
 
 
 
@@ -344,7 +344,7 @@ one of “service”, “user”, “irreplaceable”
 ```
 
 *Declared by:*
- - `modules/infra/backup`
+ - `infra/common/nixos/backup.nix`
 
 
 
@@ -355,8 +355,7 @@ one of “service”, “user”, “irreplaceable”
 ` OnCalendar ` systemd timer expression. Default 03:00
 UTC daily. All targets for a job share the same timer;
 they fire concurrently. Stagger across jobs when
-concurrent USB I/O on the OneTouch becomes a
-bottleneck. Ignored when ` include ` is null.
+concurrent I/O on a destination becomes a bottleneck. Ignored when ` include ` is null.
 
 
 
@@ -372,7 +371,7 @@ string
 ```
 
 *Declared by:*
- - `modules/infra/backup`
+ - `infra/common/nixos/backup.nix`
 
 
 
@@ -383,22 +382,20 @@ therefore change with configuration instead of being duplicated in prose.
 
 | Job | Tier | Effective targets | Include paths |
 |---|---|---|---|
-| `bazarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/bazarr` |
-| `calibre-web` | `service` | `mp510`<br>`onetouch` | `/var/lib/calibre-web` |
-| `herdr-projects-mcp` | `service` | `mp510`<br>`onetouch` | `/home/nori/.local/state/herdr-mcp/projects` |
-| `jellyfin` | `service` | `mp510`<br>`onetouch` | `/var/lib/jellyfin` |
-| `jellyseerr` | `service` | `mp510`<br>`onetouch` | `/var/lib/private/jellyseerr` |
-| `komga` | `service` | `mp510`<br>`onetouch` | `/var/lib/komga` |
-| `lidarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/lidarr` |
-| `media-irreplaceable` | `irreplaceable` | `onetouch` | `/mnt/media/archive`<br>`/mnt/media/home-videos`<br>`/mnt/media/library`<br>`/mnt/media/photos`<br>`/mnt/media/projects`<br>`/var/lib/immich/backups` |
-| `miniflux` | `service` | `mp510`<br>`onetouch` | `/var/backup/postgresql/miniflux.sql.gz` |
-| `navidrome` | `service` | `mp510`<br>`onetouch` | `/var/lib/private/navidrome`<br>`/var/backup/navidrome` |
-| `paperless` | `irreplaceable` | `mp510`<br>`onetouch` | `/var/backup/postgresql/paperless.sql.gz` |
-| `prowlarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/private/prowlarr` |
-| `radarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/radarr` |
-| `radicale` | `service` | `mp510`<br>`onetouch` | `/var/lib/radicale` |
-| `sonarr` | `service` | `mp510`<br>`onetouch` | `/var/lib/sonarr` |
-| `stremio` | `service` | `mp510`<br>`onetouch` | `/var/lib/stremio` |
-| `suwayomi` | `service` | `mp510`<br>`onetouch` | `/var/lib/suwayomi-server` |
-| `user-data` | `user` | `mp510`<br>`onetouch` | `/home`<br>`/srv/nori`<br>`/srv/share` |
-| `vaultwarden` | `service` | `mp510`<br>`onetouch` | `/var/lib/vaultwarden`<br>`/var/backup/vaultwarden` |
+| `bazarr` | `service` |  | `/var/lib/bazarr` |
+| `calibre-web` | `service` |  | `/var/lib/calibre-web` |
+| `herdr-projects-mcp` | `service` |  | `/home/nori/.local/state/herdr-mcp/projects` |
+| `jellyfin` | `service` |  | `/var/lib/jellyfin` |
+| `jellyseerr` | `service` |  | `/var/lib/private/jellyseerr` |
+| `komga` | `service` |  | `/var/lib/komga` |
+| `lidarr` | `service` |  | `/var/lib/lidarr` |
+| `miniflux` | `service` |  | `/var/backup/postgresql/miniflux.sql.gz` |
+| `navidrome` | `service` |  | `/var/lib/private/navidrome`<br>`/var/backup/navidrome` |
+| `paperless` | `irreplaceable` |  | `/var/backup/postgresql/paperless.sql.gz` |
+| `prowlarr` | `service` |  | `/var/lib/private/prowlarr` |
+| `radarr` | `service` |  | `/var/lib/radarr` |
+| `radicale` | `service` |  | `/var/lib/radicale` |
+| `sonarr` | `service` |  | `/var/lib/sonarr` |
+| `stremio` | `service` |  | `/var/lib/stremio` |
+| `suwayomi` | `service` |  | `/var/lib/suwayomi-server` |
+| `vaultwarden` | `service` |  | `/var/lib/vaultwarden`<br>`/var/backup/vaultwarden` |

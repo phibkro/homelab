@@ -6,7 +6,7 @@ summary: The "how to wire a service" reference — backup-correctness patterns
 
 # Services
 
-Native NixOS modules first, containers as fallback, no orchestration layer. Placement and naming follow the topology + audience models in `docs/reference/topology.md` + `docs/reference/network.md`.
+Workstation uses native NixOS modules where available. Pi services are owned by Ansible roles, including their container and systemd configuration. Placement and naming follow the topology + audience models in `docs/reference/topology.md` + `docs/reference/network.md`.
 
 ## Catalog
 
@@ -37,11 +37,12 @@ nix eval .#nixosConfigurations.workstation.config.nori.lanRoutes \
 
 Cross-host services use the split-module pattern (`docs/reference/topology.md` § cross-host services).
 
-Every independently placed workload has a pure `manifest.nix` and a local
-`runtime.nix`. The manifest owns catalog, endpoint, audience, and presentation
-metadata; the runtime owns upstream service configuration, secrets, units,
-hardening, backup intent, and host-local effects. The inventory compiler imports
-only the runtimes selected by explicit host profiles.
+Every independently placed workload has a pure `manifest.nix` and a concrete
+realization such as `nixos.nix`. The manifest owns catalog, endpoint, audience,
+and presentation metadata; the realization owns upstream service configuration,
+secrets, units, hardening, backup intent, and backend-local effects. Physical
+paths and filesystem identities live in `infra/<machine>/`. The inventory
+compiler imports only realizations selected by explicit host placement.
 
 ### About Immich's Postgres
 
@@ -65,11 +66,10 @@ nori.backups.user-data = {
   include = [ "/home" "/srv/share" "/srv/nori" ];
   tier = "user";  # drives default retention curve
 };
-# Generates `restic-backups-user-data-onetouch.service` (→ /mnt/backup/user-data)
-# AND `restic-backups-user-data-mp510.service` (→ /mnt/backup-local/user-data)
+# With OneTouch enabled, generates `restic-backups-user-data-onetouch.service`.
 ```
 
-Don't write `services.restic.backups.<n>` directly — `nori.backups.<n>` is the homelab abstraction; generators expand it into both restic units + the `every-service-has-backup-intent` flake check coverage.
+Don't write `services.restic.backups.<n>` directly — `nori.backups.<n>` is the homelab abstraction; generators expand it into the configured target units + the `every-service-has-backup-intent` flake check coverage.
 
 ### Pattern B — built-in dump (Immich)
 
@@ -108,9 +108,9 @@ services.postgresqlBackup = {
 | Trap | Fix | Memory entry |
 |---|---|---|
 | sqlite3 CLI's `.backup` ignores `busy_timeout` (hard-coded ~2.5s retry) → "database is locked" on the first concurrent writer | Use `VACUUM INTO` + `PRAGMA busy_timeout` (regular SQL, honours the pragma) | [[sqlite-backup-vacuum-into]] |
-| `-onetouch` + `-mp510` restic units fire same minute → both run `prepareCommand` → race on `.tmp` → "table … already exists" | Wrap rm/sqlite/mv in `flock` (file-descriptor form, subshell-scoped) | [[pattern-c2-sqlite-race-flock]] |
+| Historical dual-target restic units fired in the same minute → both run `prepareCommand` → race on `.tmp` → "table … already exists" | Wrap rm/sqlite/mv in `flock` (file-descriptor form, subshell-scoped) | [[pattern-c2-sqlite-race-flock]] |
 
-Canonical implementation: `modules/services/navidrome/runtime.nix`.
+Canonical implementation: `services/navidrome/nixos.nix`.
 
 ```nix
 nori.backups.navidrome = {
@@ -132,7 +132,7 @@ nori.backups.navidrome = {
 };
 ```
 
-`prepareCommand` runs as `ExecStartPre` on BOTH `restic-backups-<n>-onetouch.service` AND `-mp510.service`. flock serialises them; second caller does a redundant (cheap) dump on already-fresh state. `VACUUM INTO` requires destination absent — that's why `rm -f` precedes it.
+`prepareCommand` runs as `ExecStartPre` on each configured target unit. OneTouch is the planned target, currently disabled; retain flock to serialize any concurrent dump callers. `VACUUM INTO` requires destination absent — that's why `rm -f` precedes it.
 
 Runtime check: `just test-backups` asserts per-target snapshot ≤25h.
 
@@ -149,7 +149,7 @@ Runtime check: `just test-backups` asserts per-target snapshot ≤25h.
 | Tailscale | A | State files |
 | `/home`, `/srv/share`, `/srv/nori` | A (via `nori.backups.user-data`) | No databases |
 
-New services pick a pattern at onboarding (`/add-service`). Pattern C2 services MUST use the flock-wrapped canonical impl — failure mode = silent half-failure (mp510 succeeds, onetouch fails to race, ntfy fires).
+New services pick a pattern at onboarding (`/add-service`). Pattern C2 services MUST use the flock-wrapped canonical impl — concurrent dump callers must not corrupt the staging file.
 
 ## Observability and alerting
 
@@ -157,8 +157,6 @@ New services pick a pattern at onboarding (`/add-service`). Pattern C2 services 
 flowchart TB
   subgraph workhorse[workhorse hosts]
     WS[workstation]
-    AU[aurora]
-    PV[pavilion]
   end
   subgraph appliance[pi - appliance tier]
     VM[VictoriaMetrics<br/>:8428]
@@ -167,11 +165,7 @@ flowchart TB
     BES[Beszel hub]
   end
   WS -- node-exporter:9100<br/>process-exporter:9256 --> VM
-  AU -- same --> VM
-  PV -- same --> VM
   WS -- journald via vector --> VL
-  AU -- same --> VL
-  PV -- same --> VL
   GA -- mutual probe --> WS
   WS -. Grafana queries .-> VM
   WS -. Grafana queries .-> VL
@@ -185,10 +179,10 @@ flowchart TB
 | **Metrics (system)** | Beszel hub + agent | pi (hub); workhorse hosts (agent) | Forensics: when workstation hangs, Pi's hub keeps recording up to last poll |
 | **Metrics (TSDB)** | VictoriaMetrics | pi | Scrapes gatus + node-exporter + process-exporter; 14d retention |
 | **Logs (TSDB)** | VictoriaLogs | pi | Aggregates journald via vector shipper; 14d retention. `just query-logs <LogsQL>` |
-| **Per-process RSS** | process-exporter | workstation + pavilion + aurora | Leak hunter; pi VM scrapes. See [[workstation-leak-hunting]] |
-| **Synthetic checks** | Gatus | workstation + pi | Mutual probes; declarative attrset → YAML. Replaced Uptime Kuma |
+| **Per-process RSS** | process-exporter | workstation | Leak hunter; pi VM scrapes. See [[workstation-leak-hunting]] |
+| **Synthetic checks** | Gatus | pi | Mutual probes; declarative attrset → YAML. Replaced Uptime Kuma |
 | **Dashboards** | Grafana | workstation | VM + VL as datasources; per-host system + gatus dashboards |
-| **Alert delivery** | ntfy.sh **public** | every host | `notify@<unit>.service` POSTs directly; channel-secret in sops. Pi-local ntfy server reserved for future internal alerts |
+| **Alert delivery** | ntfy.sh **public** | every host | `notify@<unit>.service` POSTs directly; channel-secret in sops. Pi-local authenticated ntfy serves the agent alert route |
 | **Dead-man-switch** | healthchecks.io | pi → external | 60s ping; alerts off-host if pi dies. SPOF mitigation |
 | **Runtime test** | `just test-observability` | operator-triggered | Asserts VM targets up + per-host series + heartbeat <90s + zero failing probes. See `docs/reference/runtime-tests.md` |
 
@@ -221,9 +215,9 @@ Email digest deferred. When it lands: Gmail SMTP with app password (sufficient f
 
 Naming convention: agnostic (`tmdb-token`, not `filmder-tmdb-token`) when multiple projects could plausibly share the same key.
 
-Live worked example: `modules/services/filmder/manifest.nix` declares its
+Live worked example: `services/filmder/manifest.nix` declares its
 endpoint and governed `legacy-host-build` artifact contract;
-`modules/services/filmder/runtime.nix` consumes that contract for the systemd
+`services/filmder/nixos.nix` consumes that contract for the systemd
 build and serving realization. Filmder and Heim are the only mutable-source
 exceptions. Their manifests name an owner, reason, removal trigger, and test;
 new product deployments should consume immutable artifacts instead.

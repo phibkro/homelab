@@ -15,40 +15,100 @@ let
   inventory = inputs.self.lib.noriInventory;
   deployment = inputs.self.lib.noriDeployment;
   inventoryHosts = lib.attrNames inventory.hosts;
-  /*
-    Every host is a NixOS host since the Intel Mac was retired; the flake no
-    longer emits `homeConfigurations`. The inventory keeps its `kind`
-    discriminator so re-adding a standalone home is an inventory entry rather
-    than a schema change — but that branch is currently unexercised.
-  */
   outputHosts = lib.sort builtins.lessThan (lib.attrNames inputs.self.nixosConfigurations);
+  nixosInventoryHosts = lib.attrNames (
+    lib.filterAttrs (_: host: host.kind == "nixos") inventory.hosts
+  );
+  rawHosts = import ../../inventory/hosts.nix;
+  compiler = import ../../inventory;
+  ansibleHostCannotCarryNixModules =
+    let
+      invalidHosts = rawHosts // {
+        pi = rawHosts.pi // {
+          systemModule = ../../infra/workstation;
+        };
+      };
+      evaluated = builtins.tryEval (
+        builtins.deepSeq
+          (compiler {
+            inherit lib;
+            hosts = invalidHosts;
+          }).public
+          true
+      );
+    in
+    !evaluated.success;
+  ansibleHostCannotProjectNixModules =
+    let
+      evaluated = builtins.tryEval (
+        builtins.deepSeq ((compiler { inherit lib; }).internal.systemModulesFor "pi") true
+      );
+    in
+    !evaluated.success;
 
   rootsCorrect =
-    deployment.sourceRoots."modules/services/attic" == [ "aurora" ]
-    && deployment.sourceRoots."modules/services/jellyfin" == [ "workstation" ]
-    && deployment.sourceRoots."modules/services/arr" == [ "workstation" ]
-    && deployment.sourceRoots."modules/services/filmder" == [ "workstation" ]
-    && deployment.sourceRoots."modules/infra/backup/restic-target" == [ "aurora" ]
-    && deployment.sourceRoots."modules/infra/networking/caddy" == [ "pi" ];
+    deployment.sourceRoots."services/attic" == [ "workstation" ]
+    && deployment.sourceRoots."services/music-ingest" == [ "workstation" ]
+    && deployment.sourceRoots."services/jellyfin" == [ "workstation" ]
+    && deployment.sourceRoots."profiles/media-acquisition" == [ "workstation" ]
+    && deployment.sourceRoots."services/filmder" == [ "workstation" ]
+    && deployment.sourceRoots."services/restic-target" == [ "workstation" ]
+    && deployment.sourceRoots."services/caddy" == [ "pi" ]
+    && deployment.machineRoots."services/caddy/ansible" == [ "pi" ]
+    && deployment.machineRoots."services/beszel/ansible/agent" == [ "pi" ]
+    && deployment.machineRoots."services/beszel/ansible/hub" == [ "pi" ]
+    && deployment.machineRoots."services/ntfy/ansible" == [ "pi" ]
+    && deployment.machineRoots."services/bazarr" == [ "workstation" ]
+    && deployment.machineRoots."services/jellyseerr" == [ "workstation" ]
+    && deployment.machineRoots."services/lidarr" == [ "workstation" ]
+    && deployment.machineRoots."services/prowlarr" == [ "workstation" ]
+    && deployment.machineRoots."services/qbittorrent" == [ "workstation" ]
+    && deployment.machineRoots."services/radarr" == [ "workstation" ]
+    && deployment.machineRoots."services/recyclarr" == [ "workstation" ]
+    && deployment.machineRoots."services/sonarr" == [ "workstation" ]
+    && deployment.machineRoots."infra/common/ansible" == [ "pi" ]
+    && deployment.machineRoots."infra/pi" == [ "pi" ]
+    && deployment.machineRoots."infra/workstation" == [ "workstation" ];
 
   targetsCorrect =
     deployment.targets.workstation.buildAttribute
-    == "nixosConfigurations.workstation.config.system.build.toplevel";
+    == "nixosConfigurations.workstation.config.system.build.toplevel"
+    &&
+      deployment.targets.pi == {
+        kind = "ansible";
+        profiles = [
+          "base"
+          "entry-plane"
+          "log-forwarder"
+        ];
+        workloads = inventory.hosts.pi.workloads;
+        buildAttribute = null;
+        planCommand = "just pi::plan";
+        applyCommand = "just pi::deploy";
+        verifyCommand = "just pi::check";
+      };
 in
 if
-  inventoryHosts == outputHosts
+  outputHosts == nixosInventoryHosts
+  &&
+    outputHosts == [
+      "workstation"
+    ]
+  && !(inputs.self.nixosConfigurations ? pi)
   && inventoryHosts == deployment.allHosts
+  && deployment.buildOrder == outputHosts
   && inventory.deployment.targets == deployment.targets
   &&
     deployment.activationOrder == [
-      "aurora"
       "workstation"
       "pi"
     ]
   && rootsCorrect
   && targetsCorrect
+  && ansibleHostCannotCarryNixModules
+  && ansibleHostCannotProjectNixModules
 then
-  "ok — deployment targets, change scopes, builds, and activation order derive from inventory"
+  "ok — deployment ownership, change scopes, builds, and activation order derive from inventory"
 else
   throw ''
     Deployment projection mismatch.
@@ -58,4 +118,6 @@ else
     Activation:      ${builtins.toJSON deployment.activationOrder}
     Roots correct:   ${toString rootsCorrect}
     Targets correct: ${toString targetsCorrect}
+    Backend split:   ${toString ansibleHostCannotCarryNixModules}
+    Module boundary: ${toString ansibleHostCannotProjectNixModules}
   ''

@@ -56,10 +56,10 @@ request before any production activation.
 
 The repository's conceptual boundaries are already good:
 
-- `modules/services/` owns hosted workloads.
-- `modules/infra/` owns the hosting platform.
-- `modules/machines/` owns composition and hardware realization.
-- `modules/home/` owns operator user-space configuration.
+- `nix/modules/services/` owns hosted workloads.
+- `nix/modules/system/` owns the hosting platform.
+- `nix/hosts/` owns composition and hardware realization.
+- `nix/home/` owns operator user-space configuration.
 - `nori.<effect>` registries turn one declaration into several generated
   configurations.
 
@@ -182,7 +182,7 @@ inventory/
   profiles.nix
   workloads.nix
   datasets.nix
-lib/
+nix/lib/
   inventory.nix
 ```
 
@@ -307,7 +307,7 @@ Host realization files should converge on:
 Workload ownership remains local while visibility is separated:
 
 ```text
-modules/services/jellyfin/
+nix/modules/services/jellyfin/
   manifest.nix     pure catalog entry
   runtime.nix      NixOS service, users, secrets, local effects
   default.nix      optional convenience composition
@@ -339,7 +339,7 @@ Each large infrastructure concern keeps one narrow public option family but
 splits internal reasons to change:
 
 ```text
-modules/infra/networking/
+nix/modules/system/networking/
   schema.nix
   policy.nix
   adapters/
@@ -369,7 +369,7 @@ Keep the existing system/user/project scope rule and refine the user layer by
 capability:
 
 ```text
-modules/home/profiles/
+nix/home/profiles/
   core.nix
   pc.nix
   desktop/
@@ -405,7 +405,7 @@ Give the rice a package/module boundary before considering another repository:
 hypr-rice/
   package.nix
   module.nix
-  lib/
+  nix/lib/
   commands/
   tests/
 ```
@@ -502,7 +502,7 @@ create another parallel tree without retiring an existing one.
 
 At completion, temporary execution detail is removed or archived through Git;
 durable decisions move to ADRs, current facts to reference docs, and executable
-failure handling to runbooks. Top-level generated `plans/` are either promoted
+failure handling to runbooks. Top-level generated `docs/archive/legacy-plans/` are either promoted
 into the canonical roadmap/work item or treated as disposable output.
 
 Because this repository commits through branches and operator-reviewed pull

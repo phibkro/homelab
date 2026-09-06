@@ -1,0 +1,208 @@
+{
+  "site": {
+    "domain": "home.example",
+    "deprecatedDomains": [
+      "nori.lan"
+    ],
+    "entryPlaneHost": "pi"
+  },
+  "hosts": {
+    "pi": {
+      "kind": "ansible",
+      "lanIp": "192.168.1.225",
+      "tailnetIp": "100.100.71.3"
+    },
+    "workstation": {
+      "lanIp": "192.168.1.181",
+      "tailnetIp": "100.81.5.122",
+      "workloads": [
+        "attic",
+        "calibre-web",
+        "jellyfin",
+        "immich",
+        "node-exporter",
+        "nvidia-gpu-exporter"
+      ]
+    }
+  },
+  "workloads": {
+    "authelia": {
+      "active": true,
+      "endpoints": {
+        "auth": {
+          "port": 9091,
+          "runsOn": "pi",
+          "audience": "public",
+          "monitor": {
+            "path": "/api/health",
+            "conditions": [
+              "[STATUS] == 200"
+            ]
+          }
+        }
+      }
+    },
+    "attic": {
+      "active": true,
+      "endpoints": {
+        "cache": {
+          "port": 5000,
+          "runsOn": "workstation",
+          "audience": "operator",
+          "noAuthReason": "Nix cache protocol",
+          "monitor": {}
+        }
+      }
+    },
+    "calibre-web": {
+      "active": true,
+      "endpoints": {
+        "books": {
+          "port": 8084,
+          "runsOn": "workstation",
+          "audience": "family",
+          "forwardAuth": {
+            "exemptPaths": [
+              "/api/*"
+            ]
+          },
+          "monitor": {}
+        }
+      }
+    },
+    "jellyfin": {
+      "active": true,
+      "endpoints": {
+        "media": {
+          "port": 8096,
+          "runsOn": "workstation",
+          "audience": "family",
+          "reachability": "internet",
+          "monitor": {
+            "path": "/health",
+            "failureThreshold": 5
+          }
+        }
+      }
+    },
+    "immich": {
+      "active": true,
+      "endpoints": {
+        "photos": {
+          "port": 2283,
+          "runsOn": "workstation",
+          "audience": "family",
+          "oidc": {
+            "clientName": "Immich",
+            "redirectPath": "/auth/login",
+            "authorizationPolicy": "one_factor",
+            "tokenEndpointAuthMethod": "client_secret_post",
+            "scopes": [
+              "openid",
+              "profile",
+              "email",
+              "groups"
+            ]
+          },
+          "monitor": {
+            "path": "/api/server/ping",
+            "interval": "30s"
+          }
+        }
+      }
+    },
+    "disabled": {
+      "active": false,
+      "endpoints": {
+        "must-not-route": {
+          "port": 6553,
+          "runsOn": "workstation"
+        }
+      }
+    },
+    "node-exporter": {
+      "active": true,
+      "hosts": [
+        "workstation"
+      ],
+      "endpoints": {}
+    },
+    "nvidia-gpu-exporter": {
+      "active": true,
+      "hosts": [
+        "workstation"
+      ],
+      "endpoints": {}
+    }
+  },
+  "backup": {
+    "targetHost": "workstation",
+    "hostname": "workstation.saola-matrix.ts.net",
+    "mountPoint": "/mnt/backup-local",
+    "pi": {
+      "user": "restic",
+      "directory": "pi",
+      "repositoryPrefix": "",
+      "hostKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFFYfsviUipugcpG8pMGtNh4C6lhm51dTF4uJj+BsuNj",
+      "authorizedKey": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGCigbRnMBopyOyvUoePRO1qMIqgKgH8a0zqt/2rGAaZ",
+      "jobs": [
+        {
+          "name": "pihole",
+          "paths": [
+            "/var/lib/containers/storage/volumes/pihole-data/_data",
+            "/opt/pihole/dnsmasq.d/05-homelab-local-records.conf"
+          ]
+        },
+        {
+          "name": "caddy",
+          "paths": [
+            "/opt/caddy/data",
+            "/opt/caddy/config"
+          ]
+        },
+        {
+          "name": "authelia",
+          "paths": [
+            "/etc/authelia/configuration.yml",
+            "/etc/authelia/users_database.yml",
+            "/var/lib/authelia"
+          ]
+        },
+        {
+          "name": "ntfy",
+          "paths": [
+            "/var/cache/ntfy",
+            "/var/lib/ntfy"
+          ]
+        },
+        {
+          "name": "beszel",
+          "paths": [
+            "/var/lib/beszel"
+          ]
+        },
+        {
+          "name": "victoriametrics",
+          "paths": [
+            "/var/lib/victoriametrics",
+            "/etc/victoriametrics"
+          ]
+        },
+        {
+          "name": "victorialogs",
+          "paths": [
+            "/var/lib/victorialogs"
+          ]
+        },
+        {
+          "name": "vector",
+          "paths": [
+            "/var/lib/vector",
+            "/etc/vector"
+          ]
+        }
+      ]
+    },
+    "enabled": true
+  }
+}

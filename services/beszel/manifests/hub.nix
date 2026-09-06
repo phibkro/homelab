@@ -1,0 +1,30 @@
+let
+  site = import ../../../inventory/site.nix;
+in
+{
+  kind = "service";
+  hostRoles = [ "appliance" ];
+  runtimeModule = ../nixos/hub.nix;
+  tags = [
+    "observability"
+    "stateful"
+  ];
+
+  endpoints.metrics = {
+    port = 8090;
+    runsOn = site.entryPlaneHost;
+    monitor.path = "/api/health";
+    audience = "operator";
+    oidc = {
+      clientName = "Beszel";
+      redirectPath = "/api/oauth2-redirect";
+      tokenEndpointAuthMethod = "client_secret_basic";
+    };
+    dashboard = {
+      title = "Beszel";
+      icon = "sh:beszel";
+      group = "Admin";
+      description = "System metrics (CPU / RAM / disk / GPU)";
+    };
+  };
+}

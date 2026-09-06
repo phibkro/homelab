@@ -1,6 +1,6 @@
 ---
 name: restore-pg-with-owner-fix
-description: USE WHEN restoring a service's gzipped postgres dump into a freshly-empty database during a workstation→aurora cutover (P11) or any cross-host pg migration — `psql <db> < dump` run as the postgres superuser leaves every table owned by `postgres`, breaks the service that reads its own `schema_version` under its service role (miniflux, immich, …), and restart-loops with `relation "schema_version" already exists (42P07)`. This skill runs drop + recreate + restore + the `ALTER OWNER` sweep across all tables + sequences + the public schema in one shot, so the trap doesn't bite a second time.
+description: USE WHEN restoring a service's gzipped postgres dump into a freshly-empty database during a database recovery or cross-host pg migration — `psql <db> < dump` run as the postgres superuser leaves every table owned by `postgres`, breaks the service that reads its own `schema_version` under its service role (miniflux, immich, …), and restart-loops with `relation "schema_version" already exists (42P07)`. This skill runs drop + recreate + restore + the `ALTER OWNER` sweep across all tables + sequences + the public schema in one shot, so the trap doesn't bite a second time.
 ---
 
 # Restore a postgres dump with the ownership fix baked in
@@ -89,7 +89,7 @@ runnable directly if needed.
 - `[[postgres-ownership-after-dump-restore]]` — full rationale of the
   trap and why the `--no-owner` default in `services.postgresqlBackup`
   produces it
-- `docs/runbooks/immich-cutover.md` — the runbook that calls this
-  skill for the heaviest pg migration in the aurora plan
+- `docs/archive/plans/immich-cutover.md` — the runbook that calls this
+  skill during the historical Aurora migration; this is historical context, not current placement
 - `ba4e49f` — the miniflux cutover commit where the trap was first
   caught in this repo

@@ -1,12 +1,27 @@
 ---
-summary: RTO targets, runbook index, permanent constraints (never touch the
-  Windows drive, by-id everywhere, …), capacity baseline schema. The "what
-  breaks and how we put it back" reference.
+summary: Recovery targets, runbook index, disk preservation constraints,
+  and capacity observations for workstation and the Ansible Pi.
 ---
 
 # Recovery
 
+These are recovery targets, not measured guarantees for the current revision. Older runbooks may retain installation history; validate their paths and runtime owner against current inventory before executing them.
+
 RTO targets for each failure class, the runbooks that hit them, and the permanent constraints that bound any recovery action.
+
+## Current recovery posture
+
+The two SSDs hold hot data; IronWolf Pro holds cold data. OneTouch is the
+planned external workstation backup destination, but backups are explicitly
+disabled until its connection and recovery journey are verified. Existing
+MP510 archives, local filesystem snapshots, and application dumps are preserved;
+none establishes current backup coverage by itself. Same-disk snapshots and
+dumps do not survive loss of that disk.
+
+Aurora reuse is conditional on renewed connectivity: the September 6 check
+found it offline (last seen August 31 at 23:50 UTC) and SSH timed out. Pi's
+observed SSH host key did not match existing trust, so remote access was not
+established. Verify host identity independently before changing trust.
 
 ## RTO targets
 
@@ -15,11 +30,9 @@ RTO targets for each failure class, the runbooks that hit them, and the permanen
 | Bad config | < 15 min | NixOS rollback (atomic generations); `bad-config.md` |
 | Single file deletion | < 15 min | btrbk snapshot restore; `file-deletion.md` |
 | Service corruption | < 1 hour | Stop service, restore subvolume snapshot, restart; `service-corruption.md` |
-| Pi total failure | < 2 hours | Spare USB SSD or reflash from flake. **healthchecks.io alerts off-host** when pi misses 3+ heartbeats |
-| Aurora total failure | degraded only — immich-ml falls back to host CPU via env-var change | Operator updates `IMMICH_MACHINE_LEARNING_URL` on workstation; non-blocking |
-| Pavilion total failure | degraded only — agent quarantine unavailable | Agents fall back to workstation (less isolated). Pavilion uses impermanence so reinstall is fast |
-| Root drive failure (workstation) | < 1 day | Reinstall via disko + flake, restic restore from `/mnt/backup` USB drives; `drive-failure-root.md` |
-| Media drive failure | < 1 day for services, days for media data | Service config restored fast; bulk media restore is bandwidth-bound; `drive-failure-media.md` |
+| Pi total failure | < 2 hours | Reinstall the supported Debian appliance and converge Ansible; restore state only from an inspected, usable archive. Verify off-host heartbeat alerting separately |
+| Root drive failure (workstation) | < 1 day | Reinstall via disko + flake, inspect preserved archives for restorable state; `drive-failure-root.md` |
+| Media drive failure | < 1 day for services, days for media data | Recovery depends on verified surviving copies; no media backup coverage established; `drive-failure-media.md` |
 | Whole-machine loss | Days+ | Hardware procurement is the bottleneck |
 
 ## Runbooks (`docs/runbooks/`)
@@ -31,19 +44,22 @@ Each runbook is the step-by-step for one failure class. Initial outlines:
 | `bad-config.md` | NixOS activation failed or boot loops | Rollback via boot menu or `nixos-rebuild --rollback switch` |
 | `file-deletion.md` | User deleted something they wanted | Identify subvolume → find pre-deletion snapshot in `/.snapshots` → copy out |
 | `service-corruption.md` | Service refuses to start; data layer suspected | Stop service → restore subvolume snapshot to scratch → copy back → restart → verify. For databases: restore from latest restic snapshot of the dump dir, then `pg_restore` / SQLite import |
-| `drive-failure-root.md` | SN750 dies | Replace drive → boot installer → clone flake → run disko → `nixos-install` → restic restore service state from OneTouch (off-chassis on aurora) or mp510 (local) |
-| `drive-failure-media.md` | IronWolf dies | Replace drive → `mkfs.btrfs` + subvolumes → restic restore irreplaceable subvolumes from Pi → re-download streaming media from sources |
-| `pi-failure.md` | Pi unreachable / hardware dead | Swap to spare USB SSD with current flake → boot → verify Blocky + Tailscale come up → router DHCP unaffected (workstation is secondary DNS) |
+| `drive-failure-root.md` | SN750 dies | Replace drive → boot installer → clone flake → run disko → `nixos-install` → inspect existing archives before attempting state restore; preserve all surviving disks |
+| `drive-failure-media.md` | IronWolf dies | Assess surviving copies → provision only an approved replacement disk → restore verified content or re-acquire available sources |
+| `pi-failure.md` | Pi unreachable / hardware dead | Reinstall supported Debian → converge `infra/pi/` Ansible → restore selected state → verify DNS, routes, authentication and monitoring |
 | `storage-full.md` | Disk pressure | Find what filled up; library is reflinked (not duplicated) — see `Mnemopi recall: gotcha-arr-reflinks-not-hardlinks` |
 | `tailscale-acl.md` | Tailscale admin UI ACL recovery | Live ACL lives only in admin UI; this snapshots `tailscale-acl.json` for editor-regression + account-loss recovery |
 | `agent-fix-on-failure.md` | An armed backup/check unit fails (`nori.agentFix`) | Recovery window survives → boxed agent diagnoses + opens a PR (draft if unfixed). Find the run at `journalctl -u agent-fix@<unit>` and resume its conversation via `claude --resume` (handle in the PR body) to steer + merge |
+
+For migration-specific mount, identity, capacity, backup, and restore gates, use
+the [OneTouch cutover runbook](../runbooks/onetouch-backup-cutover.md).
 
 ## Forward-direction runbooks (not recovery)
 
 | Runbook | Trigger | Path |
 |---|---|---|
-| `grafana-oidc-bootstrap.md` | Deciding to gate Grafana behind Authelia | Generate OIDC client → sops paste → Nix block at grafana.nix → rebuild aurora |
-| `ntfy-auth-bootstrap.md` | Tightening pi's ntfy hub from read-write to deny | sops publisher token → ntfy bootstrap user → wire gatus + notify@ headers |
+| [Historical Grafana OIDC proposal](../archive/plans/grafana-oidc-bootstrap.md) | Design history | Unimplemented proposal; review current runtime before reuse |
+| [Historical ntfy bootstrap proposal](../archive/plans/ntfy-auth-bootstrap.md) | Design history | Current Pi role already enforces deny-all; use its Ansible configuration |
 
 ## Permanent constraints (non-negotiable)
 
@@ -51,12 +67,11 @@ These are **inviolable** — every recovery action must respect them or the reco
 
 | Constraint | Reason |
 |---|---|
-| **Never touch the Windows drive** (Corsair Force MP510, by-id `nvme-Force_MP510_2031826300012953207B`) | NVMe enumeration is unstable across reboots — at install time the WD Black SN750 (NixOS) was `nvme0n1` and the MP510 (Windows) was `nvme1n1`; post-reboot they swapped. A re-run of disko targeting the wrong `/dev` path would wipe Windows. Caught this latently after the swap; fixed by switching all disko configs to `/dev/disk/by-id/...` |
+| **Preserve existing data and verify disk identity before recovery** | MP510 is an SSD with preserved historical archives, not the planned OneTouch backup destination. Its historical Windows label in older plans is not authority to format it. Formatting or repartitioning requires a separate reviewed recovery procedure and explicit operator approval. |
 | **Disko configs MUST target `/dev/disk/by-id/...`** | by-id paths follow the hardware; `/dev` paths follow PCIe scan order |
 | **Disambiguate disks by model + by-id, never `/dev/nvmeN`** | Same reason as above; codified in `Mnemopi recall: gotcha-nvme-enumeration` |
 | **Don't schedule destructive system changes during weeks with Aker demo pressure** | The lab is the operator's daily-driver; outage during high-load weeks isn't acceptable |
-| **Backup verification is part of the system, not optional** | Tiered drill (`restore-drill-services` monthly + `restore-drill-user-data` quarterly) + `just test-backups` per deploy are the **real RTO measurement** — green CI is necessary, not sufficient |
-| **Phase 2 (IronWolf reformat) does not happen during Phase 4 (install)** | Two separate sequential operations. Do not combine. (Phase 2 was eventually pulled forward as part of Phase 5 service migration, *after* Phase 4 was complete — same constraint, different timing than original plan.) |
+| **Backup verification is part of the system, not optional** | Backups are currently disabled. Before enabling OneTouch, require actual fresh snapshots and disposable restore evidence; green CI or retained same-disk snapshots do not establish coverage |
 
 ## Capacity baseline
 
@@ -67,7 +82,7 @@ Recorded in `docs/reference/capacity-baseline.md` at Phase 4 completion. Values 
 - RAM at idle (no Ollama loaded)
 - RAM with one Ollama model loaded (32B Q4 baseline)
 - Average sustained CPU during evening peak
-- OneTouch / mp510 restic repo size
+- MP510 repository size and retained OneTouch archive inventory
 
 **Re-checked quarterly.** Growth trends inform when a second drive on workstation is warranted, when Ollama model size needs to come down.
 
@@ -77,9 +92,7 @@ These wait for a real signal before being worked:
 
 | Trigger | What gets done |
 |---|---|
-| Future service needs to land public traffic on workstation | Tailscale Funnel — reference impl preserved in `memory/reference/tailscale_funnel_implementation.md` |
-| Genexis ISP modem allows bridge mode, OR ~$200 router enters budget | Stand up real LAN router (OPNsense/OpenWRT); migrate DNS/egress policy from `modules/infra/tailnet-appliance.nix` to the router. Then retire that effect — same `nori.tailnet.appliances` registry can drive a router-side generator. See `docs/roadmap.md § "Architectural debt"` for the rationale. |
+| Genexis ISP modem allows bridge mode, OR ~$200 router enters budget | Stand up real LAN router (OPNsense/OpenWRT); migrate DNS/egress policy from `infra/pi/ansible/roles/firewall` and `services/tailscale/ansible` to the router. Then retire that effect; the same inventory can drive a router-side generator. See `docs/roadmap.md § "Architectural debt"` for the rationale. |
 | ntfy alone proves noisy enough that summarization helps | Email digest reports |
 | IronWolf > 80% full *or* RAID1 redundancy becomes desired | Second media drive on workstation |
 | "Deployed broken config, lost remote access" incident | `deploy-rs` adoption |
-| SATA HBA capacity becomes available | Migrate IronWolf from USB to internal SATA |

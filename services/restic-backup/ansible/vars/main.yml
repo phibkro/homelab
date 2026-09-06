@@ -1,0 +1,24 @@
+---
+# These pi_backup_* names are part of the playbook's public boundary contract;
+# their narrow no-role-prefix exemptions are kept on each declaration.
+# Destination trust is supplied by generated inventory from inventory/backup.nix.
+pi_backup_approved_source_prefixes: # noqa: var-naming[no-role-prefix]
+  - /var/lib/containers/storage/volumes/pihole-data/_data
+  - /opt/pihole/dnsmasq.d/05-homelab-local-records.conf
+  - /opt/caddy/data
+  - /opt/caddy/config
+  - /etc/authelia/configuration.yml
+  - /etc/authelia/users_database.yml
+  - /var/lib/authelia
+  - /var/cache/ntfy
+  - /var/lib/ntfy
+  - /var/lib/beszel
+  - /var/lib/victoriametrics
+  - /etc/victoriametrics
+  - /var/lib/victorialogs
+  - /var/lib/vector
+  - /etc/vector
+
+# Only this node-state file is approved for the sensitive Tailscale opt-in.
+pi_backup_tailscale_identity_approved_paths: # noqa: var-naming[no-role-prefix]
+  - /var/lib/tailscale/tailscaled.state

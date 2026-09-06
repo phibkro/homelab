@@ -1,11 +1,13 @@
 {
   lib,
   hosts ? import ./hosts.nix,
-  profiles ? import ./profiles.nix,
+  profiles ? import ../profiles/default.nix,
   workloadCatalog ? import ./workloads.nix { inherit lib; },
   datasets ? import ./datasets.nix,
   site ? import ./site.nix,
-  hostRoles ? import ./roles.nix,
+  backup ? import ./backup.nix,
+  hostRoles ? import ./host-roles.nix,
+  audiences ? import ../roles/audiences.nix,
 }:
 
 /**
@@ -20,10 +22,38 @@
 let
   hostNames = lib.attrNames hosts;
   nixosHostNames = lib.attrNames (lib.filterAttrs (_: host: host.kind == "nixos") hosts);
+  supportedHostKinds = [
+    "ansible"
+    "nixos"
+  ];
   profileNames = lib.attrNames profiles;
   workloadNames = lib.attrNames workloadCatalog;
 
   invalidHostRoles = lib.filterAttrs (_name: host: !lib.elem host.identity.role hostRoles) hosts;
+  validSourceRoot =
+    root: builtins.isString root && root != "" && !lib.hasPrefix "/" root && !lib.hasInfix ".." root;
+  invalidHostDeclarations = lib.filterAttrs (
+    _name: host:
+    !lib.elem (host.kind or null) supportedHostKinds
+    || !(host ? managementRoot)
+    || host.managementRoot == ""
+    || lib.hasPrefix "/" host.managementRoot
+    || lib.hasInfix ".." host.managementRoot
+    || !builtins.isList (host.additionalSourceRoots or [ ])
+    || !lib.all validSourceRoot (host.additionalSourceRoots or [ ])
+    || (host.kind == "nixos" && (!(host ? systemModule) || !(host ? homeModule) || host ? deployment))
+    || (
+      host.kind == "ansible"
+      && (
+        host ? systemModule
+        || host ? homeModule
+        || !(host ? deployment)
+        || (host.deployment.planCommand or "") == ""
+        || (host.deployment.applyCommand or "") == ""
+        || (host.deployment.verifyCommand or "") == ""
+      )
+    )
+  ) hosts;
 
   referencedProfiles = lib.unique (lib.concatMap (host: host.profiles) (lib.attrValues hosts));
   unknownProfiles = lib.subtractLists profileNames referencedProfiles;
@@ -94,6 +124,9 @@ let
 
   systemModulesFor =
     hostName:
+    assert lib.assertMsg (
+      hosts.${hostName}.kind == "nixos"
+    ) "inventory.systemModulesFor: '${hostName}' is managed by ${hosts.${hostName}.kind}, not NixOS";
     lib.unique (
       lib.concatMap (profileName: profiles.${profileName}.systemModules) hosts.${hostName}.profiles
     );
@@ -165,6 +198,9 @@ let
 
   runtimeModulesFor =
     hostName:
+    assert lib.assertMsg (
+      hosts.${hostName}.kind == "nixos"
+    ) "inventory.runtimeModulesFor: '${hostName}' is managed by ${hosts.${hostName}.kind}, not NixOS";
     lib.unique (
       map (workloadName: workloadCatalog.${workloadName}.runtimeModule) (
         lib.filter (workloadName: workloadCatalog.${workloadName} ? runtimeModule) (workloadsFor hostName)
@@ -208,17 +244,17 @@ let
     inherit (host) kind profiles;
     workloads = workloadsFor name;
     buildAttribute =
-      if host.kind == "nixos" then
-        "nixosConfigurations.${name}.config.system.build.toplevel"
-      else
-        "homeConfigurations.${name}.activationPackage";
+      if host.kind == "nixos" then "nixosConfigurations.${name}.config.system.build.toplevel" else null;
+    planCommand = if host.kind == "ansible" then host.deployment.planCommand else null;
+    applyCommand = if host.kind == "ansible" then host.deployment.applyCommand else null;
+    verifyCommand = if host.kind == "ansible" then host.deployment.verifyCommand else null;
   }) hosts;
   entryPlaneHosts = profileHosts.entry-plane;
-  activationOrder = lib.subtractLists entryPlaneHosts nixosHostNames ++ entryPlaneHosts;
+  activationOrder = lib.subtractLists entryPlaneHosts hostNames ++ entryPlaneHosts;
 
   publicDeployment = {
     targets = deploymentTargets;
-    buildOrder = hostNames;
+    buildOrder = nixosHostNames;
     inherit activationOrder;
   };
 
@@ -233,22 +269,6 @@ let
     else
       "none";
 
-  visibleToFor =
-    audience:
-    if audience == "public" then
-      [
-        "public"
-        "family"
-        "operator"
-      ]
-    else if audience == "family" then
-      [
-        "family"
-        "operator"
-      ]
-    else
-      [ "operator" ];
-
   presentationFor =
     endpointName: endpoint:
     let
@@ -261,8 +281,8 @@ let
       url = "https://${endpointName}.${site.domain}";
       inherit audience;
       authentication = authenticationFor endpoint;
-      registrationRequired = audience != "public";
-      visibleTo = visibleToFor audience;
+      registrationRequired = audiences.registrationRequired audience;
+      visibleTo = audiences.visibleToFor audience;
     };
 
   presentationCatalog = lib.mapAttrs presentationFor lanRoutes;
@@ -311,9 +331,16 @@ let
         ${root} = lib.unique ((roots.${root} or [ ]) ++ workloadHosts.${workloadName});
       }
   ) { } workloadNames;
-  machineRootHosts = lib.mapAttrs' (
-    name: _host: lib.nameValuePair "modules/machines/${name}" [ name ]
-  ) hosts;
+  machineRootHosts = lib.foldlAttrs (
+    roots: name: host:
+    lib.foldl' (
+      current: root:
+      current
+      // {
+        ${root} = lib.unique ((current.${root} or [ ]) ++ [ name ]);
+      }
+    ) roots ([ host.managementRoot ] ++ (host.additionalSourceRoots or [ ]))
+  ) { } hosts;
 
   deployment = publicDeployment // {
     allHosts = hostNames;
@@ -327,7 +354,7 @@ let
     hosts = publicHosts;
     profiles = publicProfiles;
     workloads = publicWorkloads;
-    inherit datasets;
+    inherit datasets backup;
     deployment = publicDeployment;
     inherit site status portal;
   };
@@ -344,6 +371,8 @@ in
 assert lib.assertMsg (
   unknownProfiles == [ ]
 ) "inventory: host profile reference(s) do not exist: ${lib.concatStringsSep ", " unknownProfiles}";
+assert lib.assertMsg (invalidHostDeclarations == { })
+  "inventory: hosts must declare exactly one supported management backend and a safe managementRoot: ${lib.concatStringsSep ", " (lib.attrNames invalidHostDeclarations)}";
 assert lib.assertMsg (invalidHostRoles == { })
   "inventory: host roles must be drawn from [${lib.concatStringsSep ", " hostRoles}]: ${lib.concatStringsSep ", " (lib.attrNames invalidHostRoles)}";
 assert lib.assertMsg (unknownWorkloads == [ ])
@@ -379,6 +408,7 @@ assert lib.assertMsg (entryPlaneHosts == [ site.entryPlaneHost ])
       hosts
       profiles
       datasets
+      backup
       site
       workloadCatalog
       workloadsFor

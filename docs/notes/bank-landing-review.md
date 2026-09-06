@@ -1,5 +1,10 @@
 # Bank landing review map
 
+> Historical review record. This note describes the pre-reorganization landing
+> range; paths under `nix/` and its preserved refs are intentionally historical.
+> Use the current tree and [complete reorganization spec](../specs/2026-09-06-complete-reorganization.md)
+> for live paths and ownership.
+
 Review boundary for the accepted-as-landed range `2d0e086..bd89038`.
 Nothing in this range is deployment-approved; deployment remains gated on an
 operator rebuild after reviewing the axes below.
@@ -21,24 +26,24 @@ that is absent from `main`.
 
 **Landed files:**
 
-- `modules/home/agent-skills/default.nix`
-- `modules/home/agent-skills/manage-genexis-juci/SKILL.md`
-- `modules/home/agent-skills/manage-genexis-juci/agents/openai.yaml`
-- `modules/home/agent-skills/manage-genexis-juci/references/api.md`
-- `modules/home/agent-skills/manage-genexis-juci/references/inspect-firewall.example.json`
-- `modules/home/agent-skills/manage-genexis-juci/references/port-forward-https.template.json`
-- `modules/home/agent-skills/manage-genexis-juci/references/procedure-policy.md`
-- `modules/home/agent-skills/manage-genexis-juci/scripts/juci_procedure.py`
-- `modules/home/agent-skills/manage-genexis-juci/scripts/test_juci_procedure.py`
+- `nix/home/agent-skills/default.nix`
+- `nix/home/agent-skills/manage-genexis-juci/SKILL.md`
+- `nix/home/agent-skills/manage-genexis-juci/agents/openai.yaml`
+- `nix/home/agent-skills/manage-genexis-juci/references/api.md`
+- `nix/home/agent-skills/manage-genexis-juci/references/inspect-firewall.example.json`
+- `nix/home/agent-skills/manage-genexis-juci/references/port-forward-https.template.json`
+- `nix/home/agent-skills/manage-genexis-juci/references/procedure-policy.md`
+- `nix/home/agent-skills/manage-genexis-juci/scripts/juci_procedure.py`
+- `nix/home/agent-skills/manage-genexis-juci/scripts/test_juci_procedure.py`
 
 **Preserved ref adds, but main does not contain:**
 
 - `.gitignore`
-- `modules/home/agent-skills/default.nix` (current-profile commentary correction)
-- `modules/home/claude-code/CLAUDE.md`
-- `modules/home/claude-code/default.nix`
-- `modules/home/profiles/desktop/communication.nix`
-- `modules/home/profiles/development/agentic-tools.nix`
+- `nix/home/agent-skills/default.nix` (current-profile commentary correction)
+- `nix/home/claude-code/CLAUDE.md`
+- `nix/home/claude-code/default.nix`
+- `nix/home/profiles/desktop/communication.nix`
+- `nix/home/profiles/development/agentic-tools.nix`
 
 The landed portion adds one provider-neutral Genexis/JUCI skill, its guarded
 procedure implementation, references, templates, and Python tests. It does not
@@ -57,10 +62,10 @@ landed portion.
 **Files:**
 
 - `lint/rules.toml`
-- `modules/infra/networking/caddy/runtime.nix`
-- `modules/infra/networking/cloudflare-ddns/manifest.nix`
-- `modules/infra/networking/cloudflare-ddns/runtime.nix`
-- `modules/infra/networking/default.nix`
+- `nix/modules/system/networking/caddy/runtime.nix`
+- `nix/modules/system/networking/cloudflare-ddns/manifest.nix`
+- `nix/modules/system/networking/cloudflare-ddns/runtime.nix`
+- `nix/modules/system/networking/default.nix`
 
 This axis introduces the `internal`/`internet` route boundary, lowers internal
 routes to Caddy private/tailnet client-IP matchers, rejects unknown or
@@ -80,12 +85,12 @@ expose internal services or mutate the wrong DNS record.
 
 - `inventory/profiles.nix`
 - `inventory/workloads.nix`
-- `modules/services/arr/jellyseerr.nix`
-- `modules/services/arr/manifests/jellyseerr.nix`
-- `modules/services/jellyfin/manifest.nix`
-- `modules/services/jellyfin/runtime.nix`
-- `modules/services/navidrome/manifest.nix`
-- `modules/services/navidrome/runtime.nix`
+- `nix/modules/services/arr/jellyseerr.nix`
+- `nix/modules/services/arr/manifests/jellyseerr.nix`
+- `nix/modules/services/jellyfin/manifest.nix`
+- `nix/modules/services/jellyfin/runtime.nix`
+- `nix/modules/services/navidrome/manifest.nix`
+- `nix/modules/services/navidrome/runtime.nix`
 
 This axis opts Jellyfin, Seerr, and Navidrome into internet reachability,
 replaces browser-centric OIDC with each application's native per-user account
@@ -137,32 +142,32 @@ coverage as incomplete until the preserved correction is reviewed and landed.
 - `docs/decisions/0004-letsencrypt-on-home-phibkro-org.md`
 - `docs/decisions/0006-family-media-internet-entry.md`
 - `docs/generated/lan-route.md`
-- `docs/plans/2026-06-21-improve-audit.md`
-- `docs/plans/2026-07-19-public-status-and-maintenance.md`
+- `docs/archive/plans/2026-06-21-improve-audit.md`
+- `docs/archive/plans/2026-07-19-public-status-and-maintenance.md`
 - `docs/reference/network.md`
 - `docs/roadmap.md`
-- `plans/README.md`
-- `plans/001-isolate-pavilion-sops.md`
-- `plans/002-rotate-console-credentials.md`
-- `plans/003-enforce-real-unit-hardening.md`
-- `plans/004-authenticate-suwayomi-api.md`
-- `plans/005-place-replica-intent-on-target.md`
-- `plans/006-fail-closed-backup-runtime-tests.md`
-- `plans/007-resolve-manual-backup-units.md`
-- `plans/008-run-replica-verifiers-now.md`
-- `plans/009-claim-music-before-ingest.md`
-- `plans/010-fail-closed-observability.md`
-- `plans/011-gate-third-party-agent-skills.md`
-- `plans/012-verify-authelia-client-registry.md`
-- `plans/013-repair-active-documentation.md`
-- `plans/014-single-runtime-test-environment.md`
+- `docs/archive/legacy-plans/README.md`
+- `docs/archive/legacy-plans/001-isolate-pavilion-sops.md`
+- `docs/archive/legacy-plans/002-rotate-console-credentials.md`
+- `docs/archive/legacy-plans/003-enforce-real-unit-hardening.md`
+- `docs/archive/legacy-plans/004-authenticate-suwayomi-api.md`
+- `docs/archive/legacy-plans/005-place-replica-intent-on-target.md`
+- `docs/archive/legacy-plans/006-fail-closed-backup-runtime-tests.md`
+- `docs/archive/legacy-plans/007-resolve-manual-backup-units.md`
+- `docs/archive/legacy-plans/008-run-replica-verifiers-now.md`
+- `docs/archive/legacy-plans/009-claim-music-before-ingest.md`
+- `docs/archive/legacy-plans/010-fail-closed-observability.md`
+- `docs/archive/legacy-plans/011-gate-third-party-agent-skills.md`
+- `docs/archive/legacy-plans/012-verify-authelia-client-registry.md`
+- `docs/archive/legacy-plans/013-repair-active-documentation.md`
+- `docs/archive/legacy-plans/014-single-runtime-test-environment.md`
 
 This axis records ADR-0006, updates active and generated network guidance,
 retains the earlier public-status plan as a superseded precursor, adds router
 acceptance work to the roadmap, and lands a 14-plan audit backlog generated
 against the older `0cef85b` tree. `docs/PROJECTS.md` also receives the two
 intended succession-handoff updates that bracketed the accidental sweep. Review
-the ADR and active network docs for agreement with code; treat the root `plans/`
+the ADR and active network docs for agreement with code; treat the root `docs/archive/legacy-plans/`
 files as historical advisor handoffs whose drift checks and paths must be
 revalidated before execution.
 

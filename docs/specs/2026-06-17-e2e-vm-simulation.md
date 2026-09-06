@@ -316,8 +316,8 @@ tree imports cleanly. Fixtures must NOT touch `nori.services` activation;
 the spec is "real config minus identity + secrets".
 
 Open question Q1: should fixtures live at `tests/fixtures/` (top-level)
-or `modules/tests/fixtures/` (consistent with modules-as-root)? Bias:
-top-level — `modules/` is *config to deploy*; `tests/` is *checks against
+or `nix/tests/fixtures/` (consistent with modules-as-root)? Bias:
+top-level — `nix/` is *config to deploy*; `tests/` is *checks against
 that config*. Different concerns.
 
 ## Goal / Constraints / Values
@@ -376,7 +376,7 @@ risk           CI tightens; intentional misconfigs fail the check
 ## Open questions
 
 ```
-Q1   tests/ at top-level or modules/tests/?
+Q1   tests/ at top-level or nix/tests/?
      → bias: top-level. Different concern from "config to deploy".
 
 Q2   sops test-key in repo (decryptable plaintext) or per-clone?

@@ -36,7 +36,7 @@ Nix carries two distinct documentation surfaces. Both extract to markdown automa
 
 | Surface | Applies to | Extracted by | Canonical example |
 |---|---|---|---|
-| `mkOption { description = ''...''; }` | NixOS module **options** (every `nori.<X>` schema field) | [`nixosOptionsDoc`](https://github.com/NixOS/nixpkgs/blob/master/nixos/lib/make-options-doc/default.nix) | `modules/infra/networking/default.nix` → `nori.lanRoutes.<name>.audience` |
+| `mkOption { description = ''...''; }` | NixOS module **options** (every `nori.<X>` schema field) | [`nixosOptionsDoc`](https://github.com/NixOS/nixpkgs/blob/master/nixos/lib/make-options-doc/default.nix) | `infra/common/nixos/routes.nix` → `nori.lanRoutes.<name>.audience` |
 | `/** ... */` doc-comments ([RFC 145](https://github.com/NixOS/rfcs/blob/master/rfcs/0145-doc-strings.md)) | **Non-option** code: lib functions, let bindings, attrset entries, lambda formals | [`nixdoc`](https://github.com/nix-community/nixdoc) | [`nixpkgs/lib/attrsets.nix`](https://github.com/NixOS/nixpkgs/blob/master/lib/attrsets.nix) → `lib.attrByPath` |
 
 ### mkOption description shape
@@ -116,7 +116,7 @@ Format precedence (lifted from RFC 145):
 | Context | Mechanism |
 |---|---|
 | `mkOption { ... }` declaration | `description = ''...''` |
-| Lib function in `modules/`, `flake.nix`, or `lint/default.nix` | `/** ... */` |
+| Lib function in `lib/`, `flake.nix`, or `lint/default.nix` | `/** ... */` |
 | Let-binding with non-obvious purpose (e.g. our `lintLib`, `lintRules`, `baseNonServicePatterns`) | `/** ... */` |
 | Attribute set entry that's effectively a function or registry (e.g. `nori.lanRoutes.<X>`, public contracts in a workload `manifest.nix`) | `/** ... */` |
 | **Module overview** — file-level docstring at the top of a `default.nix` carrying mental models, architecture diagrams, and rationale for the concern as a whole (mermaid diagrams, three-zone tables, registry shape rationale) | `/** ... */` (file-level, above the `let`/`{}` body) |
@@ -124,7 +124,7 @@ Format precedence (lifted from RFC 145):
 | Inline implementation detail not part of the public surface | standard `#` comment |
 | Cross-cutting prose (mental models, why-this-shape, multi-module rationale) | hand-written `docs/reference/<topic>.md` |
 
-The test that distinguishes `/** */` from `/* */`: **would I want this block surfaced in generated docs as code-API reference?** YES → `/** */`. NO → `/* */`. Operator runbooks, "click X then Y" steps, rationale for a specific config value, and service-behavior narrative all fail the test — they're operator-intent content, not consumer-facing API. The 2026-06-17 sweep reclassified 51 such blocks across `modules/services/` after the Stage 4 bulk migration over-promoted them; current calibration examples live in workload `runtime.nix` headers.
+The test that distinguishes `/** */` from `/* */`: **would I want this block surfaced in generated docs as code-API reference?** YES → `/** */`. NO → `/* */`. Operator runbooks, "click X then Y" steps, rationale for a specific config value, and service-behavior narrative all fail the test — they're operator-intent content, not consumer-facing API. The 2026-06-17 sweep reclassified 51 such blocks across the service modules after the Stage 4 bulk migration over-promoted them; current calibration examples live in workload `nixos.nix` headers.
 
 ### Module-scoped → code; cross-module → handwritten
 
@@ -158,21 +158,21 @@ extraction site, and pretending otherwise distorts the content.
 Concrete examples from the homelab:
 
 ```
-modules/infra/networking/default.nix /** */ carries  the DNS architecture
+infra/common/nixos/routes.nix /** */ carries  the DNS architecture
                                                      mermaid, audience trust
                                                      model, Caddy + TLS
                                                      rationale, function-
                                                      over-brand naming
 
-modules/machines/default.nix /** */ carries          the topology mermaid,
+lib/machines.nix /** */ carries          the topology mermaid,
                                                      the tier principle,
                                                      failure-domain claim
 
-modules/infra/capabilities/gpu.nix /** */ carries    the GPU access
+infra/common/nixos/gpu.nix /** */ carries    the GPU access
                                                      pattern table + per-
                                                      host driver split
 
-modules/machines/<host>/hardware.nix /** */ carries  the per-host posture
+infra/<host>/hardware.nix /** */ carries  the per-host posture
                                                      (anti-write Pi, NVMe
                                                      enumeration warning,
                                                      impermanence on
@@ -196,7 +196,7 @@ docs/reference/topology.md keeps                     service placement
 Result (2026-06-17): `network.md` 145 → 72 lines, `topology.md` 182
 → 81 lines, with no content lost — the trimmed sections live in code
 and appear in the generated docs. See
-`docs/reports/2026-06-17-generated-vs-handwritten-docs.md` for the
+`docs/archive/reports/2026-06-17-generated-vs-handwritten-docs.md` for the
 side-by-side comparison.
 
 ### Path-coherence skip annotations
@@ -226,17 +226,17 @@ docs/invariants.md                     enforcement ladder + claims catalog
 docs/reference/agentic-workflow.md     per-PR ceremony
 docs/reference/documentation-writing.md  this file
 docs/decisions/*                       ADRs (durable why)
-docs/plans/* docs/specs/* docs/reports/*  multi-phase narrative
+docs/archive/plans/* docs/specs/* docs/archive/reports/*  multi-phase narrative
 docs/runbooks/*                        incident procedures
 docs/installs/*                        bring-up procedures
-CLAUDE.md                              the routing root
+AGENTS.md                             the shared routing root
 ```
 
 These shrink dramatically as doctrine moves into co-located doc-strings:
 
 ```
 docs/reference/topology.md             routing + cross-host patterns;
-                                       per-host details from machines/*
+                                       per-host details from inventory/hosts.nix
 docs/reference/storage.md              value-tier framing + routing;
                                        subvol details from disko
 docs/reference/network.md              routing + DNS arch + audience
@@ -258,7 +258,7 @@ docs/reference/services.md             backup pattern doctrine + routing;
 | **4. Content migration** — doctrine from `docs/reference/*.md` into co-located doc-strings | □ multi-sprint |
 | **5. `docs-fresh` flake check** — committed-generated vs on-the-fly | □ closes drift surface by construction |
 
-Stage 2 verdict (per `docs/reports/2026-06-17-topology-cohort-audit.md`): **keep the convention, commit to structure-by-tier restructure as the follow-on**. The pressure test on `topology.md` landed three signals:
+Stage 2 verdict (per `docs/archive/reports/2026-06-17-topology-cohort-audit.md`): **keep the convention, commit to structure-by-tier restructure as the follow-on**. The pressure test on `topology.md` landed three signals:
 
 ```
 SIGNAL                                              READS AS
@@ -281,7 +281,7 @@ question.
 Stage 2 deliverables:
 
 ```
-K2  modules/infra/hosts.nix      — schema extended (hardware,
+K2  infra/common/nixos/hosts.nix      — schema extended (hardware,
                                      primaryJob, roleOneLiner)
 K3  flake.nix                      — packages.docs-topology
     docs/reference/topology-       — generated artifact
@@ -289,18 +289,18 @@ K3  flake.nix                      — packages.docs-topology
 K4  flake.nix                      — RFC 145 style precedent on
                                      mkHost (let-binding;
                                      non-extracted)
-    [historical] modules/dev/      — RFC 145 pilot site;
-                                     modules/dev/ deleted in
+    [historical] nix/dev/      — RFC 145 pilot site;
+                                     nix/dev/ deleted in
                                      Phase 5b (dev environments
                                      moved to per-project concern)
 K5  docs/reference/topology.md     — trimmed to meta + curated;
                                      tier principle codified
-K6  docs/reports/2026-06-17-       — side-by-side audit; NVMe
+K6  docs/archive/reports/2026-06-17-       — side-by-side audit; NVMe
     topology-cohort-audit.md         warning restored to topology.md
-R1  docs/reports/2026-06-17-       — diagrams-from-code
+R1  docs/archive/reports/2026-06-17-       — diagrams-from-code
     diagram-generation-              feasibility; D2 vs mermaid;
     feasibility.md                   hybrid recommendation
-R2  docs/reports/2026-06-17-       — runsOn coupling analysis;
+R2  docs/archive/reports/2026-06-17-       — runsOn coupling analysis;
     runson-coupling-analysis.md      tier insight; algebraic
                                      forward-extension named
 R3  docs/specs/2026-06-17-         — structure-by-tier restructure
@@ -429,4 +429,5 @@ without examples drift; examples without rules don't generalise.
   seed; combines generated-docs + Open Knowledge Format (OKF v0.1)
   compliance.
 - `git log --grep "chore(comments):"` — the audit-sweep commits;
-  worked examples seeded throughout `modules/`, `home/`, `machines/`.
+  current worked examples are under `infra/`, `profiles/`, `services/`,
+  and `users/`; older paths in archive/specs remain historical.

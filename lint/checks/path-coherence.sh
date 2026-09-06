@@ -9,7 +9,7 @@
 #
 # Two reference shapes are validated:
 #
-#   absolute-from-repo-root      modules/foo/bar.nix
+#   absolute-from-repo-root      services/foo/nixos.nix
 #                                → checked against repo-root
 #
 #   relative-from-file           ../../home/core.nix
@@ -31,12 +31,12 @@
 #        *.md under docs/reference/, docs/decisions/, docs/installs/
 #        docs/glossary.md, docs/invariants.md, docs/README.md
 #        .claude/skills/*/SKILL.md
-#   out: docs/plans/ and docs/reports/ — time-accurate historical
+#   out: docs/archive/plans/ and docs/archive/reports/ — time-accurate historical
 #        narrative; intentionally describes past state
 #
 # Match modes
-#   literal       modules/foo/bar.nix   → file must exist
-#   placeholder   modules/foo/<X>.nix   → glob (<...> → *) must
+#   literal       nix/foo/bar.nix   → file must exist
+#   placeholder   nix/foo/<X>.nix   → glob (<...> → *) must
 #                                         match at least one file
 #   relative      ../../home/core.nix   → resolved against dirname,
 #                                         then literal check
@@ -70,11 +70,11 @@ failfile=$(mktemp)
 echo 0 > "$failfile"
 trap 'rm -f "$failfile"' EXIT
 
-# Absolute-from-root: starts with modules/, machines/, or home/, ends
+# Absolute-from-root: starts with a recognized source root and ends
 # in .nix. Allows placeholder syntax <X> mid-path. The leading-char
 # guard (handled per-match below) keeps this from matching the suffix
 # of a relative path.
-regex_abs='(modules|machines|home)/[a-zA-Z0-9/<>_.-]+\.nix'
+regex_abs='(nix|pi|inventory|infra|services|users|profiles|roles|products|tests|lib)/[a-zA-Z0-9/<>_.-]+\.nix'
 
 # Relative-from-file: one or more `./` or `../` segments followed by
 # a path ending in .nix. Captures the FULL relative form for resolution
@@ -87,9 +87,9 @@ regex_rel='(\.\.?/)+[a-zA-Z0-9/<>_.-]+\.nix'
 # actually read first. Previously these were silently excluded; bulk-
 # moves left stale refs in exactly the docs humans look at.
 mapfile -t files < <(
-  find . -name '*.nix' -not -path './result*' -not -path './.git/*' 2>/dev/null
+  find . -name '*.nix' -not -path './result*' -not -path './.git/*' -not -path '*/.devenv/*' -not -path '*/.direnv/*' -not -path '*/node_modules/*' -not -path './.worktrees/*' 2>/dev/null
   find docs/reference docs/decisions docs/installs docs/runbooks -name '*.md' 2>/dev/null
-  for f in docs/glossary.md docs/invariants.md docs/README.md docs/roadmap.md README.md secrets/README.md; do
+  for f in docs/glossary.md docs/invariants.md docs/README.md docs/roadmap.md README.md secrets/README.md AGENTS.md CLAUDE.md infra/AGENTS.md infra/pi/AGENTS.md services/AGENTS.md users/AGENTS.md; do
     [ -f "$f" ] && echo "$f"
   done
   find .claude/skills -name 'SKILL.md' 2>/dev/null
@@ -160,6 +160,13 @@ for f in "${files[@]}"; do
       # actually the tail of a relative path; the relative pass handles it.
       escaped="${path//./\\.}"
       if echo "$content" | grep -qE "(\.\.?/)+${escaped}"; then
+        continue
+      fi
+      # grep -o can also return a recognized-root suffix from a longer path
+      # such as `${pkgs.path}/nixos/lib/eval-config.nix`. Require the match to
+      # begin at a token boundary so only repository-root paths reach the
+      # literal check.
+      if ! echo "$content" | grep -qE "(^|[^a-zA-Z0-9_./-])${escaped}"; then
         continue
       fi
       check_literal "$f" "$lineno" "$path" "reference"

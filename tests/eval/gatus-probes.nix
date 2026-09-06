@@ -10,7 +10,7 @@
   auto-generation.
 
   Layer 1: pure NixOS-eval, sub-second. Verifies the registry-to-Gatus
-  pipeline that modules/infra/networking/default.nix promises: each
+  pipeline that infra/common/nixos/routes.nix promises: each
   route whose `monitor != null` produces exactly ONE gatus endpoint
   with the route's name + derived URL + ntfy alert tail. Routes
   without `monitor` set produce ZERO endpoints (they exist in the
@@ -34,11 +34,11 @@ let
     specialArgs = { inherit inputs; };
     modules = [
       inputs.sops-nix.nixosModules.sops
-      ../../modules/infra/hosts.nix
-      ../../modules/infra/capabilities
-      ../../modules/infra/storage
-      ../../modules/infra/backup
-      ../../modules/infra/networking
+      ../../infra/common/nixos/hosts.nix
+      ../../infra/common/nixos/service-hardening.nix
+      ../../infra/common/nixos/storage
+      ../../infra/common/nixos/backup.nix
+      ../../infra/common/nixos/routes.nix
       (
         { lib, ... }:
         {

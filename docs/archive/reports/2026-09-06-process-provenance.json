@@ -1,0 +1,78 @@
+{
+  "kind": "source-inspection",
+  "liveValidated": false,
+  "checkout": "/srv/share/projects/homelab/.worktrees/two-host-migration",
+  "head": "06de3381bbe307c08a7ee8524f652a314965cb41",
+  "dirty": true,
+  "inventorySha256": "a7820bf8041f81fe990c389cbf500db08a031ea355a07286d26e10281f40689c",
+  "workloadIdentityCount": 49,
+  "coverage": {
+    "media": [
+      "bazarr",
+      "calibre-web",
+      "filmder",
+      "jellyfin",
+      "jellyseerr",
+      "komga",
+      "lidarr",
+      "music-ingest",
+      "navidrome",
+      "prowlarr",
+      "qbittorrent",
+      "radarr",
+      "recyclarr",
+      "sonarr",
+      "stremio",
+      "suwayomi"
+    ],
+    "services": [
+      "attic",
+      "clamor",
+      "glance",
+      "heim",
+      "herdr-projects-mcp",
+      "hindsight",
+      "immich",
+      "mcp-origin-tunnel",
+      "miniflux",
+      "ollama",
+      "open-webui",
+      "paperless",
+      "radicale",
+      "samba",
+      "syncthing",
+      "vaultwarden"
+    ],
+    "platform": [
+      "authelia",
+      "beszel-agent",
+      "beszel-hub",
+      "caddy",
+      "cloudflare-ddns",
+      "disk-alert",
+      "gatus",
+      "grafana",
+      "heartbeat",
+      "node-exporter",
+      "ntfy-notify",
+      "ntfy-server",
+      "nvidia-gpu-exporter",
+      "pihole",
+      "restic-target",
+      "victorialogs-server",
+      "victoriametrics"
+    ]
+  },
+  "sourceDigest": {
+    "algorithm": "SHA256(concat(sorted(path + NUL + raw SHA256(file))))",
+    "selection": "git ls-files under inventory nix pi infra products tools scripts, plus Justfile flake.nix flake.lock; existing regular files",
+    "fileCount": 464,
+    "sha256": "7cc2b40dba99398abd6ee0b6914ec9f093d930e73496b9fb6743ed88550aa616"
+  },
+  "scopeLimits": [
+    "No live hosts or provider resources observed",
+    "Upstream applications and desktop programs retain explicit opaque boundaries",
+    "UI-managed integration state not inspected",
+    "No language/compiler choice made"
+  ]
+}

@@ -1,15 +1,15 @@
 ---
 date: 2026-06-17
 status: EXECUTED — Phases 6a + 6b landed 2026-06-17
-seed: operator framing 2026-06-17 ("move modules/common to modules/home and modules/desktop to modules/machines under base/. is that reasonable?"); refined after scope-distinction pushback.
-summary: Consolidate NixOS-system-scope concerns under `modules/machines/` so the tree's TOP-LEVEL CUT mirrors the Nix module SCOPE (system vs home-manager). Today `modules/common/` and `modules/desktop/` are NixOS-system-scope but live at the top level alongside the home-manager-scope `modules/home/`; the conflation forces readers to know each subtree's scope by reading its content. Proposal: move `modules/common/` → `modules/machines/base/`, `modules/desktop/` → `modules/machines/desktop/`. After: `modules/machines/` IS the NixOS-system tree; `modules/home/` IS the home-manager tree; the scope distinction is structural.
+seed: operator framing 2026-06-17 ("move nix/common to nix/home and nix/desktop to nix/machines under base/. is that reasonable?"); refined after scope-distinction pushback.
+summary: Consolidate NixOS-system-scope concerns under `nix/hosts/` so the tree's TOP-LEVEL CUT mirrors the Nix module SCOPE (system vs home-manager). Today `nix/common/` and `nix/desktop/` are NixOS-system-scope but live at the top level alongside the home-manager-scope `nix/home/`; the conflation forces readers to know each subtree's scope by reading its content. Proposal: move `nix/common/` → `nix/modules/system/base/`, `nix/desktop/` → `nix/modules/system/desktop/`. After: `nix/hosts/` IS the NixOS-system tree; `nix/home/` IS the home-manager tree; the scope distinction is structural.
 executed-as:
-  - Phase 6a  7bb8a82  modules/common → modules/machines/base
+  - Phase 6a  7bb8a82  nix/common → nix/hosts/base
                        4 hosts updated (../../common → ../base);
                        internal infra imports in base/ updated
                        (../infra → ../../infra); bulk prose rewrite
                        across .nix + selected .md
-  - Phase 6b  2bb9de7  modules/desktop → modules/machines/desktop
+  - Phase 6b  2bb9de7  nix/desktop → nix/hosts/desktop
                        workstation import updated (../../desktop → ../desktop);
                        bulk prose rewrite
   - Phase 6c  (folded into 6a/6b; doc cleanup done inline)
@@ -27,15 +27,15 @@ The modules-as-root restructure (Phase 0-4) landed a clear PaaS lens for `infra/
 ```
 current
 ─────────────────────────────────────────────
-modules/common/        NixOS-system scope     ← imported by every host's
-                                                modules/machines/<host>/default.nix
+nix/common/        NixOS-system scope     ← imported by every host's
+                                                nix/hosts/<host>/default.nix
 
-modules/desktop/       NixOS-system scope     ← imported by workstation only
+nix/desktop/       NixOS-system scope     ← imported by workstation only
 
-modules/home/          home-manager scope     ← imported by each host's
-                                                modules/machines/<host>/home.nix
+nix/home/          home-manager scope     ← imported by each host's
+                                                nix/hosts/<host>/home.nix
 
-modules/machines/      NixOS-system scope,    ← the host registry + per-host
+nix/hosts/      NixOS-system scope,    ← the host registry + per-host
                        per-host                 configs
 ```
 
@@ -49,8 +49,8 @@ home-manager too"; really means            scope. Easy to mistakenly
 "shared NixOS baseline"                    target it from a home-manager
                                            context.
 
-modules/desktop/ (NixOS) sits next         "desktop" appears in two trees
-to modules/home/desktop/ (HM) with         (modules/desktop, modules/home/
+nix/desktop/ (NixOS) sits next         "desktop" appears in two trees
+to nix/home/desktop/ (HM) with         (nix/desktop, nix/home/
 no structural cue                          desktop) — same word, different
                                            scopes. Discovery hostile.
 
@@ -64,15 +64,15 @@ post-Phase-4 layout) plus possibly         lives. Moving common changes
 
 ## The cut
 
-Move both NixOS-system-scope subtrees under `modules/machines/`. After:
+Move both NixOS-system-scope subtrees under `nix/hosts/`. After:
 
 ```
-modules/
+nix/
   machines/            NIXOS-SYSTEM SCOPE — every subtree here is a
                        NixOS module
-    base/                ← was modules/common/
+    base/                ← was nix/common/
       base.nix, users.nix, sops.nix, tailscale.nix, default.nix
-    desktop/             ← was modules/desktop/
+    desktop/             ← was nix/desktop/
       apps.nix, audio.nix, fonts.nix, greetd.nix, gaming.nix,
       hyprland.nix, stylix.nix, sunshine.nix, virt.nix, default.nix
     default.nix          ← factory (unchanged shape; explicit imports
@@ -94,7 +94,7 @@ modules/
     default.nix          standalone home-manager factory
 
   infra/               PaaS infra modules (Reader+Writer concerns)
-                       NIXOS-SYSTEM SCOPE — consumed by modules/machines/
+                       NIXOS-SYSTEM SCOPE — consumed by nix/hosts/
                        hosts via the bundle import. Stays where it is;
                        lives at top level because it's the platform layer
                        that machines USE, not part of machines themselves.
@@ -107,11 +107,11 @@ modules/
 ```
 mental model after
 ──────────────────────────────────────────────────────────────
-modules/machines/    = "what each compute resource declares about itself"
+nix/hosts/    = "what each compute resource declares about itself"
                        (base posture + role-specific concerns + per-host)
-modules/home/        = "what each user surface declares about itself"
-modules/infra/       = "the PaaS the machines plug into"
-modules/services/    = "the workloads running on top"
+nix/home/        = "what each user surface declares about itself"
+nix/modules/system/       = "the PaaS the machines plug into"
+nix/modules/services/    = "the workloads running on top"
 ```
 
 Four trees, four clear semantics, no scope mixing.
@@ -119,13 +119,13 @@ Four trees, four clear semantics, no scope mixing.
 ## What this is NOT
 
 ```
-✗ NOT moving modules/infra/ or modules/services/ under modules/machines/.
+✗ NOT moving nix/modules/system/ or nix/modules/services/ under nix/hosts/.
   Those are SHARED platform/workload trees that any machine can pull
   from via the bundle import; they're not "per-host" concerns. Keeping
   them at the top level reflects that.
 
 ✗ NOT promoting "common" to a more semantically loaded name like
-  "baseline" or "shared". The rename is *to fit under modules/machines/*
+  "baseline" or "shared". The rename is *to fit under nix/hosts/*
   (becomes `base/` — short, contextually clear). Outside that scope
   the name carried no other improvement.
 
@@ -133,7 +133,7 @@ Four trees, four clear semantics, no scope mixing.
   contents; only paths shift. Byte-equal nix eval against representative
   hosts proves no semantic drift.
 
-✗ NOT touching modules/home/ contents (decision deferred — open Q1).
+✗ NOT touching nix/home/ contents (decision deferred — open Q1).
 ```
 
 ## The migrations
@@ -141,31 +141,31 @@ Four trees, four clear semantics, no scope mixing.
 ```
 file moves (mechanical)
 ────────────────────────────────────────
-git mv modules/common   modules/machines/base
-git mv modules/desktop  modules/machines/desktop
+git mv nix/common   nix/hosts/base
+git mv nix/desktop  nix/hosts/desktop
 
 import path updates (load-bearing)
 ────────────────────────────────────────
-modules/machines/workstation/default.nix
+nix/hosts/workstation/default.nix
   ../../common  → ../base
   ../../desktop → ../desktop
-modules/machines/aurora/default.nix
+nix/hosts/aurora/default.nix
   ../../common  → ../base
-modules/machines/pi/default.nix
+nix/hosts/pi/default.nix
   ../../common  → ../base
-modules/machines/pavilion/default.nix
+nix/hosts/pavilion/default.nix
   ../../common  → ../base
   ../../infra/observability/<X>  → ../../infra/... (unchanged depth)
 
 lint rule scope updates
 ────────────────────────────────────────
-lint/rules.toml `scope = ["modules/"]` rules already cover the new
-tree (no scope-string change needed — modules/ stays the umbrella).
+lint/rules.toml `scope = ["nix/"]` rules already cover the new
+tree (no scope-string change needed — nix/ stays the umbrella).
 
 doc-comment + doc updates
 ────────────────────────────────────────
-~30 prose refs to `modules/common/` → `modules/machines/base/`
-~15 prose refs to `modules/desktop/` → `modules/machines/desktop/`
+~30 prose refs to `nix/common/` → `nix/modules/system/base/`
+~15 prose refs to `nix/desktop/` → `nix/modules/system/desktop/`
 Generated docs (lan-route-options, topology-generated) regenerate.
 
 generators
@@ -189,13 +189,13 @@ gate 4   regenerate the 2 generated docs; commit-time diff is
 
 ## Goal / Constraints / Values
 
-**Goal (verifiable):** every NixOS-system-scope concern in `modules/` lives under `modules/machines/` (excluding `infra/` and `services/`, which are platform/workload trees consumed by machines). Byte-equal nix eval against all 4 NixOS hosts. All 8 flake checks pass.
+**Goal (verifiable):** every NixOS-system-scope concern in `nix/` lives under `nix/hosts/` (excluding `infra/` and `services/`, which are platform/workload trees consumed by machines). Byte-equal nix eval against all 4 NixOS hosts. All 8 flake checks pass.
 
 **Constraints (hard):**
 - C1. No behavioral drift. Eval byte-equal before/after.
 - C2. No `nix flake check` regression. 8 checks remain green.
 - C3. Single commit per logical step (move + import update is one atomic op per concern).
-- C4. modules/home/ contents NOT touched in Phase 6 (deferred — see Q1).
+- C4. nix/home/ contents NOT touched in Phase 6 (deferred — see Q1).
 
 **Values (soft):**
 - V1. Prefer name `base/` over alternatives; short, fits the new context, doesn't pretend to scope claims it can't make.
@@ -205,16 +205,16 @@ gate 4   regenerate the 2 generated docs; commit-time diff is
 ## Open questions
 
 ```
-Q1   should modules/home/{core,pc}.nix move to modules/home/base/
-     for symmetry with modules/machines/base/?
-     → tradeoff: symmetry vs minimal-touch. modules/home/ doesn't
+Q1   should nix/home/{core,pc}.nix move to nix/home/base/
+     for symmetry with nix/modules/system/base/?
+     → tradeoff: symmetry vs minimal-touch. nix/home/ doesn't
        suffer the scope conflation problem because there's only one
        scope (HM) in the subtree. The rename buys symmetry but no
        new clarity.
-     → bias: NO. Keep modules/home/ flat. If a third HM tier emerges,
+     → bias: NO. Keep nix/home/ flat. If a third HM tier emerges,
        reconsider.
 
-Q2   should modules/machines/desktop/ move under modules/machines/base/
+Q2   should nix/modules/system/desktop/ move under nix/modules/system/base/
      as base/desktop/ (per operator's "under base/" framing)?
      → tradeoff: base/ becomes an aggregator (every host imports the
        whole base/ tree) or a folder of separate concerns (host
@@ -224,7 +224,7 @@ Q2   should modules/machines/desktop/ move under modules/machines/base/
        conflates "every host gets this" with "some hosts get this".
        Keep desktop/ as a sibling.
 
-Q3   should infra/ and services/ also move under modules/machines/?
+Q3   should infra/ and services/ also move under nix/hosts/?
      → tradeoff: scope-aligned (yes, they're NixOS-system-scope) vs
        layer-aligned (no, they're the platform-and-workloads layer
        that machines consume).
@@ -232,9 +232,9 @@ Q3   should infra/ and services/ also move under modules/machines/?
        services; they don't OWN them. Top-level reflects that
        consume-vs-own distinction.
 
-Q4   should the per-host folders inside modules/machines/ also get a
-     scope marker (e.g. modules/machines/hosts/<host>/ wrapping the
-     existing modules/machines/<host>/)?
+Q4   should the per-host folders inside nix/hosts/ also get a
+     scope marker (e.g. nix/hosts/hosts/<host>/ wrapping the
+     existing nix/hosts/<host>/)?
      → tradeoff: extra nesting vs visual symmetry with base/ + desktop/.
      → bias: NO. The folder name IS the host name; nesting buys
        nothing semantic.
@@ -248,12 +248,12 @@ Q5   migration ordering: common-first or desktop-first?
 ## Phase ordering
 
 ```
-phase 6a   modules/common → modules/machines/base/
+phase 6a   nix/common → nix/modules/system/base/
            4 import updates (../../common → ../base) across hosts
            prose refs follow via bulk rewrite
            verify: byte-equal eval per host; flake check; check-migration
 
-phase 6b   modules/desktop → modules/machines/desktop/
+phase 6b   nix/desktop → nix/modules/system/desktop/
            1 import update (../../desktop → ../desktop) in workstation
            prose refs follow via bulk rewrite
            verify: byte-equal eval; flake check; check-migration
@@ -263,7 +263,7 @@ phase 6c   doc cleanup pass
            docs/glossary.md path refs
            docs/reference/module-authoring.md updated module-authoring shape
            docs/reference/topology.md if it references common/desktop
-           any spec / report in docs/specs/ + docs/reports/ stays
+           any spec / report in docs/specs/ + docs/archive/reports/ stays
            historical (path-coherence skip-file on those is already in
            place)
 ```
@@ -279,8 +279,8 @@ in reverse + revert the import edits. ~10 minutes.
 ## Predecessor / successor
 
 - Builds on: Phase 4 (modules-as-root restructure), Phase 5a-d
-  (explicit machine imports, modules/dev removal, lint extraction,
+  (explicit machine imports, nix/dev removal, lint extraction,
   migration-check pruning).
 - Does not block: any current outstanding work. Pure refactor.
-- Pairs naturally with: future Phase 7+ if `modules/home/` grows
+- Pairs naturally with: future Phase 7+ if `nix/home/` grows
   enough internal tiering to warrant its own scope-marker reorg.

@@ -37,13 +37,13 @@ pkgs.testers.runNixOSTest {
     {
       imports = [
         inputs.sops-nix.nixosModules.sops
-        ../modules/infra/hosts.nix
-        ../modules/infra/capabilities
-        ../modules/infra/storage
-        ../modules/infra/backup
-        ../modules/infra/networking
-        ../modules/infra/observability/disk-alert/runtime.nix
-        ../modules/infra/observability/ntfy/notify.nix
+        ../infra/common/nixos/hosts.nix
+        ../infra/common/nixos/service-hardening.nix
+        ../infra/common/nixos/storage
+        ../infra/common/nixos/backup.nix
+        ../infra/common/nixos/routes.nix
+        ../services/disk-alert/nixos.nix
+        ../services/ntfy/nixos/notify.nix
       ];
 
       environment.etc."sops-test-age.txt".source = ./keys/test-age.txt;

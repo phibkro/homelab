@@ -25,15 +25,12 @@ manifests select reusable modules before the NixOS fixed point.
 ```mermaid
 graph TB
   subgraph "appliance tier"
-    P[pi<br/>entry plane + observability hub]
+    P[pi · Ansible<br/>entry plane + observability hub]
   end
   subgraph "workhorse tier"
-    A[aurora<br/>off-host backup vault]
     W[workstation<br/>family + media services + desktop]
   end
   P -- "*.${nori.domain} proxy" --> W
-  W -- "restic over SFTP" --> A
-  A -- "scraped by" --> P
   W -- "scraped by" --> P
 ```
 
@@ -49,65 +46,15 @@ no parallel identity map.
 
 ## Per-host hardware posture
 
-## aurora — Asus N552V · Intel Skylake-H i7-6700HQ · 12 GB DDR4 · NVIDIA GTX 950M
-
-Retired gaming laptop repurposed as an off-host backup appliance. Dead
-battery, but otherwise solid: always-on AC, lid closed, runs headless.
-
- - **119 GB LiteOn SSD (`/dev/sda`)** — root + boot + `/nix`.
- - **External Seagate OneTouch USB HDD** — `/mnt/backup`,
-   restic vault for workstation backups. SFTP-served through
-   the chrooted `restic` user.
-
-Derived from `nixos-generate-config --no-filesystems` on the live
-ISO (2026-06-06). UEFI firmware. ~1 GB of the 12 GB is iGPU-pinned
-(Intel HD 530); ~11 GB usable for services.
-
-## GPU posture
-
-The NVIDIA GTX 950M remains available through the legacy_535 driver branch,
-but Aurora no longer runs Immich ML or the GPU exporter.
-
-## Why workhorse role
-
-The existing `workhorse` role permits durable backup storage. Aurora's
-narrower purpose is explicit in its inventory workload: `restic-target`.
-## pi — Raspberry Pi 4 (8 GiB) · aarch64 · USB-boot from Samsung FIT 128 GB
-
-**Anti-write storage posture.** SD-card / flash wear is the #1 Pi failure
-mode; this host's filesystem layer is configured to minimize writes:
-
- - `swapDevices = [ ]` — no physical swap. zramSwap (RAM-backed compressed)
-   is the right alternative if memory pressure ever shows up.
- - `services.journald.extraConfig` — `Storage=volatile` (RAM-backed
-   journal) + `SystemMaxUse=64M` cap.
- - `boot.kernel.sysctl."vm.mmap_rnd_bits" = 18` — aarch64 fixup (default
-   33 from x86_64 systemd fails on aarch64's 39-bit VA).
-
-**Restic-as-target deferred:** Pi can host the workstation restic repo
-only when a real disk replaces the FIT — the anti-write posture rules
-out daily restic to flash.
-
-**NVMe enumeration warning.** Disko configs target `/dev/disk/by-id/...`
-paths because NVMe enumeration is unstable across reboots. Pi itself
-doesn't have NVMe today, but the convention is universal in this repo;
-see `Mnemopi recall: gotcha-nvme-enumeration`.
-
-## Build path
-
-Pi closures build on workstation via aarch64 binfmt emulation
-(`boot.binfmt.emulatedSystems` in `modules/machines/workstation/hardware.nix`);
-the sd-image-aarch64 module handles partitioning. Flashed once, then
-rebuilt in-place via `nh os switch` over tailnet.
-## workstation — Ryzen 5600X · 32 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell)
+## workstation — hardware inventory: `inventory/hosts.nix`
 
 Primary service compute and storage host:
 
  - **WD SN750 1 TB NVMe** — root + service state (`@`, `@home`,
    `@nix`, `@var-lib`, `@var-log`). disko at `./disko.nix`.
- - **Corsair MP510 960 GB NVMe** — local restic target at
+ - **Corsair MP510 960 GB NVMe** — cache and preserved archives at
    `/mnt/backup-local`. disko at `./disko-mp510.nix`.
- - **Seagate IronWolf Pro 4 TB (USB)** — downloads plus canonical family
+ - **Seagate IronWolf Pro 4 TB (SATA)** — downloads plus canonical family
    datasets under `/mnt/media/*`. disko at `./disko-media.nix`.
 
 ## NVMe enumeration warning
@@ -115,14 +62,15 @@ Primary service compute and storage host:
 `nvme0n1` was NixOS root at install time; post-reboot the drives
 swapped. Disko configs target `/dev/disk/by-id/...` paths because of
 this. **Never touch `nvme0n1` without verifying the model string via
-`/dev/disk/by-id/`** — full constraint in CLAUDE.md hard rules. See
+`/dev/disk/by-id/`** — full constraint in AGENTS.md. See
 `Mnemopi recall: gotcha-nvme-enumeration`.
 
 ## Service posture
 
 Family services, media services, research tools, and the operator desktop
 are colocated here. Pi remains the always-on entry and observability plane;
-Aurora receives the off-host restic copy.
+SSDs hold hot data and IronWolf Pro holds cold data. Backup delivery
+is disabled pending a verified OneTouch connection.
 
 ## Sleep + GPU constraint
 
@@ -135,16 +83,15 @@ prevents idle-sleep during ambient sound. Full debt note in
 
 ## Hosts at a glance
 
-| Host | Codename | Role | Tailnet | LAN | Hardware | Primary job |
-|---|---|---|---|---|---|---|
-| **aurora** | aurora | `workhorse` (off-host backup vault) | `100.101.67.111` | — | Asus N552V · Intel Skylake-H i7-6700HQ · 12 GB DDR4 · NVIDIA GTX 950M (legacy_535) · OneTouch USB | Off-host backup appliance. The chrooted restic SFTP target stores workstation backups on the OneTouch HDD, preserving a second chassis and power-failure domain. |
-| **pi** | fairy | `appliance` (always-on entry plane) | `100.100.71.3` | `192.168.1.225` | Raspberry Pi 4 8 GB · aarch64 · USB-boot from Samsung FIT 128 GB | HTTP entry plane (Caddy + Authelia + Blocky-authoritative, LE wildcard cert on `*.${nori.domain}`), observability hub, alert plane, Tailscale subnet router + exit node. |
-| **workstation** | emperor | `workhorse` (always-on converged desktop/server) | `100.81.5.122` | `192.168.1.181` | Ryzen 5600X · 32 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) · WD SN750 1 TB NVMe + Corsair MP510 960 GB NVMe + Seagate IronWolf Pro 4 TB USB | Always-on graphical workstation and homelab server: GPU services (Ollama / Jellyfin NVENC), `*arr` stack + qBittorrent, family services and Samba shares on the attached IronWolf disk. Backups write locally to the MP510 and off-host to Aurora's OneTouch restic vault. |
+| Host | Managed by | Codename | Role | Tailnet | LAN | Hardware | Primary job |
+|---|---|---|---|---|---|---|---|
+| **pi** | `ansible` | fairy | `appliance` (always-on entry plane) | `100.100.71.3` | `192.168.1.225` | Raspberry Pi 4 8 GB · aarch64 · USB-boot from Samsung FIT 128 GB | HTTP entry plane (Caddy + Authelia + Pi-hole, LE wildcard cert on `*.${nori.domain}`), observability hub, alert plane, Tailscale subnet router + exit node. |
+| **workstation** | `nixos` | emperor | `workhorse` (always-on converged desktop/server) | `100.81.5.122` | `192.168.1.181` | Ryzen 9 5950X · 64 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) · WD SN750 1 TB NVMe + Corsair MP510 960 GB NVMe + Seagate IronWolf Pro 4 TB SATA | Always-on graphical workstation and homelab server: GPU services (Ollama / Jellyfin NVENC), `*arr` stack + qBittorrent, family services and Samba shares on the attached IronWolf disk, and the fleet's re-derivable Attic cache. SSDs hold hot data and the IronWolf Pro holds cold archives. OneTouch backup policy is prepared but disabled pending safe attachment; same-disk snapshots provide local rollback. |
 
 ## Registry schema (`nori.hosts.<name>.*`)
 
 What an `inventory/hosts.nix` identity entry must declare to
-satisfy the schema. Schema lives in `modules/infra/hosts.nix`.
+satisfy the schema. Schema lives in `infra/common/nixos/hosts.nix`.
 
 ## nori.hosts
 
@@ -166,7 +113,7 @@ attribute set of (submodule)
 ```
 
 *Declared by:*
- - [<nixpkgs/modules/infra/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//modules/infra/hosts.nix)
+ - [<nixpkgs/infra/common/nixos/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/hosts.nix)
 
 
 
@@ -186,7 +133,7 @@ Theme: cold / polar / penguin.
 string
 
 *Declared by:*
- - [<nixpkgs/modules/infra/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//modules/infra/hosts.nix)
+ - [<nixpkgs/infra/common/nixos/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/hosts.nix)
 
 
 
@@ -200,7 +147,7 @@ the generated topology doc; not consumed by evaluation.
 
 Format guidance: model · CPU family · RAM · GPU (if any) ·
 storage notes. Keep terse — the field is a table cell, not
-a spec sheet. Detailed posture lives in modules/machines/<n>/default.nix
+a spec sheet. Detailed posture lives in infra/<n>/default.nix
 header comments (anti-write posture, impermanence, etc.).
 
 
@@ -209,7 +156,7 @@ header comments (anti-write posture, impermanence, etc.).
 string
 
 *Declared by:*
- - [<nixpkgs/modules/infra/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//modules/infra/hosts.nix)
+ - [<nixpkgs/infra/common/nixos/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/hosts.nix)
 
 
 
@@ -236,7 +183,7 @@ null
 ```
 
 *Declared by:*
- - [<nixpkgs/modules/infra/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//modules/infra/hosts.nix)
+ - [<nixpkgs/infra/common/nixos/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/hosts.nix)
 
 
 
@@ -247,7 +194,7 @@ null
 Multi-clause prose describing what this host does — the
 “Primary job” cell in the topology table. CommonMark
 permitted (bullets, inline code, links). Keep to a
-paragraph; deeper rationale belongs in modules/machines/<n>/default.nix
+paragraph; deeper rationale belongs in infra/<n>/default.nix
 or the relevant ADR.
 
 Drift policy: when a host’s job changes materially (gains
@@ -261,7 +208,7 @@ topology.md no longer carries it.
 string
 
 *Declared by:*
- - [<nixpkgs/modules/infra/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//modules/infra/hosts.nix)
+ - [<nixpkgs/infra/common/nixos/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/hosts.nix)
 
 
 
@@ -272,21 +219,15 @@ string
 Structural role driving placement assertions:
 
  - ` workhorse ` — heavy compute, state, GPU, large disks.
-   Backed up to local restic. Today this covers two
-   distinct shapes — workstation (GPU + desktop +
-   bulk media) and aurora (always-on family vault +
-   family-tier backends) — which still share the
-   “owns state, can take paths-based backups” properties
-   workhorse implies. **Rule of three**: if a third host
-   matches aurora’s always-on-no-desktop shape, extract
-   a dedicated ` vault ` (or ` compute `) role then.
+   Workstation combines desktop, application backends,
+   and attached data disks under this role.
 
  - ` appliance ` — observability + alerting + DNS + network
    plumbing + HTTP entry plane (Caddy + Authelia +
-   Blocky-authoritative). Survives workhorse failure.
+   DNS). Survives workhorse failure.
    Anti-write storage (no swap, volatile journald, flash)
-   → paths-based backups are a build error (assertion in
-   modules/infra/backup/default.nix).
+   → local backup repositories are a build error (assertion in
+   infra/common/nixos/backup.nix).
 
  - ` agent ` — untrusted-compute quarantine. Stateless by
    design: tmpfs root + impermanence /persist. No GPU
@@ -303,7 +244,7 @@ and add the assertions that key off it.
 one of “workhorse”, “appliance”, “agent”
 
 *Declared by:*
- - [<nixpkgs/modules/infra/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//modules/infra/hosts.nix)
+ - [<nixpkgs/infra/common/nixos/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/hosts.nix)
 
 
 
@@ -313,9 +254,8 @@ one of “workhorse”, “appliance”, “agent”
 
 Short qualifier appended to the ` role ` cell in the topology
 table — disambiguates the role for hosts that share a typed
-role but differ in shape (e.g. workstation “sleep-friendly
-compute” vs aurora “always-on family vault”; both are
-` workhorse `). Empty string when the role itself is the
+role but differ in shape (e.g. desktop and headless servers may
+both be ` workhorse `). Empty string when the role itself is the
 full story (for example, ` agent `).
 
 
@@ -324,7 +264,7 @@ full story (for example, ` agent `).
 string
 
 *Declared by:*
- - [<nixpkgs/modules/infra/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//modules/infra/hosts.nix)
+ - [<nixpkgs/infra/common/nixos/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/hosts.nix)
 
 
 
@@ -342,6 +282,6 @@ cross-host references in this flake.
 string
 
 *Declared by:*
- - [<nixpkgs/modules/infra/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//modules/infra/hosts.nix)
+ - [<nixpkgs/infra/common/nixos/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/hosts.nix)
 
 

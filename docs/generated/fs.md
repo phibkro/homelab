@@ -1,6 +1,6 @@
 ---
 generated: true
-source: flake-parts/packages/docs-fs.nix
+source: lib/flake-parts/packages/docs-fs.nix
 regenerate: nix build .#docs-fs
 ---
 
@@ -24,7 +24,7 @@ Both schemas are part of "where data lives + how it's protected"
 schemas live elsewhere:
 
  - btrfs subvol creation: disko configs per host
- - btrbk send/receive timers: `modules/infra/backup/btrbk*.nix`
+ - btrbk send/receive timers: `services/btrbk/nixos.nix`
 
 # fs concern — overview {#sec-functions-library-fs}
 
@@ -37,15 +37,14 @@ Collapses subvolume paths that used to be magic strings across
 arr binds, jellyfin/immich/komga consumers, and the
 restic+btrbk generators. Reader-shaped effect: hosts declare
 (alongside disko), services consume by name; backup generators
-in `modules/infra/backup/` filter by tier (the Writer-shaped
+in `infra/common/nixos/backup.nix` filter by tier (the Writer-shaped
 consequence).
 
 Optional `samba` block — when set, the share follows the drive:
 any host whose `nori.fs` declares `samba = { … }` for an entry
 emits the corresponding Samba share via the generator below.
-When a drive physically moves between hosts (OneTouch → aurora
-2026-06-11; future IronWolf moves), the share moves with it
-automatically because the `nori.fs.<X>.samba` declaration lives
+When a drive declaration moves between hosts, the share follows
+because the `nori.fs.<X>.samba` declaration lives
 next to the disko entry.
 
 ## `homelab.fs.config` {#function-library-homelab.fs.config}
@@ -54,7 +53,7 @@ Writer half of `nori.fs`: hosts that declare any
 `nori.fs.<X>.samba` entries emit the corresponding share +
 ownership tmpfiles. The samba globals (workgroup, hosts allow,
 vfs objects, the firewall rule) live in
-`modules/services/samba/runtime.nix` on the host that imports it.
+`services/samba/nixos.nix` on the host that imports it.
 
 
 
@@ -95,7 +94,7 @@ attribute set of (submodule)
 ```
 
 *Declared by:*
- - `modules/infra/storage`
+ - `infra/common/nixos/storage`
 
 
 
@@ -113,7 +112,7 @@ rather than hardcoding the literal.
 absolute path
 
 *Declared by:*
- - `modules/infra/storage`
+ - `infra/common/nixos/storage`
 
 
 
@@ -127,7 +126,7 @@ share follows the drive across hosts because the
 declaration lives next to the disko entry. The share’s
 global hardening (tailnet-only firewall, hosts allow
 CIDRs, vfs objects for macOS interop) lives in
-modules/services/samba/runtime.nix; per-share fields here.
+services/samba/nixos.nix; per-share fields here.
 
 Defaults are picked for the homelab’s single-user
 operator + family case: writable, valid user ` nori `,
@@ -147,7 +146,7 @@ null
 ```
 
 *Declared by:*
- - `modules/infra/storage`
+ - `infra/common/nixos/storage`
 
 
 
@@ -171,7 +170,7 @@ string
 ```
 
 *Declared by:*
- - `modules/infra/storage`
+ - `infra/common/nixos/storage`
 
 
 
@@ -199,7 +198,7 @@ false
 ```
 
 *Declared by:*
- - `modules/infra/storage`
+ - `infra/common/nixos/storage`
 
 
 
@@ -223,7 +222,7 @@ string
 ```
 
 *Declared by:*
- - `modules/infra/storage`
+ - `infra/common/nixos/storage`
 
 
 
@@ -247,7 +246,7 @@ string
 ```
 
 *Declared by:*
- - `modules/infra/storage`
+ - `infra/common/nixos/storage`
 
 
 
@@ -271,7 +270,7 @@ string
 ```
 
 *Declared by:*
- - `modules/infra/storage`
+ - `infra/common/nixos/storage`
 
 
 
@@ -302,7 +301,7 @@ true
 ```
 
 *Declared by:*
- - `modules/infra/storage`
+ - `infra/common/nixos/storage`
 
 
 
@@ -326,7 +325,7 @@ false
 ```
 
 *Declared by:*
- - `modules/infra/storage`
+ - `infra/common/nixos/storage`
 
 
 
@@ -354,7 +353,7 @@ string
 ```
 
 *Declared by:*
- - `modules/infra/storage`
+ - `infra/common/nixos/storage`
 
 
 
@@ -380,7 +379,7 @@ list of string
 ```
 
 *Declared by:*
- - `modules/infra/storage`
+ - `infra/common/nixos/storage`
 
 
 
@@ -421,7 +420,7 @@ null
 ```
 
 *Declared by:*
- - `modules/infra/storage`
+ - `infra/common/nixos/storage`
 
 
 
@@ -433,7 +432,7 @@ Value tier per docs/reference/storage.md “Value tiers”.
 Drives which restic repo (if any) the path lands in
 and the snapshot retention class. Adding a tier:
 extend the enum, document the contract, update the
-filter generators in modules/infra/backup/.
+filter generators in infra/common/nixos/backup.nix.
 
 
 
@@ -441,6 +440,6 @@ filter generators in modules/infra/backup/.
 one of “re-derivable”, “user”, “irreplaceable”
 
 *Declared by:*
- - `modules/infra/storage`
+ - `infra/common/nixos/storage`
 
 

@@ -10,7 +10,7 @@ Module overviews + per-option schema for `nori.harden` and
 `nori.gpu`. Hand-curated cross-module synthesis (which
 services consume which capability, per-host driver
 choices) lives in the file-level doc-comments at
-`modules/infra/capabilities/{default,gpu}.nix`.
+`infra/common/nixos/{service-hardening,gpu}.nix`.
 
 Capabilities concern — what services can DO on the machine.
 
@@ -25,9 +25,7 @@ FS-namespace adapter. `gpu.nix` carries `nori.gpu.nvidiaDevices`
 registry (the device-path SoT services read from).
 
 Shared `media` group declarations live in
-`modules/services/arr/shared.nix` + `modules/machines/aurora/default.nix`
-(declared by each host that uses it; idempotent merge). A future
-`media-group.nix` could centralize this.
+`profiles/media-acquisition/resources.nix`; workstation selects that cluster.
 
 # Capabilities concern — overview {#sec-functions-library-capabilities}
 
@@ -60,20 +58,12 @@ Services that need the GPU set `accelerationDevices` (or systemd
 `DeviceAllow`) from `config.nori.gpu.nvidiaDevices` — single source
 of truth, declared per host in that host's `hardware.nix`.
 
-| Service | Status | Resource |
-|---|---|---|
-| Ollama (CUDA) | live | 14+ GiB VRAM at idle with model loaded |
-| Immich (CUDA ML + NVENC) | live | NVENC encode, ML inference (on aurora's GTX 950M) |
-| Jellyfin (NVENC) | OS-level live | Web-UI flag still off (ROADMAP item) |
-
-Driver split:
-
- - **workstation** (RTX 5060 Ti, Blackwell) — `hardware.nvidia.package =
-   config.boot.kernelPackages.nvidiaPackages.production`. 595.58.03+
-   on 26.05; Blackwell support landed.
- - **aurora** (GTX 950M, Maxwell) — `legacy_535` branch (Maxwell GPUs
-   are out of the production branch's supported list).
- - **pi** — no GPU; `nori.gpu.nvidiaDevices = [ ]` default.
+Workstation is the NVIDIA host (RTX 5060 Ti, Blackwell). Its hardware
+module selects `config.boot.kernelPackages.nvidiaPackages.production`;
+the locked package set determines the driver version. Ollama, Immich,
+and Jellyfin declare their local GPU requirements in their runtimes.
+These declarations do not establish live application acceleration or
+measured VRAM usage. Pi's production runtime is owned by Ansible.
 
 Fallback ladder if production breaks: `production` → `beta` →
 `latest` → explicit `mkDriver` pin.
@@ -142,7 +132,7 @@ list of string
 ```
 
 *Declared by:*
- - `modules/infra/capabilities/gpu.nix`
+ - `infra/common/nixos/gpu.nix`
 
 
 
@@ -181,7 +171,7 @@ attribute set of (submodule)
 ```
 
 *Declared by:*
- - `modules/infra/capabilities`
+ - `infra/common/nixos/service-hardening.nix`
 
 
 
@@ -208,7 +198,7 @@ list of string
 ```
 
 *Declared by:*
- - `modules/infra/capabilities`
+ - `infra/common/nixos/service-hardening.nix`
 
 
 
@@ -237,7 +227,7 @@ true
 ```
 
 *Declared by:*
- - `modules/infra/capabilities`
+ - `infra/common/nixos/service-hardening.nix`
 
 
 
@@ -264,6 +254,6 @@ list of string
 ```
 
 *Declared by:*
- - `modules/infra/capabilities`
+ - `infra/common/nixos/service-hardening.nix`
 
 

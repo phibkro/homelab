@@ -1,5 +1,10 @@
 # ADR-0005: Agile-for-agents ceremonies — per-PR prologue / execution / epilogue
 
+> Current execution policy: [AGENTS.md](../../AGENTS.md) and
+> [agentic workflow](../reference/agentic-workflow.md) supersede this decision's
+> approval-before-tools and session-lifetime requirements. Existing user
+> authorization governs effects; read-only investigation proceeds directly.
+
 - Status: Accepted
 - Date: 2026-06-16
 - Refines: ADR-0001 (practices filter) — within the surviving set, decides ceremony shape
@@ -67,7 +72,7 @@ The originally-proposed `Co-Authored-By:` trailer check is dropped — it's data
 
 **Process changes:**
 
-- **Prologue becomes mandatory.** Agent surfaces Goal / Constraints / Values + solution research + viability gate + DoD before any tool call lands. Operator confirms or redirects. Skipping was the most-cited miss in the 2026-06-16 retro.
+- **Prologue becomes mandatory.** Agent surfaces Goal / Constraints / Values + solution research + viability gate + DoD before substantial implementation. Operator direction and existing authorization govern whether further confirmation is needed. Skipping was the most-cited miss in the 2026-06-16 retro.
 - **Execution adopts keyframes-not-full-specs.** Spec the end goal + critical waypoints with verifiable DoDs; agent draws the inbetweens. TDD where behavior is verifiable — tests encode keyframe DoDs executably. Avoids the over-constraint failure mode where full-spec mode loses project-fit.
 - **Epilogue becomes mandatory at PR-end** (not session-end). Three activities: Reporting (per-commit grade + cross-cutting), Verification (Prologue's Goal/Constraints/Values satisfied?), Retrospective (four-question form: keeps / DoD-grade / changes / amnesiac-handoff). Operator-driven; agent answers honestly.
 - **Plan files are maintained mid-sprint**, not at end. Progress-log entries land per sub-phase as a self-imposed standup-equivalent.
@@ -101,4 +106,4 @@ The originally-proposed `Co-Authored-By:` trailer check is dropped — it's data
 - `docs/reference/agentic-workflow.md` — the working reference doc; deep impl of every decision here
 - `docs/specs/2026-06-16-agentic-development-workflow.md` — research seed with worked-example appendix; the 2026-06-16 sprint retro is the N=1 data point
 - [[session-economics]] — the context-budget rule that decouples session from PR
-- `docs/plans/2026-06-16-docs-deep-sweep.md` — the sprint that produced the worked example
+- `docs/archive/plans/2026-06-16-docs-deep-sweep.md` — the sprint that produced the worked example
