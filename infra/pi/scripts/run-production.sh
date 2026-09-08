@@ -2,8 +2,8 @@
 set -euo pipefail
 
 readonly action="${1:-}"
-if [[ "$action" != "plan" && "$action" != "deploy" && "$action" != "enroll" ]]; then
-  echo "usage: $0 plan|deploy|enroll" >&2
+if [[ "$action" != "plan" && "$action" != "deploy" && "$action" != "enroll" && "$action" != "inspect-caddy" ]]; then
+  echo "usage: $0 plan|deploy|enroll|inspect-caddy" >&2
   exit 2
 fi
 
@@ -16,7 +16,7 @@ if [[ "$action" == "enroll" && ( -z "${TAILSCALE_AUTH_KEY:-}" || ${#TAILSCALE_AU
   exit 1
 fi
 
-if [[ -z "${PIHOLE_WEB_PASSWORD:-}" || ${#PIHOLE_WEB_PASSWORD} -lt 12 ]]; then
+if [[ "$action" != "inspect-caddy" && ( -z "${PIHOLE_WEB_PASSWORD:-}" || ${#PIHOLE_WEB_PASSWORD} -lt 12 ) ]]; then
   echo "PIHOLE_WEB_PASSWORD must be set to at least 12 characters" >&2
   exit 1
 fi
@@ -40,7 +40,6 @@ if ! jq --exit-status \
   echo "Generated inventory did not resolve exactly one expected Pi target" >&2
   exit 1
 fi
-
 if ! ssh-keygen -F "$target" -f "$known_hosts" >/dev/null; then
   echo "No pinned SSH key for $target in $known_hosts" >&2
   exit 1
@@ -58,6 +57,21 @@ known_hosts_dir="$(cd "$(dirname "$known_hosts")" && pwd)"
 readonly known_hosts_dir
 known_hosts_absolute="$known_hosts_dir/$(basename "$known_hosts")"
 readonly known_hosts_absolute
+
+if [[ "$action" == "inspect-caddy" ]]; then
+  ansible_user="$(jq --exit-status --raw-output \
+    '._meta.hostvars.pi.ansible_user | select(type == "string" and length > 0)' \
+    <<<"$resolved_inventory")"
+  readonly ansible_user
+  exec ssh \
+    -o BatchMode=yes \
+    -o ConnectTimeout=10 \
+    -o StrictHostKeyChecking=yes \
+    -o "UserKnownHostsFile=$known_hosts_absolute" \
+    "$ansible_user@$target" \
+    sudo --non-interactive podman exec caddy cat /etc/caddy/Caddyfile
+fi
+
 tailscale_enroll=false
 if [[ "$action" == "enroll" ]]; then
   tailscale_enroll=true

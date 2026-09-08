@@ -14,6 +14,11 @@
 @plan:
     devenv shell -- secretspec run --profile production -- bash scripts/run-production.sh plan
 
+# Read the Caddyfile mounted in the running production container through the
+# generated inventory and a caller-supplied pinned host-key file.
+@inspect-caddy:
+    devenv shell -- bash scripts/run-production.sh inspect-caddy
+
 # Converge the physical Pi after exact target confirmation.
 @deploy:
     devenv shell -- secretspec run --profile production -- bash scripts/run-production.sh deploy

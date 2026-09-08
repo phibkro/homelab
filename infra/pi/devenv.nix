@@ -67,6 +67,7 @@
     ../../services/caddy/ansible/tests/test_contract.sh
     ../../services/caddy/ansible/tests/test_render.sh
     scripts/tests/generate-inventory.test.sh
+    scripts/tests/run-production-inspect.test.sh
     scripts/tests/test-vm-lifecycle.test.sh
     generated_inventory="$(generate-inventory)"
     jq --exit-status \

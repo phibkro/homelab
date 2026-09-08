@@ -132,26 +132,27 @@
                  --apply 'r: builtins.attrNames r' 2>/dev/null \
                | nix shell nixpkgs#jq -c jq -r '.[]')
     domain=$(nix eval --raw "${flake_ref}.nori.domain" 2>/dev/null)
-    # nori.lanIp is overridden to pi's lanIp in nix/common — every
-    # declared route's customDNS entry resolves here regardless of
-    # `runsOn`, because pi runs the entry-plane Caddy.
+    # nori.lanIp is overridden to Pi's LAN address in the shared NixOS
+    # realization. Every declared route's DNS record resolves here regardless
+    # of `runsOn`, because Pi owns the entry plane.
     expected_ip=$(nix eval --raw "${flake_ref}.nori.lanIp" 2>/dev/null)
     pi_tailnet=$(nix eval --raw "${flake_ref}.nori.hosts.pi.tailnetIp" 2>/dev/null)
 
-    # Caddy admin is 127.0.0.1:2019 on pi. Whether we're on pi or any
-    # other host, route the call through pi locally so the admin
-    # endpoint stays loopback-only.
-    if [[ "$host_self" == "pi" ]]; then
-      caddy_json=$(curl -s http://127.0.0.1:2019/config/apps/http/servers/srv0/routes/ 2>/dev/null || true)
-    else
-      caddy_json=$(ssh -o ConnectTimeout=3 "nori@${pi_tailnet}" \
-                     'curl -s http://127.0.0.1:2019/config/apps/http/servers/srv0/routes/' 2>/dev/null || true)
-    fi
-    caddy_hosts=$(echo "$caddy_json" \
-                  | nix shell nixpkgs#jq -c jq -r '.[] | .match[]?.host[]?' 2>/dev/null \
-                  | sort -u || true)
+    # Production Caddy deliberately disables its admin API. Inspect the
+    # Caddyfile mounted in the running container through the production
+    # inventory + pinned-host-key transport instead. Transport, trust and
+    # empty-projection failures stop the check rather than becoming a list of
+    # misleading route misses.
+    caddy_config=$(just pi::inspect-caddy)
+    caddy_hosts=$(printf '%s\n' "$caddy_config" \
+                  | infra/pi/scripts/caddy-hosts.sh \
+                  | sort -u)
+    [[ -n "$caddy_hosts" ]] || {
+      echo "Caddy inspection returned no deployed host matchers" >&2
+      exit 1
+    }
 
-    echo "=== Tier 1 — Caddy registry contains every declared route (via pi) ==="
+    echo "=== Tier 1 — deployed Pi Caddy config contains every declared route ==="
     for route in $declared; do
       vhost="${route}.${domain}"
       if echo "$caddy_hosts" | grep -qx "$vhost"; then
@@ -161,7 +162,7 @@
       fi
     done
 
-    echo "=== Tier 2 — DNS resolves each declared route (via blocky on pi) ==="
+    echo "=== Tier 2 — DNS resolves each declared route (via Pi DNS) ==="
     for route in $declared; do
       vhost="${route}.${domain}"
       ip=$(nix shell nixpkgs#dig -c dig +short +time=2 +tries=1 "$vhost" @${pi_tailnet} 2>/dev/null | head -1)
