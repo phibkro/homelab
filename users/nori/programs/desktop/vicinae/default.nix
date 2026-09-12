@@ -62,166 +62,169 @@ let
     '';
   };
   extensionStaticSource = cleanNodeSource ./extension;
-  extensionSource = pkgs.runCommand "nori-desktop-vicinae-extension-source" {
-    nativeBuildInputs = [ pkgs.jq ];
-  } ''
-    mkdir -p "$out"
-    cp -R ${extensionStaticSource}/. "$out"
-    chmod -R u+w "$out"
+  extensionSource =
+    pkgs.runCommand "nori-desktop-vicinae-extension-source"
+      {
+        nativeBuildInputs = [ pkgs.jq ];
+      }
+      ''
+        mkdir -p "$out"
+        cp -R ${extensionStaticSource}/. "$out"
+        chmod -R u+w "$out"
 
-    jq -n \
-      --slurpfile components ${config.nori.desktop.generated.presentation} \
-      --slurpfile inputSchema ${config.nori.desktop.generated.inputSchema} \
-      '
-        def deref($schema; $node):
-          if ($node | type) != "object" then
-            error("generated input schema contains a non-object reference")
-          elif ($node["$ref"]? | type) == "string" then
-            $node["$ref"] as $reference
-            | if ($reference | startswith("#/$defs/")) then
-                $schema["$defs"][$reference | ltrimstr("#/$defs/")]
-                // error("generated input schema has an unresolved reference")
+        jq -n \
+          --slurpfile components ${config.nori.desktop.generated.presentation} \
+          --slurpfile inputSchema ${config.nori.desktop.generated.inputSchema} \
+          '
+            def deref($schema; $node):
+              if ($node | type) != "object" then
+                error("generated input schema contains a non-object reference")
+              elif ($node["$ref"]? | type) == "string" then
+                $node["$ref"] as $reference
+                | if ($reference | startswith("#/$defs/")) then
+                    $schema["$defs"][$reference | ltrimstr("#/$defs/")]
+                    // error("generated input schema has an unresolved reference")
+                  else
+                    error("generated input schema has an unsupported reference")
+                  end
               else
-                error("generated input schema has an unsupported reference")
-              end
-          else
-            $node
-          end;
+                $node
+              end;
 
-        def enumFor($componentId; $settingId):
-          ($inputSchema[0]) as $schema
-          | [
-              $schema["$defs"]
+            def enumFor($componentId; $settingId):
+              ($inputSchema[0]) as $schema
+              | [
+                  $schema["$defs"]
+                  | to_entries[]
+                  | select(.key | endswith("Input"))
+                  | (deref($schema; .value)) as $root
+                  | ($root.properties[$componentId] // empty) as $componentReference
+                  | (deref($schema; $componentReference)) as $componentSchema
+                  | ($componentSchema.properties[$settingId] // empty) as $settingReference
+                  | deref($schema; $settingReference)
+                  | select((.enum | type) == "array")
+                ]
+              | if length == 1 then
+                  .[0].enum
+                elif length == 0 then
+                  error("generated input schema has no enum for \($componentId).\($settingId)")
+                else
+                  error("generated input schema has multiple enums for \($componentId).\($settingId)")
+                end;
+
+            def actionSettings:
+              $components[0]
               | to_entries[]
-              | select(.key | endswith("Input"))
-              | (deref($schema; .value)) as $root
-              | ($root.properties[$componentId] // empty) as $componentReference
-              | (deref($schema; $componentReference)) as $componentSchema
-              | ($componentSchema.properties[$settingId] // empty) as $settingReference
-              | deref($schema; $settingReference)
-              | select((.enum | type) == "array")
-            ]
-          | if length == 1 then
-              .[0].enum
-            elif length == 0 then
-              error("generated input schema has no enum for \($componentId).\($settingId)")
-            else
-              error("generated input schema has multiple enums for \($componentId).\($settingId)")
-            end;
+              | .key as $componentId
+              | .value.settings
+              | to_entries[]
+              | .key as $settingId
+              | .value as $setting
+              | select($setting.action != null and $setting.control == "enum")
+              | {
+                  componentId: $componentId,
+                  settingId: $settingId,
+                  values: enumFor($componentId; $settingId)
+                };
 
-        def actionSettings:
-          $components[0]
-          | to_entries[]
-          | .key as $componentId
-          | .value.settings
-          | to_entries[]
-          | .key as $settingId
-          | .value as $setting
-          | select($setting.action != null and $setting.control == "enum")
-          | {
-              componentId: $componentId,
-              settingId: $settingId,
-              values: enumFor($componentId; $settingId)
-            };
+            def unsupportedActionSettings:
+              $components[0]
+              | to_entries[]
+              | .key as $componentId
+              | .value.settings
+              | to_entries[]
+              | .key as $settingId
+              | .value as $setting
+              | select($setting.action != null and $setting.control != "enum")
+              | "\($componentId).\($settingId)";
 
-        def unsupportedActionSettings:
-          $components[0]
-          | to_entries[]
-          | .key as $componentId
-          | .value.settings
-          | to_entries[]
-          | .key as $settingId
-          | .value as $setting
-          | select($setting.action != null and $setting.control != "enum")
-          | "\($componentId).\($settingId)";
+            [ actionSettings ] as $settings
+            | [ unsupportedActionSettings ] as $unsupported
+            | if ($unsupported | length) != 0 then
+                error("generated setting actions require an enum control: \($unsupported | join(", "))")
+              elif ($settings | length) == 0 then
+                error("generated component catalog contains no setting actions")
+              elif all($settings[]; (.values | length) != 0 and all(.values[]; type == "string")) then
+                { settings: $settings }
+              else
+                error("generated setting enum contains a non-string or no values")
+              end
+          ' > "$out/settings-catalog.json"
 
-        [ actionSettings ] as $settings
-        | [ unsupportedActionSettings ] as $unsupported
-        | if ($unsupported | length) != 0 then
-            error("generated setting actions require an enum control: \($unsupported | join(", "))")
-          elif ($settings | length) == 0 then
-            error("generated component catalog contains no setting actions")
-          elif all($settings[]; (.values | length) != 0 and all(.values[]; type == "string")) then
-            { settings: $settings }
-          else
-            error("generated setting enum contains a non-string or no values")
-          end
-      ' > "$out/settings-catalog.json"
+        jq -n \
+          --slurpfile manifest "$out/package.json" \
+          --slurpfile components ${config.nori.desktop.generated.presentation} \
+          --slurpfile catalog "$out/settings-catalog.json" \
+          '
+            def settingSlug($componentId; $settingId):
+              ($componentId + "-" + $settingId)
+              | ascii_downcase
+              | gsub("[^a-z0-9]+"; "-")
+              | sub("^-+"; "")
+              | sub("-+$"; "");
 
-    jq -n \
-      --slurpfile manifest "$out/package.json" \
-      --slurpfile components ${config.nori.desktop.generated.presentation} \
-      --slurpfile catalog "$out/settings-catalog.json" \
-      '
-        def settingSlug($componentId; $settingId):
-          ($componentId + "-" + $settingId)
-          | ascii_downcase
-          | gsub("[^a-z0-9]+"; "-")
-          | sub("^-+"; "")
-          | sub("-+$"; "");
+            def commandName($componentId; $settingId):
+              "settings-" + settingSlug($componentId; $settingId);
 
-        def commandName($componentId; $settingId):
-          "settings-" + settingSlug($componentId; $settingId);
+            ($manifest[0]) as $base
+            | [
+                $catalog[0].settings[]
+                | . as $entry
+                | $components[0][$entry.componentId].settings[$entry.settingId] as $setting
+                | {
+                    name: commandName($entry.componentId; $entry.settingId),
+                    title: $setting.action.title,
+                    subtitle: $setting.group,
+                    description: $setting.action.description,
+                    keywords: $setting.action.keywords,
+                    mode: "view"
+                  }
+              ] as $commands
+            | ($base | .commands + $commands) as $allCommands
+            | if ($allCommands | map(.name) | unique | length) != ($allCommands | length) then
+                error("duplicate Vicinae command name generated from desktop settings")
+              else
+                $base | .commands = $allCommands
+              end
+          ' > "$out/package.generated.json"
 
-        ($manifest[0]) as $base
-        | [
-            $catalog[0].settings[]
-            | . as $entry
-            | $components[0][$entry.componentId].settings[$entry.settingId] as $setting
-            | {
-                name: commandName($entry.componentId; $entry.settingId),
-                title: $setting.action.title,
-                subtitle: $setting.group,
-                description: $setting.action.description,
-                keywords: $setting.action.keywords,
-                mode: "view"
-              }
-          ] as $commands
-        | ($base | .commands + $commands) as $allCommands
-        | if ($allCommands | map(.name) | unique | length) != ($allCommands | length) then
-            error("duplicate Vicinae command name generated from desktop settings")
-          else
-            $base | .commands = $allCommands
-          end
-      ' > "$out/package.generated.json"
+        while IFS=$'\t' read -r command componentId settingId values; do
+          jq -n \
+            --arg componentId "$componentId" \
+            --arg settingId "$settingId" \
+            --argjson values "$values" \
+            '
+              "import { SettingForm } from \"./settings-command\";\n\n"
+              + "export default function GeneratedSettingAction() {\n"
+              + "  return <SettingForm componentId=\($componentId | tojson) settingId=\($settingId | tojson) values={\($values | tojson)} />;\n"
+              + "}\n"
+            ' > "$out/src/$command.tsx"
+        done < <(
+          jq -r '
+            def settingSlug($componentId; $settingId):
+              ($componentId + "-" + $settingId)
+              | ascii_downcase
+              | gsub("[^a-z0-9]+"; "-")
+              | sub("^-+"; "")
+              | sub("-+$"; "");
 
-    while IFS=$'\t' read -r command componentId settingId values; do
-      jq -n \
-        --arg componentId "$componentId" \
-        --arg settingId "$settingId" \
-        --argjson values "$values" \
-        '
-          "import { SettingForm } from \"./settings-command\";\n\n"
-          + "export default function GeneratedSettingAction() {\n"
-          + "  return <SettingForm componentId=\($componentId | tojson) settingId=\($settingId | tojson) values=\($values | tojson) />;\n"
-          + "}\n"
-        ' > "$out/src/$command.tsx"
-    done < <(
-      jq -r '
-        def settingSlug($componentId; $settingId):
-          ($componentId + "-" + $settingId)
-          | ascii_downcase
-          | gsub("[^a-z0-9]+"; "-")
-          | sub("^-+"; "")
-          | sub("-+$"; "");
+            def commandName($componentId; $settingId):
+              "settings-" + settingSlug($componentId; $settingId);
 
-        def commandName($componentId; $settingId):
-          "settings-" + settingSlug($componentId; $settingId);
+            .settings[]
+            | [
+                commandName(.componentId; .settingId),
+                .componentId,
+                .settingId,
+                (.values | tojson)
+              ]
+            | @tsv
+          ' "$out/settings-catalog.json"
+        )
 
-        .settings[]
-        | [
-            commandName(.componentId; .settingId),
-            .componentId,
-            .settingId,
-            (.values | tojson)
-          ]
-        | @tsv
-      ' "$out/settings-catalog.json"
-    )
-
-    mv "$out/package.generated.json" "$out/package.json"
-    rm "$out/settings-catalog.json"
-  '';
+        mv "$out/package.generated.json" "$out/package.json"
+        rm "$out/settings-catalog.json"
+      '';
   noriDesktopExtension = config.lib.vicinae.mkExtension {
     name = "nori-desktop";
     src = extensionSource;

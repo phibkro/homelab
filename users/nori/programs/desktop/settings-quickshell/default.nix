@@ -34,10 +34,6 @@ in
 {
   home.packages = [ settingsApp ];
 
-  # Keep this application separate from Persona: it is a normal desktop window,
-  # not a shell surface or an upstream source-tree patch.
-  xdg.configFile."quickshell/nori-desktop-settings".source = settingsSource;
-
   xdg.desktopEntries.nori-desktop-settings = {
     name = "Desktop Settings";
     genericName = "Desktop configuration";
