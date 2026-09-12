@@ -238,9 +238,64 @@
                 }
               ];
             };
+            component = settings: {
+              id = "test.component";
+              title = "Test component";
+              description = "Evaluation fixture.";
+              inherit settings;
+              readOnlyFields = { };
+            };
+            setting =
+              overrides:
+              {
+                id = "test.setting";
+                title = "Test setting";
+                description = "Evaluation fixture.";
+                group = "Test";
+                control = "enum";
+                scope = "user";
+                applyClass = "generation";
+                ownership = "user";
+                runtimeAdapter = null;
+                action = null;
+              }
+              // overrides;
+            componentsEvaluate =
+              contributions:
+              (builtins.tryEval (
+                builtins.deepSeq ((inputs.self.nixosConfigurations.workstation.extendModules {
+                  modules = [
+                    {
+                      home-manager.users.nori.nori.desktop.componentContributions = lib.mkForce contributions;
+                    }
+                  ];
+                }).config.home-manager.users.nori.nori.desktop.components
+                ) true
+              )).success;
+            duplicateComponentFails =
+              !componentsEvaluate [
+                (component [ ])
+                (component [ ])
+              ];
+            duplicateSettingFails =
+              !componentsEvaluate [
+                (component [
+                  (setting { })
+                  (setting { })
+                ])
+              ];
+            unsupportedTypeFails =
+              !componentsEvaluate [
+                (component [
+                  (setting { control = "unsupported"; })
+                ])
+              ];
             home = evaluated.config.home-manager.users.nori;
             generated = home.nori.desktop.generated;
           in
+          assert lib.assertMsg duplicateComponentFails "duplicate desktop component IDs must fail evaluation";
+          assert lib.assertMsg duplicateSettingFails "duplicate desktop setting IDs must fail evaluation";
+          assert lib.assertMsg unsupportedTypeFails "unsupported desktop setting types must fail evaluation";
           assert lib.assertMsg (
             home.programs.waybar.settings.mainBar.position == "bottom"
           ) "Waybar must consume the generated desktop profile option";
