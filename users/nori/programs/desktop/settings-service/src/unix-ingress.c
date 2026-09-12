@@ -124,39 +124,44 @@ static bool send_exact(int fd, const void *buffer, size_t length) {
   return true;
 }
 
-static bool reject_buffered_trailing_bytes(int fd) {
+static bool receive_one_frame_and_eof(int fd, uint8_t *frame, size_t *frame_size) {
+  if (!receive_exact(fd, frame, 4)) return false;
+  uint32_t length = ((uint32_t)frame[0] << 24) |
+                    ((uint32_t)frame[1] << 16) |
+                    ((uint32_t)frame[2] << 8) |
+                    (uint32_t)frame[3];
+  if (length > max_frame_bytes || !receive_exact(fd, frame + 4, length)) return false;
+
   char trailing;
   for (;;) {
-    ssize_t next = recv(fd, &trailing, sizeof(trailing), MSG_DONTWAIT);
+    ssize_t next = recv(fd, &trailing, sizeof(trailing), 0);
     if (next < 0 && errno == EINTR) continue;
-    return next <= 0 && (next == 0 || errno == EAGAIN || errno == EWOULDBLOCK);
+    if (next != 0) return false;
+    *frame_size = 4 + length;
+    return true;
   }
 }
 
-static bool relay_frame(int from, int to) {
-  uint8_t header[4];
-  if (!receive_exact(from, header, sizeof(header))) return false;
-  uint32_t length = ((uint32_t)header[0] << 24) |
-                    ((uint32_t)header[1] << 16) |
-                    ((uint32_t)header[2] << 8) |
-                    (uint32_t)header[3];
-  if (length > max_frame_bytes || !send_exact(to, header, sizeof(header))) return false;
+static void relay(int client, const char *backend_path) {
+  uint8_t request[4 + max_frame_bytes];
+  size_t request_size;
+  if (!receive_one_frame_and_eof(client, request, &request_size)) return;
 
-  char buffer[buffer_size];
-  uint32_t remaining = length;
-  while (remaining > 0) {
-    size_t chunk = remaining < sizeof(buffer) ? remaining : sizeof(buffer);
-    if (!receive_exact(from, buffer, chunk) || !send_exact(to, buffer, chunk)) return false;
-    remaining -= (uint32_t)chunk;
+  int backend = unix_socket(backend_path, false);
+  if (backend < 0 || !set_relay_timeout(backend)) goto close_backend;
+
+  uint8_t response[4 + max_frame_bytes];
+  size_t response_size;
+  if (!send_exact(backend, request, request_size) ||
+      !receive_one_frame_and_eof(backend, response, &response_size) ||
+      shutdown(backend, SHUT_WR) < 0) {
+    goto close_backend;
   }
-  if (!reject_buffered_trailing_bytes(from)) return false;
-  shutdown(from, SHUT_RD);
-  return true;
-}
+  send_exact(client, response, response_size);
+  shutdown(client, SHUT_WR);
 
-static void relay(int client, int backend) {
-  if (!relay_frame(client, backend)) return;
-  relay_frame(backend, client);
+close_backend:
+  if (backend >= 0) close(backend);
 }
 
 int main(int argc, char **argv) {
@@ -217,12 +222,10 @@ int main(int argc, char **argv) {
     if (child == 0) {
       close(listener);
       sigprocmask(SIG_SETMASK, &previous_mask, NULL);
-      int backend = unix_socket(argv[2], false);
-      if (backend >= 0 && set_relay_timeout(client) && set_relay_timeout(backend)) {
-        relay(client, backend);
+      if (set_relay_timeout(client)) {
+        relay(client, argv[2]);
       }
       close(client);
-      if (backend >= 0) close(backend);
       _exit(EXIT_SUCCESS);
     }
 

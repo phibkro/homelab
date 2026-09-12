@@ -44,6 +44,7 @@ export function readFrame(socket: Socket): Promise<string> {
       }
     }
     if (expected !== undefined && bytes.byteLength === 4 + expected) {
+      socket.pause();
       finish(() => resolve(bytes.subarray(4).toString("utf8")));
       return;
     }

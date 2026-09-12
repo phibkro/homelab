@@ -134,15 +134,46 @@ let
     ) contributions
   );
   clanLib = import "${inputs.clan-core-src}/lib/default.nix" { inherit lib; };
-  inputSchema = clanLib.jsonschema.fromOptions {
-    typePrefix = "NoriDesktopSettings";
-    input = true;
-    output = false;
-    readOnly = {
-      input = false;
-      output = true;
-    };
-  } options.nori.desktop.profile.components;
+  optionPathSegment =
+    name:
+    if builtins.match "^[a-zA-Z_][a-zA-Z0-9_'-]*$" name != null then name else builtins.toJSON name;
+  writableOptionPath =
+    component: setting:
+    "nori.desktop.profile.components.${optionPathSegment component.id}.${optionPathSegment setting.id}";
+  preflightWritableSetting =
+    component: setting:
+    builtins.addErrorContext
+      "While converting writable desktop setting ${writableOptionPath component setting}"
+      (
+        builtins.deepSeq (clanLib.jsonschema.fromOptions
+          {
+            typePrefix = "NoriDesktopSettingsPreflight";
+            input = true;
+            output = false;
+            readOnly = {
+              input = false;
+              output = true;
+            };
+          }
+          {
+            ${setting.id} = options.nori.desktop.profile.components.${component.id}.${setting.id};
+          }
+        ) true
+      );
+  writableSettingsPreflight = builtins.deepSeq (lib.concatMap (
+    component: map (setting: preflightWritableSetting component setting) component.settings
+  ) contributions) true;
+  inputSchema =
+    assert writableSettingsPreflight;
+    clanLib.jsonschema.fromOptions {
+      typePrefix = "NoriDesktopSettings";
+      input = true;
+      output = false;
+      readOnly = {
+        input = false;
+        output = true;
+      };
+    } options.nori.desktop.profile.components;
   outputSchema = clanLib.jsonschema.fromOptions {
     typePrefix = "NoriDesktopSettings";
     input = false;

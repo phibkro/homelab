@@ -1,7 +1,8 @@
 /* composition-root: reads process configuration once and selects Bun adapters. */
 import { startIpcServer } from "./daemon.ts";
-import { runSettingsCli } from "./cli.ts";
+import { runRuntimeObservation, runSettingsCli } from "./cli.ts";
 import { DesktopSettingsError } from "./contracts.ts";
+import { acquireAuthorityLock } from "./authority-lock.ts";
 import { acquireDaemonLock } from "./daemon-lock.ts";
 import { DesktopSettingsService, type ServiceConfig } from "./service.ts";
 
@@ -53,15 +54,24 @@ function serviceConfig(): ServiceConfig {
     systemctl: pathEnvironment("NORI_DESKTOP_SETTINGS_SYSTEMCTL", "systemctl"),
     hyprctl: pathEnvironment("NORI_DESKTOP_SETTINGS_HYPRCTL", "hyprctl"),
     pkexec: pathEnvironment("NORI_DESKTOP_SETTINGS_PKEXEC", "pkexec"),
+    authorityLock: pathEnvironment(
+      "NORI_DESKTOP_SETTINGS_AUTHORITY_LOCK",
+      "/run/lock/nori-desktop-settings-activation.lock",
+    ),
+    flock: pathEnvironment("NORI_DESKTOP_SETTINGS_FLOCK", "flock"),
   };
 }
-
-
 async function runDaemon(): Promise<number> {
   const config = serviceConfig();
-  const releaseLock = await acquireDaemonLock(config.stateHome);
+  const releaseDaemonLock = await acquireDaemonLock(config.stateHome);
   try {
-    const service = await DesktopSettingsService.make(config);
+    const releaseAuthorityLock = await acquireAuthorityLock(config);
+    let service: DesktopSettingsService;
+    try {
+      service = await DesktopSettingsService.make(config);
+    } finally {
+      await releaseAuthorityLock();
+    }
     const socket = pathEnvironment(
       "NORI_DESKTOP_SETTINGS_SOCKET",
       "/run/nori-desktop-settings/settings.sock",
@@ -76,7 +86,7 @@ async function runDaemon(): Promise<number> {
     process.once("SIGTERM", stop);
     await promise;
   } finally {
-    await releaseLock();
+    await releaseDaemonLock();
   }
   return 0;
 }
@@ -93,6 +103,8 @@ if (operation === "daemon") {
     process.stderr.write(`nori-desktop-config: ${error.message}\n`);
     process.exitCode = 1;
   }
+} else if (operation === "observe-runtime") {
+  process.exitCode = await runRuntimeObservation(args, serviceConfig());
 } else {
   process.exitCode = await runSettingsCli([operation, ...args].filter((value): value is string => value !== undefined));
 }

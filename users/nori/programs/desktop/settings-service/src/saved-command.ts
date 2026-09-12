@@ -3,6 +3,7 @@ import { basename, isAbsolute } from "node:path";
 import { Effect, Schema } from "effect";
 
 export const outputModes = ["fullOutput", "compact", "silent", "inline", "terminal"] as const;
+const maxSavedCommandBytes = 4 * 1024;
 
 const Parameter = Schema.Struct({
   name: Schema.String,
@@ -88,6 +89,9 @@ function validateCreateRequest(request: CreateCommandRequest) {
     const title = request.title.trim();
     if (!oneLinePattern.test(title)) {
       return yield* fail("Title must be one non-empty line");
+    }
+    if (new TextEncoder().encode(JSON.stringify(request)).byteLength > maxSavedCommandBytes) {
+      return yield* fail(`Saved command exceeds the ${maxSavedCommandBytes / 1024} KiB command budget`);
     }
     if (request.parameters.length > 3) {
       return yield* fail("A command can declare at most three parameters");

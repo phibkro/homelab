@@ -122,10 +122,7 @@ let
     name = "nori-desktop-settings-runtime-agent";
     runtimeInputs = [
       pkgs.coreutils
-      pkgs.gawk
       pkgs.jq
-      pkgs.systemd
-      pkgs.hyprland
     ];
     text = ''
       ${commonEnvironment}
@@ -141,15 +138,9 @@ let
                   --apply-id "$apply_id" --json >/dev/null || true
                 continue
               fi
-              ${pkgs.systemd}/bin/systemctl --user reload waybar.service || true
-              unit=$(${pkgs.systemd}/bin/systemctl --user is-active waybar.service 2>/dev/null || true)
-              case "$unit" in active) ;; *) unit=unknown ;; esac
-              edge=$(${pkgs.hyprland}/bin/hyprctl -j layers 2>/dev/null \
-                | jq -r '.. | objects | select((.namespace? // "") | startswith("waybar")) | (.geometry.y // .y // empty)' \
-                | head -n 1 \
-                | awk '$1 == 0 { print "top"; exit } { print "bottom"; exit }')
-              case "$edge" in top|bottom) ;; *) edge=unavailable ;; esac
-              observed=$(jq -cn --arg unit "$unit" --arg edge "$edge" '{ waybar: { unit: $unit, edge: $edge } }')
+              if ! observed=$(${settingsCli}/bin/nori-desktop-settings observe-runtime --json 2>/dev/null); then
+                observed='{"waybar":{"unit":"unknown","edge":"unavailable","reason":"runtime observation command failed"}}'
+              fi
               ${settingsCli}/bin/nori-desktop-settings reconcile \
                 --apply-id "$apply_id" --observed "$observed" --json >/dev/null || true
             done

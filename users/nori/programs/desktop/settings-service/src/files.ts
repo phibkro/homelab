@@ -25,11 +25,13 @@ import {
   profileHash,
   type GenerationMetadata,
 } from "./contracts.ts";
+import { maxFrameBytes } from "./framing.ts";
 
 const fileMode = 0o600;
 const directoryMode = 0o700;
 
-export const maxProfileBytes = 1024 * 1024;
+/** Half of one state frame stays available for contracts, jobs, and runtime observations. */
+export const maxProfileBytes = maxFrameBytes / 2;
 
 export type StoredProfile = {
   readonly profile: Profile;
@@ -359,6 +361,12 @@ export class PreviewStore {
     return undefined;
   }
 }
+
+const maxTerminalJobs = 4;
+
+function terminal(job: ApplyJob): boolean {
+  return job.status === "active" || job.status === "failed" || job.status === "interrupted";
+}
 export class JobStore {
   readonly directory: string;
 
@@ -372,6 +380,10 @@ export class JobStore {
 
   async save(job: ApplyJob): Promise<void> {
     await writeAtomic(join(this.directory, `${job.id}.json`), `${JSON.stringify(job, null, 2)}\n`);
+    const expired = (await this.list()).filter(terminal).slice(maxTerminalJobs);
+    await Promise.all(
+      expired.map((candidate) => rm(join(this.directory, `${candidate.id}.json`), { force: true })),
+    );
   }
 
   async list(): Promise<ReadonlyArray<ApplyJob>> {

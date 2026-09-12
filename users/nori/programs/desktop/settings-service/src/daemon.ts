@@ -181,6 +181,7 @@ export async function startIpcServer(
   await prepareSocket(socketPath);
   const sockets = new Set<Socket>();
   const server = createServer({ allowHalfOpen: true }, (socket) => {
+    socket.allowHalfOpen = true;
     sockets.add(socket);
     socket.once("close", () => sockets.delete(socket));
     void handleConnection(service, socket);

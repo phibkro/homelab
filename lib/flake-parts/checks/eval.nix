@@ -290,30 +290,6 @@
                   (setting { control = "unsupported"; })
                 ])
               ];
-            clanLib = import "${inputs.clan-core-src}/lib/default.nix" { inherit lib; };
-            unsupportedWritableTypeFails =
-              !(builtins.tryEval (
-                builtins.deepSeq (clanLib.jsonschema.fromOptions
-                  {
-                    typePrefix = "NoriDesktopSettingsUnsupported";
-                    input = true;
-                    output = false;
-                    readOnly = {
-                      input = false;
-                      output = true;
-                    };
-                  }
-                  (lib.evalModules {
-                    modules = [
-                      {
-                        options.nori.desktop.profile.components."test.unsupported".value = lib.mkOption {
-                          type = lib.types.functionTo lib.types.str;
-                        };
-                      }
-                    ];
-                  }).options.nori.desktop.profile.components
-                ) true
-              )).success;
             home = evaluated.config.home-manager.users.nori;
             generated = home.nori.desktop.generated;
             polkitPolicy =
@@ -324,18 +300,21 @@
               && lib.hasInfix "subject.user == \"nori\"" polkitRule
               && lib.hasInfix "subject.active" polkitRule
               && lib.hasInfix "polkit.Result.AUTH_ADMIN" polkitRule;
+            hasIngressRestartCoupling =
+              evaluated.config.systemd.services.nori-desktop-config-ingress.partOf
+              == [ "nori-desktop-config.service" ];
           in
           assert lib.assertMsg duplicateComponentFails "duplicate desktop component IDs must fail evaluation";
           assert lib.assertMsg duplicateSettingFails "duplicate desktop setting IDs must fail evaluation";
           assert lib.assertMsg unsupportedPresentationControlFails
             "unsupported presentation controls must fail evaluation";
-          assert lib.assertMsg unsupportedWritableTypeFails
-            "Clan-unsupported writable type at nori.desktop.profile.components.test.unsupported.value must fail evaluation";
           assert lib.assertMsg (
             home.programs.waybar.settings.mainBar.position == "bottom"
           ) "Waybar must consume the generated desktop profile option";
           assert lib.assertMsg hasActiveNoriRule
             "desktop settings polkit rule must authorize only active nori sessions";
+          assert lib.assertMsg hasIngressRestartCoupling
+            "desktop settings ingress must restart with its authority";
           pkgs.runCommandLocal "desktop-settings-contract"
             {
               nativeBuildInputs = [ pkgs.jq ];
@@ -374,6 +353,35 @@
               grep -Fx '      <allow_any>no</allow_any>' ${polkitPolicy} >/dev/null
               grep -Fx '      <allow_inactive>no</allow_inactive>' ${polkitPolicy} >/dev/null
               grep -Fx '      <allow_active>no</allow_active>' ${polkitPolicy} >/dev/null
+              touch "$out"
+            '';
+
+        /**
+          Product preflight must add canonical option context when Clan rejects
+          an unsupported writable setting type; the fixture derives its names
+          so this literal can only come from the component model.
+        */
+        desktop-settings-unsupported-writable-type-diagnostic =
+          pkgs.runCommandLocal "desktop-settings-unsupported-writable-type-diagnostic"
+            {
+              nativeBuildInputs = [ pkgs.nix ];
+            }
+            ''
+              stderr=$TMPDIR/stderr
+              if NIX_STATE_DIR=$TMPDIR/nix-state NIX_DB_DIR=$TMPDIR/nix-db \
+                nix-instantiate --eval --strict --show-trace \
+                ${../../../tests/eval/desktop-settings-unsupported-writable-type.nix} \
+                --argstr nixpkgs ${pkgs.path} \
+                --argstr clanCore ${inputs.clan-core-src} \
+                --arg componentModel ${../../../users/nori/programs/desktop/component-model.nix} \
+                > /dev/null 2>"$stderr"; then
+                echo "unsupported writable type unexpectedly evaluated" >&2
+                exit 1
+              fi
+              grep -F 'nori.desktop.profile.components."test.unsupported".value' "$stderr" >/dev/null || {
+                cat "$stderr" >&2
+                exit 1
+              }
               touch "$out"
             '';
 

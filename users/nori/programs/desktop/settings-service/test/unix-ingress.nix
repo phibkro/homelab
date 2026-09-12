@@ -18,12 +18,18 @@ pkgs.testers.runNixOSTest {
       pkgs.procps
     ];
     environment.etc."nori-test/unix-ingress.c".source = ../src/unix-ingress.c;
+    environment.etc."nori-test/backend".text = ''
+      #!${pkgs.runtimeShell}
+      ${pkgs.coreutils}/bin/dd bs=1 count=11 status=none >/dev/null
+      printf 1 >> /tmp/backend-count
+      printf '\000\000\000\007allowed'
+    '';
   };
   testScript = ''
     start_all()
     machine.succeed("install -d -m 0700 -o nori -g users /run/nori-ingress")
     machine.succeed("gcc -D_GNU_SOURCE -O2 -Wall -Wextra -Werror -o /run/nori-ingress/ingress /etc/nori-test/unix-ingress.c")
-    machine.succeed("runuser -u nori -- socat UNIX-LISTEN:/run/nori-ingress/backend.sock,mode=0600,fork EXEC:'${pkgs.coreutils}/bin/cat' >/tmp/backend.log 2>&1 &")
+    machine.succeed("runuser -u nori -- socat UNIX-LISTEN:/run/nori-ingress/backend.sock,mode=0600,fork EXEC:'${pkgs.runtimeShell} /etc/nori-test/backend' >/tmp/backend.log 2>&1 &")
     machine.wait_until_succeeds("test -S /run/nori-ingress/backend.sock")
     machine.succeed("runuser -u nori -- /run/nori-ingress/ingress /run/nori-ingress/public.sock /run/nori-ingress/backend.sock 1000 >/tmp/ingress.log 2>&1 &")
     machine.wait_until_succeeds("test -S /run/nori-ingress/public.sock")
@@ -35,9 +41,11 @@ pkgs.testers.runNixOSTest {
     machine.succeed("chmod 0711 /run/nori-ingress && chmod 0666 /run/nori-ingress/public.sock")
     machine.fail("timeout 2 runuser -u other -- sh -c 'printf \"\" | socat - UNIX-CONNECT:/run/nori-ingress/public.sock' | grep -x allowed")
 
-    # The ingress accepts only one bounded frame. A second complete frame is
-    # rejected before it can become a second backend request.
+    # The ingress buffers and verifies the complete client half before opening
+    # a backend connection. Two frames therefore dispatch zero requests.
+    machine.succeed("rm -f /tmp/backend-count")
     machine.fail("printf '\\000\\000\\000\\007allowed\\000\\000\\000\\007allowed' | timeout 2 runuser -u nori -- socat - UNIX-CONNECT:/run/nori-ingress/public.sock | grep -a allowed")
+    machine.succeed("test ! -e /tmp/backend-count")
 
     # Eight incomplete same-UID requests reach the fixed child cap. The ninth
     # cannot reach the backend; after relay timeout reaps the children, a

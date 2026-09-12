@@ -230,13 +230,17 @@ let
 
       state=/var/lib/nori-desktop-settings
       job="$state/jobs/$apply_id.json"
-      lock="$state/activation.lock"
+      lock=/run/lock/nori-desktop-settings-activation.lock
       [ -f "$job" ] && [ ! -L "$job" ]
       [ "$(stat -c %u "$job")" = "$authority_uid" ]
       job_mode=$((8#$(stat -c %a "$job")))
       (( (job_mode & 8#077) == 0 ))
 
-      exec 9>"$lock"
+      [ -f "$lock" ] && [ ! -L "$lock" ]
+      [ "$(stat -c %u "$lock")" = 0 ]
+      lock_mode=$((8#$(stat -c %a "$lock")))
+      (( (lock_mode & 8#022) == 0 ))
+      exec 9<"$lock"
       flock -n 9 || {
         echo "another desktop settings activation is already in progress" >&2
         exit 75
@@ -270,14 +274,20 @@ let
       }
 
       update_job() {
-        status="$1"
-        message="$2"
+        expected_status="$1"
+        status="$2"
+        message="$3"
         temporary=$(mktemp "$state/jobs/.''${apply_id}.XXXXXX")
-        jq --arg status "$status" --arg message "$message" --arg now "$(date --iso-8601=seconds)" \
+        if ! jq -e \
+          --arg expected_status "$expected_status" \
+          --arg status "$status" \
+          --arg message "$message" \
+          --arg now "$(date --iso-8601=seconds)" \
           '
-            .status = $status
+            select(.status == $expected_status)
+            | .status = $status
             | .updatedAt = $now
-            | .log = ((.log + [$message]) | .[-64:])
+            | .log = ((.log + [$message]) | .[-16:])
             | if $status == "failed"
               then .error = {
                 code: "activation_rejected",
@@ -286,7 +296,10 @@ let
               else del(.error)
               end
           ' \
-          "$job" >"$temporary"
+          "$job" >"$temporary"; then
+          rm -f "$temporary"
+          return 1
+        fi
         chmod 0600 "$temporary"
         chown nori-desktop-settings:nori-desktop-settings "$temporary"
         mv -f "$temporary" "$job"
@@ -301,15 +314,15 @@ let
         trap - ERR
         if [ "$claimed" = true ]; then
           if [ "$switch_complete" = true ]; then
-            update_job reconciling "Activation may have completed; waiting for user runtime reconciliation" || true
+            update_job activating reconciling "Activation may have completed; waiting for user runtime reconciliation" || true
           else
-            update_job failed "Root activation failed before the generation switch completed" || true
+            update_job activating failed "Root activation failed before the generation switch completed" || true
           fi
         fi
         exit "$exit_status"
       }
       trap on_error ERR
-      update_job activating "Root activation claimed the committed service apply"
+      update_job awaiting_authorization activating "Root activation claimed the committed service apply"
       claimed=true
 
       custody=$(mktemp -d "$state/root-activation.XXXXXX")
@@ -334,7 +347,7 @@ let
         "$metadata" >/dev/null
       "$artifact/bin/switch-to-configuration" switch >&2
       switch_complete=true
-      update_job reconciling "Generation activated; waiting for the user runtime agent to reconcile Waybar"
+      update_job activating reconciling "Generation activated; waiting for the user runtime agent to reconcile Waybar"
       trap - ERR
       jq -cn --arg id "$apply_id" --arg artifact "$artifact" \
         '{ applyId: $id, artifact: $artifact, status: "reconciling" }'
@@ -375,6 +388,7 @@ in
     group = "nori-desktop-settings";
   };
   users.users.nori.extraGroups = lib.mkAfter [ "nori-desktop-settings" ];
+  systemd.tmpfiles.rules = [ "f /run/lock/nori-desktop-settings-activation.lock 0644 root root -" ];
 
   systemd.services.nori-desktop-config = {
     description = "Nori desktop settings authority";
@@ -401,6 +415,8 @@ in
         "NORI_DESKTOP_SETTINGS_RICE_COMMAND=${settingsServicePackage}/bin/rice-saved-command"
         "NORI_DESKTOP_SETTINGS_SHELL=${lib.getExe pkgs.bash}"
         "NORI_DESKTOP_SETTINGS_SOCKET=/run/nori-desktop-settings/settings-backend.sock"
+        "NORI_DESKTOP_SETTINGS_AUTHORITY_LOCK=/run/lock/nori-desktop-settings-activation.lock"
+        "NORI_DESKTOP_SETTINGS_FLOCK=${pkgs.util-linux}/bin/flock"
       ];
     };
   };
@@ -409,6 +425,7 @@ in
     wantedBy = [ "multi-user.target" ];
     requires = [ "nori-desktop-config.service" ];
     after = [ "nori-desktop-config.service" ];
+    partOf = [ "nori-desktop-config.service" ];
     serviceConfig = {
       Type = "simple";
       User = "nori-desktop-settings";

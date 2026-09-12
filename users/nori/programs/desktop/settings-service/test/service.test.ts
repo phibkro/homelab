@@ -1,14 +1,16 @@
 import { afterEach, expect, test } from "bun:test";
-import { chmod, mkdir, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, watch } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { once } from "node:events";
 import { createConnection } from "node:net";
 import { join } from "node:path";
+import { callService } from "../src/cli.ts";
 import { startIpcServer } from "../src/daemon.ts";
 import { acquireDaemonLock } from "../src/daemon-lock.ts";
+import { acquireAuthorityLock } from "../src/authority-lock.ts";
 import { DesktopSettingsError } from "../src/contracts.ts";
-import { JobStore, ProfileStore, writeAtomic } from "../src/files.ts";
-import { encodeFrame, readFrame } from "../src/framing.ts";
+import { JobStore, ProfileStore, maxProfileBytes, writeAtomic } from "../src/files.ts";
+import { encodeFrame, maxFrameBytes, readFrame } from "../src/framing.ts";
 import { verifyGenerationMetadata } from "../src/runtime.ts";
 import { DesktopSettingsService, type ServiceConfig } from "../src/service.ts";
 
@@ -44,7 +46,21 @@ async function fixture() {
     join(dataDirectory, "settings-output.schema.json"),
     JSON.stringify({
       $schema: "https://json-schema.org/draft/2020-12/schema",
-      $defs: { NoriDesktopSettingsOutput: { type: "object" } },
+      $defs: {
+        NoriDesktopSettingsOutput: {
+          type: "object",
+          properties: {
+            "desktop.waybar": {
+              type: "object",
+              properties: { position: { enum: ["top", "bottom"] }, enabled: { type: "boolean" } },
+              required: ["position", "enabled"],
+              additionalProperties: false,
+            },
+          },
+          required: ["desktop.waybar"],
+          additionalProperties: false,
+        },
+      },
     }),
   );
   await Bun.write(
@@ -72,6 +88,7 @@ printf '{"metadata":{"source":"/nix/store/approved-source","profileRevision":%s,
     join(root, "approved-source.json"),
     `${JSON.stringify({ source: "/nix/store/approved-source", host: "workstation" })}\n`,
   );
+  await Bun.write(join(root, "authority.lock"), "");
   const config: ServiceConfig = {
     configHome: join(root, "config"),
     stateHome: join(root, "state"),
@@ -86,6 +103,8 @@ printf '{"metadata":{"source":"/nix/store/approved-source","profileRevision":%s,
     systemctl: "/does-not-run",
     hyprctl: "/does-not-run",
     pkexec: "/does-not-run",
+    authorityLock: join(root, "authority.lock"),
+    flock: "flock",
   };
   return { config, root };
 }
@@ -109,6 +128,43 @@ test("daemon singleton lock rejects a concurrent start before service constructi
     await release();
   }
   await (await acquireDaemonLock(config.stateHome))();
+});
+
+test("malformed generated output fails with a typed profile error", async () => {
+  const { config } = await fixture();
+  await Bun.write(join(config.dataDirectory, "resolved-settings.json"), JSON.stringify({ "desktop.waybar": {} }));
+  await expect(DesktopSettingsService.make(config)).rejects.toMatchObject({
+    code: "invalid_profile",
+    message: "Resolved settings do not satisfy generated output schema",
+  });
+});
+
+test("a launcher-sized saved-command profile remains readable through the framed state IPC", async () => {
+  const { config, root } = await fixture();
+  const service = await DesktopSettingsService.make(config);
+  const baseStateBytes = Buffer.byteLength(JSON.stringify(await service.state()), "utf8");
+  expect(baseStateBytes + maxProfileBytes).toBeLessThanOrEqual(maxFrameBytes);
+  const socket = join(root, "runtime", "settings.sock");
+  const server = await startIpcServer(service, socket);
+  try {
+    for (let revision = 0; revision < 7; revision += 1) {
+      await service.createSavedCommand({
+        expectedRevision: revision,
+        request: {
+          title: `Near limit ${revision + 1}`,
+          outputMode: "silent",
+          parameters: [],
+          execution: { type: "shell", source: `printf %s ${"x".repeat(3_900)}` },
+        },
+      });
+    }
+    const state = await callService("/v1/state", "GET", undefined, { socket, halfClose: false });
+    const stateBytes = Buffer.byteLength(JSON.stringify(state), "utf8");
+    expect(state).toMatchObject({ ok: true });
+    expect(stateBytes).toBeLessThanOrEqual(maxFrameBytes);
+  } finally {
+    server.stop(true);
+  }
 });
 function quoteShell(value: string): string {
   return `'${value.replaceAll("'", `'"'"'`)}'`;
@@ -290,6 +346,52 @@ test("authorization cancellation durably fails exactly one awaiting apply", asyn
   });
 });
 
+test("authorization cancellation cannot overwrite a root-held activation claim", async () => {
+  const { config, root } = await fixture();
+  const jobs = new JobStore(config.stateHome);
+  await jobs.initialize();
+  const awaiting = {
+    id: "claimed-auth",
+    revision: 1,
+    profileHash: "c".repeat(64),
+    status: "awaiting_authorization" as const,
+    createdAt: "2026-09-12T00:00:00.000Z",
+    updatedAt: "2026-09-12T00:00:01.000Z",
+    log: ["Awaiting authorization"],
+  };
+  await jobs.save(awaiting);
+  const marker = join(root, "authority-lock-blocked");
+  const flock = join(root, "flock-wrapper");
+  await Bun.write(
+    flock,
+    `#!/bin/sh\nif ! flock -n "$2" true; then : > ${quoteShell(marker)}; fi\nexec flock "$@"\n`,
+  );
+  await chmod(flock, 0o755);
+  const service = await DesktopSettingsService.make({ ...config, flock });
+  const release = await acquireAuthorityLock(config);
+  const watcher = watch(root);
+  const blocked = (async () => {
+    for await (const event of watcher) {
+      if (event.filename === "authority-lock-blocked") return;
+    }
+  })();
+  const cancellation = service.authorizationFailed({ applyId: awaiting.id });
+  try {
+    await Promise.race([
+      blocked,
+      cancellation.then(() => {
+        throw new Error("authorization cancellation bypassed the authority lock");
+      }),
+    ]);
+  } finally {
+    await watcher.return?.();
+  }
+  await jobs.save({ ...awaiting, status: "activating", updatedAt: "2026-09-12T00:00:02.000Z" });
+  await release();
+  await expect(cancellation).rejects.toMatchObject({ code: "not_found" });
+  expect((await jobs.list())[0]).toMatchObject({ status: "activating" });
+});
+
 test("reconciliation activates only when the authority reads the matching generation identity", async () => {
   const { config } = await fixture();
   const jobs = new JobStore(config.stateHome);
@@ -388,6 +490,7 @@ test("saved command IPC round trip keeps a parameter literal across the generate
       NORI_DESKTOP_SETTINGS_RICE_COMMAND: runner,
       NORI_DESKTOP_SETTINGS_SHELL: shell,
       NORI_DESKTOP_SETTINGS_SOCKET: socket,
+      NORI_DESKTOP_SETTINGS_HALF_CLOSE: "0",
       RICE_VICINAE_BIN: undefined,
     };
     const marker = join(root, "should-not-exist");

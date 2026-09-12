@@ -80,6 +80,8 @@ export class SchemaCatalog {
   readonly outputDocument: JsonObject;
   readonly inputRoot: JsonObject;
   readonly inputValidator: CompiledValidator;
+  readonly outputRoot: JsonObject;
+  readonly outputValidator: CompiledValidator;
   readonly presentation: JsonObject;
   readonly resolved: JsonObject;
 
@@ -88,6 +90,8 @@ export class SchemaCatalog {
     outputDocument: JsonObject,
     inputRoot: JsonObject,
     inputValidator: CompiledValidator,
+    outputRoot: JsonObject,
+    outputValidator: CompiledValidator,
     presentation: JsonObject,
     resolved: JsonObject,
   ) {
@@ -95,6 +99,8 @@ export class SchemaCatalog {
     this.outputDocument = outputDocument;
     this.inputRoot = inputRoot;
     this.inputValidator = inputValidator;
+    this.outputRoot = outputRoot;
+    this.outputValidator = outputValidator;
     this.presentation = presentation;
     this.resolved = resolved;
   }
@@ -113,7 +119,7 @@ export class SchemaCatalog {
       await loadJson(`${dataDirectory}/settings-output.schema.json`, "output schema"),
       "generated output schema",
     );
-    selectDefinition(
+    const outputRoot = selectDefinition(
       rawOutputDocument,
       "generated output schema",
       "NoriDesktopSettingsOutput",
@@ -124,6 +130,10 @@ export class SchemaCatalog {
       ...rawInputDocument,
       $ref: "#/$defs/NoriDesktopSettingsInput",
     };
+    const outputValidationDocument: JsonObject = {
+      ...rawOutputDocument,
+      $ref: "#/$defs/NoriDesktopSettingsOutput",
+    };
     const presentation = expectObject(
       await loadJson(`${dataDirectory}/components.json`, "component catalog"),
       "generated component catalog",
@@ -132,17 +142,24 @@ export class SchemaCatalog {
       await loadJson(`${dataDirectory}/resolved-settings.json`, "resolved settings"),
       "generated resolved settings",
     );
-    const validator = new Ajv2020({ allErrors: true, strict: true }).compile(
+    const inputValidator = new Ajv2020({ allErrors: true, strict: true }).compile(
       inputValidationDocument,
     ) as CompiledValidator;
-    return new SchemaCatalog(
+    const outputValidator = new Ajv2020({ allErrors: true, strict: true }).compile(
+      outputValidationDocument,
+    ) as CompiledValidator;
+    const catalog = new SchemaCatalog(
       inputDocument,
       outputDocument,
       inputRoot,
-      validator,
+      inputValidator,
+      outputRoot,
+      outputValidator,
       presentation,
       resolved,
     );
+    catalog.validateOutput(resolved);
+    return catalog;
   }
 
   initialComponents(): Record<string, unknown> {
@@ -156,6 +173,16 @@ export class SchemaCatalog {
     if (this.inputValidator(components)) return;
     throw new DesktopSettingsError("invalid_profile", "Profile values do not satisfy generated settings schema", {
       errors: this.inputValidator.errors?.map((error) => ({
+        path: error.instancePath ?? "",
+        message: error.message ?? "invalid value",
+      })),
+    });
+  }
+
+  validateOutput(output: unknown): void {
+    if (this.outputValidator(output)) return;
+    throw new DesktopSettingsError("invalid_profile", "Resolved settings do not satisfy generated output schema", {
+      errors: this.outputValidator.errors?.map((error) => ({
         path: error.instancePath ?? "",
         message: error.message ?? "invalid value",
       })),

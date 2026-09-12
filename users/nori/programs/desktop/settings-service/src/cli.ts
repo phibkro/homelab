@@ -10,20 +10,27 @@ import {
   type PreviewRequest,
   type ReconcileRequest,
 } from "./contracts.ts";
-import { readFrame, writeFrame } from "./framing.ts";
+import { DesktopRuntime, type RuntimePaths } from "./runtime.ts";
+import { encodeFrame, readFrame, writeFrame } from "./framing.ts";
 
 export type CliRuntime = {
   readonly socket: string;
+  readonly halfClose: boolean;
 };
 
 function runtimeFromEnvironment(): CliRuntime {
   const configured = process.env.NORI_DESKTOP_SETTINGS_SOCKET;
-  if (configured !== undefined && configured.length > 0) return { socket: configured };
+  if (configured !== undefined && configured.length > 0) {
+    return { socket: configured, halfClose: process.env.NORI_DESKTOP_SETTINGS_HALF_CLOSE !== "0" };
+  }
   const runtimeDirectory = process.env.XDG_RUNTIME_DIR;
   if (runtimeDirectory === undefined || runtimeDirectory.length === 0) {
     throw new DesktopSettingsError("unavailable", "XDG_RUNTIME_DIR is not configured");
   }
-  return { socket: `${runtimeDirectory}/nori-desktop/settings.sock` };
+  return {
+    socket: `${runtimeDirectory}/nori-desktop/settings.sock`,
+    halfClose: process.env.NORI_DESKTOP_SETTINGS_HALF_CLOSE !== "0",
+  };
 }
 
 async function decodeResponse(text: string): Promise<Record<string, unknown>> {
@@ -82,13 +89,16 @@ async function exchange(
   runtime: CliRuntime,
 ): Promise<Record<string, unknown>> {
   const socket = createConnection({ path: runtime.socket, allowHalfOpen: true });
+  socket.allowHalfOpen = true;
   const { promise, reject, resolve } = Promise.withResolvers<void>();
   socket.once("connect", resolve);
   socket.once("error", reject);
   try {
     await promise;
-    writeFrame(socket, request);
-    return decodeResponse(await readFrame(socket));
+    const response = readFrame(socket);
+    if (runtime.halfClose) socket.end(encodeFrame(request));
+    else writeFrame(socket, request);
+    return decodeResponse(await response);
   } catch (cause) {
     throw new DesktopSettingsError(
       "unavailable",
@@ -285,6 +295,36 @@ export async function runSettingsCli(args: ReadonlyArray<string>): Promise<numbe
       commandUsage();
     }
     commandUsage();
+  } catch (cause) {
+    failure(cause);
+    return 1;
+  }
+}
+
+export async function runRuntimeObservation(
+  args: ReadonlyArray<string>,
+  paths: RuntimePaths,
+): Promise<number> {
+  try {
+    if (args.length !== 1 || args[0] !== "--json") {
+      throw new DesktopSettingsError("invalid_request", "usage: nori-desktop-settings observe-runtime --json");
+    }
+    const observed = await new DesktopRuntime(paths).observe();
+    writeJson(
+      await Effect.runPromise(
+        Schema.decodeUnknownEffect(
+          Schema.Struct({
+            waybar: Schema.Struct({
+              unit: Schema.Literals(["active", "inactive", "failed", "unknown"]),
+              edge: Schema.Literals(["top", "bottom", "unavailable"]),
+              reason: Schema.optionalKey(Schema.String),
+            }),
+          }),
+          { errors: "all", onExcessProperty: "error" },
+        )(observed),
+      ),
+    );
+    return 0;
   } catch (cause) {
     failure(cause);
     return 1;

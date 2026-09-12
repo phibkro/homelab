@@ -1,5 +1,6 @@
 /* application: serialized profile mutations and durable apply orchestration. */
 import { readFile } from "node:fs/promises";
+import { withAuthorityLock } from "./authority-lock.ts";
 import { Effect, Schema } from "effect";
 import {
   DesktopSettingsError,
@@ -25,6 +26,7 @@ import {
   NixEvaluator,
   type RuntimePaths,
 } from "./runtime.ts";
+import { maxFrameBytes } from "./framing.ts";
 import { SchemaCatalog } from "./schema-catalog.ts";
 import {
   decodeCreateRequest,
@@ -47,6 +49,8 @@ export type ServiceConfig = RuntimePaths & {
   readonly approvedSource: string;
   readonly riceCommand: string;
   readonly shell: string;
+  readonly authorityLock: string;
+  readonly flock: string;
 };
 
 export type ServiceState = {
@@ -121,7 +125,7 @@ function appendLog(job: ApplyJob, message: string): ApplyJob {
   return {
     ...job,
     updatedAt: new Date().toISOString(),
-    log: [...job.log, message].slice(-64),
+    log: [...job.log, message].slice(-16),
   };
 }
 
@@ -209,7 +213,8 @@ export class DesktopSettingsService {
             this.resolved.load(source.source, stored.profile.revision, stored.hash),
             this.previews.findCommitted(source.source, stored.profile.revision, stored.hash),
           ]);
-    return {
+    if (evaluated !== undefined) this.catalog.validateOutput(evaluated.resolved);
+    const state: ServiceState = {
       profile: stored.profile,
       components: this.catalog.presentation,
       resolved: evaluated?.resolved ?? {},
@@ -223,6 +228,10 @@ export class DesktopSettingsService {
       observed,
       jobs,
     };
+    if (Buffer.byteLength(JSON.stringify(state), "utf8") > maxFrameBytes) {
+      throw new DesktopSettingsError("unavailable", "Settings state exceeds the IPC frame limit");
+    }
+    return state;
   }
 
   async preview(request: PreviewRequest): Promise<SettingsPreview> {
@@ -263,6 +272,8 @@ export class DesktopSettingsService {
         profile.revision,
         snapshot.hash,
       );
+      this.catalog.validateOutput(evaluation.resolved);
+      this.catalog.validateOutput(built.resolved);
       const impact = {
         applyClass,
         requiresGeneration: applyClass !== "live",
@@ -456,30 +467,31 @@ export class DesktopSettingsService {
     this.running.set(job.id, running);
     return running;
   }
-
   async authorizationFailed(request: AuthorizationFailureRequest): Promise<ApplyJob> {
-    return this.coordinator.run(async () => {
-      const job = (await this.jobs.list()).find((candidate) => candidate.id === request.applyId);
-      if (job === undefined || job.status !== "awaiting_authorization") {
-        throw new DesktopSettingsError("not_found", "No apply job awaiting authorization");
-      }
-      const failed: ApplyJob = {
-        ...job,
-        ...appendLog(job, "Authorization was cancelled or denied"),
-        status: "failed",
-        updatedAt: new Date().toISOString(),
-        error: {
-          code: "activation_rejected",
-          message: "Authorization was cancelled or denied",
-        },
-      };
-      await this.jobs.save(failed);
-      return failed;
-    });
+    return withAuthorityLock(this.config, () =>
+      this.coordinator.run(async () => {
+        const job = (await this.jobs.list()).find((candidate) => candidate.id === request.applyId);
+        if (job === undefined || job.status !== "awaiting_authorization") {
+          throw new DesktopSettingsError("not_found", "No apply job awaiting authorization");
+        }
+        const failed: ApplyJob = {
+          ...job,
+          ...appendLog(job, "Authorization was cancelled or denied"),
+          status: "failed",
+          updatedAt: new Date().toISOString(),
+          error: {
+            code: "activation_rejected",
+            message: "Authorization was cancelled or denied",
+          },
+        };
+        await this.jobs.save(failed);
+        return failed;
+      }),
+    );
   }
-
   async reconcile(request: ReconcileRequest): Promise<ApplyJob> {
-    return this.coordinator.run(async () => {
+    return withAuthorityLock(this.config, () =>
+      this.coordinator.run(async () => {
       const job = (await this.jobs.list()).find((candidate) => candidate.id === request.applyId);
       if (job === undefined || job.status !== "reconciling") {
         throw new DesktopSettingsError("not_found", "No activation awaiting runtime reconciliation");
@@ -532,7 +544,8 @@ export class DesktopSettingsService {
       };
       await this.jobs.save(reconciled);
       return reconciled;
-    });
+      }),
+    );
   }
   private async runJob(initial: ApplyJob, profile: StoredProfile): Promise<ApplyJob> {
     let job = initial;
@@ -560,6 +573,7 @@ export class DesktopSettingsService {
           builtArtifact: built.artifact,
         });
       }
+      this.catalog.validateOutput(built.resolved);
       await this.resolved.save({ metadata: built.metadata, resolved: built.resolved });
       await transition("awaiting_authorization", "Awaiting named polkit activation for the exact previewed artifact", {
         artifact: built.artifact,

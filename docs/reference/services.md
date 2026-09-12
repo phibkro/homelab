@@ -231,6 +231,8 @@ accessible. A credential-checked Unix ingress accepts requests only from
 `nori`.
 
 Desktop Settings and Vicinae use the same typed CLI and service snapshot.
+The profile limit is 32 KiB, half of the 64 KiB IPC frame limit.
+Each saved command has a 4 KiB limit. The remaining frame space holds contracts, jobs, and observations.
 They do not edit profile files or reload Waybar. The persistent nori runtime
 agent is the only user-side component allowed to request the named polkit
 activation, reload Waybar, and submit a bounded surface observation.
@@ -240,6 +242,7 @@ authorization. The root helper re-reads the durable apply ID and validates the
 source, profile revision, profile hash, canonical profile, and artifact
 identity. The authority independently validates active generation metadata
 before it records the user's Waybar observation as active or failed.
+Waybar state is user-observed evidence from the nori runtime agent: nori owns and can mutate that surface, so a same-UID report cannot provide cryptographic process identity.
 
 Waybar reads the resolved generated profile after activation. The operator
 must activate a workstation generation.
