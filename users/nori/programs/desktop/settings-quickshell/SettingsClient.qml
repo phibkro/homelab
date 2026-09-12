@@ -203,7 +203,8 @@ Scope {
         const preview = root.pendingPreview;
         if (root.error && root.error.code === "revision_conflict")
             return false;
-        if (!preview || preview.revision !== root.revision)
+        if (!preview || !preview.preview || typeof preview.preview.id !== "string"
+                || preview.revision !== root.revision)
             return false;
 
         const draft = root.draftEntry(preview.componentId, preview.settingKey);
@@ -601,12 +602,12 @@ Scope {
         });
     }
 
-    function change(componentId, settingKey, value, expectedRevision) {
+    function change(componentId, settingKey, value, expectedRevision, previewId) {
         const revision = expectedRevision === undefined ? root.revision : expectedRevision;
-        if (revision === undefined || revision === null) {
+        if (revision === undefined || revision === null || typeof previewId !== "string") {
             root.reportInputError(
                 "state_unavailable",
-                "Load the current settings state before changing a setting.",
+                "Preview the current setting revision before changing it.",
                 undefined
             );
             return false;
@@ -620,6 +621,8 @@ Scope {
             JSON.stringify(value),
             "--expected-revision",
             String(revision),
+            "--preview",
+            previewId,
             "--json"
         ], "change", {
             componentId: componentId,
@@ -644,7 +647,8 @@ Scope {
             preview.componentId,
             preview.settingKey,
             preview.value,
-            preview.revision
+            preview.revision,
+            preview.preview.id
         );
     }
 
@@ -657,10 +661,11 @@ Scope {
             );
             return false;
         }
-        if (root.revision === undefined || root.revision === null) {
+        const committedPreviewId = root.state ? root.state.committedPreviewId : null;
+        if (root.revision === undefined || root.revision === null || typeof committedPreviewId !== "string") {
             root.reportInputError(
                 "state_unavailable",
-                "Load the current settings state before applying it.",
+                "Preview and save the current settings revision before applying it.",
                 undefined
             );
             return false;
@@ -671,6 +676,8 @@ Scope {
             "apply",
             "--expected-revision",
             String(root.revision),
+            "--preview",
+            committedPreviewId,
             "--json"
         ], "apply", null);
     }

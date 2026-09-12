@@ -221,3 +221,18 @@ endpoint and governed `legacy-host-build` artifact contract;
 build and serving realization. Filmder and Heim are the only mutable-source
 exceptions. Their manifests name an owner, reason, removal trigger, and test;
 new product deployments should consume immutable artifacts instead.
+
+## Desktop settings service
+
+The `nori-desktop-settings` user service is the only writer for the desktop profile.
+Its Unix socket accepts requests only from the owning user.
+The profile contains the revision, desktop settings, and saved commands.
+
+Desktop Settings and Vicinae use the same CLI and service snapshot.
+They do not edit profile files or reload Waybar.
+The service builds a fixed workstation operation from an approved Nix source.
+The activation mechanism validates the source, profile revision, profile hash, and artifact identity.
+
+Waybar reads the resolved generated profile after activation.
+The service reloads and observes Waybar only after the matching activation.
+The operator must activate a workstation generation.

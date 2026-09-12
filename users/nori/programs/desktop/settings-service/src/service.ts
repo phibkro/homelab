@@ -10,11 +10,13 @@ import {
   type ApplyRequest,
   type ChangeRequest,
   type CreateSavedCommandRequest,
+  type GenerationMetadata,
   type Observation,
+  type PreviewRequest,
   type Profile,
   type SavedCommandLookupRequest,
 } from "./contracts.ts";
-import { JobStore, ProfileStore, type StoredProfile } from "./files.ts";
+import { JobStore, PreviewStore, ProfileStore, ResolvedStore, type StoredProfile } from "./files.ts";
 import {
   ActivationClient,
   DesktopRuntime,
@@ -50,6 +52,8 @@ export type ServiceState = {
   readonly profile: Profile;
   readonly components: Record<string, unknown>;
   readonly resolved: Record<string, unknown>;
+  readonly resolvedIdentity: GenerationMetadata | null;
+  readonly committedPreviewId: string | null;
   readonly contracts: {
     readonly inputSchema: Record<string, unknown>;
     readonly outputSchema: Record<string, unknown>;
@@ -60,8 +64,11 @@ export type ServiceState = {
 };
 
 export type SettingsPreview = {
+  readonly id: string;
   readonly profile: Profile;
   readonly profileHash: string;
+  readonly identity: GenerationMetadata;
+  readonly artifact: string;
   readonly resolved: Record<string, unknown>;
   readonly impact: {
     readonly applyClass: string;
@@ -131,6 +138,8 @@ export class DesktopSettingsService {
   readonly config: ServiceConfig;
   readonly catalog: SchemaCatalog;
   readonly profiles: ProfileStore;
+  readonly resolved: ResolvedStore;
+  readonly previews: PreviewStore;
   readonly jobs: JobStore;
   readonly builder: NixBuilder;
   readonly evaluator: NixEvaluator;
@@ -144,6 +153,8 @@ export class DesktopSettingsService {
     this.config = config;
     this.catalog = catalog;
     this.profiles = new ProfileStore(config.configHome, config.stateHome);
+    this.resolved = new ResolvedStore(config.stateHome);
+    this.previews = new PreviewStore(config.stateHome);
     this.jobs = new JobStore(config.stateHome);
     this.builder = new NixBuilder(config);
     this.activation = new ActivationClient(config);
@@ -156,8 +167,27 @@ export class DesktopSettingsService {
     const service = new DesktopSettingsService(config, catalog);
     const profile = await service.profiles.initialize(catalog.initialComponents());
     catalog.validateComponents(profile.profile.components);
+    await service.resolved.initialize();
+    await service.previews.initialize();
     await service.jobs.initialize();
-    await service.jobs.recoverInterrupted();
+    const interrupted = await service.jobs.recoverInterrupted();
+    if (interrupted.length > 0) {
+      const [activeGeneration, observed] = await Promise.all([
+        service.desktop.activeGeneration().catch(() => undefined),
+        service.desktop.observe().catch(unavailableObservation),
+      ]);
+      await Promise.all(
+        interrupted.map((job) =>
+          service.jobs.save({
+            ...job,
+            ...(activeGeneration === undefined ? {} : { activeGeneration }),
+            observed,
+            updatedAt: new Date().toISOString(),
+            log: [...job.log, "Observed active generation and Waybar state after daemon restart"].slice(-64),
+          }),
+        ),
+      );
+    }
     return service;
   }
 
@@ -168,10 +198,20 @@ export class DesktopSettingsService {
       this.desktop.activeGeneration().catch(() => undefined),
       this.desktop.observe().catch(unavailableObservation),
     ]);
+    const source = await this.approvedSource().catch(() => undefined);
+    const [evaluated, committedPreviewId] =
+      source === undefined
+        ? [undefined, undefined]
+        : await Promise.all([
+            this.resolved.load(source.source, stored.profile.revision, stored.hash),
+            this.previews.findCommitted(source.source, stored.profile.revision, stored.hash),
+          ]);
     return {
       profile: stored.profile,
       components: this.catalog.presentation,
-      resolved: this.catalog.resolved,
+      resolved: evaluated?.resolved ?? {},
+      resolvedIdentity: evaluated?.metadata ?? null,
+      committedPreviewId: committedPreviewId ?? null,
       contracts: {
         inputSchema: this.catalog.inputDocument,
         outputSchema: this.catalog.outputDocument,
@@ -182,7 +222,7 @@ export class DesktopSettingsService {
     };
   }
 
-  async preview(request: ChangeRequest): Promise<SettingsPreview> {
+  async preview(request: PreviewRequest): Promise<SettingsPreview> {
     assertNonNegativeSafeInteger(request.expectedRevision, "Expected revision");
     const presentation = this.catalog.setting(request.component, request.setting);
     const current = await this.profiles.read();
@@ -206,16 +246,43 @@ export class DesktopSettingsService {
       revision: current.profile.revision + 1,
       components,
     };
+    const source = await this.approvedSource();
     return this.profiles.withDraft(profile, async (snapshot) => {
-      const evaluation = await this.evaluator.preview(snapshot.path, snapshot.hash);
+      const evaluation = await this.evaluator.preview(
+        snapshot.path,
+        source.source,
+        profile.revision,
+        snapshot.hash,
+      );
+      const built = await this.builder.build(
+        snapshot.path,
+        source.source,
+        profile.revision,
+        snapshot.hash,
+      );
+      const impact = {
+        applyClass,
+        requiresGeneration: applyClass !== "live",
+      };
+      const receipt = {
+        id: crypto.randomUUID(),
+        profileBytes: snapshot.bytes,
+        profileHash: snapshot.hash,
+        metadata: built.metadata,
+        artifact: built.artifact,
+        resolved: evaluation.resolved,
+        impact,
+        createdAt: new Date().toISOString(),
+      };
+      await Promise.all([this.resolved.save(evaluation), this.previews.save(receipt)]);
       return {
+        id: receipt.id,
         profile,
         profileHash: snapshot.hash,
+        identity: receipt.metadata,
+        artifact: receipt.artifact,
         resolved: evaluation.resolved,
-        impact: {
-          applyClass,
-          requiresGeneration: applyClass !== "live",
-        },
+        impact,
       };
     });
   }
@@ -223,9 +290,13 @@ export class DesktopSettingsService {
   async change(request: ChangeRequest): Promise<ServiceState> {
     await this.coordinator.run(async () => {
       assertNonNegativeSafeInteger(request.expectedRevision, "Expected revision");
-      this.catalog.setting(request.component, request.setting);
       const current = await this.profiles.read();
       expectedRevision(current, request.expectedRevision);
+      const receipt = await this.previews.read(request.previewId);
+      if (receipt.committedAt !== undefined) {
+        throw new DesktopSettingsError("invalid_request", "Preview identity has already committed a profile");
+      }
+      const source = await this.approvedSource();
       const components = structuredClone(current.profile.components);
       const existing = components[request.component];
       if (typeof existing !== "object" || existing === null || Array.isArray(existing)) {
@@ -233,10 +304,26 @@ export class DesktopSettingsService {
       }
       (existing as Record<string, unknown>)[request.setting] = request.value;
       this.catalog.validateComponents(components);
-      await this.profiles.persist({
+      const profile: Profile = {
         ...current.profile,
         revision: current.profile.revision + 1,
         components,
+      };
+      await this.profiles.withDraft(profile, async (snapshot) => {
+        if (
+          snapshot.bytes !== receipt.profileBytes ||
+          snapshot.hash !== receipt.profileHash ||
+          receipt.metadata.source !== source.source ||
+          receipt.metadata.profileRevision !== profile.revision ||
+          receipt.metadata.profileHash !== snapshot.hash
+        ) {
+          throw new DesktopSettingsError(
+            "invalid_request",
+            "Preview identity does not match the exact current profile candidate",
+          );
+        }
+        await this.profiles.persist(profile);
+        await this.previews.markCommitted(receipt);
       });
     });
     return this.state();
@@ -296,12 +383,28 @@ export class DesktopSettingsService {
       assertNonNegativeSafeInteger(request.expectedRevision, "Expected revision");
       const current = await this.profiles.read();
       expectedRevision(current, request.expectedRevision);
+      const receipt = await this.previews.read(request.previewId);
+      const source = await this.approvedSource();
+      if (
+        receipt.committedAt === undefined ||
+        receipt.metadata.source !== source.source ||
+        receipt.metadata.profileRevision !== current.profile.revision ||
+        receipt.metadata.profileHash !== current.hash ||
+        receipt.profileBytes !== current.bytes
+      ) {
+        throw new DesktopSettingsError(
+          "invalid_request",
+          "Preview identity is not the committed profile and approved source to apply",
+        );
+      }
       const profile = await this.profiles.snapshot(current);
       const jobs = await this.jobs.list();
       const reusable = jobs.find(
         (job) =>
           job.revision === profile.profile.revision &&
           job.profileHash === profile.hash &&
+          job.source === receipt.metadata.source &&
+          job.previewArtifact === receipt.artifact &&
           job.status !== "failed" &&
           job.status !== "interrupted",
       );
@@ -311,10 +414,12 @@ export class DesktopSettingsService {
         id: crypto.randomUUID(),
         revision: profile.profile.revision,
         profileHash: profile.hash,
+        source: receipt.metadata.source,
+        previewArtifact: receipt.artifact,
         status: "queued",
         createdAt: now,
         updatedAt: now,
-        log: ["Apply queued"],
+        log: ["Apply queued for the exact previewed artifact"],
       };
       await this.jobs.save(job);
       return { job, profile };
@@ -356,19 +461,30 @@ export class DesktopSettingsService {
       await this.jobs.save(job);
     };
     try {
-      const source = await this.approvedSource();
-      await transition("building", "Building immutable workstation generation");
+      if (initial.source === undefined || initial.previewArtifact === undefined) {
+        throw new DesktopSettingsError("activation_rejected", "Apply job has no immutable preview identity");
+      }
+      const source = initial.source;
+      const previewArtifact = initial.previewArtifact;
+      await transition("building", "Re-deriving the exact previewed workstation generation");
       const built = await this.builder.build(
         profile.revisionFile,
-        source.source,
+        source,
         profile.profile.revision,
         profile.hash,
       );
+      if (built.artifact !== previewArtifact) {
+        throw new DesktopSettingsError("activation_rejected", "Re-derived artifact differs from the approved preview", {
+          previewArtifact,
+          builtArtifact: built.artifact,
+        });
+      }
+      await this.resolved.save({ metadata: built.metadata, resolved: built.resolved });
       await transition("activating", "Requesting named polkit activation", { artifact: built.artifact });
       const activeGeneration = await this.activation.activate(
         profile.revisionFile,
         built.artifact,
-        source.source,
+        source,
         profile.profile.revision,
         profile.hash,
       );
@@ -380,12 +496,12 @@ export class DesktopSettingsService {
         throw new DesktopSettingsError("activation_rejected", "No active generation metadata after activation");
       }
       if (
-        reconciled.source !== source.source ||
+        reconciled.source !== source ||
         reconciled.profileRevision !== profile.profile.revision ||
         reconciled.profileHash !== profile.hash
       ) {
         throw new DesktopSettingsError("activation_rejected", "Active generation does not match the applied profile", {
-          expected: { source: source.source, revision: profile.profile.revision, hash: profile.hash },
+          expected: { source, revision: profile.profile.revision, hash: profile.hash },
           actual: reconciled,
         });
       }

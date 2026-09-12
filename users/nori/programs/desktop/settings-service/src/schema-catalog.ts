@@ -118,13 +118,11 @@ export class SchemaCatalog {
       "generated output schema",
       "NoriDesktopSettingsOutput",
     );
-    const inputDocument: JsonObject = {
+    const inputDocument = rawInputDocument;
+    const outputDocument = rawOutputDocument;
+    const inputValidationDocument: JsonObject = {
       ...rawInputDocument,
       $ref: "#/$defs/NoriDesktopSettingsInput",
-    };
-    const outputDocument: JsonObject = {
-      ...rawOutputDocument,
-      $ref: "#/$defs/NoriDesktopSettingsOutput",
     };
     const presentation = expectObject(
       await loadJson(`${dataDirectory}/components.json`, "component catalog"),
@@ -135,7 +133,7 @@ export class SchemaCatalog {
       "generated resolved settings",
     );
     const validator = new Ajv2020({ allErrors: true, strict: true }).compile(
-      inputDocument,
+      inputValidationDocument,
     ) as CompiledValidator;
     return new SchemaCatalog(
       inputDocument,

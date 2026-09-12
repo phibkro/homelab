@@ -7,6 +7,7 @@ import {
   ChangeRequest,
   CreateSavedCommandRequest,
   DesktopSettingsError,
+  PreviewRequest,
   SavedCommandLookupRequest,
   parseJson,
 } from "./contracts.ts";
@@ -99,7 +100,7 @@ async function handle(service: DesktopSettingsService, request: Request): Promis
       return json({ ok: true, state: await service.change(await body(request, ChangeRequest)) });
     }
     if (request.method === "POST" && url.pathname === "/v1/preview") {
-      return json({ ok: true, preview: await service.preview(await body(request, ChangeRequest)) });
+      return json({ ok: true, preview: await service.preview(await body(request, PreviewRequest)) });
     }
     if (request.method === "POST" && url.pathname === "/v1/apply") {
       return json({ ok: true, job: await service.apply(await body(request, ApplyRequest)) });

@@ -11,11 +11,15 @@ type SettingsState = {
   };
   components: JsonObject;
   resolved: JsonObject;
+  resolvedIdentity: unknown;
+  committedPreviewId: string | null;
   activeGeneration: unknown;
+  observed: JsonObject;
   jobs: unknown[];
 };
 
 type SettingsPreview = {
+  id: string;
   selectedValue: string;
   expectedRevision: number;
   profileHash: string;
@@ -96,6 +100,8 @@ function parseState(response: unknown): SettingsState {
     !isJsonObject(profile.components) ||
     !isJsonObject(state.components) ||
     !isJsonObject(state.resolved) ||
+    !isJsonObject(state.observed) ||
+    !(state.committedPreviewId === null || typeof state.committedPreviewId === "string") ||
     !Array.isArray(state.jobs)
   ) {
     throw new Error("nori-desktop-settings returned an incomplete state response");
@@ -107,7 +113,10 @@ function parseState(response: unknown): SettingsState {
     },
     components: state.components,
     resolved: state.resolved,
+    resolvedIdentity: state.resolvedIdentity,
+    committedPreviewId: state.committedPreviewId,
     activeGeneration: state.activeGeneration,
+    observed: state.observed,
     jobs: state.jobs,
   };
 }
@@ -126,6 +135,7 @@ function parsePreview(
   if (
     !isJsonObject(preview.profile) ||
     !isJsonObject(preview.profile.components) ||
+    typeof preview.id !== "string" ||
     typeof preview.profileHash !== "string" ||
     !("resolved" in preview) ||
     !("impact" in preview)
@@ -136,6 +146,7 @@ function parsePreview(
     throw new Error("nori-desktop-settings preview does not match the selected value");
   }
   return {
+    id: preview.id,
     selectedValue,
     expectedRevision,
     profileHash: preview.profileHash,
@@ -218,9 +229,13 @@ function hasRunningJob(jobs: readonly unknown[]): boolean {
   });
 }
 
-function observedText(activeGeneration: unknown): string {
-  if (!isJsonObject(activeGeneration)) return textFor(activeGeneration);
-  return textFor(activeGeneration.observed ?? activeGeneration.runtime ?? activeGeneration);
+function observedText(state: SettingsState): string {
+  const waybar = state.observed.waybar;
+  if (!isJsonObject(waybar)) return textFor(state.observed);
+  const unit = textFor(waybar.unit);
+  const edge = textFor(waybar.edge);
+  const reason = typeof waybar.reason === "string" ? `: ${waybar.reason}` : "";
+  return `Waybar ${unit}, ${edge}${reason}`;
 }
 
 function errorText(error: unknown): string {
@@ -344,9 +359,10 @@ export function SettingForm({ componentId, settingId, values }: SettingFormProps
           JSON.stringify(selected),
           "--expected-revision",
           String(state.profile.revision),
+          "--preview",
+          preview.id,
         ]),
       );
-      setState(next);
       setPreview(null);
       setFailure(null);
       toast.style = Toast.Style.Success;
@@ -361,10 +377,15 @@ export function SettingForm({ componentId, settingId, values }: SettingFormProps
     if (state === null || presentation === null) return;
     const toast = await showToast({ style: Toast.Style.Animated, title: "Starting system update" });
     try {
+      if (state.committedPreviewId === null) {
+        throw new Error("No durable preview matches the saved profile");
+      }
       const response = await invokeSettings([
         "apply",
         "--expected-revision",
         String(state.profile.revision),
+        "--preview",
+        state.committedPreviewId,
       ]);
       if (!isJsonObject(response) || !("job" in response)) {
         throw new Error("nori-desktop-settings returned an invalid apply response");
@@ -440,8 +461,12 @@ export function SettingForm({ componentId, settingId, values }: SettingFormProps
       />
       <Form.Description title="Resolved" text={textFor(resolved)} />
       <Form.Description
+        title="Resolved identity"
+        text={textFor(state?.resolvedIdentity)}
+      />
+      <Form.Description
         title="Observed"
-        text={state === null ? "Loading the active desktop observation." : observedText(state.activeGeneration)}
+        text={state === null ? "Loading the active desktop observation." : observedText(state)}
       />
       <Form.Description title="Apply status" text={state === null ? "Loading durable jobs." : jobsText(state.jobs)} />
       {presentation?.applyClass === "generation" ? (

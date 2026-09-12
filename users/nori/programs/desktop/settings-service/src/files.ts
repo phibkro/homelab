@@ -16,11 +16,14 @@ import { Effect } from "effect";
 import {
   ApplyJob,
   DesktopSettingsError,
+  EvaluationResult,
+  PreviewReceipt,
   Profile,
   decodeJob,
   decodeProfile,
   parseJson,
   profileHash,
+  type GenerationMetadata,
 } from "./contracts.ts";
 
 const fileMode = 0o600;
@@ -227,6 +230,117 @@ export class ProfileStore {
   }
 }
 
+/** Durable, non-authoritative Nix evaluation cache keyed by source and exact profile bytes. */
+export class ResolvedStore {
+  readonly directory: string;
+
+  constructor(stateHome: string) {
+    this.directory = join(stateHome, "resolved");
+  }
+
+  private path(metadata: GenerationMetadata): string {
+    return join(this.directory, `${metadata.profileRevision}-${metadata.profileHash}.json`);
+  }
+
+  async initialize(): Promise<void> {
+    await ensurePrivateDirectory(this.directory);
+  }
+
+  async save(evaluation: EvaluationResult): Promise<void> {
+    await this.initialize();
+    await writeAtomic(this.path(evaluation.metadata), `${JSON.stringify(evaluation, null, 2)}\n`);
+  }
+
+  async load(
+    source: string,
+    revision: number,
+    hash: string,
+  ): Promise<EvaluationResult | undefined> {
+    await this.initialize();
+    const bytes = await readOptionalPrivateFile(
+      this.path({ source, profileRevision: revision, profileHash: hash }),
+      maxProfileBytes,
+    );
+    if (bytes === undefined) return undefined;
+    const evaluation = await Effect.runPromise(
+      parseJson(EvaluationResult, bytes, `resolved evaluation ${revision}-${hash}`),
+    );
+    return evaluation.metadata.source === source &&
+      evaluation.metadata.profileRevision === revision &&
+      evaluation.metadata.profileHash === hash
+      ? evaluation
+      : undefined;
+  }
+}
+
+
+function previewPath(directory: string, id: string): string {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    throw new DesktopSettingsError("invalid_request", "Invalid preview identity");
+  }
+  return join(directory, `${id}.json`);
+}
+
+/** Durable preview receipts bind a commit and apply to exact evaluated profile bytes. */
+export class PreviewStore {
+  readonly directory: string;
+
+  constructor(stateHome: string) {
+    this.directory = join(stateHome, "previews");
+  }
+
+  async initialize(): Promise<void> {
+    await ensurePrivateDirectory(this.directory);
+  }
+
+  async save(receipt: PreviewReceipt): Promise<void> {
+    await this.initialize();
+    await writeAtomic(previewPath(this.directory, receipt.id), `${JSON.stringify(receipt, null, 2)}\n`);
+  }
+
+  async read(id: string): Promise<PreviewReceipt> {
+    await this.initialize();
+    const path = previewPath(this.directory, id);
+    const bytes = await readOptionalPrivateFile(path, maxProfileBytes * 2);
+    if (bytes === undefined) {
+      throw new DesktopSettingsError("not_found", `Unknown preview identity: ${id}`);
+    }
+    const receipt = await Effect.runPromise(
+      parseJson(PreviewReceipt, bytes, `preview receipt ${id}`),
+    );
+    await Effect.runPromise(
+      parseJson(Profile, receipt.profileBytes, `preview profile ${id}`).pipe(Effect.flatMap(decodeProfile)),
+    );
+    if (profileHash(receipt.profileBytes) !== receipt.profileHash) {
+      throw new DesktopSettingsError("invalid_profile", `Preview receipt ${id} has an invalid profile hash`);
+    }
+    return receipt;
+  }
+
+  async markCommitted(receipt: PreviewReceipt): Promise<void> {
+    if (receipt.committedAt !== undefined) {
+      throw new DesktopSettingsError("invalid_request", "Preview identity has already committed a profile");
+    }
+    await this.save({ ...receipt, committedAt: new Date().toISOString() });
+  }
+
+  async findCommitted(source: string, revision: number, hash: string): Promise<string | undefined> {
+    await this.initialize();
+    for (const name of await readdir(this.directory)) {
+      if (!name.endsWith(".json")) continue;
+      const receipt = await this.read(name.slice(0, -5));
+      if (
+        receipt.committedAt !== undefined &&
+        receipt.metadata.source === source &&
+        receipt.metadata.profileRevision === revision &&
+        receipt.metadata.profileHash === hash
+      ) {
+        return receipt.id;
+      }
+    }
+    return undefined;
+  }
+}
 export class JobStore {
   readonly directory: string;
 

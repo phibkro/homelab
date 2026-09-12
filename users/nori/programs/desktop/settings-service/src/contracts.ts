@@ -17,19 +17,28 @@ export const Profile = Schema.Struct({
 
 export type Profile = typeof Profile.Type;
 
-export const ChangeRequest = Schema.Struct({
+export const PreviewRequest = Schema.Struct({
   component: Schema.String,
   setting: Schema.String,
   value: Schema.Unknown,
   expectedRevision: Schema.Number,
 });
 
+export type PreviewRequest = typeof PreviewRequest.Type;
+
+export const ChangeRequest = Schema.Struct({
+  component: Schema.String,
+  setting: Schema.String,
+  value: Schema.Unknown,
+  expectedRevision: Schema.Number,
+  previewId: Schema.String,
+});
 export type ChangeRequest = typeof ChangeRequest.Type;
 
 export const ApplyRequest = Schema.Struct({
   expectedRevision: Schema.Number,
+  previewId: Schema.String,
 });
-
 export type ApplyRequest = typeof ApplyRequest.Type;
 
 export const CreateSavedCommandRequest = Schema.Struct({
@@ -93,6 +102,8 @@ export const ApplyJob = Schema.Struct({
   id: Schema.String,
   revision: Schema.Number,
   profileHash: Schema.String,
+  source: Schema.optionalKey(Schema.String),
+  previewArtifact: Schema.optionalKey(Schema.String),
   status: JobStatus,
   createdAt: Schema.String,
   updatedAt: Schema.String,
@@ -113,15 +124,38 @@ export const GenerationMetadata = Schema.Struct({
 
 export const EvaluationResult = Schema.Struct({
   resolved: Schema.Record(Schema.String, Schema.Unknown),
+  metadata: GenerationMetadata,
 });
 
 export type EvaluationResult = typeof EvaluationResult.Type;
 
 export type GenerationMetadata = typeof GenerationMetadata.Type;
 
+export const PreviewImpact = Schema.Struct({
+  applyClass: Schema.String,
+  requiresGeneration: Schema.Boolean,
+});
+
+export type PreviewImpact = typeof PreviewImpact.Type;
+
+export const PreviewReceipt = Schema.Struct({
+  id: Schema.String,
+  profileBytes: Schema.String,
+  profileHash: Schema.String,
+  metadata: GenerationMetadata,
+  artifact: Schema.String,
+  resolved: Schema.Record(Schema.String, Schema.Unknown),
+  impact: PreviewImpact,
+  createdAt: Schema.String,
+  committedAt: Schema.optionalKey(Schema.String),
+});
+
+export type PreviewReceipt = typeof PreviewReceipt.Type;
+
 export const BuildResult = Schema.Struct({
   artifact: Schema.String,
   metadata: GenerationMetadata,
+  resolved: Schema.Record(Schema.String, Schema.Unknown),
 });
 
 export type BuildResult = typeof BuildResult.Type;

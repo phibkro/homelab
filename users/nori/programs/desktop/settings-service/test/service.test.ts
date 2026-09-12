@@ -55,6 +55,19 @@ async function fixture() {
     join(dataDirectory, "resolved-settings.json"),
     JSON.stringify({ "desktop.waybar": { position: "top", enabled: true } }),
   );
+  const evaluator = join(root, "evaluator");
+  const builder = join(root, "builder");
+  const renderer = `#!/bin/sh
+revision=$(sed -n 's/.*"revision": \\([0-9][0-9]*\\).*/\\1/p' "$2")
+printf '{"metadata":{"source":"/nix/store/approved-source","profileRevision":%s,"profileHash":"%s"},"resolved":{"desktop.waybar":{"position":"bottom","enabled":true}}' "$revision" "$4"`;
+  await Bun.write(evaluator, `${renderer}\nprintf '}\\n'\n`);
+  await Bun.write(builder, `${renderer}\nprintf ',"artifact":"/nix/store/generated"}\\n'\n`);
+  await chmod(evaluator, 0o755);
+  await chmod(builder, 0o755);
+  await Bun.write(
+    join(root, "approved-source.json"),
+    `${JSON.stringify({ source: "/nix/store/approved-source", host: "workstation" })}\n`,
+  );
   const config: ServiceConfig = {
     configHome: join(root, "config"),
     stateHome: join(root, "state"),
@@ -62,8 +75,8 @@ async function fixture() {
     approvedSource: join(root, "approved-source.json"),
     riceCommand: "rice-saved-command",
     shell: "/bin/sh",
-    builder: "/does-not-run",
-    evaluator: "/does-not-run",
+    builder,
+    evaluator,
     activator: "/does-not-run",
     activeMetadata: join(root, "generation.json"),
     systemctl: "/does-not-run",
@@ -108,11 +121,18 @@ async function invoke(
 test("revision compare-and-swap preserves the first committed profile", async () => {
   const { config } = await fixture();
   const service = await DesktopSettingsService.make(config);
+  const preview = await service.preview({
+    component: "desktop.waybar",
+    setting: "position",
+    value: "bottom",
+    expectedRevision: 0,
+  });
   const first = await service.change({
     component: "desktop.waybar",
     setting: "position",
     value: "bottom",
     expectedRevision: 0,
+    previewId: preview.id,
   });
   expect(first.profile.revision).toBe(1);
   expect(first.profile.components).toEqual({ "desktop.waybar": { position: "bottom" } });
@@ -122,22 +142,15 @@ test("revision compare-and-swap preserves the first committed profile", async ()
       setting: "position",
       value: "top",
       expectedRevision: 0,
+      previewId: preview.id,
     }),
   ).rejects.toMatchObject({ code: "revision_conflict" });
   expect((await service.state()).profile).toEqual(first.profile);
 });
 
 test("preview evaluates a candidate without persisting the draft", async () => {
-  const { config, root } = await fixture();
-  const shell = Bun.which("sh");
-  if (shell === null) throw new Error("The test requires sh");
-  const evaluator = join(root, "evaluator");
-  await Bun.write(
-    evaluator,
-    `#!${shell}\nprintf '%s\\n' '{"resolved":{"desktop.waybar":{"position":"bottom","enabled":true}}}'\n`,
-  );
-  await chmod(evaluator, 0o755);
-  const service = await DesktopSettingsService.make({ ...config, evaluator });
+  const { config } = await fixture();
+  const service = await DesktopSettingsService.make(config);
 
   const preview = await service.preview({
     component: "desktop.waybar",
@@ -162,7 +175,7 @@ test("generated schema rejects a non-writable enum value before profile persiste
   const { config } = await fixture();
   const service = await DesktopSettingsService.make(config);
   await expect(
-    service.change({
+    service.preview({
       component: "desktop.waybar",
       setting: "position",
       value: "left",
@@ -263,19 +276,28 @@ test("apply returns a durable queued job before the managed build finishes", asy
   const shell = Bun.which("sh");
   const mkfifo = Bun.which("mkfifo");
   if (shell === null || mkfifo === null) throw new Error("The test requires sh and mkfifo");
+  const previewService = await DesktopSettingsService.make(config);
+  const preview = await previewService.preview({
+    component: "desktop.waybar",
+    setting: "position",
+    value: "bottom",
+    expectedRevision: 0,
+  });
+  await previewService.change({
+    component: "desktop.waybar",
+    setting: "position",
+    value: "bottom",
+    expectedRevision: 0,
+    previewId: preview.id,
+  });
   const gate = join(root, "builder-gate");
   const makeGate = Bun.spawn([mkfifo, gate]);
   expect(await makeGate.exited).toBe(0);
   const builder = join(root, "blocked-builder");
   await Bun.write(builder, `#!${shell}\nread -r _ < ${quoteShell(gate)}\nexit 23\n`);
   await chmod(builder, 0o755);
-  await Bun.write(
-    config.approvedSource,
-    `${JSON.stringify({ source: "/nix/store/approved-source", host: "workstation" })}\n`,
-  );
   const service = await DesktopSettingsService.make({ ...config, builder });
-
-  const scheduled = await service.apply({ expectedRevision: 0 });
+  const scheduled = await service.apply({ expectedRevision: 1, previewId: preview.id });
   expect(scheduled.status).toBe("queued");
   const completion = service.running.get(scheduled.id);
   if (completion === undefined) throw new Error("The apply job was not started");

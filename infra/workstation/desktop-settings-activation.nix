@@ -87,7 +87,13 @@ let
         --argstr profileHash "$profile_hash" \
         --argstr host "$host")
       jq -e 'type == "object"' <<<"$resolved" >/dev/null
-      jq -cn --argjson resolved "$resolved" '{ resolved: $resolved }'
+      revision=$(jq -er '.revision' "$profile")
+      jq -cn \
+        --argjson resolved "$resolved" \
+        --arg source "$source" \
+        --argjson revision "$revision" \
+        --arg hash "$profile_hash" \
+        '{ resolved: $resolved, metadata: { source: $source, profileRevision: $revision, profileHash: $hash } }'
     '';
   };
   settingsBuilder = pkgs.writeShellApplication {
@@ -168,8 +174,16 @@ let
         --arg hash "$profile_hash" \
         '.source == $source and .profileRevision == $revision and .profileHash == $hash' \
         "$metadata" >/dev/null
-      jq -cn --arg artifact "$artifact" --slurpfile metadata "$metadata" \
-        '{ artifact: $artifact, metadata: $metadata[0] }'
+      resolved=$(nix-instantiate --eval --strict --json \
+        "$source/lib/desktop-settings-eval.nix" \
+        -A resolved \
+        --argstr source "$source" \
+        --argstr profile "$profile" \
+        --argstr profileHash "$profile_hash" \
+        --argstr host "$host")
+      jq -e 'type == "object"' <<<"$resolved" >/dev/null
+      jq -cn --arg artifact "$artifact" --slurpfile metadata "$metadata" --argjson resolved "$resolved" \
+        '{ artifact: $artifact, metadata: $metadata[0], resolved: $resolved }'
     '';
   };
   settingsActivator = pkgs.writeShellApplication {

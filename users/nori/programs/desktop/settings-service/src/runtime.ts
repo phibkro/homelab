@@ -132,7 +132,12 @@ export class NixEvaluator {
     this.paths = paths;
   }
 
-  async preview(profilePath: string, hash: string): Promise<EvaluationResult> {
+  async preview(
+    profilePath: string,
+    source: string,
+    revision: number,
+    hash: string,
+  ): Promise<EvaluationResult> {
     const result = await command([
       this.paths.evaluator,
       "--profile",
@@ -146,7 +151,9 @@ export class NixEvaluator {
         stderr: summarizeOutput(result.stderr),
       });
     }
-    return parseOutput(EvaluationResult, result.stdout, "evaluation result");
+    const evaluation = await parseOutput(EvaluationResult, result.stdout, "evaluation result");
+    verifyMetadata(evaluation.metadata, source, revision, hash);
+    return evaluation;
   }
 }
 

@@ -6,6 +6,7 @@ import {
   parseJson,
   type ApplyRequest,
   type ChangeRequest,
+  type PreviewRequest,
 } from "./contracts.ts";
 
 export type CliRuntime = {
@@ -138,7 +139,7 @@ export async function runSettingsCli(args: ReadonlyArray<string>): Promise<numbe
       writeJson(await callService("/v1/state", "GET"));
       return 0;
     }
-    if (operation === "change" || operation === "preview") {
+    if (operation === "preview") {
       const [component, setting, value, revisionFlag, revision, jsonFlag] = rest;
       if (
         component === undefined ||
@@ -150,21 +151,51 @@ export async function runSettingsCli(args: ReadonlyArray<string>): Promise<numbe
       ) {
         commandUsage();
       }
-      const payload: ChangeRequest = {
+      const payload: PreviewRequest = {
         component,
         setting,
         value: await parseValue(value),
         expectedRevision: parseRevision(revision),
       };
-      writeJson(await callService(operation === "change" ? "/v1/change" : "/v1/preview", "POST", payload));
+      writeJson(await callService("/v1/preview", "POST", payload));
+      return 0;
+    }
+    if (operation === "change") {
+      const [component, setting, value, revisionFlag, revision, previewFlag, previewId, jsonFlag] = rest;
+      if (
+        component === undefined ||
+        setting === undefined ||
+        value === undefined ||
+        revisionFlag !== "--expected-revision" ||
+        previewFlag !== "--preview" ||
+        previewId === undefined ||
+        jsonFlag !== "--json" ||
+        rest.length !== 8
+      ) {
+        commandUsage();
+      }
+      const payload: ChangeRequest = {
+        component,
+        setting,
+        value: await parseValue(value),
+        expectedRevision: parseRevision(revision),
+        previewId,
+      };
+      writeJson(await callService("/v1/change", "POST", payload));
       return 0;
     }
     if (operation === "apply") {
-      const [revisionFlag, revision, jsonFlag] = rest;
-      if (revisionFlag !== "--expected-revision" || jsonFlag !== "--json" || rest.length !== 3) {
+      const [revisionFlag, revision, previewFlag, previewId, jsonFlag] = rest;
+      if (
+        revisionFlag !== "--expected-revision" ||
+        previewFlag !== "--preview" ||
+        previewId === undefined ||
+        jsonFlag !== "--json" ||
+        rest.length !== 5
+      ) {
         commandUsage();
       }
-      const payload: ApplyRequest = { expectedRevision: parseRevision(revision) };
+      const payload: ApplyRequest = { expectedRevision: parseRevision(revision), previewId };
       writeJson(await callService("/v1/apply", "POST", payload));
       return 0;
     }

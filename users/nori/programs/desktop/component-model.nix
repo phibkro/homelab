@@ -9,6 +9,10 @@
 let
   settingPresentationType = lib.types.submodule {
     options = {
+      id = lib.mkOption {
+        type = lib.types.str;
+        description = "Stable setting identity within its component.";
+      };
       title = lib.mkOption { type = lib.types.str; };
       description = lib.mkOption { type = lib.types.str; };
       group = lib.mkOption { type = lib.types.str; };
@@ -34,6 +38,15 @@ let
           "live-generation"
           "generation"
         ];
+      };
+      ownership = lib.mkOption {
+        type = lib.types.enum [ "user" ];
+        description = "The profile owner allowed to change this setting.";
+      };
+      runtimeAdapter = lib.mkOption {
+        type = lib.types.nullOr lib.types.str;
+        default = null;
+        description = "Named runtime adapter reconciled after a matching activation.";
       };
       action = lib.mkOption {
         type = lib.types.nullOr (
@@ -65,6 +78,21 @@ let
       title = lib.mkOption { type = lib.types.str; };
       description = lib.mkOption { type = lib.types.str; };
       settings = lib.mkOption {
+        type = lib.types.listOf settingPresentationType;
+        default = [ ];
+      };
+      readOnlyFields = lib.mkOption {
+        type = lib.types.attrsOf readOnlyPresentationType;
+        default = { };
+      };
+    };
+  };
+  componentOutputType = lib.types.submodule {
+    options = {
+      id = lib.mkOption { type = lib.types.str; };
+      title = lib.mkOption { type = lib.types.str; };
+      description = lib.mkOption { type = lib.types.str; };
+      settings = lib.mkOption {
         type = lib.types.attrsOf settingPresentationType;
         default = { };
       };
@@ -79,8 +107,24 @@ let
   duplicateComponentIds = lib.filter (id: lib.count (candidate: candidate == id) componentIds > 1) (
     lib.unique componentIds
   );
+  duplicateSettingIds =
+    component:
+    let
+      settingIds = map (setting: setting.id) component.settings;
+    in
+    lib.filter (id: lib.count (candidate: candidate == id) settingIds > 1) (lib.unique settingIds);
   components = builtins.listToAttrs (
-    map (component: lib.nameValuePair component.id component) contributions
+    map (
+      component:
+      lib.nameValuePair component.id (
+        component
+        // {
+          settings = builtins.listToAttrs (
+            map (setting: lib.nameValuePair setting.id setting) component.settings
+          );
+        }
+      )
+    ) contributions
   );
   clanLib = import "${inputs.clan-core-src}/lib/default.nix" { inherit lib; };
   inputSchema = clanLib.jsonschema.fromOptions {
@@ -122,7 +166,7 @@ in
     };
 
     components = lib.mkOption {
-      type = lib.types.attrsOf componentType;
+      type = lib.types.attrsOf componentOutputType;
       readOnly = true;
       internal = true;
       description = "Uniquely composed desktop components.";
@@ -171,7 +215,16 @@ in
         assertion = duplicateComponentIds == [ ];
         message = "duplicate desktop component IDs: ${lib.concatStringsSep ", " duplicateComponentIds}";
       }
-    ];
+    ] ++ lib.concatMap (
+      component:
+      let
+        duplicates = duplicateSettingIds component;
+      in
+      lib.optional (duplicates != [ ]) {
+        assertion = false;
+        message = "duplicate desktop setting IDs in ${component.id}: ${lib.concatStringsSep ", " duplicates}";
+      }
+    ) contributions;
 
     nori.desktop = {
       inherit components;

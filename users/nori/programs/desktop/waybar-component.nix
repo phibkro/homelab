@@ -7,6 +7,42 @@ let
   profile = config.nori.desktop.profile.components."desktop.waybar";
   waybar = config.programs.waybar;
   mainBar = waybar.settings.mainBar;
+  componentSetting =
+    option: presentation:
+    {
+      option = lib.mkOption option;
+      inherit presentation;
+    };
+  position = componentSetting
+    {
+      type = lib.types.enum [
+        "top"
+        "bottom"
+      ];
+      default = "top";
+      description = "Horizontal screen edge used by the desktop status bar.";
+    }
+    {
+      id = "position";
+      title = "Bar position";
+      description = "Place the horizontal status bar at the top or bottom edge.";
+      group = "Desktop";
+      control = "enum";
+      scope = "user";
+      ownership = "user";
+      applyClass = "live-generation";
+      runtimeAdapter = "waybar.service";
+      action = {
+        title = "Settings: Bar Position";
+        description = "Change the horizontal status bar edge.";
+        keywords = [
+          "waybar"
+          "panel"
+          "top"
+          "bottom"
+        ];
+      };
+    };
   policyField = title: description: {
     inherit title description;
     reason = "Managed by authored Nix policy";
@@ -14,14 +50,7 @@ let
 in
 {
   options.nori.desktop = {
-    profile.components."desktop.waybar".position = lib.mkOption {
-      type = lib.types.enum [
-        "top"
-        "bottom"
-      ];
-      default = "top";
-      description = "Horizontal screen edge used by the desktop status bar.";
-    };
+    profile.components."desktop.waybar".position = position.option;
 
     resolved.components."desktop.waybar" = {
       position = lib.mkOption {
@@ -79,24 +108,7 @@ in
           id = "desktop.waybar";
           title = "Waybar";
           description = "Desktop status bar presentation and lifecycle.";
-          settings.position = {
-            title = "Bar position";
-            description = "Place the horizontal status bar at the top or bottom edge.";
-            group = "Desktop";
-            control = "enum";
-            scope = "user";
-            applyClass = "generation";
-            action = {
-              title = "Settings: Bar Position";
-              description = "Change the horizontal status bar edge.";
-              keywords = [
-                "waybar"
-                "panel"
-                "top"
-                "bottom"
-              ];
-            };
-          };
+          settings = [ position.presentation ];
           readOnlyFields = {
             enabled = policyField "Enabled" "Whether authored policy installs and starts Waybar.";
             package = policyField "Package" "The patched Waybar package selected by authored policy.";
@@ -110,7 +122,7 @@ in
       ];
 
       resolved.components."desktop.waybar" = {
-        position = mainBar.position;
+        position = profile.position;
         enabled = waybar.enable;
         package = lib.getName waybar.package;
         layer = mainBar.layer;
