@@ -505,93 +505,29 @@ let
     ) layerTags
   );
 
-  commandCategories = [
-    "layout"
-    "space"
-    "window"
-    "system"
-    "help"
-    "view"
-    "utility"
-    "testing"
+  commandCategoryLabels = [
+    "Layout"
+    "Space"
+    "Window"
+    "System"
+    "Help"
+    "Utility"
+    "Testing"
   ];
-  browsableCommandCategories = lib.remove "view" commandCategories;
-  commandCategoryLabels = map (
-    category:
-    lib.toUpper (lib.substring 0 1 category) + lib.substring 1 (builtins.stringLength category) category
-  ) browsableCommandCategories;
-  commandEffects = [
-    "launch"
-    "query"
-    "toggle"
-    "layout"
-    "window"
-    "session"
-    "destructive"
-  ];
-  directBindingType = lib.types.submodule {
-    options = {
-      mod = lib.mkOption {
-        type = lib.types.enum [
-          "$mod"
-          "$mod SHIFT"
-        ];
-      };
-      key = lib.mkOption { type = lib.types.str; };
-    };
-  };
-  commandType = lib.types.submodule {
-    options = {
-      label = lib.mkOption { type = lib.types.str; };
-      description = lib.mkOption { type = lib.types.str; };
-      category = lib.mkOption { type = lib.types.enum commandCategories; };
-      keywords = lib.mkOption {
-        type = lib.types.listOf lib.types.str;
-        default = [ ];
-      };
-      icon = lib.mkOption {
-        type = lib.types.str;
-        default = "system-run";
-      };
-      executable = lib.mkOption { type = lib.types.str; };
-      args = lib.mkOption {
-        type = lib.types.listOf lib.types.str;
-        default = [ ];
-      };
-      effect = lib.mkOption {
-        type = lib.types.enum commandEffects;
-        default = "launch";
-      };
-      palette = lib.mkOption {
-        type = lib.types.bool;
-        default = true;
-      };
-      directBinding = lib.mkOption {
-        type = lib.types.nullOr directBindingType;
-        default = null;
-      };
-    };
-  };
-  commandRegistry = lib.evalModules {
-    modules = [
-      {
-        options.commands = lib.mkOption {
-          type = lib.types.attrsOf commandType;
-        };
-        config.commands = baseCommands // layerCommands;
-      }
-    ];
-  };
+
   validCommandId = id: builtins.match "^[a-z0-9]+([.-][a-z0-9]+)*$" id != null;
   validatedCommands =
+    let
+      commands = config.nori.desktop.actions;
+    in
     assert lib.assertMsg (lib.all validCommandId (
-      builtins.attrNames commandRegistry.config.commands
+      builtins.attrNames commands
     )) "invalid rice command ID";
     assert lib.assertMsg (lib.all
       (command: command.effect != "destructive" || command.directBinding == null)
-      (builtins.attrValues commandRegistry.config.commands)
+      (builtins.attrValues commands)
     ) "destructive rice commands cannot have direct bindings";
-    commandRegistry.config.commands;
+    commands;
 
   riceCommandBindings = lib.mapAttrsToList (
     id: command:
@@ -1232,7 +1168,12 @@ let
     ! ${pkgs.gnugrep}/bin/grep -Fq 'hypr-cheatsheet"))' "$out"
   '';
 in
-lib.mkIf config.nori.hyprRice.enable {
+{
+  config = lib.mkIf config.nori.hyprRice.enable {
+    nori.desktop = {
+      actions = baseCommands // layerCommands;
+      actionDispatcher = riceCommand;
+    };
   # `hypr-cheatsheet` and `rice-palette` stay on PATH because their
   # command records would otherwise form a store-reference cycle through
   # the generated desktop aggregate.
@@ -1310,5 +1251,6 @@ lib.mkIf config.nori.hyprRice.enable {
       Restart = "on-failure";
       RestartSec = "5s";
     };
+  };
   };
 }

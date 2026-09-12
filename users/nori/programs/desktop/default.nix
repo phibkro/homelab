@@ -4,6 +4,7 @@ _: {
     The public composition boundary is profiles/home/desktop/default.nix.
   */
   imports = [
+    ./action-model.nix
     ./hypr-lock.nix
     ./hypr-rice
     ./hyprsunset.nix
