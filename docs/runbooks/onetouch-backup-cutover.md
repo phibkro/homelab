@@ -35,9 +35,7 @@ current owner. Do not disconnect a drive whose write activity is unknown.
 
 On workstation, inspect `lsblk -o NAME,MODEL,SERIAL,SIZE,FSTYPE,MOUNTPOINTS`
 and `/dev/disk/by-id/`. Compare the actual device and filesystem against
-`inventory/backup.nix`. Its stored OneTouch identity comes from the previous
-configuration and has not been verified against an attached drive in this
-migration. Correct it from direct evidence if necessary.
+`inventory/disks.nix`. Correct the registry from direct evidence if necessary.
 
 The host's `backup-storage.nix` mounts an existing filesystem; it contains no
 partitioning or formatting operation. Do not run disko to reconnect this drive.

@@ -17,11 +17,13 @@ retention decision. This source cleanup does not relocate or delete disk data.
 
 ## Authoritative declarations
 
-`infra/workstation/` owns disk and mount configuration. `nori.fs` entries
-pair paths with value tiers; [generated filesystem documentation](../generated/fs.md)
-comes from those declarations. `inventory/datasets.nix` owns shared dataset
-contracts. Change these sources rather than copying paths or retention values
-into a second catalog.
+`inventory/disks.nix` owns the portable external-disk identities, filesystem
+contracts, roles and declared attachment host for IronWolf Pro and OneTouch.
+It intentionally excludes NVMe boot disks, whose layout belongs to each host's
+own disko module. Workstation's media and backup consumers derive their device
+paths from that registry. `nori.fs` entries pair paths with value tiers; the
+[generated filesystem documentation](../generated/fs.md) comes from those
+declarations. `inventory/datasets.nix` owns shared dataset contracts.
 
 Hot/cold placement describes access patterns. Value tiers describe the cost of
 losing data; they are separate decisions. Media already on IronWolf remains on

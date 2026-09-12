@@ -2,13 +2,19 @@
 # capacity, and recovery checks are approved. Existing archives are preserved.
 # Before activation, verify the Pi private credential matches authorizedKey.
 {
+  disks ? import ./disks.nix,
+}:
+let
+  oneTouch = disks."one-touch";
+in
+{
   enabled = false;
   targetName = "onetouch";
-  device = "/dev/disk/by-id/usb-Seagate_One_Touch_HDD_00000000NABNR6G2-0:0-part1";
-  fsType = "ext4";
-  targetHost = "workstation";
+  device = oneTouch.filesystem.device;
+  fsType = oneTouch.filesystem.type;
+  targetHost = oneTouch.attachedHost;
   hostname = "workstation.saola-matrix.ts.net";
-  mountPoint = "/mnt/backup";
+  mountPoint = oneTouch.mountPoint;
   pi = {
     user = "restic";
     directory = "pi";

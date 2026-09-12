@@ -161,7 +161,9 @@
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      ExecStart = "${pkgs.hdparm}/bin/hdparm -S 240 /dev/disk/by-id/ata-ST4000NE001-2MA101_WS24X543";
+      ExecStart = "${pkgs.hdparm}/bin/hdparm -S 240 ${
+        config.nori.inventory.disks."ironwolf-pro".identity.byId
+      }";
     };
   };
 

@@ -1,4 +1,5 @@
-_: {
+{ config, ... }:
+{
   /*
     ── nori.fs declarations ───────────────────────────────────────────
     Named filesystem locations the IronWolf carries, paired with their
@@ -71,7 +72,7 @@ _: {
     */
     disk.media = {
       type = "disk";
-      device = "/dev/disk/by-id/ata-ST4000NE001-2MA101_WS24X543";
+      device = config.nori.inventory.disks."ironwolf-pro".identity.byId;
       content = {
         type = "gpt";
         partitions = {

@@ -166,6 +166,44 @@ let
     };
   };
 
+  diskType = types.submodule {
+    options = {
+      role = mkOption {
+        type = types.enum [
+          "backup"
+          "cold-primary"
+        ];
+      };
+      attachedHost = mkOption { type = types.str; };
+      mountPoint = mkOption { type = types.str; };
+      identity = mkOption {
+        type = types.submodule {
+          options = {
+            byId = mkOption { type = types.str; };
+            model = mkOption { type = types.str; };
+            serial = mkOption { type = types.str; };
+            capacityBytes = mkOption { type = types.ints.unsigned; };
+            transport = mkOption {
+              type = types.enum [
+                "sata"
+                "usb"
+              ];
+            };
+          };
+        };
+      };
+      filesystem = mkOption {
+        type = types.submodule {
+          options = {
+            device = mkOption { type = types.str; };
+            type = mkOption { type = types.str; };
+            label = mkOption { type = types.str; };
+          };
+        };
+      };
+    };
+  };
+
   deploymentTargetType = types.submodule {
     options = {
       kind = mkOption {
@@ -240,6 +278,11 @@ in
       type = types.attrsOf workloadType;
       readOnly = true;
       description = "Public-safe workload identity and resolved placement.";
+    };
+    disks = mkOption {
+      type = types.attrsOf diskType;
+      readOnly = true;
+      description = "Public-safe external disk registry; host-local NVMe layouts are intentionally excluded.";
     };
     backup = mkOption {
       readOnly = true;

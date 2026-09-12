@@ -4,8 +4,9 @@
   profiles ? import ../profiles/default.nix,
   workloadCatalog ? import ./workloads.nix { inherit lib; },
   datasets ? import ./datasets.nix,
+  disks ? import ./disks.nix,
   site ? import ./site.nix,
-  backup ? import ./backup.nix,
+  backup ? import ./backup.nix { inherit disks; },
   hostRoles ? import ./host-roles.nix,
   audiences ? import ../roles/audiences.nix,
 }:
@@ -28,6 +29,33 @@ let
   ];
   profileNames = lib.attrNames profiles;
   workloadNames = lib.attrNames workloadCatalog;
+  diskNames = lib.attrNames disks;
+
+  invalidDiskDeclarations = lib.filterAttrs (
+    _name: disk:
+    !(lib.elem (disk.role or null) [
+      "backup"
+      "cold-primary"
+    ])
+    || !lib.elem (disk.attachedHost or null) hostNames
+    || (disk.mountPoint or "") == ""
+    || !(disk ? identity)
+    || !(disk ? filesystem)
+    || !lib.hasPrefix "/dev/disk/by-id/" (disk.identity.byId or "")
+    || !lib.hasPrefix "/dev/disk/by-id/" (disk.filesystem.device or "")
+    || (disk.identity.model or "") == ""
+    || (disk.identity.serial or "") == ""
+    || (disk.identity.capacityBytes or 0) <= 0
+    || !lib.elem (disk.identity.transport or null) [
+      "sata"
+      "usb"
+    ]
+    || (disk.filesystem.type or "") == ""
+    || (disk.filesystem.label or "") == ""
+  ) disks;
+  duplicateDiskByIds = lib.filter (
+    byId: lib.count (disk: disk.identity.byId == byId) (lib.attrValues disks) > 1
+  ) (lib.unique (map (disk: disk.identity.byId) (lib.attrValues disks)));
 
   invalidHostRoles = lib.filterAttrs (_name: host: !lib.elem host.identity.role hostRoles) hosts;
   validSourceRoot =
@@ -354,7 +382,7 @@ let
     hosts = publicHosts;
     profiles = publicProfiles;
     workloads = publicWorkloads;
-    inherit datasets backup;
+    inherit datasets disks backup;
     deployment = publicDeployment;
     inherit site status portal;
   };
@@ -375,6 +403,10 @@ assert lib.assertMsg (invalidHostDeclarations == { })
   "inventory: hosts must declare exactly one supported management backend and a safe managementRoot: ${lib.concatStringsSep ", " (lib.attrNames invalidHostDeclarations)}";
 assert lib.assertMsg (invalidHostRoles == { })
   "inventory: host roles must be drawn from [${lib.concatStringsSep ", " hostRoles}]: ${lib.concatStringsSep ", " (lib.attrNames invalidHostRoles)}";
+assert lib.assertMsg (invalidDiskDeclarations == { })
+  "inventory: external disks must have a known host, by-id identity, filesystem contract, and supported role: ${lib.concatStringsSep ", " (lib.attrNames invalidDiskDeclarations)}";
+assert lib.assertMsg (duplicateDiskByIds == [ ])
+  "inventory: external disks must not share a whole-disk by-id identity: ${lib.concatStringsSep ", " duplicateDiskByIds}";
 assert lib.assertMsg (unknownWorkloads == [ ])
   "inventory: profile/host workload reference(s) do not exist: ${lib.concatStringsSep ", " unknownWorkloads}";
 assert lib.assertMsg (
@@ -408,6 +440,7 @@ assert lib.assertMsg (entryPlaneHosts == [ site.entryPlaneHost ])
       hosts
       profiles
       datasets
+      disks
       backup
       site
       workloadCatalog

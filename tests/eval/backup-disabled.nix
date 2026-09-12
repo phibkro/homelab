@@ -1,6 +1,9 @@
 { inputs, lib, ... }:
 let
+  inventory = inputs.self.lib.noriInventory;
   config = inputs.self.nixosConfigurations.workstation.config;
+  ironwolf = inventory.disks."ironwolf-pro";
+  oneTouch = inventory.disks."one-touch";
   scheduledBackup =
     name:
     lib.any (prefix: lib.hasPrefix prefix name) [
@@ -13,6 +16,12 @@ let
     !inputs.self.lib.noriInventory.backup.enabled
     && inputs.self.lib.noriInventory.backup.targetName == "onetouch"
     && inputs.self.lib.noriInventory.backup.mountPoint == "/mnt/backup"
+    && ironwolf.role == "cold-primary"
+    && ironwolf.attachedHost == "workstation"
+    && config.disko.devices.disk.media.device == ironwolf.identity.byId
+    && oneTouch.role == "backup"
+    && config.nori.inventory.backup.device == oneTouch.filesystem.device
+    && config.nori.inventory.backup.fsType == oneTouch.filesystem.type
     && !(config.fileSystems ? "/mnt/backup")
     && config.nori.backupTargets == { }
     && !config.nori.backupDelivery.enable
