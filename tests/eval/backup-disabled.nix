@@ -22,6 +22,15 @@ let
     && oneTouch.role == "backup"
     && config.nori.inventory.backup.device == oneTouch.filesystem.device
     && config.nori.inventory.backup.fsType == oneTouch.filesystem.type
+    && config.services.btrbk.instances.media.settings.snapshot_preserve == "2d 2w 2m"
+    && config.nori.inventory.backup.retention.coldMedia.localSnapshotPreserve == "2d 2w 2m"
+    &&
+      config.nori.inventory.backup.retention.coldMedia.resticPruneOpts == [
+        "--keep-daily 2"
+        "--keep-weekly 2"
+        "--keep-monthly 2"
+        "--keep-yearly 2"
+      ]
     && !(config.fileSystems ? "/mnt/backup")
     && config.nori.backupTargets == { }
     && !config.nori.backupDelivery.enable

@@ -270,6 +270,14 @@ in
         lib.filterAttrs (_: f: f.tier == "irreplaceable") config.nori.fs
       );
       tier = "irreplaceable";
+      /*
+        Cold canonical media changes slowly. Keep two recent daily recovery,
+        then sparse independent history; restic deduplicates unchanged content
+        across snapshots. This intentionally narrows the generic
+        irreplaceable default (14d / 8w / 12m / 5y), which suits frequently
+        changing service state rather than a capacity-constrained HDD archive.
+      */
+      pruneOpts = backup.retention.coldMedia.resticPruneOpts;
       timer = "*-*-* 03:30:00";
       targets = [ backup.targetName ];
     };

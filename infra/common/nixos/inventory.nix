@@ -296,6 +296,18 @@ in
           targetHost = mkOption { type = types.str; };
           hostname = mkOption { type = types.str; };
           mountPoint = mkOption { type = types.str; };
+          retention = mkOption {
+            type = types.submodule {
+              options.coldMedia = mkOption {
+                type = types.submodule {
+                  options = {
+                    localSnapshotPreserve = mkOption { type = types.str; };
+                    resticPruneOpts = mkOption { type = types.listOf types.str; };
+                  };
+                };
+              };
+            };
+          };
           pi = mkOption {
             type = types.submodule {
               options = {

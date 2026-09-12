@@ -15,6 +15,17 @@ in
   targetHost = oneTouch.attachedHost;
   hostname = "workstation.saola-matrix.ts.net";
   mountPoint = oneTouch.mountPoint;
+  retention.coldMedia = {
+    # Same-disk accidental-deletion rollback, not independent protection.
+    localSnapshotPreserve = "2d 2w 2m";
+    # Independent OneTouch history once `enabled` passes the cutover gates.
+    resticPruneOpts = [
+      "--keep-daily 2"
+      "--keep-weekly 2"
+      "--keep-monthly 2"
+      "--keep-yearly 2"
+    ];
+  };
   pi = {
     user = "restic";
     directory = "pi";

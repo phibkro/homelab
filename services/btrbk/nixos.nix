@@ -59,7 +59,11 @@ in
       @nix    (re-derivable from the flake)
       @downloads (re-derivable — filtered out)
 
-    Retention is conservative for first run; tune per disk growth.
+    Root and family retain their existing recovery windows. Cold media has a
+    shorter window: it is mostly append-only archives, and local snapshots
+    are an accidental-deletion tool rather than an independent backup. Keeping
+    years of deleted media on the already-near-capacity IronWolf defeats that
+    distinction.
   */
   services.btrbk = {
     instances = {
@@ -101,7 +105,7 @@ in
         onCalendar = "daily";
         settings = {
           snapshot_preserve_min = "2d";
-          snapshot_preserve = "14d 8w 12m";
+          snapshot_preserve = config.nori.inventory.backup.retention.coldMedia.localSnapshotPreserve;
           snapshot_dir = ".snapshots";
           timestamp_format = "long";
           volume."/mnt/media".subvolume = mediaSubvols;
