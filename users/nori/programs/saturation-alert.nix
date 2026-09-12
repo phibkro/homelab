@@ -85,15 +85,15 @@ in
     memoryPressureFull = {
       burstWarnPct = lib.mkOption {
         type = lib.types.ints.between 1 99;
-        default = 2;
+        default = 5;
         description = "Warn when memory full PSI avg10 reaches this percentage.";
       };
       burstCriticalPct = lib.mkOption {
         type = lib.types.ints.between 1 99;
-        default = 5;
+        default = 10;
         description = ''
-          Checkpoint threshold for memory full PSI avg10. Five percent means
-          every non-idle task was stalled for 500 ms in the last ten seconds:
+          Checkpoint threshold for memory full PSI avg10. Ten percent means
+          every non-idle task was stalled for one second in the last ten seconds:
           a current productivity failure, not merely high resource use.
         '';
       };
