@@ -16,6 +16,8 @@ Rectangle {
         ? root.presentation.control
         : ""
     readonly property var desired: root.client.desiredValue(root.componentId, root.settingKey)
+    readonly property var draft: root.client.draftValue(root.componentId, root.settingKey)
+    readonly property bool hasDraft: root.client.hasDraft(root.componentId, root.settingKey)
     readonly property var resolved: root.client.resolvedValue(root.componentId, root.settingKey)
     readonly property var enumChoices: root.client.enumValues(root.componentId, root.settingKey)
     readonly property string enumProblem: root.client.enumError(root.componentId, root.settingKey)
@@ -27,10 +29,10 @@ Rectangle {
     readonly property bool supported: root.enumSupported || root.scalarSupported
     readonly property string editorText: {
         if (root.control === "text")
-            return typeof root.desired === "string" ? root.desired : "";
-        if (root.desired === undefined || root.desired === null)
+            return typeof root.draft === "string" ? root.draft : "";
+        if (root.draft === undefined || root.draft === null)
             return "";
-        return JSON.stringify(root.desired);
+        return JSON.stringify(root.draft);
     }
 
     Layout.fillWidth: true
@@ -42,7 +44,7 @@ Rectangle {
 
     function enumIndex() {
         for (let index = 0; index < root.enumChoices.length; index += 1) {
-            if (root.enumChoices[index] === root.desired)
+            if (root.enumChoices[index] === root.draft)
                 return index;
         }
         return -1;
@@ -55,8 +57,7 @@ Rectangle {
             return;
         }
 
-        if (JSON.stringify(parsed.value) !== JSON.stringify(root.desired))
-            root.client.change(root.componentId, root.settingKey, parsed.value);
+        root.client.setDraft(root.componentId, root.settingKey, parsed.value);
     }
 
     ColumnLayout {
@@ -152,16 +153,18 @@ Rectangle {
             model: root.enumChoices
             currentIndex: root.enumIndex()
             onActivated: function(index) {
-                const value = root.enumChoices[index];
-                if (value !== root.desired)
-                    root.client.change(root.componentId, root.settingKey, value);
+                root.client.setDraft(
+                    root.componentId,
+                    root.settingKey,
+                    root.enumChoices[index]
+                );
             }
         }
 
         Label {
             Layout.fillWidth: true
-            visible: root.enumSupported && root.desired !== undefined && root.enumIndex() < 0
-            text: "The desired value is outside the generated enum. Choose one of the available values to repair it."
+            visible: root.enumSupported && root.draft !== undefined && root.enumIndex() < 0
+            text: "The draft value is outside the generated enum. Choose one of the available values to repair it."
             color: "#ffb2b9"
             wrapMode: Text.Wrap
         }
@@ -170,8 +173,8 @@ Rectangle {
             visible: root.control === "boolean"
             enabled: !root.client.busy
             text: checked ? "Enabled" : "Disabled"
-            checked: Boolean(root.desired)
-            onClicked: root.client.change(root.componentId, root.settingKey, checked)
+            checked: Boolean(root.draft)
+            onClicked: root.client.setDraft(root.componentId, root.settingKey, checked)
         }
 
         RowLayout {
@@ -190,7 +193,7 @@ Rectangle {
             }
 
             Button {
-                text: "Save"
+                text: "Stage draft"
                 enabled: !root.client.busy
                 onClicked: root.commitEditor(scalarEditor.text)
             }
@@ -214,9 +217,34 @@ Rectangle {
 
             Button {
                 Layout.alignment: Qt.AlignRight
-                text: "Save JSON list"
+                text: "Stage JSON list"
                 enabled: !root.client.busy
                 onClicked: root.commitEditor(listEditor.text)
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            visible: root.supported && root.hasDraft
+            spacing: 8
+
+            Label {
+                Layout.fillWidth: true
+                text: "Draft: " + root.client.displayValue(root.draft)
+                color: "#b9c8e9"
+                elide: Text.ElideRight
+            }
+
+            Button {
+                text: "Preview"
+                enabled: !root.client.busy
+                onClicked: root.client.previewDraft(root.componentId, root.settingKey)
+            }
+
+            Button {
+                text: "Discard draft"
+                enabled: !root.client.busy
+                onClicked: root.client.discardDraft(root.componentId, root.settingKey)
             }
         }
 

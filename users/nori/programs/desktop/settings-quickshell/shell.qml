@@ -79,7 +79,9 @@ ShellRoot {
 
                     Button {
                         text: "Apply"
-                        enabled: !settingsClient.busy && settingsClient.stateLoaded
+                        enabled: !settingsClient.busy
+                            && settingsClient.stateLoaded
+                            && !settingsClient.hasDrafts
                         onClicked: settingsClient.apply()
                     }
                 }
@@ -176,7 +178,7 @@ ShellRoot {
                                     && settingsClient.error.code === "revision_conflict"
                                 text: "Reload current revision"
                                 enabled: !settingsClient.busy
-                                onClicked: settingsClient.refresh()
+                                onClicked: settingsClient.reloadAfterConflict()
                             }
                         }
 
@@ -197,6 +199,122 @@ ShellRoot {
                             color: "#ffd9dd"
                             font.family: "monospace"
                             wrapMode: Text.WrapAnywhere
+                        }
+                    }
+                }
+
+                Rectangle {
+                    id: pendingPreviewCard
+
+                    readonly property var pending: settingsClient.pendingPreview
+                    readonly property var preview: pending ? pending.preview : ({})
+
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 14
+                    Layout.rightMargin: 14
+                    visible: pending !== null
+                    implicitHeight: previewContent.implicitHeight + 24
+                    radius: 10
+                    color: "#263446"
+                    border.width: 1
+                    border.color: "#7190bb"
+
+                    ColumnLayout {
+                        id: previewContent
+
+                        anchors {
+                            fill: parent
+                            margins: 12
+                        }
+                        spacing: 8
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: pending
+                                ? "Preview: " + pending.componentId + " / " + pending.settingKey
+                                : ""
+                            color: "#eef4ff"
+                            font.pixelSize: 17
+                            font.weight: Font.DemiBold
+                            wrapMode: Text.Wrap
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: pending
+                                ? "Draft value: " + settingsClient.displayValue(pending.value)
+                                    + " · profile revision " + pending.revision
+                                : ""
+                            color: "#d4e1fa"
+                            wrapMode: Text.Wrap
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            visible: preview.profileHash !== undefined
+                            text: "Candidate profile hash: " + preview.profileHash
+                            color: "#b8c9e8"
+                            wrapMode: Text.WrapAnywhere
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: "Resolved candidate"
+                            color: "#e6eaff"
+                            font.weight: Font.DemiBold
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: settingsClient.detailsText(preview.resolved)
+                            color: "#d4e1fa"
+                            font.family: "monospace"
+                            wrapMode: Text.WrapAnywhere
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: "Impact"
+                            color: "#e6eaff"
+                            font.weight: Font.DemiBold
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: settingsClient.detailsText(preview.impact)
+                            color: "#d4e1fa"
+                            font.family: "monospace"
+                            wrapMode: Text.WrapAnywhere
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            visible: !settingsClient.previewMatchesCurrent()
+                            text: "This preview is stale. Edit or preview the draft again before saving it."
+                            color: "#ffdb8b"
+                            wrapMode: Text.Wrap
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Item {
+                                Layout.fillWidth: true
+                            }
+
+                            Button {
+                                text: "Discard preview"
+                                enabled: !settingsClient.busy
+                                onClicked: settingsClient.discardPreview()
+                            }
+
+                            Button {
+                                text: "Save desired change"
+                                enabled: !settingsClient.busy
+                                    && settingsClient.previewMatchesCurrent()
+                                onClicked: settingsClient.commitPreview()
+                            }
                         }
                     }
                 }

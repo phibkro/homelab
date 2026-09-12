@@ -9,6 +9,9 @@ QtObject {
     readonly property string cli: "nori-desktop-settings"
 
     property var state: ({})
+    property var drafts: ({})
+    property var pendingPreview: null
+    property var requestContext: null
     property var error: null
     property var lastJob: null
     property string operation: ""
@@ -16,6 +19,7 @@ QtObject {
     property string stderrText: ""
     property bool busy: false
     property bool stateLoaded: false
+    readonly property bool hasDrafts: Object.keys(root.drafts).length > 0
 
     readonly property var profile: root.state && root.state.profile ? root.state.profile : ({})
     readonly property var components: root.state && root.state.components ? root.state.components : ({})
@@ -39,6 +43,8 @@ QtObject {
         switch (root.operation) {
         case "state":
             return "Refreshing the current profile and active configuration…";
+        case "preview":
+            return "Resolving the draft and calculating its impact…";
         case "change":
             return "Saving the desired profile revision…";
         case "apply":
@@ -86,6 +92,132 @@ QtObject {
             message: message,
             details: details
         };
+    }
+
+    function sameValue(left, right) {
+        if (left === right)
+            return true;
+        if (left === undefined || right === undefined)
+            return false;
+
+        try {
+            return JSON.stringify(left) === JSON.stringify(right);
+        } catch (exception) {
+            return false;
+        }
+    }
+
+    function draftKey(componentId, settingKey) {
+        return componentId + "\u001f" + settingKey;
+    }
+
+    function draftEntry(componentId, settingKey) {
+        const key = root.draftKey(componentId, settingKey);
+        return root.drafts && root.owns(root.drafts, key) ? root.drafts[key] : null;
+    }
+
+    function draftValue(componentId, settingKey) {
+        const draft = root.draftEntry(componentId, settingKey);
+        return draft ? draft.value : root.desiredValue(componentId, settingKey);
+    }
+
+    function hasDraft(componentId, settingKey) {
+        return root.draftEntry(componentId, settingKey) !== null;
+    }
+
+    function discardDraft(componentId, settingKey) {
+        const key = root.draftKey(componentId, settingKey);
+        if (!root.owns(root.drafts, key))
+            return;
+
+        const nextDrafts = ({});
+        for (const currentKey of Object.keys(root.drafts)) {
+            if (currentKey !== key)
+                nextDrafts[currentKey] = root.drafts[currentKey];
+        }
+        root.drafts = nextDrafts;
+
+        if (root.pendingPreview
+            && root.pendingPreview.componentId === componentId
+            && root.pendingPreview.settingKey === settingKey)
+            root.pendingPreview = null;
+    }
+
+    function setDraft(componentId, settingKey, value) {
+        if (root.revision === undefined || root.revision === null) {
+            root.reportInputError(
+                "state_unavailable",
+                "Load the current settings state before editing a draft.",
+                undefined
+            );
+            return;
+        }
+
+        if (root.sameValue(value, root.desiredValue(componentId, settingKey))) {
+            root.discardDraft(componentId, settingKey);
+            return;
+        }
+
+        const nextDrafts = ({});
+        for (const key of Object.keys(root.drafts))
+            nextDrafts[key] = root.drafts[key];
+        nextDrafts[root.draftKey(componentId, settingKey)] = {
+            value: value,
+            revision: root.revision
+        };
+        root.drafts = nextDrafts;
+
+        if (root.pendingPreview
+            && root.pendingPreview.componentId === componentId
+            && root.pendingPreview.settingKey === settingKey
+            && !root.sameValue(root.pendingPreview.value, value))
+            root.pendingPreview = null;
+    }
+
+    function rebaseDrafts(revision) {
+        const rebased = ({});
+        for (const key of Object.keys(root.drafts)) {
+            rebased[key] = {
+                value: root.drafts[key].value,
+                revision: revision
+            };
+        }
+        root.drafts = rebased;
+        root.pendingPreview = null;
+    }
+
+    function replaceState(nextState) {
+        const previousRevision = root.revision;
+        const nextProfile = nextState && nextState.profile ? nextState.profile : null;
+        const nextRevision = nextProfile ? nextProfile.revision : undefined;
+
+        root.state = nextState;
+        root.stateLoaded = true;
+
+        if (previousRevision !== undefined && previousRevision !== nextRevision)
+            root.rebaseDrafts(nextRevision);
+    }
+
+    function previewMatchesCurrent() {
+        const preview = root.pendingPreview;
+        if (root.error && root.error.code === "revision_conflict")
+            return false;
+        if (!preview || preview.revision !== root.revision)
+            return false;
+
+        const draft = root.draftEntry(preview.componentId, preview.settingKey);
+        return draft !== null
+            && draft.revision === root.revision
+            && root.sameValue(draft.value, preview.value);
+    }
+
+    function discardPreview() {
+        root.pendingPreview = null;
+    }
+
+    function reloadAfterConflict() {
+        root.pendingPreview = null;
+        return root.refresh();
     }
 
     function objectForComponent(source, componentId) {
@@ -407,7 +539,7 @@ QtObject {
         return root.displayValue(job.observed);
     }
 
-    function request(command, operationName) {
+    function request(command, operationName, context) {
         if (root.busy || commandProcess.running) {
             root.reportInputError(
                 "request_in_progress",
@@ -419,6 +551,7 @@ QtObject {
 
         root.error = null;
         root.operation = operationName;
+        root.requestContext = context || null;
         root.stdoutText = "";
         root.stderrText = "";
         root.busy = true;
@@ -428,11 +561,48 @@ QtObject {
     }
 
     function refresh() {
-        return root.request([root.cli, "state", "--json"], "state");
+        return root.request([root.cli, "state", "--json"], "state", null);
     }
 
-    function change(componentId, settingKey, value) {
-        if (root.revision === undefined || root.revision === null) {
+    function previewDraft(componentId, settingKey) {
+        const draft = root.draftEntry(componentId, settingKey);
+        if (!draft) {
+            root.reportInputError(
+                "draft_unavailable",
+                "Edit a setting before requesting its preview.",
+                { componentId: componentId, settingKey: settingKey }
+            );
+            return false;
+        }
+        if (draft.revision !== root.revision) {
+            root.reportInputError(
+                "stale_draft",
+                "Refresh and preview this draft again before saving it.",
+                { draftRevision: draft.revision, currentRevision: root.revision }
+            );
+            return false;
+        }
+
+        return root.request([
+            root.cli,
+            "preview",
+            componentId,
+            settingKey,
+            JSON.stringify(draft.value),
+            "--expected-revision",
+            String(draft.revision),
+            "--json"
+        ], "preview", {
+            componentId: componentId,
+            settingKey: settingKey,
+            value: draft.value,
+            revision: draft.revision
+        });
+    }
+
+    function change(componentId, settingKey, value, expectedRevision) {
+        const revision = expectedRevision === undefined ? root.revision : expectedRevision;
+        if (revision === undefined || revision === null) {
             root.reportInputError(
                 "state_unavailable",
                 "Load the current settings state before changing a setting.",
@@ -448,12 +618,44 @@ QtObject {
             settingKey,
             JSON.stringify(value),
             "--expected-revision",
-            String(root.revision),
+            String(revision),
             "--json"
-        ], "change");
+        ], "change", {
+            componentId: componentId,
+            settingKey: settingKey,
+            value: value,
+            revision: revision
+        });
+    }
+
+    function commitPreview() {
+        if (!root.previewMatchesCurrent()) {
+            root.reportInputError(
+                "stale_preview",
+                "The draft or profile revision changed after this preview. Preview again before saving.",
+                root.pendingPreview
+            );
+            return false;
+        }
+
+        const preview = root.pendingPreview;
+        return root.change(
+            preview.componentId,
+            preview.settingKey,
+            preview.value,
+            preview.revision
+        );
     }
 
     function apply() {
+        if (root.hasDrafts) {
+            root.reportInputError(
+                "draft_pending",
+                "Save or discard every local draft before applying the profile.",
+                undefined
+            );
+            return false;
+        }
         if (root.revision === undefined || root.revision === null) {
             root.reportInputError(
                 "state_unavailable",
@@ -469,7 +671,7 @@ QtObject {
             "--expected-revision",
             String(root.revision),
             "--json"
-        ], "apply");
+        ], "apply", null);
     }
 
     function responsePayload() {
@@ -504,14 +706,19 @@ QtObject {
 
     function completeProcess(exitCode) {
         const completedOperation = root.operation;
+        const context = root.requestContext;
         const payload = root.responsePayload();
         let success = false;
 
         if (payload && payload.ok === true) {
             if (completedOperation === "state" || completedOperation === "change") {
                 if (root.owns(payload, "state")) {
-                    root.state = payload.state;
-                    root.stateLoaded = true;
+                    root.replaceState(payload.state);
+                    if (completedOperation === "change") {
+                        if (context)
+                            root.discardDraft(context.componentId, context.settingKey);
+                        root.pendingPreview = null;
+                    }
                     success = true;
                 } else {
                     root.reportInputError(
@@ -519,6 +726,41 @@ QtObject {
                         "The settings CLI succeeded without returning state.",
                         payload
                     );
+                }
+            } else if (completedOperation === "preview") {
+                if (!root.owns(payload, "preview")) {
+                    root.reportInputError(
+                        "invalid_cli_response",
+                        "The settings CLI succeeded without returning a preview.",
+                        payload
+                    );
+                } else if (!context) {
+                    root.reportInputError(
+                        "invalid_cli_response",
+                        "The settings CLI preview cannot be matched to a local draft.",
+                        payload
+                    );
+                } else {
+                    const draft = root.draftEntry(context.componentId, context.settingKey);
+                    if (context.revision === root.revision
+                        && draft
+                        && draft.revision === root.revision
+                        && root.sameValue(draft.value, context.value)) {
+                        root.pendingPreview = {
+                            componentId: context.componentId,
+                            settingKey: context.settingKey,
+                            value: context.value,
+                            revision: context.revision,
+                            preview: payload.preview
+                        };
+                        success = true;
+                    } else {
+                        root.reportInputError(
+                            "stale_preview",
+                            "The draft changed while its preview was being calculated.",
+                            context
+                        );
+                    }
                 }
             } else if (completedOperation === "apply") {
                 if (root.owns(payload, "job")) {
@@ -538,6 +780,7 @@ QtObject {
 
         root.busy = false;
         root.operation = "";
+        root.requestContext = null;
 
         if (success && (completedOperation === "change" || completedOperation === "apply"))
             Qt.callLater(function() { root.refresh(); });
