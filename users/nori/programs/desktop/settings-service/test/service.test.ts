@@ -47,7 +47,7 @@ async function fixture() {
     join(dataDirectory, "components.json"),
     JSON.stringify({
       "desktop.waybar": {
-        settings: { position: { title: "Bar position", control: "enum" } },
+        settings: { position: { title: "Bar position", control: "enum", applyClass: "generation" } },
       },
     }),
   );
@@ -125,6 +125,37 @@ test("revision compare-and-swap preserves the first committed profile", async ()
     }),
   ).rejects.toMatchObject({ code: "revision_conflict" });
   expect((await service.state()).profile).toEqual(first.profile);
+});
+
+test("preview evaluates a candidate without persisting the draft", async () => {
+  const { config, root } = await fixture();
+  const shell = Bun.which("sh");
+  if (shell === null) throw new Error("The test requires sh");
+  const evaluator = join(root, "evaluator");
+  await Bun.write(
+    evaluator,
+    `#!${shell}\nprintf '%s\\n' '{"resolved":{"desktop.waybar":{"position":"bottom","enabled":true}}}'\n`,
+  );
+  await chmod(evaluator, 0o755);
+  const service = await DesktopSettingsService.make({ ...config, evaluator });
+
+  const preview = await service.preview({
+    component: "desktop.waybar",
+    setting: "position",
+    value: "bottom",
+    expectedRevision: 0,
+  });
+
+  expect(preview.profile.revision).toBe(1);
+  expect(preview.profile.components).toEqual({ "desktop.waybar": { position: "bottom" } });
+  expect(preview.resolved).toEqual({ "desktop.waybar": { position: "bottom", enabled: true } });
+  expect(preview.impact).toEqual({ applyClass: "generation", requiresGeneration: true });
+  expect((await service.state()).profile).toEqual({
+    formatVersion: 1,
+    revision: 0,
+    components: { "desktop.waybar": { position: "top" } },
+    savedCommands: [],
+  });
 });
 
 test("generated schema rejects a non-writable enum value before profile persistence", async () => {
