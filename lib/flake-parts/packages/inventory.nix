@@ -3,6 +3,18 @@
   perSystem =
     { pkgs, ... }:
     let
+      topologyIntent = inputs.self.lib.noriInventory.topology;
+      toscaProjection = import ../../topology/tosca.nix topologyIntent;
+      topologyIntentJson = pkgs.writeText "topology.intent.json" (
+        builtins.toJSON topologyIntent
+      );
+      toscaBody = (pkgs.formats.yaml { }).generate "topology.intent.tosca.body.yaml" (
+        builtins.removeAttrs toscaProjection [ "tosca_definitions_version" ]
+      );
+      topologyIntentTosca = pkgs.runCommand "topology.intent.tosca.yaml" { } ''
+        printf '%s\n' 'tosca_definitions_version: tosca_2_0' > "$out"
+        ${pkgs.coreutils}/bin/cat ${toscaBody} >> "$out"
+      '';
       publicInventory = pkgs.writeText "homelab-inventory.json" (
         builtins.toJSON inputs.self.lib.noriInventory
       );
@@ -30,6 +42,8 @@
     in
     {
       packages.inventory-json = publicInventory;
+      packages.topology-intent-json = topologyIntentJson;
+      packages.topology-intent-tosca = topologyIntentTosca;
       packages.status-json = statusCatalog;
       packages.portal-json = portalCatalog;
       packages.deployment-plan = deploymentPlan;
