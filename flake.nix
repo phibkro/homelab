@@ -136,6 +136,14 @@
     */
     effect-skills.url = "github:Effect-TS/skills/28822c9e19998876a6b0e0d97877442012ed4391";
     effect-skills.flake = false;
+
+    /*
+      Clan Core — source-only access to its Nix option → JSON Schema
+      converter. Do not evaluate Clan's fleet flake or import its service
+      model; the desktop component generator consumes only clanLib.jsonschema.
+    */
+    clan-core-src.url = "https://git.clan.lol/clan/clan-core/archive/424c8dd7a0ef3d5194e538e87174371d91cb2bbe.tar.gz";
+    clan-core-src.flake = false;
   };
 
   outputs =
