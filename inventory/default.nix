@@ -391,7 +391,7 @@ let
     machineRoots = machineRootHosts;
   };
 
-  public = builtins.deepSeq topology {
+  public = {
     hosts = publicHosts;
     profiles = publicProfiles;
     workloads = publicWorkloads;
@@ -446,7 +446,7 @@ assert lib.assertMsg (invalidArtifactWorkloads == { })
   "inventory: immutable artifact contract or governed legacy exception is invalid for workload(s): ${lib.concatStringsSep ", " (lib.attrNames invalidArtifactWorkloads)}";
 assert lib.assertMsg (entryPlaneHosts == [ site.entryPlaneHost ])
   "inventory: site.entryPlaneHost must be the only host selecting the entry-plane profile (site=${site.entryPlaneHost}; profiles=${lib.concatStringsSep ", " entryPlaneHosts})";
-{
+builtins.deepSeq topology {
   inherit public forHost deployment;
 
   internal = {
