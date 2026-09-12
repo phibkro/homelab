@@ -284,7 +284,7 @@ let
         '.source == $source and .profileRevision == $revision and .profileHash == $hash' \
         "$metadata" >/dev/null
 
-      "$artifact/bin/switch-to-configuration" switch
+      "$artifact/bin/switch-to-configuration" switch >&2
 
       active_metadata=/run/current-system/etc/nori-desktop-settings/generation.json
       [ -f "$active_metadata" ]
