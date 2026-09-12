@@ -117,16 +117,26 @@ let
           | to_entries[]
           | .key as $settingId
           | .value as $setting
-          | select($setting.action != null)
+          | select($setting.action != null and $setting.control == "enum")
           | {
               componentId: $componentId,
               settingId: $settingId,
-              control: $setting.control,
-              values: enumFor($componentId; $settingId),
+              values: enumFor($componentId; $settingId)
             };
 
+        def unsupportedActionSettings:
+          $components[0]
+          | to_entries[]
+          | .key as $componentId
+          | .value.settings
+          | to_entries[]
+          | .key as $settingId
+          | .value as $setting
+          | select($setting.action != null and $setting.control != "enum")
+          | "\($componentId).\($settingId)";
+
         [ actionSettings ] as $settings
-        | [ $settings[] | select(.control != "enum") | "\(.componentId).\(.settingId)" ] as $unsupported
+        | [ unsupportedActionSettings ] as $unsupported
         | if ($unsupported | length) != 0 then
             error("generated setting actions require an enum control: \($unsupported | join(", "))")
           elif ($settings | length) == 0 then
@@ -143,9 +153,15 @@ let
       --slurpfile components ${config.nori.desktop.generated.presentation} \
       --slurpfile catalog "$out/settings-catalog.json" \
       '
+        def settingSlug($componentId; $settingId):
+          ($componentId + "-" + $settingId)
+          | ascii_downcase
+          | gsub("[^a-z0-9]+"; "-")
+          | sub("^-+"; "")
+          | sub("-+$"; "");
+
         def commandName($componentId; $settingId):
-          "settings-"
-          + (($componentId + "-" + $settingId) | ascii_downcase | gsub("[^a-z0-9._~-]"; "-"));
+          "settings-" + settingSlug($componentId; $settingId);
 
         ($manifest[0]) as $base
         | [
@@ -158,7 +174,7 @@ let
                 subtitle: $setting.group,
                 description: $setting.action.description,
                 keywords: $setting.action.keywords,
-                mode: "view",
+                mode: "view"
               }
           ] as $commands
         | ($base | .commands + $commands) as $allCommands
@@ -175,23 +191,29 @@ let
         --arg settingId "$settingId" \
         --argjson values "$values" \
         '
-          "import { SettingForm } from \"./create-command\";\n\n"
+          "import { SettingForm } from \"./settings-command\";\n\n"
           + "export default function GeneratedSettingAction() {\n"
           + "  return <SettingForm componentId=\($componentId | tojson) settingId=\($settingId | tojson) values=\($values | tojson) />;\n"
           + "}\n"
         ' > "$out/src/$command.tsx"
     done < <(
       jq -r '
+        def settingSlug($componentId; $settingId):
+          ($componentId + "-" + $settingId)
+          | ascii_downcase
+          | gsub("[^a-z0-9]+"; "-")
+          | sub("^-+"; "")
+          | sub("-+$"; "");
+
         def commandName($componentId; $settingId):
-          "settings-"
-          + (($componentId + "-" + $settingId) | ascii_downcase | gsub("[^a-z0-9._~-]"; "-"));
+          "settings-" + settingSlug($componentId; $settingId);
 
         .settings[]
         | [
             commandName(.componentId; .settingId),
             .componentId,
             .settingId,
-            (.values | tojson),
+            (.values | tojson)
           ]
         | @tsv
       ' "$out/settings-catalog.json"
