@@ -140,16 +140,25 @@ async function proveSocketIsDead(socket: string): Promise<void> {
   }
 }
 
+export function isSafeRuntimeDirectory(
+  directory: Readonly<{
+    isDirectory(): boolean;
+    isSymbolicLink(): boolean;
+    uid: number;
+    mode: number;
+  }>,
+  currentUid = process.getuid?.(),
+): boolean {
+  if (!directory.isDirectory() || directory.isSymbolicLink() || directory.uid !== currentUid) return false;
+  const mode = directory.mode & 0o777;
+  return mode === 0o700 || mode === 0o710;
+}
+
 async function prepareSocket(socket: string): Promise<void> {
   const runtimeDirectory = dirname(socket);
   await mkdir(runtimeDirectory, { recursive: true, mode: 0o700 });
   const directory = await lstat(runtimeDirectory);
-  if (
-    !directory.isDirectory() ||
-    directory.isSymbolicLink() ||
-    directory.uid !== process.getuid?.() ||
-    (directory.mode & 0o077) !== 0
-  ) {
+  if (!isSafeRuntimeDirectory(directory)) {
     throw new DesktopSettingsError("unavailable", `Refusing unsafe runtime directory: ${runtimeDirectory}`);
   }
   try {

@@ -303,6 +303,24 @@
             hasIngressRestartCoupling =
               evaluated.config.systemd.services.nori-desktop-config-ingress.partOf
               == [ "nori-desktop-config.service" ];
+            settingsService = evaluated.config.systemd.services.nori-desktop-config;
+            tmpfilesRules = evaluated.config.systemd.tmpfiles.rules;
+            hasSafeRuntimeDirectory =
+              settingsService.serviceConfig.RuntimeDirectory == "nori-desktop-settings"
+              && settingsService.serviceConfig.RuntimeDirectoryMode == "0710"
+              && lib.elem "nori-desktop-settings" evaluated.config.users.users.nori.extraGroups;
+            hasPrivateAuthorityLock =
+              lib.elem "f /run/lock/nori-desktop-settings-activation.lock 0640 root nori-desktop-settings-authority -" tmpfilesRules
+              && lib.elem "nori-desktop-settings-authority" evaluated.config.users.users.nori-desktop-settings.extraGroups
+              && !lib.elem "nori-desktop-settings-authority" evaluated.config.users.users.nori.extraGroups;
+            hasExactSocketPaths =
+              lib.elem "NORI_DESKTOP_SETTINGS_SOCKET=/run/nori-desktop-settings/backend.sock" settingsService.serviceConfig.Environment
+              && lib.hasInfix "/run/nori-desktop-settings/public.sock /run/nori-desktop-settings/backend.sock" evaluated.config.systemd.services.nori-desktop-config-ingress.serviceConfig.ExecStart;
+            settingsPackage = home.nori.desktop.settingsService.package;
+            inputSchema = generated.inputSchema;
+            outputSchema = generated.outputSchema;
+            presentation = generated.presentation;
+            resolvedSettings = generated.resolvedSettings;
           in
           assert lib.assertMsg duplicateComponentFails "duplicate desktop component IDs must fail evaluation";
           assert lib.assertMsg duplicateSettingFails "duplicate desktop setting IDs must fail evaluation";
@@ -315,9 +333,18 @@
             "desktop settings polkit rule must authorize only active nori sessions";
           assert lib.assertMsg hasIngressRestartCoupling
             "desktop settings ingress must restart with its authority";
+          assert lib.assertMsg hasSafeRuntimeDirectory
+            "desktop settings runtime directory must be authority-owned with group traverse access only";
+          assert lib.assertMsg hasPrivateAuthorityLock
+            "desktop settings authority lock must exclude the desktop user";
+          assert lib.assertMsg hasExactSocketPaths
+            "desktop settings authority must use the fixed public and backend socket paths";
           pkgs.runCommandLocal "desktop-settings-contract"
             {
-              nativeBuildInputs = [ pkgs.jq ];
+              nativeBuildInputs = [
+                pkgs.coreutils
+                pkgs.jq
+              ];
             }
             ''
               jq -e '
@@ -353,7 +380,40 @@
               grep -Fx '      <allow_any>no</allow_any>' ${polkitPolicy} >/dev/null
               grep -Fx '      <allow_inactive>no</allow_inactive>' ${polkitPolicy} >/dev/null
               grep -Fx '      <allow_active>no</allow_active>' ${polkitPolicy} >/dev/null
-              touch "$out"
+              mkdir -p "$TMPDIR"/{config,state,data,home}
+              chmod 700 "$TMPDIR"/{config,state,data,home}
+              cp ${inputSchema} "$TMPDIR/data/settings-input.schema.json"
+              cp ${outputSchema} "$TMPDIR/data/settings-output.schema.json"
+              cp ${presentation} "$TMPDIR/data/components.json"
+              cp ${resolvedSettings} "$TMPDIR/data/resolved-settings.json"
+              printf '%s\n' '{"source":"/nix/store/approved-source","host":"workstation"}' \
+                > "$TMPDIR/approved-source.json"
+              : > "$TMPDIR/authority.lock"
+              env -u XDG_RUNTIME_DIR \
+                HOME="$TMPDIR/home" \
+                NORI_DESKTOP_SETTINGS_CONFIG_HOME="$TMPDIR/config" \
+                NORI_DESKTOP_SETTINGS_STATE_HOME="$TMPDIR/state" \
+                NORI_DESKTOP_SETTINGS_DATA_DIR="$TMPDIR/data" \
+                NORI_DESKTOP_SETTINGS_APPROVED_SOURCE="$TMPDIR/approved-source.json" \
+                NORI_DESKTOP_SETTINGS_ACTIVE_METADATA="$TMPDIR/generation.json" \
+                NORI_DESKTOP_SETTINGS_BUILDER=/does-not-run \
+                NORI_DESKTOP_SETTINGS_EVALUATOR=/does-not-run \
+                NORI_DESKTOP_SETTINGS_AUTHORITY_LOCK="$TMPDIR/authority.lock" \
+                NORI_DESKTOP_SETTINGS_FLOCK=${pkgs.util-linux}/bin/flock \
+                NORI_DESKTOP_SETTINGS_SOCKET="$TMPDIR/backend.sock" \
+                ${settingsPackage}/bin/nori-desktop-settings-daemon \
+                > "$TMPDIR/daemon.out" 2> "$TMPDIR/daemon.err" &
+              daemon_pid=$!
+              trap 'kill "$daemon_pid" 2>/dev/null || true; wait "$daemon_pid" 2>/dev/null || true' EXIT
+              for _ in $(seq 1 100); do
+                if test -S "$TMPDIR/backend.sock"; then
+                  touch "$out"
+                  exit 0
+                fi
+                sleep 0.05
+              done
+              cat "$TMPDIR/daemon.err" >&2
+              exit 1
             '';
 
         /**

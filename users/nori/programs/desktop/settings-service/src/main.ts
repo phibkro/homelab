@@ -24,7 +24,6 @@ function serviceConfig(): ServiceConfig {
   const configHome = pathEnvironment("XDG_CONFIG_HOME", `${home}/.config`);
   const stateHome = pathEnvironment("XDG_STATE_HOME", `${home}/.local/state`);
   const dataHome = pathEnvironment("XDG_DATA_HOME", `${home}/.local/share`);
-  const runtimeDirectory = requiredEnvironment("XDG_RUNTIME_DIR");
   return {
     configHome: pathEnvironment("NORI_DESKTOP_SETTINGS_CONFIG_HOME", `${configHome}/nori-desktop`),
     stateHome: pathEnvironment("NORI_DESKTOP_SETTINGS_STATE_HOME", `${stateHome}/nori-desktop`),
@@ -43,17 +42,12 @@ function serviceConfig(): ServiceConfig {
       "NORI_DESKTOP_SETTINGS_EVALUATOR",
       "/run/current-system/sw/bin/nori-desktop-settings-preview",
     ),
-    activator: pathEnvironment(
-      "NORI_DESKTOP_SETTINGS_ACTIVATOR",
-      "/run/current-system/sw/bin/nori-desktop-settings-activate",
-    ),
     activeMetadata: pathEnvironment(
       "NORI_DESKTOP_SETTINGS_ACTIVE_METADATA",
       "/etc/nori-desktop-settings/generation.json",
     ),
     systemctl: pathEnvironment("NORI_DESKTOP_SETTINGS_SYSTEMCTL", "systemctl"),
     hyprctl: pathEnvironment("NORI_DESKTOP_SETTINGS_HYPRCTL", "hyprctl"),
-    pkexec: pathEnvironment("NORI_DESKTOP_SETTINGS_PKEXEC", "pkexec"),
     authorityLock: pathEnvironment(
       "NORI_DESKTOP_SETTINGS_AUTHORITY_LOCK",
       "/run/lock/nori-desktop-settings-activation.lock",
@@ -74,7 +68,7 @@ async function runDaemon(): Promise<number> {
     }
     const socket = pathEnvironment(
       "NORI_DESKTOP_SETTINGS_SOCKET",
-      "/run/nori-desktop-settings/settings.sock",
+      "/run/nori-desktop-settings/backend.sock",
     );
     const server = await startIpcServer(service, socket);
     const { promise, resolve } = Promise.withResolvers<void>();

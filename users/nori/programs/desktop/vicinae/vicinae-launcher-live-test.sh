@@ -56,7 +56,7 @@ export NORI_DESKTOP_SETTINGS_STATE_HOME="$XDG_STATE_HOME/nori-desktop"
 export NORI_DESKTOP_SETTINGS_DATA_DIR="$XDG_DATA_HOME/nori-desktop"
 export NORI_DESKTOP_SETTINGS_RICE_COMMAND="$RICE_SAVED_COMMAND_BIN"
 export NORI_DESKTOP_SETTINGS_ACTIVE_METADATA="$tmp/no-active-generation.json"
-export NORI_DESKTOP_SETTINGS_SOCKET="$XDG_RUNTIME_DIR/nori-desktop/settings.sock"
+export NORI_DESKTOP_SETTINGS_SOCKET="$XDG_RUNTIME_DIR/nori-desktop/public.sock"
 "$RICE_NORI_DESKTOP_SETTINGS_BIN" daemon >"$tmp/settings.log" 2>&1 &
 settings_pid=$!
 for _ in $(seq 1 200); do

@@ -224,11 +224,11 @@ new product deployments should consume immutable artifacts instead.
 
 ## Desktop settings service
 
-The `nori-desktop-settings` system service, running as the dedicated
-`nori-desktop-settings` UID, is the only writer for the versioned profile,
-preview receipts, and apply jobs. Its private backend socket is not user
-accessible. A credential-checked Unix ingress accepts requests only from
-`nori`.
+The `nori-desktop-settings` system service runs as the dedicated
+`nori-desktop-settings` UID. It is the only writer for the versioned profile,
+preview receipts, and apply jobs. Its private `/run/nori-desktop-settings/backend.sock`
+socket has mode `0600`. Credential-checked `/run/nori-desktop-settings/public.sock`
+has mode `0660` and accepts requests only from `nori`.
 
 Desktop Settings and Vicinae use the same typed CLI and service snapshot.
 The profile limit is 32 KiB, half of the 64 KiB IPC frame limit.
@@ -240,9 +240,17 @@ activation, reload Waybar, and submit a bounded surface observation.
 The authority builds only from the approved immutable Nix source and stops at
 authorization. The root helper re-reads the durable apply ID and validates the
 source, profile revision, profile hash, canonical profile, and artifact
-identity. The authority independently validates active generation metadata
-before it records the user's Waybar observation as active or failed.
-Waybar state is user-observed evidence from the nori runtime agent: nori owns and can mutate that surface, so a same-UID report cannot provide cryptographic process identity.
+identity. The authority independently validates active generation metadata.
+
+Waybar state is untrusted surface evidence from the `nori` runtime agent.
+The same UID can modify that surface, so the report cannot prove process identity.
+Reconciliation records the report, but only independently validated active generation
+identity can make a job `active` or `failed`.
+The authority-owned `/run/nori-desktop-settings` directory has mode `0710`.
+Its shared group can traverse it, but cannot create or unlink socket entries.
+The authority can bind and replace its own sockets.
+The activation lock has mode `0640`, owner `root`, and a separate authority group.
+Only the authority UID belongs to that group. The desktop user cannot block it with an advisory lock.
 
 Waybar reads the resolved generated profile after activation. The operator
 must activate a workstation generation.

@@ -28,7 +28,7 @@ function runtimeFromEnvironment(): CliRuntime {
     throw new DesktopSettingsError("unavailable", "XDG_RUNTIME_DIR is not configured");
   }
   return {
-    socket: `${runtimeDirectory}/nori-desktop/settings.sock`,
+    socket: `${runtimeDirectory}/nori-desktop/public.sock`,
     halfClose: process.env.NORI_DESKTOP_SETTINGS_HALF_CLOSE !== "0",
   };
 }
@@ -51,6 +51,7 @@ function serviceError(response: Record<string, unknown>): DesktopSettingsError {
   const message = typeof error.message === "string" ? error.message : "Settings service rejected request";
   const known = [
     "activation_rejected",
+    "apply_in_progress",
     "invalid_profile",
     "invalid_request",
     "job_failed",

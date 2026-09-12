@@ -182,6 +182,7 @@ export type ActivationResult = typeof ActivationResult.Type;
 
 export type ErrorCode =
   | "activation_rejected"
+  | "apply_in_progress"
   | "invalid_profile"
   | "invalid_request"
   | "job_failed"

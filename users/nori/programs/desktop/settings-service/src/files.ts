@@ -404,16 +404,9 @@ export class JobStore {
 
   async recoverInterrupted(): Promise<ReadonlyArray<ApplyJob>> {
     const jobs = await this.list();
-    const recovered: ApplyJob[] = [];
+    const recoveredIds = new Set<string>();
     for (const job of jobs) {
-      if (
-        job.status !== "queued" &&
-        job.status !== "building" &&
-        job.status !== "activating" &&
-        job.status !== "reconciling"
-      ) {
-        continue;
-      }
+      if (terminal(job)) continue;
       const interrupted: ApplyJob = {
         ...job,
         status: "interrupted",
@@ -425,8 +418,8 @@ export class JobStore {
         log: [...job.log, "Daemon restart marked unfinished apply as interrupted"].slice(-64),
       };
       await this.save(interrupted);
-      recovered.push(interrupted);
+      recoveredIds.add(interrupted.id);
     }
-    return recovered;
+    return (await this.list()).filter((job) => recoveredIds.has(job.id));
   }
 }

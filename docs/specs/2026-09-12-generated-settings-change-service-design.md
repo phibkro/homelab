@@ -207,6 +207,10 @@ Keep these states distinct:
 | Boot default | Generation selected for the next boot | System observer |
 
 An atomic profile replacement does not make activation atomic. A Nix build does not prove a runtime change. A generation is not a data backup.
+Observed data is untrusted same-UID surface evidence. It cannot prove runtime process identity.
+It cannot decide terminal job success or failure. Reconciliation records it as a warning or log only.
+Only independently read active generation identity decides whether reconciliation becomes `active` or `failed`.
+
 
 ## Local service
 
@@ -226,12 +230,13 @@ The authority has two fixed Unix-domain socket paths beneath
   mode `0660`, group-gated so the `nori` user can connect, and protected by
   `SO_PEERCRED`; ingress rejects every peer credential other than `nori`.
 
-The fixed runtime directory is root-owned and provisioned so the authority can
-create its sockets while group-authorized `nori` clients can traverse to public
-ingress. Refuse unsafe pre-existing paths before binding. The public socket
-cannot be mode `0600`: a `nori` client has a different UID from the dedicated
-authority, so `0600` would prevent the client from reaching it. Group access
-is only admission to ingress; `SO_PEERCRED` remains the caller-identity check.
+The fixed runtime directory is owned by `nori-desktop-settings`, with mode
+`0710`, and provisioned by `RuntimeDirectory=`. The service can replace its
+own sockets. The shared `nori-desktop-settings` group gives `nori` traverse
+access only, so it can reach public ingress but cannot create or unlink sockets.
+The public socket cannot be mode `0600`: a `nori` client has a different UID
+from the dedicated authority, so `0600` would prevent the client from reaching it.
+Group access is only admission to ingress; `SO_PEERCRED` remains the caller-identity check.
 
 Use a bounded framed protocol. Reject oversized frames, unknown fields,
 unknown operations, and extra messages after one request.
@@ -267,18 +272,19 @@ The portable program depends on these abstract services:
 - `SessionRuntime`: runtime-agent availability, reload-request delivery, and user-observation intake.
 - `JobStore`: durable job state and bounded logs.
 - `JobRunner`: serialized apply fibers with interruption and cleanup.
-- `ActivationClient`: one named request to the privileged mechanism.
+- `Activation authority`: the runtime agent invokes the fixed apply-ID privileged operation.
 - `IpcServer`: socket ownership, framing, caller identity, and shutdown.
 
 Concrete Bun, Nix, systemd, Hyprland, and filesystem behavior belongs in Layers at the composition root.
 
 Do not read process environment inside domain services. Decode configuration once at the composition root and inject it.
 
-Only one apply job can run at a time. Reads and previews can run concurrently against immutable revisions.
+Only one apply job can run at a time. Apply admission rejects a request while any job is nonterminal.
+Reads and previews can run concurrently against immutable revisions.
 
 Profile commits and apply transitions share one mutation coordinator. Draft reads and previews can continue while an apply runs.
 
-After a service crash, mark an unfinished job as interrupted and observe real state. Never resume activation from an assumed step.
+After a service crash, mark every unfinished job as interrupted and observe real state. Never resume activation from an assumed step.
 
 ## Preview and apply sequence
 
@@ -293,12 +299,12 @@ A change follows this order:
 7. Service commits revision `R+1` through compare-and-swap.
 8. The build adapter realizes the exact base source plus profile revision.
 9. The privileged mechanism authorizes and activates that exact result.
-10. The `nori` session runtime agent reloads Waybar when required and submits unit and layer-surface observations as user-observed surface evidence.
+10. The `nori` session runtime agent reloads Waybar when required and submits unit and layer-surface observations as untrusted user-observed surface evidence.
 11. The service observes active generation, boot default, and resolved profile baseline.
 
 If validation or evaluation fails, no profile or runtime state changes.
 
-If reload or observation fails after commit, desired state remains at `R+1`. The job reports `apply-failed` with actual observed state and a retry action.
+If reload or observation fails after commit, desired state remains at `R+1`. Record the observation without changing a terminal job result.
 
 If build fails, the active generation remains unchanged. Preserve desired state and diagnostics.
 
@@ -330,9 +336,9 @@ existing session already provides a polkit authentication agent. The mechanism
 accepts an apply ID and expected profile revision. It does not accept an
 arbitrary root command.
 
-All activation attempts serialize through the fixed, root-owned lock
-`/run/lock/nori-desktop-settings-activation.lock`. The lock is not an
-authority-state file and is never user-writable.
+All activation attempts serialize through `/run/lock/nori-desktop-settings-activation.lock`.
+It has mode `0640`, owner `root`, and group `nori-desktop-settings-authority`.
+Only the dedicated authority UID belongs to that group. The desktop user cannot hold its advisory lock.
 
 The mechanism must:
 

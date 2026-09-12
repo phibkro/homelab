@@ -5,7 +5,7 @@ import { once } from "node:events";
 import { createConnection } from "node:net";
 import { join } from "node:path";
 import { callService } from "../src/cli.ts";
-import { startIpcServer } from "../src/daemon.ts";
+import { isSafeRuntimeDirectory, startIpcServer } from "../src/daemon.ts";
 import { acquireDaemonLock } from "../src/daemon-lock.ts";
 import { acquireAuthorityLock } from "../src/authority-lock.ts";
 import { DesktopSettingsError } from "../src/contracts.ts";
@@ -98,11 +98,9 @@ printf '{"metadata":{"source":"/nix/store/approved-source","profileRevision":%s,
     shell: "/bin/sh",
     builder,
     evaluator,
-    activator: "/does-not-run",
     activeMetadata: join(root, "generation.json"),
     systemctl: "/does-not-run",
     hyprctl: "/does-not-run",
-    pkexec: "/does-not-run",
     authorityLock: join(root, "authority.lock"),
     flock: "flock",
   };
@@ -139,12 +137,25 @@ test("malformed generated output fails with a typed profile error", async () => 
   });
 });
 
+test("daemon accepts only current-UID private or production runtime directories", () => {
+  const directory = (uid: number, mode: number) => ({
+    uid,
+    mode,
+    isDirectory: () => true,
+    isSymbolicLink: () => false,
+  });
+  expect(isSafeRuntimeDirectory(directory(1000, 0o700), 1000)).toBeTrue();
+  expect(isSafeRuntimeDirectory(directory(1000, 0o710), 1000)).toBeTrue();
+  expect(isSafeRuntimeDirectory(directory(1000, 0o730), 1000)).toBeFalse();
+  expect(isSafeRuntimeDirectory(directory(0, 0o710), 1000)).toBeFalse();
+});
+
 test("a launcher-sized saved-command profile remains readable through the framed state IPC", async () => {
   const { config, root } = await fixture();
   const service = await DesktopSettingsService.make(config);
   const baseStateBytes = Buffer.byteLength(JSON.stringify(await service.state()), "utf8");
   expect(baseStateBytes + maxProfileBytes).toBeLessThanOrEqual(maxFrameBytes);
-  const socket = join(root, "runtime", "settings.sock");
+  const socket = join(root, "runtime", "public.sock");
   const server = await startIpcServer(service, socket);
   try {
     for (let revision = 0; revision < 7; revision += 1) {
@@ -301,31 +312,42 @@ test("an interrupted atomic replacement leaves the last complete profile readabl
   expect((await store.read()).profile.revision).toBe(0);
 });
 
-test("service restart marks an unfinished apply as interrupted", async () => {
+test("service restart interrupts every unfinished job and bounds the recovered ledger", async () => {
   const { config } = await fixture();
   const jobs = new JobStore(config.stateHome);
   await jobs.initialize();
-  await jobs.save({
-    id: "unfinished",
-    revision: 1,
-    profileHash: "candidate",
-    status: "activating",
-    createdAt: "2026-09-12T00:00:00.000Z",
-    updatedAt: "2026-09-12T00:00:01.000Z",
-    log: ["Activation started"],
-  });
+  for (const [id, status] of [
+    ["queued", "queued"],
+    ["building", "building"],
+    ["activating", "activating"],
+    ["reconciling", "reconciling"],
+    ["awaiting", "awaiting_authorization"],
+  ] as const) {
+    await jobs.save({
+      id,
+      revision: 1,
+      profileHash: "candidate",
+      status,
+      createdAt: "2026-09-12T00:00:00.000Z",
+      updatedAt: "2026-09-12T00:00:01.000Z",
+      log: ["Apply started"],
+    });
+  }
 
   const restarted = await DesktopSettingsService.make(config);
-  const [recovered] = (await restarted.state()).jobs;
-  expect(recovered?.status).toBe("interrupted");
-  expect(recovered?.error).toMatchObject({ code: "interrupted" });
-  expect(recovered?.log).toContain("Daemon restart marked unfinished apply as interrupted");
+  const recovered = (await restarted.state()).jobs;
+  expect(recovered).toHaveLength(4);
+  expect(recovered).toSatisfy((jobs) =>
+    jobs.every((job) => job.status === "interrupted" && job.error?.code === "interrupted"),
+  );
+  expect(recovered.some((job) => job.status === "awaiting_authorization")).toBeFalse();
 });
 
 test("authorization cancellation durably fails exactly one awaiting apply", async () => {
   const { config } = await fixture();
   const jobs = new JobStore(config.stateHome);
   await jobs.initialize();
+  const service = await DesktopSettingsService.make(config);
   await jobs.save({
     id: "awaiting-auth",
     revision: 1,
@@ -335,7 +357,6 @@ test("authorization cancellation durably fails exactly one awaiting apply", asyn
     updatedAt: "2026-09-12T00:00:01.000Z",
     log: ["Awaiting authorization"],
   });
-  const service = await DesktopSettingsService.make(config);
   const failed = await service.authorizationFailed({ applyId: "awaiting-auth" });
   expect(failed).toMatchObject({
     status: "failed",
@@ -359,7 +380,6 @@ test("authorization cancellation cannot overwrite a root-held activation claim",
     updatedAt: "2026-09-12T00:00:01.000Z",
     log: ["Awaiting authorization"],
   };
-  await jobs.save(awaiting);
   const marker = join(root, "authority-lock-blocked");
   const flock = join(root, "flock-wrapper");
   await Bun.write(
@@ -368,6 +388,7 @@ test("authorization cancellation cannot overwrite a root-held activation claim",
   );
   await chmod(flock, 0o755);
   const service = await DesktopSettingsService.make({ ...config, flock });
+  await jobs.save(awaiting);
   const release = await acquireAuthorityLock(config);
   const watcher = watch(root);
   const blocked = (async () => {
@@ -435,7 +456,7 @@ test("reconciliation activates only when the authority reads the matching genera
   expect(failed).toMatchObject({ status: "failed", error: { code: "activation_rejected" } });
 });
 
-test("reconciliation records a failed user runtime observation after a matching activation", async () => {
+test("reconciliation records an untrusted user runtime warning after a matching activation", async () => {
   const { config } = await fixture();
   const jobs = new JobStore(config.stateHome);
   await jobs.initialize();
@@ -451,7 +472,6 @@ test("reconciliation records a failed user runtime observation after a matching 
     log: ["Generation activated"],
   };
   await jobs.save(job);
-  await jobs.save(job);
   const service = await DesktopSettingsService.make(config);
   await jobs.save(job);
   service.desktop.activeGeneration = async () => ({
@@ -460,18 +480,23 @@ test("reconciliation records a failed user runtime observation after a matching 
     profileRevision: job.revision,
     profileHash: job.profileHash,
   });
-  const failed = await service.reconcile({
+  const active = await service.reconcile({
     applyId: job.id,
     observed: { waybar: { unit: "failed", edge: "unavailable", reason: "unit exited" } },
   });
-  expect(failed).toMatchObject({ status: "failed", error: { code: "runtime_unavailable" } });
+  expect(active).toMatchObject({
+    status: "active",
+    observed: { waybar: { unit: "failed", edge: "unavailable", reason: "unit exited" } },
+  });
+  expect(active.log).toContain("Recorded untrusted user runtime warning after matching activation");
+  expect(active.error).toBeUndefined();
 });
 
 test("saved command IPC round trip keeps a parameter literal across the generated script", async () => {
   const { config, root } = await fixture();
   const runner = join(root, "rice-saved-command");
   const service = await DesktopSettingsService.make({ ...config, riceCommand: runner });
-  const socket = join(root, "runtime", "settings.sock");
+  const socket = join(root, "runtime", "public.sock");
   const server = await startIpcServer(service, socket);
   try {
     const shell = Bun.which("sh");
@@ -588,7 +613,7 @@ test("saved command IPC round trip keeps a parameter literal across the generate
 test("daemon rejects a second framed request before dispatching either request", async () => {
   const { config, root } = await fixture();
   const service = await DesktopSettingsService.make(config);
-  const socketPath = join(root, "runtime", "settings.sock");
+  const socketPath = join(root, "runtime", "public.sock");
   const server = await startIpcServer(service, socketPath);
   const client = createConnection({ path: socketPath, allowHalfOpen: true });
   try {
@@ -633,6 +658,11 @@ test("apply returns a durable queued job before the managed build finishes", asy
   expect(scheduled.status).toBe("queued");
   const completion = service.running.get(scheduled.id);
   if (completion === undefined) throw new Error("The apply job was not started");
+  await expect(service.apply({ expectedRevision: 1, previewId: preview.id })).rejects.toMatchObject({
+    code: "apply_in_progress",
+    details: { id: scheduled.id },
+  });
+  expect((await service.state()).jobs).toHaveLength(1);
 
   const release = Bun.spawn([shell, "-c", `printf '%s\\n' go > ${quoteShell(gate)}`]);
   expect(await release.exited).toBe(0);

@@ -2,7 +2,6 @@
 import { readFile, realpath } from "node:fs/promises";
 import { Effect, Schema } from "effect";
 import {
-  ActivationResult,
   BuildResult,
   DesktopSettingsError,
   EvaluationResult,
@@ -18,14 +17,12 @@ type CommandResult = {
   readonly stderr: string;
 };
 
-type RuntimePaths = {
+export type RuntimePaths = {
   readonly builder: string;
   readonly evaluator: string;
-  readonly activator: string;
   readonly activeMetadata: string;
   readonly systemctl: string;
   readonly hyprctl: string;
-  readonly pkexec: string;
 };
 
 const outputLimit = 1024 * 1024;
@@ -189,54 +186,6 @@ export class NixBuilder {
   }
 }
 
-export class ActivationClient {
-  readonly paths: RuntimePaths;
-
-  constructor(paths: RuntimePaths) {
-    this.paths = paths;
-  }
-
-  async activate(
-    profilePath: string,
-    artifact: string,
-    source: string,
-    revision: number,
-    hash: string,
-  ): Promise<ActiveGeneration> {
-    const result = await command([
-      this.paths.pkexec,
-      this.paths.activator,
-      "--operation",
-      "org.nori.desktop-settings.activate",
-      "--profile",
-      profilePath,
-      "--artifact",
-      artifact,
-      "--revision",
-      String(revision),
-      "--profile-hash",
-      hash,
-    ]);
-    if (result.exitCode !== 0) {
-      throw new DesktopSettingsError("activation_rejected", "Privileged activation was rejected", {
-        exitCode: result.exitCode,
-        stderr: summarizeOutput(result.stderr),
-      });
-    }
-    const activated = await parseOutput(ActivationResult, result.stdout, "activation result");
-    verifyMetadata(
-      {
-        source: activated.activeGeneration.source,
-        profileRevision: activated.activeGeneration.profileRevision,
-        profileHash: activated.activeGeneration.profileHash,
-      },
-      source,
-      revision,
-      hash,
-    );
-    return activated.activeGeneration;
-  }
-}
 
 function collectLayerObjects(value: unknown, output: Array<Record<string, unknown>>): void {
   if (Array.isArray(value)) {
@@ -417,4 +366,3 @@ export class DesktopRuntime {
 }
 
 export { verifyMetadata as verifyGenerationMetadata };
-export type { RuntimePaths };

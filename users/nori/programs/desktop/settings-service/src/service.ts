@@ -413,14 +413,22 @@ export class DesktopSettingsService {
       }
       const profile = await this.profiles.snapshot(current);
       const jobs = await this.jobs.list();
+      const running = jobs.find(
+        (job) => job.status !== "active" && job.status !== "failed" && job.status !== "interrupted",
+      );
+      if (running !== undefined) {
+        throw new DesktopSettingsError("apply_in_progress", "Another apply job is already in progress", {
+          id: running.id,
+          status: running.status,
+        });
+      }
       const reusable = jobs.find(
         (job) =>
           job.revision === profile.profile.revision &&
           job.profileHash === profile.hash &&
           job.source === receipt.metadata.source &&
           job.previewArtifact === receipt.artifact &&
-          job.status !== "failed" &&
-          job.status !== "interrupted",
+          job.status === "active",
       );
       if (reusable !== undefined) return { job: reusable, profile };
       const now = new Date().toISOString();
@@ -523,24 +531,17 @@ export class DesktopSettingsService {
         await this.jobs.save(failed);
         return failed;
       }
-      const surfaceReady =
-        request.observed.waybar.unit === "active" &&
-        request.observed.waybar.edge !== "unavailable";
+      const observationWarning =
+        request.observed.waybar.unit === "active" && request.observed.waybar.edge !== "unavailable"
+          ? "Recorded untrusted user runtime observation after matching activation"
+          : "Recorded untrusted user runtime warning after matching activation";
       const reconciled: ApplyJob = {
         ...job,
-        ...appendLog(job, surfaceReady ? "User runtime agent reconciled Waybar" : "User runtime agent reported Waybar unavailable"),
-        status: surfaceReady ? "active" : "failed",
+        ...appendLog(job, observationWarning),
+        status: "active",
         updatedAt: new Date().toISOString(),
         activeGeneration,
         observed: request.observed,
-        ...(surfaceReady
-          ? {}
-          : {
-              error: {
-                code: "runtime_unavailable",
-                message: "Waybar did not become observable after the matching activation",
-              },
-            }),
       };
       await this.jobs.save(reconciled);
       return reconciled;

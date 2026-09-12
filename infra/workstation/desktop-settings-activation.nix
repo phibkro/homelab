@@ -383,12 +383,16 @@ in
   environment.etc."nori-desktop-settings/activate".source =
     "${settingsActivator}/bin/nori-desktop-settings-activate";
   users.groups.nori-desktop-settings = { };
+  users.groups.nori-desktop-settings-authority = { };
   users.users.nori-desktop-settings = {
     isSystemUser = true;
     group = "nori-desktop-settings";
+    extraGroups = [ "nori-desktop-settings-authority" ];
   };
   users.users.nori.extraGroups = lib.mkAfter [ "nori-desktop-settings" ];
-  systemd.tmpfiles.rules = [ "f /run/lock/nori-desktop-settings-activation.lock 0644 root root -" ];
+  systemd.tmpfiles.rules = [
+    "f /run/lock/nori-desktop-settings-activation.lock 0640 root nori-desktop-settings-authority -"
+  ];
 
   systemd.services.nori-desktop-config = {
     description = "Nori desktop settings authority";
@@ -401,7 +405,7 @@ in
       StateDirectoryMode = "0700";
       RuntimeDirectory = "nori-desktop-settings";
       RuntimeDirectoryMode = "0710";
-      ExecStart = "${settingsServicePackage}/bin/nori-desktop-settings daemon";
+      ExecStart = "${settingsServicePackage}/bin/nori-desktop-settings-daemon";
       Restart = "on-failure";
       RestartSec = 2;
       Environment = [
@@ -414,7 +418,7 @@ in
         "NORI_DESKTOP_SETTINGS_BUILDER=/run/current-system/sw/bin/nori-desktop-settings-build"
         "NORI_DESKTOP_SETTINGS_RICE_COMMAND=${settingsServicePackage}/bin/rice-saved-command"
         "NORI_DESKTOP_SETTINGS_SHELL=${lib.getExe pkgs.bash}"
-        "NORI_DESKTOP_SETTINGS_SOCKET=/run/nori-desktop-settings/settings-backend.sock"
+        "NORI_DESKTOP_SETTINGS_SOCKET=/run/nori-desktop-settings/backend.sock"
         "NORI_DESKTOP_SETTINGS_AUTHORITY_LOCK=/run/lock/nori-desktop-settings-activation.lock"
         "NORI_DESKTOP_SETTINGS_FLOCK=${pkgs.util-linux}/bin/flock"
       ];
@@ -432,8 +436,8 @@ in
       Group = "nori-desktop-settings";
       ExecStart =
         "${settingsIngress}/bin/nori-desktop-settings-ingress "
-        + "/run/nori-desktop-settings/settings.sock "
-        + "/run/nori-desktop-settings/settings-backend.sock "
+        + "/run/nori-desktop-settings/public.sock "
+        + "/run/nori-desktop-settings/backend.sock "
         + (toString config.users.users.nori.uid);
       Restart = "on-failure";
       RestartSec = 2;

@@ -57,8 +57,8 @@ let
     runtimeInputs = [ pkgs.coreutils ];
     text = ''
       exec ${nativeIngress}/bin/nori-desktop-settings-ingress \
-        "$XDG_RUNTIME_DIR/nori-desktop/settings.sock" \
-        "$XDG_RUNTIME_DIR/nori-desktop/settings-backend.sock" \
+        "$XDG_RUNTIME_DIR/nori-desktop/public.sock" \
+        "$XDG_RUNTIME_DIR/nori-desktop/backend.sock" \
         "$(id -u)"
     '';
   };
@@ -84,17 +84,11 @@ let
     if [ -z "''${NORI_DESKTOP_SETTINGS_EVALUATOR-}" ]; then
       export NORI_DESKTOP_SETTINGS_EVALUATOR=/run/current-system/sw/bin/nori-desktop-settings-preview
     fi
-    if [ -z "''${NORI_DESKTOP_SETTINGS_ACTIVATOR-}" ]; then
-      export NORI_DESKTOP_SETTINGS_ACTIVATOR=/run/current-system/sw/bin/nori-desktop-settings-activate
-    fi
     if [ -z "''${NORI_DESKTOP_SETTINGS_SYSTEMCTL-}" ]; then
       export NORI_DESKTOP_SETTINGS_SYSTEMCTL=${lib.escapeShellArg "${pkgs.systemd}/bin/systemctl"}
     fi
     if [ -z "''${NORI_DESKTOP_SETTINGS_HYPRCTL-}" ]; then
       export NORI_DESKTOP_SETTINGS_HYPRCTL=${lib.escapeShellArg "${pkgs.hyprland}/bin/hyprctl"}
-    fi
-    if [ -z "''${NORI_DESKTOP_SETTINGS_PKEXEC-}" ]; then
-      export NORI_DESKTOP_SETTINGS_PKEXEC=/run/wrappers/bin/pkexec
     fi
     if [ -z "''${NORI_DESKTOP_SETTINGS_SHELL-}" ]; then
       export NORI_DESKTOP_SETTINGS_SHELL=${lib.escapeShellArg (lib.getExe pkgs.bash)}
@@ -107,9 +101,18 @@ let
       exit 70
     fi
     if [ -z "''${NORI_DESKTOP_SETTINGS_SOCKET-}" ]; then
-      export NORI_DESKTOP_SETTINGS_SOCKET=/run/nori-desktop-settings/settings.sock
+      export NORI_DESKTOP_SETTINGS_SOCKET=/run/nori-desktop-settings/public.sock
     fi
   '';
+  settingsDaemon = pkgs.writeShellApplication {
+    name = "nori-desktop-settings-daemon";
+    text = ''
+      if [ -z "''${HOME-}" ]; then
+        export HOME=/var/empty
+      fi
+      exec ${serviceImplementation}/libexec/nori-desktop-settings daemon
+    '';
+  };
   settingsCli = pkgs.writeShellApplication {
     name = "nori-desktop-settings";
     runtimeInputs = [ pkgs.coreutils ];
@@ -169,6 +172,7 @@ let
     name = "nori-desktop-settings";
     paths = [
       settingsCli
+      settingsDaemon
       savedCommandCli
       settingsIngress
     ];
