@@ -7,6 +7,33 @@
   a reusable profile; they are not an escape hatch for implicit tag activation.
 */
 {
+  adelie = {
+    kind = "nixos";
+    managementRoot = "infra/adelie";
+    additionalSourceRoots = [ ];
+    systemModule = ../infra/adelie;
+    homeModule = ../users/nori/adelie.nix;
+    profiles = [
+      "base"
+      "log-forwarder"
+      "observability-agent"
+    ];
+    workloads = [ ];
+    identity = {
+      tailnetIp = "100.107.90.3";
+      lanIp = null;
+      role = "workhorse";
+      roleOneLiner = "staged storage and media host";
+      codename = "adelie";
+      hardware = "Node 304 · Ryzen 5 5600X · 16 GB DDR4 · RTX 2060 Super · Samsung 990 Pro 1 TB NVMe";
+      primaryJob = ''
+        Future storage and media workhorse. Phase one is a minimal, bootable
+        NixOS host on its Samsung NVMe; the IronWolf Pro and OneTouch remain
+        undeclared until their physical migration and backup roles are verified.
+      '';
+    };
+  };
+
   workstation = {
     kind = "nixos";
     managementRoot = "infra/workstation";

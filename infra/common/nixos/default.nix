@@ -31,6 +31,7 @@ in
     ./base.nix
     ../../../users/nori/identity.nix
     ./ssh.nix
+    ./wifi.nix
     ../../../services/tailscale/nixos.nix
     ./sops.nix
 

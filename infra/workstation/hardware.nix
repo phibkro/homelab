@@ -69,6 +69,11 @@
   ];
   boot.kernelModules = [ "kvm-amd" ];
 
+  nori.wifi = {
+    enable = true;
+    interface = "wlo1";
+  };
+
   # Device firmware and CPU microcode updates.
   hardware.enableRedistributableFirmware = true;
   hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
