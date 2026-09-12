@@ -19,7 +19,7 @@ in
 
   config = lib.mkIf cfg.enable {
     /*
-      SOPS decrypts the raw passphrase only to /run/secrets-rendered. The
+      SOPS decrypts the raw passphrase only to /run/secrets/rendered. The
       wpa_supplicant configuration carries an external reference, so the
       passphrase cannot enter a world-readable Nix store path.
     */
