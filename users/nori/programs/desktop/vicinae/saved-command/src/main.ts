@@ -1,13 +1,5 @@
 import { createHash } from "node:crypto";
-import {
-  chmod,
-  mkdir,
-  readdir,
-  readlink,
-  rename,
-  rm,
-  symlink,
-} from "node:fs/promises";
+import { chmod, mkdir, readdir, readlink, rename, rm, symlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { Effect, Schema } from "effect";
 import {
@@ -55,8 +47,7 @@ function describeCause(cause: unknown): string {
 function tryPromise<A>(label: string, run: () => Promise<A>) {
   return Effect.tryPromise({
     try: run,
-    catch: (cause) =>
-      new CommandError({ message: `${label}: ${describeCause(cause)}` }),
+    catch: (cause) => new CommandError({ message: `${label}: ${describeCause(cause)}` }),
   });
 }
 
@@ -68,14 +59,10 @@ function runtimeFromEnvironment(): Effect.Effect<Runtime, CommandError> {
     return Effect.fail(new CommandError({ message: "HOME is not configured" }));
   }
   if (runner === undefined || runner.length === 0) {
-    return Effect.fail(
-      new CommandError({ message: "RICE_SAVED_COMMAND_BIN is not configured" }),
-    );
+    return Effect.fail(new CommandError({ message: "RICE_SAVED_COMMAND_BIN is not configured" }));
   }
   if (shell === undefined || shell.length === 0) {
-    return Effect.fail(
-      new CommandError({ message: "RICE_SAVED_COMMAND_SHELL is not configured" }),
-    );
+    return Effect.fail(new CommandError({ message: "RICE_SAVED_COMMAND_SHELL is not configured" }));
   }
 
   const configHome = process.env.XDG_CONFIG_HOME ?? join(home, ".config");
@@ -84,12 +71,7 @@ function runtimeFromEnvironment(): Effect.Effect<Runtime, CommandError> {
     paths: {
       profile: join(configHome, "nori-desktop", "saved-commands.json"),
       scriptLink: join(dataHome, "vicinae", "scripts", "nori-saved"),
-      revisions: join(
-        dataHome,
-        "vicinae",
-        "scripts",
-        ".nori-saved-revisions",
-      ),
+      revisions: join(dataHome, "vicinae", "scripts", ".nori-saved-revisions"),
     },
     runner,
     shell,
@@ -104,7 +86,10 @@ function loadProfile(path: string) {
   }).pipe(
     Effect.flatMap((text) => {
       if (text === undefined) return Effect.succeed(emptyProfile);
-      return Schema.decodeUnknownEffect(ProfileJson, strictParseOptions)(text).pipe(
+      return Schema.decodeUnknownEffect(
+        ProfileJson,
+        strictParseOptions,
+      )(text).pipe(
         Effect.mapError(
           (error) =>
             new CommandError({
@@ -120,8 +105,7 @@ function loadProfile(path: string) {
 function encodeProfile(profile: SavedCommandProfileType) {
   return Schema.encodeEffect(ProfileJson)(profile).pipe(
     Effect.mapError(
-      (error) =>
-        new CommandError({ message: `Cannot encode saved-command profile: ${error}` }),
+      (error) => new CommandError({ message: `Cannot encode saved-command profile: ${error}` }),
     ),
   );
 }
@@ -140,10 +124,7 @@ function writeAtomic(path: string, content: string, mode: number) {
   });
 }
 
-function projectionName(
-  profile: SavedCommandProfileType,
-  runtime: Runtime,
-): string {
+function projectionName(profile: SavedCommandProfileType, runtime: Runtime): string {
   const runtimeHash = createHash("sha256")
     .update(runtime.runner)
     .update("\0")
@@ -153,10 +134,7 @@ function projectionName(
   return `${profile.revision}-${runtimeHash}`;
 }
 
-function renderProjection(
-  profile: SavedCommandProfileType,
-  runtime: Runtime,
-) {
+function renderProjection(profile: SavedCommandProfileType, runtime: Runtime) {
   return tryPromise("Cannot render saved-command scripts", async () => {
     await mkdir(runtime.paths.revisions, { recursive: true, mode: 0o700 });
     const name = projectionName(profile, runtime);
@@ -172,10 +150,7 @@ function renderProjection(
       for (const command of profile.commands) {
         const filename = `${command.id.replaceAll(".", "-")}.sh`;
         const path = join(temporary, filename);
-        await Bun.write(
-          path,
-          renderScript(command, runtime.runner, runtime.shell),
-        );
+        await Bun.write(path, renderScript(command, runtime.runner, runtime.shell));
         await chmod(path, 0o755);
       }
       await rename(temporary, target);
@@ -199,10 +174,7 @@ function pointAtProjection(target: string, link: string) {
   });
 }
 
-function synchronizeProjection(
-  profile: SavedCommandProfileType,
-  runtime: Runtime,
-) {
+function synchronizeProjection(profile: SavedCommandProfileType, runtime: Runtime) {
   return Effect.gen(function* () {
     const target = yield* renderProjection(profile, runtime);
     const current = yield* tryPromise(
@@ -211,11 +183,7 @@ function synchronizeProjection(
         try {
           return await readlink(runtime.paths.scriptLink);
         } catch (cause) {
-          if (
-            cause instanceof Error &&
-            "code" in cause &&
-            cause.code === "ENOENT"
-          ) {
+          if (cause instanceof Error && "code" in cause && cause.code === "ENOENT") {
             return undefined;
           }
           throw cause;
@@ -232,18 +200,16 @@ function synchronizeProjection(
 function refreshVicinae(binary: string | undefined) {
   if (binary === undefined) return Effect.succeed(false);
   return Effect.tryPromise(async () => {
-    const process = Bun.spawn(
-      [binary, "deeplink", "vicinae://launch/core/reload-scripts"],
-      { stdin: "ignore", stdout: "ignore", stderr: "ignore" },
-    );
+    const process = Bun.spawn([binary, "deeplink", "vicinae://launch/core/reload-scripts"], {
+      stdin: "ignore",
+      stdout: "ignore",
+      stderr: "ignore",
+    });
     return (await process.exited) === 0;
   }).pipe(Effect.catch(() => Effect.succeed(false)));
 }
 
-function cleanOldProjections(
-  keep: ReadonlyArray<string>,
-  runtime: Runtime,
-) {
+function cleanOldProjections(keep: ReadonlyArray<string>, runtime: Runtime) {
   return tryPromise("Cannot clean old saved-command scripts", async () => {
     const keepNames = new Set(keep.map((path) => path.split("/").at(-1)));
     for (const name of await readdir(runtime.paths.revisions)) {
@@ -259,15 +225,11 @@ function cleanOldProjections(
 
 function createCommand(runtime: Runtime) {
   return Effect.gen(function* () {
-    const input = yield* tryPromise("Cannot read create request", () =>
-      Bun.stdin.text(),
-    );
-    const request = yield* Schema.decodeUnknownEffect(
-      Schema.fromJsonString(Schema.Unknown),
-    )(input).pipe(
-      Effect.mapError(
-        (error) => new CommandError({ message: `Invalid JSON request: ${error}` }),
-      ),
+    const input = yield* tryPromise("Cannot read create request", () => Bun.stdin.text());
+    const request = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.Unknown))(
+      input,
+    ).pipe(
+      Effect.mapError((error) => new CommandError({ message: `Invalid JSON request: ${error}` })),
       Effect.flatMap(decodeCreateRequest),
     );
     const previous = yield* loadProfile(runtime.paths.profile);
@@ -290,36 +252,21 @@ function createCommand(runtime: Runtime) {
     );
 
     const refreshed = yield* refreshVicinae(runtime.vicinae);
-    yield* cleanOldProjections(
-      [previousProjection, nextProjection],
-      runtime,
-    );
+    yield* cleanOldProjections([previousProjection, nextProjection], runtime);
     return { command, refreshed };
   });
 }
 
-function runCommand(
-  command: SavedCommand,
-  values: ReadonlyArray<string>,
-  runtime: Runtime,
-) {
+function runCommand(command: SavedCommand, values: ReadonlyArray<string>, runtime: Runtime) {
   return Effect.gen(function* () {
     const args = yield* commandArguments(command, values);
     const invocation =
       command.execution.type === "argv"
         ? [command.execution.executable, ...args]
-        : [
-            runtime.shell,
-            "-c",
-            command.execution.source,
-            "rice-saved-command",
-            ...args,
-          ];
+        : [runtime.shell, "-c", command.execution.source, "rice-saved-command", ...args];
     return yield* tryPromise(`Cannot run ${command.title}`, async () => {
       const process = Bun.spawn(invocation, {
-        ...(command.workingDirectory === undefined
-          ? {}
-          : { cwd: command.workingDirectory }),
+        ...(command.workingDirectory === undefined ? {} : { cwd: command.workingDirectory }),
         stdin: "inherit",
         stdout: "inherit",
         stderr: "inherit",
@@ -363,9 +310,7 @@ const program = Effect.gen(function* () {
       const profile = yield* loadProfile(runtime.paths.profile);
       const command = profile.commands.find((candidate) => candidate.id === id);
       if (command === undefined) {
-        return yield* Effect.fail(
-          new CommandError({ message: `Unknown saved-command ID: ${id}` }),
-        );
+        return yield* Effect.fail(new CommandError({ message: `Unknown saved-command ID: ${id}` }));
       }
       return yield* runCommand(command, args.slice(separator + 1), runtime);
     }

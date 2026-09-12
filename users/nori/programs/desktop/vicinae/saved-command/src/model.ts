@@ -1,13 +1,7 @@
 import { basename, isAbsolute } from "node:path";
 import { Effect, Schema } from "effect";
 
-export const outputModes = [
-  "fullOutput",
-  "compact",
-  "silent",
-  "inline",
-  "terminal",
-] as const;
+export const outputModes = ["fullOutput", "compact", "silent", "inline", "terminal"] as const;
 
 const Parameter = Schema.Struct({
   name: Schema.String,
@@ -52,10 +46,9 @@ export type CreateCommandRequest = typeof CreateCommandRequest.Type;
 export type SavedCommand = typeof SavedCommand.Type;
 export type SavedCommandProfile = typeof SavedCommandProfile.Type;
 
-export class CommandError extends Schema.TaggedError<CommandError>()(
-  "CommandError",
-  { message: Schema.String },
-) {}
+export class CommandError extends Schema.TaggedError<CommandError>()("CommandError", {
+  message: Schema.String,
+}) {}
 
 const strictParseOptions = {
   errors: "all",
@@ -67,6 +60,7 @@ const privilegedExecutables: Record<string, true> = {
   run0: true,
   su: true,
   sudo: true,
+  sudoedit: true,
 };
 
 const parameterNamePattern = /^[a-z][a-z0-9-]*$/;
@@ -76,15 +70,19 @@ const oneLinePattern = /^[^\r\n]+$/;
 const fail = (message: string) => Effect.fail(new CommandError({ message }));
 
 export const decodeCreateRequest = (input: unknown) =>
-  Schema.decodeUnknownEffect(CreateCommandRequest, strictParseOptions)(input).pipe(
-    Effect.mapError(
-      (error) => new CommandError({ message: `Invalid create request: ${error}` }),
-    ),
+  Schema.decodeUnknownEffect(
+    CreateCommandRequest,
+    strictParseOptions,
+  )(input).pipe(
+    Effect.mapError((error) => new CommandError({ message: `Invalid create request: ${error}` })),
     Effect.flatMap(validateCreateRequest),
   );
 
 export const decodeProfile = (input: unknown) =>
-  Schema.decodeUnknownEffect(SavedCommandProfile, strictParseOptions)(input).pipe(
+  Schema.decodeUnknownEffect(
+    SavedCommandProfile,
+    strictParseOptions,
+  )(input).pipe(
     Effect.mapError(
       (error) => new CommandError({ message: `Invalid saved-command profile: ${error}` }),
     ),
@@ -119,10 +117,7 @@ function validateCreateRequest(request: CreateCommandRequest) {
       parameterNames.add(parameter.name);
     }
 
-    if (
-      request.workingDirectory !== undefined &&
-      !isAbsolute(request.workingDirectory)
-    ) {
+    if (request.workingDirectory !== undefined && !isAbsolute(request.workingDirectory)) {
       return yield* fail("Working directory must be an absolute path");
     }
 
@@ -137,9 +132,7 @@ function validateCreateRequest(request: CreateCommandRequest) {
         );
       }
       if (privilegedExecutables[basename(executable).toLowerCase()] === true) {
-        return yield* fail(
-          `${basename(executable)} is a privilege wrapper and is not allowed`,
-        );
+        return yield* fail(`${basename(executable)} is a privilege wrapper and is not allowed`);
       }
 
       const referenced = new Set<string>();
@@ -210,8 +203,7 @@ export function commandArguments(
   command: SavedCommand,
   values: ReadonlyArray<string>,
 ): Effect.Effect<ReadonlyArray<string>, CommandError> {
-  const required = command.parameters.filter((parameter) => !parameter.optional)
-    .length;
+  const required = command.parameters.filter((parameter) => !parameter.optional).length;
   if (values.length < required || values.length > command.parameters.length) {
     return fail(
       `Expected ${required === command.parameters.length ? required : `${required}-${command.parameters.length}`} parameters, received ${values.length}`,
@@ -219,10 +211,7 @@ export function commandArguments(
   }
 
   const byName = new Map(
-    command.parameters.map((parameter, index) => [
-      parameter.name,
-      values[index] ?? "",
-    ]),
+    command.parameters.map((parameter, index) => [parameter.name, values[index] ?? ""]),
   );
 
   if (command.execution.type === "shell") return Effect.succeed(values);
@@ -237,11 +226,7 @@ function shellQuote(value: string): string {
   return `'${value.replaceAll("'", `'"'"'`)}'`;
 }
 
-export function renderScript(
-  command: SavedCommand,
-  runner: string,
-  shell: string,
-): string {
+export function renderScript(command: SavedCommand, runner: string, shell: string): string {
   const directives = command.parameters.map(
     (parameter, index) =>
       `# @vicinae.argument${index + 1} ${JSON.stringify({ type: "text", placeholder: parameter.name, optional: parameter.optional })}`,

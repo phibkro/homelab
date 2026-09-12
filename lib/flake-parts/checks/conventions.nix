@@ -48,16 +48,6 @@
             builtins.head (builtins.filter (package: lib.getName package == name) workstationHome.packages);
           agentNotifyPackage = homePackageNamed "agent-notify";
           riceCommandPackage = homePackageNamed "rice-command";
-          ricePalettePackage = homePackageNamed "rice-palette";
-          confirmationNo = pkgs.writeShellScript "rice-confirm-no" ''
-            printf '0'
-          '';
-          confirmationCancel = pkgs.writeShellScript "rice-confirm-cancel" ''
-            exit 1
-          '';
-          confirmationInvalid = pkgs.writeShellScript "rice-confirm-invalid" ''
-            printf '9'
-          '';
         in
         {
           music-ingest-runtime =
@@ -181,10 +171,6 @@
                   ${../../../users/nori/programs/desktop/hypr-rice/hypr-layout.sh}
                 bash ${../../../users/nori/programs/desktop/hypr-rice/hypr-layout-menu_test.sh} \
                   ${../../../users/nori/programs/desktop/hypr-rice/hypr-layout-menu.sh}
-                bash ${../../../users/nori/programs/desktop/hypr-rice/rice-launch_test.sh} \
-                  ${../../../users/nori/programs/desktop/hypr-rice/rice-launch.sh}
-                bash ${../../../users/nori/programs/desktop/hypr-rice/rice-palette_test.sh} \
-                  ${../../../users/nori/programs/desktop/hypr-rice/rice-palette.sh}
                 bash ${../../../users/nori/programs/desktop/hypr-rice/tile-ratio_test.sh} \
                   ${../../../users/nori/programs/desktop/hypr-rice/tile-ratio.sh}
                 luac -p ${../../../users/nori/programs/desktop/hypr-rice/layout.lua}
@@ -193,46 +179,45 @@
                 bash -n ${../../../users/nori/programs/desktop/hypr-rice/hypr-layout_test.sh}
                 bash -n ${../../../users/nori/programs/desktop/hypr-rice/hypr-layout-menu.sh}
                 bash -n ${../../../users/nori/programs/desktop/hypr-rice/hypr-layout-menu_test.sh}
-                bash -n ${../../../users/nori/programs/desktop/hypr-rice/rice-launch.sh}
-                bash -n ${../../../users/nori/programs/desktop/hypr-rice/rice-launch_test.sh}
-                bash -n ${../../../users/nori/programs/desktop/hypr-rice/rice-palette.sh}
-                bash -n ${../../../users/nori/programs/desktop/hypr-rice/rice-palette_test.sh}
-                bash -n ${../../../users/nori/programs/desktop/hypr-rice/hypr-palette-live-test.sh}
                 bash -n ${../../../users/nori/programs/desktop/hypr-rice/tile-ratio.sh}
                 bash -n ${../../../users/nori/programs/desktop/hypr-rice/tile-ratio_test.sh}
                 bash -n ${../../../users/nori/programs/desktop/hypr-rice/hypr-layout-live-test.sh}
                 touch $out
               '';
 
-          hypr-rice-palette-projection =
-            pkgs.runCommandLocal "hypr-rice-palette-projection"
+          hypr-rice-launcher-projection =
+            pkgs.runCommandLocal "hypr-rice-launcher-projection"
               {
                 nativeBuildInputs = [
-                  pkgs.desktop-file-utils
+                  pkgs.findutils
+                  pkgs.gnugrep
                   pkgs.jq
                 ];
               }
               ''
-                palette_script=${ricePalettePackage}/bin/rice-palette
                 dispatcher=${riceCommandPackage}/bin/rice-command
-                private_data_root=$(grep -m1 '^export RICE_PRIVATE_DATA_DIR=' "$palette_script" | cut -d= -f2-)
-                applications="$private_data_root/applications"
-                manifest="$private_data_root/rice/commands.json"
+                data_root=${workstationHome.activationPackage}/home-files/.local/share
+                scripts="$data_root/vicinae/scripts/rice"
+                manifest="$data_root/nori-desktop/actions.json"
 
                 test -f "$manifest"
-                test -d "$applications"
+                test -d "$scripts"
 
-                for desktop in "$applications"/nori-rice-*.desktop; do
-                  desktop-file-validate "$desktop"
-                  id=''${desktop##*/nori-rice-}
-                  id=''${id%.desktop}
-                  grep -Fxq "Exec=$dispatcher $id" "$desktop"
+                for script in "$scripts"/nori-rice-*; do
+                  test -x "$script"
+                  name=''${script##*/}
+                  id=$(jq -r --arg script "rice/$name" \
+                    'to_entries[] | select(.value.script == $script) | .key' "$manifest")
+                  test -n "$id"
                   jq -e --arg id "$id" '.[$id].palette == true' "$manifest" >/dev/null
+                  grep -Fxq '# @vicinae.schemaVersion 1' "$script"
+                  grep -Fxq '# @vicinae.mode silent' "$script"
+                  grep -Fxq "exec $dispatcher $id" "$script"
                 done
 
-                desktop_count=$(find "$applications" -maxdepth 1 -name 'nori-rice-*.desktop' | wc -l)
-                manifest_palette_count=$(jq '[to_entries[] | select(.value.palette)] | length' "$manifest")
-                test "$desktop_count" -eq "$manifest_palette_count"
+                script_count=$(find "$scripts" -maxdepth 1 -name 'nori-rice-*' | wc -l)
+                manifest_count=$(jq 'length' "$manifest")
+                test "$script_count" -eq "$manifest_count"
 
                 jq -e '
                   all(to_entries[];
@@ -257,12 +242,6 @@
                 "$dispatcher" >/dev/null 2>&1
                 test "$?" -eq 64
                 "$dispatcher" unknown.command >/dev/null 2>&1
-                test "$?" -eq 64
-                FUZZEL_BIN=${confirmationNo} "$dispatcher" system.reboot
-                test "$?" -eq 0
-                FUZZEL_BIN=${confirmationCancel} "$dispatcher" system.poweroff
-                test "$?" -eq 0
-                FUZZEL_BIN=${confirmationInvalid} "$dispatcher" session.exit >/dev/null 2>&1
                 test "$?" -eq 64
                 set -e
 

@@ -1,7 +1,7 @@
 ---
 summary: Replace the Fuzzel action palette with Vicinae and add persistent saved commands.
 date: 2026-09-12
-status: frozen
+status: implemented
 ---
 
 # Vicinae launcher and saved commands
@@ -134,3 +134,12 @@ In an isolated Wayland session, start the built Vicinae service and open it. Sea
 ## Evidence boundary
 
 These gates describe required behavior. They are not proof until the commands run against the built artifacts. Workstation activation and login persistence require a later authorized activation check.
+
+Implemented and verified on 2026-09-12:
+
+- The saved-command type check and five behavioral tests passed.
+- The extension type check passed.
+- The launcher projection and existing Hyprland layout checks built.
+- The built launcher passed the private headless-Sway journey.
+
+The workstation was not activated. Login persistence still requires an authorized activation and logout journey.

@@ -70,7 +70,9 @@ let
   dispatcher = lib.getExe config.nori.desktop.actionDispatcher;
   singleLine =
     field: value:
-    assert lib.assertMsg (builtins.match "[^\n\r]*" value != null) "desktop action ${field} must fit on one line";
+    assert lib.assertMsg (
+      builtins.match "[^\n\r]*" value != null
+    ) "desktop action ${field} must fit on one line";
     value;
   scriptName = id: "nori-rice-${lib.replaceStrings [ "." ] [ "_" ] id}";
   actionScript =
@@ -99,20 +101,18 @@ let
   );
   actionCatalog = pkgs.writeText "nori-desktop-actions.json" (
     builtins.toJSON (
-      lib.mapAttrs (
-        id: action: {
-          inherit (action)
-            category
-            description
-            directBinding
-            effect
-            keywords
-            label
-            palette
-            ;
-          script = "rice/${scriptName id}";
-        }
-      ) actions
+      lib.mapAttrs (id: action: {
+        inherit (action)
+          category
+          description
+          directBinding
+          effect
+          keywords
+          label
+          palette
+          ;
+        script = "rice/${scriptName id}";
+      }) actions
     )
   );
   vicinaeLauncherLiveTest = pkgs.writeShellApplication {

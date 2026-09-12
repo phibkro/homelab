@@ -53,9 +53,7 @@ async function invoke(
 
 afterEach(async () => {
   await Promise.all(
-    temporaryDirectories.splice(0).map((path) =>
-      rm(path, { force: true, recursive: true }),
-    ),
+    temporaryDirectories.splice(0).map((path) => rm(path, { force: true, recursive: true })),
   );
 });
 
@@ -70,12 +68,7 @@ test("saved argv parameters remain one literal argument and survive processes", 
     execution: {
       type: "argv",
       executable: shell,
-      arguments: [
-        "-c",
-        'printf "%s\\n" "$1"',
-        "rice-test",
-        "{{message}}",
-      ],
+      arguments: ["-c", 'printf "%s\\n" "$1"', "rice-test", "{{message}}"],
     },
   };
 
@@ -84,13 +77,7 @@ test("saved argv parameters remain one literal argument and survive processes", 
   const result = JSON.parse(created.stdout) as {
     command: { id: string };
   };
-  const scriptDirectory = join(
-    root,
-    "data",
-    "vicinae",
-    "scripts",
-    "nori-saved",
-  );
+  const scriptDirectory = join(root, "data", "vicinae", "scripts", "nori-saved");
   const [scriptName] = await readdir(scriptDirectory);
   expect(scriptName).toBeDefined();
   const scriptPath = join(scriptDirectory, scriptName!);
@@ -124,9 +111,7 @@ test("saved command preserves stderr and nonzero status", async () => {
 
   const created = await invoke(runner, env, ["create"], JSON.stringify(request));
   expect(created.status).toBe(0);
-  const [scriptName] = await readdir(
-    join(root, "data", "vicinae", "scripts", "nori-saved"),
-  );
+  const [scriptName] = await readdir(join(root, "data", "vicinae", "scripts", "nori-saved"));
   const ran = await invoke(
     join(root, "data", "vicinae", "scripts", "nori-saved", scriptName!),
     env,
@@ -136,15 +121,54 @@ test("saved command preserves stderr and nonzero status", async () => {
   expect(ran.stderr).toContain("expected failure");
 });
 
-test("argv mode rejects privilege wrappers", async () => {
+test("argv mode rejects direct privilege wrappers", async () => {
+  const { env, runner } = await fixture();
+  for (const executable of ["doas", "pkexec", "run0", "su", "sudo", "sudoedit"]) {
+    const request = {
+      title: "Forbidden",
+      outputMode: "fullOutput",
+      parameters: [],
+      execution: { type: "argv", executable, arguments: ["true"] },
+    };
+    const result = await invoke(runner, env, ["create"], JSON.stringify(request));
+    expect(result.status).toBe(64);
+    expect(result.stderr).toContain("privilege wrapper");
+  }
+});
+
+test("explicit shell mode receives positional parameters", async () => {
+  const { env, runner, root } = await fixture();
+  const request = {
+    title: "Explicit shell",
+    outputMode: "fullOutput",
+    parameters: [{ name: "message", optional: false }],
+    execution: { type: "shell", source: 'printf "%s\\n" "$1"' },
+  };
+  const created = await invoke(runner, env, ["create"], JSON.stringify(request));
+  expect(created.status).toBe(0);
+  const [scriptName] = await readdir(join(root, "data", "vicinae", "scripts", "nori-saved"));
+  const ran = await invoke(
+    join(root, "data", "vicinae", "scripts", "nori-saved", scriptName!),
+    env,
+    ["shell parameter"],
+  );
+  expect(ran.status).toBe(0);
+  expect(ran.stdout).toBe("shell parameter\n");
+});
+
+test("argv mode rejects shell source as an executable", async () => {
   const { env, runner } = await fixture();
   const request = {
-    title: "Forbidden",
+    title: "Implicit shell",
     outputMode: "fullOutput",
     parameters: [],
-    execution: { type: "argv", executable: "sudo", arguments: ["true"] },
+    execution: {
+      type: "argv",
+      executable: 'printf "%s\\n" "$1"',
+      arguments: [],
+    },
   };
   const result = await invoke(runner, env, ["create"], JSON.stringify(request));
   expect(result.status).toBe(64);
-  expect(result.stderr).toContain("privilege wrapper");
+  expect(result.stderr).toContain("one command name");
 });

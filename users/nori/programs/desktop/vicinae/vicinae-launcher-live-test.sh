@@ -36,6 +36,7 @@ mkdir -p \
   "$XDG_CONFIG_HOME/vicinae" \
   "$XDG_DATA_HOME/vicinae/extensions/nori-desktop" \
   "$XDG_DATA_HOME/vicinae/scripts/rice" \
+  "$XDG_DATA_HOME/applications" \
   "$XDG_CACHE_HOME" \
   "$XDG_STATE_HOME" \
   "$XDG_RUNTIME_DIR"
@@ -44,8 +45,16 @@ cp -RL "$RICE_VICINAE_ACTION_SCRIPTS"/. "$XDG_DATA_HOME/vicinae/scripts/rice/"
 cp -RL "$RICE_VICINAE_EXTENSION"/. "$XDG_DATA_HOME/vicinae/extensions/nori-desktop/"
 printf '%s\n' '{"launcher_window":{"layer_shell":{"enabled":true}}}' \
   >"$XDG_CONFIG_HOME/vicinae/settings.json"
+cat >"$XDG_DATA_HOME/applications/launcher-fixture.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Launcher Fixture Application
+Exec=$RICE_VICINAE_TEST_SHELL -c true
+Terminal=false
+EOF
 
 marker=$tmp/generated-command-ran
+export RICE_LAUNCHER_TEST_MARKER=$tmp/generated-action-ran
 jq -n \
   --arg executable "$RICE_VICINAE_TEST_SHELL" \
   --arg marker "$marker" \
@@ -104,24 +113,34 @@ commands=$tmp/commands.json
 for _ in $(seq 1 200); do
   "$RICE_VICINAE_BIN" cmd ls --json >"$commands"
   if jq -e '
-    any(.commands[]; .name == "Layout: Reset") and
-    any(.commands[]; .name == "Create Command") and
-    any(.commands[]; .name == "Launcher round trip")
+    any(.[]; .name == "Testing: Launcher Round Trip") and
+    any(.[]; .name == "Launcher Fixture Application") and
+    any(.[]; .name == "Create Command") and
+    any(.[]; .name == "Launcher round trip")
   ' "$commands" >/dev/null; then
     break
   fi
   sleep 0.05
 done
 jq -e '
-  any(.commands[]; .name == "Layout: Reset") and
-  any(.commands[]; .name == "Create Command") and
-  any(.commands[]; .name == "Launcher round trip")
+  any(.[]; .name == "Testing: Launcher Round Trip") and
+  any(.[]; .name == "Launcher Fixture Application") and
+  any(.[]; .name == "Create Command") and
+  any(.[]; .name == "Launcher round trip")
 ' "$commands" >/dev/null
 
 "$RICE_VICINAE_BIN" open
 "$RICE_VICINAE_BIN" state open
+action_entrypoint=$(jq -r '.[] | select(.name == "Testing: Launcher Round Trip") | .id' "$commands")
+"$RICE_VICINAE_BIN" cmd launch "$action_entrypoint"
+for _ in $(seq 1 100); do
+  [[ ! -f $RICE_LAUNCHER_TEST_MARKER ]] || break
+  sleep 0.05
+done
+test "$(<"$RICE_LAUNCHER_TEST_MARKER")" = 'generated action executed'
 
-entrypoint=$(jq -r '.commands[] | select(.name == "Launcher round trip") | .id' "$commands")
+
+entrypoint=$(jq -r '.[] | select(.name == "Launcher round trip") | .id' "$commands")
 "$RICE_VICINAE_BIN" cmd launch "$entrypoint" 'literal parameter'
 for _ in $(seq 1 100); do
   [[ ! -f $marker ]] || break

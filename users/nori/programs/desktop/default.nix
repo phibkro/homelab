@@ -9,6 +9,7 @@ _: {
     ./hypr-rice
     ./hyprsunset.nix
     ./persona-quickshell
+    ./vicinae
     ./steady-state-resource-alert.nix
     ./waybar.nix
     ./wayland-pipewire-idle-inhibit.nix
