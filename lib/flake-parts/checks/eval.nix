@@ -35,11 +35,11 @@
             echo ${lib.escapeShellArg (builtins.toJSON result)} > $out
           '';
 
-        eval-backup-disabled =
+        eval-backup-enabled =
           let
-            result = import ../../../tests/eval/backup-disabled.nix { inherit inputs lib; };
+            result = import ../../../tests/eval/backup-enabled.nix { inherit inputs lib; };
           in
-          pkgs.runCommandLocal "eval-backup-disabled" { } ''
+          pkgs.runCommandLocal "eval-backup-enabled" { } ''
             echo ${lib.escapeShellArg result} > $out
           '';
 

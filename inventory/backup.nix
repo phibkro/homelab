@@ -8,7 +8,7 @@ let
   oneTouch = disks."one-touch";
 in
 {
-  enabled = false;
+  enabled = true;
   targetName = "onetouch";
   device = oneTouch.filesystem.device;
   fsType = oneTouch.filesystem.type;
