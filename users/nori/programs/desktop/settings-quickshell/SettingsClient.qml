@@ -120,6 +120,15 @@ QtObject {
 
         return null;
     }
+    function waybarObservation() {
+        const direct = root.state && root.state.observed ? root.state.observed.waybar : null;
+        if (direct)
+            return direct;
+
+        const job = root.latestObservedJob();
+        return job && job.observed ? job.observed.waybar : null;
+    }
+
 
     function observedValue(componentId, settingKey) {
         const directObservation = root.state ? root.state.observed : null;
@@ -134,19 +143,25 @@ QtObject {
         if (root.owns(generationComponent, settingKey))
             return generationComponent[settingKey];
 
-        const job = root.latestObservedJob();
+        const waybar = root.waybarObservation();
         if (componentId === "desktop.waybar" && settingKey === "position"
-            && job && job.observed && job.observed.waybar
-            && root.owns(job.observed.waybar, "edge"))
-            return job.observed.waybar.edge;
+            && waybar && root.owns(waybar, "edge"))
+            return waybar.edge;
 
         return undefined;
     }
 
     function observedDisplay(componentId, settingKey) {
         const value = root.observedValue(componentId, settingKey);
-        if (value !== undefined)
+        if (value !== undefined) {
+            if (componentId === "desktop.waybar" && settingKey === "position") {
+                const waybar = root.waybarObservation();
+                const unit = waybar && waybar.unit ? waybar.unit : "unit status not reported";
+                const reason = waybar && waybar.reason ? ": " + waybar.reason : "";
+                return root.displayValue(value) + " (" + unit + reason + ")";
+            }
             return root.displayValue(value);
+        }
 
         if (root.activeGeneration)
             return "Active generation reported; setting value not observed";

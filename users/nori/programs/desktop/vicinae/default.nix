@@ -16,51 +16,9 @@ let
         in
         name != "node_modules" && name != "dist";
     };
-  savedCommandSource = cleanNodeSource ./saved-command;
-  savedCommandImpl = pkgs.buildNpmPackage {
-    pname = "rice-saved-command-impl";
-    version = "0.1.0";
-    src = savedCommandSource;
-    npmDeps = pkgs.importNpmLock { npmRoot = savedCommandSource; };
-    npmConfigHook = pkgs.importNpmLock.npmConfigHook;
-    nativeBuildInputs = [ pkgs.bun ];
-    buildPhase = ''
-      runHook preBuild
-      bun run build
-      runHook postBuild
-    '';
-    installPhase = ''
-      runHook preInstall
-      install -Dm755 dist/rice-saved-command "$out/bin/rice-saved-command"
-      runHook postInstall
-    '';
-  };
-  savedCommand = pkgs.writeShellApplication {
-    name = "rice-saved-command";
-    runtimeInputs = [
-      pkgs.coreutils
-      pkgs.util-linux
-    ];
-    text = ''
-      runner=$(readlink -f "$0")
-      export RICE_SAVED_COMMAND_BIN="$runner"
-      export RICE_SAVED_COMMAND_SHELL=${lib.escapeShellArg (lib.getExe pkgs.bash)}
-      export RICE_VICINAE_BIN=${lib.escapeShellArg (lib.getExe pkgs.vicinae)}
-
-      case ''${1-} in
-        create|sync)
-          config_home="''${XDG_CONFIG_HOME:-$HOME/.config}"
-          lock_dir="$config_home/nori-desktop"
-          mkdir -p "$lock_dir"
-          exec flock --exclusive --timeout 30 "$lock_dir/saved-commands.lock" \
-            ${savedCommandImpl}/bin/rice-saved-command "$@"
-          ;;
-        *)
-          exec ${savedCommandImpl}/bin/rice-saved-command "$@"
-          ;;
-      esac
-    '';
-  };
+  settingsPackage = config.nori.desktop.settingsService.package;
+  settingsCli = lib.getExe' settingsPackage "nori-desktop-settings";
+  savedCommand = lib.getExe' settingsPackage "rice-saved-command";
   extensionStaticSource = cleanNodeSource ./extension;
   extensionSource =
     pkgs.runCommand "nori-desktop-vicinae-extension-source"
@@ -288,7 +246,8 @@ let
     text = ''
       export RICE_VICINAE_ACTION_SCRIPTS=${lib.escapeShellArg actionScriptsPackage}
       export RICE_VICINAE_EXTENSION=${lib.escapeShellArg noriDesktopExtension}
-      export RICE_SAVED_COMMAND_BIN=${lib.escapeShellArg (lib.getExe savedCommand)}
+      export RICE_SAVED_COMMAND_BIN=${lib.escapeShellArg savedCommand}
+      export RICE_NORI_DESKTOP_SETTINGS_BIN=${lib.escapeShellArg settingsCli}
       export RICE_VICINAE_BIN=${lib.escapeShellArg (lib.getExe pkgs.vicinae)}
       export RICE_VICINAE_TEST_SHELL=${lib.escapeShellArg (lib.getExe pkgs.bash)}
       ${builtins.readFile ./vicinae-launcher-live-test.sh}
@@ -307,19 +266,34 @@ in
     settings.launcher_window.layer_shell.enabled = true;
   };
 
-  home = {
-    packages = [
-      savedCommand
-      vicinaeLauncherLiveTest
-    ];
-    activation.riceSavedCommands = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
-      run --silence ${lib.getExe savedCommand} sync
-    '';
-  };
+  home.packages = [ vicinaeLauncherLiveTest ];
 
-  systemd.user.services.vicinae.Service.Environment = [
-    "RICE_SAVED_COMMAND_BIN=${lib.getExe savedCommand}"
-  ];
+  systemd.user.services = {
+    nori-desktop-saved-command-projection = {
+      Unit = {
+        Description = "Project saved commands into Vicinae search";
+        After = [ "nori-desktop-config.service" ];
+        Requires = [ "nori-desktop-config.service" ];
+        Before = [ "vicinae.service" ];
+      };
+      Service = {
+        Type = "oneshot";
+        ExecStart = "${savedCommand} sync";
+      };
+      Install.WantedBy = [ config.wayland.systemd.target ];
+    };
+
+    vicinae = {
+      Unit = {
+        After = [ "nori-desktop-saved-command-projection.service" ];
+        Requires = [ "nori-desktop-saved-command-projection.service" ];
+      };
+      Service.Environment = [
+        "RICE_NORI_DESKTOP_SETTINGS_BIN=${settingsCli}"
+        "RICE_SAVED_COMMAND_BIN=${savedCommand}"
+      ];
+    };
+  };
 
   xdg.dataFile = actionScriptFiles // {
     "nori-desktop/actions.json".source = actionCatalog;

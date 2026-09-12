@@ -10,6 +10,8 @@ _: {
     ./hypr-rice
     ./hyprsunset.nix
     ./persona-quickshell
+    ./settings-quickshell
+    ./settings-service
     ./vicinae
     ./steady-state-resource-alert.nix
     ./waybar-component.nix

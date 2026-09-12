@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   pkgs,
   ...
@@ -24,6 +25,7 @@ let
   ];
   settingsApp = pkgs.writeShellApplication {
     name = "nori-desktop-settings-ui";
+    runtimeInputs = [ config.nori.desktop.settingsService.package ];
     text = ''
       export QML_IMPORT_PATH=${lib.escapeShellArg qmlImportPath}''${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}
       export QML2_IMPORT_PATH=${lib.escapeShellArg qmlImportPath}''${QML2_IMPORT_PATH:+:$QML2_IMPORT_PATH}
