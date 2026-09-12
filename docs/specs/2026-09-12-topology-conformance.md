@@ -1,8 +1,8 @@
 ---
 date: 2026-09-12
-status: implemented
+status: spec-frozen - in execution
 seed: operator approval after architecture review
-summary: Compile the existing Nix inventory into one normalized topology graph and validate capability and policy requirements without creating a second source of truth.
+summary: Compile the existing Nix inventory into one normalized topology graph, validate capability and policy requirements, and generate a restricted TOSCA 2.0 projection without creating a second source of truth.
 ---
 
 # Topology conformance
@@ -11,7 +11,7 @@ summary: Compile the existing Nix inventory into one normalized topology graph a
 
 Make architectural contradictions fail during Nix evaluation.
 
-The existing Nix inventory remains the authoritative desired-system model. The compiler normalizes that model once. Validation, documentation, deployment projections, and later runtime comparisons consume the normalized graph.
+The existing Nix inventory remains the authoritative desired-system model. The compiler normalizes that model once. Validation, TOSCA, documentation, deployment projections, and later runtime comparisons consume the normalized graph.
 
 The first milestone covers one complete path:
 
@@ -23,7 +23,9 @@ workload requirement declarations
         v
 normalized topology graph
         |
-        `--> semantic conformance checks
+        +--> semantic conformance checks
+        |
+        `--> restricted TOSCA 2.0 service template
 ```
 
 Ollama is the compute pilot. Vaultwarden is the stateful and identity pilot.
@@ -35,7 +37,8 @@ Ollama is the compute pilot. Vaultwarden is the stateful and identity pilot.
 1. The operator changes a host capability or workload requirement.
 2. `nix eval .#lib.noriInventory.topology` returns the normalized graph.
 3. `nix build .#topology-intent-json` creates its canonical JSON projection.
-4. The topology checks pass because all mandatory requirements resolve.
+4. `nix build .#topology-intent-tosca` creates its TOSCA 2.0 projection.
+5. The topology checks pass because all mandatory requirements resolve.
 
 ### Invalid change
 
@@ -55,13 +58,16 @@ profiles/default.nix      --------+ |
 services/*/manifest.nix   --------|-+--> normalized graph
 inventory/datasets.nix    --------+          |
 inventory/disks.nix       --------+          +--> JSON
-inventory/backup.nix      --------+          +--> human views
-policies and audiences    --------+          `--> realization comparison
+inventory/backup.nix      --------+          +--> TOSCA 2.0
+policies and audiences    --------+          +--> human views
+                                             `--> realization comparison
 ```
 
 Do not parse Nix source text to infer topology. Evaluate the source and export the selected values.
 
-Do not edit generated JSON or human views. They are disposable projections.
+Do not edit generated JSON, TOSCA, or human views. They are disposable projections.
+
+Do not make TOSCA an authoring source. A reverse import would create two desired-state authorities.
 
 ## Terms
 
@@ -150,7 +156,7 @@ dataset.<dataset-name>
 
 A node ID must be unique. A relationship ID must be a pure function of its type, source, target, and optional requirement name.
 
-Sort node, requirement, and relationship lists by `id`. Identical source data must produce byte-identical JSON output.
+Sort node, requirement, and relationship lists by `id`. Identical source data must produce byte-identical JSON and TOSCA output.
 
 ### Node capabilities
 
@@ -252,6 +258,37 @@ Existing inventory assertions continue to enforce unknown references, disk ident
 
 Checks must include a valid baseline and counterexamples. A check that only serializes current production data is not a conformance test.
 
+## TOSCA 2.0 projection
+
+Generate a restricted TOSCA 2.0 service template from the normalized graph.
+
+The projection uses:
+
+```yaml
+tosca_definitions_version: tosca_2_0
+capability_types: {}
+relationship_types: {}
+node_types: {}
+topology_template:
+  node_templates: {}
+```
+
+Mapping:
+
+| Normalized graph | TOSCA 2.0 |
+|---|---|
+| Node kind | `node_types` and node template `type` |
+| Node property | node template `properties` |
+| Capability assignment | node template `capabilities` |
+| Requirement | node template `requirements` |
+| Relationship | requirement assignment or relationship template |
+| Policy | policy type and policy template when the policy enters the normalized graph |
+
+The exporter must emit only the reviewed subset. It must fail on a graph construct that has no defined mapping.
+
+TOSCA supports abstract topology, requirements, capabilities, relationships, properties, attributes, and policies. It does not define this repository's runtime observation wire format. Therefore, TOSCA covers intended and planned state, not observed or proven state.
+
+Primary specification: [OASIS TOSCA 2.0, 22 July 2025](https://docs.oasis-open.org/tosca/TOSCA/v2.0/os/TOSCA-v2.0-os.html).
 
 ## State and evidence model
 
@@ -285,14 +322,14 @@ A functional smoke journey proves behavior. It does not prove every topology pro
 4. Add Authelia's OIDC-provider capability.
 5. Compile all current machines, devices, workloads, endpoints, and datasets into the normalized graph.
 6. Validate all declared requirements and graph edges.
-7. Export the canonical JSON package.
+7. Export canonical JSON and restricted TOSCA 2.0 packages.
 8. Add semantic counterexamples for an unsatisfied capability, unknown target, and failed numeric constraint.
 
 ### Runtime behavior
 
 No service is enabled, disabled, moved, restarted, or reconfigured by this milestone.
 
-Ollama keeps its current active state. Its requirement validates the selected placement before any future activation change.
+Ollama remains disabled. Its requirement still validates the selected placement so that re-enabling it cannot select an incompatible host.
 
 Vaultwarden and Authelia keep their current placement and runtime configuration.
 
@@ -303,8 +340,9 @@ Run these journeys:
 ```bash
 nix eval .#lib.noriInventory.topology --json
 nix build .#topology-intent-json
-nix build .#checks.x86_64-linux.eval-topology-conformance
-nix build .#checks.x86_64-linux.eval-inventory-public-safe
+nix build .#topology-intent-tosca
+nix build .#checks.x86_64-linux.topology-conformance
+nix build .#checks.x86_64-linux.inventory-public-safe
 ```
 
 Then inspect the built artifacts. They must contain:
@@ -378,18 +416,15 @@ Replace duplicated prose and configuration facts with generated projections or r
 | `profiles/default.nix` | Reusable logical compositions. |
 | `roles/audiences.nix` | Audience and access-policy vocabulary. |
 | `infra/*` | Concrete backend realizations. |
-| `lib/flake-parts/packages/inventory.nix` | Public inventory, topology JSON, and deployment-plan outputs. |
+| `lib/flake-parts/packages/inventory.nix` | JSON and TOSCA build outputs. |
 | `tests/eval/*` | Semantic counterexamples. |
 | `docs/generated/*` | Generated human projections. |
 
 ## Rejected alternatives
 
-### TOSCA projection
+### Hand-authored TOSCA
 
-Rejected because no deployer or operator workflow consumes it. A maintained
-second representation and its self-check do not strengthen the normalized
-graph. Add an exporter only with a named consumer, schema-version owner, and
-release lifecycle.
+Rejected because it duplicates desired state. Nix and TOSCA could disagree.
 
 ### Source-code scanning
 
@@ -399,6 +434,9 @@ Rejected because filenames, comments, and option spelling are not evaluated sema
 
 Rejected because intended, planned, active, observed, and proven claims have different authorities.
 
+### Full TOSCA platform adoption
+
+Rejected for the first milestone. Current TOSCA 2.0 tooling support is uneven, and no reviewed tool owns this repository's Nix evaluation or runtime evidence model.
 
 ### Runtime-only validation
 
