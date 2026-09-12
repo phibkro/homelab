@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { startIpcServer } from "../src/daemon.ts";
 import { DesktopSettingsError } from "../src/contracts.ts";
-import { ProfileStore, writeAtomic } from "../src/files.ts";
+import { JobStore, ProfileStore, writeAtomic } from "../src/files.ts";
 import { verifyGenerationMetadata } from "../src/runtime.ts";
 import { DesktopSettingsService, type ServiceConfig } from "../src/service.ts";
 
@@ -184,6 +184,27 @@ test("an interrupted atomic replacement leaves the last complete profile readabl
   expect(await readFile(store.paths.profile, "utf8")).toBe(initial.bytes);
   await writeAtomic(store.paths.profile, initial.bytes);
   expect((await store.read()).profile.revision).toBe(0);
+});
+
+test("service restart marks an unfinished apply as interrupted", async () => {
+  const { config } = await fixture();
+  const jobs = new JobStore(config.stateHome);
+  await jobs.initialize();
+  await jobs.save({
+    id: "unfinished",
+    revision: 1,
+    profileHash: "candidate",
+    status: "activating",
+    createdAt: "2026-09-12T00:00:00.000Z",
+    updatedAt: "2026-09-12T00:00:01.000Z",
+    log: ["Activation started"],
+  });
+
+  const restarted = await DesktopSettingsService.make(config);
+  const [recovered] = (await restarted.state()).jobs;
+  expect(recovered?.status).toBe("interrupted");
+  expect(recovered?.error).toMatchObject({ code: "interrupted" });
+  expect(recovered?.log).toContain("Daemon restart marked unfinished apply as interrupted");
 });
 
 test("saved command IPC round trip keeps a parameter literal across the generated script", async () => {
