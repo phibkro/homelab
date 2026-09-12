@@ -331,7 +331,7 @@ A functional smoke journey proves behavior. It does not prove every topology pro
 
 No service is enabled, disabled, moved, restarted, or reconfigured by this milestone.
 
-Ollama remains disabled. Its requirement still validates the selected placement so that re-enabling it cannot select an incompatible host.
+Ollama keeps its current active state. Its requirement validates the selected placement before any future activation change.
 
 Vaultwarden and Authelia keep their current placement and runtime configuration.
 
