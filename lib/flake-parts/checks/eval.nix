@@ -226,6 +226,48 @@
           '';
 
         /**
+          Desktop setting contracts and the Waybar realization must derive
+          from the same profile option.
+        */
+        desktop-settings-contract =
+          let
+            evaluated = inputs.self.nixosConfigurations.workstation.extendModules {
+              modules = [
+                {
+                  home-manager.users.nori.nori.desktop.profile.components."desktop.waybar".position = "bottom";
+                }
+              ];
+            };
+            home = evaluated.config.home-manager.users.nori;
+            generated = home.nori.desktop.generated;
+          in
+          assert lib.assertMsg (
+            home.programs.waybar.settings.mainBar.position == "bottom"
+          ) "Waybar must consume the generated desktop profile option";
+          pkgs.runCommandLocal "desktop-settings-contract"
+            {
+              nativeBuildInputs = [ pkgs.jq ];
+            }
+            ''
+              jq -e '
+                ."$defs"."NoriDesktopSettingsDesktop.waybarPositionInput".enum
+                == ["top", "bottom"]
+              ' ${generated.inputSchema} >/dev/null
+              jq -e '
+                ."$defs"."NoriDesktopSettingsDesktop.waybarOutput"
+                .properties.position.readOnly == true
+              ' ${generated.outputSchema} >/dev/null
+              jq -e '
+                ."desktop.waybar".settings.position.action.title
+                == "Settings: Bar Position"
+              ' ${generated.presentation} >/dev/null
+              jq -e '
+                ."desktop.waybar".position == "bottom"
+              ' ${generated.resolvedSettings} >/dev/null
+              touch "$out"
+            '';
+
+        /**
           The desktop resource detector must measure cgroup working set rather
           than inactive file cache retained after a child process exits.
         */
