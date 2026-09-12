@@ -54,10 +54,10 @@ jobs; declared intent is not evidence of a completed backup.
 Btrbk keeps local rollback snapshots on the same source disks. These can help
 with accidental edits; they cannot recover data after that disk fails.
 
-IronWolf's mostly-cold canonical media keeps **2 daily, 2 weekly, and 2
+IronWolf's mostly-cold canonical media keeps **7 daily, 4 weekly, and 3
 monthly** local rollback snapshots. This deliberately limits how long deleted
 data can consume the primary disk. When OneTouch is enabled, its independent
-Restic history will keep **2 daily, 2 weekly, 2 monthly, and 2 yearly** points
+Restic history will keep **7 daily, 4 weekly, 12 monthly, and 3 yearly** points
 for the same media. Restic deduplicates unchanged chunks; retention controls
 deletion history and restore choice, not a full additional copy per snapshot.
 Application database dumps also remain local recovery artifacts until copied

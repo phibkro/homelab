@@ -17,13 +17,13 @@ in
   mountPoint = oneTouch.mountPoint;
   retention.coldMedia = {
     # Same-disk accidental-deletion rollback, not independent protection.
-    localSnapshotPreserve = "2d 2w 2m";
+    localSnapshotPreserve = "7d 4w 3m";
     # Independent OneTouch history once `enabled` passes the cutover gates.
     resticPruneOpts = [
-      "--keep-daily 2"
-      "--keep-weekly 2"
-      "--keep-monthly 2"
-      "--keep-yearly 2"
+      "--keep-daily 7"
+      "--keep-weekly 4"
+      "--keep-monthly 12"
+      "--keep-yearly 3"
     ];
   };
   pi = {

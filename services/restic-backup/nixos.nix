@@ -271,7 +271,7 @@ in
       );
       tier = "irreplaceable";
       /*
-        Cold canonical media changes slowly. Keep two recent daily recovery,
+        Cold canonical media changes slowly. Keep a week's daily recovery,
         then sparse independent history; restic deduplicates unchanged content
         across snapshots. This intentionally narrows the generic
         irreplaceable default (14d / 8w / 12m / 5y), which suits frequently
