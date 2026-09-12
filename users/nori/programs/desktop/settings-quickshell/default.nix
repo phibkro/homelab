@@ -21,7 +21,6 @@ let
   };
   qmlImportPath = lib.makeSearchPath "lib/qt-6/qml" [
     pkgs.qt6.qtdeclarative
-    pkgs.qt6.qtquickcontrols2
   ];
   settingsApp = pkgs.writeShellApplication {
     name = "nori-desktop-settings-ui";
@@ -42,15 +41,7 @@ in
     comment = "View and apply the managed desktop settings profile";
     exec = "${settingsApp}/bin/nori-desktop-settings-ui";
     icon = "preferences-system";
-    categories = [
-      "Settings"
-      "System"
-    ];
-    keywords = [
-      "desktop"
-      "settings"
-      "waybar"
-    ];
+    categories = [ "Settings" ];
     startupNotify = true;
     terminal = false;
   };

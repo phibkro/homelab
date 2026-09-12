@@ -319,8 +319,10 @@ export class DesktopSettingsService {
       await this.jobs.save(job);
       return { job, profile };
     });
-    if (scheduled.job.status === "active") return scheduled.job;
-    return this.startJob(scheduled.job, scheduled.profile);
+    if (scheduled.job.status !== "active") {
+      void this.startJob(scheduled.job, scheduled.profile).catch(() => undefined);
+    }
+    return scheduled.job;
   }
 
   private async runSerializedJob(job: ApplyJob, profile: StoredProfile): Promise<ApplyJob> {

@@ -61,12 +61,14 @@ export async function callService(
 ): Promise<Record<string, unknown>> {
   let response: Response;
   try {
-    response = await fetch(`http://localhost${path}`, {
+    const init: BunFetchRequestInit = {
       unix: runtime.socket,
       method,
-      headers: payload === undefined ? undefined : { "content-type": "application/json" },
-      body: payload === undefined ? undefined : JSON.stringify(payload),
-    });
+      ...(payload === undefined
+        ? {}
+        : { headers: { "content-type": "application/json" }, body: JSON.stringify(payload) }),
+    };
+    response = await fetch(`http://localhost${path}`, init);
   } catch (cause) {
     throw new DesktopSettingsError(
       "unavailable",

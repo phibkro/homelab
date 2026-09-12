@@ -113,7 +113,7 @@ function verifyMetadata(
   }
 }
 
-async function parseOutput<A>(schema: Schema.Schema<A>, text: string, label: string): Promise<A> {
+async function parseOutput<A>(schema: Schema.ConstraintDecoder<A>, text: string, label: string): Promise<A> {
   try {
     return await Effect.runPromise(parseJson(schema, text, label));
   } catch (cause) {

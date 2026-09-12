@@ -230,8 +230,8 @@ ShellRoot {
 
                         Label {
                             Layout.fillWidth: true
-                            text: pending
-                                ? "Preview: " + pending.componentId + " / " + pending.settingKey
+                            text: pendingPreviewCard.pending
+                                ? "Preview: " + pendingPreviewCard.pending.componentId + " / " + pendingPreviewCard.pending.settingKey
                                 : ""
                             color: "#eef4ff"
                             font.pixelSize: 17
@@ -241,9 +241,9 @@ ShellRoot {
 
                         Label {
                             Layout.fillWidth: true
-                            text: pending
-                                ? "Draft value: " + settingsClient.displayValue(pending.value)
-                                    + " · profile revision " + pending.revision
+                            text: pendingPreviewCard.pending
+                                ? "Draft value: " + settingsClient.displayValue(pendingPreviewCard.pending.value)
+                                    + " · profile revision " + pendingPreviewCard.pending.revision
                                 : ""
                             color: "#d4e1fa"
                             wrapMode: Text.Wrap
@@ -251,8 +251,8 @@ ShellRoot {
 
                         Label {
                             Layout.fillWidth: true
-                            visible: preview.profileHash !== undefined
-                            text: "Candidate profile hash: " + preview.profileHash
+                            visible: pendingPreviewCard.preview.profileHash !== undefined
+                            text: "Candidate profile hash: " + pendingPreviewCard.preview.profileHash
                             color: "#b8c9e8"
                             wrapMode: Text.WrapAnywhere
                         }
@@ -266,7 +266,7 @@ ShellRoot {
 
                         Label {
                             Layout.fillWidth: true
-                            text: settingsClient.detailsText(preview.resolved)
+                            text: settingsClient.detailsText(pendingPreviewCard.preview.resolved)
                             color: "#d4e1fa"
                             font.family: "monospace"
                             wrapMode: Text.WrapAnywhere
@@ -281,7 +281,7 @@ ShellRoot {
 
                         Label {
                             Layout.fillWidth: true
-                            text: settingsClient.detailsText(preview.impact)
+                            text: settingsClient.detailsText(pendingPreviewCard.preview.impact)
                             color: "#d4e1fa"
                             font.family: "monospace"
                             wrapMode: Text.WrapAnywhere

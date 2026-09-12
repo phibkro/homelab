@@ -14,13 +14,13 @@ import {
 import { basename, dirname, join } from "node:path";
 import { Effect } from "effect";
 import {
+  ApplyJob,
   DesktopSettingsError,
+  Profile,
   decodeJob,
   decodeProfile,
   parseJson,
   profileHash,
-  type ApplyJob,
-  type Profile,
 } from "./contracts.ts";
 
 const fileMode = 0o600;

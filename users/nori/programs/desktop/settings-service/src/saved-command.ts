@@ -245,7 +245,7 @@ export function renderScript(command: SavedCommand, runner: string, shell: strin
     '# @vicinae.keywords ["saved", "user"]',
     ...directives,
     "",
-    `exec ${shellQuote(runner)} saved-command run ${shellQuote(command.id)} -- "$@"`,
+    `exec ${shellQuote(runner)} run ${shellQuote(command.id)} -- "$@"`,
     "",
   ].join("\n");
 }

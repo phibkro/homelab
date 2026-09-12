@@ -1,7 +1,8 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { startIpcServer } from "../src/daemon.ts";
 import { DesktopSettingsError } from "../src/contracts.ts";
 import { ProfileStore, writeAtomic } from "../src/files.ts";
 import { verifyGenerationMetadata } from "../src/runtime.ts";
@@ -78,6 +79,32 @@ afterEach(async () => {
   );
 });
 
+function quoteShell(value: string): string {
+  return `'${value.replaceAll("'", `'"'"'`)}'`;
+}
+
+async function invoke(
+  runner: string,
+  env: Record<string, string | undefined>,
+  args: ReadonlyArray<string>,
+  input?: string,
+) {
+  const child = Bun.spawn([runner, ...args], {
+    env,
+    stdin: "pipe",
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  if (input !== undefined) child.stdin.write(input);
+  child.stdin.end();
+  const [status, stdout, stderr] = await Promise.all([
+    child.exited,
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+  ]);
+  return { status, stdout, stderr };
+}
+
 test("revision compare-and-swap preserves the first committed profile", async () => {
   const { config } = await fixture();
   const service = await DesktopSettingsService.make(config);
@@ -127,6 +154,89 @@ test("an interrupted atomic replacement leaves the last complete profile readabl
   await writeAtomic(store.paths.profile, initial.bytes);
   expect((await store.read()).profile.revision).toBe(0);
 });
+
+test("saved command IPC round trip keeps a parameter literal across the generated script", async () => {
+  const { config, root } = await fixture();
+  const runner = join(root, "rice-saved-command");
+  const service = await DesktopSettingsService.make({ ...config, riceCommand: runner });
+  const socket = join(root, "runtime", "settings.sock");
+  const server = await startIpcServer(service, socket);
+  try {
+    const shell = Bun.which("sh");
+    if (shell === null) throw new Error("The test requires sh");
+    const main = join(import.meta.dir, "..", "src", "rice-saved-command.ts");
+    await Bun.write(
+      runner,
+      `#!${shell}\nexec ${quoteShell(process.execPath)} ${quoteShell(main)} "$@"\n`,
+    );
+    await chmod(runner, 0o755);
+    const env = {
+      ...process.env,
+      HOME: root,
+      XDG_CONFIG_HOME: join(root, "config"),
+      XDG_DATA_HOME: join(root, "projected"),
+      NORI_DESKTOP_SETTINGS_RICE_COMMAND: runner,
+      NORI_DESKTOP_SETTINGS_SHELL: shell,
+      NORI_DESKTOP_SETTINGS_SOCKET: socket,
+      RICE_VICINAE_BIN: undefined,
+    };
+    const marker = join(root, "should-not-exist");
+    const literal = `hello; touch ${marker}`;
+    const request = {
+      title: "Literal parameter",
+      outputMode: "fullOutput",
+      parameters: [{ name: "message", optional: false }],
+      execution: {
+        type: "argv",
+        executable: shell,
+        arguments: ["-c", 'printf "%s\\n" "$1"', "rice-test", "{{message}}"],
+      },
+    };
+
+    const created = await invoke(runner, env, ["create"], JSON.stringify(request));
+    expect(created.status).toBe(0);
+    const scriptDirectory = join(root, "projected", "vicinae", "scripts", "nori-saved");
+    const [scriptName] = await readdir(scriptDirectory);
+    expect(scriptName).toBeDefined();
+    const ran = await invoke(join(scriptDirectory, scriptName!), env, [literal]);
+    if (ran.status !== 0) throw new Error(`Generated command failed (${ran.status}): ${ran.stderr}`);
+    expect(ran.stdout).toBe(`${literal}\n`);
+    expect(await Bun.file(marker).exists()).toBe(false);
+  } finally {
+    server.stop(true);
+  }
+});
+test("apply returns a durable queued job before the managed build finishes", async () => {
+  const { config, root } = await fixture();
+  const shell = Bun.which("sh");
+  const mkfifo = Bun.which("mkfifo");
+  if (shell === null || mkfifo === null) throw new Error("The test requires sh and mkfifo");
+  const gate = join(root, "builder-gate");
+  const makeGate = Bun.spawn([mkfifo, gate]);
+  expect(await makeGate.exited).toBe(0);
+  const builder = join(root, "blocked-builder");
+  await Bun.write(builder, `#!${shell}\nread -r _ < ${quoteShell(gate)}\nexit 23\n`);
+  await chmod(builder, 0o755);
+  await Bun.write(
+    config.approvedSource,
+    `${JSON.stringify({ source: "/nix/store/approved-source", host: "workstation" })}\n`,
+  );
+  const service = await DesktopSettingsService.make({ ...config, builder });
+
+  const scheduled = await service.apply({ expectedRevision: 0 });
+  expect(scheduled.status).toBe("queued");
+  const completion = service.running.get(scheduled.id);
+  if (completion === undefined) throw new Error("The apply job was not started");
+
+  const release = Bun.spawn([shell, "-c", `printf '%s\\n' go > ${quoteShell(gate)}`]);
+  expect(await release.exited).toBe(0);
+  await completion;
+
+  const job = (await service.state()).jobs.find((candidate) => candidate.id === scheduled.id);
+  expect(job?.status).toBe("failed");
+  expect(job?.error?.message).toBe("Immutable workstation build failed");
+});
+
 
 test("activation metadata cannot substitute a different source, revision, or profile hash", () => {
   expect(() =>

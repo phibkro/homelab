@@ -389,6 +389,7 @@ export function SettingForm({ componentId, settingId, values }: SettingFormProps
     preview !== null &&
     preview.selectedValue === selected &&
     preview.expectedRevision === state.profile.revision;
+  const hasUnsavedSelection = selected !== desired;
   return (
     <Form
       isLoading={loading}
@@ -397,7 +398,7 @@ export function SettingForm({ componentId, settingId, values }: SettingFormProps
         <ActionPanel>
           {canPreview ? <Action title="Preview Change" onAction={previewChange} /> : null}
           {canSave ? <Action.SubmitForm title="Save Desired Value" onSubmit={save} /> : null}
-          {canPreview ? <Action title="Apply System Update" onAction={apply} /> : null}
+          {canPreview && !hasUnsavedSelection ? <Action title="Apply System Update" onAction={apply} /> : null}
           <Action
             title="Reload Settings"
             onAction={() => {

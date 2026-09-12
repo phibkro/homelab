@@ -68,7 +68,7 @@ function errorResponse(cause: unknown): Response {
   return json(body, status);
 }
 
-async function body<A>(request: Request, schema: Schema.Schema<A>): Promise<A> {
+async function body<A>(request: Request, schema: Schema.ConstraintDecoder<A>): Promise<A> {
   const contentLength = request.headers.get("content-length");
   if (contentLength !== null && (!/^\d+$/.test(contentLength) || Number(contentLength) > maxRequestBytes)) {
     throw new DesktopSettingsError("invalid_request", "Request body exceeds the IPC limit");

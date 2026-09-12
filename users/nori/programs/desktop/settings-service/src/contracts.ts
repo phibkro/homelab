@@ -166,7 +166,7 @@ export function assertNonNegativeSafeInteger(value: number, label: string): void
   }
 }
 
-export function parseJson<A>(schema: Schema.Schema<A>, text: string, label: string) {
+export function parseJson<A>(schema: Schema.ConstraintDecoder<A>, text: string, label: string) {
   return Schema.decodeUnknownEffect(Schema.fromJsonString(schema), strictParseOptions)(text).pipe(
     Effect.mapError(
       (error) => new DesktopSettingsError("invalid_request", `Invalid ${label}: ${error}`),

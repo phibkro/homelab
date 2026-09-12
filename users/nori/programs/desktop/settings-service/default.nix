@@ -5,16 +5,15 @@
   ...
 }:
 let
-  cleanSource =
-    lib.cleanSourceWith {
-      src = ./.;
-      filter =
-        path: _type:
-        let
-          name = builtins.baseNameOf path;
-        in
-        name != "dist" && name != "node_modules";
-    };
+  cleanSource = lib.cleanSourceWith {
+    src = ./.;
+    filter =
+      path: _type:
+      let
+        name = builtins.baseNameOf path;
+      in
+      name != "dist" && name != "node_modules";
+  };
   serviceImplementation = pkgs.buildNpmPackage {
     pname = "nori-desktop-settings-service";
     version = "0.1.0";
@@ -36,24 +35,52 @@ let
     '';
   };
   commonEnvironment = ''
-    export NORI_DESKTOP_SETTINGS_CONFIG_HOME=${lib.escapeShellArg "${config.xdg.configHome}/nori-desktop"}
-    export NORI_DESKTOP_SETTINGS_STATE_HOME=${lib.escapeShellArg "${config.xdg.stateHome}/nori-desktop"}
-    export NORI_DESKTOP_SETTINGS_DATA_DIR=${lib.escapeShellArg "${config.xdg.dataHome}/nori-desktop"}
-    export NORI_DESKTOP_SETTINGS_APPROVED_SOURCE=/etc/nori-desktop-settings/approved-source.json
-    export NORI_DESKTOP_SETTINGS_ACTIVE_METADATA=/etc/nori-desktop-settings/generation.json
-    export NORI_DESKTOP_SETTINGS_BUILDER=/run/current-system/sw/bin/nori-desktop-settings-build
-    export NORI_DESKTOP_SETTINGS_EVALUATOR=/run/current-system/sw/bin/nori-desktop-settings-preview
-    export NORI_DESKTOP_SETTINGS_ACTIVATOR=/run/current-system/sw/bin/nori-desktop-settings-activate
-    export NORI_DESKTOP_SETTINGS_SYSTEMCTL=${lib.escapeShellArg "${pkgs.systemd}/bin/systemctl"}
-    export NORI_DESKTOP_SETTINGS_HYPRCTL=${lib.escapeShellArg "${pkgs.hyprland}/bin/hyprctl"}
-    export NORI_DESKTOP_SETTINGS_PKEXEC=${lib.escapeShellArg "${pkgs.polkit}/bin/pkexec"}
-    export NORI_DESKTOP_SETTINGS_SHELL=${lib.escapeShellArg (lib.getExe pkgs.bash)}
-    export RICE_VICINAE_BIN=${lib.escapeShellArg (lib.getExe pkgs.vicinae)}
+    if [ -z "''${NORI_DESKTOP_SETTINGS_CONFIG_HOME-}" ]; then
+      export NORI_DESKTOP_SETTINGS_CONFIG_HOME=${lib.escapeShellArg "${config.xdg.configHome}/nori-desktop"}
+    fi
+    if [ -z "''${NORI_DESKTOP_SETTINGS_STATE_HOME-}" ]; then
+      export NORI_DESKTOP_SETTINGS_STATE_HOME=${lib.escapeShellArg "${config.xdg.stateHome}/nori-desktop"}
+    fi
+    if [ -z "''${NORI_DESKTOP_SETTINGS_DATA_DIR-}" ]; then
+      export NORI_DESKTOP_SETTINGS_DATA_DIR=${lib.escapeShellArg "${config.xdg.dataHome}/nori-desktop"}
+    fi
+    if [ -z "''${NORI_DESKTOP_SETTINGS_APPROVED_SOURCE-}" ]; then
+      export NORI_DESKTOP_SETTINGS_APPROVED_SOURCE=/etc/nori-desktop-settings/approved-source.json
+    fi
+    if [ -z "''${NORI_DESKTOP_SETTINGS_ACTIVE_METADATA-}" ]; then
+      export NORI_DESKTOP_SETTINGS_ACTIVE_METADATA=/etc/nori-desktop-settings/generation.json
+    fi
+    if [ -z "''${NORI_DESKTOP_SETTINGS_BUILDER-}" ]; then
+      export NORI_DESKTOP_SETTINGS_BUILDER=/run/current-system/sw/bin/nori-desktop-settings-build
+    fi
+    if [ -z "''${NORI_DESKTOP_SETTINGS_EVALUATOR-}" ]; then
+      export NORI_DESKTOP_SETTINGS_EVALUATOR=/run/current-system/sw/bin/nori-desktop-settings-preview
+    fi
+    if [ -z "''${NORI_DESKTOP_SETTINGS_ACTIVATOR-}" ]; then
+      export NORI_DESKTOP_SETTINGS_ACTIVATOR=/run/current-system/sw/bin/nori-desktop-settings-activate
+    fi
+    if [ -z "''${NORI_DESKTOP_SETTINGS_SYSTEMCTL-}" ]; then
+      export NORI_DESKTOP_SETTINGS_SYSTEMCTL=${lib.escapeShellArg "${pkgs.systemd}/bin/systemctl"}
+    fi
+    if [ -z "''${NORI_DESKTOP_SETTINGS_HYPRCTL-}" ]; then
+      export NORI_DESKTOP_SETTINGS_HYPRCTL=${lib.escapeShellArg "${pkgs.hyprland}/bin/hyprctl"}
+    fi
+    if [ -z "''${NORI_DESKTOP_SETTINGS_PKEXEC-}" ]; then
+      export NORI_DESKTOP_SETTINGS_PKEXEC=${lib.escapeShellArg "${pkgs.polkit}/bin/pkexec"}
+    fi
+    if [ -z "''${NORI_DESKTOP_SETTINGS_SHELL-}" ]; then
+      export NORI_DESKTOP_SETTINGS_SHELL=${lib.escapeShellArg (lib.getExe pkgs.bash)}
+    fi
+    if [ -z "''${RICE_VICINAE_BIN-}" ]; then
+      export RICE_VICINAE_BIN=${lib.escapeShellArg (lib.getExe pkgs.vicinae)}
+    fi
     if [ -z "''${XDG_RUNTIME_DIR-}" ]; then
       echo "nori-desktop-settings: XDG_RUNTIME_DIR is not configured" >&2
       exit 70
     fi
-    export NORI_DESKTOP_SETTINGS_SOCKET="$XDG_RUNTIME_DIR/nori-desktop/settings.sock"
+    if [ -z "''${NORI_DESKTOP_SETTINGS_SOCKET-}" ]; then
+      export NORI_DESKTOP_SETTINGS_SOCKET="$XDG_RUNTIME_DIR/nori-desktop/settings.sock"
+    fi
   '';
   settingsCli = pkgs.writeShellApplication {
     name = "nori-desktop-settings";
@@ -75,7 +102,10 @@ let
   };
   package = pkgs.symlinkJoin {
     name = "nori-desktop-settings";
-    paths = [ settingsCli savedCommandCli ];
+    paths = [
+      settingsCli
+      savedCommandCli
+    ];
   };
 in
 {
@@ -92,10 +122,7 @@ in
     home.packages = [ package ];
 
     systemd.user.services.nori-desktop-config = {
-      Unit = {
-        Description = "Nori desktop settings change service";
-        After = [ "default.target" ];
-      };
+      Unit.Description = "Nori desktop settings change service";
       Service = {
         Type = "simple";
         ExecStart = "${package}/bin/nori-desktop-settings daemon";

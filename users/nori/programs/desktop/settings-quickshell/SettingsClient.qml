@@ -1,9 +1,10 @@
 pragma ComponentBehavior: Bound
 
-import QtQuick
+import Quickshell
 import Quickshell.Io
+import QtQuick
 
-QtObject {
+Scope {
     id: root
 
     readonly property string cli: "nori-desktop-settings"

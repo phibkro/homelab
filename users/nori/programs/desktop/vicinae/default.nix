@@ -19,6 +19,20 @@ let
   settingsPackage = config.nori.desktop.settingsService.package;
   settingsCli = lib.getExe' settingsPackage "nori-desktop-settings";
   savedCommand = lib.getExe' settingsPackage "rice-saved-command";
+  savedCommandProjectionSync = pkgs.writeShellApplication {
+    name = "nori-desktop-saved-command-projection-sync";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      for _ in {1..200}; do
+        if ${settingsCli} state --json >/dev/null 2>&1; then
+          exec ${savedCommand} sync
+        fi
+        sleep 0.05
+      done
+      printf '%s\n' 'nori-desktop-saved-command-projection-sync: settings service did not become ready' >&2
+      exit 1
+    '';
+  };
   extensionStaticSource = cleanNodeSource ./extension;
   extensionSource =
     pkgs.runCommand "nori-desktop-vicinae-extension-source"
@@ -248,6 +262,10 @@ let
       export RICE_VICINAE_EXTENSION=${lib.escapeShellArg noriDesktopExtension}
       export RICE_SAVED_COMMAND_BIN=${lib.escapeShellArg savedCommand}
       export RICE_NORI_DESKTOP_SETTINGS_BIN=${lib.escapeShellArg settingsCli}
+      export RICE_DESKTOP_COMPONENTS=${lib.escapeShellArg config.nori.desktop.generated.presentation}
+      export RICE_DESKTOP_INPUT_SCHEMA=${lib.escapeShellArg config.nori.desktop.generated.inputSchema}
+      export RICE_DESKTOP_OUTPUT_SCHEMA=${lib.escapeShellArg config.nori.desktop.generated.outputSchema}
+      export RICE_DESKTOP_RESOLVED_SETTINGS=${lib.escapeShellArg config.nori.desktop.generated.resolvedSettings}
       export RICE_VICINAE_BIN=${lib.escapeShellArg (lib.getExe pkgs.vicinae)}
       export RICE_VICINAE_TEST_SHELL=${lib.escapeShellArg (lib.getExe pkgs.bash)}
       ${builtins.readFile ./vicinae-launcher-live-test.sh}
@@ -278,7 +296,7 @@ in
       };
       Service = {
         Type = "oneshot";
-        ExecStart = "${savedCommand} sync";
+        ExecStart = lib.getExe savedCommandProjectionSync;
       };
       Install.WantedBy = [ config.wayland.systemd.target ];
     };

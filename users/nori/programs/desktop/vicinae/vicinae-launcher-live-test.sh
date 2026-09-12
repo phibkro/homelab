@@ -6,7 +6,7 @@ if [[ ${VICINAE_LAUNCHER_LIVE_TEST:-0} != 1 ]]; then
   exit 64
 fi
 
-for required in RICE_VICINAE_ACTION_SCRIPTS RICE_VICINAE_EXTENSION RICE_SAVED_COMMAND_BIN RICE_VICINAE_BIN RICE_VICINAE_TEST_SHELL; do
+for required in RICE_VICINAE_ACTION_SCRIPTS RICE_VICINAE_EXTENSION RICE_SAVED_COMMAND_BIN RICE_NORI_DESKTOP_SETTINGS_BIN RICE_DESKTOP_COMPONENTS RICE_DESKTOP_INPUT_SCHEMA RICE_DESKTOP_OUTPUT_SCHEMA RICE_DESKTOP_RESOLVED_SETTINGS RICE_VICINAE_BIN RICE_VICINAE_TEST_SHELL; do
   if [[ -z ${!required:-} ]]; then
     printf 'vicinae-launcher-live-test: missing %s\n' "$required" >&2
     exit 64
@@ -16,9 +16,12 @@ done
 tmp=$(mktemp -d)
 sway_pid=
 vicinae_pid=
+settings_pid=
 cleanup() {
+  [[ -z $settings_pid ]] || kill "$settings_pid" 2>/dev/null || true
   [[ -z $vicinae_pid ]] || kill "$vicinae_pid" 2>/dev/null || true
   [[ -z $sway_pid ]] || kill "$sway_pid" 2>/dev/null || true
+  wait "$settings_pid" 2>/dev/null || true
   wait "$vicinae_pid" 2>/dev/null || true
   wait "$sway_pid" 2>/dev/null || true
   rm -rf "$tmp"
@@ -43,6 +46,29 @@ mkdir -p \
 chmod 700 "$XDG_RUNTIME_DIR"
 cp -RL "$RICE_VICINAE_ACTION_SCRIPTS"/. "$XDG_DATA_HOME/vicinae/scripts/rice/"
 cp -RL "$RICE_VICINAE_EXTENSION"/. "$XDG_DATA_HOME/vicinae/extensions/nori-desktop/"
+mkdir -p "$XDG_DATA_HOME/nori-desktop"
+cp "$RICE_DESKTOP_COMPONENTS" "$XDG_DATA_HOME/nori-desktop/components.json"
+cp "$RICE_DESKTOP_INPUT_SCHEMA" "$XDG_DATA_HOME/nori-desktop/settings-input.schema.json"
+cp "$RICE_DESKTOP_OUTPUT_SCHEMA" "$XDG_DATA_HOME/nori-desktop/settings-output.schema.json"
+cp "$RICE_DESKTOP_RESOLVED_SETTINGS" "$XDG_DATA_HOME/nori-desktop/resolved-settings.json"
+export NORI_DESKTOP_SETTINGS_CONFIG_HOME="$XDG_CONFIG_HOME/nori-desktop"
+export NORI_DESKTOP_SETTINGS_STATE_HOME="$XDG_STATE_HOME/nori-desktop"
+export NORI_DESKTOP_SETTINGS_DATA_DIR="$XDG_DATA_HOME/nori-desktop"
+export NORI_DESKTOP_SETTINGS_RICE_COMMAND="$RICE_SAVED_COMMAND_BIN"
+export NORI_DESKTOP_SETTINGS_ACTIVE_METADATA="$tmp/no-active-generation.json"
+export NORI_DESKTOP_SETTINGS_SOCKET="$XDG_RUNTIME_DIR/nori-desktop/settings.sock"
+"$RICE_NORI_DESKTOP_SETTINGS_BIN" daemon >"$tmp/settings.log" 2>&1 &
+settings_pid=$!
+for _ in $(seq 1 200); do
+  if "$RICE_NORI_DESKTOP_SETTINGS_BIN" state --json >/dev/null 2>&1; then
+    break
+  fi
+  sleep 0.05
+done
+if ! "$RICE_NORI_DESKTOP_SETTINGS_BIN" state --json >/dev/null 2>&1; then
+  cat "$tmp/settings.log" >&2
+  exit 1
+fi
 printf '%s\n' '{"launcher_window":{"layer_shell":{"enabled":true}}}' \
   >"$XDG_CONFIG_HOME/vicinae/settings.json"
 cat >"$XDG_DATA_HOME/applications/launcher-fixture.desktop" <<EOF
@@ -146,6 +172,14 @@ for _ in $(seq 1 100); do
   [[ ! -f $marker ]] || break
   sleep 0.05
 done
+if [[ ! -f $marker ]]; then
+  printf '%s\n' 'vicinae-launcher-live-test: saved command did not create its marker' >&2
+  for generated_script in "$XDG_DATA_HOME"/vicinae/scripts/nori-saved/*.sh; do
+    "$generated_script" 'diagnostic parameter' >"$tmp/generated-command.stdout" 2>"$tmp/generated-command.stderr" || true
+  done
+  cat "$tmp/generated-command.stderr" "$tmp/settings.log" "$tmp/vicinae.log" >&2
+  exit 1
+fi
 test "$(<"$marker")" = 'literal parameter'
 
 printf '%s\n' 'vicinae-launcher-live-test: isolated launcher journey passed'
