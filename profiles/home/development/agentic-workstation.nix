@@ -25,7 +25,10 @@ in
   policy live here instead of leaking into the machine definition.
 */
 {
-  imports = [ ../../../users/nori/programs/saturation-alert.nix ];
+  imports = [
+    ../../../users/nori/programs/saturation-alert.nix
+    ../../../users/nori/programs/herdr-resource-observer.nix
+  ];
 
   home.packages = [
     pkgs.deno
@@ -61,6 +64,7 @@ in
   nori.agentNotify.enable = true;
   nori.omp.exaApiKeyFile = "/run/secrets/exa-api-key";
   nori.saturationAlert.enable = true;
+  nori.herdrResourceObserver.enable = true;
   home.sessionPath = [ "$HOME/.deno/bin" ];
 
   /*
