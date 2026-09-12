@@ -1,0 +1,126 @@
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
+let
+  cleanSource =
+    lib.cleanSourceWith {
+      src = ./.;
+      filter =
+        path: _type:
+        let
+          name = builtins.baseNameOf path;
+        in
+        name != "dist" && name != "node_modules";
+    };
+  serviceImplementation = pkgs.buildNpmPackage {
+    pname = "nori-desktop-settings-service";
+    version = "0.1.0";
+    src = cleanSource;
+    npmDeps = pkgs.importNpmLock { npmRoot = cleanSource; };
+    npmConfigHook = pkgs.importNpmLock.npmConfigHook;
+    nativeBuildInputs = [ pkgs.bun ];
+    buildPhase = ''
+      runHook preBuild
+      bun build src/main.ts --compile --outfile dist/nori-desktop-settings
+      bun build src/rice-saved-command.ts --compile --outfile dist/rice-saved-command
+      runHook postBuild
+    '';
+    installPhase = ''
+      runHook preInstall
+      install -Dm755 dist/nori-desktop-settings "$out/libexec/nori-desktop-settings"
+      install -Dm755 dist/rice-saved-command "$out/libexec/rice-saved-command"
+      runHook postInstall
+    '';
+  };
+  commonEnvironment = ''
+    export NORI_DESKTOP_SETTINGS_CONFIG_HOME=${lib.escapeShellArg "${config.xdg.configHome}/nori-desktop"}
+    export NORI_DESKTOP_SETTINGS_STATE_HOME=${lib.escapeShellArg "${config.xdg.stateHome}/nori-desktop"}
+    export NORI_DESKTOP_SETTINGS_DATA_DIR=${lib.escapeShellArg "${config.xdg.dataHome}/nori-desktop"}
+    export NORI_DESKTOP_SETTINGS_APPROVED_SOURCE=/etc/nori-desktop-settings/approved-source.json
+    export NORI_DESKTOP_SETTINGS_ACTIVE_METADATA=/etc/nori-desktop-settings/generation.json
+    export NORI_DESKTOP_SETTINGS_BUILDER=/run/current-system/sw/bin/nori-desktop-settings-build
+    export NORI_DESKTOP_SETTINGS_EVALUATOR=/run/current-system/sw/bin/nori-desktop-settings-preview
+    export NORI_DESKTOP_SETTINGS_ACTIVATOR=/run/current-system/sw/bin/nori-desktop-settings-activate
+    export NORI_DESKTOP_SETTINGS_SYSTEMCTL=${lib.escapeShellArg "${pkgs.systemd}/bin/systemctl"}
+    export NORI_DESKTOP_SETTINGS_HYPRCTL=${lib.escapeShellArg "${pkgs.hyprland}/bin/hyprctl"}
+    export NORI_DESKTOP_SETTINGS_PKEXEC=${lib.escapeShellArg "${pkgs.polkit}/bin/pkexec"}
+    export NORI_DESKTOP_SETTINGS_SHELL=${lib.escapeShellArg (lib.getExe pkgs.bash)}
+    export RICE_VICINAE_BIN=${lib.escapeShellArg (lib.getExe pkgs.vicinae)}
+    if [ -z "''${XDG_RUNTIME_DIR-}" ]; then
+      echo "nori-desktop-settings: XDG_RUNTIME_DIR is not configured" >&2
+      exit 70
+    fi
+    export NORI_DESKTOP_SETTINGS_SOCKET="$XDG_RUNTIME_DIR/nori-desktop/settings.sock"
+  '';
+  settingsCli = pkgs.writeShellApplication {
+    name = "nori-desktop-settings";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      ${commonEnvironment}
+      exec ${serviceImplementation}/libexec/nori-desktop-settings "$@"
+    '';
+  };
+  savedCommandCli = pkgs.writeShellApplication {
+    name = "rice-saved-command";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      ${commonEnvironment}
+      runner=$(readlink -f "$0")
+      export NORI_DESKTOP_SETTINGS_RICE_COMMAND="$runner"
+      exec ${serviceImplementation}/libexec/rice-saved-command "$@"
+    '';
+  };
+  package = pkgs.symlinkJoin {
+    name = "nori-desktop-settings";
+    paths = [ settingsCli savedCommandCli ];
+  };
+in
+{
+  options.nori.desktop.settingsService.package = lib.mkOption {
+    type = lib.types.package;
+    readOnly = true;
+    internal = true;
+    description = "Installed client and daemon executables for the desktop settings service.";
+  };
+
+  config = {
+    nori.desktop.settingsService.package = package;
+
+    home.packages = [ package ];
+
+    systemd.user.services.nori-desktop-config = {
+      Unit = {
+        Description = "Nori desktop settings change service";
+        After = [ "default.target" ];
+      };
+      Service = {
+        Type = "simple";
+        ExecStart = "${package}/bin/nori-desktop-settings daemon";
+        Restart = "on-failure";
+        RestartSec = 2;
+        RuntimeDirectory = "nori-desktop";
+        RuntimeDirectoryMode = "0700";
+        Environment = [
+          "NORI_DESKTOP_SETTINGS_CONFIG_HOME=${config.xdg.configHome}/nori-desktop"
+          "NORI_DESKTOP_SETTINGS_STATE_HOME=${config.xdg.stateHome}/nori-desktop"
+          "NORI_DESKTOP_SETTINGS_DATA_DIR=${config.xdg.dataHome}/nori-desktop"
+          "NORI_DESKTOP_SETTINGS_APPROVED_SOURCE=/etc/nori-desktop-settings/approved-source.json"
+          "NORI_DESKTOP_SETTINGS_ACTIVE_METADATA=/etc/nori-desktop-settings/generation.json"
+          "NORI_DESKTOP_SETTINGS_EVALUATOR=/run/current-system/sw/bin/nori-desktop-settings-preview"
+          "NORI_DESKTOP_SETTINGS_BUILDER=/run/current-system/sw/bin/nori-desktop-settings-build"
+          "NORI_DESKTOP_SETTINGS_ACTIVATOR=/run/current-system/sw/bin/nori-desktop-settings-activate"
+          "NORI_DESKTOP_SETTINGS_SYSTEMCTL=${pkgs.systemd}/bin/systemctl"
+          "NORI_DESKTOP_SETTINGS_HYPRCTL=${pkgs.hyprland}/bin/hyprctl"
+          "NORI_DESKTOP_SETTINGS_PKEXEC=${pkgs.polkit}/bin/pkexec"
+          "NORI_DESKTOP_SETTINGS_RICE_COMMAND=${package}/bin/rice-saved-command"
+          "NORI_DESKTOP_SETTINGS_SHELL=${lib.getExe pkgs.bash}"
+          "RICE_VICINAE_BIN=${lib.getExe pkgs.vicinae}"
+        ];
+      };
+      Install.WantedBy = [ "default.target" ];
+    };
+  };
+}

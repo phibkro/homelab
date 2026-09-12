@@ -23,6 +23,7 @@
     ./disko.nix
     ./disko-media.nix
     ./disko-mp510.nix
+    ./desktop-settings-activation.nix
   ];
 
   # networking.hostName injected from the registry key in flake.nix.
