@@ -32,9 +32,9 @@ in
   system profile as fallback.
 
   SIGNALS (host-wide unless noted):
-  - memoryPressureFull  — /proc/pressure/memory "full" avg300. Warn/critical
-    tiering: critical is the ORIGINAL system-unit's incident-calibrated
-    number, unchanged; warn is Half B's earlier read of the SAME file.
+  - memoryPressureFull  — /proc/pressure/memory "full". `avg10` catches
+    current complete-stall bursts; `avg300` retains the historical incident
+    window for context and slower-developing thrash.
   - taskCeiling         — /proc/loadavg task count. A host-calibrated leak
     canary, not a CPU-saturation limit. Its 6,000-task warning makes normal
     high-concurrency work observable; its 8,000-task critical tier is the
@@ -83,6 +83,20 @@ in
     enable = lib.mkEnableOption "per-user memory-pressure watchdog with per-agent checkpoint remediation";
 
     memoryPressureFull = {
+      burstWarnPct = lib.mkOption {
+        type = lib.types.ints.between 1 99;
+        default = 2;
+        description = "Warn when memory full PSI avg10 reaches this percentage.";
+      };
+      burstCriticalPct = lib.mkOption {
+        type = lib.types.ints.between 1 99;
+        default = 5;
+        description = ''
+          Checkpoint threshold for memory full PSI avg10. Five percent means
+          every non-idle task was stalled for 500 ms in the last ten seconds:
+          a current productivity failure, not merely high resource use.
+        '';
+      };
       warnPct = lib.mkOption {
         type = lib.types.ints.between 1 99;
         default = 2;
@@ -256,6 +270,10 @@ in
         assertion = cfg.taskCeiling.warn < cfg.taskCeiling.critical;
         message = "nori.saturationAlert.taskCeiling.warn must be below critical";
       }
+      {
+        assertion = cfg.memoryPressureFull.burstWarnPct < cfg.memoryPressureFull.burstCriticalPct;
+        message = "nori.saturationAlert.memoryPressureFull.burstWarnPct must be below burstCriticalPct";
+      }
     ];
 
     /*
@@ -334,7 +352,20 @@ in
 
           $1"; }
 
-          # --- host-wide memory pressure: full avg300 (the 2026-07-26 incident signal) ---
+          # --- current complete-stall burst: full avg10 ---
+          mem_full_burst="$(psi_field /proc/pressure/memory full avg10)"
+          mem_full_burst="''${mem_full_burst:-0}"
+          if float_ge "$mem_full_burst" ${toString cfg.memoryPressureFull.burstCriticalPct}; then
+            bump critical
+            repeatable_breach=1
+            add_breach "full-pressure-burst CRITICAL: $mem_full_burst% over the last 10s (limit ${toString cfg.memoryPressureFull.burstCriticalPct}%). Every non-idle task is currently memory-stalled."
+          elif float_ge "$mem_full_burst" ${toString cfg.memoryPressureFull.burstWarnPct}; then
+            bump warn
+            repeatable_breach=1
+            add_breach "full-pressure-burst WARN: $mem_full_burst% over the last 10s (limit ${toString cfg.memoryPressureFull.burstWarnPct}%)"
+          fi
+
+          # --- historical memory pressure: full avg300 ---
           mem_full="$(psi_field /proc/pressure/memory full avg300)"
           mem_full="''${mem_full:-0}"
           if float_ge "$mem_full" ${toString cfg.memoryPressureFull.criticalPct}; then
@@ -426,7 +457,7 @@ in
 
           # --- decide whether to alert, honoring cooldown + severity-change ---
           now_epoch="$(date +%s)"
-          summary="full_avg300=$mem_full% some_avg10=$mem_some% swap_used=$swap_pct% tasks=$tasks/warn:${toString cfg.taskCeiling.warn}/critical:${toString cfg.taskCeiling.critical} agent_scope_max_avg10=$scope_max%"
+          summary="full_avg10=$mem_full_burst% full_avg300=$mem_full% some_avg10=$mem_some% swap_used=$swap_pct% tasks=$tasks/warn:${toString cfg.taskCeiling.warn}/critical:${toString cfg.taskCeiling.critical} agent_scope_max_avg10=$scope_max%"
 
           should_alert=0
           if [ "$severity" != "ok" ]; then
