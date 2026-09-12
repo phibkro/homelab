@@ -29,7 +29,6 @@ let
   ];
   profileNames = lib.attrNames profiles;
   workloadNames = lib.attrNames workloadCatalog;
-  diskNames = lib.attrNames disks;
 
   invalidDiskDeclarations = lib.filterAttrs (
     _name: disk:
@@ -392,7 +391,7 @@ let
     machineRoots = machineRootHosts;
   };
 
-  public = {
+  public = builtins.deepSeq topology {
     hosts = publicHosts;
     profiles = publicProfiles;
     workloads = publicWorkloads;

@@ -75,9 +75,7 @@ let
     title: failures:
     "topology: ${title}:\n${lib.concatStringsSep "\n" (map (failure: "- ${failure}") failures)}";
 
-  hostNames = lib.attrNames hosts;
   workloadNames = lib.attrNames workloadCatalog;
-  diskNames = lib.attrNames disks;
   datasetNames = lib.attrNames datasets;
 
   topologyDeclarationsOf =
