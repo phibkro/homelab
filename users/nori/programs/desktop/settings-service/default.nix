@@ -141,7 +141,7 @@ in
           "NORI_DESKTOP_SETTINGS_ACTIVATOR=/run/current-system/sw/bin/nori-desktop-settings-activate"
           "NORI_DESKTOP_SETTINGS_SYSTEMCTL=${pkgs.systemd}/bin/systemctl"
           "NORI_DESKTOP_SETTINGS_HYPRCTL=${pkgs.hyprland}/bin/hyprctl"
-          "NORI_DESKTOP_SETTINGS_PKEXEC=${pkgs.polkit}/bin/pkexec"
+          "NORI_DESKTOP_SETTINGS_PKEXEC=/run/wrappers/bin/pkexec"
           "NORI_DESKTOP_SETTINGS_RICE_COMMAND=${package}/bin/rice-saved-command"
           "NORI_DESKTOP_SETTINGS_SHELL=${lib.getExe pkgs.bash}"
           "RICE_VICINAE_BIN=${lib.getExe pkgs.vicinae}"
