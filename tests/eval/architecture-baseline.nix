@@ -40,6 +40,10 @@ let
   actualWorkloads = lib.mapAttrs (_: host: host.workloads) inventory.hosts;
 
   expectedWorkloads = {
+    adelie = [
+      "beszel-agent"
+      "node-exporter"
+    ];
     pi = [
       "authelia"
       "beszel-agent"
@@ -123,6 +127,7 @@ let
     authelia = [ "pi" ];
     bazarr = [ "workstation" ];
     beszel-agent = [
+      "adelie"
       "pi"
       "workstation"
     ];
@@ -145,7 +150,10 @@ let
     miniflux = [ "workstation" ];
     music-ingest = [ "workstation" ];
     navidrome = [ "workstation" ];
-    node-exporter = [ "workstation" ];
+    node-exporter = [
+      "adelie"
+      "workstation"
+    ];
     nvidia-gpu-exporter = [ "workstation" ];
     ntfy-notify = [
       "pi"
