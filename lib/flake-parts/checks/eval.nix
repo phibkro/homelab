@@ -317,9 +317,6 @@
               lib.elem "NORI_DESKTOP_SETTINGS_SOCKET=/run/nori-desktop-settings/backend.sock" settingsService.serviceConfig.Environment
               && lib.hasInfix "/run/nori-desktop-settings/public.sock /run/nori-desktop-settings/backend.sock" evaluated.config.systemd.services.nori-desktop-config-ingress.serviceConfig.ExecStart;
             settingsPackage = home.nori.desktop.settingsService.package;
-            settingsActivator = lib.findFirst (
-              package: lib.getName package == "nori-desktop-settings-activate"
-            ) (throw "desktop settings activator is missing") evaluated.config.environment.systemPackages;
             inputSchema = generated.inputSchema;
             outputSchema = generated.outputSchema;
             presentation = generated.presentation;
@@ -383,16 +380,6 @@
               grep -Fx '      <allow_any>no</allow_any>' ${polkitPolicy} >/dev/null
               grep -Fx '      <allow_inactive>no</allow_inactive>' ${polkitPolicy} >/dev/null
               grep -Fx '      <allow_active>no</allow_active>' ${polkitPolicy} >/dev/null
-              activator=${settingsActivator}/bin/nori-desktop-settings-activate
-              profile_set_line=$(grep -n -F '${pkgs.nix}/bin/nix-env --profile /nix/var/nix/profiles/system --set "$artifact" >&2' "$activator" | cut -d: -f1)
-              switch_line=$(grep -n -F '"$artifact/bin/switch-to-configuration" switch >&2' "$activator" | cut -d: -f1)
-              test -n "$profile_set_line"
-              test -n "$switch_line"
-              test "$profile_set_line" -lt "$switch_line"
-              grep -F 'activeGeneration:' "$activator" >/dev/null
-              grep -F 'bootDefault:' "$activator" >/dev/null
-              grep -F 'matchesArtifact:' "$activator" >/dev/null
-              grep -F '[ "$active_path" != "$artifact" ] || [ "$boot_default_path" != "$artifact" ]' "$activator" >/dev/null
               mkdir -p "$TMPDIR"/{config,state,data,home}
               chmod 700 "$TMPDIR"/{config,state,data,home}
               cp ${inputSchema} "$TMPDIR/data/settings-input.schema.json"

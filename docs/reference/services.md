@@ -237,6 +237,9 @@ limit. The remaining frame space holds contracts, jobs, and observations. They
 do not edit profile files or reload Waybar. The persistent nori runtime agent
 is the only user-side component allowed to request the named polkit activation,
 reload Waybar, and submit a bounded surface observation.
+Only isolated internal TypeScript tests may inject `CliRuntime`; every installed
+CLI, saved-command, and runtime-agent wrapper sets
+`NORI_DESKTOP_SETTINGS_SOCKET` to that public path.
 
 The authority builds only from the approved immutable Nix source and stops at
 authorization. The root helper re-reads the durable apply ID and validates the

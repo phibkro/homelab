@@ -86,9 +86,7 @@ let
     if [ -z "''${RICE_VICINAE_BIN-}" ]; then
       export RICE_VICINAE_BIN=${lib.escapeShellArg (lib.getExe pkgs.vicinae)}
     fi
-    if [ -z "''${NORI_DESKTOP_SETTINGS_SOCKET-}" ]; then
-      export NORI_DESKTOP_SETTINGS_SOCKET=/run/nori-desktop-settings/public.sock
-    fi
+    export NORI_DESKTOP_SETTINGS_SOCKET=/run/nori-desktop-settings/public.sock
   '';
   settingsDaemon = pkgs.writeShellApplication {
     name = "nori-desktop-settings-daemon";

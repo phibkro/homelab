@@ -238,6 +238,10 @@ The public socket cannot be mode `0600`: a `nori` client has a different UID
 from the dedicated authority, so `0600` would prevent the client from reaching it.
 Group access is only admission to ingress; `SO_PEERCRED` remains the caller-identity check.
 
+Only isolated internal TypeScript tests may inject `CliRuntime`. Every installed
+CLI, saved-command, and runtime-agent wrapper sets
+`NORI_DESKTOP_SETTINGS_SOCKET` to the fixed public path.
+
 Use a bounded framed protocol. Reject oversized frames, unknown fields,
 unknown operations, and extra messages after one request.
 
