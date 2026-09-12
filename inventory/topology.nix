@@ -121,6 +121,7 @@ let
     "exposeOnTailnet"
     "publicStatus"
     "reachability"
+    "runsOn"
   ];
   endpointProperties =
     endpoint: lib.filterAttrs (name: _: lib.elem name endpointPropertyNames) endpoint;

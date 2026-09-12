@@ -66,6 +66,7 @@ let
       repeated = duplicate values;
     in
     expect (repeated == null) "${label} '${repeated}' is duplicated";
+  unsupportedKeys = allowed: value: filter (name: !elem name allowed) (attrNames value);
 
   propertyContext = context: name: "${context} property '${name}'";
 
@@ -187,6 +188,24 @@ let
   topologyCheck =
     if !isAttrs topology then
       fail "the input is not an attribute set"
+    else if
+      unsupportedKeys [
+        "schemaVersion"
+        "nodes"
+        "requirements"
+        "relationships"
+      ] topology != [ ]
+    then
+      fail "topology has unsupported field(s): ${
+        builtins.toJSON (
+          unsupportedKeys [
+            "schemaVersion"
+            "nodes"
+            "requirements"
+            "relationships"
+          ] topology
+        )
+      }"
     else if !(topology ? schemaVersion) || topology.schemaVersion != 1 then
       fail "schemaVersion must be 1"
     else if !(topology ? nodes) || !isList topology.nodes then
@@ -204,6 +223,24 @@ let
     node:
     if !isAttrs node then
       fail "a node is not an attribute set"
+    else if
+      unsupportedKeys [
+        "id"
+        "kind"
+        "properties"
+        "capabilities"
+      ] node != [ ]
+    then
+      fail "node has unsupported field(s): ${
+        builtins.toJSON (
+          unsupportedKeys [
+            "id"
+            "kind"
+            "properties"
+            "capabilities"
+          ] node
+        )
+      }"
     else if !(node ? id) || !isString node.id then
       fail "a node has no string id"
     else if !isToscaName node.id then
@@ -266,6 +303,26 @@ let
     relationship:
     if !isAttrs relationship then
       fail "a relationship is not an attribute set"
+    else if
+      unsupportedKeys [
+        "id"
+        "type"
+        "source"
+        "target"
+        "properties"
+      ] relationship != [ ]
+    then
+      fail "relationship has unsupported field(s): ${
+        builtins.toJSON (
+          unsupportedKeys [
+            "id"
+            "type"
+            "source"
+            "target"
+            "properties"
+          ] relationship
+        )
+      }"
     else if !(relationship ? id) || !isString relationship.id then
       fail "a relationship has no string id"
     else if
@@ -410,6 +467,30 @@ let
     requirement:
     if !isAttrs requirement then
       fail "a requirement is not an attribute set"
+    else if
+      unsupportedKeys [
+        "id"
+        "owner"
+        "name"
+        "capability"
+        "relationship"
+        "target"
+        "constraints"
+      ] requirement != [ ]
+    then
+      fail "requirement has unsupported field(s): ${
+        builtins.toJSON (
+          unsupportedKeys [
+            "id"
+            "owner"
+            "name"
+            "capability"
+            "relationship"
+            "target"
+            "constraints"
+          ] requirement
+        )
+      }"
     else if !(requirement ? id) || !isString requirement.id then
       fail "a requirement has no string id"
     else if
@@ -457,7 +538,7 @@ let
     if length sameName == 1 && isToscaName requirement.name then
       requirement.name
     else
-      stableName "requirement" requirement.id;
+      stableName "NoriRequirement" requirement.id;
 
   structuralRelationships =
     let
@@ -467,7 +548,7 @@ let
     in
     filter (relationship: !elem relationship.id requirementRelationshipIds) relationships;
 
-  structuralRequirementSymbol = relationship: stableName "edge" relationship.id;
+  structuralRequirementSymbol = relationship: stableName "NoriEdge" relationship.id;
 
   requirementsForNode = node: filter (requirement: requirement.owner == node.id) requirements;
 
