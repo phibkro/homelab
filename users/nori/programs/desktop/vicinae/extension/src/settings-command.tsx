@@ -15,6 +15,14 @@ type SettingsState = {
   jobs: unknown[];
 };
 
+type SettingsPreview = {
+  selectedValue: string;
+  expectedRevision: number;
+  profileHash: string;
+  resolved: unknown;
+  impact: unknown;
+};
+
 type SettingPresentation = {
   title: string;
   description: string;
@@ -101,6 +109,38 @@ function parseState(response: unknown): SettingsState {
     resolved: state.resolved,
     activeGeneration: state.activeGeneration,
     jobs: state.jobs,
+  };
+}
+
+function parsePreview(
+  response: unknown,
+  componentId: string,
+  settingId: string,
+  selectedValue: string,
+  expectedRevision: number,
+): SettingsPreview {
+  if (!isJsonObject(response) || response.ok !== true || !isJsonObject(response.preview)) {
+    throw new Error("nori-desktop-settings returned an invalid preview response");
+  }
+  const preview = response.preview;
+  if (
+    !isJsonObject(preview.profile) ||
+    !isJsonObject(preview.profile.components) ||
+    typeof preview.profileHash !== "string" ||
+    !("resolved" in preview) ||
+    !("impact" in preview)
+  ) {
+    throw new Error("nori-desktop-settings returned an incomplete preview response");
+  }
+  if (settingValue(preview.profile.components, componentId, settingId) !== selectedValue) {
+    throw new Error("nori-desktop-settings preview does not match the selected value");
+  }
+  return {
+    selectedValue,
+    expectedRevision,
+    profileHash: preview.profileHash,
+    resolved: preview.resolved,
+    impact: preview.impact,
   };
 }
 
@@ -199,11 +239,13 @@ type SettingFormProps = {
 export function SettingForm({ componentId, settingId, values }: SettingFormProps) {
   const [state, setState] = useState<SettingsState | null>(null);
   const [selected, setSelected] = useState(values[0] ?? "");
+  const [preview, setPreview] = useState<SettingsPreview | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(
     async (preserveFailure = false) => {
+      setPreview(null);
       setLoading(true);
       try {
         const next = parseState(await invokeSettings(["state"]));
@@ -253,8 +295,45 @@ export function SettingForm({ componentId, settingId, values }: SettingFormProps
     }
   }
 
-  async function save() {
+  async function previewChange() {
     if (state === null || presentation === null) return;
+    setPreview(null);
+    const toast = await showToast({ style: Toast.Style.Animated, title: "Previewing change" });
+    try {
+      const nextPreview = parsePreview(
+        await invokeSettings([
+          "preview",
+          componentId,
+          settingId,
+          JSON.stringify(selected),
+          "--expected-revision",
+          String(state.profile.revision),
+        ]),
+        componentId,
+        settingId,
+        selected,
+        state.profile.revision,
+      );
+      setPreview(nextPreview);
+      setFailure(null);
+      toast.style = Toast.Style.Success;
+      toast.title = "Change previewed";
+      toast.message = "Review the generated impact, then save the desired value.";
+    } catch (error) {
+      await reportFailure("Could not preview change", error);
+    }
+  }
+
+  async function save() {
+    if (
+      state === null ||
+      presentation === null ||
+      preview === null ||
+      preview.selectedValue !== selected ||
+      preview.expectedRevision !== state.profile.revision
+    ) {
+      return;
+    }
     const toast = await showToast({ style: Toast.Style.Animated, title: "Saving desired value" });
     try {
       const next = parseState(
@@ -268,6 +347,7 @@ export function SettingForm({ componentId, settingId, values }: SettingFormProps
         ]),
       );
       setState(next);
+      setPreview(null);
       setFailure(null);
       toast.style = Toast.Style.Success;
       toast.title = "Desired value saved";
@@ -303,19 +383,21 @@ export function SettingForm({ componentId, settingId, values }: SettingFormProps
   }
 
   const title = presentation?.title ?? "Desktop setting";
-  const canChange = state !== null && presentation !== null;
+  const canPreview = state !== null && presentation !== null;
+  const canSave =
+    canPreview &&
+    preview !== null &&
+    preview.selectedValue === selected &&
+    preview.expectedRevision === state.profile.revision;
   return (
     <Form
       isLoading={loading}
       navigationTitle={title}
       actions={
         <ActionPanel>
-          {canChange ? (
-            <>
-              <Action.SubmitForm title="Save Desired Value" onSubmit={save} />
-              <Action title="Apply System Update" onAction={apply} />
-            </>
-          ) : null}
+          {canPreview ? <Action title="Preview Change" onAction={previewChange} /> : null}
+          {canSave ? <Action.SubmitForm title="Save Desired Value" onSubmit={save} /> : null}
+          {canPreview ? <Action title="Apply System Update" onAction={apply} /> : null}
           <Action
             title="Reload Settings"
             onAction={() => {
@@ -329,11 +411,27 @@ export function SettingForm({ componentId, settingId, values }: SettingFormProps
         title={title}
         text={presentation?.description ?? "The generated setting catalog is unavailable from the change service."}
       />
-      <Form.Dropdown id="value" title={title} value={selected} onChange={setSelected}>
+      <Form.Dropdown
+        id="value"
+        title={title}
+        value={selected}
+        onChange={(value) => {
+          setSelected(value);
+          setPreview(null);
+        }}
+      >
         {values.map((value) => (
           <Form.Dropdown.Item key={value} title={value} value={value} />
         ))}
       </Form.Dropdown>
+      <Form.Description
+        title="Preview"
+        text={
+          preview === null
+            ? "Preview the selected value before saving it."
+            : `Revision ${preview.expectedRevision}\nProfile hash: ${preview.profileHash}\nResolved: ${textFor(preview.resolved)}\nImpact: ${textFor(preview.impact)}`
+        }
+      />
       <Form.Separator />
       <Form.Description
         title="Desired"
