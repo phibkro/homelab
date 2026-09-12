@@ -27,6 +27,13 @@
   services.vector = {
     enable = true;
     journaldAccess = true;
+    /*
+      Vector drains for up to 60 seconds on SIGTERM. Without an explicit
+      systemd bound, the manager's 90-second default adds a second, pointless
+      wait when the Pi sink is unavailable. Preserve the requested graceful
+      window, then fail deterministically instead of delaying rebuilds and
+      shutdowns for the default tail.
+    */
     settings = {
       /*
         journald source — Vector reads from systemd-journald directly.
@@ -118,4 +125,6 @@
       };
     };
   };
+
+  systemd.services.vector.serviceConfig.TimeoutStopSec = "65s";
 }
