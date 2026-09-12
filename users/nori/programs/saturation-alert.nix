@@ -36,8 +36,9 @@ in
     tiering: critical is the ORIGINAL system-unit's incident-calibrated
     number, unchanged; warn is Half B's earlier read of the SAME file.
   - taskCeiling         — /proc/loadavg task count. A host-calibrated leak
-    canary, not a CPU-saturation limit; recalibrate its healthy baseline when
-    CPU-sized runtime thread pools change materially.
+    canary, not a CPU-saturation limit. Its 6,000-task warning makes normal
+    high-concurrency work observable; its 8,000-task critical tier is the
+    point that pages and checkpoints agents.
   - swapUsed            — swap %, absent from the system-unit predecessor
     entirely; Half B's numbers.
   - pressureSome        — /proc/pressure/memory "some" avg10 (host-wide)
@@ -108,24 +109,35 @@ in
       };
     };
 
-    taskCeiling = lib.mkOption {
-      type = lib.types.ints.positive;
-      default = 6000;
-      description = ''
-        Alert when the kernel's total task count (`/proc/loadavg` field 4,
-        after the slash) crosses this. This is a leak canary, not a CPU-load
-        limit: task count includes mostly-sleeping runtime threads.
+    taskCeiling = {
+      warn = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 6000;
+        description = ''
+          Show a desktop warning when the kernel's total task count
+          (`/proc/loadavg` field 4, after the slash) crosses this. This is a
+          leak canary, not a CPU-load limit: task count includes mostly-
+          sleeping runtime threads.
 
-        The original 4000 threshold was calibrated on the 12-thread Ryzen
-        5600X: 4749 tasks at the 2026-07-26 leak peak (898 V8 workers from
-        141 leaked harnesses), versus ~3300 with a healthy full agent fleet.
-        Recalibrated after the 32-thread Ryzen 5950X upgrade on 2026-09-06:
-        a healthy full fleet plus a NixOS rebuild reached 4962 tasks with
-        37 GiB available, zero memory PSI, and zero agent-scope PSI. 6000
-        preserves roughly the original 20% healthy-baseline margin. Scaling
-        4000 linearly by CPU count would yield 10667 and mask the historical
-        leak signature.
-      '';
+          The original 4000 threshold was calibrated on the 12-thread Ryzen
+          5600X: 4749 tasks at the 2026-07-26 leak peak (898 V8 workers from
+          141 leaked harnesses), versus ~3300 with a healthy full agent fleet.
+          On 2026-09-12, active OMP workers alone brought the 32-thread Ryzen
+          5950X to 6303 tasks while memory PSI and swap stayed healthy. Keep
+          this lower tier as an observable concurrency signal, not an
+          incident.
+        '';
+      };
+      critical = lib.mkOption {
+        type = lib.types.ints.positive;
+        default = 8000;
+        description = ''
+          Page the operator and request agent checkpoints above this task
+          count. This leaves headroom above the observed healthy concurrent
+          workload while retaining a task-leak canary independent of memory
+          pressure.
+        '';
+      };
     };
 
     swapUsed = {
@@ -239,6 +251,13 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    assertions = [
+      {
+        assertion = cfg.taskCeiling.warn < cfg.taskCeiling.critical;
+        message = "nori.saturationAlert.taskCeiling.warn must be below critical";
+      }
+    ];
+
     /*
       gawk (PSI values are decimals) + jq (herdr agent list is JSON) +
       herdr itself, all explicit on Service.Environment's PATH rather than
@@ -329,11 +348,14 @@ in
 
           # --- task-count leak canary ---
           tasks="$(cut -d' ' -f4 /proc/loadavg | cut -d/ -f2)"
-          if [ "$tasks" -ge ${toString cfg.taskCeiling} ]; then
+          if [ "$tasks" -ge ${toString cfg.taskCeiling.critical} ]; then
             bump critical
             repeatable_breach=1
-            add_breach "task-count CRITICAL: $tasks kernel tasks (limit ${toString cfg.taskCeiling}) — usually a process leak, not real work.
+            add_breach "task-count CRITICAL: $tasks kernel tasks (limit ${toString cfg.taskCeiling.critical}) — usually a process leak, not real work.
           Triage: ps -eLo comm --no-headers | sort | uniq -c | sort -rn | head ; ps -eo pid,ppid,etimes,comm --sort=etimes | head -20"
+          elif [ "$tasks" -ge ${toString cfg.taskCeiling.warn} ]; then
+            bump warn
+            add_breach "task-count WARN: $tasks kernel tasks (limit ${toString cfg.taskCeiling.warn}) — high concurrency; investigate if it grows or does not drain."
           fi
 
           # --- swap ---
@@ -404,7 +426,7 @@ in
 
           # --- decide whether to alert, honoring cooldown + severity-change ---
           now_epoch="$(date +%s)"
-          summary="full_avg300=$mem_full% some_avg10=$mem_some% swap_used=$swap_pct% tasks=$tasks/${toString cfg.taskCeiling} agent_scope_max_avg10=$scope_max%"
+          summary="full_avg300=$mem_full% some_avg10=$mem_some% swap_used=$swap_pct% tasks=$tasks/warn:${toString cfg.taskCeiling.warn}/critical:${toString cfg.taskCeiling.critical} agent_scope_max_avg10=$scope_max%"
 
           should_alert=0
           if [ "$severity" != "ok" ]; then
