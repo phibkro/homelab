@@ -291,7 +291,7 @@ let
             | if $status == "failed"
               then .error = {
                 code: "activation_rejected",
-                message: "Root activation failed before the generation switch completed"
+                message: $message
               }
               else del(.error)
               end
@@ -308,15 +308,58 @@ let
       }
 
       claimed=false
+      profile_set=false
       switch_complete=false
+      artifact=""
+      active_path=""
+      boot_default_path=""
+      observe_activation_paths() {
+        active_path=$(readlink -f /run/current-system 2>/dev/null || true)
+        boot_default_path=$(readlink -f /nix/var/nix/profiles/system 2>/dev/null || true)
+      }
+      activation_observation() {
+        local result_status="$1"
+        local active_matches=false
+        local boot_default_matches=false
+        [ "$active_path" = "$artifact" ] && active_matches=true
+        [ "$boot_default_path" = "$artifact" ] && boot_default_matches=true
+        jq -cn \
+          --arg id "$apply_id" \
+          --arg artifact "$artifact" \
+          --arg status "$result_status" \
+          --arg active_path "$active_path" \
+          --arg boot_default_path "$boot_default_path" \
+          --argjson active_matches "$active_matches" \
+          --argjson boot_default_matches "$boot_default_matches" \
+          '{
+            applyId: $id,
+            artifact: $artifact,
+            status: $status,
+            activeGeneration: {
+              path: (if $active_path == "" then null else $active_path end),
+              matchesArtifact: $active_matches
+            },
+            bootDefault: {
+              path: (if $boot_default_path == "" then null else $boot_default_path end),
+              matchesArtifact: $boot_default_matches
+            }
+          }'
+      }
       on_error() {
         exit_status=$?
         trap - ERR
         if [ "$claimed" = true ]; then
-          if [ "$switch_complete" = true ]; then
-            update_job activating reconciling "Activation may have completed; waiting for user runtime reconciliation" || true
+          if [ "$profile_set" = true ]; then
+            observe_activation_paths
+            if [ "$switch_complete" = true ]; then
+              update_job reconciling failed "Root activation failed after setting the system profile; active path: ''${active_path:-unresolved}; boot-default path: ''${boot_default_path:-unresolved}" || true
+            else
+              update_job activating failed "Root activation failed after setting the system profile; active path: ''${active_path:-unresolved}; boot-default path: ''${boot_default_path:-unresolved}" || true
+            fi
+            echo "nori-desktop-settings: activation failed after setting the system profile; active path: ''${active_path:-unresolved}; boot-default path: ''${boot_default_path:-unresolved}" >&2
+            activation_observation failed || true
           else
-            update_job activating failed "Root activation failed before the generation switch completed" || true
+            update_job activating failed "Root activation failed before the system profile update" || true
           fi
         fi
         exit "$exit_status"
@@ -345,12 +388,17 @@ let
         --arg hash "$profile_hash" \
         '.source == $source and .profileRevision == $revision and .profileHash == $hash' \
         "$metadata" >/dev/null
+      ${pkgs.nix}/bin/nix-env --profile /nix/var/nix/profiles/system --set "$artifact" >&2
+      profile_set=true
       "$artifact/bin/switch-to-configuration" switch >&2
+      observe_activation_paths
+      if [ "$active_path" != "$artifact" ] || [ "$boot_default_path" != "$artifact" ]; then
+        echo "nori-desktop-settings: activation did not select the approved artifact; active path: ''${active_path:-unresolved}; boot-default path: ''${boot_default_path:-unresolved}" >&2
+        false
+      fi
       switch_complete=true
-      update_job activating reconciling "Generation activated; waiting for the user runtime agent to reconcile Waybar"
-      trap - ERR
-      jq -cn --arg id "$apply_id" --arg artifact "$artifact" \
-        '{ applyId: $id, artifact: $artifact, status: "reconciling" }'
+      update_job activating reconciling "Generation activated; profile and active system both match the approved artifact"
+      activation_observation reconciling
     '';
   };
   polkitPolicy = pkgs.writeTextDir "share/polkit-1/actions/org.nori.desktop-settings.policy" ''

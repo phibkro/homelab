@@ -52,16 +52,6 @@ let
       runHook postInstall
     '';
   };
-  settingsIngress = pkgs.writeShellApplication {
-    name = "nori-desktop-settings-ingress";
-    runtimeInputs = [ pkgs.coreutils ];
-    text = ''
-      exec ${nativeIngress}/bin/nori-desktop-settings-ingress \
-        "$XDG_RUNTIME_DIR/nori-desktop/public.sock" \
-        "$XDG_RUNTIME_DIR/nori-desktop/backend.sock" \
-        "$(id -u)"
-    '';
-  };
   commonEnvironment = ''
     if [ -z "''${NORI_DESKTOP_SETTINGS_CONFIG_HOME-}" ]; then
       export NORI_DESKTOP_SETTINGS_CONFIG_HOME=${lib.escapeShellArg "${config.xdg.configHome}/nori-desktop"}
@@ -95,10 +85,6 @@ let
     fi
     if [ -z "''${RICE_VICINAE_BIN-}" ]; then
       export RICE_VICINAE_BIN=${lib.escapeShellArg (lib.getExe pkgs.vicinae)}
-    fi
-    if [ -z "''${XDG_RUNTIME_DIR-}" ]; then
-      echo "nori-desktop-settings: XDG_RUNTIME_DIR is not configured" >&2
-      exit 70
     fi
     if [ -z "''${NORI_DESKTOP_SETTINGS_SOCKET-}" ]; then
       export NORI_DESKTOP_SETTINGS_SOCKET=/run/nori-desktop-settings/public.sock
@@ -174,7 +160,6 @@ let
       settingsCli
       settingsDaemon
       savedCommandCli
-      settingsIngress
     ];
   };
 in

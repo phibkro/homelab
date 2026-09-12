@@ -230,17 +230,21 @@ preview receipts, and apply jobs. Its private `/run/nori-desktop-settings/backen
 socket has mode `0600`. Credential-checked `/run/nori-desktop-settings/public.sock`
 has mode `0660` and accepts requests only from `nori`.
 
-Desktop Settings and Vicinae use the same typed CLI and service snapshot.
-The profile limit is 32 KiB, half of the 64 KiB IPC frame limit.
-Each saved command has a 4 KiB limit. The remaining frame space holds contracts, jobs, and observations.
-They do not edit profile files or reload Waybar. The persistent nori runtime
-agent is the only user-side component allowed to request the named polkit
-activation, reload Waybar, and submit a bounded surface observation.
+Desktop Settings and Vicinae use the same typed CLI and the sole fixed public
+ingress path; neither has an XDG-runtime socket fallback. The profile limit is
+32 KiB, half of the 64 KiB IPC frame limit. Each saved command has a 4 KiB
+limit. The remaining frame space holds contracts, jobs, and observations. They
+do not edit profile files or reload Waybar. The persistent nori runtime agent
+is the only user-side component allowed to request the named polkit activation,
+reload Waybar, and submit a bounded surface observation.
 
 The authority builds only from the approved immutable Nix source and stops at
 authorization. The root helper re-reads the durable apply ID and validates the
-source, profile revision, profile hash, canonical profile, and artifact
-identity. The authority independently validates active generation metadata.
+source, profile revision, profile hash, canonical profile, and artifact identity.
+Following the NixOS activation order, it first registers the artifact in
+`/nix/var/nix/profiles/system` with the pinned `nix-env`, then runs its fixed
+switch program. It returns the resolved active and boot-default paths and only
+reports success when both equal the approved artifact.
 
 Waybar state is untrusted surface evidence from the `nori` runtime agent.
 The same UID can modify that surface, so the report cannot prove process identity.

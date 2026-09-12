@@ -350,9 +350,12 @@ The mechanism must:
    canonical profile, and immutable identities.
 6. Re-derive the system artifact from the approved source and JSON data.
 7. Require that it matches the previewed artifact identity.
-8. Run the fixed activation program for that artifact while holding the fixed
-   activation lock.
-9. Return actual activation and boot-default observations.
+8. Set `/nix/var/nix/profiles/system` to that artifact with the pinned
+   `nix-env`, then run its fixed switch program while holding the activation lock.
+9. Resolve both `/run/current-system` and `/nix/var/nix/profiles/system`;
+   success requires both paths to equal the approved artifact.
+10. Return those actual paths and match booleans. A failure after profile
+    registration records and returns the actual observations without claiming success.
 
 ### Security-discovered dedicated-authority contract change
 
@@ -368,10 +371,11 @@ workstation activation is live.
 
 The authority stops a verified build at `awaiting_authorization`. The active
 `nori` session runtime agent alone invokes the fixed polkit operation with an
-apply ID and expected revision. The root helper re-reads the
-dedicated-authority job and revision snapshot, validates their ownership, hash,
-canonical profile, and immutable identities, then performs only the fixed
-switch operation.
+apply ID and expected revision. The root helper re-reads the dedicated-authority
+job and revision snapshot, validates their ownership, hash, canonical profile,
+and immutable identities, registers the approved artifact as the system profile
+with the pinned `nix-env`, then performs only that artifact's fixed switch
+operation. It verifies and returns the actual active and boot-default paths.
 
 After the switch, the `nori` user runtime agent reloads and observes Waybar,
 then submits its strict observation to the authority. The authority

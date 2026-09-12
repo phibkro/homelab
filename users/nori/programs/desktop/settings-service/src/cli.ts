@@ -23,12 +23,8 @@ function runtimeFromEnvironment(): CliRuntime {
   if (configured !== undefined && configured.length > 0) {
     return { socket: configured, halfClose: process.env.NORI_DESKTOP_SETTINGS_HALF_CLOSE !== "0" };
   }
-  const runtimeDirectory = process.env.XDG_RUNTIME_DIR;
-  if (runtimeDirectory === undefined || runtimeDirectory.length === 0) {
-    throw new DesktopSettingsError("unavailable", "XDG_RUNTIME_DIR is not configured");
-  }
   return {
-    socket: `${runtimeDirectory}/nori-desktop/public.sock`,
+    socket: "/run/nori-desktop-settings/public.sock",
     halfClose: process.env.NORI_DESKTOP_SETTINGS_HALF_CLOSE !== "0",
   };
 }
