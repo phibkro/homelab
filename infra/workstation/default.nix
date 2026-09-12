@@ -122,21 +122,43 @@
   services.tailscale.extraSetFlags = [ "--accept-dns=true" ];
 
   /*
-    CI-only stub for davinci-resolve. It's unfree → not on cache.nixos.org →
-    every `nix flake check` in CI rebuilds a multi-GB binary repackage
-    (fetch + autoPatchelf over GBs, ~40 min), right at the GitHub runner's
-    disk/time limit — the 2026-07-18 SIGTERM (143) that killed a PR run.
-
-    Pure eval sees getEnv "" → the real package, so local `just rebuild` and
-    local `nix flake check` are UNAFFECTED. Only CI opts in, via
-    `HOMELAB_CI=1 nix flake check --impure` (see .github/workflows/check.yml):
-    then davinci-resolve becomes a no-op shim, the workstation toplevel builds
-    in minutes, and CI keeps build-coverage of everything except this one
-    proprietary blob. Tradeoff: the impurity is contained to the CI flag; the
-    only lost coverage is "does davinci's binary repackage build", which is a
-    stable upstream concern local rebuild catches before deploy.
+    Blackmagic replaced the bytes served for the Resolve 21.1 Linux download
+    without changing the version/API selector. Keep nixpkgs' package
+    implementation, but correct its fixed-output hash until the nixpkgs pin
+    carries the same upstream refresh. This is deliberately an override of
+    the package argument rather than a copied package expression, so the
+    source of truth for the build remains nixpkgs.
   */
-  nixpkgs.overlays = lib.optionals (builtins.getEnv "HOMELAB_CI" == "1") [
+  nixpkgs.overlays = [
+    (_final: prev: {
+      davinci-resolve = prev.davinci-resolve.override {
+        runCommandLocal =
+          name: attrs: script:
+          prev.runCommandLocal name (
+            attrs
+            // lib.optionalAttrs (name == "davinci-resolve-src.zip") {
+              outputHash = "sha256-+3SB32EHpH9/0hM3h8CrO6f7V4ZAmxUFh3P8m6QDeO0=";
+            }
+          ) script;
+      };
+    })
+  ]
+  ++ lib.optionals (builtins.getEnv "HOMELAB_CI" == "1") [
+    /*
+      CI-only stub for davinci-resolve. It's unfree → not on cache.nixos.org →
+      every `nix flake check` in CI rebuilds a multi-GB binary repackage
+      (fetch + autoPatchelf over GBs, ~40 min), right at the GitHub runner's
+      disk/time limit — the 2026-07-18 SIGTERM (143) that killed a PR run.
+
+      Pure eval sees getEnv "" → the real package, so local `just rebuild` and
+      local `nix flake check` are UNAFFECTED. Only CI opts in, via
+      `HOMELAB_CI=1 nix flake check --impure` (see .github/workflows/check.yml):
+      then davinci-resolve becomes a no-op shim, the workstation toplevel builds
+      in minutes, and CI keeps build-coverage of everything except this one
+      proprietary blob. Tradeoff: the impurity is contained to the CI flag; the
+      only lost coverage is "does davinci's binary repackage build", which is a
+      stable upstream concern local rebuild catches before deploy.
+    */
     (_final: prev: {
       davinci-resolve = prev.writeShellScriptBin "davinci-resolve" "exit 0";
     })
