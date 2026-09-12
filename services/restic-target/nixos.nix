@@ -50,6 +50,12 @@ in
         ${lib.concatMapStringsSep "\n" (job: ''
           ${pkgs.coreutils}/bin/install -d -m 0700 -o ${target.user} -g ${target.user} ${lib.escapeShellArg "${root}/${job.name}"}
         '') target.jobs}
+        # Existing OneTouch repositories can predate a recreated receiver
+        # account. Reconcile the dedicated Pi namespace contents so the
+        # restricted SFTP account can read its immutable Restic objects.
+        # The chroot root itself must stay root-owned and non-writable, an
+        # OpenSSH invariant enforced before internal-sftp starts.
+        ${pkgs.findutils}/bin/find ${lib.escapeShellArg root} -mindepth 1 -exec ${pkgs.coreutils}/bin/chown ${target.user}:${target.user} {} +
       '';
     };
 
