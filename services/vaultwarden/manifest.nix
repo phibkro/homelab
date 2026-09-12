@@ -7,6 +7,30 @@
     "stateful"
   ];
 
+  topology.requires = {
+    compute = {
+      capability = "nori.capabilities.Compute";
+      relationship = "nori.relationships.Uses";
+      target = null;
+      constraints.architecture.oneOf = [
+        "aarch64"
+        "x86_64"
+      ];
+    };
+    persistent-storage = {
+      capability = "nori.capabilities.PersistentStorage";
+      relationship = "nori.relationships.Uses";
+      target = null;
+      constraints.class.equal = "local";
+    };
+    identity = {
+      capability = "nori.capabilities.OidcProvider";
+      relationship = "nori.relationships.AuthenticatedBy";
+      target = "workload.authelia";
+      constraints = { };
+    };
+  };
+
   endpoints.vault = {
     port = 8222;
     exposeOnTailnet = true;

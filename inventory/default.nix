@@ -254,7 +254,10 @@ let
 
   publicWorkloads = lib.mapAttrs (
     name: workload:
-    removeAttrs workload [ "runtimeModule" ]
+    removeAttrs workload [
+      "runtimeModule"
+      "topology"
+    ]
     // {
       active = workload.active or true;
       hosts = hostsForWorkload name;
@@ -267,6 +270,17 @@ let
     profileName: lib.filter (hostName: lib.elem profileName hosts.${hostName}.profiles) hostNames;
   profileHosts = lib.mapAttrs (name: _profile: hostsForProfile name) profiles;
   workloadHosts = lib.mapAttrs (name: _workload: hostsForWorkload name) workloadCatalog;
+
+  topology = (import ./topology.nix { inherit lib; }) {
+    inherit
+      hosts
+      workloadCatalog
+      datasets
+      disks
+      workloadHosts
+      resolvedEndpointsFor
+      ;
+  };
 
   deploymentTargets = lib.mapAttrs (name: host: {
     inherit (host) kind profiles;
@@ -382,6 +396,7 @@ let
     hosts = publicHosts;
     profiles = publicProfiles;
     workloads = publicWorkloads;
+    inherit topology;
     inherit datasets disks backup;
     deployment = publicDeployment;
     inherit site status portal;

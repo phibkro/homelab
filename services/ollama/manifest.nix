@@ -11,6 +11,16 @@ in
     "stateful"
   ];
 
+  topology.requires.accelerator = {
+    capability = "nori.capabilities.GpuCompute";
+    relationship = "nori.relationships.Uses";
+    target = null;
+    constraints = {
+      backend.equal = "cuda";
+      vramBytes.atLeast = 8589934592;
+    };
+  };
+
   endpoints =
     if active then
       {
