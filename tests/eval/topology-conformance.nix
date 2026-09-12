@@ -61,12 +61,18 @@ let
 
   production = builtins.tryEval (builtins.deepSeq inputs.self.lib.noriInventory.topology true);
   validBaseline = evaluate validFixture;
-  unknownTarget = evaluate (withWorkload (workloadWithRequirement { target = "host.unknown"; }));
+  unknownTarget = evaluate (
+    withWorkload (workloadWithRequirement {
+      target = "host.unknown";
+    })
+  );
   missingCapability = evaluate (
     validFixture
     // {
       hosts.workstation = validFixture.hosts.workstation // {
-        capabilities = removeAttrs validFixture.hosts.workstation.capabilities [ "nori.capabilities.GpuCompute" ];
+        capabilities = removeAttrs validFixture.hosts.workstation.capabilities [
+          "nori.capabilities.GpuCompute"
+        ];
       };
     }
   );
@@ -75,9 +81,11 @@ let
     // {
       hosts.workstation = validFixture.hosts.workstation // {
         capabilities = validFixture.hosts.workstation.capabilities // {
-          "nori.capabilities.GpuCompute" = validFixture.hosts.workstation.capabilities."nori.capabilities.GpuCompute" // {
-            vramBytes = 4294967296;
-          };
+          "nori.capabilities.GpuCompute" =
+            validFixture.hosts.workstation.capabilities."nori.capabilities.GpuCompute"
+            // {
+              vramBytes = 4294967296;
+            };
         };
       };
     }

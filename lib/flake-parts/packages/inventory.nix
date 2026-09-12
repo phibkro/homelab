@@ -5,15 +5,21 @@
     let
       topologyIntent = inputs.self.lib.noriInventory.topology;
       toscaProjection = import ../../topology/tosca.nix topologyIntent;
-      topologyIntentJson = pkgs.writeText "topology.intent.json" (
-        builtins.toJSON topologyIntent
-      );
+      topologyIntentJson = pkgs.writeText "topology.intent.json" (builtins.toJSON topologyIntent);
       toscaBody = (pkgs.formats.yaml { }).generate "topology.intent.tosca.body.yaml" (
         builtins.removeAttrs toscaProjection [ "tosca_definitions_version" ]
       );
       topologyIntentTosca = pkgs.runCommand "topology.intent.tosca.yaml" { } ''
-        printf '%s\n' 'tosca_definitions_version: tosca_2_0' > "$out"
-        ${pkgs.coreutils}/bin/cat ${toscaBody} >> "$out"
+        {
+          IFS= read -r yamlVersion
+          IFS= read -r documentStart
+          if [ "$yamlVersion" != '%YAML 1.1' ] || [ "$documentStart" != '---' ]; then
+            echo "Unexpected pkgs.formats.yaml header" >&2
+            exit 1
+          fi
+          printf '%s\n' 'tosca_definitions_version: tosca_2_0'
+          ${pkgs.coreutils}/bin/cat
+        } < ${toscaBody} > "$out"
       '';
       publicInventory = pkgs.writeText "homelab-inventory.json" (
         builtins.toJSON inputs.self.lib.noriInventory
@@ -52,6 +58,27 @@
         program = "${deploymentPlan}/bin/deployment-plan";
         meta.description = "Derive homelab build and activation plans from inventory selectors or Git changes";
       };
+      checks.topology-tosca-structure =
+        pkgs.runCommandLocal "topology-tosca-structure"
+          {
+            nativeBuildInputs = [
+              pkgs.coreutils
+              pkgs.jq
+              pkgs.yq-go
+            ];
+          }
+          ''
+            set -euo pipefail
+            test "$(head -n 1 ${topologyIntentTosca})" = 'tosca_definitions_version: tosca_2_0'
+            yq -o=json '.' ${topologyIntentTosca} |
+              jq -e '
+                .tosca_definitions_version == "tosca_2_0"
+                and ([.service_template.node_templates["workload.ollama"].requirements[] | has("accelerator")] | any)
+                and ([.service_template.node_templates["workload.vaultwarden"].requirements[] | has("identity")] | any)
+                and ([.service_template.node_templates["workload.vaultwarden"].requirements[] | has("persistent-storage")] | any)
+              ' >/dev/null
+            touch "$out"
+          '';
       checks.deployment-plan =
         pkgs.runCommandLocal "deployment-plan-test"
           {

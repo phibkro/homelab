@@ -17,7 +17,9 @@ let
     || builtins.isString value;
 
   isStableName = name: builtins.isString name && builtins.match "[a-z0-9][a-z0-9-]*" name != null;
-  isTypedName = prefix: name: builtins.isString name && lib.hasPrefix prefix name && lib.removePrefix prefix name != "";
+  isTypedName =
+    prefix: name:
+    builtins.isString name && lib.hasPrefix prefix name && lib.removePrefix prefix name != "";
 
   hostId = name: "host.${name}";
   deviceId = name: "device.${name}";
@@ -34,7 +36,8 @@ let
     "nori.relationships.Uses" = "uses";
     "nori.relationships.AuthenticatedBy" = "authenticated-by";
   };
-  relationshipSegment = type:
+  relationshipSegment =
+    type:
     let
       segment = relationshipTypeSegments.${type} or null;
     in
@@ -49,17 +52,18 @@ let
       target,
       requirementName ? null,
     }:
-    "relationship.${relationshipSegment type}.${source}.${target}${lib.optionalString (!builtins.isNull requirementName) ".${requirementName}"}";
-  mkRelationship =
-    args:
-    {
-      id = relationshipId args;
-      inherit (args) type source target;
-      properties = { };
-      requirementName = args.requirementName or null;
-    };
+    "relationship.${relationshipSegment type}.${source}.${target}${
+      lib.optionalString (!builtins.isNull requirementName) ".${requirementName}"
+    }";
+  mkRelationship = args: {
+    id = relationshipId args;
+    inherit (args) type source target;
+    properties = { };
+    requirementName = args.requirementName or null;
+  };
 
-  requirementId = requirement: "${requirement.owner}.requirement.${requirement.name}@${requirement.target}";
+  requirementId =
+    requirement: "${requirement.owner}.requirement.${requirement.name}@${requirement.target}";
   sortById = values: lib.sort (left: right: builtins.lessThan left.id right.id) values;
   duplicateIds =
     values:
@@ -67,7 +71,9 @@ let
       ids = map (value: value.id) values;
     in
     lib.filter (id: lib.count (value: value.id == id) values > 1) (lib.unique ids);
-  formatFailures = title: failures: "topology: ${title}:\n${lib.concatStringsSep "\n" (map (failure: "- ${failure}") failures)}";
+  formatFailures =
+    title: failures:
+    "topology: ${title}:\n${lib.concatStringsSep "\n" (map (failure: "- ${failure}") failures)}";
 
   hostNames = lib.attrNames hosts;
   workloadNames = lib.attrNames workloadCatalog;
@@ -79,7 +85,8 @@ let
     let
       topology = declaration.topology or { };
     in
-    assert lib.assertMsg (builtins.isAttrs topology) "topology: ${owner} topology declaration must be an attrset";
+    assert lib.assertMsg (builtins.isAttrs topology)
+      "topology: ${owner} topology declaration must be an attrset";
     topology;
   capabilitiesOf =
     owner: declaration:
@@ -87,14 +94,16 @@ let
       topology = topologyDeclarationsOf owner declaration;
       capabilities = topology.capabilities or { };
     in
-    assert lib.assertMsg (builtins.isAttrs capabilities) "topology: ${owner} capabilities must be an attrset";
+    assert lib.assertMsg (builtins.isAttrs capabilities)
+      "topology: ${owner} capabilities must be an attrset";
     capabilities;
   hostCapabilitiesOf =
     hostName:
     let
       capabilities = hosts.${hostName}.capabilities or { };
     in
-    assert lib.assertMsg (builtins.isAttrs capabilities) "topology: ${hostId hostName} capabilities must be an attrset";
+    assert lib.assertMsg (builtins.isAttrs capabilities)
+      "topology: ${hostId hostName} capabilities must be an attrset";
     capabilities;
   requirementsOf =
     workloadName:
@@ -102,7 +111,8 @@ let
       topology = topologyDeclarationsOf (workloadId workloadName) workloadCatalog.${workloadName};
       requirements = topology.requires or { };
     in
-    assert lib.assertMsg (builtins.isAttrs requirements) "topology: ${workloadId workloadName} requirements must be an attrset";
+    assert lib.assertMsg (builtins.isAttrs requirements)
+      "topology: ${workloadId workloadName} requirements must be an attrset";
     requirements;
 
   endpointPropertyNames = [
@@ -112,63 +122,58 @@ let
     "publicStatus"
     "reachability"
   ];
-  endpointProperties = endpoint: lib.filterAttrs (name: _: lib.elem name endpointPropertyNames) endpoint;
+  endpointProperties =
+    endpoint: lib.filterAttrs (name: _: lib.elem name endpointPropertyNames) endpoint;
 
-  hostNodes = lib.mapAttrsToList (
-    hostName: host: {
-      id = hostId hostName;
-      kind = "machine";
-      properties = host.identity // { managementBackend = host.kind; };
-      capabilities = hostCapabilitiesOf hostName;
-    }
-  ) hosts;
-  deviceNodes = lib.mapAttrsToList (
-    diskName: disk: {
-      id = deviceId diskName;
-      kind = "device";
-      properties = removeAttrs disk [ "attachedHost" ];
-      capabilities = { };
-    }
-  ) disks;
-  workloadNodes = lib.mapAttrsToList (
-    workloadName: workload: {
-      id = workloadId workloadName;
-      kind = "workload";
-      properties = removeAttrs workload [
-        "endpoints"
-        "runtimeModule"
-        "topology"
-      ];
-      capabilities = capabilitiesOf (workloadId workloadName) workload;
-    }
-  ) workloadCatalog;
+  hostNodes = lib.mapAttrsToList (hostName: host: {
+    id = hostId hostName;
+    kind = "machine";
+    properties = host.identity // {
+      managementBackend = host.kind;
+    };
+    capabilities = hostCapabilitiesOf hostName;
+  }) hosts;
+  deviceNodes = lib.mapAttrsToList (diskName: disk: {
+    id = deviceId diskName;
+    kind = "device";
+    properties = removeAttrs disk [ "attachedHost" ];
+    capabilities = { };
+  }) disks;
+  workloadNodes = lib.mapAttrsToList (workloadName: workload: {
+    id = workloadId workloadName;
+    kind = "workload";
+    properties = removeAttrs workload [
+      "endpoints"
+      "runtimeModule"
+      "topology"
+    ];
+    capabilities = capabilitiesOf (workloadId workloadName) workload;
+  }) workloadCatalog;
   endpointNodes = lib.concatMap (
     workloadName:
-    lib.mapAttrsToList (
-      endpointName: endpoint: {
-        id = endpointId workloadName endpointName;
-        kind = "endpoint";
-        properties = endpointProperties endpoint;
-        capabilities = capabilitiesOf (endpointId workloadName endpointName) endpoint;
-      }
-    ) (resolvedEndpointsFor workloadName)
+    lib.mapAttrsToList (endpointName: endpoint: {
+      id = endpointId workloadName endpointName;
+      kind = "endpoint";
+      properties = endpointProperties endpoint;
+      capabilities = capabilitiesOf (endpointId workloadName endpointName) endpoint;
+    }) (resolvedEndpointsFor workloadName)
   ) workloadNames;
-  datasetNodes = lib.mapAttrsToList (
-    datasetName: dataset: {
-      id = datasetId datasetName;
-      kind = "dataset";
-      properties = removeAttrs dataset [
-        "producers"
-        "consumers"
-      ];
-      capabilities = { };
-    }
-  ) datasets;
+  datasetNodes = lib.mapAttrsToList (datasetName: dataset: {
+    id = datasetId datasetName;
+    kind = "dataset";
+    properties = removeAttrs dataset [
+      "producers"
+      "consumers"
+    ];
+    capabilities = { };
+  }) datasets;
   nodes = sortById (hostNodes ++ deviceNodes ++ workloadNodes ++ endpointNodes ++ datasetNodes);
-  nodeIndex = builtins.listToAttrs (map (node: {
-    name = node.id;
-    value = node;
-  }) nodes);
+  nodeIndex = builtins.listToAttrs (
+    map (node: {
+      name = node.id;
+      value = node;
+    }) nodes
+  );
 
   isStableNodeId =
     node:
@@ -201,17 +206,20 @@ let
 
   declaredRequirements = lib.concatMap (
     workloadName:
-    lib.mapAttrsToList (
-      name: declaration: {
-        owner = workloadId workloadName;
-        inherit workloadName name declaration;
-      }
-    ) (requirementsOf workloadName)
+    lib.mapAttrsToList (name: declaration: {
+      owner = workloadId workloadName;
+      inherit workloadName name declaration;
+    }) (requirementsOf workloadName)
   ) workloadNames;
   requirementsForDeclaration =
     requirement:
     let
-      inherit (requirement) owner workloadName name declaration;
+      inherit (requirement)
+        owner
+        workloadName
+        name
+        declaration
+        ;
       rawTarget =
         if !builtins.isAttrs declaration then
           throw "topology: requirement owner='${owner}' name='${name}' target='<invalid>' declaration must be an attrset"
@@ -226,7 +234,8 @@ let
           rawTarget
         else
           "<invalid>";
-      failure = message: "topology: requirement owner='${owner}' name='${name}' target='${targetLabel}' ${message}";
+      failure =
+        message: "topology: requirement owner='${owner}' name='${name}' target='${targetLabel}' ${message}";
       field =
         fieldName:
         if builtins.hasAttr fieldName declaration then
@@ -243,15 +252,35 @@ let
           [ rawTarget ];
       mkRequirement = target: {
         id = requirementId {
-          inherit owner name target capability relationship constraints;
+          inherit
+            owner
+            name
+            target
+            capability
+            relationship
+            constraints
+            ;
         };
-        inherit owner name capability relationship target constraints;
+        inherit
+          owner
+          name
+          capability
+          relationship
+          target
+          constraints
+          ;
       };
     in
     assert lib.assertMsg (isStableName name) (failure "has an invalid requirement name");
-    assert lib.assertMsg (builtins.isNull rawTarget || builtins.isString rawTarget) (failure "has an invalid target");
-    assert lib.assertMsg (isTypedName "nori.capabilities." capability) (failure "has an invalid capability");
-    assert lib.assertMsg (isTypedName "nori.relationships." relationship) (failure "has an invalid relationship");
+    assert lib.assertMsg (builtins.isNull rawTarget || builtins.isString rawTarget) (
+      failure "has an invalid target"
+    );
+    assert lib.assertMsg (isTypedName "nori.capabilities." capability) (
+      failure "has an invalid capability"
+    );
+    assert lib.assertMsg (isTypedName "nori.relationships." relationship) (
+      failure "has an invalid relationship"
+    );
     assert lib.assertMsg (builtins.isAttrs constraints) (failure "has non-attrset constraints");
     if targets == [ ] then
       throw "topology: requirement owner='${owner}' name='${name}' target='<none>' has no selected placement host"
@@ -320,10 +349,19 @@ let
       requirementName = requirement.name;
     }
   ) requirements;
-  relationshipRecords = workloadRelationships ++ endpointRelationships ++ diskRelationships ++ datasetRelationships ++ requirementRelationships;
-  relationships = map (relationship: removeAttrs relationship [ "requirementName" ]) (sortById relationshipRecords);
+  relationshipRecords =
+    workloadRelationships
+    ++ endpointRelationships
+    ++ diskRelationships
+    ++ datasetRelationships
+    ++ requirementRelationships;
+  relationships = map (relationship: removeAttrs relationship [ "requirementName" ]) (
+    sortById relationshipRecords
+  );
 
-  requirementFailure = requirement: message: "owner='${requirement.owner}' name='${requirement.name}' target='${requirement.target}' ${message}";
+  requirementFailure =
+    requirement: message:
+    "owner='${requirement.owner}' name='${requirement.name}' target='${requirement.target}' ${message}";
   constraintShapeFailures = lib.concatMap (
     requirement:
     lib.concatMap (
@@ -344,18 +382,25 @@ let
             operator = builtins.head operators;
             value = operatorSet.${operator};
           in
-          if !lib.elem operator [
-            "equal"
-            "atLeast"
-            "oneOf"
-          ] then
+          if
+            !lib.elem operator [
+              "equal"
+              "atLeast"
+              "oneOf"
+            ]
+          then
             [ (requirementFailure requirement "constraint '${property}' uses unknown operator '${operator}'") ]
           else if operator == "equal" && !isJsonScalar value then
             [ (requirementFailure requirement "constraint '${property}.equal' must be a JSON-safe scalar") ]
           else if operator == "atLeast" && !builtins.isInt value then
             [ (requirementFailure requirement "constraint '${property}.atLeast' must be an integer") ]
-          else if operator == "oneOf" && (!builtins.isList value || lib.length value == 0 || !lib.all isJsonScalar value) then
-            [ (requirementFailure requirement "constraint '${property}.oneOf' must be a non-empty list of JSON-safe scalars") ]
+          else if
+            operator == "oneOf"
+            && (!builtins.isList value || lib.length value == 0 || !lib.all isJsonScalar value)
+          then
+            [
+              (requirementFailure requirement "constraint '${property}.oneOf' must be a non-empty list of JSON-safe scalars")
+            ]
           else
             [ ]
     ) (lib.attrNames requirement.constraints)
@@ -373,7 +418,9 @@ let
         expected = operatorSet.${operator};
       in
       if !builtins.hasAttr property capability then
-        [ (requirementFailure requirement "failed constraint '${property}.${operator}': capability property is missing") ]
+        [
+          (requirementFailure requirement "failed constraint '${property}.${operator}': capability property is missing")
+        ]
       else
         let
           actual = capability.${property};
@@ -383,7 +430,9 @@ let
             (requirementFailure requirement "failed constraint '${property}.equal': provider value ${builtins.toJSON actual} does not equal ${builtins.toJSON expected}")
           ]
         else if operator == "atLeast" && !builtins.isInt actual then
-          [ (requirementFailure requirement "failed constraint '${property}.atLeast': provider value must be an integer") ]
+          [
+            (requirementFailure requirement "failed constraint '${property}.atLeast': provider value must be an integer")
+          ]
         else if operator == "atLeast" && actual < expected then
           [
             (requirementFailure requirement "failed constraint '${property}.atLeast': provider value ${toString actual} is below ${toString expected}")
@@ -417,7 +466,9 @@ let
         else
           lib.concatMap (
             property:
-            lib.optional (!isJsonScalar properties.${property}) "node '${node.id}' capability '${capabilityName}.${property}' must be a JSON-safe scalar"
+            lib.optional (
+              !isJsonScalar properties.${property}
+            ) "node '${node.id}' capability '${capabilityName}.${property}' must be a JSON-safe scalar"
           ) (lib.attrNames properties)
       ) (lib.attrNames capabilities)
   ) nodes;
@@ -459,10 +510,13 @@ let
         ++ publicValueViolationsAt childPath value.${name}
       ) (lib.attrNames value)
     else if builtins.isList value then
-      lib.concatLists (lib.imap0 (index: item: publicValueViolationsAt "${path}[${toString index}]" item) value)
+      lib.concatLists (
+        lib.imap0 (index: item: publicValueViolationsAt "${path}[${toString index}]" item) value
+      )
     else if builtins.isString value then
       lib.concatMap (
-        fragment: lib.optional (lib.hasInfix fragment value) "${path}: contains forbidden marker '${fragment}'"
+        fragment:
+        lib.optional (lib.hasInfix fragment value) "${path}: contains forbidden marker '${fragment}'"
       ) forbiddenStringFragments
     else if isJsonScalar value then
       [ ]
@@ -475,13 +529,19 @@ let
   };
   invalidNodeIds = lib.filter (node: !isStableNodeId node) nodes;
   duplicateNodeIds = duplicateIds nodes;
-  invalidRequirementIds = lib.filter (requirement: requirement.id != requirementId requirement) requirements;
+  invalidRequirementIds = lib.filter (
+    requirement: requirement.id != requirementId requirement
+  ) requirements;
   duplicateRequirementIds = duplicateIds requirements;
   invalidRelationshipIds = lib.filter (
     relationship:
-    relationship.id
-    != relationshipId {
-      inherit (relationship) type source target requirementName;
+    relationship.id != relationshipId {
+      inherit (relationship)
+        type
+        source
+        target
+        requirementName
+        ;
     }
   ) relationshipRecords;
   duplicateRelationshipIds = duplicateIds relationshipRecords;
@@ -493,8 +553,12 @@ let
   ) requirements;
   invalidRelationshipEndpoints = lib.concatMap (
     relationship:
-    lib.optional (!builtins.hasAttr relationship.source nodeIndex) "relationship '${relationship.id}' source '${relationship.source}' does not exist"
-    ++ lib.optional (!builtins.hasAttr relationship.target nodeIndex) "relationship '${relationship.id}' target '${relationship.target}' does not exist"
+    lib.optional (
+      !builtins.hasAttr relationship.source nodeIndex
+    ) "relationship '${relationship.id}' source '${relationship.source}' does not exist"
+    ++ lib.optional (
+      !builtins.hasAttr relationship.target nodeIndex
+    ) "relationship '${relationship.id}' target '${relationship.target}' does not exist"
   ) relationshipRecords;
   missingRequirementCapabilities = lib.filter (
     requirement:
@@ -505,18 +569,63 @@ let
   ) requirements;
   publicValueViolations = publicValueViolationsAt "topology" graph;
 in
-assert lib.assertMsg (invalidNodeIds == [ ]) (formatFailures "invalid stable node ID(s)" invalidNodeIds);
-assert lib.assertMsg (duplicateNodeIds == [ ]) "topology: duplicate node ID(s): ${lib.concatStringsSep ", " duplicateNodeIds}";
-assert lib.assertMsg (invalidRequirementIds == [ ]) (formatFailures "invalid stable requirement ID(s)" (map (requirement: requirement.id) invalidRequirementIds));
-assert lib.assertMsg (duplicateRequirementIds == [ ]) "topology: duplicate requirement ID(s): ${lib.concatStringsSep ", " duplicateRequirementIds}";
-assert lib.assertMsg (invalidRelationshipIds == [ ]) (formatFailures "invalid stable relationship ID(s)" (map (relationship: relationship.id) invalidRelationshipIds));
-assert lib.assertMsg (duplicateRelationshipIds == [ ]) "topology: duplicate relationship ID(s): ${lib.concatStringsSep ", " duplicateRelationshipIds}";
-assert lib.assertMsg (constraintShapeFailures == [ ]) (formatFailures "invalid requirement constraint(s)" constraintShapeFailures);
-assert lib.assertMsg (invalidCapabilityDeclarations == [ ]) (formatFailures "invalid capability declaration(s)" invalidCapabilityDeclarations);
-assert lib.assertMsg (missingRequirementOwners == [ ]) (formatFailures "requirement owner invariant failed" (map (requirement: requirementFailure requirement "failure='owner node does not exist'") missingRequirementOwners));
-assert lib.assertMsg (missingRequirementTargets == [ ]) (formatFailures "requirement target invariant failed" (map (requirement: requirementFailure requirement "failure='target node does not exist'") missingRequirementTargets));
-assert lib.assertMsg (invalidRelationshipEndpoints == [ ]) (formatFailures "relationship endpoint invariant failed" invalidRelationshipEndpoints);
-assert lib.assertMsg (missingRequirementCapabilities == [ ]) (formatFailures "requirement capability invariant failed" (map (requirement: requirementFailure requirement "failure='target does not provide required capability ${requirement.capability}'") missingRequirementCapabilities));
-assert lib.assertMsg (constraintFailures == [ ]) (formatFailures "requirement constraint invariant failed" constraintFailures);
-assert lib.assertMsg (publicValueViolations == [ ]) (formatFailures "public topology boundary violation(s)" publicValueViolations);
+assert lib.assertMsg (invalidNodeIds == [ ]) (
+  formatFailures "invalid stable node ID(s)" invalidNodeIds
+);
+assert lib.assertMsg (
+  duplicateNodeIds == [ ]
+) "topology: duplicate node ID(s): ${lib.concatStringsSep ", " duplicateNodeIds}";
+assert lib.assertMsg (invalidRequirementIds == [ ]) (
+  formatFailures "invalid stable requirement ID(s)" (
+    map (requirement: requirement.id) invalidRequirementIds
+  )
+);
+assert lib.assertMsg (
+  duplicateRequirementIds == [ ]
+) "topology: duplicate requirement ID(s): ${lib.concatStringsSep ", " duplicateRequirementIds}";
+assert lib.assertMsg (invalidRelationshipIds == [ ]) (
+  formatFailures "invalid stable relationship ID(s)" (
+    map (relationship: relationship.id) invalidRelationshipIds
+  )
+);
+assert lib.assertMsg (
+  duplicateRelationshipIds == [ ]
+) "topology: duplicate relationship ID(s): ${lib.concatStringsSep ", " duplicateRelationshipIds}";
+assert lib.assertMsg (constraintShapeFailures == [ ]) (
+  formatFailures "invalid requirement constraint(s)" constraintShapeFailures
+);
+assert lib.assertMsg (invalidCapabilityDeclarations == [ ]) (
+  formatFailures "invalid capability declaration(s)" invalidCapabilityDeclarations
+);
+assert lib.assertMsg (missingRequirementOwners == [ ]) (
+  formatFailures "requirement owner invariant failed" (
+    map (
+      requirement: requirementFailure requirement "failure='owner node does not exist'"
+    ) missingRequirementOwners
+  )
+);
+assert lib.assertMsg (missingRequirementTargets == [ ]) (
+  formatFailures "requirement target invariant failed" (
+    map (
+      requirement: requirementFailure requirement "failure='target node does not exist'"
+    ) missingRequirementTargets
+  )
+);
+assert lib.assertMsg (invalidRelationshipEndpoints == [ ]) (
+  formatFailures "relationship endpoint invariant failed" invalidRelationshipEndpoints
+);
+assert lib.assertMsg (missingRequirementCapabilities == [ ]) (
+  formatFailures "requirement capability invariant failed" (
+    map (
+      requirement:
+      requirementFailure requirement "failure='target does not provide required capability ${requirement.capability}'"
+    ) missingRequirementCapabilities
+  )
+);
+assert lib.assertMsg (constraintFailures == [ ]) (
+  formatFailures "requirement constraint invariant failed" constraintFailures
+);
+assert lib.assertMsg (publicValueViolations == [ ]) (
+  formatFailures "public topology boundary violation(s)" publicValueViolations
+);
 graph

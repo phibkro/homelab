@@ -29,7 +29,8 @@ let
 
   expect = condition: message: if condition then true else fail message;
 
-  jsonScalarType = value:
+  jsonScalarType =
+    value:
     let
       valueType = typeOf value;
     in
@@ -48,20 +49,19 @@ let
 
   isScalarOfType = expected: value: jsonScalarType value == expected;
 
-  isToscaName = value:
-    isString value && (match "^[A-Za-z][A-Za-z0-9._-]*$" value != null);
+  isToscaName = value: isString value && (match "^[A-Za-z][A-Za-z0-9._-]*$" value != null);
 
   stableName = prefix: value: "${prefix}-${builtins.hashString "sha256" value}";
 
-  duplicate = values:
+  duplicate =
+    values:
     let
-      duplicates = filter (
-        value: length (filter (candidate: candidate == value) values) > 1
-      ) values;
+      duplicates = filter (value: length (filter (candidate: candidate == value) values) > 1) values;
     in
     if duplicates == [ ] then null else head duplicates;
 
-  checkUnique = label: values:
+  checkUnique =
+    label: values:
     let
       repeated = duplicate values;
     in
@@ -69,7 +69,8 @@ let
 
   propertyContext = context: name: "${context} property '${name}'";
 
-  valueSchema = context: value:
+  valueSchema =
+    context: value:
     let
       scalarType = jsonScalarType value;
     in
@@ -83,7 +84,9 @@ let
       if all (type: type != null && type == entryType) scalarTypes then
         {
           type = "list";
-          entry_schema = { type = entryType; };
+          entry_schema = {
+            type = entryType;
+          };
         }
       else
         fail "${context} has a list with unsupported mixed or structured entries"
@@ -91,7 +94,9 @@ let
       if attrNames value == [ ] then
         {
           type = "map";
-          entry_schema = { type = "string"; };
+          entry_schema = {
+            type = "string";
+          };
         }
       else
         {
@@ -100,23 +105,22 @@ let
     else
       fail "${context} has an unsupported non-JSON property value";
 
-  propertyDefinitions = context: properties:
+  propertyDefinitions =
+    context: properties:
     if !isAttrs properties then
       fail "${context} properties must be an attribute set"
     else
       listToAttrs (
-        map (
-          name:
-          {
-            inherit name;
-            value = (valueSchema (propertyContext context name) properties.${name}) // {
-              required = false;
-            };
-          }
-        ) (attrNames properties)
+        map (name: {
+          inherit name;
+          value = (valueSchema (propertyContext context name) properties.${name}) // {
+            required = false;
+          };
+        }) (attrNames properties)
       );
 
-  dataTypeDefinitions = context: value:
+  dataTypeDefinitions =
+    context: value:
     if isAttrs value && attrNames value != [ ] then
       [
         {
@@ -126,9 +130,9 @@ let
           };
         }
       ]
-      ++ concatMap (
-        name: dataTypeDefinitions (propertyContext context name) value.${name}
-      ) (attrNames value)
+      ++ concatMap (name: dataTypeDefinitions (propertyContext context name) value.${name}) (
+        attrNames value
+      )
     else
       [ ];
 
@@ -196,7 +200,8 @@ let
 
   sourceTopology = deepSeq topologyCheck topology;
 
-  nodeCheck = node:
+  nodeCheck =
+    node:
     if !isAttrs node then
       fail "a node is not an attribute set"
     else if !(node ? id) || !isString node.id then
@@ -210,28 +215,34 @@ let
     else if !(node ? capabilities) || !isAttrs node.capabilities then
       fail "node '${node.id}' capabilities must be an attribute set"
     else
-      deepSeq (map (capabilityName: capabilityCheck node capabilityName) (attrNames node.capabilities)) true;
+      deepSeq (map (capabilityName: capabilityCheck node capabilityName) (
+        attrNames node.capabilities
+      )) true;
 
-  capabilityCheck = node: capabilityName:
+  capabilityCheck =
+    node: capabilityName:
     let
       properties = node.capabilities.${capabilityName};
     in
-    if !hasAttr capabilityName capabilityPropertySchemas || capabilityName == "nori.capabilities.TopologyTarget" then
+    if
+      !hasAttr capabilityName capabilityPropertySchemas
+      || capabilityName == "nori.capabilities.TopologyTarget"
+    then
       fail "node '${node.id}' has unsupported capability '${capabilityName}'"
     else if !isAttrs properties then
       fail "node '${node.id}' capability '${capabilityName}' properties must be an attribute set"
     else
-      deepSeq (
-        map (
-          propertyName:
-          if !hasAttr propertyName capabilityPropertySchemas.${capabilityName} then
-            fail "node '${node.id}' capability '${capabilityName}' has unsupported property '${propertyName}'"
-          else
-            expect
-              (isScalarOfType capabilityPropertySchemas.${capabilityName}.${propertyName} properties.${propertyName})
-              "node '${node.id}' capability '${capabilityName}' property '${propertyName}' has an unsupported value type"
-        ) (attrNames properties)
-      ) true;
+      deepSeq (map (
+        propertyName:
+        if !hasAttr propertyName capabilityPropertySchemas.${capabilityName} then
+          fail "node '${node.id}' capability '${capabilityName}' has unsupported property '${propertyName}'"
+        else
+          expect
+            (isScalarOfType capabilityPropertySchemas.${capabilityName}.${propertyName}
+              properties.${propertyName}
+            )
+            "node '${node.id}' capability '${capabilityName}' property '${propertyName}' has an unsupported value type"
+      ) (attrNames properties)) true;
 
   nodes =
     let
@@ -240,25 +251,42 @@ let
     in
     deepSeq (checkUnique "node ID" (map (node: node.id) sorted)) sorted;
 
-  nodesById = listToAttrs (map (node: { name = node.id; value = node; }) nodes);
+  nodesById = listToAttrs (
+    map (node: {
+      name = node.id;
+      value = node;
+    }) nodes
+  );
 
-  nodeById = id:
-    if hasAttr id nodesById then nodesById.${id} else fail "node '${id}' does not exist";
+  nodeById = id: if hasAttr id nodesById then nodesById.${id} else fail "node '${id}' does not exist";
 
   nodeTypeName = node: "nori.nodes.${node.id}";
 
-  relationshipCheck = relationship:
+  relationshipCheck =
+    relationship:
     if !isAttrs relationship then
       fail "a relationship is not an attribute set"
     else if !(relationship ? id) || !isString relationship.id then
       fail "a relationship has no string id"
-    else if !(relationship ? type) || !isString relationship.type || !elem relationship.type relationshipTypeNames then
+    else if
+      !(relationship ? type)
+      || !isString relationship.type
+      || !elem relationship.type relationshipTypeNames
+    then
       fail "relationship '${relationship.id}' has an unsupported type"
-    else if !(relationship ? source) || !isString relationship.source || !hasAttr relationship.source nodesById then
+    else if
+      !(relationship ? source) || !isString relationship.source || !hasAttr relationship.source nodesById
+    then
       fail "relationship '${relationship.id}' has an unknown source"
-    else if !(relationship ? target) || !isString relationship.target || !hasAttr relationship.target nodesById then
+    else if
+      !(relationship ? target) || !isString relationship.target || !hasAttr relationship.target nodesById
+    then
       fail "relationship '${relationship.id}' has an unknown target"
-    else if !(relationship ? properties) || !isAttrs relationship.properties || attrNames relationship.properties != [ ] then
+    else if
+      !(relationship ? properties)
+      || !isAttrs relationship.properties
+      || attrNames relationship.properties != [ ]
+    then
       fail "relationship '${relationship.id}' has unsupported properties"
     else
       true;
@@ -271,15 +299,22 @@ let
     deepSeq (checkUnique "relationship ID" (map (relationship: relationship.id) sorted)) sorted;
 
   relationshipsById = listToAttrs (
-    map (relationship: { name = relationship.id; value = relationship; }) relationships
+    map (relationship: {
+      name = relationship.id;
+      value = relationship;
+    }) relationships
   );
 
   relationshipTemplateName = relationship: stableName "relationship" relationship.id;
 
-  requirementRelationshipId = requirement:
-    "relationship.${relationshipTypeSegments.${requirement.relationship}}.${requirement.owner}.${requirement.target}.${requirement.name}";
+  requirementRelationshipId =
+    requirement:
+    "relationship.${
+      relationshipTypeSegments.${requirement.relationship}
+    }.${requirement.owner}.${requirement.target}.${requirement.name}";
 
-  relationshipForRequirement = requirement:
+  relationshipForRequirement =
+    requirement:
     let
       expectedId = requirementRelationshipId requirement;
     in
@@ -289,12 +324,17 @@ let
       let
         relationship = relationshipsById.${expectedId};
       in
-      if relationship.source != requirement.owner || relationship.target != requirement.target || relationship.type != requirement.relationship then
+      if
+        relationship.source != requirement.owner
+        || relationship.target != requirement.target
+        || relationship.type != requirement.relationship
+      then
         fail "relationship '${relationship.id}' does not resolve requirement '${requirement.id}'"
       else
         relationship;
 
-  constraintClause = requirement: propertyName: operators:
+  constraintClause =
+    requirement: propertyName: operators:
     let
       requirementPrefix = "requirement '${requirement.id}'";
       capabilitySchema = capabilityPropertySchemas.${requirement.capability};
@@ -302,7 +342,11 @@ let
       operator = if operatorNames == [ ] then null else head operatorNames;
       value = if operator == null then null else operators.${operator};
       propertyReference = {
-        "$get_property" = [ "SELF" "CAPABILITY" propertyName ];
+        "$get_property" = [
+          "SELF"
+          "CAPABILITY"
+          propertyName
+        ];
       };
     in
     if !isAttrs operators then
@@ -314,28 +358,42 @@ let
     else if operator == "equal" then
       if isScalarOfType capabilitySchema.${propertyName} value then
         {
-          "$equal" = [ propertyReference value ];
+          "$equal" = [
+            propertyReference
+            value
+          ];
         }
       else
         fail "${requirementPrefix} equal constraint '${propertyName}' has an unsupported value type"
     else if operator == "atLeast" then
       if capabilitySchema.${propertyName} == "integer" && jsonScalarType value == "integer" then
         {
-          "$greater_or_equal" = [ propertyReference value ];
+          "$greater_or_equal" = [
+            propertyReference
+            value
+          ];
         }
       else
         fail "${requirementPrefix} atLeast constraint '${propertyName}' must use an integer capability and value"
     else if operator == "oneOf" then
-      if isList value && value != [ ] && all (candidate: isScalarOfType capabilitySchema.${propertyName} candidate) value then
+      if
+        isList value
+        && value != [ ]
+        && all (candidate: isScalarOfType capabilitySchema.${propertyName} candidate) value
+      then
         {
-          "$valid_values" = [ propertyReference value ];
+          "$valid_values" = [
+            propertyReference
+            value
+          ];
         }
       else
         fail "${requirementPrefix} oneOf constraint '${propertyName}' must be a non-empty list of matching scalar values"
     else
       fail "${requirementPrefix} uses unsupported constraint operator '${operator}'";
 
-  constraintFilter = requirement:
+  constraintFilter =
+    requirement:
     let
       clauses = map (
         propertyName: constraintClause requirement propertyName requirement.constraints.${propertyName}
@@ -348,20 +406,34 @@ let
     else
       { "$and" = clauses; };
 
-  requirementCheck = requirement:
+  requirementCheck =
+    requirement:
     if !isAttrs requirement then
       fail "a requirement is not an attribute set"
     else if !(requirement ? id) || !isString requirement.id then
       fail "a requirement has no string id"
-    else if !(requirement ? owner) || !isString requirement.owner || !hasAttr requirement.owner nodesById then
+    else if
+      !(requirement ? owner) || !isString requirement.owner || !hasAttr requirement.owner nodesById
+    then
       fail "requirement '${requirement.id}' has an unknown owner"
     else if !(requirement ? name) || !isString requirement.name then
       fail "requirement '${requirement.id}' has no string name"
-    else if !(requirement ? capability) || !isString requirement.capability || !hasAttr requirement.capability capabilityPropertySchemas || requirement.capability == "nori.capabilities.TopologyTarget" then
+    else if
+      !(requirement ? capability)
+      || !isString requirement.capability
+      || !hasAttr requirement.capability capabilityPropertySchemas
+      || requirement.capability == "nori.capabilities.TopologyTarget"
+    then
       fail "requirement '${requirement.id}' has an unsupported capability"
-    else if !(requirement ? relationship) || !isString requirement.relationship || !elem requirement.relationship relationshipTypeNames then
+    else if
+      !(requirement ? relationship)
+      || !isString requirement.relationship
+      || !elem requirement.relationship relationshipTypeNames
+    then
       fail "requirement '${requirement.id}' has an unsupported relationship"
-    else if !(requirement ? target) || !isString requirement.target || !hasAttr requirement.target nodesById then
+    else if
+      !(requirement ? target) || !isString requirement.target || !hasAttr requirement.target nodesById
+    then
       fail "requirement '${requirement.id}' has an unknown target"
     else if !(requirement ? constraints) || !isAttrs requirement.constraints then
       fail "requirement '${requirement.id}' constraints must be an attribute set"
@@ -375,7 +447,8 @@ let
     in
     deepSeq (checkUnique "requirement ID" (map (requirement: requirement.id) sorted)) sorted;
 
-  requirementSymbol = requirement:
+  requirementSymbol =
+    requirement:
     let
       sameName = filter (
         candidate: candidate.owner == requirement.owner && candidate.name == requirement.name
@@ -388,19 +461,21 @@ let
 
   structuralRelationships =
     let
-      requirementRelationshipIds = map (requirement: (relationshipForRequirement requirement).id) requirements;
+      requirementRelationshipIds = map (
+        requirement: (relationshipForRequirement requirement).id
+      ) requirements;
     in
     filter (relationship: !elem relationship.id requirementRelationshipIds) relationships;
 
   structuralRequirementSymbol = relationship: stableName "edge" relationship.id;
 
-  requirementsForNode = node:
-    filter (requirement: requirement.owner == node.id) requirements;
+  requirementsForNode = node: filter (requirement: requirement.owner == node.id) requirements;
 
-  structuralRelationshipsForNode = node:
-    filter (relationship: relationship.source == node.id) structuralRelationships;
+  structuralRelationshipsForNode =
+    node: filter (relationship: relationship.source == node.id) structuralRelationships;
 
-  nodeRequirementSymbols = node:
+  nodeRequirementSymbols =
+    node:
     (map requirementSymbol (requirementsForNode node))
     ++ (map structuralRequirementSymbol (structuralRelationshipsForNode node));
 
@@ -410,7 +485,8 @@ let
 
   capabilitySymbol = capabilityName: stableName "capability" capabilityName;
 
-  nodeCapabilityDefinitions = node:
+  nodeCapabilityDefinitions =
+    node:
     listToAttrs (
       [
         {
@@ -420,18 +496,16 @@ let
           };
         }
       ]
-      ++ map (
-        capabilityName:
-        {
-          name = capabilitySymbol capabilityName;
-          value = {
-            type = capabilityName;
-          };
-        }
-      ) (attrNames node.capabilities)
+      ++ map (capabilityName: {
+        name = capabilitySymbol capabilityName;
+        value = {
+          type = capabilityName;
+        };
+      }) (attrNames node.capabilities)
     );
 
-  nodeCapabilityAssignments = node:
+  nodeCapabilityAssignments =
+    node:
     listToAttrs (
       map (
         capabilityName:
@@ -445,13 +519,13 @@ let
       ) (attrNames node.capabilities)
     );
 
-  requirementDefinition = requirement:
+  requirementDefinition =
+    requirement:
     let
       filterDefinition = constraintFilter requirement;
     in
     {
-      name = requirementSymbol requirement;
-      value = {
+      ${requirementSymbol requirement} = {
         metadata = {
           "nori.requirement-id" = requirement.id;
           "nori.requirement-name" = requirement.name;
@@ -459,18 +533,21 @@ let
         capability = requirement.capability;
         node = nodeTypeName (nodeById requirement.target);
         relationship = requirement.relationship;
-        count_range = [ 1 1 ];
+        count_range = [
+          1
+          1
+        ];
       }
       // (if filterDefinition == null then { } else { node_filter = filterDefinition; });
     };
 
-  requirementAssignment = requirement:
+  requirementAssignment =
+    requirement:
     let
       filterDefinition = constraintFilter requirement;
     in
     {
-      name = requirementSymbol requirement;
-      value = {
+      ${requirementSymbol requirement} = {
         node = requirement.target;
         capability = requirement.capability;
         relationship = relationshipTemplateName (relationshipForRequirement requirement);
@@ -480,21 +557,22 @@ let
     };
 
   structuralRequirementDefinition = relationship: {
-    name = structuralRequirementSymbol relationship;
-    value = {
+    ${structuralRequirementSymbol relationship} = {
       metadata = {
         "nori.relationship-id" = relationship.id;
       };
       capability = "topology-target";
       node = nodeTypeName (nodeById relationship.target);
       relationship = relationship.type;
-      count_range = [ 1 1 ];
+      count_range = [
+        1
+        1
+      ];
     };
   };
 
   structuralRequirementAssignment = relationship: {
-    name = structuralRequirementSymbol relationship;
-    value = {
+    ${structuralRequirementSymbol relationship} = {
       node = relationship.target;
       capability = "topology-target";
       relationship = relationshipTemplateName relationship;
@@ -524,16 +602,13 @@ let
           else
             {
               properties = listToAttrs (
-                map (
-                  propertyName:
-                  {
-                    name = propertyName;
-                    value = {
-                      type = schema.${propertyName};
-                      required = false;
-                    };
-                  }
-                ) (attrNames schema)
+                map (propertyName: {
+                  name = propertyName;
+                  value = {
+                    type = schema.${propertyName};
+                    required = false;
+                  };
+                }) (attrNames schema)
               );
             };
       }
@@ -541,7 +616,10 @@ let
   );
 
   staticRelationshipTypes = listToAttrs (
-    map (relationshipType: { name = relationshipType; value = { }; }) relationshipTypeNames
+    map (relationshipType: {
+      name = relationshipType;
+      value = { };
+    }) relationshipTypeNames
   );
 
   perNodeTypes = listToAttrs (
@@ -554,17 +632,26 @@ let
       in
       {
         name = nodeTypeName node;
-        value =
-          {
-            derived_from = nodeKindTypes.${node.kind};
-            capabilities = nodeCapabilityDefinitions node;
-          }
-          // (if attrNames node.properties == [ ] then { } else {
-            properties = propertyDefinitions "node '${node.id}'" node.properties;
-          })
-          // (if declaredRequirements == [ ] then { } else {
-            requirements = declaredRequirements;
-          });
+        value = {
+          derived_from = nodeKindTypes.${node.kind};
+          capabilities = nodeCapabilityDefinitions node;
+        }
+        // (
+          if attrNames node.properties == [ ] then
+            { }
+          else
+            {
+              properties = propertyDefinitions "node '${node.id}'" node.properties;
+            }
+        )
+        // (
+          if declaredRequirements == [ ] then
+            { }
+          else
+            {
+              requirements = declaredRequirements;
+            }
+        );
       }
     ) nodes
   );
@@ -573,47 +660,59 @@ let
     map (
       node:
       let
-        assignments = map requirementAssignment (requirementsForNode node)
+        assignments =
+          map requirementAssignment (requirementsForNode node)
           ++ map structuralRequirementAssignment (structuralRelationshipsForNode node);
       in
       {
         name = node.id;
-        value =
-          {
-            metadata = {
-              "nori.node-id" = node.id;
-              "nori.node-kind" = node.kind;
-            };
-            type = nodeTypeName node;
-          }
-          // (if attrNames node.properties == [ ] then { } else {
-            properties = node.properties;
-          })
-          // (if attrNames node.capabilities == [ ] then { } else {
-            capabilities = nodeCapabilityAssignments node;
-          })
-          // (if assignments == [ ] then { } else {
-            requirements = assignments;
-          });
+        value = {
+          metadata = {
+            "nori.node-id" = node.id;
+            "nori.node-kind" = node.kind;
+          };
+          type = nodeTypeName node;
+        }
+        // (
+          if attrNames node.properties == [ ] then
+            { }
+          else
+            {
+              properties = node.properties;
+            }
+        )
+        // (
+          if attrNames node.capabilities == [ ] then
+            { }
+          else
+            {
+              capabilities = nodeCapabilityAssignments node;
+            }
+        )
+        // (
+          if assignments == [ ] then
+            { }
+          else
+            {
+              requirements = assignments;
+            }
+        );
       }
     ) nodes
   );
 
   relationshipTemplates = listToAttrs (
-    map (
-      relationship:
-      {
-        name = relationshipTemplateName relationship;
-        value = {
-          metadata = {
-            "nori.relationship-id" = relationship.id;
-            "nori.source" = relationship.source;
-            "nori.target" = relationship.target;
-          };
-          type = relationship.type;
+    map (relationship: {
+      name = relationshipTemplateName relationship;
+      value = {
+        metadata = {
+          "nori.relationship-id" = relationship.id;
+          "nori.source" = relationship.source;
+          "nori.target" = relationship.target;
         };
-      }
-    ) relationships
+        type = relationship.type;
+      };
+    }) relationships
   );
 
   dataTypes = listToAttrs (
@@ -621,8 +720,7 @@ let
       node:
       concatMap (
         propertyName:
-        dataTypeDefinitions
-          (propertyContext "node '${node.id}'" propertyName)
+        dataTypeDefinitions (propertyContext "node '${node.id}'" propertyName)
           node.properties.${propertyName}
       ) (attrNames node.properties)
     ) nodes
