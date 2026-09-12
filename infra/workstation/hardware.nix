@@ -191,6 +191,52 @@
   };
 
   /*
+    NixOS generates equivalent udev RUN rules for these nodes, but on
+    2026-09-12 they all exited 1 during boot.  The kernel modules still
+    bound the RTX 5060 Ti, leaving /dev/nvidia* absent: nvidia-smi, CUDA
+    services, and Electron's GPU path could not open the driver.
+
+    Keep the repair declarative and idempotent.  The NVIDIA control ABI uses
+    major 195; the UVM major and GPU minors are read from the loaded driver,
+    so a GPU replacement or dynamic UVM allocation cannot drift from the
+    kernel's own registration.  Run after module loading and before the GPU
+    exporter; a missing registration is a real boot failure, not a state to
+    silently continue past.
+  */
+  systemd.services.nvidia-device-nodes = {
+    description = "Create NVIDIA character-device nodes when udev misses them";
+    wantedBy = [ "multi-user.target" ];
+    requiredBy = [ "nvidia-gpu-exporter.service" ];
+    after = [ "systemd-modules-load.service" ];
+    before = [ "nvidia-gpu-exporter.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      set -euo pipefail
+
+      create_if_missing() {
+        local path="$1"
+        shift
+        test -e "$path" || ${pkgs.coreutils}/bin/mknod -m 0666 "$path" c "$@"
+      }
+
+      create_if_missing /dev/nvidiactl 195 255
+      create_if_missing /dev/nvidia-modeset 195 254
+
+      while read -r minor; do
+        create_if_missing "/dev/nvidia$minor" 195 "$minor"
+      done < <(${pkgs.gawk}/bin/awk '/Device Minor:/ { print $3 }' /proc/driver/nvidia/gpus/*/information)
+
+      uvm_major="$(${pkgs.gawk}/bin/awk '$2 == "nvidia-uvm" { print $1 }' /proc/devices)"
+      test -n "$uvm_major"
+      create_if_missing /dev/nvidia-uvm "$uvm_major" 0
+      create_if_missing /dev/nvidia-uvm-tools "$uvm_major" 1
+    '';
+  };
+
+  /*
     Two unrelated boot-time concerns:
 
     nvidia.NVreg_PreserveVideoMemoryAllocations=1 — Force VRAM
