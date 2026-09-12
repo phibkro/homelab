@@ -148,6 +148,34 @@ test("revision compare-and-swap preserves the first committed profile", async ()
   expect((await service.state()).profile).toEqual(first.profile);
 });
 
+test("restart recovers a persisted profile whose preview receipt was not marked committed", async () => {
+  const { config } = await fixture();
+  const service = await DesktopSettingsService.make(config);
+  const preview = await service.preview({
+    component: "desktop.waybar",
+    setting: "position",
+    value: "bottom",
+    expectedRevision: 0,
+  });
+  await service.change({
+    component: "desktop.waybar",
+    setting: "position",
+    value: "bottom",
+    expectedRevision: 0,
+    previewId: preview.id,
+  });
+
+  const path = join(config.stateHome, "previews", `${preview.id}.json`);
+  const receipt = JSON.parse(await readFile(path, "utf8"));
+  delete receipt.committedAt;
+  await Bun.write(path, `${JSON.stringify(receipt)}\n`);
+
+  expect((await DesktopSettingsService.make(config)).state()).resolves.toMatchObject({
+    committedPreviewId: preview.id,
+    profile: { revision: 1 },
+  });
+});
+
 test("preview evaluates a candidate without persisting the draft", async () => {
   const { config } = await fixture();
   const service = await DesktopSettingsService.make(config);

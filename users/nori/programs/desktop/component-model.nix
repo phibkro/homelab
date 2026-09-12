@@ -113,6 +113,13 @@ let
       settingIds = map (setting: setting.id) component.settings;
     in
     lib.filter (id: lib.count (candidate: candidate == id) settingIds > 1) (lib.unique settingIds);
+  duplicateSettingMessages = lib.concatMap (
+    component:
+    let
+      duplicates = duplicateSettingIds component;
+    in
+    lib.optional (duplicates != [ ]) "${component.id}: ${lib.concatStringsSep ", " duplicates}"
+  ) contributions;
   components = builtins.listToAttrs (
     map (
       component:
@@ -215,7 +222,8 @@ in
         assertion = duplicateComponentIds == [ ];
         message = "duplicate desktop component IDs: ${lib.concatStringsSep ", " duplicateComponentIds}";
       }
-    ] ++ lib.concatMap (
+    ]
+    ++ lib.concatMap (
       component:
       let
         duplicates = duplicateSettingIds component;
@@ -227,7 +235,14 @@ in
     ) contributions;
 
     nori.desktop = {
-      inherit components;
+      components =
+        assert lib.assertMsg (
+          duplicateComponentIds == [ ]
+        ) "duplicate desktop component IDs: ${lib.concatStringsSep ", " duplicateComponentIds}";
+        assert lib.assertMsg (
+          duplicateSettingMessages == [ ]
+        ) "duplicate desktop setting IDs: ${lib.concatStringsSep "; " duplicateSettingMessages}";
+        components;
       generated = {
         inputSchema = inputSchemaFile;
         outputSchema = outputSchemaFile;

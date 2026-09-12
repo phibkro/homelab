@@ -250,12 +250,25 @@
             }
             ''
               jq -e '
-                ."$defs"."NoriDesktopSettingsDesktop.waybarPositionInput".enum
-                == ["top", "bottom"]
+                . as $schema
+                | [."$defs"[] | select(.properties? and (.properties | has("desktop.waybar")))] as $roots
+                | ($roots | length) == 1
+                | $roots[0].properties["desktop.waybar"]["$ref"] as $componentRef
+                | ($componentRef | ltrimstr("#/$defs/")) as $componentName
+                | $schema["$defs"][$componentName] as $component
+                | ($component.properties.position["$ref"] | ltrimstr("#/$defs/")) as $positionName
+                | $schema["$defs"][$positionName].enum == ["top", "bottom"]
+                | ($component.properties | keys == ["position"])
               ' ${generated.inputSchema} >/dev/null
               jq -e '
-                ."$defs"."NoriDesktopSettingsDesktop.waybarOutput"
-                .properties.position.readOnly == true
+                . as $schema
+                | [."$defs"[] | select(.properties? and (.properties | has("desktop.waybar")))] as $roots
+                | ($roots | length) == 1
+                | $roots[0].properties["desktop.waybar"]["$ref"] as $componentRef
+                | ($componentRef | ltrimstr("#/$defs/")) as $componentName
+                | $schema["$defs"][$componentName].properties
+                | to_entries
+                | length > 1 and all(.value.readOnly == true)
               ' ${generated.outputSchema} >/dev/null
               jq -e '
                 ."desktop.waybar".settings.position.action.title

@@ -46,9 +46,9 @@ A user can create a saved command in Vicinae without opening a terminal. The sav
 
 ## Data contract
 
-The profile is JSON at `$XDG_CONFIG_HOME/nori-desktop/saved-commands.json`.
+The profile is JSON at `$XDG_CONFIG_HOME/nori-desktop/profile.json`.
 
-The root object contains `version`, `revision`, and `commands`. Version 1 commands contain:
+The root object contains `formatVersion`, `revision`, `components`, and `savedCommands`.
 
 - A stable ID in the `user.*` namespace.
 - A title and output mode.

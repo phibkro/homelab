@@ -10,7 +10,12 @@ pkgs.testers.runNixOSTest {
       isNormalUser = true;
       uid = 1001;
     };
-    environment.systemPackages = [ pkgs.gcc pkgs.socat pkgs.coreutils pkgs.util-linux ];
+    environment.systemPackages = [
+      pkgs.gcc
+      pkgs.socat
+      pkgs.coreutils
+      pkgs.util-linux
+    ];
     environment.etc."nori-test/unix-ingress.c".source = ../src/unix-ingress.c;
   };
   testScript = ''

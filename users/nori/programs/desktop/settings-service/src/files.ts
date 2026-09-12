@@ -324,6 +324,24 @@ export class PreviewStore {
     await this.save({ ...receipt, committedAt: new Date().toISOString() });
   }
 
+  async recoverCommitted(source: string, revision: number, hash: string): Promise<string | undefined> {
+    await this.initialize();
+    for (const name of await readdir(this.directory)) {
+      if (!name.endsWith(".json")) continue;
+      const receipt = await this.read(name.slice(0, -5));
+      if (
+        receipt.committedAt === undefined &&
+        receipt.metadata.source === source &&
+        receipt.metadata.profileRevision === revision &&
+        receipt.metadata.profileHash === hash
+      ) {
+        await this.markCommitted(receipt);
+        return receipt.id;
+      }
+    }
+    return undefined;
+  }
+
   async findCommitted(source: string, revision: number, hash: string): Promise<string | undefined> {
     await this.initialize();
     for (const name of await readdir(this.directory)) {

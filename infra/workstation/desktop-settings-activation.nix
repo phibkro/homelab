@@ -12,7 +12,12 @@ let
       let
         name = builtins.baseNameOf path;
       in
-      !(builtins.elem name [ ".git" "dist" "node_modules" "result" ]);
+      !(builtins.elem name [
+        ".git"
+        "dist"
+        "node_modules"
+        "result"
+      ]);
   };
   sourceMarker = builtins.toJSON {
     source = toString approvedSource;

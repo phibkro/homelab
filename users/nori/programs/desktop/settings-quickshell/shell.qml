@@ -81,6 +81,7 @@ ShellRoot {
                         text: "Apply"
                         enabled: !settingsClient.busy
                             && settingsClient.stateLoaded
+                            && settingsClient.hasCommittedPreview
                             && !settingsClient.hasDrafts
                         onClicked: settingsClient.apply()
                     }

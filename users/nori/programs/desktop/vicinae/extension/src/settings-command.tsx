@@ -363,6 +363,7 @@ export function SettingForm({ componentId, settingId, values }: SettingFormProps
           preview.id,
         ]),
       );
+      setState(next);
       setPreview(null);
       setFailure(null);
       toast.style = Toast.Style.Success;
@@ -419,7 +420,7 @@ export function SettingForm({ componentId, settingId, values }: SettingFormProps
         <ActionPanel>
           {canPreview ? <Action title="Preview Change" onAction={previewChange} /> : null}
           {canSave ? <Action.SubmitForm title="Save Desired Value" onSubmit={save} /> : null}
-          {canPreview && !hasUnsavedSelection ? <Action title="Apply System Update" onAction={apply} /> : null}
+          {canPreview && !hasUnsavedSelection && state?.committedPreviewId !== null ? <Action title="Apply System Update" onAction={apply} /> : null}
           <Action
             title="Reload Settings"
             onAction={() => {
@@ -469,7 +470,7 @@ export function SettingForm({ componentId, settingId, values }: SettingFormProps
         text={state === null ? "Loading the active desktop observation." : observedText(state)}
       />
       <Form.Description title="Apply status" text={state === null ? "Loading durable jobs." : jobsText(state.jobs)} />
-      {presentation?.applyClass === "generation" ? (
+      {presentation?.applyClass === "generation" || presentation?.applyClass === "live-generation" ? (
         <Form.Description
           title="System update required"
           text="Saving changes only records desired intent. Apply performs the managed system update, then the service reloads and observes the desktop surface."

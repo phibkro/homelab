@@ -7,42 +7,41 @@ let
   profile = config.nori.desktop.profile.components."desktop.waybar";
   waybar = config.programs.waybar;
   mainBar = waybar.settings.mainBar;
-  componentSetting =
-    option: presentation:
-    {
-      option = lib.mkOption option;
-      inherit presentation;
-    };
-  position = componentSetting
-    {
-      type = lib.types.enum [
-        "top"
-        "bottom"
-      ];
-      default = "top";
-      description = "Horizontal screen edge used by the desktop status bar.";
-    }
-    {
-      id = "position";
-      title = "Bar position";
-      description = "Place the horizontal status bar at the top or bottom edge.";
-      group = "Desktop";
-      control = "enum";
-      scope = "user";
-      ownership = "user";
-      applyClass = "live-generation";
-      runtimeAdapter = "waybar.service";
-      action = {
-        title = "Settings: Bar Position";
-        description = "Change the horizontal status bar edge.";
-        keywords = [
-          "waybar"
-          "panel"
+  componentSetting = option: presentation: {
+    option = lib.mkOption option;
+    inherit presentation;
+  };
+  position =
+    componentSetting
+      {
+        type = lib.types.enum [
           "top"
           "bottom"
         ];
+        default = "top";
+        description = "Horizontal screen edge used by the desktop status bar.";
+      }
+      {
+        id = "position";
+        title = "Bar position";
+        description = "Place the horizontal status bar at the top or bottom edge.";
+        group = "Desktop";
+        control = "enum";
+        scope = "user";
+        ownership = "user";
+        applyClass = "live-generation";
+        runtimeAdapter = "waybar.service";
+        action = {
+          title = "Settings: Bar Position";
+          description = "Change the horizontal status bar edge.";
+          keywords = [
+            "waybar"
+            "panel"
+            "top"
+            "bottom"
+          ];
+        };
       };
-    };
   policyField = title: description: {
     inherit title description;
     reason = "Managed by authored Nix policy";

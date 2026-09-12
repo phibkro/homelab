@@ -29,9 +29,10 @@
           inherit pkgs lib;
         };
         e2e-desktop-settings-unix-ingress =
-          import ../../../users/nori/programs/desktop/settings-service/test/unix-ingress.nix {
-            inherit pkgs lib;
-          };
+          import ../../../users/nori/programs/desktop/settings-service/test/unix-ingress.nix
+            {
+              inherit pkgs lib;
+            };
 
         /**
           E2E — hypr-session user-journey nixosTest. Boots a real

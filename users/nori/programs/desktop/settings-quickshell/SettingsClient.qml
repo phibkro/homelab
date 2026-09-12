@@ -21,6 +21,8 @@ Scope {
     property bool busy: false
     property bool stateLoaded: false
     readonly property bool hasDrafts: Object.keys(root.drafts).length > 0
+    readonly property bool hasCommittedPreview: root.state
+        && typeof root.state.committedPreviewId === "string"
 
     readonly property var profile: root.state && root.state.profile ? root.state.profile : ({})
     readonly property var components: root.state && root.state.components ? root.state.components : ({})
@@ -406,13 +408,25 @@ Scope {
         if (!root.schemaLoaded)
             return null;
 
-        const rootProperties = root.schemaProperties(root.inputSchema);
+        let schemaRoot = root.inputSchema;
+        const definitions = root.inputSchema && root.inputSchema.$defs;
+        if (definitions && typeof definitions === "object") {
+            for (const name of Object.keys(definitions)) {
+                const candidate = root.schemaProperties(definitions[name]);
+                if (candidate && root.owns(candidate, componentId)) {
+                    schemaRoot = definitions[name];
+                    break;
+                }
+            }
+        }
+
+        const rootProperties = root.schemaProperties(schemaRoot);
         if (!rootProperties)
             return null;
 
         const componentContainer = root.owns(rootProperties, "components")
             ? rootProperties.components
-            : root.inputSchema;
+            : schemaRoot;
         const componentProperties = root.schemaProperties(componentContainer);
         if (!componentProperties || !root.owns(componentProperties, componentId))
             return null;

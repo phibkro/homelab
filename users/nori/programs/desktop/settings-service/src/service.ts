@@ -169,6 +169,10 @@ export class DesktopSettingsService {
     catalog.validateComponents(profile.profile.components);
     await service.resolved.initialize();
     await service.previews.initialize();
+    const source = await service.approvedSource().catch(() => undefined);
+    if (source !== undefined) {
+      await service.previews.recoverCommitted(source.source, profile.profile.revision, profile.hash);
+    }
     await service.jobs.initialize();
     const interrupted = await service.jobs.recoverInterrupted();
     if (interrupted.length > 0) {
