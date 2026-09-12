@@ -1,7 +1,7 @@
 ---
 summary: Generate desktop setting contracts from Nix and apply one real setting through a shared local service.
 date: 2026-09-12
-status: spec — awaiting operator freeze
+status: frozen; implementation authorized; workstation activation remains operator-gated
 owner: operator
 ---
 
@@ -17,13 +17,13 @@ Unknown values fail before any profile write or runtime change. An allowed value
 
 This milestone adds the shared change service required by the later nixpkgs Store milestone. It does not implement the Store.
 
-## Implementation precondition
+## Implementation baseline
 
-The Vicinae milestone is implemented but is not activated or isolated in a clean final commit.
+The Vicinae milestone is isolated in commit `27deced` on this branch.
 
-Before implementation starts, move its exact changes into a clean branch or worktree. Gate that committed artifact without including unrelated Firecracker work.
+Its saved-command checks, extension type check, focused Nix checks, and private launcher journey passed from the clean worktree.
 
-Do not build or activate from the current mixed working tree.
+The workstation is not activated. Continue implementation in this worktree and never evaluate the original mixed checkout from a client.
 
 ## User journey
 
