@@ -1,28 +1,36 @@
-/* runtime-adapter: one-request Unix-socket HTTP boundary around the service. */
+/* runtime-adapter: one bounded JSON frame per Unix-socket connection. */
 import { chmod, lstat, mkdir, rm } from "node:fs/promises";
+import { createServer, type Socket } from "node:net";
 import { dirname } from "node:path";
 import { Effect, Schema } from "effect";
 import {
   ApplyRequest,
+  AuthorizationFailureRequest,
   ChangeRequest,
   CreateSavedCommandRequest,
   DesktopSettingsError,
   PreviewRequest,
+  ReconcileRequest,
   SavedCommandLookupRequest,
   parseJson,
 } from "./contracts.ts";
+import { endFrame, maxFrameBytes, readFrame } from "./framing.ts";
 import { DesktopSettingsService } from "./service.ts";
+
 export type IpcServer = {
   stop(closeActiveConnections?: boolean): void;
 };
-
-
-const maxRequestBytes = 64 * 1024;
 
 const strictParseOptions = {
   errors: "all",
   onExcessProperty: "error",
 } as const;
+
+const IpcRequest = Schema.Struct({
+  operation: Schema.String,
+  payload: Schema.optionalKey(Schema.Unknown),
+});
+type IpcRequest = typeof IpcRequest.Type;
 
 type JsonResponse = {
   readonly ok: boolean;
@@ -34,16 +42,6 @@ type JsonResponse = {
   readonly [key: string]: unknown;
 };
 
-function json(response: JsonResponse, status = 200): Response {
-  return new Response(`${JSON.stringify(response)}\n`, {
-    status,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      connection: "close",
-    },
-  });
-}
-
 function asError(cause: unknown): DesktopSettingsError {
   if (cause instanceof DesktopSettingsError) return cause;
   return new DesktopSettingsError(
@@ -52,111 +50,93 @@ function asError(cause: unknown): DesktopSettingsError {
   );
 }
 
-function errorResponse(cause: unknown): Response {
+function errorResponse(cause: unknown): JsonResponse {
   const error = asError(cause);
-  const body =
-    error.details === undefined
-      ? { ok: false, error: { code: error.code, message: error.message } }
-      : { ok: false, error: { code: error.code, message: error.message, details: error.details } };
-  const status =
-    error.code === "revision_conflict"
-      ? 409
-      : error.code === "unknown_setting" || error.code === "not_found"
-        ? 404
-        : error.code === "invalid_profile" || error.code === "invalid_request"
-          ? 400
-          : 503;
-  return json(body, status);
+  return error.details === undefined
+    ? { ok: false, error: { code: error.code, message: error.message } }
+    : { ok: false, error: { code: error.code, message: error.message, details: error.details } };
 }
 
-async function body<A>(request: Request, schema: Schema.ConstraintDecoder<A>): Promise<A> {
-  const contentLength = request.headers.get("content-length");
-  if (contentLength !== null && (!/^\d+$/.test(contentLength) || Number(contentLength) > maxRequestBytes)) {
-    throw new DesktopSettingsError("invalid_request", "Request body exceeds the IPC limit");
+async function payload<A>(request: IpcRequest, schema: Schema.ConstraintDecoder<A>): Promise<A> {
+  if (request.payload === undefined) {
+    throw new DesktopSettingsError("invalid_request", "IPC operation requires a payload");
   }
-  const bytes = await request.arrayBuffer();
-  if (bytes.byteLength > maxRequestBytes) {
-    throw new DesktopSettingsError("invalid_request", "Request body exceeds the IPC limit");
-  }
-  const parsed = await Effect.runPromise(
-    parseJson(Schema.Unknown, new TextDecoder().decode(bytes), "request JSON"),
-  );
   return Effect.runPromise(
-    Schema.decodeUnknownEffect(schema, strictParseOptions)(parsed).pipe(
-      Effect.mapError(
-        (error) => new DesktopSettingsError("invalid_request", `Invalid request: ${error}`),
-      ),
+    Schema.decodeUnknownEffect(schema, strictParseOptions)(request.payload).pipe(
+      Effect.mapError((error) => new DesktopSettingsError("invalid_request", `Invalid request: ${error}`)),
     ),
   );
 }
 
-async function handle(service: DesktopSettingsService, request: Request): Promise<Response> {
+function noPayload(request: IpcRequest): void {
+  if (request.payload !== undefined) {
+    throw new DesktopSettingsError("invalid_request", "IPC operation does not accept a payload");
+  }
+}
+
+async function handle(service: DesktopSettingsService, request: IpcRequest): Promise<JsonResponse> {
+  switch (request.operation) {
+    case "state":
+      noPayload(request);
+      return { ok: true, state: await service.state() };
+    case "change":
+      return { ok: true, state: await service.change(await payload(request, ChangeRequest)) };
+    case "preview":
+      return { ok: true, preview: await service.preview(await payload(request, PreviewRequest)) };
+    case "apply":
+      return { ok: true, job: await service.apply(await payload(request, ApplyRequest)) };
+    case "reconcile":
+      return { ok: true, job: await service.reconcile(await payload(request, ReconcileRequest)) };
+    case "authorization-failed":
+      return { ok: true, job: await service.authorizationFailed(await payload(request, AuthorizationFailureRequest)) };
+    case "saved-commands":
+      noPayload(request);
+      return { ok: true, profile: await service.listSavedCommands() };
+    case "saved-commands/create":
+      return { ok: true, ...(await service.createSavedCommand(await payload(request, CreateSavedCommandRequest))) };
+    case "saved-commands/lookup":
+      return { ok: true, ...(await service.lookupSavedCommand(await payload(request, SavedCommandLookupRequest))) };
+    case "saved-commands/projection":
+      noPayload(request);
+      return { ok: true, ...(await service.savedCommandProjection()) };
+    default:
+      throw new DesktopSettingsError("not_found", `Unknown settings IPC operation: ${request.operation}`);
+  }
+}
+
+async function decodeRequest(frame: string): Promise<IpcRequest> {
+  const value = await Effect.runPromise(parseJson(Schema.Unknown, frame, "IPC request"));
+  return Effect.runPromise(
+    Schema.decodeUnknownEffect(IpcRequest, strictParseOptions)(value).pipe(
+      Effect.mapError((error) => new DesktopSettingsError("invalid_request", `Invalid IPC request: ${error}`)),
+    ),
+  );
+}
+
+async function handleConnection(service: DesktopSettingsService, socket: Socket): Promise<void> {
   try {
-    const url = new URL(request.url);
-    if (request.method === "GET" && url.pathname === "/v1/state") {
-      return json({ ok: true, state: await service.state() });
-    }
-    if (request.method === "POST" && url.pathname === "/v1/change") {
-      return json({ ok: true, state: await service.change(await body(request, ChangeRequest)) });
-    }
-    if (request.method === "POST" && url.pathname === "/v1/preview") {
-      return json({ ok: true, preview: await service.preview(await body(request, PreviewRequest)) });
-    }
-    if (request.method === "POST" && url.pathname === "/v1/apply") {
-      return json({ ok: true, job: await service.apply(await body(request, ApplyRequest)) });
-    }
-    if (request.method === "GET" && url.pathname === "/v1/saved-commands") {
-      return json({ ok: true, profile: await service.listSavedCommands() });
-    }
-    if (request.method === "POST" && url.pathname === "/v1/saved-commands/create") {
-      const result = await service.createSavedCommand(await body(request, CreateSavedCommandRequest));
-      return json({ ok: true, ...result });
-    }
-    if (request.method === "POST" && url.pathname === "/v1/saved-commands/lookup") {
-      return json({
-        ok: true,
-        ...(await service.lookupSavedCommand(await body(request, SavedCommandLookupRequest))),
-      });
-    }
-    if (request.method === "GET" && url.pathname === "/v1/saved-commands/projection") {
-      return json({ ok: true, ...(await service.savedCommandProjection()) });
-    }
-    throw new DesktopSettingsError("not_found", `Unknown settings IPC operation: ${request.method} ${url.pathname}`);
+    const request = await decodeRequest(await readFrame(socket));
+    endFrame(socket, await handle(service, request));
   } catch (cause) {
-    return errorResponse(cause);
+    endFrame(socket, errorResponse(cause));
   }
 }
 
 async function proveSocketIsDead(socket: string): Promise<void> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 500);
+  const probe = createServer();
+  const { promise, reject, resolve } = Promise.withResolvers<void>();
+  probe.once("error", reject);
+  probe.listen(socket, () => resolve());
   try {
-    await fetch("http://localhost/v1/state", {
-      unix: socket,
-      signal: controller.signal,
-    });
-    throw new DesktopSettingsError("unavailable", "nori-desktop-config is already running");
+    await promise;
   } catch (cause) {
-    if (cause instanceof DesktopSettingsError) throw cause;
-    if (controller.signal.aborted) {
-      throw new DesktopSettingsError(
-        "unavailable",
-        "Cannot safely replace an existing settings socket after a timed-out probe",
-      );
+    const code = cause instanceof Error && "code" in cause ? cause.code : undefined;
+    if (code === "EADDRINUSE") {
+      throw new DesktopSettingsError("unavailable", "nori-desktop-config is already running");
     }
-    const code =
-      cause instanceof Error && "code" in cause && typeof cause.code === "string"
-        ? cause.code
-        : undefined;
-    if (code === "ECONNREFUSED" || code === "ENOENT") return;
-    throw new DesktopSettingsError(
-      "unavailable",
-      `Cannot safely replace an existing settings socket: ${
-        cause instanceof Error ? cause.message : String(cause)
-      }`,
-    );
+    throw cause;
   } finally {
-    clearTimeout(timeout);
+    probe.close();
   }
 }
 
@@ -196,24 +176,36 @@ async function prepareSocket(socket: string): Promise<void> {
 
 export async function startIpcServer(
   service: DesktopSettingsService,
-  socket: string,
+  socketPath: string,
 ): Promise<IpcServer> {
-  await prepareSocket(socket);
-  const originalUmask = process.umask(0o077);
+  await prepareSocket(socketPath);
+  const sockets = new Set<Socket>();
+  const server = createServer({ allowHalfOpen: true }, (socket) => {
+    sockets.add(socket);
+    socket.once("close", () => sockets.delete(socket));
+    void handleConnection(service, socket);
+  });
+  const { promise, reject, resolve } = Promise.withResolvers<void>();
+  server.once("error", reject);
+  server.listen(socketPath, () => resolve());
   try {
-    const server = Bun.serve({
-      unix: socket,
-      fetch: (request) => handle(service, request),
-      maxRequestBodySize: maxRequestBytes,
-    });
-    await chmod(socket, 0o600);
-    return server;
+    await promise;
+    await chmod(socketPath, 0o600);
   } catch (cause) {
+    server.close();
     throw new DesktopSettingsError(
       "unavailable",
       `Cannot bind settings socket: ${cause instanceof Error ? cause.message : String(cause)}`,
     );
-  } finally {
-    process.umask(originalUmask);
   }
+  return {
+    stop(closeActiveConnections = false) {
+      if (closeActiveConnections) {
+        for (const socket of sockets) socket.destroy();
+      }
+      server.close();
+    },
+  };
 }
+
+export { maxFrameBytes };

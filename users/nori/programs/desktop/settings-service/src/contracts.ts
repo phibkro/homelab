@@ -41,6 +41,12 @@ export const ApplyRequest = Schema.Struct({
 });
 export type ApplyRequest = typeof ApplyRequest.Type;
 
+export const AuthorizationFailureRequest = Schema.Struct({
+  applyId: Schema.String,
+});
+export type AuthorizationFailureRequest = typeof AuthorizationFailureRequest.Type;
+
+
 export const CreateSavedCommandRequest = Schema.Struct({
   request: CreateCommandRequest,
   expectedRevision: Schema.Number,
@@ -72,11 +78,18 @@ export const WaybarObservation = Schema.Struct({
 
 export type WaybarObservation = typeof WaybarObservation.Type;
 
+
 export const Observation = Schema.Struct({
   waybar: WaybarObservation,
 });
 
 export type Observation = typeof Observation.Type;
+
+export const ReconcileRequest = Schema.Struct({
+  applyId: Schema.String,
+  observed: Observation,
+});
+export type ReconcileRequest = typeof ReconcileRequest.Type;
 
 export const JobStatus = Schema.Literals([
   "queued",
@@ -84,6 +97,7 @@ export const JobStatus = Schema.Literals([
   "activating",
   "reconciling",
   "active",
+  "awaiting_authorization",
   "failed",
   "interrupted",
 ]);

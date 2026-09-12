@@ -67,7 +67,7 @@ The service rejects unknown fields, duplicate parameter names, unknown placehold
 - `users/nori/programs/desktop/action-model.nix` declares the internal Home Manager action contract.
 - `users/nori/programs/desktop/hypr-rice/runtime.nix` defines existing actions, the dispatcher, and direct bindings.
 - `users/nori/programs/desktop/vicinae/default.nix` owns Vicinae integration and generated script entries.
-- `users/nori/programs/desktop/vicinae/saved-command/` owns the Effect/Bun saved-command service and CLI.
+- `users/nori/programs/desktop/settings-service/` owns the Effect/Bun profile service, saved-command state, and CLI.
 - `users/nori/programs/desktop/vicinae/extension/` owns the Vicinae create-command form.
 - `users/nori/programs/desktop/default.nix` composes these modules and keeps session ownership.
 

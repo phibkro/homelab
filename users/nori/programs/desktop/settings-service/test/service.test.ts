@@ -1,10 +1,14 @@
 import { afterEach, expect, test } from "bun:test";
 import { chmod, mkdir, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { once } from "node:events";
+import { createConnection } from "node:net";
 import { join } from "node:path";
 import { startIpcServer } from "../src/daemon.ts";
+import { acquireDaemonLock } from "../src/daemon-lock.ts";
 import { DesktopSettingsError } from "../src/contracts.ts";
 import { JobStore, ProfileStore, writeAtomic } from "../src/files.ts";
+import { encodeFrame, readFrame } from "../src/framing.ts";
 import { verifyGenerationMetadata } from "../src/runtime.ts";
 import { DesktopSettingsService, type ServiceConfig } from "../src/service.ts";
 
@@ -92,6 +96,20 @@ afterEach(async () => {
   );
 });
 
+
+test("daemon singleton lock rejects a concurrent start before service construction", async () => {
+  const { config } = await fixture();
+  const release = await acquireDaemonLock(config.stateHome);
+  try {
+    await expect(acquireDaemonLock(config.stateHome)).rejects.toMatchObject({
+      code: "unavailable",
+      message: "nori-desktop-config is already running",
+    });
+  } finally {
+    await release();
+  }
+  await (await acquireDaemonLock(config.stateHome))();
+});
 function quoteShell(value: string): string {
   return `'${value.replaceAll("'", `'"'"'`)}'`;
 }
@@ -248,6 +266,105 @@ test("service restart marks an unfinished apply as interrupted", async () => {
   expect(recovered?.log).toContain("Daemon restart marked unfinished apply as interrupted");
 });
 
+test("authorization cancellation durably fails exactly one awaiting apply", async () => {
+  const { config } = await fixture();
+  const jobs = new JobStore(config.stateHome);
+  await jobs.initialize();
+  await jobs.save({
+    id: "awaiting-auth",
+    revision: 1,
+    profileHash: "a".repeat(64),
+    status: "awaiting_authorization",
+    createdAt: "2026-09-12T00:00:00.000Z",
+    updatedAt: "2026-09-12T00:00:01.000Z",
+    log: ["Awaiting authorization"],
+  });
+  const service = await DesktopSettingsService.make(config);
+  const failed = await service.authorizationFailed({ applyId: "awaiting-auth" });
+  expect(failed).toMatchObject({
+    status: "failed",
+    error: { code: "activation_rejected", message: "Authorization was cancelled or denied" },
+  });
+  await expect(service.authorizationFailed({ applyId: "awaiting-auth" })).rejects.toMatchObject({
+    code: "not_found",
+  });
+});
+
+test("reconciliation activates only when the authority reads the matching generation identity", async () => {
+  const { config } = await fixture();
+  const jobs = new JobStore(config.stateHome);
+  await jobs.initialize();
+  const job = {
+    id: "reconcile",
+    revision: 1,
+    profileHash: "b".repeat(64),
+    source: "/nix/store/approved-source",
+    previewArtifact: "/nix/store/generated",
+    status: "reconciling" as const,
+    createdAt: "2026-09-12T00:00:00.000Z",
+    updatedAt: "2026-09-12T00:00:01.000Z",
+    log: ["Generation activated"],
+  };
+  await jobs.save(job);
+  const service = await DesktopSettingsService.make(config);
+  await jobs.save(job);
+  service.desktop.activeGeneration = async () => ({
+    path: "/nix/store/current-system",
+    source: job.source,
+    profileRevision: job.revision,
+    profileHash: job.profileHash,
+  });
+  const active = await service.reconcile({
+    applyId: job.id,
+    observed: { waybar: { unit: "active", edge: "bottom" } },
+  });
+  expect(active.status).toBe("active");
+  await jobs.save({ ...job, id: "stale", status: "reconciling" });
+  service.desktop.activeGeneration = async () => ({
+    path: "/nix/store/current-system",
+    source: job.source,
+    profileRevision: 2,
+    profileHash: job.profileHash,
+  });
+  const failed = await service.reconcile({
+    applyId: "stale",
+    observed: { waybar: { unit: "active", edge: "bottom" } },
+  });
+  expect(failed).toMatchObject({ status: "failed", error: { code: "activation_rejected" } });
+});
+
+test("reconciliation records a failed user runtime observation after a matching activation", async () => {
+  const { config } = await fixture();
+  const jobs = new JobStore(config.stateHome);
+  await jobs.initialize();
+  const job = {
+    id: "runtime-failed",
+    revision: 1,
+    profileHash: "c".repeat(64),
+    source: "/nix/store/approved-source",
+    previewArtifact: "/nix/store/generated",
+    status: "reconciling" as const,
+    createdAt: "2026-09-12T00:00:00.000Z",
+    updatedAt: "2026-09-12T00:00:01.000Z",
+    log: ["Generation activated"],
+  };
+  await jobs.save(job);
+  await jobs.save(job);
+  const service = await DesktopSettingsService.make(config);
+  await jobs.save(job);
+  service.desktop.activeGeneration = async () => ({
+    path: "/nix/store/current-system",
+    source: job.source,
+    profileRevision: job.revision,
+    profileHash: job.profileHash,
+  });
+  const failed = await service.reconcile({
+    applyId: job.id,
+    observed: { waybar: { unit: "failed", edge: "unavailable", reason: "unit exited" } },
+  });
+  expect(failed).toMatchObject({ status: "failed", error: { code: "runtime_unavailable" } });
+});
+
 test("saved command IPC round trip keeps a parameter literal across the generated script", async () => {
   const { config, root } = await fixture();
   const runner = join(root, "rice-saved-command");
@@ -295,10 +412,94 @@ test("saved command IPC round trip keeps a parameter literal across the generate
     if (ran.status !== 0) throw new Error(`Generated command failed (${ran.status}): ${ran.stderr}`);
     expect(ran.stdout).toBe(`${literal}\n`);
     expect(await Bun.file(marker).exists()).toBe(false);
+
+    const failing = await invoke(
+      runner,
+      env,
+      ["create"],
+      JSON.stringify({
+        title: "Expected failure",
+        outputMode: "fullOutput",
+        parameters: [],
+        execution: { type: "argv", executable: shell, arguments: ["-c", "printf failure >&2; exit 23"] },
+      }),
+    );
+    expect(failing.status).toBe(0);
+    const scripts = await readdir(scriptDirectory);
+    const failingScript = scripts.find((name) => name !== scriptName);
+    expect(failingScript).toBeDefined();
+    const failedRun = await invoke(join(scriptDirectory, failingScript!), env, []);
+    expect(failedRun).toMatchObject({ status: 23 });
+    expect(failedRun.stderr).toContain("failure");
+
+    for (const executable of ["doas", "pkexec", "run0", "su", "sudo", "sudoedit"]) {
+      const rejected = await invoke(
+        runner,
+        env,
+        ["create"],
+        JSON.stringify({
+          title: "Forbidden",
+          outputMode: "fullOutput",
+          parameters: [],
+          execution: { type: "argv", executable, arguments: ["true"] },
+        }),
+      );
+      expect(rejected).toMatchObject({ status: 64 });
+    }
+
+    const shellCommand = await invoke(
+      runner,
+      env,
+      ["create"],
+      JSON.stringify({
+        title: "Explicit shell",
+        outputMode: "fullOutput",
+        parameters: [{ name: "message", optional: false }],
+        execution: { type: "shell", source: 'printf "%s\\n" "$1"' },
+      }),
+    );
+    expect(shellCommand.status).toBe(0);
+    const shellScript = (await readdir(scriptDirectory)).find((name) => name.includes("explicit-shell"));
+    expect(shellScript).toBeDefined();
+    expect(await invoke(join(scriptDirectory, shellScript!), env, ["shell parameter"])).toMatchObject({
+      status: 0,
+      stdout: "shell parameter\n",
+    });
+
+    const implicitShell = await invoke(
+      runner,
+      env,
+      ["create"],
+      JSON.stringify({
+        title: "Implicit shell",
+        outputMode: "fullOutput",
+        parameters: [],
+        execution: { type: "argv", executable: 'printf "%s"', arguments: [] },
+      }),
+    );
+    expect(implicitShell).toMatchObject({ status: 64 });
   } finally {
     server.stop(true);
   }
 });
+test("daemon rejects a second framed request before dispatching either request", async () => {
+  const { config, root } = await fixture();
+  const service = await DesktopSettingsService.make(config);
+  const socketPath = join(root, "runtime", "settings.sock");
+  const server = await startIpcServer(service, socketPath);
+  const client = createConnection({ path: socketPath, allowHalfOpen: true });
+  try {
+    await once(client, "connect");
+    client.write(Buffer.concat([encodeFrame({ operation: "state" }), encodeFrame({ operation: "state" })]));
+    const response = JSON.parse(await readFrame(client)) as { ok: boolean; error?: { code?: string } };
+    expect(response).toMatchObject({ ok: false, error: { code: "invalid_request" } });
+    expect((await service.state()).profile.revision).toBe(0);
+  } finally {
+    client.destroy();
+    server.stop(true);
+  }
+});
+
 test("apply returns a durable queued job before the managed build finishes", async () => {
   const { config, root } = await fixture();
   const shell = Bun.which("sh");

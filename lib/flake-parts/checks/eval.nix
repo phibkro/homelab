@@ -284,21 +284,58 @@
                   (setting { })
                 ])
               ];
-            unsupportedTypeFails =
+            unsupportedPresentationControlFails =
               !componentsEvaluate [
                 (component [
                   (setting { control = "unsupported"; })
                 ])
               ];
+            clanLib = import "${inputs.clan-core-src}/lib/default.nix" { inherit lib; };
+            unsupportedWritableTypeFails =
+              !(builtins.tryEval (
+                builtins.deepSeq (clanLib.jsonschema.fromOptions
+                  {
+                    typePrefix = "NoriDesktopSettingsUnsupported";
+                    input = true;
+                    output = false;
+                    readOnly = {
+                      input = false;
+                      output = true;
+                    };
+                  }
+                  (lib.evalModules {
+                    modules = [
+                      {
+                        options.nori.desktop.profile.components."test.unsupported".value = lib.mkOption {
+                          type = lib.types.functionTo lib.types.str;
+                        };
+                      }
+                    ];
+                  }).options.nori.desktop.profile.components
+                ) true
+              )).success;
             home = evaluated.config.home-manager.users.nori;
             generated = home.nori.desktop.generated;
+            polkitPolicy =
+              evaluated.config.environment.etc."polkit-1/actions/org.nori.desktop-settings.policy".source;
+            polkitRule = evaluated.config.security.polkit.extraConfig;
+            hasActiveNoriRule =
+              lib.hasInfix "action.id == \"org.nori.desktop-settings.activate\"" polkitRule
+              && lib.hasInfix "subject.user == \"nori\"" polkitRule
+              && lib.hasInfix "subject.active" polkitRule
+              && lib.hasInfix "polkit.Result.AUTH_ADMIN" polkitRule;
           in
           assert lib.assertMsg duplicateComponentFails "duplicate desktop component IDs must fail evaluation";
           assert lib.assertMsg duplicateSettingFails "duplicate desktop setting IDs must fail evaluation";
-          assert lib.assertMsg unsupportedTypeFails "unsupported desktop setting types must fail evaluation";
+          assert lib.assertMsg unsupportedPresentationControlFails
+            "unsupported presentation controls must fail evaluation";
+          assert lib.assertMsg unsupportedWritableTypeFails
+            "Clan-unsupported writable type at nori.desktop.profile.components.test.unsupported.value must fail evaluation";
           assert lib.assertMsg (
             home.programs.waybar.settings.mainBar.position == "bottom"
           ) "Waybar must consume the generated desktop profile option";
+          assert lib.assertMsg hasActiveNoriRule
+            "desktop settings polkit rule must authorize only active nori sessions";
           pkgs.runCommandLocal "desktop-settings-contract"
             {
               nativeBuildInputs = [ pkgs.jq ];
@@ -332,6 +369,11 @@
               jq -e '
                 ."desktop.waybar".position == "bottom"
               ' ${generated.resolvedSettings} >/dev/null
+              test -e ${polkitPolicy}
+              grep -Fx '  <action id="org.nori.desktop-settings.activate">' ${polkitPolicy} >/dev/null
+              grep -Fx '      <allow_any>no</allow_any>' ${polkitPolicy} >/dev/null
+              grep -Fx '      <allow_inactive>no</allow_inactive>' ${polkitPolicy} >/dev/null
+              grep -Fx '      <allow_active>no</allow_active>' ${polkitPolicy} >/dev/null
               touch "$out"
             '';
 

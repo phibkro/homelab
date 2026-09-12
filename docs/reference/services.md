@@ -224,15 +224,22 @@ new product deployments should consume immutable artifacts instead.
 
 ## Desktop settings service
 
-The `nori-desktop-settings` user service is the only writer for the desktop profile.
-Its Unix socket accepts requests only from the owning user.
-The profile contains the revision, desktop settings, and saved commands.
+The `nori-desktop-settings` system service, running as the dedicated
+`nori-desktop-settings` UID, is the only writer for the versioned profile,
+preview receipts, and apply jobs. Its private backend socket is not user
+accessible. A credential-checked Unix ingress accepts requests only from
+`nori`.
 
-Desktop Settings and Vicinae use the same CLI and service snapshot.
-They do not edit profile files or reload Waybar.
-The service builds a fixed workstation operation from an approved Nix source.
-The activation mechanism validates the source, profile revision, profile hash, and artifact identity.
+Desktop Settings and Vicinae use the same typed CLI and service snapshot.
+They do not edit profile files or reload Waybar. The persistent nori runtime
+agent is the only user-side component allowed to request the named polkit
+activation, reload Waybar, and submit a bounded surface observation.
 
-Waybar reads the resolved generated profile after activation.
-The service reloads and observes Waybar only after the matching activation.
-The operator must activate a workstation generation.
+The authority builds only from the approved immutable Nix source and stops at
+authorization. The root helper re-reads the durable apply ID and validates the
+source, profile revision, profile hash, canonical profile, and artifact
+identity. The authority independently validates active generation metadata
+before it records the user's Waybar observation as active or failed.
+
+Waybar reads the resolved generated profile after activation. The operator
+must activate a workstation generation.

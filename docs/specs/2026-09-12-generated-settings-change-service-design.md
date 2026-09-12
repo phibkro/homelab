@@ -309,6 +309,24 @@ The mechanism must:
 8. Run the fixed activation program for that artifact.
 9. Return actual activation and boot-default observations.
 
+### Dedicated-authority revision
+
+The durable authority runs as the dedicated `nori-desktop-settings` system UID.
+It owns profiles, previews, jobs, and the private backend socket. A credential
+checked ingress accepts requests only from `nori`.
+
+The authority stops a verified build at `awaiting_authorization`. The active
+`nori` session runtime agent alone invokes the fixed polkit operation with an
+apply ID and expected revision. The root helper re-reads the service-owned job
+and revision snapshot, validates their ownership, hash, canonical profile, and
+immutable identities, then performs only the fixed switch operation.
+
+After the switch, the user runtime agent reloads and observes Waybar, then
+submits its strict observation. The authority independently reads active
+generation metadata and accepts the user observation only as surface evidence;
+it never uses it as activation identity. Failed or cancelled authorization
+durably fails that apply job. Retrying requires a new apply job.
+
 A user-selected store path alone is not an approved artifact. Activating arbitrary user-built NixOS output would be equivalent to granting root.
 
 ## Client boundaries

@@ -1,4 +1,5 @@
-/* runtime-adapter: installed CLI bridge using Bun.fetch over the local Unix socket. */
+/* runtime-adapter: installed CLI bridge over one bounded local Unix-socket frame. */
+import { createConnection } from "node:net";
 import { Effect, Schema } from "effect";
 import {
   DesktopSettingsError,
@@ -7,7 +8,9 @@ import {
   type ApplyRequest,
   type ChangeRequest,
   type PreviewRequest,
+  type ReconcileRequest,
 } from "./contracts.ts";
+import { readFrame, writeFrame } from "./framing.ts";
 
 export type CliRuntime = {
   readonly socket: string;
@@ -54,31 +57,62 @@ function serviceError(response: Record<string, unknown>): DesktopSettingsError {
   return new DesktopSettingsError(matched ?? "unavailable", message, error.details);
 }
 
+function operationFor(path: string, method: "GET" | "POST"): string {
+  const operations: Record<string, string> = {
+    "GET /v1/state": "state",
+    "POST /v1/change": "change",
+    "POST /v1/preview": "preview",
+    "POST /v1/apply": "apply",
+    "POST /v1/reconcile": "reconcile",
+    "POST /v1/authorization-failed": "authorization-failed",
+    "GET /v1/saved-commands": "saved-commands",
+    "POST /v1/saved-commands/create": "saved-commands/create",
+    "POST /v1/saved-commands/lookup": "saved-commands/lookup",
+    "GET /v1/saved-commands/projection": "saved-commands/projection",
+  };
+  const operation = operations[`${method} ${path}`];
+  if (operation === undefined) {
+    throw new DesktopSettingsError("invalid_request", `Unknown settings IPC operation: ${method} ${path}`);
+  }
+  return operation;
+}
+
+async function exchange(
+  request: { readonly operation: string; readonly payload?: unknown },
+  runtime: CliRuntime,
+): Promise<Record<string, unknown>> {
+  const socket = createConnection({ path: runtime.socket, allowHalfOpen: true });
+  const { promise, reject, resolve } = Promise.withResolvers<void>();
+  socket.once("connect", resolve);
+  socket.once("error", reject);
+  try {
+    await promise;
+    writeFrame(socket, request);
+    return decodeResponse(await readFrame(socket));
+  } catch (cause) {
+    throw new DesktopSettingsError(
+      "unavailable",
+      `Cannot contact nori-desktop-config: ${cause instanceof Error ? cause.message : String(cause)}`,
+    );
+  } finally {
+    socket.destroy();
+  }
+}
+
 export async function callService(
   path: string,
   method: "GET" | "POST",
   payload?: unknown,
   runtime = runtimeFromEnvironment(),
 ): Promise<Record<string, unknown>> {
-  let response: Response;
-  try {
-    const init: BunFetchRequestInit = {
-      unix: runtime.socket,
-      method,
-      ...(payload === undefined
-        ? {}
-        : { headers: { "content-type": "application/json" }, body: JSON.stringify(payload) }),
-    };
-    response = await fetch(`http://localhost${path}`, init);
-  } catch (cause) {
-    throw new DesktopSettingsError(
-      "unavailable",
-      `Cannot contact nori-desktop-config: ${cause instanceof Error ? cause.message : String(cause)}`,
-    );
-  }
-  const decoded = await decodeResponse(await response.text());
-  if (decoded.ok === true) return decoded;
-  throw serviceError(decoded);
+  const response = await exchange(
+    payload === undefined
+      ? { operation: operationFor(path, method) }
+      : { operation: operationFor(path, method), payload },
+    runtime,
+  );
+  if (response.ok === true) return response;
+  throw serviceError(response);
 }
 
 function parseRevision(value: string | undefined): number {
@@ -197,6 +231,29 @@ export async function runSettingsCli(args: ReadonlyArray<string>): Promise<numbe
       }
       const payload: ApplyRequest = { expectedRevision: parseRevision(revision), previewId };
       writeJson(await callService("/v1/apply", "POST", payload));
+      return 0;
+    }
+    if (operation === "authorization-failed") {
+      const [idFlag, applyId, jsonFlag] = rest;
+      if (idFlag !== "--apply-id" || applyId === undefined || jsonFlag !== "--json" || rest.length !== 3) {
+        commandUsage();
+      }
+      writeJson(await callService("/v1/authorization-failed", "POST", { applyId }));
+      return 0;
+    }
+    if (operation === "reconcile") {
+      const [idFlag, applyId, observedFlag, observedText, jsonFlag] = rest;
+      if (idFlag !== "--apply-id" || applyId === undefined || observedFlag !== "--observed" || observedText === undefined || jsonFlag !== "--json" || rest.length !== 5) {
+        commandUsage();
+      }
+      const observed = await Effect.runPromise(parseJson(Schema.Unknown, observedText, "Waybar observation"));
+      const payload: ReconcileRequest = await Effect.runPromise(
+        Schema.decodeUnknownEffect(
+          Schema.Struct({ applyId: Schema.String, observed: Schema.Struct({ waybar: Schema.Struct({ unit: Schema.Literals(["active", "inactive", "failed", "unknown"]), edge: Schema.Literals(["top", "bottom", "unavailable"]), reason: Schema.optionalKey(Schema.String) }) }) }),
+          { errors: "all", onExcessProperty: "error" },
+        )({ applyId, observed }),
+      );
+      writeJson(await callService("/v1/reconcile", "POST", payload));
       return 0;
     }
     if (operation === "saved-command") {

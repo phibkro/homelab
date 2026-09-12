@@ -25,12 +25,14 @@ let
       runHook preBuild
       bun build src/main.ts --compile --outfile dist/nori-desktop-settings
       bun build src/rice-saved-command.ts --compile --outfile dist/rice-saved-command
+      bun build src/profile-validator.ts --compile --outfile dist/nori-desktop-settings-validate-profile
       runHook postBuild
     '';
     installPhase = ''
       runHook preInstall
       install -Dm755 dist/nori-desktop-settings "$out/libexec/nori-desktop-settings"
       install -Dm755 dist/rice-saved-command "$out/libexec/rice-saved-command"
+      install -Dm755 dist/nori-desktop-settings-validate-profile "$out/libexec/nori-desktop-settings-validate-profile"
       runHook postInstall
     '';
   };
@@ -105,7 +107,7 @@ let
       exit 70
     fi
     if [ -z "''${NORI_DESKTOP_SETTINGS_SOCKET-}" ]; then
-      export NORI_DESKTOP_SETTINGS_SOCKET="$XDG_RUNTIME_DIR/nori-desktop/settings.sock"
+      export NORI_DESKTOP_SETTINGS_SOCKET=/run/nori-desktop-settings/settings.sock
     fi
   '';
   settingsCli = pkgs.writeShellApplication {
@@ -116,6 +118,52 @@ let
       exec ${serviceImplementation}/libexec/nori-desktop-settings "$@"
     '';
   };
+  runtimeAgent = pkgs.writeShellApplication {
+    name = "nori-desktop-settings-runtime-agent";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.gawk
+      pkgs.jq
+      pkgs.systemd
+      pkgs.hyprland
+    ];
+    text = ''
+      ${commonEnvironment}
+      while true; do
+        ${settingsCli}/bin/nori-desktop-settings state --json 2>/dev/null \
+          | jq -r '.state.jobs[]? | select(.status == "awaiting_authorization") | [.id, .revision] | @tsv' \
+          | while IFS="$(printf '\t')" read -r apply_id revision; do
+              if ! /run/wrappers/bin/pkexec /run/current-system/sw/bin/nori-desktop-settings-activate \
+                --operation org.nori.desktop-settings.activate \
+                --apply-id "$apply_id" \
+                --expected-revision "$revision"; then
+                ${settingsCli}/bin/nori-desktop-settings authorization-failed \
+                  --apply-id "$apply_id" --json >/dev/null || true
+                continue
+              fi
+              ${pkgs.systemd}/bin/systemctl --user reload waybar.service || true
+              unit=$(${pkgs.systemd}/bin/systemctl --user is-active waybar.service 2>/dev/null || true)
+              case "$unit" in active) ;; *) unit=unknown ;; esac
+              edge=$(${pkgs.hyprland}/bin/hyprctl -j layers 2>/dev/null \
+                | jq -r '.. | objects | select((.namespace? // "") | startswith("waybar")) | (.geometry.y // .y // empty)' \
+                | head -n 1 \
+                | awk '$1 == 0 { print "top"; exit } { print "bottom"; exit }')
+              case "$edge" in top|bottom) ;; *) edge=unavailable ;; esac
+              observed=$(jq -cn --arg unit "$unit" --arg edge "$edge" '{ waybar: { unit: $unit, edge: $edge } }')
+              ${settingsCli}/bin/nori-desktop-settings reconcile \
+                --apply-id "$apply_id" --observed "$observed" --json >/dev/null || true
+            done
+        sleep 2
+      done
+    '';
+  };
+  profileValidator = pkgs.writeShellApplication {
+    name = "nori-desktop-settings-validate-profile";
+    text = ''
+      exec ${serviceImplementation}/libexec/nori-desktop-settings-validate-profile "$@"
+    '';
+  };
+
   savedCommandCli = pkgs.writeShellApplication {
     name = "rice-saved-command";
     runtimeInputs = [ pkgs.coreutils ];
@@ -142,55 +190,37 @@ in
     internal = true;
     description = "Installed client and daemon executables for the desktop settings service.";
   };
+  options.nori.desktop.settingsService.profileValidator = lib.mkOption {
+    type = lib.types.package;
+    readOnly = true;
+    internal = true;
+    description = "Root-callable canonical validator for persisted desktop settings profiles.";
+  };
+  options.nori.desktop.settingsService.ingress = lib.mkOption {
+    type = lib.types.package;
+    readOnly = true;
+    internal = true;
+    description = "Credential-checking native ingress executable for the dedicated settings authority.";
+  };
 
   config = {
     nori.desktop.settingsService.package = package;
+    nori.desktop.settingsService.profileValidator = profileValidator;
+    nori.desktop.settingsService.ingress = nativeIngress;
+    systemd.user.services.nori-desktop-settings-runtime-agent = {
+      Unit = {
+        Description = "Nori desktop settings activation and Waybar reconciliation agent";
+        After = [ config.wayland.systemd.target ];
+        PartOf = [ config.wayland.systemd.target ];
+      };
+      Service = {
+        ExecStart = "${runtimeAgent}/bin/nori-desktop-settings-runtime-agent";
+        Restart = "on-failure";
+        RestartSec = 2;
+      };
+      Install.WantedBy = [ config.wayland.systemd.target ];
+    };
 
     home.packages = [ package ];
-
-    systemd.user.services.nori-desktop-config = {
-      Unit.Description = "Nori desktop settings change service";
-      Service = {
-        Type = "simple";
-        ExecStart = "${package}/bin/nori-desktop-settings daemon";
-        Restart = "on-failure";
-        RestartSec = 2;
-        RuntimeDirectory = "nori-desktop";
-        RuntimeDirectoryMode = "0700";
-        Environment = [
-          "NORI_DESKTOP_SETTINGS_CONFIG_HOME=${config.xdg.configHome}/nori-desktop"
-          "NORI_DESKTOP_SETTINGS_STATE_HOME=${config.xdg.stateHome}/nori-desktop"
-          "NORI_DESKTOP_SETTINGS_DATA_DIR=${config.xdg.dataHome}/nori-desktop"
-          "NORI_DESKTOP_SETTINGS_APPROVED_SOURCE=/etc/nori-desktop-settings/approved-source.json"
-          "NORI_DESKTOP_SETTINGS_ACTIVE_METADATA=/etc/nori-desktop-settings/generation.json"
-          "NORI_DESKTOP_SETTINGS_EVALUATOR=/run/current-system/sw/bin/nori-desktop-settings-preview"
-          "NORI_DESKTOP_SETTINGS_BUILDER=/run/current-system/sw/bin/nori-desktop-settings-build"
-          "NORI_DESKTOP_SETTINGS_ACTIVATOR=/run/current-system/sw/bin/nori-desktop-settings-activate"
-          "NORI_DESKTOP_SETTINGS_SYSTEMCTL=${pkgs.systemd}/bin/systemctl"
-          "NORI_DESKTOP_SETTINGS_HYPRCTL=${pkgs.hyprland}/bin/hyprctl"
-          "NORI_DESKTOP_SETTINGS_PKEXEC=/run/wrappers/bin/pkexec"
-          "NORI_DESKTOP_SETTINGS_SOCKET=%t/nori-desktop/settings-backend.sock"
-          "NORI_DESKTOP_SETTINGS_RICE_COMMAND=${package}/bin/rice-saved-command"
-          "NORI_DESKTOP_SETTINGS_SHELL=${lib.getExe pkgs.bash}"
-          "RICE_VICINAE_BIN=${lib.getExe pkgs.vicinae}"
-        ];
-      };
-      Install.WantedBy = [ "default.target" ];
-    };
-    systemd.user.services.nori-desktop-config-ingress = {
-      Unit = {
-        Description = "Nori desktop settings credential-checked Unix ingress";
-        Requires = [ "nori-desktop-config.service" ];
-        After = [ "nori-desktop-config.service" ];
-        PartOf = [ "nori-desktop-config.service" ];
-      };
-      Service = {
-        Type = "simple";
-        ExecStart = "${settingsIngress}/bin/nori-desktop-settings-ingress";
-        Restart = "on-failure";
-        RestartSec = 2;
-      };
-      Install.WantedBy = [ "default.target" ];
-    };
   };
 }

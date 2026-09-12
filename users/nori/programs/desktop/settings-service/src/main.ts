@@ -2,6 +2,7 @@
 import { startIpcServer } from "./daemon.ts";
 import { runSettingsCli } from "./cli.ts";
 import { DesktopSettingsError } from "./contracts.ts";
+import { acquireDaemonLock } from "./daemon-lock.ts";
 import { DesktopSettingsService, type ServiceConfig } from "./service.ts";
 
 function requiredEnvironment(name: string): string {
@@ -55,22 +56,28 @@ function serviceConfig(): ServiceConfig {
   };
 }
 
+
 async function runDaemon(): Promise<number> {
   const config = serviceConfig();
-  const service = await DesktopSettingsService.make(config);
-  const socket = pathEnvironment(
-    "NORI_DESKTOP_SETTINGS_SOCKET",
-    `${requiredEnvironment("XDG_RUNTIME_DIR")}/nori-desktop/settings.sock`,
-  );
-  const server = await startIpcServer(service, socket);
-  await new Promise<void>((resolve) => {
+  const releaseLock = await acquireDaemonLock(config.stateHome);
+  try {
+    const service = await DesktopSettingsService.make(config);
+    const socket = pathEnvironment(
+      "NORI_DESKTOP_SETTINGS_SOCKET",
+      "/run/nori-desktop-settings/settings.sock",
+    );
+    const server = await startIpcServer(service, socket);
+    const { promise, resolve } = Promise.withResolvers<void>();
     const stop = () => {
       server.stop(true);
       resolve();
     };
     process.once("SIGINT", stop);
     process.once("SIGTERM", stop);
-  });
+    await promise;
+  } finally {
+    await releaseLock();
+  }
   return 0;
 }
 

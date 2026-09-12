@@ -6,19 +6,20 @@ import {
   assertNonNegativeSafeInteger,
   parseJson,
   type ActiveGeneration,
+  type AuthorizationFailureRequest,
   type ApplyJob,
   type ApplyRequest,
   type ChangeRequest,
   type CreateSavedCommandRequest,
   type GenerationMetadata,
   type Observation,
+  type ReconcileRequest,
   type PreviewRequest,
   type Profile,
   type SavedCommandLookupRequest,
 } from "./contracts.ts";
 import { JobStore, PreviewStore, ProfileStore, ResolvedStore, type StoredProfile } from "./files.ts";
 import {
-  ActivationClient,
   DesktopRuntime,
   NixBuilder,
   NixEvaluator,
@@ -143,7 +144,6 @@ export class DesktopSettingsService {
   readonly jobs: JobStore;
   readonly builder: NixBuilder;
   readonly evaluator: NixEvaluator;
-  readonly activation: ActivationClient;
   readonly desktop: DesktopRuntime;
   readonly coordinator = new MutationCoordinator();
   readonly running = new Map<string, Promise<ApplyJob>>();
@@ -157,9 +157,8 @@ export class DesktopSettingsService {
     this.previews = new PreviewStore(config.stateHome);
     this.jobs = new JobStore(config.stateHome);
     this.builder = new NixBuilder(config);
-    this.activation = new ActivationClient(config);
-    this.evaluator = new NixEvaluator(config);
     this.desktop = new DesktopRuntime(config);
+    this.evaluator = new NixEvaluator(config);
   }
 
   static async make(config: ServiceConfig): Promise<DesktopSettingsService> {
@@ -458,8 +457,86 @@ export class DesktopSettingsService {
     return running;
   }
 
+  async authorizationFailed(request: AuthorizationFailureRequest): Promise<ApplyJob> {
+    return this.coordinator.run(async () => {
+      const job = (await this.jobs.list()).find((candidate) => candidate.id === request.applyId);
+      if (job === undefined || job.status !== "awaiting_authorization") {
+        throw new DesktopSettingsError("not_found", "No apply job awaiting authorization");
+      }
+      const failed: ApplyJob = {
+        ...job,
+        ...appendLog(job, "Authorization was cancelled or denied"),
+        status: "failed",
+        updatedAt: new Date().toISOString(),
+        error: {
+          code: "activation_rejected",
+          message: "Authorization was cancelled or denied",
+        },
+      };
+      await this.jobs.save(failed);
+      return failed;
+    });
+  }
+
+  async reconcile(request: ReconcileRequest): Promise<ApplyJob> {
+    return this.coordinator.run(async () => {
+      const job = (await this.jobs.list()).find((candidate) => candidate.id === request.applyId);
+      if (job === undefined || job.status !== "reconciling") {
+        throw new DesktopSettingsError("not_found", "No activation awaiting runtime reconciliation");
+      }
+      const activeGeneration = await this.desktop.activeGeneration();
+      const expected = {
+        source: job.source,
+        revision: job.revision,
+        hash: job.profileHash,
+      };
+      if (
+        activeGeneration === undefined ||
+        activeGeneration.source !== expected.source ||
+        activeGeneration.profileRevision !== expected.revision ||
+        activeGeneration.profileHash !== expected.hash
+      ) {
+        const failed: ApplyJob = {
+          ...job,
+          ...appendLog(job, "Active generation did not match the root-authorized apply"),
+          status: "failed",
+          updatedAt: new Date().toISOString(),
+          error: {
+            code: "activation_rejected",
+            message: "Active generation does not match the root-authorized apply",
+          },
+          ...(activeGeneration === undefined ? {} : { activeGeneration }),
+          observed: request.observed,
+        };
+        await this.jobs.save(failed);
+        return failed;
+      }
+      const surfaceReady =
+        request.observed.waybar.unit === "active" &&
+        request.observed.waybar.edge !== "unavailable";
+      const reconciled: ApplyJob = {
+        ...job,
+        ...appendLog(job, surfaceReady ? "User runtime agent reconciled Waybar" : "User runtime agent reported Waybar unavailable"),
+        status: surfaceReady ? "active" : "failed",
+        updatedAt: new Date().toISOString(),
+        activeGeneration,
+        observed: request.observed,
+        ...(surfaceReady
+          ? {}
+          : {
+              error: {
+                code: "runtime_unavailable",
+                message: "Waybar did not become observable after the matching activation",
+              },
+            }),
+      };
+      await this.jobs.save(reconciled);
+      return reconciled;
+    });
+  }
   private async runJob(initial: ApplyJob, profile: StoredProfile): Promise<ApplyJob> {
     let job = initial;
+
     const transition = async (status: ApplyJob["status"], message: string, patch: Partial<ApplyJob> = {}) => {
       job = { ...appendLog(job, message), ...patch, status };
       await this.jobs.save(job);
@@ -484,41 +561,8 @@ export class DesktopSettingsService {
         });
       }
       await this.resolved.save({ metadata: built.metadata, resolved: built.resolved });
-      await transition("activating", "Requesting named polkit activation", { artifact: built.artifact });
-      const activeGeneration = await this.activation.activate(
-        profile.revisionFile,
-        built.artifact,
-        source,
-        profile.profile.revision,
-        profile.hash,
-      );
-      await transition("reconciling", "Reconciling active generation and Waybar surface", {
-        activeGeneration,
-      });
-      const reconciled = await this.desktop.activeGeneration();
-      if (reconciled === undefined) {
-        throw new DesktopSettingsError("activation_rejected", "No active generation metadata after activation");
-      }
-      if (
-        reconciled.source !== source ||
-        reconciled.profileRevision !== profile.profile.revision ||
-        reconciled.profileHash !== profile.hash
-      ) {
-        throw new DesktopSettingsError("activation_rejected", "Active generation does not match the applied profile", {
-          expected: { source, revision: profile.profile.revision, hash: profile.hash },
-          actual: reconciled,
-        });
-      }
-      await this.desktop.reloadWaybar();
-      const observed = await this.desktop.observe();
-      if (observed.waybar.edge === "unavailable") {
-        throw new DesktopSettingsError("runtime_unavailable", "Waybar surface is not observable after activation", {
-          observed,
-        });
-      }
-      await transition("active", "Generation active and Waybar surface reconciled", {
-        activeGeneration: reconciled,
-        observed,
+      await transition("awaiting_authorization", "Awaiting named polkit activation for the exact previewed artifact", {
+        artifact: built.artifact,
       });
       return job;
     } catch (cause) {
