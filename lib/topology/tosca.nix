@@ -611,9 +611,9 @@ let
           "nori.requirement-id" = requirement.id;
           "nori.requirement-name" = requirement.name;
         };
-        capability = requirement.capability;
+        inherit (requirement) capability;
         node = nodeTypeName (nodeById requirement.target);
-        relationship = requirement.relationship;
+        inherit (requirement) relationship;
         count_range = [
           1
           1
@@ -630,7 +630,7 @@ let
     {
       ${requirementSymbol requirement} = {
         node = requirement.target;
-        capability = requirement.capability;
+        inherit (requirement) capability;
         relationship = relationshipTemplateName (relationshipForRequirement requirement);
         optional = false;
       }
@@ -759,7 +759,7 @@ let
             { }
           else
             {
-              properties = node.properties;
+              inherit (node) properties;
             }
         )
         // (
@@ -791,7 +791,7 @@ let
           "nori.source" = relationship.source;
           "nori.target" = relationship.target;
         };
-        type = relationship.type;
+        inherit (relationship) type;
       };
     }) relationships
   );

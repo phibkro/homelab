@@ -246,7 +246,7 @@ let
       constraints = field "constraints";
       targets =
         if builtins.isNull rawTarget then
-          map (hostName: hostId hostName) (workloadHosts.${workloadName} or [ ])
+          map hostId (workloadHosts.${workloadName} or [ ])
         else
           [ rawTarget ];
       mkRequirement = target: {
@@ -344,7 +344,7 @@ let
     mkRelationship {
       type = requirement.relationship;
       source = requirement.owner;
-      target = requirement.target;
+      inherit (requirement) target;
       requirementName = requirement.name;
     }
   ) requirements;
@@ -448,7 +448,7 @@ let
   invalidCapabilityDeclarations = lib.concatMap (
     node:
     let
-      capabilities = node.capabilities;
+      inherit (node) capabilities;
     in
     if !builtins.isAttrs capabilities then
       [ "node '${node.id}' capabilities must be an attrset" ]
