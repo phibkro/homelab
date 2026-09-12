@@ -34,6 +34,32 @@ let
       runHook postInstall
     '';
   };
+  nativeIngress = pkgs.stdenv.mkDerivation {
+    pname = "nori-desktop-settings-ingress";
+    version = "0.1.0";
+    src = cleanSource;
+    strictDeps = true;
+    buildPhase = ''
+      runHook preBuild
+      $CC -D_GNU_SOURCE -O2 -Wall -Wextra -Werror -o nori-desktop-settings-ingress src/unix-ingress.c
+      runHook postBuild
+    '';
+    installPhase = ''
+      runHook preInstall
+      install -Dm755 nori-desktop-settings-ingress "$out/bin/nori-desktop-settings-ingress"
+      runHook postInstall
+    '';
+  };
+  settingsIngress = pkgs.writeShellApplication {
+    name = "nori-desktop-settings-ingress";
+    runtimeInputs = [ pkgs.coreutils ];
+    text = ''
+      exec ${nativeIngress}/bin/nori-desktop-settings-ingress \
+        "$XDG_RUNTIME_DIR/nori-desktop/settings.sock" \
+        "$XDG_RUNTIME_DIR/nori-desktop/settings-backend.sock" \
+        "$(id -u)"
+    '';
+  };
   commonEnvironment = ''
     if [ -z "''${NORI_DESKTOP_SETTINGS_CONFIG_HOME-}" ]; then
       export NORI_DESKTOP_SETTINGS_CONFIG_HOME=${lib.escapeShellArg "${config.xdg.configHome}/nori-desktop"}
@@ -105,6 +131,7 @@ let
     paths = [
       settingsCli
       savedCommandCli
+      settingsIngress
     ];
   };
 in
@@ -142,10 +169,26 @@ in
           "NORI_DESKTOP_SETTINGS_SYSTEMCTL=${pkgs.systemd}/bin/systemctl"
           "NORI_DESKTOP_SETTINGS_HYPRCTL=${pkgs.hyprland}/bin/hyprctl"
           "NORI_DESKTOP_SETTINGS_PKEXEC=/run/wrappers/bin/pkexec"
+          "NORI_DESKTOP_SETTINGS_SOCKET=%t/nori-desktop/settings-backend.sock"
           "NORI_DESKTOP_SETTINGS_RICE_COMMAND=${package}/bin/rice-saved-command"
           "NORI_DESKTOP_SETTINGS_SHELL=${lib.getExe pkgs.bash}"
           "RICE_VICINAE_BIN=${lib.getExe pkgs.vicinae}"
         ];
+      };
+      Install.WantedBy = [ "default.target" ];
+    };
+    systemd.user.services.nori-desktop-config-ingress = {
+      Unit = {
+        Description = "Nori desktop settings credential-checked Unix ingress";
+        Requires = [ "nori-desktop-config.service" ];
+        After = [ "nori-desktop-config.service" ];
+        PartOf = [ "nori-desktop-config.service" ];
+      };
+      Service = {
+        Type = "simple";
+        ExecStart = "${settingsIngress}/bin/nori-desktop-settings-ingress";
+        Restart = "on-failure";
+        RestartSec = 2;
       };
       Install.WantedBy = [ "default.target" ];
     };
