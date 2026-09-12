@@ -66,7 +66,7 @@ let
       export NORI_DESKTOP_SETTINGS_HYPRCTL=${lib.escapeShellArg "${pkgs.hyprland}/bin/hyprctl"}
     fi
     if [ -z "''${NORI_DESKTOP_SETTINGS_PKEXEC-}" ]; then
-      export NORI_DESKTOP_SETTINGS_PKEXEC=${lib.escapeShellArg "${pkgs.polkit}/bin/pkexec"}
+      export NORI_DESKTOP_SETTINGS_PKEXEC=/run/wrappers/bin/pkexec
     fi
     if [ -z "''${NORI_DESKTOP_SETTINGS_SHELL-}" ]; then
       export NORI_DESKTOP_SETTINGS_SHELL=${lib.escapeShellArg (lib.getExe pkgs.bash)}
