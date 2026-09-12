@@ -32,6 +32,8 @@ let
         "--keep-yearly 3"
       ]
     && (config.fileSystems ? "/mnt/backup")
+    && lib.elem "x-systemd.automount" config.fileSystems."/mnt/backup".options
+    && lib.elem "x-systemd.idle-timeout=15min" config.fileSystems."/mnt/backup".options
     && (config.nori.backupTargets ? onetouch)
     && config.nori.backupDelivery.enable
     && lib.all (check: check.assertion) config.assertions
