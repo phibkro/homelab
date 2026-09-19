@@ -32,6 +32,21 @@
         undeclared until their physical migration and backup roles are verified.
       '';
     };
+    capabilities = {
+      "nori.capabilities.Compute" = {
+        architecture = "x86_64";
+        cores = 6;
+        memoryBytes = 17179869184;
+      };
+      "nori.capabilities.GpuCompute" = {
+        backend = "cuda";
+        vendor = "nvidia";
+        vramBytes = 8589934592;
+      };
+      "nori.capabilities.PersistentStorage" = {
+        class = "local";
+      };
+    };
   };
 
   workstation = {
@@ -88,6 +103,21 @@
         same-disk snapshots provide local rollback.
       '';
     };
+    capabilities = {
+      "nori.capabilities.Compute" = {
+        architecture = "x86_64";
+        cores = 16;
+        memoryBytes = 68719476736;
+      };
+      "nori.capabilities.GpuCompute" = {
+        backend = "cuda";
+        vendor = "nvidia";
+        vramBytes = 17179869184;
+      };
+      "nori.capabilities.PersistentStorage" = {
+        class = "local";
+      };
+    };
   };
 
   pi = {
@@ -136,6 +166,16 @@
         LE wildcard cert on `*.''${nori.domain}`), observability
         hub, alert plane, Tailscale subnet router + exit node.
       '';
+    };
+    capabilities = {
+      "nori.capabilities.Compute" = {
+        architecture = "aarch64";
+        cores = 4;
+        memoryBytes = 8589934592;
+      };
+      "nori.capabilities.PersistentStorage" = {
+        class = "local";
+      };
     };
   };
 

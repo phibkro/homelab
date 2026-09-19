@@ -156,6 +156,14 @@
             echo ${lib.escapeShellArg result} > $out
           '';
 
+        eval-topology-conformance =
+          let
+            result = import ../../../tests/eval/topology-conformance.nix { inherit inputs lib; };
+          in
+          pkgs.runCommandLocal "eval-topology-conformance" { } ''
+            echo ${lib.escapeShellArg result} > $out
+          '';
+
         /**
           Canonical datasets project into producer and consumer runtime
           paths without duplicating their logical storage contract.

@@ -9,6 +9,10 @@ in
     "network-appliance"
     "stateful"
   ];
+
+  topology.capabilities."nori.capabilities.OidcProvider" = {
+    protocol = "oidc";
+  };
   endpoints.auth = {
     port = 9091;
     runsOn = site.entryPlaneHost;

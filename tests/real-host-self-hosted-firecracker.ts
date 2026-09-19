@@ -180,6 +180,7 @@ const transientLauncher = async (directory: string): Promise<LauncherRuntime> =>
     "Slice=adlc-firecracker.slice",
     "Delegate=cpu io memory pids",
     "DelegateSubgroup=launcher",
+    "KillMode=control-group",
     "TasksAccounting=yes",
     "CPUQuota=100%",
     "CPUWeight=100",

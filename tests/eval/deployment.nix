@@ -69,6 +69,7 @@ let
     && deployment.machineRoots."infra/common/ansible" == [ "pi" ]
     && deployment.machineRoots."infra/adelie" == [ "adelie" ]
     && deployment.machineRoots."infra/pi" == [ "pi" ]
+    && deployment.machineRoots."infra/adelie" == [ "adelie" ]
     && deployment.machineRoots."infra/workstation" == [ "workstation" ];
 
   targetsCorrect =

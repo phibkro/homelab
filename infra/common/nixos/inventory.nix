@@ -229,6 +229,54 @@ let
     };
   };
 
+  topologyNodeType = types.submodule {
+    options = {
+      id = mkOption { type = types.str; };
+      kind = mkOption {
+        type = types.enum [
+          "machine"
+          "device"
+          "workload"
+          "endpoint"
+          "dataset"
+        ];
+      };
+      properties = mkOption { type = types.attrs; };
+      capabilities = mkOption { type = types.attrsOf types.attrs; };
+    };
+  };
+
+  topologyRequirementType = types.submodule {
+    options = {
+      id = mkOption { type = types.str; };
+      owner = mkOption { type = types.str; };
+      name = mkOption { type = types.str; };
+      capability = mkOption { type = types.str; };
+      relationship = mkOption { type = types.str; };
+      target = mkOption { type = types.str; };
+      constraints = mkOption { type = types.attrsOf types.attrs; };
+    };
+  };
+
+  topologyRelationshipType = types.submodule {
+    options = {
+      id = mkOption { type = types.str; };
+      type = mkOption { type = types.str; };
+      source = mkOption { type = types.str; };
+      target = mkOption { type = types.str; };
+      properties = mkOption { type = types.attrs; };
+    };
+  };
+
+  topologyType = types.submodule {
+    options = {
+      schemaVersion = mkOption { type = types.ints.positive; };
+      nodes = mkOption { type = types.listOf topologyNodeType; };
+      requirements = mkOption { type = types.listOf topologyRequirementType; };
+      relationships = mkOption { type = types.listOf topologyRelationshipType; };
+    };
+  };
+
   presentationType = types.submodule {
     options = {
       title = mkOption { type = types.str; };
@@ -278,6 +326,11 @@ in
       type = types.attrsOf workloadType;
       readOnly = true;
       description = "Public-safe workload identity and resolved placement.";
+    };
+    topology = mkOption {
+      type = topologyType;
+      readOnly = true;
+      description = "Validated intended topology graph derived from the public inventory.";
     };
     disks = mkOption {
       type = types.attrsOf diskType;
