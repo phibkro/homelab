@@ -238,7 +238,8 @@ const waitForPidFile = async (path: string) => {
 };
 const waitForExecutableIdentity = async (
   pid: number,
-  executable: string,
+  description: string,
+  executableMatches: (path: string) => boolean,
   fields: { readonly cgroup?: boolean; readonly netns?: boolean } = {},
   child?: ChildProcess,
 ): Promise<ProcessIdentity> => {
@@ -246,15 +247,15 @@ const waitForExecutableIdentity = async (
   while (Date.now() < deadline) {
     if (child && (child.exitCode !== null || child.signalCode !== null))
       fail(
-        `process ${String(pid)} exited before exec of ${executable}: ${child.exitCode === null ? `signal ${String(child.signalCode)}` : `exit ${String(child.exitCode)}`}`,
+        `process ${String(pid)} exited before ${description}: ${child.exitCode === null ? `signal ${String(child.signalCode)}` : `exit ${String(child.exitCode)}`}`,
       );
-    if (!live(pid)) fail(`process ${String(pid)} exited before exec of ${executable}`);
+    if (!live(pid)) fail(`process ${String(pid)} exited before ${description}`);
     try {
-      if (basename(processExe(pid)) === executable) return observedIdentity(pid, fields);
+      if (executableMatches(processExe(pid))) return observedIdentity(pid, fields);
     } catch {}
     await sleep(10);
   }
-  fail(`process ${String(pid)} did not exec ${executable}`);
+  fail(`process ${String(pid)} did not reach ${description}`);
 };
 const waitForPath = async (path: string) => {
   const deadline = Date.now() + TIMEOUT;
@@ -959,7 +960,13 @@ const materialize = async (request: Dict): Promise<Dict> => {
     if (keeperChild.pid === undefined) fail("netns keeper did not report a pid");
     keeperChild.stderr?.on("data", (chunk) => appendLog(log, chunk));
     writeFileSync(join(generationCgroup, "cgroup.procs"), String(keeperChild.pid));
-    keeperProcess = await waitForExecutableIdentity(keeperChild.pid, "sleep", {}, keeperChild);
+    keeperProcess = await waitForExecutableIdentity(
+      keeperChild.pid,
+      "the netns keeper payload",
+      (path) => basename(path) !== "unshare",
+      {},
+      keeperChild,
+    );
     namespace = `/proc/${keeperChild.pid}/ns/net`;
     Object.assign(state, {
       netns: namespace,
@@ -1002,10 +1009,12 @@ const materialize = async (request: Dict): Promise<Dict> => {
     jailerChild.stderr?.on("data", (chunk) => appendLog(log, chunk));
     if (jailerChild.pid === undefined) fail("Jailer did not report a pid");
     const vmmPid = await waitForPidFile(join(root, "firecracker.pid"));
-    vmmProcess = await waitForExecutableIdentity(vmmPid, "firecracker", {
-      cgroup: true,
-      netns: true,
-    });
+    vmmProcess = await waitForExecutableIdentity(
+      vmmPid,
+      "Firecracker exec",
+      (path) => basename(path) === "firecracker",
+      { cgroup: true, netns: true },
+    );
     const cgroup = `${CGROUP_ROOT}${unifiedCgroupPath(vmmProcess.cgroup!)}`;
     if (cgroup !== generationCgroup)
       fail("VMM escaped the generation resource-control cgroup");
