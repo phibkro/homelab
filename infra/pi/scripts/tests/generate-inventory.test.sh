@@ -13,9 +13,12 @@ same_port_fixture="$(mktemp)"
 collision_fixture="$(mktemp)"
 string_paths_fixture="$(mktemp)"
 inactive_exporters_fixture="$(mktemp)"
+inactive_beszel_fixture="$(mktemp)"
+beszel_port_fixture="$(mktemp)"
 cleanup() {
   rm -rf "$fake_bin" "$output" "$unsafe_fixture" "$same_port_fixture" \
-    "$collision_fixture" "$string_paths_fixture" "$inactive_exporters_fixture"
+    "$collision_fixture" "$string_paths_fixture" "$inactive_exporters_fixture" \
+    "$inactive_beszel_fixture" "$beszel_port_fixture"
 }
 trap cleanup EXIT
 
@@ -175,6 +178,11 @@ jq --exit-status '
        and any(.[]; .name == "photos"
                     and .url == "http://100.81.5.122:2283/api/server/ping"
                     and .interval == "30s"))
+  and .pi_appliances.hosts.pi.beszel_agent_listen_port == 45876
+  and .pi_appliances.hosts.pi.beszel_systems == [
+    {name: "pi", host: "192.168.1.225", port: 45876},
+    {name: "workstation", host: "100.81.5.122", port: 45876}
+  ]
   and .pi_appliances.hosts.pi.victoriametrics_scrape_jobs == [
     {
       job_name: "gatus",
@@ -259,6 +267,25 @@ jq --exit-status '
 ' "$output" >/dev/null
 
 echo "inventory generator inactive-exporter contract: PASS"
+jq '.workloads["beszel-agent"].active = false' \
+  "$fixture" >"$inactive_beszel_fixture"
+PATH="$fake_bin:$PATH" INVENTORY_FIXTURE="$inactive_beszel_fixture" \
+  "$repo_root/infra/pi/scripts/generate-inventory.sh" "$output" >/dev/null
+jq --exit-status \
+  '.pi_appliances.hosts.pi.beszel_systems == []' \
+  "$output" >/dev/null
+
+echo "inventory generator inactive-Beszel contract: PASS"
+jq '.workloads["beszel-agent"].agentPort = 51234' \
+  "$fixture" >"$beszel_port_fixture"
+PATH="$fake_bin:$PATH" INVENTORY_FIXTURE="$beszel_port_fixture" \
+  "$repo_root/infra/pi/scripts/generate-inventory.sh" "$output" >/dev/null
+jq --exit-status '
+  .pi_appliances.hosts.pi.beszel_agent_listen_port == 51234
+  and all(.pi_appliances.hosts.pi.beszel_systems[]; .port == 51234)
+' "$output" >/dev/null
+
+echo "inventory generator Beszel-port contract: PASS"
 
 for mutation in 'del(.backup)' 'del(.backup.enabled)' '.backup.enabled = "false"' '.backup.pi.hostKey = ""' '.backup.pi.repositoryPrefix = "/pi"' '.backup.pi.jobs = []' '.backup.targetHost = "missing"'; do
   jq "$mutation" "$fixture" >"$unsafe_fixture"

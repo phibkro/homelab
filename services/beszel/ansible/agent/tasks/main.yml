@@ -16,6 +16,9 @@
       - beszel_agent_environment_file | dirname == beszel_agent_config_dir
       - beszel_agent_data_dir | length > 0
       - beszel_agent_container_user is match('^[0-9]+:[0-9]+$')
+      - beszel_agent_system_bus_socket is match('^/.+')
+      - beszel_agent_host_user | length > 0
+      - beszel_agent_host_group | length > 0
     fail_msg: >-
       Beszel agent requires a digest-pinned image, one SSH public key,
       an explicit listener, and a writable state directory.
@@ -47,6 +50,25 @@
     - "{{ beszel_agent_environment_file }}"
   notify: Reload systemd after Beszel agent changes
   when: not beszel_agent_enabled | bool
+
+- name: Create the Beszel agent host group
+  ansible.builtin.group:
+    name: "{{ beszel_agent_host_group }}"
+    gid: "{{ beszel_agent_container_user.split(':')[1] }}"
+    system: true
+  when: beszel_agent_enabled | bool
+
+- name: Create the Beszel agent host user
+  ansible.builtin.user:
+    name: "{{ beszel_agent_host_user }}"
+    uid: "{{ beszel_agent_container_user.split(':')[0] }}"
+    group: "{{ beszel_agent_host_group }}"
+    home: /nonexistent
+    shell: /usr/sbin/nologin
+    create_home: false
+    system: true
+  notify: Restart Beszel agent
+  when: beszel_agent_enabled | bool
 
 - name: Create Beszel agent directories
   ansible.builtin.file:
@@ -115,6 +137,7 @@
       - "{{ beszel_agent_environment_file }}"
     volume:
       - "{{ beszel_agent_data_dir }}:/var/lib/beszel-agent:rw"
+      - "{{ beszel_agent_system_bus_socket }}:{{ beszel_agent_system_bus_socket }}:ro"
     security_opt:
       - no-new-privileges:true
     cap_drop:

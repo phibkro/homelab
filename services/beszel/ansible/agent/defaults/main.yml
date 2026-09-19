@@ -19,3 +19,6 @@ beszel_agent_listen_port: 45876
 beszel_agent_health_address: 127.0.0.1
 beszel_agent_data_dir: /var/lib/beszel-agent
 beszel_agent_container_user: "65532:65532"
+beszel_agent_system_bus_socket: /var/run/dbus/system_bus_socket
+beszel_agent_host_user: beszel-agent
+beszel_agent_host_group: beszel-agent

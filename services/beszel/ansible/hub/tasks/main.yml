@@ -14,6 +14,34 @@
     fail_msg: Beszel requires an immutable image, explicit listener, and persistent state.
   when: beszel_enabled | bool
 
+- name: Require Beszel reconciliation credentials
+  ansible.builtin.assert:
+    that:
+      - beszel_superuser_email | length > 0
+      - beszel_superuser_password | length > 0
+    fail_msg: >-
+      Set BESZEL_SUPERUSER_EMAIL and BESZEL_SUPERUSER_PASSWORD to establish
+      and authenticate the deployment owner.
+  no_log: true
+  when:
+    - beszel_enabled | bool
+
+- name: Validate declared Beszel systems
+  ansible.builtin.assert:
+    that:
+      - item.name | length > 0
+      - item.host | length > 0
+      - item.port | int > 0
+      - item.port | int < 65536
+      - >-
+        (beszel_systems | map(attribute='name') | list | unique | length)
+        == (beszel_systems | length)
+    fail_msg: Beszel systems require unique names, explicit hosts, and valid ports.
+  loop: "{{ beszel_systems }}"
+  loop_control:
+    label: "{{ item.name | default('unnamed') }}"
+  when: beszel_enabled | bool
+
 - name: Create Beszel state directory
   ansible.builtin.file:
     path: "{{ beszel_data_dir }}"
@@ -22,7 +50,6 @@
     group: "{{ beszel_container_user.split(':')[1] }}"
     mode: "0750"
   when: beszel_enabled | bool
-
 - name: Render Beszel systemd unit
   ansible.builtin.template:
     src: beszel.service.j2
@@ -35,6 +62,48 @@
     - Restart Beszel hub
   when: beszel_enabled | bool
 
+- name: Inspect the existing Beszel hub container
+  containers.podman.podman_container_info:
+    name: beszel
+  check_mode: false
+  register: beszel_existing_container
+  no_log: true
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+
+- name: Read the existing Beszel publication address
+  ansible.builtin.set_fact:
+    beszel_existing_bind_address: >-
+      {{
+        beszel_existing_container.containers[0].HostConfig.PortBindings["8090/tcp"][0].HostIp
+        if beszel_existing_container.containers | length > 0
+        else ""
+      }}
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+
+- name: Select the protected Beszel bootstrap listener
+  ansible.builtin.set_fact:
+    beszel_bootstrap_isolated: >-
+      {{ beszel_existing_bind_address in ["", "127.0.0.1"] }}
+    beszel_runtime_bind_address: >-
+      {{
+        "127.0.0.1"
+        if beszel_existing_bind_address in ["", "127.0.0.1"]
+        else beszel_bind_address
+      }}
+    beszel_runtime_api_url: >-
+      http://{{
+        "127.0.0.1"
+        if beszel_existing_bind_address in ["", "127.0.0.1"]
+        else beszel_health_address
+      }}:{{ beszel_bind_port }}
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+
 - name: Create Beszel hub container
   containers.podman.podman_container:
     name: beszel
@@ -43,7 +112,7 @@
     pull: missing
     user: "{{ beszel_container_user }}"
     publish:
-      - "{{ beszel_bind_address }}:{{ beszel_bind_port }}:8090/tcp"
+      - "{{ beszel_runtime_bind_address }}:{{ beszel_bind_port }}:8090/tcp"
     env:
       USER_CREATION: "{{ beszel_user_creation }}"
     volume:
@@ -87,7 +156,7 @@
 
 - name: Wait for Beszel health endpoint
   ansible.builtin.uri:
-    url: "http://{{ beszel_health_address }}:{{ beszel_bind_port }}{{ beszel_health_path }}"
+    url: "{{ beszel_runtime_api_url }}{{ beszel_health_path }}"
     status_code: 200
   register: beszel_health
   retries: 30
@@ -110,6 +179,566 @@
   when:
     - beszel_enabled | bool
     - podman_available | bool
+    - not ansible_check_mode
+
+- name: Probe the existing Beszel API during check mode
+  ansible.builtin.uri:
+    url: "{{ beszel_runtime_api_url }}{{ beszel_health_path }}"
+    status_code: 200
+  check_mode: false
+  register: beszel_reconciliation_probe
+  changed_when: false
+  failed_when: false
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+    - ansible_check_mode
+
+- name: Record Beszel reconciliation readiness
+  ansible.builtin.set_fact:
+    beszel_reconciliation_ready: >-
+      {{
+        not ansible_check_mode
+        or (beszel_reconciliation_probe.status | default(0) | int == 200)
+      }}
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+
+- name: Report deferred Beszel reconciliation
+  ansible.builtin.debug:
+    msg: >-
+      The Beszel API is not available during check mode. Deployment will start
+      the hub, establish its owner, and then reconcile the declared catalog.
+  changed_when: true
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+    - not (beszel_reconciliation_ready | default(false) | bool)
+
+- name: Try the deployment superuser credentials
+  ansible.builtin.uri:
+    url: "{{ beszel_runtime_api_url }}/api/collections/_superusers/auth-with-password"
+    method: POST
+    body_format: json
+    body:
+      identity: "{{ beszel_superuser_email }}"
+      password: "{{ beszel_superuser_password }}"
+    return_content: true
+    status_code: [200, 400]
+  check_mode: false
+  register: beszel_api_auth_probe
+  no_log: true
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+    - beszel_reconciliation_ready | default(false) | bool
+
+- name: Read Beszel first-run state
+  ansible.builtin.uri:
+    url: "{{ beszel_runtime_api_url }}/api/beszel/first-run"
+    status_code: 200
+    return_content: true
+  check_mode: false
+  register: beszel_first_run
+  no_log: true
+  when:
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_api_auth_probe.status | default(0) | int != 200
+- name: Reject an exposed Beszel first-run state
+  ansible.builtin.fail:
+    msg: >-
+      Beszel is in first-run state on a non-loopback listener. The service was
+      not initialized because another LAN client could claim ownership.
+  when:
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_api_auth_probe.status | default(0) | int != 200
+    - beszel_first_run.json.firstRun | bool
+    - not (beszel_bootstrap_isolated | bool)
+
+
+- name: Require a recoverable Beszel credential state
+  ansible.builtin.assert:
+    that:
+      - beszel_first_run.json.firstRun | bool
+    fail_msg: >-
+      Beszel rejected the deployment superuser and already contains users.
+      Reconcile the SecretSpec credential through an authorized recovery.
+  no_log: true
+  when:
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_api_auth_probe.status | default(0) | int != 200
+
+- name: Preview first Beszel administrator creation
+  ansible.builtin.debug:
+    msg: Deployment will create Beszel's first administrator and superuser.
+  changed_when: true
+  when:
+    - ansible_check_mode
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_api_auth_probe.status | default(0) | int != 200
+
+- name: Create the first Beszel administrator
+  ansible.builtin.uri:
+    url: "{{ beszel_runtime_api_url }}/api/beszel/create-user"
+    method: POST
+    body_format: json
+    body:
+      email: "{{ beszel_superuser_email }}"
+      password: "{{ beszel_superuser_password }}"
+    status_code: 200
+  changed_when: true
+  no_log: true
+  when:
+    - not ansible_check_mode
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_api_auth_probe.status | default(0) | int != 200
+
+- name: Defer reconciliation until deployment creates the first administrator
+  ansible.builtin.set_fact:
+    beszel_reconciliation_ready: false
+  when:
+    - ansible_check_mode
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_api_auth_probe.status | default(0) | int != 200
+
+- name: Authenticate the Beszel inventory reconciler
+  ansible.builtin.uri:
+    url: "{{ beszel_runtime_api_url }}/api/collections/_superusers/auth-with-password"
+    method: POST
+    body_format: json
+    body:
+      identity: "{{ beszel_superuser_email }}"
+      password: "{{ beszel_superuser_password }}"
+    return_content: true
+    status_code: 200
+  check_mode: false
+  register: beszel_api_auth
+  no_log: true
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+    - beszel_reconciliation_ready | default(false) | bool
+- name: Publish the initialized Beszel hub
+  containers.podman.podman_container:
+    name: beszel
+    image: "{{ beszel_image }}"
+    state: present
+    pull: missing
+    user: "{{ beszel_container_user }}"
+    publish:
+      - "{{ beszel_bind_address }}:{{ beszel_bind_port }}:8090/tcp"
+    env:
+      USER_CREATION: "{{ beszel_user_creation }}"
+    volume:
+      - "{{ beszel_data_dir }}:/beszel_data"
+    security_opt:
+      - no-new-privileges
+    cap_drop:
+      - ALL
+    read_only: true
+    read_only_tmpfs: true
+    cmd_args:
+      - --health-cmd
+      - "{{ beszel_healthcheck_command | to_json }}"
+    label:
+      org.homelab.beszel.healthcheck: "{{ beszel_healthcheck_command | to_json }}"
+    healthcheck_interval: 120s
+    healthcheck_timeout: 10s
+    healthcheck_retries: 3
+    healthcheck_start_period: 5s
+    restart_policy: "no"
+  register: beszel_published_container
+  no_log: true
+  when:
+    - not ansible_check_mode
+    - beszel_bootstrap_isolated | bool
+    - beszel_reconciliation_ready | default(false) | bool
+
+- name: Reattach systemd after protected Beszel bootstrap
+  ansible.builtin.systemd_service:
+    name: beszel.service
+    state: restarted
+    daemon_reload: true
+  when:
+    - not ansible_check_mode
+    - beszel_bootstrap_isolated | bool
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_published_container.changed | default(false) | bool
+
+- name: Wait for the published Beszel health endpoint
+  ansible.builtin.uri:
+    url: "{{ beszel_api_url }}{{ beszel_health_path }}"
+    status_code: 200
+  register: beszel_published_health
+  retries: 30
+  delay: 2
+  until: beszel_published_health.status == 200
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - beszel_bootstrap_isolated | bool
+    - beszel_reconciliation_ready | default(false) | bool
+
+- name: Read Beszel system owners
+  ansible.builtin.uri:
+    url: >-
+      {{ beszel_api_url }}/api/collections/users/records?perPage=200&filter={{
+        ("role='admin'") | urlencode
+      }}
+    method: GET
+    headers:
+      Authorization: "{{ beszel_api_auth.json.token }}"
+    return_content: true
+    status_code: 200
+  check_mode: false
+  register: beszel_system_owners
+  no_log: true
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+    - beszel_reconciliation_ready | default(false) | bool
+
+- name: Read the deployment owner
+  ansible.builtin.uri:
+    url: >-
+      {{ beszel_api_url }}/api/collections/users/records?perPage=2&filter={{
+        ("email='" ~ beszel_superuser_email ~ "'") | urlencode
+      }}
+    method: GET
+    headers:
+      Authorization: "{{ beszel_api_auth.json.token }}"
+    return_content: true
+    status_code: 200
+  check_mode: false
+  register: beszel_deployment_owner
+  no_log: true
+  when:
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_system_owners.json.totalItems | int == 0
+
+- name: Reject duplicate deployment owners
+  ansible.builtin.assert:
+    that:
+      - beszel_deployment_owner.json.totalItems | int <= 1
+    fail_msg: Beszel contains duplicate users for the deployment superuser email.
+  no_log: true
+  when:
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_system_owners.json.totalItems | int == 0
+
+- name: Preview Beszel administrator bootstrap
+  ansible.builtin.debug:
+    msg: >-
+      Deployment will {{
+        'create'
+        if beszel_deployment_owner.json.totalItems | int == 0
+        else 'promote'
+      }} the deployment owner as a Beszel administrator.
+  changed_when: true
+  when:
+    - ansible_check_mode
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_system_owners.json.totalItems | int == 0
+
+- name: Create the missing Beszel deployment owner
+  ansible.builtin.uri:
+    url: "{{ beszel_api_url }}/api/collections/users/records"
+    method: POST
+    headers:
+      Authorization: "{{ beszel_api_auth.json.token }}"
+    body_format: json
+    body:
+      email: "{{ beszel_superuser_email }}"
+      password: "{{ beszel_superuser_password }}"
+      passwordConfirm: "{{ beszel_superuser_password }}"
+      role: admin
+      verified: true
+    status_code: [200, 201]
+  changed_when: true
+  no_log: true
+  when:
+    - not ansible_check_mode
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_system_owners.json.totalItems | int == 0
+    - beszel_deployment_owner.json.totalItems | int == 0
+
+- name: Promote the deployment owner to Beszel administrator
+  ansible.builtin.uri:
+    url: >-
+      {{ beszel_api_url }}/api/collections/users/records/{{
+        beszel_deployment_owner.json['items'][0].id
+      }}
+    method: PATCH
+    headers:
+      Authorization: "{{ beszel_api_auth.json.token }}"
+    body_format: json
+    body:
+      role: admin
+      verified: true
+    status_code: 200
+  changed_when: true
+  no_log: true
+  when:
+    - not ansible_check_mode
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_system_owners.json.totalItems | int == 0
+    - beszel_deployment_owner.json.totalItems | int == 1
+
+- name: Read bootstrapped Beszel system owners
+  ansible.builtin.uri:
+    url: >-
+      {{ beszel_api_url }}/api/collections/users/records?perPage=200&filter={{
+        ("role='admin'") | urlencode
+      }}
+    method: GET
+    headers:
+      Authorization: "{{ beszel_api_auth.json.token }}"
+    return_content: true
+    status_code: 200
+  register: beszel_bootstrapped_system_owners
+  no_log: true
+  when:
+    - not ansible_check_mode
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_system_owners.json.totalItems | int == 0
+
+- name: Defer catalog preview until administrator bootstrap
+  ansible.builtin.set_fact:
+    beszel_reconciliation_ready: false
+  when:
+    - ansible_check_mode
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_system_owners.json.totalItems | int == 0
+
+- name: Select effective Beszel system owners
+  ansible.builtin.set_fact:
+    beszel_effective_system_owners: >-
+      {{
+        beszel_bootstrapped_system_owners.json['items']
+        if beszel_system_owners.json.totalItems | int == 0
+        else beszel_system_owners.json['items']
+      }}
+  no_log: true
+  when: beszel_reconciliation_ready | default(false) | bool
+
+- name: Require a Beszel administrator to own declared systems
+  ansible.builtin.assert:
+    that:
+      - beszel_effective_system_owners | length > 0
+    fail_msg: At least one Beszel administrator must own declared systems.
+  no_log: true
+  when: beszel_reconciliation_ready | default(false) | bool
+
+- name: Select Beszel system owners
+  ansible.builtin.set_fact:
+    beszel_system_owner_ids: >-
+      {{ beszel_effective_system_owners | map(attribute='id') | list }}
+  no_log: true
+  when: beszel_reconciliation_ready | default(false) | bool
+
+- name: Read declared Beszel systems
+  ansible.builtin.uri:
+    url: >-
+      {{ beszel_api_url }}/api/collections/systems/records?perPage=1&filter={{
+        ("name='" ~ item.name ~ "'") | urlencode
+      }}
+    method: GET
+    headers:
+      Authorization: "{{ beszel_api_auth.json.token }}"
+    return_content: true
+    status_code: 200
+  check_mode: false
+  loop: "{{ beszel_systems }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: beszel_system_queries
+  no_log: true
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+    - beszel_systems | length > 0
+    - beszel_reconciliation_ready | default(false) | bool
+
+- name: Reject duplicate Beszel system names
+  ansible.builtin.assert:
+    that:
+      - item.json.totalItems | int <= 1
+    fail_msg: Beszel contains duplicate records for an inventory system name.
+  loop: "{{ beszel_system_queries.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  no_log: true
+  when: beszel_reconciliation_ready | default(false) | bool
+
+- name: Preview Beszel system reconciliation
+  ansible.builtin.debug:
+    msg:
+      name: "{{ item.item.name }}"
+      desired_host: "{{ item.item.host }}"
+      desired_port: "{{ item.item.port }}"
+      action: >-
+        {{
+          'create'
+          if item.json.totalItems == 0
+          else 'update'
+          if (
+            item.json['items'][0].host != item.item.host
+            or item.json['items'][0].port != (item.item.port | string)
+            or (
+              beszel_system_owner_ids
+              | difference(item.json['items'][0].users)
+              | length > 0
+            )
+          )
+          else 'unchanged'
+        }}
+  loop: "{{ beszel_system_queries.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  changed_when: >-
+    item.json.totalItems == 0
+    or (
+      item.json['items'][0].host != item.item.host
+      or item.json['items'][0].port != (item.item.port | string)
+      or (
+        beszel_system_owner_ids
+        | difference(item.json['items'][0].users)
+        | length > 0
+      )
+    )
+  when:
+    - ansible_check_mode
+    - beszel_reconciliation_ready | default(false) | bool
+
+- name: Create missing Beszel systems
+  ansible.builtin.uri:
+    url: "{{ beszel_api_url }}/api/collections/systems/records"
+    method: POST
+    headers:
+      Authorization: "{{ beszel_api_auth.json.token }}"
+    body_format: json
+    body:
+      name: "{{ item.item.name }}"
+      host: "{{ item.item.host }}"
+      port: "{{ item.item.port | string }}"
+      users: "{{ beszel_system_owner_ids }}"
+    status_code: [200, 201]
+  changed_when: true
+  register: beszel_system_creates
+  loop: "{{ beszel_system_queries.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  no_log: true
+  when:
+    - not ansible_check_mode
+    - beszel_systems | length > 0
+    - beszel_reconciliation_ready | default(false) | bool
+    - item.json.totalItems == 0
+
+- name: Update changed Beszel system endpoints
+  ansible.builtin.uri:
+    url: >-
+      {{ beszel_api_url }}/api/collections/systems/records/{{ item.json['items'][0].id }}
+    method: PATCH
+    headers:
+      Authorization: "{{ beszel_api_auth.json.token }}"
+    body_format: json
+    body:
+      host: "{{ item.item.host }}"
+      port: "{{ item.item.port | string }}"
+      users: >-
+        {{ (item.json['items'][0].users + beszel_system_owner_ids) | unique | list }}
+    status_code: 200
+  changed_when: true
+  register: beszel_system_updates
+  loop: "{{ beszel_system_queries.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  no_log: true
+  when:
+    - not ansible_check_mode
+    - beszel_systems | length > 0
+    - beszel_reconciliation_ready | default(false) | bool
+    - item.json.totalItems == 1
+    - >-
+      item.json['items'][0].host != item.item.host
+      or item.json['items'][0].port != (item.item.port | string)
+      or (
+        beszel_system_owner_ids
+        | difference(item.json['items'][0].users)
+        | length > 0
+      )
+
+- name: Restart Beszel after system catalog changes
+  ansible.builtin.systemd_service:
+    name: beszel.service
+    state: restarted
+  when:
+    - not ansible_check_mode
+    - beszel_reconciliation_ready | default(false) | bool
+    - >-
+      (beszel_system_creates.changed | default(false))
+      or (beszel_system_updates.changed | default(false))
+
+- name: Wait for Beszel after system catalog changes
+  ansible.builtin.uri:
+    url: "http://{{ beszel_health_address }}:{{ beszel_bind_port }}{{ beszel_health_path }}"
+    status_code: 200
+  register: beszel_reconcile_health
+  retries: 30
+  delay: 2
+  until: beszel_reconcile_health.status == 200
+  changed_when: false
+  when:
+    - not ansible_check_mode
+    - beszel_reconciliation_ready | default(false) | bool
+    - >-
+      (beszel_system_creates.changed | default(false))
+      or (beszel_system_updates.changed | default(false))
+
+- name: Read reconciled Beszel systems
+  ansible.builtin.uri:
+    url: >-
+      {{ beszel_api_url }}/api/collections/systems/records?perPage=1&filter={{
+        ("name='" ~ item.name ~ "'") | urlencode
+      }}
+    method: GET
+    headers:
+      Authorization: "{{ beszel_api_auth.json.token }}"
+    return_content: true
+    status_code: 200
+  loop: "{{ beszel_systems }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: beszel_reconciled_systems
+  no_log: true
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+    - beszel_systems | length > 0
+    - beszel_reconciliation_ready | default(false) | bool
+    - not ansible_check_mode
+
+- name: Verify Beszel system reconciliation
+  ansible.builtin.assert:
+    that:
+      - item.json.totalItems == 1
+      - item.json['items'][0].host == item.item.host
+      - item.json['items'][0].port == (item.item.port | string)
+      - >-
+        (beszel_system_owner_ids | difference(item.json['items'][0].users) | length)
+        == 0
+    fail_msg: Beszel system reconciliation did not produce the declared endpoint.
+  loop: "{{ beszel_reconciled_systems.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.name }}"
+  no_log: true
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+    - beszel_systems | length > 0
+    - beszel_reconciliation_ready | default(false) | bool
     - not ansible_check_mode
 
 - name: Stop and disable Beszel when disabled

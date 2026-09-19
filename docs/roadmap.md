@@ -12,16 +12,17 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 The [2026-09-17 oversight recovery](archive/reports/2026-09-17-oversight-recovery.md)
 records the evidence, completed integrations, verification, and remaining
-worktrees. The mixed `main` recovery is complete. Generated settings,
-Firecracker lifecycle repairs, topology/TOSCA, and qBittorrent activation are
-committed on a clean `main`.
+worktrees. The mixed recovery through generated settings, Firecracker,
+topology/TOSCA, and qBittorrent is committed. The current `main` checkout now
+contains the verified but uncommitted Pi observability follow-up.
 
 Continue in this order:
 
-1. Choose the intended observer behavior before history repair or integration.
-2. Compare older settings and topology branches with current `main`.
-3. Review each remaining standalone fix before integration or retirement.
-4. Plan Adelie's operator-authorized physical admission without moving IronWolf
+1. Review and commit the Pi observability follow-up.
+2. Choose the intended observer behavior before history repair or integration.
+3. Compare older settings and topology branches with current `main`.
+4. Review each remaining standalone fix before integration or retirement.
+5. Plan Adelie's operator-authorized physical admission without moving IronWolf
    or OneTouch.
 
 ## Outstanding (actionable)

@@ -3,7 +3,9 @@
   lib,
   ...
 }:
-
+let
+  agentPort = config.nori.inventory.workloads."beszel-agent".agentPort;
+in
 {
   /**
     beszel-agent — per-host metrics collector. Hub on Pi pulls over
@@ -14,10 +16,13 @@
 
   services.beszel.agent = {
     enable = true;
-    environment.KEY = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF2lWbtgJ4ahX4/ceH3PTHJ8xgbteUj+OLFtXYWbXBcI";
+    environment = {
+      KEY = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF2lWbtgJ4ahX4/ceH3PTHJ8xgbteUj+OLFtXYWbXBcI";
+      LISTEN = builtins.toString agentPort;
+    };
   };
 
-  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 45876 ];
+  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ agentPort ];
 
   nori.harden.beszel-agent = { };
 

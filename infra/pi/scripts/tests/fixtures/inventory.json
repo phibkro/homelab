@@ -120,6 +120,15 @@
         }
       }
     },
+    "beszel-agent": {
+      "agentPort": 45876,
+      "active": true,
+      "hosts": [
+        "pi",
+        "workstation"
+      ],
+      "endpoints": {}
+    },
     "node-exporter": {
       "active": true,
       "hosts": [

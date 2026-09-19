@@ -56,8 +56,6 @@
     ansible/roles/firewall/tests/test_contract.sh
     ../../services/gatus/ansible/tests/test_contract.sh
     ../../services/ntfy/ansible/tests/test_contract.sh
-    ../../services/beszel/ansible/hub/tests/test_contract.sh
-    ../../services/beszel/ansible/agent/tests/test_contract.sh
     ../../services/heartbeat/ansible/tests/test_contract.sh
     ../../services/victoriametrics/ansible/tests/test_contract.sh
     ../../services/victorialogs/ansible/tests/test_contract.sh
@@ -91,6 +89,11 @@
          == ["metrics", "news", "photos", "vault"]
        and (.pi_appliances.hosts.pi.gatus_endpoints | length > 7)
        and (.pi_appliances.hosts.pi.gatus_endpoints | any(.name == "media"))
+       and .pi_appliances.hosts.pi.beszel_systems == [
+         {name: "adelie", host: "100.107.90.3", port: 45876},
+         {name: "pi", host: "192.168.1.225", port: 45876},
+         {name: "workstation", host: "100.81.5.122", port: 45876}
+       ]
        and ([.pi_appliances.hosts.pi.victoriametrics_scrape_jobs[].job_name] | sort)
          == ["gatus", "node", "nvidia-gpu", "process", "victoriametrics"]
        and .pi_appliances.hosts.pi.ddns_hostnames == [

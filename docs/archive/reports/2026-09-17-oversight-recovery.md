@@ -22,24 +22,45 @@ During the initial evidence collection, no source worktree was switched, staged,
 
 ## Execution update
 
-The recovery moved from evidence collection to integration on 2026-09-19. Product integration reached commit `29ccd4ab0f4cd816f7b33b1702f1feda1207c91d` before this report update. The tree was clean. No activation, deployment, fetch, push, credential use, backup write, or restore ran.
+The recovery moved from evidence collection to integration on 2026-09-19.
+Product integration reached commit `29ccd4ab0f4cd816f7b33b1702f1feda1207c91d`.
 
 Completed source outcomes:
 
-- Generated desktop settings and Vicinae integration are on `main`. The clean integrated worktree and branch were removed.
-- Firecracker lifecycle repairs are on `main`. Unit tests reported 27 passes. The NixOS VM service check passed. A direct parent-death probe confirmed that a configured `setpriv` child stopped when its parent died. The production and transient units also use `KillMode=control-group` to cover the pre-`prctl` race. The full real-host Firecracker journey was not rerun after this final containment change.
-- The normalized topology graph and TOSCA 2.0 projection are on `main`. `just test-eval` included `eval-topology-conformance`. The TOSCA structure check passed. The final independent review found no remaining P1 or P2 defect.
-- qBittorrent activation is on `main`. The Pi Caddy route uses forward authentication with no exempt paths. The workstation accepts native-auth bypass only from localhost and the Pi tailnet `/32`. The pre-start merge creates the first configuration and preserves retained passwords, ports, categories, and unknown sections. `just check`, the workstation build, and an idempotent retained-config smoke test passed. The workstation was not activated.
+- Generated desktop settings and Vicinae integration are on `main`.
+- Firecracker lifecycle repairs are on `main`. The final real-host journey did not run after the last containment change.
+- The normalized topology graph and TOSCA 2.0 projection are on `main`.
+- qBittorrent activation is on `main`. The workstation was not activated.
 
-Cleanup removed the reconciled Firecracker, topology, and qBittorrent worktrees and branches. It also removed three missing temporary registrations and three older clean worktrees whose heads were already ancestors of `main`.
+The operator then authorized live Pi recovery and observability work:
 
-Unmerged or dirty worktrees remain preserved. They cover the backup-list fix, observer choices, older settings and topology lines, chatlog work, format drift, mixed-history recovery, persona settings, and multi-host verification. A divergent name is not proof that its content is still needed. Compare each branch with current `main` before retention or deletion.
+- [OneTouch backup evidence](2026-09-19-backup-evidence.md) records fresh Pi backups, repository checks, and one verified configuration restore.
+- Pi service checks passed for Authelia, ntfy, Beszel, VictoriaMetrics, VictoriaLogs, Gatus, and Caddy-routed observability endpoints.
+- The intact Beszel archive replaced the fresh empty database. The archive retained four systems, 12 alerts, 224 alert records, and 13,193 metric records.
+- The Pi inventory generator now derives Beszel systems from hosts with the `beszel-agent` workload.
+- The Beszel hub creates missing inventory systems and corrects changed endpoints during deployment. It does not delete historical records.
+- SecretSpec supplies a deployment-only Beszel superuser. The repository and managed hub container do not retain its password.
+- A new hub initializes its owner on a loopback-only listener. It publishes the LAN listener only after successful authentication.
+- The live catalog contains Adelie, Aurora, Pavilion, Pi, and workstation. Pi and workstation are online. The API reports the three historical records as offline.
+- The Pi agent reports **55 systemd services, 0 failed**. Workstation reports **102 systemd services, 0 failed**.
+- `just pi::check` passed. The authorized `just pi::deploy` completed with `failed=0`.
+- The post-deployment `just pi::plan` completed with `changed=0`, `unreachable=0`, and `failed=0`.
+- The authenticated Beszel UI rendered current Pi metrics and both service counts.
+- The final UI showed one active workstation disk alert. `df` confirmed 747 GiB used from 931 GiB, or 82%.
+
+The observability source changes are in the local `main` history. They were not pushed.
+No fetch, merge, publication, workstation activation, or Adelie activation ran.
+
+Cleanup removed temporary playbooks, inventory output, the bootstrap smoke container, and the upstream research clone.
+The restored archive and the pre-restore Pi rollback directory remain preserved.
+
+Unmerged or dirty worktrees remain preserved. Compare each branch with current `main` before retention or deletion.
 
 ## Current recovery order
 
 | Priority | Outcome | Present state | Next action |
 |---:|---|---|---|
-| 1 | Pi and OneTouch acceptance | Source enables OneTouch. Workstation evidence exists. Pi backup, restore, receiver, and physical-device evidence remain unproved. | Run the operator-authorized Pi and physical OneTouch cutover gates. Reconcile prose only from observed results. |
+| 1 | Pi recovery and observability | Pi backups are fresh. One restore path passed. Core Pi observability services are healthy. Beszel now monitors Pi and workstation and retains Adelie as offline. | Treat reboot, off-LAN operation, and wider application restore tests as separate acceptance work. |
 | 2 | Observer and history repair | Several clean but divergent observer, revert, timer, and mixed-history worktrees remain. | Choose the desired observer behavior. Review one exact candidate before history repair or integration. |
 | 3 | Older settings and topology lines | Their reconciled outcomes are on `main`, but predecessor branches are not Git ancestors of `main`. | Compare content with current `main`. Remove a branch only when it is clean and fully superseded. |
 | 4 | Standalone fixes | Backup-list, chatlog, format-drift, and multi-host verification branches remain unmerged. | Review each branch as its own outcome. Integrate or retire it from direct evidence. |
@@ -231,13 +252,16 @@ Coverage: 59 local branches total after adding the documentation branch. Sixteen
 
 ## Process and runtime observation
 
-A bounded process-name and cwd snapshot found this recovery agent under `/srv/share/projects`. It did not identify an active homelab build, test, deployment, or writer owner. Generic Nix daemon and runtime processes are not ownership evidence. A process can operate on an explicit path from another cwd, so absence from this snapshot does not establish exclusive custody.
+The initial process snapshot did not identify an active homelab build, test, deployment, or writer owner.
+Generic Nix processes were not treated as ownership evidence.
 
-No remote host, provider, or credentialed command ran. No build, test, activation, service mutation, backup write, restore, fetch, push, merge, prune, or branch deletion ran.
+The September 19 update used operator-authorized remote commands.
+It restored Beszel state, deployed scoped observability changes, and verified live endpoints and the authenticated UI.
+No fetch, push, merge, branch deletion, publication, workstation activation, or Adelie activation ran.
 
 ## Source and document contradictions
 
-1. **OneTouch:** executable source enables the policy. Several prose records still say disabled or pending. Live acceptance remains unknown.
+1. **OneTouch:** resolved on September 19. The enabled source policy now has live backup, repository-check, and restore evidence.
 2. **Host count:** inventory contains Adelie, workstation, and Pi. The root README describes two deployment targets. Adelie is staged, so the operational core can still be two hosts.
 3. **Settings:** main says the design awaits freeze. The integration branch says frozen and contains implementation commits. Its own acceptance section still says the scenarios have not run.
 4. **Vicinae:** source and dated disposable evidence exist. Workstation activation and login persistence remain held.

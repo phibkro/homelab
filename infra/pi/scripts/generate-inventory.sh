@@ -19,6 +19,7 @@ nix eval --json "$repo_root#lib.noriInventory" | jq \
     | $inventory.hosts[$backup.targetHost] as $backup_host
     | $inventory.site.domain as $domain
     | $inventory.site.entryPlaneHost as $entry_plane_host
+    | $inventory.workloads["beszel-agent"].agentPort as $beszel_agent_port
     | [
         $inventory.workloads
         | to_entries[]
@@ -175,6 +176,20 @@ nix eval --json "$repo_root#lib.noriInventory" | jq \
           )
         | {target: (.value.tailnetIp + ":9835"), host: .key}
       ]) as $gpu_hosts
+    | ((if $inventory.workloads["beszel-agent"].active != false then [
+        ($inventory.workloads["beszel-agent"].hosts // [])[] as $host_name
+        | $inventory.hosts[$host_name] as $host
+        | {
+            name: $host_name,
+            host: (
+              if $host_name == $entry_plane_host and $host.lanIp != null
+              then $host.lanIp
+              else $host.tailnetIp
+              end
+            ),
+            port: $beszel_agent_port
+          }
+      ] else [] end) | sort_by(.name)) as $beszel_systems
     | ([
         {
           job_name: "gatus",
@@ -226,6 +241,8 @@ nix eval --json "$repo_root#lib.noriInventory" | jq \
               authelia_oidc_clients: $oidc_clients,
               gatus_endpoints: ($explicit_probes + $route_probes),
               victoriametrics_scrape_jobs: $scrape_jobs,
+              beszel_agent_listen_port: $beszel_agent_port,
+              beszel_systems: $beszel_systems,
               ddns_hostnames: [
                 $service_routes[]
                 | select(.reachability == "internet")
@@ -274,6 +291,8 @@ jq --exit-status \
    | .pi_appliances.hosts.pi.authelia_oidc_clients as $oidc_clients
    | .pi_appliances.hosts.pi.gatus_endpoints as $gatus_endpoints
    | .pi_appliances.hosts.pi.victoriametrics_scrape_jobs as $scrape_jobs
+   | .pi_appliances.hosts.pi.beszel_systems as $beszel_systems
+   | .pi_appliances.hosts.pi.beszel_agent_listen_port as $beszel_agent_port
    | ([$routes[] | select(.reachability == "internet") | .hostname]) as $expected_ddns_hostnames
    | .pi_appliances.hosts.pi.pi_lan_address != null
    and .pi_appliances.hosts.pi.pihole_lan_address == .pi_appliances.hosts.pi.pi_lan_address
@@ -291,6 +310,16 @@ jq --exit-status \
        (.pi_appliances.hosts.pi | keys | map(select(startswith("pi_backup_")))) == ["pi_backup_enabled"]
      end)
    and (.pi_appliances.hosts | keys == ["pi"])
+   and ($beszel_agent_port | type == "number")
+   and ($beszel_agent_port > 0)
+   and ($beszel_agent_port < 65536)
+   and ($beszel_systems | type == "array")
+   and ([ $beszel_systems[] | .name ] | unique | length == ($beszel_systems | length))
+   and (all($beszel_systems[];
+        (.name | type == "string" and test("^[a-z][a-z0-9-]*$"))
+        and (.host | type == "string" and length > 0)
+        and .port == $beszel_agent_port
+      ))
    and (.pi_appliances.hosts.pi.pi_routes | length > 1)
    and ([ $routes[] | .name ] | unique | length == ($routes | length))
    and ([ $routes[] | .hostname ] | unique | length == ($routes | length))

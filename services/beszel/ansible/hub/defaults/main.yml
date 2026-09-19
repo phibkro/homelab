@@ -16,3 +16,7 @@ beszel_healthcheck_command:
   - --url
   - http://127.0.0.1:8090
 beszel_user_creation: "true"
+beszel_api_url: "http://{{ beszel_health_address }}:{{ beszel_bind_port }}"
+beszel_superuser_email: ""
+beszel_superuser_password: ""
+beszel_systems: []

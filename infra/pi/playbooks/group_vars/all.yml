@@ -12,6 +12,7 @@ pi_service_bind_address: "{{ pi_lan_address }}"
 pihole_lan_address: "{{ pi_lan_address }}"
 pihole_tailnet_address: ""
 pi_tailnet_interface: tailscale0
+pi_container_bridge_interface: podman0
 pi_domain: home.phibkro.org
 pi_routes:
   - name: pihole
@@ -131,6 +132,11 @@ ntfy_alert_routes:
 # Beszel agent trust material is the hub's SSH public key. It is not a
 # credential, but SecretSpec remains the single deployment-input boundary.
 beszel_agent_public_key: "{{ lookup('env', 'BESZEL_AGENT_PUBLIC_KEY') }}"
+# A deployment-only Beszel superuser reconciles inventory-derived system
+# records. SecretSpec injects its password only during plan/deploy. The
+# managed hub container does not retain it in configuration or environment.
+beszel_superuser_email: "{{ lookup('env', 'BESZEL_SUPERUSER_EMAIL') }}"
+beszel_superuser_password: "{{ lookup('env', 'BESZEL_SUPERUSER_PASSWORD') }}"
 heartbeat_url: "{{ lookup('env', 'HEARTBEAT_PI_URL') }}"
 
 # Gatus is the appliance/operator monitor, so its failure notifications stay
