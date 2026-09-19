@@ -34,7 +34,8 @@ const guestStore = () => {
   const separator = entry.indexOf(" - ");
   if (separator < 0) throw new Error("guest Nix store mount is malformed");
   const fields = entry.slice(separator + 3).split(" ");
-  if (fields[0] !== "erofs" || fields[1] !== "/dev/vda")
+  const expectedStoreSource = "/dev/vda"; // # lint: skip diskoUsesById — Firecracker guest virtio ABI, not host disk config.
+  if (fields[0] !== "erofs" || fields[1] !== expectedStoreSource)
     throw new Error("guest Nix store is not the read-only guest block device");
   return { source: fields[1], fsType: fields[0], mountPoint: "/nix/store" };
 };
