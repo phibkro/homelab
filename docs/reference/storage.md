@@ -1,5 +1,5 @@
 ---
-summary: SSD hot storage, IronWolf Pro cold storage, local rollback snapshots, and deferred OneTouch backups.
+summary: SSD hot storage, IronWolf Pro cold storage, local rollback snapshots, and OneTouch backup policy.
 ---
 
 # Storage
@@ -10,7 +10,7 @@ The intended placement separates access needs from protection:
 |---|---|
 | Workstation NVMe SSDs | Hot system, application and working data; caches |
 | IronWolf Pro HDD | Cold media, libraries and archives |
-| OneTouch HDD | Planned backup destination after safe connection and verification |
+| OneTouch HDD | Independent backup disk; destination policy in `inventory/backup.nix` |
 
 Existing MP510 backup archives remain where they are until a reviewed move or
 retention decision. This source cleanup does not relocate or delete disk data.
@@ -29,36 +29,31 @@ Hot/cold placement describes access patterns. Value tiers describe the cost of
 losing data; they are separate decisions. Media already on IronWolf remains on
 that HDD, while active service state and working trees remain on SSD storage.
 
-## Backups are prepared, disabled
+## Backup policy and observed recovery
 
-`inventory/backup.nix` is the single destination policy. Its `enabled` field is
-false while OneTouch's connection is pending. The evaluated workstation has no
-restic jobs, backup checks, restore schedules, receiver account, or OneTouch
-mount. Pi's generated inventory disables its backup role; convergence retires
-role-owned executable schedules while preserving repositories, markers,
-credentials, caches and restored data.
+[`inventory/backup.nix`](../../inventory/backup.nix) owns destination selection
+and its enable switch. Workstation's declared destination is local OneTouch;
+Pi's declared transport uses a restricted workstation SFTP account backed by that disk.
+The [generated backup reference](../generated/backups.md) and
+[service patterns](services.md) describe the declared jobs and preparation.
 
-When enabled after verification, workstation writes locally to OneTouch and Pi
-uses a restricted workstation SFTP account backed by that same disk. Follow the
-[OneTouch cutover runbook](../runbooks/onetouch-backup-cutover.md), including the
-optional temporary Aurora route if that host becomes reachable.
-
-Service modules retain their backup intent and consistency preparation so the
-future target can be enabled without reconstructing service data manifests.
-See the [generated backup reference](../generated/backups.md) and
-[service patterns](services.md). Empty destination selection means no restic
-jobs; declared intent is not evidence of a completed backup.
+Configuration, mounted storage, successful backups, and usable restores are
+separate evidence. The [September 19 inspection](../archive/reports/2026-09-19-backup-evidence.md)
+records the enabled source, mounted drive, completed workstation service-state
+restore drill and metadata check, with their limits. It does not establish Pi
+coverage, user-data/media restore coverage, or application database recovery.
+Use the [cutover runbook](../runbooks/onetouch-backup-cutover.md) when reconnecting,
+changing transport, or collecting fresh recovery evidence.
 
 ## Local recovery is distinct from backup
 
 Btrbk keeps local rollback snapshots on the same source disks. These can help
 with accidental edits; they cannot recover data after that disk fails.
 
-IronWolf's mostly-cold canonical media keeps **7 daily, 4 weekly, and 3
-monthly** local rollback snapshots. This deliberately limits how long deleted
-data can consume the primary disk. When OneTouch is enabled, its independent
-Restic history will keep **7 daily, 4 weekly, 12 monthly, and 3 yearly** points
-for the same media. Restic deduplicates unchanged chunks; retention controls
+IronWolf's mostly-cold canonical media has separate local rollback and
+independent Restic retention policies in `inventory/backup.nix` under
+`retention.coldMedia`. Local retention limits how long deleted data consumes
+the primary disk. Restic deduplicates unchanged chunks; retention controls
 deletion history and restore choice, not a full additional copy per snapshot.
 Application database dumps also remain local recovery artifacts until copied
 to an independent destination.

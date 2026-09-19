@@ -1,7 +1,9 @@
 ---
 summary: Replace separate Fuzzel menus with one Raycast-like app-and-command palette generated from a typed Nix command registry.
 date: 2026-07-15
-status: implemented
+status: SUPERSEDED — by `docs/specs/2026-09-12-vicinae-launcher-design.md`.
+superseded-by: docs/specs/2026-09-12-vicinae-launcher-design.md
+superseded-reason: Vicinae now owns application search and action presentation. The typed action registry and exact-ID dispatcher remain authoritative.
 ---
 
 # Unified Fuzzel command palette

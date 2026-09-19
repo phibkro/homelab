@@ -5,11 +5,16 @@ _: {
   */
   imports = [
     ./action-model.nix
+    ./component-model.nix
     ./hypr-lock.nix
     ./hypr-rice
     ./hyprsunset.nix
     ./persona-quickshell
+    ./settings-quickshell
+    ./settings-service
+    ./vicinae
     ./steady-state-resource-alert.nix
+    ./waybar-component.nix
     ./waybar.nix
     ./wayland-pipewire-idle-inhibit.nix
   ];

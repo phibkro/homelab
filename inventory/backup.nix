@@ -1,5 +1,5 @@
-# Planned OneTouch destination. Disabled until physical connection, identity,
-# capacity, and recovery checks are approved. Existing archives are preserved.
+# OneTouch destination policy. Existing archives are preserved.
+# Connection and recovery verification: docs/runbooks/onetouch-backup-cutover.md.
 # Before activation, verify the Pi private credential matches authorizedKey.
 {
   disks ? import ./disks.nix,
@@ -14,11 +14,11 @@ in
   fsType = oneTouch.filesystem.type;
   targetHost = oneTouch.attachedHost;
   hostname = "workstation.saola-matrix.ts.net";
-  mountPoint = oneTouch.mountPoint;
+  inherit (oneTouch) mountPoint;
   retention.coldMedia = {
     # Same-disk accidental-deletion rollback, not independent protection.
     localSnapshotPreserve = "7d 4w 3m";
-    # Independent OneTouch history once `enabled` passes the cutover gates.
+    # Independent OneTouch history, distinct from same-disk rollback above.
     resticPruneOpts = [
       "--keep-daily 7"
       "--keep-weekly 4"

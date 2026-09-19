@@ -30,7 +30,10 @@ let
   };
 
   expected = {
-    vector = [ "workstation" ];
+    vector = [
+      "adelie"
+      "workstation"
+    ];
     btrbk = [ "workstation" ];
     restic = [ "workstation" ];
     restore-drill = [ "workstation" ];

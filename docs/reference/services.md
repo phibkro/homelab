@@ -132,7 +132,7 @@ nori.backups.navidrome = {
 };
 ```
 
-`prepareCommand` runs as `ExecStartPre` on each configured target unit. OneTouch is the planned target, currently disabled; retain flock to serialize any concurrent dump callers. `VACUUM INTO` requires destination absent — that's why `rm -f` precedes it.
+`prepareCommand` runs as `ExecStartPre` on each configured target unit. Destination selection comes from `inventory/backup.nix`; retain flock to serialize any concurrent dump callers. `VACUUM INTO` requires destination absent — that's why `rm -f` precedes it.
 
 Runtime check: `just test-backups` asserts per-target snapshot ≤25h.
 
@@ -221,3 +221,43 @@ endpoint and governed `legacy-host-build` artifact contract;
 build and serving realization. Filmder and Heim are the only mutable-source
 exceptions. Their manifests name an owner, reason, removal trigger, and test;
 new product deployments should consume immutable artifacts instead.
+
+## Desktop settings service
+
+The `nori-desktop-settings` system service runs as the dedicated
+`nori-desktop-settings` UID. It is the only writer for the versioned profile,
+preview receipts, and apply jobs. Its private `/run/nori-desktop-settings/backend.sock`
+socket has mode `0600`. Credential-checked `/run/nori-desktop-settings/public.sock`
+has mode `0660` and accepts requests only from `nori`.
+
+Desktop Settings and Vicinae use the same typed CLI and the sole fixed public
+ingress path; neither has an XDG-runtime socket fallback. The profile limit is
+32 KiB, half of the 64 KiB IPC frame limit. Each saved command has a 4 KiB
+limit. The remaining frame space holds contracts, jobs, and observations. They
+do not edit profile files or reload Waybar. The persistent nori runtime agent
+is the only user-side component allowed to request the named polkit activation,
+reload Waybar, and submit a bounded surface observation.
+Only isolated internal TypeScript tests may inject `CliRuntime`; every installed
+CLI, saved-command, and runtime-agent wrapper sets
+`NORI_DESKTOP_SETTINGS_SOCKET` to that public path.
+
+The authority builds only from the approved immutable Nix source and stops at
+authorization. The root helper re-reads the durable apply ID and validates the
+source, profile revision, profile hash, canonical profile, and artifact identity.
+Following the NixOS activation order, it first registers the artifact in
+`/nix/var/nix/profiles/system` with the pinned `nix-env`, then runs its fixed
+switch program. It returns the resolved active and boot-default paths and only
+reports success when both equal the approved artifact.
+
+Waybar state is untrusted surface evidence from the `nori` runtime agent.
+The same UID can modify that surface, so the report cannot prove process identity.
+Reconciliation records the report, but only independently validated active generation
+identity can make a job `active` or `failed`.
+The authority-owned `/run/nori-desktop-settings` directory has mode `0710`.
+Its shared group can traverse it, but cannot create or unlink socket entries.
+The authority can bind and replace its own sockets.
+The activation lock has mode `0640`, owner `root`, and a separate authority group.
+Only the authority UID belongs to that group. The desktop user cannot block it with an advisory lock.
+
+Waybar reads the resolved generated profile after activation. The operator
+must activate a workstation generation.

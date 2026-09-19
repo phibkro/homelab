@@ -102,6 +102,20 @@
         "type": "github"
       }
     },
+    "clan-core-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1779788057,
+        "narHash": "sha256-THMXN+U3+5zpHTyaztiR5tHJeJk6PhNlfnlq74ILg4s=",
+        "rev": "424c8dd7a0ef3d5194e538e87174371d91cb2bbe",
+        "type": "tarball",
+        "url": "https://git.clan.lol/api/v1/repos/clan/clan-core/archive/424c8dd7a0ef3d5194e538e87174371d91cb2bbe.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://git.clan.lol/clan/clan-core/archive/424c8dd7a0ef3d5194e538e87174371d91cb2bbe.tar.gz"
+      }
+    },
     "claudex": {
       "inputs": {
         "home-manager": [
@@ -594,6 +608,7 @@
     },
     "root": {
       "inputs": {
+        "clan-core-src": "clan-core-src",
         "claudex": "claudex",
         "disko": "disko",
         "effect-skills": "effect-skills",

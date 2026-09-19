@@ -108,6 +108,20 @@ let
         effect = "session";
       }
     );
+  launcherRoundTrip = pkgs.writeShellApplication {
+    name = "launcher-round-trip";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.libnotify
+    ];
+    text = ''
+      marker=''${RICE_LAUNCHER_TEST_MARKER:-}
+      if [[ -z $marker ]]; then
+        exec notify-send --app-name=vicinae 'Launcher round trip' 'Generated action execution works.'
+      fi
+      printf '%s\n' 'generated action executed' >"$marker"
+    '';
+  };
 
   baseCommands = {
     "layout.menu" = mkCommand {
@@ -417,6 +431,17 @@ let
       icon = "applets-screenshooter-symbolic";
     };
 
+    "testing.launcher-roundtrip" = mkCommand {
+      label = "Testing: Launcher Round Trip";
+      description = "verify generated launcher action execution";
+      category = "testing";
+      executable = "${launcherRoundTrip}/bin/launcher-round-trip";
+      keywords = [
+        "vicinae"
+        "launcher"
+      ];
+      icon = "system-run-symbolic";
+    };
     "testing.notification.normal" = mkCommand {
       label = "Testing: Notification — Normal";
       description = "show a normal notification for interaction testing";
@@ -457,33 +482,6 @@ let
       icon = "view-list-symbolic";
     };
 
-    "view.frequent" = mkCommand {
-      label = "View: Frequent";
-      description = "reopen the default relevance-ranked palette";
-      category = "view";
-      executable = "rice-palette";
-      args = [ "frequent" ];
-      icon = "document-open-recent-symbolic";
-      effect = "query";
-    };
-    "view.alphabetical" = mkCommand {
-      label = "View: Alphabetical";
-      description = "reopen the title-ordered palette";
-      category = "view";
-      executable = "rice-palette";
-      args = [ "alphabetical" ];
-      icon = "view-sort-ascending-symbolic";
-      effect = "query";
-    };
-    "view.categories" = mkCommand {
-      label = "View: Browse Categories…";
-      description = "choose a command category";
-      category = "view";
-      executable = "rice-palette";
-      args = [ "categories" ];
-      icon = "view-list-symbolic";
-      effect = "query";
-    };
   };
 
   layerCommands = builtins.listToAttrs (
@@ -505,16 +503,6 @@ let
     ) layerTags
   );
 
-  commandCategoryLabels = [
-    "Layout"
-    "Space"
-    "Window"
-    "System"
-    "Help"
-    "Utility"
-    "Testing"
-  ];
-
   validCommandId = id: builtins.match "^[a-z0-9]+([.-][a-z0-9]+)*$" id != null;
   validatedCommands =
     let
@@ -523,10 +511,9 @@ let
     assert lib.assertMsg (lib.all validCommandId (
       builtins.attrNames commands
     )) "invalid rice command ID";
-    assert lib.assertMsg (lib.all
-      (command: command.effect != "destructive" || command.directBinding == null)
-      (builtins.attrValues commands)
-    ) "destructive rice commands cannot have direct bindings";
+    assert lib.assertMsg (lib.all (
+      command: command.effect != "destructive" || command.directBinding == null
+    ) (builtins.attrValues commands)) "destructive rice commands cannot have direct bindings";
     commands;
 
   riceCommandBindings = lib.mapAttrsToList (
@@ -560,7 +547,7 @@ let
   keyBinds = [
     # Apps
     (mkBindApp "RETURN" "popup-term" "ghostty (toggle)")
-    (mkBindApp "SPACE" "rice-palette" "applications and commands")
+    (mkBindApp "SPACE" "vicinae toggle" "applications and commands")
     (mkBindApp "B" "zen-beta" "zen (browser)")
 
     # Window
@@ -773,65 +760,6 @@ let
           ;;
       esac
     '';
-  };
-
-  commandManifestPackage = pkgs.writeTextDir "share/rice/commands.json" (
-    builtins.toJSON (
-      lib.mapAttrs (_: command: {
-        inherit (command)
-          category
-          directBinding
-          effect
-          palette
-          ;
-      }) validatedCommands
-    )
-  );
-
-  privateDesktopItems = lib.mapAttrsToList (
-    id:
-    command@{ keywords, ... }:
-    pkgs.makeDesktopItem {
-      name = "nori-rice-${id}";
-      desktopName = command.label;
-      genericName = command.description;
-      exec = "${riceCommand}/bin/rice-command ${id}";
-      inherit (command) icon;
-      inherit keywords;
-    }
-  ) (lib.filterAttrs (_: command: command.palette) validatedCommands);
-
-  privateDesktopEntries = pkgs.symlinkJoin {
-    name = "rice-private-applications";
-    paths = privateDesktopItems ++ [ commandManifestPackage ];
-  };
-
-  riceLaunch = pkgs.writeShellApplication {
-    name = "rice-launch";
-    text = builtins.readFile ./rice-launch.sh;
-  };
-
-  ricePalette = pkgs.writeShellApplication {
-    name = "rice-palette";
-    runtimeInputs = [ pkgs.fuzzel ];
-    text = ''
-      export RICE_PRIVATE_DATA_DIR=${lib.escapeShellArg "${privateDesktopEntries}/share"}
-      export RICE_PALETTE_CATEGORIES=${lib.escapeShellArg (lib.concatStringsSep " " commandCategoryLabels)}
-      export RICE_LAUNCH_PREFIX_BIN=${lib.escapeShellArg "${riceLaunch}/bin/rice-launch"}
-      ${builtins.readFile ./rice-palette.sh}
-    '';
-  };
-
-  hyprPaletteLiveTest = pkgs.writeShellApplication {
-    name = "hypr-palette-live-test";
-    runtimeInputs = [
-      pkgs.coreutils
-      pkgs.sway
-      pkgs.gnugrep
-      pkgs.wtype
-      ricePalette
-    ];
-    text = builtins.readFile ./hypr-palette-live-test.sh;
   };
 
   glassSpacer = pkgs.writeShellApplication {
@@ -1162,7 +1090,7 @@ let
     ${pkgs.gnugrep}/bin/grep -Fq 'hl.bind(mod .. " + R", hl.dsp.exec_cmd("rice-command layout.ratio"))' "$out"
     ${pkgs.gnugrep}/bin/grep -Fq 'hl.bind(mod .. " + SHIFT + R", hl.dsp.exec_cmd("rice-command layout.menu"))' "$out"
     ${pkgs.gnugrep}/bin/grep -Fq 'hl.bind(mod .. " + L", hl.dsp.exec_cmd("rice-command system.lock"))' "$out"
-    ${pkgs.gnugrep}/bin/grep -Fq 'hl.bind(mod .. " + SPACE",  hl.dsp.exec_cmd("rice-palette"))' "$out"
+    ${pkgs.gnugrep}/bin/grep -Fq 'hl.bind(mod .. " + SPACE",  hl.dsp.exec_cmd("vicinae toggle"))' "$out"
     ! ${pkgs.gnugrep}/bin/grep -Fq 'SHIFT + E' "$out"
     ! ${pkgs.gnugrep}/bin/grep -Fq 'cmd-menu' "$out"
     ! ${pkgs.gnugrep}/bin/grep -Fq 'hypr-cheatsheet"))' "$out"
@@ -1174,83 +1102,79 @@ in
       actions = baseCommands // layerCommands;
       actionDispatcher = riceCommand;
     };
-  # `hypr-cheatsheet` and `rice-palette` stay on PATH because their
-  # command records would otherwise form a store-reference cycle through
-  # the generated desktop aggregate.
-  home.packages = [
-    cheatsheet
-    riceCommand # stable command-ID dispatcher and destructive confirmation boundary
-    ricePalette # SUPER+SPACE unified applications + rice commands
-    hyprPaletteLiveTest # explicit isolated headless compositor journey
-    popupTerm # SUPER+RETURN togglable terminal (lazy-spawns its own ghostty)
-    glassSpacer # SUPER+G tiled blank glass target
-    currentLayer # query: bare name of the shown special-workspace tag, or empty
-    layerAnnounce # command: Persona layer-osd popup for a tag name
-    layerCycle # SUPER+ALT+TAB / SUPER+ALT+SHIFT+TAB — step through special-workspace tags
-    layerToggle # SUPER+N tag toggle, announces via Persona when shown
-    layerAutohide # daemon: hides the shown tag when focus moves to a regular workspace
-    tileRatio # absolute focused-window ratio on Dwindle
-    hyprLayout # strict, hex-encoded bridge into the native rice layout
-    hyprLayoutMenu # SUPER+SHIFT+R — presets plus typed custom layout input
-    hyprLayoutLiveTest # explicit opt-in real-compositor journey
-    hyprSession # hypr-session CLI (list/save/rename/delete/prune/restore)
-  ];
+    # `hypr-cheatsheet` stays on PATH to keep help actions store-acyclic.
+    home.packages = [
+      cheatsheet
+      riceCommand # stable command-ID dispatcher and destructive confirmation boundary
+      popupTerm # SUPER+RETURN togglable terminal (lazy-spawns its own ghostty)
+      glassSpacer # SUPER+G tiled blank glass target
+      currentLayer # query: bare name of the shown special-workspace tag, or empty
+      layerAnnounce # command: Persona layer-osd popup for a tag name
+      layerCycle # SUPER+ALT+TAB / SUPER+ALT+SHIFT+TAB — step through special-workspace tags
+      layerToggle # SUPER+N tag toggle, announces via Persona when shown
+      layerAutohide # daemon: hides the shown tag when focus moves to a regular workspace
+      tileRatio # absolute focused-window ratio on Dwindle
+      hyprLayout # strict, hex-encoded bridge into the native rice layout
+      hyprLayoutMenu # SUPER+SHIFT+R — presets plus typed custom layout input
+      hyprLayoutLiveTest # explicit opt-in real-compositor journey
+      hyprSession # hypr-session CLI (list/save/rename/delete/prune/restore)
+    ];
 
-  # users/nori/programs/desktop/hypr-lock.nix already owns hyprlock.settings.background
-  # (blur + screenshot capture); Stylix's hyprlock target would collide.
-  stylix.targets.hyprlock.enable = false;
+    # users/nori/programs/desktop/hypr-lock.nix already owns hyprlock.settings.background
+    # (blur + screenshot capture); Stylix's hyprlock target would collide.
+    stylix.targets.hyprlock.enable = false;
 
-  wayland.windowManager.hyprland = {
-    enable = true;
+    wayland.windowManager.hyprland = {
+      enable = true;
+
+      /*
+        Use the system Hyprland (programs.hyprland.enable = true above).
+        Without this home-manager would also install a user-scope copy
+        and the two could drift across rebuilds.
+      */
+      package = null;
+      portalPackage = null;
+
+      /*
+        Lua is provisioned via xdg.configFile."hypr/hyprland.lua" below.
+        configType = "lua" prevents home-manager from rendering a parallel
+        hyprland.conf.
+      */
+      configType = "lua";
+    };
 
     /*
-      Use the system Hyprland (programs.hyprland.enable = true above).
-      Without this home-manager would also install a user-scope copy
-      and the two could drift across rebuilds.
+      Hyprland reads this .lua exclusively (configType=lua above).
+      Rollback = revert + rebuild; no runtime `rm + reload` shortcut.
+      Templated via replaceVars rather than a plain file copy — the tag
+      list and the spacer class name are generated in from the single
+      Nix-side sources above (layerTagsLua, spacerClass/Escaped) instead
+      of being hand-typed a second time directly in the .lua file. The
+      file is still a plain, directly-editable Lua file otherwise — only
+      the `@name@` markers are special, everything else edits normally.
     */
-    package = null;
-    portalPackage = null;
+    xdg.configFile."hypr/hyprland.lua".source = checkedHyprlandLua;
 
     /*
-      Lua is provisioned via xdg.configFile."hypr/hyprland.lua" below.
-      configType = "lua" prevents home-manager from rendering a parallel
-      hyprland.conf.
+      hypr-session-logd — subscribes to Hyprland's socket2 event stream and
+      debounce-captures full snapshots (see hypr-session/logd.sh header).
+      The shared Wayland session target is the compositor lifecycle root;
+      Restart=on-failure covers a transient socket2-not-up-yet race independent
+      of logd's own 50x0.1s startup poll.
     */
-    configType = "lua";
-  };
-
-  /*
-    Hyprland reads this .lua exclusively (configType=lua above).
-    Rollback = revert + rebuild; no runtime `rm + reload` shortcut.
-    Templated via replaceVars rather than a plain file copy — the tag
-    list and the spacer class name are generated in from the single
-    Nix-side sources above (layerTagsLua, spacerClass/Escaped) instead
-    of being hand-typed a second time directly in the .lua file. The
-    file is still a plain, directly-editable Lua file otherwise — only
-    the `@name@` markers are special, everything else edits normally.
-  */
-  xdg.configFile."hypr/hyprland.lua".source = checkedHyprlandLua;
-
-  /*
-    hypr-session-logd — subscribes to Hyprland's socket2 event stream and
-    debounce-captures full snapshots (see hypr-session/logd.sh header).
-    The shared Wayland session target is the compositor lifecycle root;
-    Restart=on-failure covers a transient socket2-not-up-yet race independent
-    of logd's own 50x0.1s startup poll.
-  */
-  systemd.user.services.hypr-session-logd = {
-    Unit = {
-      Description = "hypr-session: debounced Hyprland window-topology snapshot log";
-      PartOf = [ config.wayland.systemd.target ];
-      After = [ config.wayland.systemd.target ];
+    systemd.user.services.hypr-session-logd = {
+      Unit = {
+        Description = "hypr-session: debounced Hyprland window-topology snapshot log";
+        PartOf = [ config.wayland.systemd.target ];
+        After = [ config.wayland.systemd.target ];
+      };
+      Install.WantedBy = [ config.wayland.systemd.target ];
+      Service = {
+        Type = "simple";
+        ExecStart = "${hyprSession}/bin/hypr-session-logd";
+        Restart = "on-failure";
+        RestartSec = "5s";
+      };
     };
-    Install.WantedBy = [ config.wayland.systemd.target ];
-    Service = {
-      Type = "simple";
-      ExecStart = "${hyprSession}/bin/hypr-session-logd";
-      Restart = "on-failure";
-      RestartSec = "5s";
-    };
-  };
   };
 }
