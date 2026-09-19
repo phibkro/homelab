@@ -136,6 +136,8 @@
     */
     effect-skills.url = "github:Effect-TS/skills/28822c9e19998876a6b0e0d97877442012ed4391";
     effect-skills.flake = false;
+    microvm.url = "git+https://github.com/microvm-nix/microvm.nix.git?rev=1b99da49e9d1c8f15fd4911f7b8d2c4375758dcd";
+    microvm.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =

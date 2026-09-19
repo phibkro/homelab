@@ -23,7 +23,9 @@
     ./disko.nix
     ./disko-media.nix
     ./disko-mp510.nix
+    ./firecracker-environment.nix
   ];
+  nori.selfHostedFirecracker.enable = true;
 
   # networking.hostName injected from the registry key in flake.nix.
   networking.useDHCP = lib.mkDefault true;

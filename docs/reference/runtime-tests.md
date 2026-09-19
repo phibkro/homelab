@@ -46,6 +46,7 @@ One lever maxed = nice-to-have. Two = ship it. Three+ = required.
 | `just test-authelia` | Authelia live ↔ `nori.lanRoutes.<n>.oidc` declarations: systemd active, /api/health OK, OIDC discovery issuer correct, /run/secrets/oidc-<n>-* present + non-empty for every declared OIDC route | `services/authelia/nixos.nix` + `infra/common/nixos/routes.nix` |
 | `just test-music-ingest` | Disposable real-filesystem journey for claim, recovery, publication, conflict, and rejection behavior | `services/music-ingest/tests/runtime.sh` |
 | `just test` | All non-destructive recipes above; the opt-in Ghostty geometry and headless palette journeys are intentionally excluded | composite |
+| `just test-self-hosted-firecracker` | Disposable transient KVM journey for a net-off Firecracker Environment. It checks exact create replay, guest isolation, drain rejection, stopped recovery, lease release, and cleanup. | `infra/workstation/firecracker-environment.nix` |
 
 ## The architectural correlation worth knowing
 

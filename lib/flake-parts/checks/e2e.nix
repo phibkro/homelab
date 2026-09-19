@@ -42,6 +42,9 @@
             {
               inherit pkgs;
             };
+        e2e-self-hosted-firecracker = import ../../../tests/e2e-self-hosted-firecracker.nix {
+          inherit pkgs lib inputs;
+        };
       };
     };
 }

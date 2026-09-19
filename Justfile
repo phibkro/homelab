@@ -122,6 +122,18 @@ default: list
 @test-music-ingest:
     devenv test
 
+# Run the disposable transient Firecracker Environment journey. It requires KVM and never activates or deploys a host configuration.
+@test-self-hosted-firecracker:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    repository_root="${ADLC_REPOSITORY_ROOT:-{{justfile_directory()}}/../adlc-os}"
+    repository_root="$(realpath "$repository_root")"
+    if [ ! -f "$repository_root/apps/local-environment-controller/src/main.ts" ]; then
+      echo "ADLC_REPOSITORY_ROOT must name an adlc-os checkout" >&2
+      exit 2
+    fi
+    ADLC_REPOSITORY_ROOT="$repository_root" ADLC_REAL_HOST_MODE=transient exec bun tests/real-host-self-hosted-firecracker.ts
+
 # Format all .nix files via the project formatter (nixfmt via nixfmt-tree).
 @fmt:
     nix fmt
