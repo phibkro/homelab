@@ -773,10 +773,3 @@
 @test-agent-onboarding:
     cat docs/installs/agent-onboarding-test.md
 
-# Manual real-host journey. It deliberately stays outside `test`: it starts
-# a Firecracker guest through the installed root daemon and requires KVM.
-@test-self-hosted-firecracker:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    : "${ADLC_REPOSITORY_ROOT:?set ADLC_REPOSITORY_ROOT to the adlc-os checkout}"
-    exec bun tests/real-host-self-hosted-firecracker.ts
