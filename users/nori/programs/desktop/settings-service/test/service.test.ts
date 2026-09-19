@@ -169,7 +169,7 @@ test("a launcher-sized saved-command profile remains readable through the framed
         },
       });
     }
-    const state = await callService("/v1/state", "GET", undefined, { socket, halfClose: false });
+    const state = await callService("/v1/state", "GET", undefined, { socket });
     const stateBytes = Buffer.byteLength(JSON.stringify(state), "utf8");
     expect(state).toMatchObject({ ok: true });
     expect(stateBytes).toBeLessThanOrEqual(maxFrameBytes);
@@ -582,7 +582,6 @@ test("saved command IPC round trip keeps a parameter literal across the generate
       NORI_DESKTOP_SETTINGS_RICE_COMMAND: runner,
       NORI_DESKTOP_SETTINGS_SHELL: shell,
       NORI_DESKTOP_SETTINGS_SOCKET: socket,
-      NORI_DESKTOP_SETTINGS_HALF_CLOSE: "0",
       RICE_VICINAE_BIN: undefined,
     };
     const marker = join(root, "should-not-exist");

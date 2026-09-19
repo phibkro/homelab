@@ -141,11 +141,32 @@ static bool receive_one_frame_and_eof(int fd, uint8_t *frame, size_t *frame_size
     return true;
   }
 }
+static bool receive_one_request(int fd, uint8_t *frame, size_t *frame_size) {
+  if (!receive_exact(fd, frame, 4)) return false;
+  uint32_t length = ((uint32_t)frame[0] << 24) |
+                    ((uint32_t)frame[1] << 16) |
+                    ((uint32_t)frame[2] << 8) |
+                    (uint32_t)frame[3];
+  if (length > max_frame_bytes || !receive_exact(fd, frame + 4, length)) return false;
+
+  char trailing;
+  for (;;) {
+    ssize_t next = recv(fd, &trailing, sizeof(trailing), MSG_PEEK | MSG_DONTWAIT);
+    if (next > 0) return false;
+    if (next == 0 || (errno == EAGAIN || errno == EWOULDBLOCK)) break;
+    if (errno == EINTR) continue;
+    return false;
+  }
+  if (shutdown(fd, SHUT_RD) < 0) return false;
+  *frame_size = 4 + length;
+  return true;
+}
+
 
 static void relay(int client, const char *backend_path) {
   uint8_t request[4 + max_frame_bytes];
   size_t request_size;
-  if (!receive_one_frame_and_eof(client, request, &request_size)) return;
+  if (!receive_one_request(client, request, &request_size)) return;
 
   int backend = unix_socket(backend_path, false);
   if (backend < 0 || !set_relay_timeout(backend)) goto close_backend;

@@ -15,19 +15,12 @@ import { encodeFrame, readFrame, writeFrame } from "./framing.ts";
 
 export type CliRuntime = {
   readonly socket: string;
-  readonly halfClose: boolean;
 };
 
 function runtimeFromEnvironment(): CliRuntime {
   const configured = process.env.NORI_DESKTOP_SETTINGS_SOCKET;
-  const halfClose = process.env.NORI_DESKTOP_SETTINGS_HALF_CLOSE !== "0";
-  if (configured !== undefined && configured.length > 0) {
-    return { socket: configured, halfClose };
-  }
-  return {
-    socket: "/run/nori-desktop-settings/public.sock",
-    halfClose,
-  };
+  if (configured !== undefined && configured.length > 0) return { socket: configured };
+  return { socket: "/run/nori-desktop-settings/public.sock" };
 }
 
 async function decodeResponse(text: string): Promise<Record<string, unknown>> {
@@ -94,8 +87,7 @@ async function exchange(
   try {
     await promise;
     const response = readFrame(socket);
-    if (runtime.halfClose) socket.end(encodeFrame(request));
-    else writeFrame(socket, request);
+    writeFrame(socket, request);
     return decodeResponse(await response);
   } catch (cause) {
     throw new DesktopSettingsError(
