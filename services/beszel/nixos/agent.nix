@@ -4,7 +4,7 @@
   ...
 }:
 let
-  agentPort = config.nori.inventory.workloads."beszel-agent".agentPort;
+  agentPort = config.nori.inventory.workloads."beszel-agent".listenPort;
 in
 {
   /**

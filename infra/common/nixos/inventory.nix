@@ -90,6 +90,11 @@ let
         default = { };
         description = "Resolved, secret-free endpoint metadata; validated by the networking route schema when projected.";
       };
+      listenPort = mkOption {
+        type = types.nullOr types.port;
+        default = null;
+        description = "Host-local listener shared by every realization of a replicated workload.";
+      };
       hosts = mkOption { type = types.listOf types.str; };
       realizations = mkOption { type = types.listOf realizationType; };
       artifact = mkOption {

@@ -276,7 +276,7 @@ jq --exit-status \
   "$output" >/dev/null
 
 echo "inventory generator inactive-Beszel contract: PASS"
-jq '.workloads["beszel-agent"].agentPort = 51234' \
+jq '.workloads["beszel-agent"].listenPort = 51234' \
   "$fixture" >"$beszel_port_fixture"
 PATH="$fake_bin:$PATH" INVENTORY_FIXTURE="$beszel_port_fixture" \
   "$repo_root/infra/pi/scripts/generate-inventory.sh" "$output" >/dev/null

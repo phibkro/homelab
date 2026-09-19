@@ -19,7 +19,7 @@ nix eval --json "$repo_root#lib.noriInventory" | jq \
     | $inventory.hosts[$backup.targetHost] as $backup_host
     | $inventory.site.domain as $domain
     | $inventory.site.entryPlaneHost as $entry_plane_host
-    | $inventory.workloads["beszel-agent"].agentPort as $beszel_agent_port
+    | $inventory.workloads["beszel-agent"].listenPort as $beszel_agent_port
     | [
         $inventory.workloads
         | to_entries[]
