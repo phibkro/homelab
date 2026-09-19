@@ -8,6 +8,7 @@
 
   users.users.nori = {
     isNormalUser = true;
+    uid = 1000;
     description = "nori";
     extraGroups = [
       "wheel"

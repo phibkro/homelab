@@ -294,8 +294,6 @@ in
     nori-desktop-saved-command-projection = {
       Unit = {
         Description = "Project saved commands into Vicinae search";
-        After = [ "nori-desktop-config.service" ];
-        Requires = [ "nori-desktop-config.service" ];
         Before = [ "vicinae.service" ];
       };
       Service = {
