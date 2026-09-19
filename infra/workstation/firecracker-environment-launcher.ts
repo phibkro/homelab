@@ -232,35 +232,30 @@ const waitForPidFile = async (path: string) => {
       const value = readFileSync(path, "utf8").trim();
       if (/^\d+$/.test(value)) return Number(value);
     }
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await sleep(10);
   }
   fail(`process pid file ${path} did not appear after spawn`);
 };
-const waitForLive = async (pid: number) => {
+const waitForExecutableIdentity = async (
+  pid: number,
+  executable: string,
+  fields: { readonly cgroup?: boolean; readonly netns?: boolean } = {},
+): Promise<ProcessIdentity> => {
   const deadline = Date.now() + TIMEOUT;
   while (Date.now() < deadline) {
-    if (live(pid)) return;
-    await new Promise((resolve) => setTimeout(resolve, 10));
-  }
-  fail(`process ${pid} did not remain alive after spawn`);
-};
-const waitForVmmIdentity = async (pid: number): Promise<ProcessIdentity> => {
-  const deadline = Date.now() + TIMEOUT;
-  while (Date.now() < deadline) {
-    if (!live(pid)) fail(`VMM process ${String(pid)} exited before exec`);
+    if (!live(pid)) fail(`process ${String(pid)} exited before exec of ${executable}`);
     try {
-      if (basename(processExe(pid)) === "firecracker")
-        return observedIdentity(pid, { cgroup: true, netns: true });
+      if (basename(processExe(pid)) === executable) return observedIdentity(pid, fields);
     } catch {}
     await sleep(10);
   }
-  fail(`VMM process ${String(pid)} did not exec Firecracker`);
+  fail(`process ${String(pid)} did not exec ${executable}`);
 };
 const waitForPath = async (path: string) => {
   const deadline = Date.now() + TIMEOUT;
   while (Date.now() < deadline) {
     if (existsSync(path)) return;
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await sleep(10);
   }
   fail(`path ${path} did not appear after spawn`);
 };
@@ -931,18 +926,6 @@ const materialize = async (request: Dict): Promise<Dict> => {
     };
     saveState(path, state);
     const log = join(path, "vmm.log");
-    keeperChild = spawn("unshare", ["--net", "sleep", "1000000"], { stdio: "ignore" });
-    if (keeperChild.pid === undefined) fail("netns keeper did not report a pid");
-    await waitForLive(keeperChild.pid);
-    keeperProcess = observedIdentity(keeperChild.pid);
-    namespace = `/proc/${keeperChild.pid}/ns/net`;
-    Object.assign(state, {
-      netns: namespace,
-      netnsPid: keeperProcess.pid,
-      netnsStartTime: keeperProcess.start,
-      netnsExe: keeperProcess.exe,
-    });
-    saveState(path, state);
     mkdirSync(generationCgroup);
     for (const [file, value] of Object.entries({
       "cpu.max": controls.cpuMax,
@@ -953,6 +936,18 @@ const materialize = async (request: Dict): Promise<Dict> => {
       "io.max": controls.ioMax,
     }))
       writeFileSync(join(generationCgroup, file), value);
+    keeperChild = spawn("unshare", ["--net", "sleep", "1000000"], { stdio: "ignore" });
+    if (keeperChild.pid === undefined) fail("netns keeper did not report a pid");
+    writeFileSync(join(generationCgroup, "cgroup.procs"), String(keeperChild.pid));
+    keeperProcess = await waitForExecutableIdentity(keeperChild.pid, "sleep");
+    namespace = `/proc/${keeperChild.pid}/ns/net`;
+    Object.assign(state, {
+      netns: namespace,
+      netnsPid: keeperProcess.pid,
+      netnsStartTime: keeperProcess.start,
+      netnsExe: keeperProcess.exe,
+    });
+    saveState(path, state);
     jailerChild = spawn(
       JAILER,
       [
@@ -987,7 +982,10 @@ const materialize = async (request: Dict): Promise<Dict> => {
     jailerChild.stderr?.on("data", (chunk) => appendLog(log, chunk));
     if (jailerChild.pid === undefined) fail("Jailer did not report a pid");
     const vmmPid = await waitForPidFile(join(root, "firecracker.pid"));
-    vmmProcess = await waitForVmmIdentity(vmmPid);
+    vmmProcess = await waitForExecutableIdentity(vmmPid, "firecracker", {
+      cgroup: true,
+      netns: true,
+    });
     const cgroup = `${CGROUP_ROOT}${unifiedCgroupPath(vmmProcess.cgroup!)}`;
     if (cgroup !== generationCgroup)
       fail("VMM escaped the generation resource-control cgroup");
