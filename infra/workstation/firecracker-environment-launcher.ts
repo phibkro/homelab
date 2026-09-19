@@ -954,9 +954,13 @@ const materialize = async (request: Dict): Promise<Dict> => {
       "io.max": controls.ioMax,
     }))
       writeFileSync(join(generationCgroup, file), value);
-    keeperChild = spawn("unshare", ["--net", "sleep", "1000000"], {
-      stdio: ["ignore", "ignore", "pipe"],
-    });
+    keeperChild = spawn(
+      "setpriv",
+      ["--pdeathsig", "SIGKILL", "unshare", "--net", "sleep", "1000000"],
+      {
+        stdio: ["ignore", "ignore", "pipe"],
+      },
+    );
     if (keeperChild.pid === undefined) fail("netns keeper did not report a pid");
     keeperChild.stderr?.on("data", (chunk) => appendLog(log, chunk));
     writeFileSync(join(generationCgroup, "cgroup.procs"), String(keeperChild.pid));
@@ -976,8 +980,11 @@ const materialize = async (request: Dict): Promise<Dict> => {
     });
     saveState(path, state);
     jailerChild = spawn(
-      JAILER,
+      "setpriv",
       [
+        "--pdeathsig",
+        "SIGKILL",
+        JAILER,
         "--id",
         jailerId,
         "--exec-file",
