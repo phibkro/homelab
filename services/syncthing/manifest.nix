@@ -1,6 +1,14 @@
 {
   kind = "service";
   hostRoles = [ "workhorse" ];
+  placement = {
+    strategy = "first-unique";
+    selectors = [ { tags = [ "primary-service-host" ]; } ];
+    cardinality = {
+      min = 1;
+      max = 1;
+    };
+  };
   runtimeModule = ./nixos.nix;
   tags = [
     "family-tier"
@@ -9,7 +17,6 @@
 
   endpoints.sync = {
     port = 8384;
-    runsOn = "workstation";
     exposeOnTailnet = true;
     monitor = { };
     audience = "operator";

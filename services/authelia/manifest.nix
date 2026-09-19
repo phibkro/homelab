@@ -1,9 +1,14 @@
-let
-  site = import ../../inventory/site.nix;
-in
 {
   kind = "service";
   hostRoles = [ "appliance" ];
+  placement = {
+    strategy = "first-unique";
+    selectors = [ { tags = [ "entry-plane" ]; } ];
+    cardinality = {
+      min = 1;
+      max = 1;
+    };
+  };
   runtimeModule = ./nixos.nix;
   tags = [
     "network-appliance"
@@ -15,7 +20,6 @@ in
   };
   endpoints.auth = {
     port = 9091;
-    runsOn = site.entryPlaneHost;
     monitor.path = "/api/health";
     audience = "public";
     dashboard = {

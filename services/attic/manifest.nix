@@ -2,6 +2,14 @@
   active = true;
   kind = "service";
   hostRoles = [ "workhorse" ];
+  placement = {
+    strategy = "first-unique";
+    selectors = [ { tags = [ "primary-service-host" ]; } ];
+    cardinality = {
+      min = 1;
+      max = 1;
+    };
+  };
   runtimeModule = ./nixos.nix;
   tags = [
     "stateful"
@@ -10,7 +18,6 @@
 
   endpoints.cache = {
     port = 5000;
-    runsOn = "workstation";
     exposeOnTailnet = true;
     reachability = "internal";
     audience = "operator";

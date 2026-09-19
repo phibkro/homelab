@@ -2,9 +2,7 @@
   Physical host inventory.
 
   Platform realization and deployment commands are compiler-private. `identity`,
-  profile selection, and direct workload additions form the public-safe
-  control-plane input. Direct additions represent genuine host deviations from
-  a reusable profile; they are not an escape hatch for implicit tag activation.
+  profile selection, and placement tags form the public-safe control-plane input.
 */
 {
   adelie = {
@@ -18,7 +16,11 @@
       "log-forwarder"
       "observability-agent"
     ];
-    workloads = [ ];
+    tags = [
+      "gpu-host"
+      "nas"
+      "nixos"
+    ];
     identity = {
       tailnetIp = "100.107.90.3";
       lanIp = null;
@@ -74,17 +76,11 @@
       "observability-agent"
       "research"
     ];
-    workloads = [
-      "attic"
-      "clamor"
-      "disk-alert"
-      "herdr-projects-mcp"
-      "hindsight"
-      "mcp-origin-tunnel"
-      "music-ingest"
-      "ntfy-notify"
-      "nvidia-gpu-exporter"
-      "restic-target"
+    tags = [
+      "desktop"
+      "large-gpu"
+      "nixos"
+      "primary-service-host"
     ];
     identity = {
       tailnetIp = "100.81.5.122";
@@ -150,10 +146,7 @@
       "entry-plane"
       "log-forwarder"
     ];
-    workloads = [
-      "beszel-agent"
-      "ntfy-notify"
-    ];
+    tags = [ "entry-plane" ];
     identity = {
       tailnetIp = "100.100.71.3";
       lanIp = "192.168.1.225";

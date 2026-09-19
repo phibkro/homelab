@@ -1,9 +1,14 @@
-let
-  site = import ../../inventory/site.nix;
-in
 {
   kind = "service";
   hostRoles = [ "appliance" ];
+  placement = {
+    strategy = "first-unique";
+    selectors = [ { tags = [ "entry-plane" ]; } ];
+    cardinality = {
+      min = 1;
+      max = 1;
+    };
+  };
   runtimeModule = ./nixos.nix;
   tags = [
     "observability"
@@ -12,7 +17,6 @@ in
 
   endpoints.tsdb = {
     port = 8428;
-    runsOn = site.entryPlaneHost;
     monitor.path = "/health";
     audience = "operator";
     dashboard = {
