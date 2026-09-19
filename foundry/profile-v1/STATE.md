@@ -1,7 +1,7 @@
 <!-- generated-by: foundry@v1 -->
 # State
 
-Lifecycle: idea
-Now:
-Next:
-Blocked:
+Lifecycle: active
+Now: The transient self-hosted Firecracker Environment journey passes.
+Next: None.
+Blocked: None.

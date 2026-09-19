@@ -14,7 +14,7 @@ in
   fsType = oneTouch.filesystem.type;
   targetHost = oneTouch.attachedHost;
   hostname = "workstation.saola-matrix.ts.net";
-  mountPoint = oneTouch.mountPoint;
+  inherit (oneTouch) mountPoint;
   retention.coldMedia = {
     # Same-disk accidental-deletion rollback, not independent protection.
     localSnapshotPreserve = "7d 4w 3m";

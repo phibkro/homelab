@@ -1,7 +1,7 @@
 ---
 summary: Generate desktop setting contracts from Nix and apply one real setting through a shared local service.
 date: 2026-09-12
-status: spec — awaiting operator freeze
+status: frozen; implementation authorized; workstation activation remains operator-gated
 owner: operator
 ---
 
@@ -17,13 +17,13 @@ Unknown values fail before any profile write or runtime change. An allowed value
 
 This milestone adds the shared change service required by the later nixpkgs Store milestone. It does not implement the Store.
 
-## Implementation precondition
+## Implementation baseline
 
-The Vicinae milestone is implemented but is not activated or isolated in a clean final commit.
+The Vicinae milestone is isolated in commit `27deced` on this branch.
 
-Before implementation starts, move its exact changes into a clean branch or worktree. Gate that committed artifact without including unrelated Firecracker work.
+Its saved-command checks, extension type check, focused Nix checks, and private launcher journey passed from the clean worktree.
 
-Do not build or activate from the current mixed working tree.
+The workstation is not activated. Continue implementation in this worktree and never evaluate the original mixed checkout from a client.
 
 ## User journey
 
@@ -50,7 +50,7 @@ This milestone adds one new component setting declaration:
 - Type: enum.
 - Writable values: `top` and `bottom`.
 - Scope: user session.
-- Live adapter: reload and observation of `waybar.service`.
+- Live adapter: the `nori` session runtime agent reloads and observes `waybar.service`.
 - Durable realization: integrated Home Manager configuration inside the NixOS generation.
 
 The component maps `position` to `programs.waybar.settings.mainBar.position`.
@@ -68,7 +68,7 @@ The component output also exposes these policy-owned values as read-only:
 
 The Settings application disables these controls and gives this reason: **Managed by authored Nix policy**.
 
-This setting is generation-backed. The runtime adapter reloads Waybar only after activation provides the matching generated configuration.
+This setting is generation-backed. The `nori` session runtime agent reloads Waybar only after activation provides the matching generated configuration.
 
 Clients show desired, resolved, active, and observed differences. They never rewrite desired intent from observed surface state.
 
@@ -97,7 +97,7 @@ The declaration owns:
 - Presentation metadata: title, group, description, control hint, and scope.
 - Ownership metadata: writable or authored policy, with a reason.
 - Apply class: live-only, live plus generation, or generation-only.
-- Runtime adapter identity, when required.
+- Runtime-agent contract, when required.
 - Generated launcher action metadata.
 - NixOS or Home Manager realization.
 
@@ -148,17 +148,27 @@ Generated artifacts include:
 
 These files are derivations. A client never edits them.
 
-## One profile authority
+## Dedicated profile authority
 
-The local service owns one canonical document:
+The rootless system service running as the dedicated
+`nori-desktop-settings` UID owns the canonical, versioned authority state at
+`/var/lib/nori-desktop-settings/`:
 
-`$XDG_CONFIG_HOME/nori-desktop/profile.json`
+- `profile.json` is the canonical desired profile document.
+- `jobs/` contains durable apply-job state and bounded logs.
+- `previews/` contains durable preview state keyed to the exact profile
+  revision and immutable build identity.
 
-The root object has a format version, monotonically increasing revision, component values, and saved commands.
+The dedicated UID owns this state root. It is not an XDG directory and it is
+not owned by the `nori` user manager or by a client. The `nori` user reaches
+the authority only through the authenticated public ingress described below.
 
-This milestone moves saved commands into this profile before the first workstation activation. The prior launcher implementation is not yet deployed, so no active user data needs migration.
-
-Remove the independent `saved-commands.json` authority during implementation. Generated Vicinae scripts remain disposable projections.
+The profile root object has a format version, monotonically increasing
+revision, component values, and saved commands. This milestone moves saved
+commands into this profile before the first workstation activation. The prior
+launcher implementation is not yet deployed, so no active user data needs
+migration. Remove the independent `saved-commands.json` authority during
+implementation. Generated Vicinae scripts remain disposable projections.
 
 The profile stores desired user intent only. It does not store:
 
@@ -168,7 +178,7 @@ The profile stores desired user intent only. It does not store:
 - Job logs or results.
 - Secrets.
 
-Job and observation data belongs under `$XDG_STATE_HOME/nori-desktop/`. Generated schemas and realizations belong in the Nix store.
+Generated schemas and realizations belong in the Nix store.
 
 Every profile replacement uses:
 
@@ -176,9 +186,11 @@ Every profile replacement uses:
 - An expected revision.
 - Exclusive serialized ownership.
 - A new complete document.
-- A durable atomic replacement: write, flush, rename, and flush the containing directory.
+- A durable atomic replacement: write, flush, rename, and flush the containing
+  directory.
 
-A stale expected revision returns a typed conflict. It never merges by last writer wins.
+A stale expected revision returns a typed conflict. It never merges by last
+writer wins.
 
 ## State model
 
@@ -187,28 +199,55 @@ Keep these states distinct:
 | State | Meaning | Owner |
 |---|---|---|
 | Draft | Proposed values not yet committed | Change operation |
-| Desired | Latest committed profile revision | Profile store |
+| Desired | Latest committed profile revision | `nori-desktop-settings` ProfileStore |
 | Resolved | Nix-evaluated result for one desired revision | Evaluation adapter |
 | Built | Store artifact produced for one resolved revision | Nix build adapter |
 | Active | Running NixOS generation and its profile baseline | Activation observer |
-| Observed | Current Waybar unit and layer-surface edge | Desktop runtime adapter |
+| Observed | Current Waybar unit and layer-surface edge | `nori` user runtime agent (surface evidence) |
 | Boot default | Generation selected for the next boot | System observer |
 
 An atomic profile replacement does not make activation atomic. A Nix build does not prove a runtime change. A generation is not a data backup.
+Observed data is untrusted same-UID surface evidence. It cannot prove runtime process identity.
+It cannot decide terminal job success or failure. Reconciliation records it as a warning or log only.
+Only independently read active generation identity decides whether reconciliation becomes `active` or `failed`.
+
 
 ## Local service
 
-Run `nori-desktop-config` as a rootless user service under the persistent user manager. Do not bind the service lifetime to Hyprland or a client.
+Run `nori-desktop-config` as a rootless system service under the dedicated
+`nori-desktop-settings` UID. Do not run the authority in the `nori` user
+manager, and do not bind its lifetime to Hyprland or a client.
 
-Display adapters report unavailable when no matching session exists. The profile and job coordinator remains available independently.
+Display operations report unavailable when no matching `nori` session runtime
+agent exists. The profile and job coordinator remain available independently.
 
-The service listens only on a Unix-domain socket under `$XDG_RUNTIME_DIR/nori-desktop/`. Do not add a TCP listener.
+The authority has two fixed Unix-domain socket paths beneath
+`/run/nori-desktop-settings/`; do not add a TCP listener:
 
-Create the runtime directory with mode `0700` and the socket with mode `0600`. Refuse unsafe existing paths before binding.
+- `/run/nori-desktop-settings/backend.sock` is the private backend socket,
+  owned by `nori-desktop-settings` and mode `0600`.
+- `/run/nori-desktop-settings/public.sock` is the public ingress socket,
+  mode `0660`, group-gated so the `nori` user can connect, and protected by
+  `SO_PEERCRED`; ingress rejects every peer credential other than `nori`.
 
-Use a bounded framed protocol. Reject oversized frames, unknown fields, unknown operations, and extra messages after one request.
+The fixed runtime directory is owned by `nori-desktop-settings`, with mode
+`0710`, and provisioned by `RuntimeDirectory=`. The service can replace its
+own sockets. The shared `nori-desktop-settings` group gives `nori` traverse
+access only, so it can reach public ingress but cannot create or unlink sockets.
+The public socket cannot be mode `0600`: a `nori` client has a different UID
+from the dedicated authority, so `0600` would prevent the client from reaching it.
+Group access is only admission to ingress; `SO_PEERCRED` remains the caller-identity check.
 
-The TypeScript protocol uses Effect Schema. The Nix-generated component schemas remain the setting authority; Effect schemas define operations and job lifecycles only.
+Only isolated internal TypeScript tests may inject `CliRuntime`. Every installed
+CLI, saved-command, and runtime-agent wrapper sets
+`NORI_DESKTOP_SETTINGS_SOCKET` to the fixed public path.
+
+Use a bounded framed protocol. Reject oversized frames, unknown fields,
+unknown operations, and extra messages after one request.
+
+The TypeScript protocol uses Effect Schema. The Nix-generated component schemas
+remain the setting authority; Effect schemas define operations and job
+lifecycles only.
 
 Required operations are:
 
@@ -220,7 +259,9 @@ Required operations are:
 - Read generated schemas and presentation metadata.
 - Execute and manage saved commands through the same profile owner.
 
-The existing `rice-saved-command` executable becomes a thin client of this service. Quickshell and Vicinae use the same typed CLI bridge.
+The existing `rice-saved-command` executable becomes a thin client of this
+service. Quickshell and Vicinae use the same typed CLI bridge through public
+ingress.
 
 ## Effect service boundaries
 
@@ -232,21 +273,22 @@ The portable program depends on these abstract services:
 - `SchemaCatalog`: generated schema and presentation lookup.
 - `NixEvaluator`: resolved output and impact preview.
 - `NixBuilder`: one immutable build for a base source and profile revision.
-- `DesktopRuntime`: observed state and live adapter reconciliation.
+- `SessionRuntime`: runtime-agent availability, reload-request delivery, and user-observation intake.
 - `JobStore`: durable job state and bounded logs.
 - `JobRunner`: serialized apply fibers with interruption and cleanup.
-- `ActivationClient`: one named request to the privileged mechanism.
+- `Activation authority`: the runtime agent invokes the fixed apply-ID privileged operation.
 - `IpcServer`: socket ownership, framing, caller identity, and shutdown.
 
 Concrete Bun, Nix, systemd, Hyprland, and filesystem behavior belongs in Layers at the composition root.
 
 Do not read process environment inside domain services. Decode configuration once at the composition root and inject it.
 
-Only one apply job can run at a time. Reads and previews can run concurrently against immutable revisions.
+Only one apply job can run at a time. Apply admission rejects a request while any job is nonterminal.
+Reads and previews can run concurrently against immutable revisions.
 
 Profile commits and apply transitions share one mutation coordinator. Draft reads and previews can continue while an apply runs.
 
-After a service crash, mark an unfinished job as interrupted and observe real state. Never resume activation from an assumed step.
+After a service crash, mark every unfinished job as interrupted and observe real state. Never resume activation from an assumed step.
 
 ## Preview and apply sequence
 
@@ -261,12 +303,12 @@ A change follows this order:
 7. Service commits revision `R+1` through compare-and-swap.
 8. The build adapter realizes the exact base source plus profile revision.
 9. The privileged mechanism authorizes and activates that exact result.
-10. The runtime adapter reloads Waybar when required and observes the unit and layer surface.
+10. The `nori` session runtime agent reloads Waybar when required and submits unit and layer-surface observations as untrusted user-observed surface evidence.
 11. The service observes active generation, boot default, and resolved profile baseline.
 
 If validation or evaluation fails, no profile or runtime state changes.
 
-If reload or observation fails after commit, desired state remains at `R+1`. The job reports `apply-failed` with actual observed state and a retry action.
+If reload or observation fails after commit, desired state remains at `R+1`. Record the observation without changing a terminal job result.
 
 If build fails, the active generation remains unchanged. Preserve desired state and diagnostics.
 
@@ -291,25 +333,64 @@ Do not accept Nix source text, flake URLs, arbitrary command strings, or client-
 
 ## Privileged activation
 
-The rootless service cannot activate a NixOS generation directly.
+The rootless dedicated authority cannot activate a NixOS generation directly.
 
-Add one narrow system mechanism protected by a namespaced polkit action. The existing session already provides a polkit authentication agent.
+Add one narrow system mechanism protected by a namespaced polkit action. The
+existing session already provides a polkit authentication agent. The mechanism
+accepts an apply ID and expected profile revision. It does not accept an
+arbitrary root command.
 
-The mechanism accepts an operation ID and expected profile revision. It does not accept an arbitrary root command.
+All activation attempts serialize through `/run/lock/nori-desktop-settings-activation.lock`.
+It has mode `0640`, owner `root`, and group `nori-desktop-settings-authority`.
+Only the dedicated authority UID belongs to that group. The desktop user cannot hold its advisory lock.
 
 The mechanism must:
 
 1. Resolve the caller identity and active session.
 2. Ask polkit to authorize the named activation operation for that caller.
 3. Read the root-owned approved base source identity.
-4. Copy the exact profile bytes into root-owned temporary custody.
-5. Strictly validate the revision, schema, and expected content hash.
+4. Read the exact dedicated-authority profile and job snapshot.
+5. Strictly validate the revision, schema, ownership, expected content hash,
+   canonical profile, and immutable identities.
 6. Re-derive the system artifact from the approved source and JSON data.
 7. Require that it matches the previewed artifact identity.
-8. Run the fixed activation program for that artifact.
-9. Return actual activation and boot-default observations.
+8. Set `/nix/var/nix/profiles/system` to that artifact with the pinned
+   `nix-env`, then run its fixed switch program while holding the activation lock.
+9. Resolve both `/run/current-system` and `/nix/var/nix/profiles/system`;
+   success requires both paths to equal the approved artifact.
+10. Return those actual paths and match booleans. A failure after profile
+    registration records and returns the actual observations without claiming success.
 
-A user-selected store path alone is not an approved artifact. Activating arbitrary user-built NixOS output would be equivalent to granting root.
+### Security-discovered dedicated-authority contract change
+
+This frozen design remains implementation-authorized and workstation activation
+remains operator-gated. Security review replaced the earlier proposed
+user-manager/XDG-owned authority and single `0600` client socket with the
+dedicated-authority contract in this document: persistent versioned state is
+owned by `nori-desktop-settings` at `/var/lib/nori-desktop-settings/`, private
+backend traffic uses its `0600` socket, and `nori` reaches the group-gated
+`0660` public ingress only after `SO_PEERCRED` verification. This records an
+authorized contract correction; it does not claim that the service or
+workstation activation is live.
+
+The authority stops a verified build at `awaiting_authorization`. The active
+`nori` session runtime agent alone invokes the fixed polkit operation with an
+apply ID and expected revision. The root helper re-reads the dedicated-authority
+job and revision snapshot, validates their ownership, hash, canonical profile,
+and immutable identities, registers the approved artifact as the system profile
+with the pinned `nix-env`, then performs only that artifact's fixed switch
+operation. It verifies and returns the actual active and boot-default paths.
+
+After the switch, the `nori` user runtime agent reloads and observes Waybar,
+then submits its strict observation to the authority. The authority
+independently reads active generation metadata and accepts that observation
+only as user-observed surface evidence; it never treats it as activation
+identity or claims cryptographic process identity for Waybar within the `nori`
+UID. Failed or cancelled authorization durably fails that apply job. Retrying
+requires a new apply job.
+
+A user-selected store path alone is not an approved artifact. Activating
+arbitrary user-built NixOS output would be equivalent to granting root.
 
 ## Client boundaries
 
@@ -342,9 +423,14 @@ The launcher remains a replaceable client. Removing it leaves the profile and se
 
 ### Waybar runtime boundary
 
-Waybar reads only the activated generated configuration. Neither client edits Waybar files or sends reload signals directly.
+Waybar reads only the activated generated configuration. Neither client edits
+Waybar files or sends reload signals directly.
 
-The runtime adapter requests the supported user-unit reload after activation, then observes both unit health and the actual layer surface.
+After activation, the `nori` user runtime agent requests the supported
+user-unit reload and observes both unit health and the actual layer surface.
+It submits that observation to the authority as user-observed surface evidence,
+not as cryptographic proof of a distinct Waybar process identity. The
+authority keeps activation identity separate from this observation.
 
 The unrelated blue-light toggle in Waybar remains unchanged.
 
@@ -354,15 +440,20 @@ The unrelated blue-light toggle in Waybar remains unchanged.
 - One versioned profile owns user intent and saved commands.
 - Input and output schemas are generated from evaluated options.
 - Policy values are absent from writable input and present as read-only output.
-- Settings and Vicinae read the same service snapshot.
-- The service is the only profile writer.
+- Settings and Vicinae read the same service snapshot through public ingress.
+- The dedicated authority is the only profile, preview, and job-state writer.
+- The `nori` client reaches only the fixed group-gated public socket; private
+  backend traffic remains `0600` and inaccessible to that client.
+- Public ingress admits the `nori` user only after `SO_PEERCRED` verification.
 - Revision mismatch cannot overwrite a newer profile.
-- Runtime observation never silently becomes desired intent.
+- Runtime observation never silently becomes desired intent or activation
+  identity.
 - Generated files are never authorities.
 - A failed operation never reports success.
 - Missing runtime or activation authority makes an action unavailable.
 - Activation never accepts arbitrary commands, source, or artifacts.
-- Existing Hyprland, UWSM, Persona, Waybar, and launcher ownership remains intact.
+- Existing Hyprland, UWSM, Persona, Waybar, and launcher ownership remains
+  intact.
 
 ## Acceptance gates
 
@@ -379,14 +470,31 @@ These scenarios are required during implementation. They have not run for this s
 
 ### Revision ownership
 
-- Start with revision `R` in disposable XDG directories.
+- Start with revision `R` in an isolated fixture that provisions the dedicated
+  authority state root at `/var/lib/nori-desktop-settings/`.
+- Confirm `profile.json`, `jobs/`, and `previews/` are owned by
+  `nori-desktop-settings`, not by the `nori` user manager or an XDG path.
 - Preview two edits from `R`.
 - Commit the first edit as `R+1`.
 - Confirm the second edit fails with a conflict and preserves `R+1`.
 - Kill the service during replacement at controlled points.
-- Confirm the old or new full document exists after restart, never a partial document.
+- Confirm the old or new full document exists after restart, never a partial
+  document.
 - Crash during an apply and restart the service.
-- Confirm the job becomes interrupted and the service observes real active state before any retry.
+- Confirm the job becomes interrupted and the service observes real active
+  state before any retry.
+
+### Authority ingress and activation isolation
+
+- Confirm authority state uses only `/var/lib/nori-desktop-settings/` and that
+  the dedicated UID owns its profile, job, and preview state.
+- Confirm the only authority sockets are the fixed
+  `/run/nori-desktop-settings/backend.sock` (`0600`) and
+  `/run/nori-desktop-settings/public.sock` (`0660`) paths.
+- Confirm a `nori` client cannot connect to the private backend socket and
+  public ingress rejects any peer whose `SO_PEERCRED` is not `nori`.
+- Confirm concurrent activation attempts serialize through the root-owned
+  `/run/lock/nori-desktop-settings-activation.lock`.
 
 ### Real desktop apply
 
@@ -407,7 +515,7 @@ In a disposable NixOS fixture:
 
 - Evaluate and build from an immutable source plus one profile revision.
 - Confirm the generated Waybar configuration contains the selected position.
-- Confirm the managed activation reloads the real user unit.
+- Confirm managed activation asks the `nori` user runtime agent to reload the real user unit after activation.
 - Apply, reboot, and observe the selected surface edge.
 - Reject a profile or artifact that does not match the previewed source and revision.
 - Force a build failure and confirm the running generation remains active.
@@ -431,9 +539,13 @@ In a disposable NixOS fixture:
 ### Repository gates
 
 - Type-check the service and client packages with locked dependencies.
-- Run focused Effect behavior tests for validation, conflicts, and persistence failure boundaries.
+- Run focused Effect behavior tests for validation, conflicts, and persistence
+  failure boundaries.
 - Build generated schema drift checks.
-- Run the real private launcher and Settings journeys.
+- Run the real group-gated public-ingress CLI bridge and Settings journeys.
+- Confirm the private `0600` backend socket rejects the `nori` client and the
+  `0660` public socket accepts only a group-authorized peer whose
+  `SO_PEERCRED` is `nori`.
 - Build the exact workstation projection from a clean committed tree.
 
 ## Non-goals

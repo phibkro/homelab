@@ -23,6 +23,8 @@ let
   homes = {
     workstation = hosts.workstation.config.home-manager.users.nori;
   };
+  qbittorrentServerConfig = hosts.workstation.config.services.qbittorrent.serverConfig;
+  qbittorrentPreStart = hosts.workstation.config.systemd.services.qbittorrent.preStart;
 
   hasHomePackage =
     homeName: packageName:
@@ -40,6 +42,10 @@ let
   actualWorkloads = lib.mapAttrs (_: host: host.workloads) inventory.hosts;
 
   expectedWorkloads = {
+    adelie = [
+      "beszel-agent"
+      "node-exporter"
+    ];
     pi = [
       "authelia"
       "beszel-agent"
@@ -123,6 +129,7 @@ let
     authelia = [ "pi" ];
     bazarr = [ "workstation" ];
     beszel-agent = [
+      "adelie"
       "pi"
       "workstation"
     ];
@@ -145,7 +152,10 @@ let
     miniflux = [ "workstation" ];
     music-ingest = [ "workstation" ];
     navidrome = [ "workstation" ];
-    node-exporter = [ "workstation" ];
+    node-exporter = [
+      "adelie"
+      "workstation"
+    ];
     nvidia-gpu-exporter = [ "workstation" ];
     ntfy-notify = [
       "pi"
@@ -210,6 +220,7 @@ let
     ollama.ai = "workstation";
     paperless.papers = "workstation";
     prowlarr.indexers = "workstation";
+    qbittorrent.downloads = "workstation";
     radarr.movies = "workstation";
     radicale.calendar = "workstation";
     sonarr.tv = "workstation";
@@ -233,9 +244,18 @@ let
     inventory.workloads.ollama.active
     && !inventory.workloads.open-webui.active
     && inventory.workloads.open-webui.endpoints == { }
-    && !inventory.workloads.qbittorrent.active
-    && inventory.workloads.qbittorrent.endpoints == { }
-    && !hosts.workstation.config.services.qbittorrent.enable;
+    && inventory.workloads.qbittorrent.active
+    && inventory.workloads.qbittorrent.endpoints.downloads.runsOn == "workstation"
+    && hosts.workstation.config.services.qbittorrent.enable
+    && qbittorrentServerConfig == { }
+    && hosts.workstation.config.systemd.services.qbittorrent.serviceConfig.UMask == "0002"
+    && lib.hasInfix "qbt-configure.py" qbittorrentPreStart
+    && lib.hasInfix "/var/lib/qBittorrent/qBittorrent/config/qBittorrent.conf" qbittorrentPreStart
+    && lib.hasInfix "${hosts.workstation.config.nori.fs.downloads.path}/.downloads/complete" qbittorrentPreStart
+    && lib.hasInfix "${hosts.workstation.config.nori.inventory.hosts.pi.tailnetIp}/32" qbittorrentPreStart
+    && inventory.workloads.qbittorrent.endpoints.downloads.forwardAuth.exemptPaths == [ ]
+    && compiledInventory.internal.lanRoutes.downloads.forwardAuth.exemptPaths == [ ]
+    && lib.elem "d /var/lib/qBittorrent/qBittorrent/incomplete 0755 qbittorrent qbittorrent -" hosts.workstation.config.systemd.tmpfiles.rules;
 
   papersFetchCompatibility = lib.all (
     hostName:
@@ -386,6 +406,15 @@ let
       port = 8085;
       runsOn = "workstation";
       audience = "family";
+      exposeOnTailnet = true;
+      auth = "forward-auth";
+      monitored = true;
+      dashboard = true;
+    };
+    downloads = {
+      port = 8083;
+      runsOn = "workstation";
+      audience = "operator";
       exposeOnTailnet = true;
       auth = "forward-auth";
       monitored = true;

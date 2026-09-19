@@ -51,7 +51,7 @@ in
     settings = {
       mainBar = {
         layer = "top";
-        position = "top";
+        position = config.nori.desktop.resolved.components."desktop.waybar".position;
         /*
           Height auto-sizes to content + CSS padding (no fixed value);
           the bar grows / shrinks with font size for ~2em vertical

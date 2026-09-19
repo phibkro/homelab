@@ -105,7 +105,7 @@ end)
 -- `toggle_special("term")` instead; verified working. See
 -- [[hyprland-lua-mode-dispatcher-syntax]].
 hl.bind(mod .. " + RETURN", hl.dsp.exec_cmd("popup-term"))
-hl.bind(mod .. " + SPACE",  hl.dsp.exec_cmd("rice-palette"))
+hl.bind(mod .. " + SPACE",  hl.dsp.exec_cmd("vicinae toggle"))
 hl.bind(mod .. " + B",      hl.dsp.exec_cmd("zen-beta"))
 -- Spacer — tiles like a real window (reserves a slot in the layout)
 -- but shows nothing; styled translucent+blurred ("glass") via the

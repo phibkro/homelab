@@ -156,6 +156,14 @@
             echo ${lib.escapeShellArg result} > $out
           '';
 
+        eval-topology-conformance =
+          let
+            result = import ../../../tests/eval/topology-conformance.nix { inherit inputs lib; };
+          in
+          pkgs.runCommandLocal "eval-topology-conformance" { } ''
+            echo ${lib.escapeShellArg result} > $out
+          '';
+
         /**
           Canonical datasets project into producer and consumer runtime
           paths without duplicating their logical storage contract.
@@ -224,6 +232,227 @@
           pkgs.runCommandLocal "eval-system-profile-adapters" { } ''
             echo ${lib.escapeShellArg result} > $out
           '';
+
+        /**
+          Desktop setting contracts and the Waybar realization must derive
+          from the same profile option.
+        */
+        desktop-settings-contract =
+          let
+            evaluated = inputs.self.nixosConfigurations.workstation.extendModules {
+              modules = [
+                {
+                  home-manager.users.nori.nori.desktop.profile.components."desktop.waybar".position = "bottom";
+                }
+              ];
+            };
+            component = settings: {
+              id = "test.component";
+              title = "Test component";
+              description = "Evaluation fixture.";
+              inherit settings;
+              readOnlyFields = { };
+            };
+            setting =
+              overrides:
+              {
+                id = "test.setting";
+                title = "Test setting";
+                description = "Evaluation fixture.";
+                group = "Test";
+                control = "enum";
+                scope = "user";
+                applyClass = "generation";
+                ownership = "user";
+                runtimeAdapter = null;
+                action = null;
+              }
+              // overrides;
+            componentsEvaluate =
+              contributions:
+              (builtins.tryEval (
+                builtins.deepSeq
+                  (inputs.self.nixosConfigurations.workstation.extendModules {
+                    modules = [
+                      {
+                        home-manager.users.nori.nori.desktop.componentContributions = lib.mkForce contributions;
+                      }
+                    ];
+                  }).config.home-manager.users.nori.nori.desktop.components
+                  true
+              )).success;
+            duplicateComponentFails =
+              !componentsEvaluate [
+                (component [ ])
+                (component [ ])
+              ];
+            duplicateSettingFails =
+              !componentsEvaluate [
+                (component [
+                  (setting { })
+                  (setting { })
+                ])
+              ];
+            unsupportedPresentationControlFails =
+              !componentsEvaluate [
+                (component [
+                  (setting { control = "unsupported"; })
+                ])
+              ];
+            home = evaluated.config.home-manager.users.nori;
+            generated = home.nori.desktop.generated;
+            polkitPolicy =
+              evaluated.config.environment.etc."polkit-1/actions/org.nori.desktop-settings.policy".source;
+            polkitRule = evaluated.config.security.polkit.extraConfig;
+            hasActiveNoriRule =
+              lib.hasInfix "action.id == \"org.nori.desktop-settings.activate\"" polkitRule
+              && lib.hasInfix "subject.user == \"nori\"" polkitRule
+              && lib.hasInfix "subject.active" polkitRule
+              && lib.hasInfix "polkit.Result.AUTH_ADMIN" polkitRule;
+            hasIngressRestartCoupling =
+              evaluated.config.systemd.services.nori-desktop-config-ingress.partOf
+              == [ "nori-desktop-config.service" ];
+            settingsService = evaluated.config.systemd.services.nori-desktop-config;
+            tmpfilesRules = evaluated.config.systemd.tmpfiles.rules;
+            hasSafeRuntimeDirectory =
+              settingsService.serviceConfig.RuntimeDirectory == "nori-desktop-settings"
+              && settingsService.serviceConfig.RuntimeDirectoryMode == "0710"
+              && lib.elem "nori-desktop-settings" evaluated.config.users.users.nori.extraGroups;
+            hasPrivateAuthorityLock =
+              lib.elem "f /run/lock/nori-desktop-settings-activation.lock 0640 root nori-desktop-settings-authority -" tmpfilesRules
+              && lib.elem "nori-desktop-settings-authority" evaluated.config.users.users.nori-desktop-settings.extraGroups
+              && !lib.elem "nori-desktop-settings-authority" evaluated.config.users.users.nori.extraGroups;
+            hasExactSocketPaths =
+              lib.elem "NORI_DESKTOP_SETTINGS_SOCKET=/run/nori-desktop-settings/backend.sock" settingsService.serviceConfig.Environment
+              && lib.hasInfix "/run/nori-desktop-settings/public.sock /run/nori-desktop-settings/backend.sock" evaluated.config.systemd.services.nori-desktop-config-ingress.serviceConfig.ExecStart;
+            settingsPackage = home.nori.desktop.settingsService.package;
+            inherit (generated) inputSchema;
+            inherit (generated) outputSchema;
+            inherit (generated) presentation;
+            inherit (generated) resolvedSettings;
+          in
+          assert lib.assertMsg duplicateComponentFails "duplicate desktop component IDs must fail evaluation";
+          assert lib.assertMsg duplicateSettingFails "duplicate desktop setting IDs must fail evaluation";
+          assert lib.assertMsg unsupportedPresentationControlFails
+            "unsupported presentation controls must fail evaluation";
+          assert lib.assertMsg (
+            home.programs.waybar.settings.mainBar.position == "bottom"
+          ) "Waybar must consume the generated desktop profile option";
+          assert lib.assertMsg hasActiveNoriRule
+            "desktop settings polkit rule must authorize only active nori sessions";
+          assert lib.assertMsg hasIngressRestartCoupling
+            "desktop settings ingress must restart with its authority";
+          assert lib.assertMsg hasSafeRuntimeDirectory
+            "desktop settings runtime directory must be authority-owned with group traverse access only";
+          assert lib.assertMsg hasPrivateAuthorityLock
+            "desktop settings authority lock must exclude the desktop user";
+          assert lib.assertMsg hasExactSocketPaths
+            "desktop settings authority must use the fixed public and backend socket paths";
+          pkgs.runCommandLocal "desktop-settings-contract"
+            {
+              nativeBuildInputs = [
+                pkgs.coreutils
+                pkgs.jq
+              ];
+            }
+            ''
+              jq -e '
+                . as $schema
+                | [."$defs"[] | select(.properties? and (.properties | has("desktop.waybar")))] as $roots
+                | ($roots | length) == 1
+                | $roots[0].properties["desktop.waybar"]["$ref"] as $componentRef
+                | ($componentRef | ltrimstr("#/$defs/")) as $componentName
+                | $schema["$defs"][$componentName] as $component
+                | ($component.properties.position["$ref"] | ltrimstr("#/$defs/")) as $positionName
+                | $schema["$defs"][$positionName].enum == ["top", "bottom"]
+                | ($component.properties | keys == ["position"])
+              ' ${generated.inputSchema} >/dev/null
+              jq -e '
+                . as $schema
+                | [."$defs"[] | select(.properties? and (.properties | has("desktop.waybar")))] as $roots
+                | ($roots | length) == 1
+                | $roots[0].properties["desktop.waybar"]["$ref"] as $componentRef
+                | ($componentRef | ltrimstr("#/$defs/")) as $componentName
+                | $schema["$defs"][$componentName].properties
+                | to_entries
+                | length > 1 and all(.value.readOnly == true)
+              ' ${generated.outputSchema} >/dev/null
+              jq -e '
+                ."desktop.waybar".settings.position.action.title
+                == "Settings: Bar Position"
+              ' ${generated.presentation} >/dev/null
+              jq -e '
+                ."desktop.waybar".position == "bottom"
+              ' ${generated.resolvedSettings} >/dev/null
+              test -e ${polkitPolicy}
+              grep -Fx '  <action id="org.nori.desktop-settings.activate">' ${polkitPolicy} >/dev/null
+              grep -Fx '      <allow_any>no</allow_any>' ${polkitPolicy} >/dev/null
+              grep -Fx '      <allow_inactive>no</allow_inactive>' ${polkitPolicy} >/dev/null
+              grep -Fx '      <allow_active>no</allow_active>' ${polkitPolicy} >/dev/null
+              mkdir -p "$TMPDIR"/{config,state,data,home}
+              chmod 700 "$TMPDIR"/{config,state,data,home}
+              cp ${inputSchema} "$TMPDIR/data/settings-input.schema.json"
+              cp ${outputSchema} "$TMPDIR/data/settings-output.schema.json"
+              cp ${presentation} "$TMPDIR/data/components.json"
+              cp ${resolvedSettings} "$TMPDIR/data/resolved-settings.json"
+              printf '%s\n' '{"source":"/nix/store/approved-source","host":"workstation"}' \
+                > "$TMPDIR/approved-source.json"
+              : > "$TMPDIR/authority.lock"
+              env -u XDG_RUNTIME_DIR \
+                HOME="$TMPDIR/home" \
+                NORI_DESKTOP_SETTINGS_CONFIG_HOME="$TMPDIR/config" \
+                NORI_DESKTOP_SETTINGS_STATE_HOME="$TMPDIR/state" \
+                NORI_DESKTOP_SETTINGS_DATA_DIR="$TMPDIR/data" \
+                NORI_DESKTOP_SETTINGS_APPROVED_SOURCE="$TMPDIR/approved-source.json" \
+                NORI_DESKTOP_SETTINGS_ACTIVE_METADATA="$TMPDIR/generation.json" \
+                NORI_DESKTOP_SETTINGS_BUILDER=/does-not-run \
+                NORI_DESKTOP_SETTINGS_EVALUATOR=/does-not-run \
+                NORI_DESKTOP_SETTINGS_AUTHORITY_LOCK="$TMPDIR/authority.lock" \
+                NORI_DESKTOP_SETTINGS_FLOCK=${pkgs.util-linux}/bin/flock \
+                NORI_DESKTOP_SETTINGS_SOCKET="$TMPDIR/backend.sock" \
+                ${settingsPackage}/bin/nori-desktop-settings-daemon \
+                > "$TMPDIR/daemon.out" 2> "$TMPDIR/daemon.err" &
+              daemon_pid=$!
+              trap 'kill "$daemon_pid" 2>/dev/null || true; wait "$daemon_pid" 2>/dev/null || true' EXIT
+              for _ in $(seq 1 100); do
+                if test -S "$TMPDIR/backend.sock"; then
+                  touch "$out"
+                  exit 0
+                fi
+                sleep 0.05
+              done
+              cat "$TMPDIR/daemon.err" >&2
+              exit 1
+            '';
+
+        /**
+          Product preflight must add canonical option context when Clan rejects
+          an unsupported writable setting type; the fixture derives its names
+          so this literal can only come from the component model.
+        */
+        desktop-settings-unsupported-writable-type-diagnostic =
+          pkgs.runCommandLocal "desktop-settings-unsupported-writable-type-diagnostic"
+            {
+              nativeBuildInputs = [ pkgs.nix ];
+            }
+            ''
+              stderr=$TMPDIR/stderr
+              if NIX_STATE_DIR=$TMPDIR/nix-state NIX_DB_DIR=$TMPDIR/nix-db \
+                nix-instantiate --eval --strict --show-trace \
+                ${../../../tests/eval/desktop-settings-unsupported-writable-type.nix} \
+                --argstr nixpkgs ${pkgs.path} \
+                --argstr clanCore ${inputs.clan-core-src} \
+                --arg componentModel ${../../../users/nori/programs/desktop/component-model.nix} \
+                > /dev/null 2>"$stderr"; then
+                echo "unsupported writable type unexpectedly evaluated" >&2
+                exit 1
+              fi
+              grep -F 'nori.desktop.profile.components."test.unsupported".value' "$stderr" >/dev/null || {
+                cat "$stderr" >&2
+                exit 1
+              }
+              touch "$out"
+            '';
 
         /**
           The desktop resource detector must measure cgroup working set rather

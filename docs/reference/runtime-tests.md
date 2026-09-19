@@ -38,14 +38,15 @@ One lever maxed = nice-to-have. Two = ship it. Three+ = required.
 |---|---|---|
 | `just test-hypr` | Hyprland config, key/modifier registration, dispatcher smoke checks, and rejected `hypr-layout` inputs with unchanged workspace state | `users/nori/programs/desktop/hypr-rice/` |
 | `HYPR_RICE_LIVE_TEST=1 just test-hypr-layout-live` | Explicit controlled-window journey: stable-ID visual ordering, real spacer target, drift/reinsertion/replacement, special-workspace targeting, and absolute focused ratios | `users/nori/programs/desktop/hypr-rice/hypr-layout-live-test.sh` |
-| `HYPR_RICE_PALETTE_LIVE_TEST=1 just test-hypr-palette-live` | Private headless-Sway journey: normal app + generated command discovery, stable dispatcher execution, and launch-environment cleanup without touching the active compositor | `users/nori/programs/desktop/hypr-rice/hypr-palette-live-test.sh` |
+| `VICINAE_LAUNCHER_LIVE_TEST=1 just test-vicinae-launcher-live` | Private headless-Sway journey: desktop application and generated action indexing, extension loading, real launcher display, and command execution | `users/nori/programs/desktop/vicinae/vicinae-launcher-live-test.sh` |
 | `just test-backups` | `nori.backups.<n>` → restic units exist + per-target snapshots ≤25h | `infra/common/nixos/backup.nix` |
 | `just test-routes` | `nori.lanRoutes.<n>` → Caddy route + DNS + HTTPS reachable | `infra/common/nixos/routes.nix` |
 | `just test-observability` | VM scrape targets up + process-exporter publishing + pi heartbeat <90s + zero failing gatus probes | `infra/common/nixos/gatus-probes.nix` + `services/victoriametrics/` |
 | `just test-replicas` | `nori.replicas.<n>` → per-replica verifier oneshot succeeded within freshness budget on the target host (smoke-passes on empty registry) | `infra/common/nixos/storage/replication.nix` |
 | `just test-authelia` | Authelia live ↔ `nori.lanRoutes.<n>.oidc` declarations: systemd active, /api/health OK, OIDC discovery issuer correct, /run/secrets/oidc-<n>-* present + non-empty for every declared OIDC route | `services/authelia/nixos.nix` + `infra/common/nixos/routes.nix` |
 | `just test-music-ingest` | Disposable real-filesystem journey for claim, recovery, publication, conflict, and rejection behavior | `services/music-ingest/tests/runtime.sh` |
-| `just test` | All non-destructive recipes above; the opt-in Ghostty geometry and headless palette journeys are intentionally excluded | composite |
+| `just test` | All non-destructive recipes above; the opt-in Ghostty geometry and headless launcher journeys are intentionally excluded | composite |
+| `just test-self-hosted-firecracker` | Disposable transient KVM journey for a net-off Firecracker Environment. It checks exact create replay, guest isolation, drain rejection, stopped recovery, lease release, and cleanup. | `infra/workstation/firecracker-environment.nix` |
 
 ## The architectural correlation worth knowing
 
@@ -126,11 +127,11 @@ restores prior regular/special focus, reloads away dynamic test rules, and
 verifies no disposable selectors remain. It prints the unique selectors and
 each exact PID/address as they are created so interrupted cleanup is recoverable.
 
-The palette journey is also opt-in but does not use the operator's compositor:
-`HYPR_RICE_PALETTE_LIVE_TEST=1 just test-hypr-palette-live` launches Fuzzel under
-a private headless Sway socket and disposable XDG roots. It selects one ordinary
-fixture application and one generated command, then proves that the private
-desktop overlay and Fuzzel metadata do not leak into launched applications.
+The launcher journey is also opt-in and does not use the operator's compositor.
+`VICINAE_LAUNCHER_LIVE_TEST=1 just test-vicinae-launcher-live` starts Vicinae
+on a private headless Sway socket. It uses disposable HOME and XDG roots. It
+checks desktop application discovery, extension loading, and real window state.
+It executes one generated action and one saved command with a literal argument.
 
 ## Real catches, for posterity
 

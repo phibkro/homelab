@@ -3,6 +3,24 @@
   perSystem =
     { pkgs, ... }:
     let
+      topologyIntent = inputs.self.lib.noriInventory.topology;
+      toscaProjection = import ../../topology/tosca.nix topologyIntent;
+      topologyIntentJson = pkgs.writeText "topology.intent.json" (builtins.toJSON topologyIntent);
+      toscaBody = (pkgs.formats.yaml { }).generate "topology.intent.tosca.body.yaml" (
+        builtins.removeAttrs toscaProjection [ "tosca_definitions_version" ]
+      );
+      topologyIntentTosca = pkgs.runCommand "topology.intent.tosca.yaml" { } ''
+        {
+          IFS= read -r yamlVersion
+          IFS= read -r documentStart
+          if [ "$yamlVersion" != '%YAML 1.1' ] || [ "$documentStart" != '---' ]; then
+            echo "Unexpected pkgs.formats.yaml header" >&2
+            exit 1
+          fi
+          printf '%s\n' 'tosca_definitions_version: tosca_2_0'
+          ${pkgs.coreutils}/bin/cat
+        } < ${toscaBody} > "$out"
+      '';
       publicInventory = pkgs.writeText "homelab-inventory.json" (
         builtins.toJSON inputs.self.lib.noriInventory
       );
@@ -30,6 +48,8 @@
     in
     {
       packages.inventory-json = publicInventory;
+      packages.topology-intent-json = topologyIntentJson;
+      packages.topology-intent-tosca = topologyIntentTosca;
       packages.status-json = statusCatalog;
       packages.portal-json = portalCatalog;
       packages.deployment-plan = deploymentPlan;
@@ -38,6 +58,40 @@
         program = "${deploymentPlan}/bin/deployment-plan";
         meta.description = "Derive homelab build and activation plans from inventory selectors or Git changes";
       };
+      checks.topology-tosca-structure =
+        pkgs.runCommandLocal "topology-tosca-structure"
+          {
+            nativeBuildInputs = [
+              pkgs.coreutils
+              pkgs.jq
+              pkgs.yq-go
+            ];
+          }
+          ''
+            set -euo pipefail
+            test "$(head -n 1 ${topologyIntentTosca})" = 'tosca_definitions_version: tosca_2_0'
+            yq -o=json '.' ${topologyIntentTosca} |
+              jq -e '
+                def requirement($node; $name):
+                  [.service_template.node_templates[$node].requirements[] | .[$name]?]
+                  | map(select(. != null))
+                  | first;
+                requirement("workload.ollama"; "accelerator") as $accelerator
+                | requirement("workload.vaultwarden"; "identity") as $identity
+                | requirement("workload.vaultwarden"; "persistent-storage") as $storage
+                | .tosca_definitions_version == "tosca_2_0"
+                and (.service_template.node_templates[$accelerator.node].capabilities | has($accelerator.capability))
+                and (.service_template.node_templates[$identity.node].capabilities | has($identity.capability))
+                and (.service_template.node_templates[$storage.node].capabilities | has($storage.capability))
+                and (
+                  (.service_template.node_templates["host.adelie"].type) as $adelieType
+                  | .node_types[$adelieType].properties.lanIp.type == "nil"
+                )
+                and (.service_template.node_templates["host.adelie"].properties | has("lanIp"))
+                and (.service_template.node_templates["host.adelie"].properties.lanIp == null)
+              ' >/dev/null
+            touch "$out"
+          '';
       checks.deployment-plan =
         pkgs.runCommandLocal "deployment-plan-test"
           {

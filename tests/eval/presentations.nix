@@ -99,7 +99,10 @@ let
     */
     && portalServices.audio.authentication == "service-native-or-exception"
     && portalServices.audio.registrationRequired
-    && !(portalServices ? downloads)
+    && portalServices.downloads.audience == "operator"
+    && portalServices.downloads.authentication == "forward-auth"
+    && portalServices.downloads.registrationRequired
+    && portalServices.downloads.visibleTo == [ "operator" ]
     &&
       portalServices.filmder.visibleTo == [
         "public"

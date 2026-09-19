@@ -29,7 +29,6 @@ let
   ];
   profileNames = lib.attrNames profiles;
   workloadNames = lib.attrNames workloadCatalog;
-  diskNames = lib.attrNames disks;
 
   invalidDiskDeclarations = lib.filterAttrs (
     _name: disk:
@@ -254,7 +253,10 @@ let
 
   publicWorkloads = lib.mapAttrs (
     name: workload:
-    removeAttrs workload [ "runtimeModule" ]
+    removeAttrs workload [
+      "runtimeModule"
+      "topology"
+    ]
     // {
       active = workload.active or true;
       hosts = hostsForWorkload name;
@@ -267,6 +269,17 @@ let
     profileName: lib.filter (hostName: lib.elem profileName hosts.${hostName}.profiles) hostNames;
   profileHosts = lib.mapAttrs (name: _profile: hostsForProfile name) profiles;
   workloadHosts = lib.mapAttrs (name: _workload: hostsForWorkload name) workloadCatalog;
+
+  topology = (import ./topology.nix { inherit lib; }) {
+    inherit
+      hosts
+      workloadCatalog
+      datasets
+      disks
+      workloadHosts
+      resolvedEndpointsFor
+      ;
+  };
 
   deploymentTargets = lib.mapAttrs (name: host: {
     inherit (host) kind profiles;
@@ -382,6 +395,7 @@ let
     hosts = publicHosts;
     profiles = publicProfiles;
     workloads = publicWorkloads;
+    inherit topology;
     inherit datasets disks backup;
     deployment = publicDeployment;
     inherit site status portal;
@@ -432,7 +446,7 @@ assert lib.assertMsg (invalidArtifactWorkloads == { })
   "inventory: immutable artifact contract or governed legacy exception is invalid for workload(s): ${lib.concatStringsSep ", " (lib.attrNames invalidArtifactWorkloads)}";
 assert lib.assertMsg (entryPlaneHosts == [ site.entryPlaneHost ])
   "inventory: site.entryPlaneHost must be the only host selecting the entry-plane profile (site=${site.entryPlaneHost}; profiles=${lib.concatStringsSep ", " entryPlaneHosts})";
-{
+builtins.deepSeq topology {
   inherit public forHost deployment;
 
   internal = {

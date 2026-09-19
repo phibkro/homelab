@@ -6,7 +6,6 @@ let
     "window"
     "system"
     "help"
-    "view"
     "utility"
     "testing"
   ];

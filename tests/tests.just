@@ -526,12 +526,11 @@
 @test-hypr-layout-live:
     hypr-layout-live-test
 
-# Runs Fuzzel against a private headless Sway socket. Hyprland 0.55.4's
-# Aquamarine nesting backend is protocol-incompatible with current headless
-# parents, so Hyprland bind/runtime checks remain separate. This journey never
-# connects to or mutates the operator's active desktop session.
-@test-hypr-palette-live:
-    hypr-palette-live-test
+# Runs the complete launcher against a private headless Sway socket and
+# disposable HOME/XDG roots. It indexes generated actions and the Vicinae
+# extension, opens the real launcher, and executes a saved command.
+@test-vicinae-launcher-live:
+    vicinae-launcher-live-test
 
 # Smoke-test the Hyprland config we just deployed. Three tiers, each
 # catching a different class of regression:
@@ -727,7 +726,7 @@
 # headers) for the four hypr-session scripts (capture/logd/cli/restore).
 # hyprctl and Hyprland's socket2 are PATH-shimmed / fixture-replayed, so
 # this never touches the operator's own Hyprland session — safe to run
-# unattended, unlike test-hypr-layout-live / test-hypr-palette-live.
+# unattended, unlike test-hypr-layout-live / test-vicinae-launcher-live.
 #
 # Unit test: hypr-session capture/logd/cli/restore bats suites.
 @test-hypr-session:
@@ -773,3 +772,4 @@
 # Print the source-backed fresh-agent onboarding exercise.
 @test-agent-onboarding:
     cat docs/installs/agent-onboarding-test.md
+

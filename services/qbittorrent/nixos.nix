@@ -7,6 +7,63 @@
 
 let
   enabled = (import ./manifest.nix).active;
+  qbtConfig = "/var/lib/qBittorrent/qBittorrent/config/qBittorrent.conf";
+  qbtConfigure = pkgs.writeText "qbt-configure.py" ''
+    import configparser
+    import os
+    from pathlib import Path
+    import sys
+    import tempfile
+
+    default_save_path = sys.argv[2]
+    pi_subnet = sys.argv[3]
+
+    conf = Path(sys.argv[1])
+    parser = configparser.ConfigParser(interpolation=None, strict=False)
+    parser.optionxform = str
+    parser.read(conf, encoding="utf-8")
+
+    sections = {
+        "Preferences": {
+            r"WebUI\LocalHostAuth": "false",
+            r"WebUI\HostHeaderValidation": "false",
+            r"WebUI\CSRFProtection": "false",
+            r"WebUI\BanDuration": "0",
+            r"WebUI\MaxAuthenticationFailCount": "99999",
+            r"WebUI\AuthSubnetWhitelist": pi_subnet,
+            r"WebUI\AuthSubnetWhitelistEnabled": "true",
+        },
+        "BitTorrent": {
+            r"Session\DefaultSavePath": default_save_path,
+            r"Session\TempPath": "/var/lib/qBittorrent/qBittorrent/incomplete",
+            r"Session\TempPathEnabled": "true",
+        },
+    }
+    for section, values in sections.items():
+        if section not in parser:
+            parser.add_section(section)
+        for key, value in values.items():
+            parser[section][key] = value
+
+    descriptor, temporary = tempfile.mkstemp(prefix=".qBittorrent.conf.", dir=conf.parent, text=True)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as output:
+            parser.write(output, space_around_delimiters=False)
+            output.flush()
+            os.fsync(output.fileno())
+        os.chmod(temporary, 0o600)
+        os.replace(temporary, conf)
+        directory = os.open(conf.parent, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+    finally:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+  '';
 in
 {
   /*
@@ -20,11 +77,10 @@ in
     an explicit firewall rule). Outgoing peer connections still work.
 
     First-run setup (one-shot, after rebuild):
-      1. Visit https://downloads.home.phibkro.org — Caddy forward-auth gates
-         browser access via Authelia; qBittorrent's own login is
-         bypassed for localhost (the Caddy hop) per the preStart below.
-      2. Save paths + auth-bypass + ban-prevention all declarative
-         (preStart). Operator only needs to set:
+      1. Visit https://downloads.home.phibkro.org — Caddy on Pi applies
+         Authelia before proxying to qBittorrent on the workstation.
+      2. Save paths and access policy are enforced before each start without
+         replacing retained UI state. Operator only needs to set:
            Connection → Listening port: 29170 (or whatever you prefer)
       3. Sonarr/Radarr/Lidarr point their qBittorrent download-client
          config at http://localhost:8083 — username/password fields can
@@ -48,15 +104,16 @@ in
   };
 
   /*
-    qBittorrent has no env-var config; state lives in qBittorrent.conf
-    (Qt INI). preStart idempotently rewrites the keys below via Python
-    configparser — it handles Qt's backslash-in-key (`WebUI\…`) cleanly,
-    sed needs ugly escaping.
+    qBittorrent has no environment-variable config. The preStart merge creates
+    qBittorrent.conf before the first process start, then rewrites only the
+    owned keys on later starts. Passwords, listening ports, categories, and
+    other qBittorrent-managed state remain intact.
 
-    [Preferences] disables qBittorrent's own auth + ban for localhost so
-    Caddy forward-auth is the only browser gate; reverse-proxy compat
-    keys (HostHeaderValidation/CSRFProtection) just stop qBittorrent
-    refusing Caddy's rewritten Host/CSRF posture.
+    [Preferences] bypasses qBittorrent auth for localhost clients and the Pi
+    entry plane only. Caddy applies forward-auth before proxying from Pi.
+    Reverse-proxy compatibility keys stop qBittorrent from refusing Caddy's
+    rewritten Host and Origin headers. Other tailnet peers still receive
+    qBittorrent's native login.
 
     [BitTorrent] splits COMPLETE vs INCOMPLETE by IO pattern:
 
@@ -95,58 +152,26 @@ in
     for the library file), proving link() had silently fallen back to
     copy — every torrent in @downloads stored twice (~2.9T doubled).
   */
+
   systemd.services.qbittorrent = lib.mkIf enabled {
     serviceConfig.UMask = "0002";
-
     preStart = lib.mkAfter ''
-      # qBittorrent doesn't auto-create Session\TempPath; if it's # multi-line: ok
-      # missing, every incomplete file_open hits "Permission denied"
-      # because the parent doesn't exist either (caught 2026-05-07).
-      mkdir -p /var/lib/qBittorrent/qBittorrent/incomplete
-
-      ${pkgs.python3}/bin/python3 ${pkgs.writeText "qbt-configure.py" ''
-        import configparser, glob, sys
-        candidates = glob.glob('/var/lib/qBittorrent/**/qBittorrent.conf', recursive=True)
-        if not candidates:
-            print('qbt-configure: qBittorrent.conf not yet present (first start) — skipping', file=sys.stderr)
-            sys.exit(0)
-        conf = candidates[0]
-        cp = configparser.ConfigParser()
-        cp.optionxform = str  # preserve case + backslash in keys
-        cp.read(conf)
-
-        sections = {
-            'Preferences': {
-                r'WebUI\LocalHostAuth': 'false',
-                r'WebUI\HostHeaderValidation': 'false',
-                r'WebUI\CSRFProtection': 'false',
-                r'WebUI\BanDuration': '0',
-                r'WebUI\MaxAuthenticationFailCount': '99999',
-            },
-            'BitTorrent': {
-                # COMPLETE on @downloads (same subvol as *arr libraries
-                # for hardlink-on-import).
-                r'Session\DefaultSavePath': '${config.nori.fs.downloads.path}/.downloads/complete',
-                # INCOMPLETE on NVMe (qBittorrent StateDirectory) for IO
-                # isolation + HDD wear-isolation. Cross-device copy on
-                # completion is the trade.
-                r'Session\TempPath':        '/var/lib/qBittorrent/qBittorrent/incomplete',
-                r'Session\TempPathEnabled': 'true',
-            },
-        }
-        for section, kv in sections.items():
-            if section not in cp:
-                cp.add_section(section)
-            for k, v in kv.items():
-                cp[section][k] = v
-
-        with open(conf, 'w') as f:
-            # Qt INI uses `key=value` with no spaces; configparser default is
-            # `key = value`. space_around_delimiters=False matches Qt's format.
-            cp.write(f, space_around_delimiters=False)
-      ''}
+      install -d -m 0755 \
+        /var/lib/qBittorrent/qBittorrent/config \
+        /var/lib/qBittorrent/qBittorrent/incomplete
+      if [ ! -e ${lib.escapeShellArg qbtConfig} ]; then
+        install -m 0600 /dev/null ${lib.escapeShellArg qbtConfig}
+      fi
+      ${pkgs.python3}/bin/python3 ${qbtConfigure} \
+        ${lib.escapeShellArg qbtConfig} \
+        ${lib.escapeShellArg "${config.nori.fs.downloads.path}/.downloads/complete"} \
+        ${lib.escapeShellArg "${config.nori.inventory.hosts.pi.tailnetIp}/32"}
     '';
   };
+
+  systemd.tmpfiles.rules = lib.mkIf enabled [
+    "d /var/lib/qBittorrent/qBittorrent/incomplete 0755 qbittorrent qbittorrent -"
+  ];
 
   users.users = lib.mkIf enabled {
     qbittorrent.extraGroups = [ "media" ];
