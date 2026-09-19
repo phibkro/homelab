@@ -8,6 +8,18 @@ summary: The forward plan — single home for outstanding work, deferred items, 
 
 The forward plan: actionable outstanding work, deferred-but-tracked items, and the idea backlog. **This is the single home for "what's next."** Items leave this file when done (folded into git log) or when explicitly killed.
 
+## Recovery focus
+
+The [2026-09-17 oversight recovery](archive/reports/2026-09-17-oversight-recovery.md)
+records the current worktree, branch, evidence, and deployment gaps. Use this
+order before new feature work:
+
+1. Account for and isolate the mixed changes on `main` without data loss.
+2. Review the desktop-settings integration candidate and its acceptance gates.
+3. Reconcile Pi, OneTouch, and staged Adelie source with live evidence.
+4. Review topology and observer branch scope before either stream resumes.
+5. Review older branches and stale registrations before retention or retirement.
+
 ## Outstanding (actionable)
 
 - **Public status and maintenance communication.** Build the failure-independent
@@ -16,10 +28,10 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
   HTML/JSON, D1 component state, and scheduled external probes; authenticated
   maintenance/incident mutations and the rebuild wrapper follow after public
   acceptance. Design and gates:
-  `docs/specs/2026-07-22-public-status-design.md`. **Implementation status
-  (2026-07-22):** publication contract and read-only Worker vertical slice are
-  in progress on `feat/public-status`; no Cloudflare resources have been
-  created or changed.
+  `docs/specs/2026-07-22-public-status-design.md`. The read-only Worker source
+  from `feat/public-status` is in `main` history. Publication and production
+  acceptance remain unverified; this recovery did not inspect or change
+  Cloudflare resources.
 
 - **Finish ADR-0006 router cutover and external acceptance.** Route-derived
   DNS-only A records, Pi DDNS reconciliation, and Caddy's exact-host/source
@@ -38,8 +50,11 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
   Podman realization. Complete the physical reboot, off-LAN, and restore gates
   in `docs/specs/ansible-pi-plan-b.md`. Ansible is now the sole live
   deployment owner; the verified NixOS image remains only as an offline
-  rollback artifact. Connect and verify OneTouch, then enable backups using
-  `docs/runbooks/onetouch-backup-cutover.md`; Aurora and Pavilion are retired.
+  rollback artifact. OneTouch is enabled in current source, but live mount,
+  snapshot, restore, and Pi receiver acceptance remain unverified. Reconcile
+  them with `docs/runbooks/onetouch-backup-cutover.md`; Aurora and Pavilion are
+  retired. Adelie is a staged inventory host, not part of this two-host
+  operational core.
 
 - **Sunshine remote-desktop pairing.** Deployed (`services/sunshine/nixos.nix`); NVENC builds confirmed (`h264/hevc/av1_nvenc`). Outstanding: one-time Moonlight pairing.
 
