@@ -263,13 +263,15 @@
             componentsEvaluate =
               contributions:
               (builtins.tryEval (
-                builtins.deepSeq (inputs.self.nixosConfigurations.workstation.extendModules {
-                  modules = [
-                    {
-                      home-manager.users.nori.nori.desktop.componentContributions = lib.mkForce contributions;
-                    }
-                  ];
-                }).config.home-manager.users.nori.nori.desktop.components true
+                builtins.deepSeq
+                  (inputs.self.nixosConfigurations.workstation.extendModules {
+                    modules = [
+                      {
+                        home-manager.users.nori.nori.desktop.componentContributions = lib.mkForce contributions;
+                      }
+                    ];
+                  }).config.home-manager.users.nori.nori.desktop.components
+                  true
               )).success;
             duplicateComponentFails =
               !componentsEvaluate [
