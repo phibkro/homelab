@@ -12,31 +12,26 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 The [2026-09-17 oversight recovery](archive/reports/2026-09-17-oversight-recovery.md)
 records the evidence, completed integrations, verification, and remaining
-worktrees. The mixed recovery through generated settings, Firecracker,
-topology/TOSCA, and qBittorrent is committed. The current `main` checkout now
-contains the verified but uncommitted Pi observability follow-up.
+worktrees. The mixed recovery, Pi observability follow-up, and public status
+publication are on `main`.
 
 Continue in this order:
 
-1. Review and commit the Pi observability follow-up.
-2. Choose the intended observer behavior before history repair or integration.
-3. Compare older settings and topology branches with current `main`.
-4. Review each remaining standalone fix before integration or retirement.
-5. Plan Adelie's operator-authorized physical admission without moving IronWolf
+1. Choose the intended observer behavior before history repair or integration.
+2. Compare older settings and topology branches with current `main`.
+3. Review each remaining standalone fix before integration or retirement.
+4. Plan Adelie's operator-authorized physical admission without moving IronWolf
    or OneTouch.
 
 ## Outstanding (actionable)
 
-- **Public status and maintenance communication.** Build the failure-independent
-  `status.home.phibkro.org` Cloudflare Worker from the explicit public-safe
-  `noriInventory.status` projection. The first vertical slice owns read-only
-  HTML/JSON, D1 component state, and scheduled external probes; authenticated
-  maintenance/incident mutations and the rebuild wrapper follow after public
-  acceptance. Design and gates:
-  `docs/specs/2026-07-22-public-status-design.md`. The read-only Worker source
-  from `feat/public-status` is in `main` history. Publication and production
-  acceptance remain unverified; this recovery did not inspect or change
-  Cloudflare resources.
+- **Finish public status production acceptance.** The failure-independent
+  `status.home.phibkro.org` Cloudflare Worker is deployed from the explicit
+  public-safe `noriInventory.status` projection. Public HTML and JSON return
+  HTTP 200. The production API still reports `unknown` component states because
+  no scheduled probe result is present. Verify the Cloudflare cron execution,
+  then exercise the authenticated maintenance and incident mutations. Design
+  and gates: `docs/specs/2026-07-22-public-status-design.md`.
 
 - **Finish ADR-0006 router cutover and external acceptance.** Route-derived
   DNS-only A records, Pi DDNS reconciliation, and Caddy's exact-host/source

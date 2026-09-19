@@ -380,6 +380,152 @@
     - beszel_bootstrap_isolated | bool
     - beszel_reconciliation_ready | default(false) | bool
 
+- name: Read the Beszel user authentication collection
+  ansible.builtin.uri:
+    url: "{{ beszel_api_url }}/api/collections/users"
+    headers:
+      Authorization: "{{ beszel_api_auth.json.token }}"
+    status_code: 200
+    return_content: true
+  check_mode: false
+  register: beszel_users_collection
+  no_log: true
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+    - beszel_reconciliation_ready | default(false) | bool
+
+- name: Read the canonical Authelia OIDC endpoints
+  ansible.builtin.uri:
+    url: "{{ beszel_oidc_discovery_url }}/.well-known/openid-configuration"
+    headers:
+      Host: "{{ beszel_oidc_issuer_url | urlsplit('hostname') }}"
+      X-Forwarded-Proto: https
+    status_code: 200
+    return_content: true
+  check_mode: false
+  register: beszel_oidc_discovery
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_users_collection.json.oauth2.enabled | default(false) | bool
+
+- name: Validate the Beszel OIDC provider contract
+  ansible.builtin.assert:
+    that:
+      - beszel_oidc_discovery.json.issuer == beszel_oidc_issuer_url
+      - beszel_users_collection.json.oauth2.providers | length == 1
+      - beszel_users_collection.json.oauth2.providers[0].name == beszel_oidc_provider_name
+      - beszel_users_collection.json.oauth2.providers[0].clientId == beszel_oidc_client_id
+    fail_msg: >-
+      When OAuth is enabled, Beszel must have exactly one OIDC provider for the
+      inventory client before deployment can reconcile its canonical endpoints.
+  no_log: true
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_users_collection.json.oauth2.enabled | default(false) | bool
+
+- name: Select the canonical Beszel OIDC provider endpoints
+  ansible.builtin.set_fact:
+    beszel_oidc_provider_current: "{{ beszel_users_collection.json.oauth2.providers[0] }}"
+    beszel_oidc_provider_endpoints:
+      authURL: "{{ beszel_oidc_discovery.json.authorization_endpoint }}"
+      tokenURL: "{{ beszel_oidc_discovery.json.token_endpoint }}"
+      userInfoURL: "{{ beszel_oidc_discovery.json.userinfo_endpoint }}"
+  no_log: true
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_users_collection.json.oauth2.enabled | default(false) | bool
+
+- name: Detect stale Beszel OIDC provider endpoints
+  ansible.builtin.set_fact:
+    beszel_oidc_reconciliation_required: >-
+      {{
+        beszel_oidc_provider_current.authURL
+          != beszel_oidc_provider_endpoints.authURL
+        or beszel_oidc_provider_current.tokenURL
+          != beszel_oidc_provider_endpoints.tokenURL
+        or beszel_oidc_provider_current.userInfoURL
+          != beszel_oidc_provider_endpoints.userInfoURL
+      }}
+  no_log: true
+  when:
+    - beszel_enabled | bool
+    - podman_available | bool
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_users_collection.json.oauth2.enabled | default(false) | bool
+
+- name: Preview canonical Beszel OIDC provider endpoints
+  ansible.builtin.debug:
+    msg: Beszel OIDC provider endpoints will use the canonical Authelia issuer.
+  changed_when: true
+  when:
+    - ansible_check_mode
+    - beszel_oidc_reconciliation_required | default(false) | bool
+
+- name: Reconcile canonical Beszel OIDC provider endpoints
+  ansible.builtin.uri:
+    url: "{{ beszel_api_url }}/api/collections/users"
+    method: PATCH
+    headers:
+      Authorization: "{{ beszel_api_auth.json.token }}"
+    body_format: json
+    body:
+      oauth2:
+        providers:
+          - >-
+            {{
+              beszel_oidc_provider_current
+              | combine(beszel_oidc_provider_endpoints)
+            }}
+    status_code: 200
+  changed_when: true
+  no_log: true
+  when:
+    - not ansible_check_mode
+    - beszel_oidc_reconciliation_required | default(false) | bool
+
+- name: Read the reconciled Beszel authentication methods
+  ansible.builtin.uri:
+    url: "{{ beszel_api_url }}/api/collections/users/auth-methods"
+    status_code: 200
+    return_content: true
+  check_mode: false
+  register: beszel_auth_methods
+  no_log: true
+  when:
+    - not ansible_check_mode
+    - beszel_enabled | bool
+    - podman_available | bool
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_users_collection.json.oauth2.enabled | default(false) | bool
+
+- name: Verify the canonical Beszel authorization endpoint
+  ansible.builtin.assert:
+    that:
+      - beszel_auth_methods.json.oauth2.enabled | bool
+      - beszel_auth_methods.json.oauth2.providers | length == 1
+      - >-
+        beszel_auth_methods.json.oauth2.providers[0].authURL
+        is match(
+          "^"
+          ~ (beszel_oidc_provider_endpoints.authURL | regex_escape)
+          ~ "\\?"
+        )
+    fail_msg: Beszel did not publish the canonical Authelia authorization endpoint.
+  no_log: true
+  when:
+    - not ansible_check_mode
+    - beszel_enabled | bool
+    - podman_available | bool
+    - beszel_reconciliation_ready | default(false) | bool
+    - beszel_users_collection.json.oauth2.enabled | default(false) | bool
+
 - name: Read Beszel system owners
   ansible.builtin.uri:
     url: >-

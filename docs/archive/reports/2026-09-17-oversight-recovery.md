@@ -38,7 +38,7 @@ The operator then authorized live Pi recovery and observability work:
 - Pi service checks passed for Authelia, ntfy, Beszel, VictoriaMetrics, VictoriaLogs, Gatus, and Caddy-routed observability endpoints.
 - The intact Beszel archive replaced the fresh empty database. The archive retained four systems, 12 alerts, 224 alert records, and 13,193 metric records.
 - The Pi inventory generator now derives Beszel systems from hosts with the `beszel-agent` workload.
-- The Beszel hub creates missing inventory systems and corrects changed endpoints during deployment. It does not delete historical records.
+- The Beszel hub creates missing inventory systems, corrects changed endpoints, and reconciles its OIDC provider from Authelia discovery data during deployment. It does not delete historical records.
 - SecretSpec supplies a deployment-only Beszel superuser. The repository and managed hub container do not retain its password.
 - A new hub initializes its owner on a loopback-only listener. It publishes the LAN listener only after successful authentication.
 - The live catalog contains Adelie, Aurora, Pavilion, Pi, and workstation. Pi and workstation report live metrics. Adelie is powered on, but its Tailscale and Beszel paths were unreachable during inspection. The API reports Aurora and Pavilion as offline historical records.
@@ -47,9 +47,11 @@ The operator then authorized live Pi recovery and observability work:
 - The post-deployment `just pi::plan` completed with `changed=0`, `unreachable=0`, and `failed=0`.
 - The authenticated Beszel UI rendered current Pi metrics and both service counts.
 - The final UI showed one active workstation disk alert. `df` confirmed 747 GiB used from 931 GiB, or 82%.
+- Beszel now redirects OAuth login to `auth.home.phibkro.org`. The deployment preserves the provider secret while replacing the stale `auth.nori.lan` authorization, token, and user-info endpoints.
+- The public status Worker and custom domain are deployed. `status.home.phibkro.org` and `/api/status` return HTTP 200 after DNS propagation. Scheduled component results remain absent, so the API reports `unknown`.
 
-The observability source changes are in the local `main` history. They were not pushed.
-No fetch, merge, publication, workstation activation, or Adelie activation ran.
+The recovery source changes are in the local `main` history. They were not pushed.
+No fetch, merge, push, workstation activation, or Adelie activation ran. The operator authorized the Pi deployments and Cloudflare status publication.
 
 Cleanup removed temporary playbooks, inventory output, the bootstrap smoke container, and the upstream research clone.
 The restored archive and the pre-restore Pi rollback directory remain preserved.
@@ -136,7 +138,7 @@ The generation path does not identify a homelab Git revision. This recovery did 
 
 ### Existing roadmap outcomes
 
-The `feat/public-status` tip is an ancestor of `main`. Source integration does not prove Cloudflare publication or production acceptance. The roadmap now states that distinction.
+The public status Worker and custom domain are deployed from the source integrated through `feat/public-status`. Public HTTP acceptance passed. Scheduled probe execution and authenticated mutation acceptance remain open.
 
 The existing deployment planner scopes configuration effects. It does not track unfinished-work ownership and cannot establish that a build or deployment occurred. See [`docs/reference/deployment.md`](../../reference/deployment.md).
 
