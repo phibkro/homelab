@@ -20,12 +20,13 @@ export type CliRuntime = {
 
 function runtimeFromEnvironment(): CliRuntime {
   const configured = process.env.NORI_DESKTOP_SETTINGS_SOCKET;
+  const halfClose = process.env.NORI_DESKTOP_SETTINGS_HALF_CLOSE === "1";
   if (configured !== undefined && configured.length > 0) {
-    return { socket: configured, halfClose: process.env.NORI_DESKTOP_SETTINGS_HALF_CLOSE !== "0" };
+    return { socket: configured, halfClose };
   }
   return {
     socket: "/run/nori-desktop-settings/public.sock",
-    halfClose: process.env.NORI_DESKTOP_SETTINGS_HALF_CLOSE !== "0",
+    halfClose,
   };
 }
 

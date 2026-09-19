@@ -4,6 +4,18 @@ import { useCallback, useEffect, useState } from "react";
 
 type JsonObject = Record<string, unknown>;
 
+type ObservationState = {
+  freshness: "fresh" | "stale" | "never_observed";
+  observedAt: string | null;
+  observation: {
+    waybar: {
+      unit: "active" | "inactive" | "failed" | "unknown";
+      edge: "top" | "bottom" | "unavailable";
+      reason?: string;
+    };
+  } | null;
+};
+
 type SettingsState = {
   profile: {
     revision: number;
@@ -14,7 +26,7 @@ type SettingsState = {
   resolvedIdentity: unknown;
   committedPreviewId: string | null;
   activeGeneration: unknown;
-  observed: JsonObject;
+  observed: ObservationState;
   jobs: unknown[];
 };
 
@@ -57,6 +69,10 @@ function isJsonObject(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isListed<T extends string>(value: unknown, allowed: readonly T[]): value is T {
+  return typeof value === "string" && allowed.includes(value as T);
+}
+
 function textFor(value: unknown): string {
   if (value === undefined) return "Unavailable";
   if (value === null) return "No value reported";
@@ -87,6 +103,42 @@ function presentationFor(
     applyClass: typeof setting.applyClass === "string" ? setting.applyClass : null,
   };
 }
+function parseObservation(value: unknown): ObservationState {
+  if (
+    !isJsonObject(value) ||
+    !isListed(value.freshness, ["fresh", "stale", "never_observed"] as const) ||
+    !(value.observedAt === null || typeof value.observedAt === "string")
+  ) {
+    throw new Error("nori-desktop-settings returned an invalid observation state");
+  }
+  const freshness = value.freshness;
+  if (value.observation === null) {
+    return { freshness, observedAt: value.observedAt, observation: null };
+  }
+  if (!isJsonObject(value.observation) || !isJsonObject(value.observation.waybar)) {
+    throw new Error("nori-desktop-settings returned an invalid desktop observation");
+  }
+  const waybar = value.observation.waybar;
+  if (
+    !isListed(waybar.unit, ["active", "inactive", "failed", "unknown"] as const) ||
+    !isListed(waybar.edge, ["top", "bottom", "unavailable"] as const) ||
+    !(waybar.reason === undefined || typeof waybar.reason === "string")
+  ) {
+    throw new Error("nori-desktop-settings returned an invalid Waybar observation");
+  }
+  return {
+    freshness,
+    observedAt: value.observedAt,
+    observation: {
+      waybar: {
+        unit: waybar.unit,
+        edge: waybar.edge,
+        ...(typeof waybar.reason === "string" ? { reason: waybar.reason } : {}),
+      },
+    },
+  };
+}
+
 
 function parseState(response: unknown): SettingsState {
   if (!isJsonObject(response) || response.ok !== true || !isJsonObject(response.state)) {
@@ -116,7 +168,7 @@ function parseState(response: unknown): SettingsState {
     resolvedIdentity: state.resolvedIdentity,
     committedPreviewId: state.committedPreviewId,
     activeGeneration: state.activeGeneration,
-    observed: state.observed,
+    observed: parseObservation(state.observed),
     jobs: state.jobs,
   };
 }
@@ -230,12 +282,19 @@ function hasRunningJob(jobs: readonly unknown[]): boolean {
 }
 
 function observedText(state: SettingsState): string {
-  const waybar = state.observed.waybar;
-  if (!isJsonObject(waybar)) return textFor(state.observed);
-  const unit = textFor(waybar.unit);
-  const edge = textFor(waybar.edge);
+  const observed = state.observed;
+  const timestamp =
+    observed.observedAt === null ? "No observation timestamp." : `Observed ${observed.observedAt}.`;
+  if (observed.observation === null) {
+    const status =
+      observed.freshness === "never_observed"
+        ? "Waybar has never been observed."
+        : `Waybar observation is unavailable (${observed.freshness}).`;
+    return `${status}\n${timestamp}`;
+  }
+  const waybar = observed.observation.waybar;
   const reason = typeof waybar.reason === "string" ? `: ${waybar.reason}` : "";
-  return `Waybar ${unit}, ${edge}${reason}`;
+  return `Waybar ${waybar.unit}, ${waybar.edge}${reason}\n${observed.freshness} observation. ${timestamp}`;
 }
 
 function errorText(error: unknown): string {
