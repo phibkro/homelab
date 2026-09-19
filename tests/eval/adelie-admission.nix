@@ -42,6 +42,7 @@ let
   runtimeBoundaryCorrect =
     builtins.hasAttr "beszel-agent" services
     && builtins.hasAttr "prometheus-node-exporter" services
+    && builtins.hasAttr "prometheus-process-exporter" services
     && builtins.hasAttr "vector" services
     && !(builtins.hasAttr "attic-cache-seed" services)
     && !(builtins.hasAttr "attic-cache-watch" services)

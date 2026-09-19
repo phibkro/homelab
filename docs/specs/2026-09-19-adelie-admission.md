@@ -41,7 +41,7 @@ The phase-one Adelie closure can provide:
 - Tailscale software, without enrollment in this milestone;
 - Vector log forwarding;
 - `beszel-agent`;
-- `node-exporter`.
+- the `node-exporter` workload, including its node and process exporters.
 
 It must not provide:
 

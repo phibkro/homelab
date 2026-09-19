@@ -17,7 +17,7 @@ connection to Adelie.
 | Full fast checks | `devenv shell -- just check` | All 40 fast checks passed after the generated topology was refreshed. |
 | Adelie closure | `nix build .#nixosConfigurations.adelie.config.system.build.toplevel --no-link` | Passed from clean committed source. Output: `/nix/store/4gcv9nyj7zgsk9ivw6dlrxgf0b4fqgdz-nixos-system-adelie-26.11.20260910.8ce4ef6`. |
 | Deployment boundary | `nix run .#deployment-plan -- --host adelie` | One Adelie build target; empty `plans`, `applies`, and `verifies`. |
-| Runtime selection | `eval-adelie-admission` | Beszel agent, node exporter, and Vector exist. Attic publication and backup-target services do not exist. |
+| Runtime selection | `eval-adelie-admission` | Beszel, node, process, and Vector agents exist. Attic publication and backup-target services do not exist. |
 | Disk boundary | `eval-adelie-admission` | One disk: the exact Samsung 990 Pro by-id path. Evaluated filesystems contain no `/mnt/media` or `/mnt/backup`. |
 | Secret boundary | Nix evaluation, SOPS decryption, and recipient search | Adelie has no evaluated SOPS secrets. Both encrypted corpora decrypt for an authorized editor. Adelie's former age recipient is absent from policy and current ciphertext metadata. |
 
