@@ -5,12 +5,12 @@
   host ? "workstation",
 }:
 let
-  sourcePath = builtins.toPath source;
+  sourcePath = builtins.storePath source;
   fullProfile = builtins.fromJSON (builtins.readFile profile);
   profileProjection = {
-    formatVersion = fullProfile.formatVersion;
-    revision = fullProfile.revision;
-    components = fullProfile.components;
+    inherit (fullProfile) formatVersion;
+    inherit (fullProfile) revision;
+    inherit (fullProfile) components;
   };
   generationMetadata = {
     source = toString sourcePath;

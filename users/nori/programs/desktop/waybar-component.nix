@@ -121,10 +121,10 @@ in
       ];
 
       resolved.components."desktop.waybar" = {
-        position = profile.position;
+        inherit (profile) position;
         enabled = waybar.enable;
         package = lib.getName waybar.package;
-        layer = mainBar.layer;
+        inherit (mainBar) layer;
         modules = mainBar.modules-left ++ mainBar.modules-center ++ mainBar.modules-right;
         margins = {
           top = mainBar.margin-top;

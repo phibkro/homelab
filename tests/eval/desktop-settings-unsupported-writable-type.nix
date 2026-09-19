@@ -5,7 +5,7 @@
 }:
 let
   pkgs = import nixpkgs { };
-  lib = pkgs.lib;
+  inherit (pkgs) lib;
   componentId = builtins.concatStringsSep "." [
     "test"
     "unsupported"

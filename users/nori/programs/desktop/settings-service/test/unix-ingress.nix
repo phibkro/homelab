@@ -1,7 +1,7 @@
 { pkgs, lib }:
 pkgs.testers.runNixOSTest {
   name = "desktop-settings-unix-ingress";
-  nodes.machine = { ... }: {
+  nodes.machine = _: {
     users.groups.nori-desktop-settings = { };
     users.groups.nori-desktop-settings-authority = { };
     users.users.nori-desktop-settings = {

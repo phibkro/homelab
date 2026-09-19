@@ -263,14 +263,13 @@
             componentsEvaluate =
               contributions:
               (builtins.tryEval (
-                builtins.deepSeq ((inputs.self.nixosConfigurations.workstation.extendModules {
+                builtins.deepSeq (inputs.self.nixosConfigurations.workstation.extendModules {
                   modules = [
                     {
                       home-manager.users.nori.nori.desktop.componentContributions = lib.mkForce contributions;
                     }
                   ];
-                }).config.home-manager.users.nori.nori.desktop.components
-                ) true
+                }).config.home-manager.users.nori.nori.desktop.components true
               )).success;
             duplicateComponentFails =
               !componentsEvaluate [
@@ -317,10 +316,10 @@
               lib.elem "NORI_DESKTOP_SETTINGS_SOCKET=/run/nori-desktop-settings/backend.sock" settingsService.serviceConfig.Environment
               && lib.hasInfix "/run/nori-desktop-settings/public.sock /run/nori-desktop-settings/backend.sock" evaluated.config.systemd.services.nori-desktop-config-ingress.serviceConfig.ExecStart;
             settingsPackage = home.nori.desktop.settingsService.package;
-            inputSchema = generated.inputSchema;
-            outputSchema = generated.outputSchema;
-            presentation = generated.presentation;
-            resolvedSettings = generated.resolvedSettings;
+            inherit (generated) inputSchema;
+            inherit (generated) outputSchema;
+            inherit (generated) presentation;
+            inherit (generated) resolvedSettings;
           in
           assert lib.assertMsg duplicateComponentFails "duplicate desktop component IDs must fail evaluation";
           assert lib.assertMsg duplicateSettingFails "duplicate desktop setting IDs must fail evaluation";
