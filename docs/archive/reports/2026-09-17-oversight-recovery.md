@@ -1,6 +1,6 @@
 # Homelab oversight recovery
 
-Evidence collection: 2026-09-17 14:58 UTC. Final registry and status check: 2026-09-17 15:09 UTC.
+Initial evidence collection: 2026-09-17 14:58 UTC. Initial registry and status check: 2026-09-17 15:09 UTC. Execution update: 2026-09-19.
 
 This report reconciles unfinished local work. It does not prove that a source tree was built, accepted, published, or deployed.
 
@@ -18,20 +18,33 @@ The documentation worktree and branch were created from the baseline during this
 - Worktree: `/srv/share/projects/homelab-oversight-recovery`
 - Branch: `docs/homelab-oversight-recovery`
 
-No source worktree was switched, staged, reset, merged, pruned, or deleted.
+During the initial evidence collection, no source worktree was switched, staged, reset, merged, pruned, or deleted.
 
-## Recommended recovery order
+## Execution update
+
+The recovery moved from evidence collection to integration on 2026-09-19. The committed `main` head is now `29ccd4ab0f4cd816f7b33b1702f1feda1207c91d`. The tree is clean. No activation, deployment, fetch, push, credential use, backup write, or restore ran.
+
+Completed source outcomes:
+
+- Generated desktop settings and Vicinae integration are on `main`. The clean integrated worktree and branch were removed.
+- Firecracker lifecycle repairs are on `main`. Unit tests reported 27 passes. The NixOS VM service check passed. A direct parent-death probe confirmed that a configured `setpriv` child stopped when its parent died. The production and transient units also use `KillMode=control-group` to cover the pre-`prctl` race. The full real-host Firecracker journey was not rerun after this final containment change.
+- The normalized topology graph and TOSCA 2.0 projection are on `main`. `just test-eval` included `eval-topology-conformance`. The TOSCA structure check passed. The final independent review found no remaining P1 or P2 defect.
+- qBittorrent activation is on `main`. The Pi Caddy route uses forward authentication with no exempt paths. The workstation accepts native-auth bypass only from localhost and the Pi tailnet `/32`. The pre-start merge creates the first configuration and preserves retained passwords, ports, categories, and unknown sections. `just check`, the workstation build, and an idempotent retained-config smoke test passed. The workstation was not activated.
+
+Cleanup removed the reconciled Firecracker, topology, and qBittorrent worktrees and branches. It also removed three missing temporary registrations and three older clean worktrees whose heads were already ancestors of `main`.
+
+Unmerged or dirty worktrees remain preserved. They cover the backup-list fix, observer choices, older settings and topology lines, chatlog work, format drift, mixed-history recovery, persona settings, and multi-host verification. A divergent name is not proof that its content is still needed. Compare each branch with current `main` before retention or deletion.
+
+## Current recovery order
 
 | Priority | Outcome | Present state | Next action |
 |---:|---|---|---|
-| 1 | Mixed `main` | Dirty Firecracker, Vicinae, dependency, and qBittorrent changes share one checkout. | Establish custody. Isolate each outcome without discarding or activating the current tree. |
-| 2 | Generated desktop settings | `feat/desktop-settings-service` is a clean 29-commit integration candidate beyond `main`. Its branch-local spec is frozen, but its acceptance section still says the scenarios have not run. | Review exact head `e616463`; reconcile the Quickshell delta; run the contract gates later from a clean artifact. Activation remains operator-gated. |
-| 3 | Pi, OneTouch, and Adelie | Source declares OneTouch enabled and Adelie staged. Older prose says backups are disabled and describes two deployment targets. | Collect operator-authorized live mount, job, snapshot, restore, Pi receiver, and staged-host evidence. Then reconcile prose. |
-| 4 | Topology/TOSCA | Three clean branches contain unintegrated source. The conformance branch combines the core and projection with later fixes and unrelated history. | Isolate the topology candidate and review its exact-head acceptance contract before integration. |
-| 5 | Observer/history repair | Observe-only, scheduler, revert, and mixed-history branches represent different decisions. | Keep all branches. Decide the desired observer behavior before history repair or integration. |
-| 6 | Older retained work | Clean divergent branches and standalone migration copies remain. | Review unmatched changes and establish intent. Age and cleanliness are not retirement evidence. |
+| 1 | Pi and OneTouch acceptance | Source enables OneTouch. Workstation evidence exists. Pi backup, restore, receiver, and physical-device evidence remain unproved. | Run the operator-authorized Pi and physical OneTouch cutover gates. Reconcile prose only from observed results. |
+| 2 | Observer and history repair | Several clean but divergent observer, revert, timer, and mixed-history worktrees remain. | Choose the desired observer behavior. Review one exact candidate before history repair or integration. |
+| 3 | Older settings and topology lines | Their reconciled outcomes are on `main`, but predecessor branches are not Git ancestors of `main`. | Compare content with current `main`. Remove a branch only when it is clean and fully superseded. |
+| 4 | Standalone fixes | Backup-list, chatlog, format-drift, and multi-host verification branches remain unmerged. | Review each branch as its own outcome. Integrate or retire it from direct evidence. |
 
-## Workstream reconciliation
+## Initial workstream reconciliation
 
 ### Mixed main
 
@@ -252,13 +265,11 @@ Parse the status stream as NUL-delimited records. Treat command errors as unknow
 
 ## Decision gates
 
-The next safe action is change isolation for dirty `main`. It needs known custody and a path-by-path split. Do not activate that tree.
+The mixed-tree recovery and selected integrations are complete. The next operator-gated action is live Pi and OneTouch acceptance.
 
-After isolation:
-
-1. Review settings integration at exact head `e616463`.
-2. Collect current Pi and OneTouch runtime evidence with operator authority.
-3. Review topology and observer choices as separate outcomes.
-4. Review older unmatched branches and stale registrations.
+1. Collect current Pi backup, restore, receiver, and physical-device evidence.
+2. Decide the intended observer behavior before integrating observer history.
+3. Compare older settings and topology branches with current `main`.
+4. Review each remaining standalone fix independently.
 
 This report records evidence. [`docs/roadmap.md`](../../roadmap.md) remains the single forward queue.

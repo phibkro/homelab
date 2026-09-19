@@ -8,17 +8,20 @@ summary: The forward plan — single home for outstanding work, deferred items, 
 
 The forward plan: actionable outstanding work, deferred-but-tracked items, and the idea backlog. **This is the single home for "what's next."** Items leave this file when done (folded into git log) or when explicitly killed.
 
-## Recovery focus
+## Recovery follow-up
 
 The [2026-09-17 oversight recovery](archive/reports/2026-09-17-oversight-recovery.md)
-records the current worktree, branch, evidence, and deployment gaps. Use this
-order before new feature work:
+records the evidence, completed integrations, verification, and remaining
+worktrees. The mixed `main` recovery is complete. Generated settings,
+Firecracker lifecycle repairs, topology/TOSCA, and qBittorrent activation are
+committed on a clean `main`.
 
-1. Account for and isolate the mixed changes on `main` without data loss.
-2. Review the desktop-settings integration candidate and its acceptance gates.
-3. Reconcile Pi, OneTouch, and staged Adelie source with live evidence.
-4. Review topology and observer branch scope before either stream resumes.
-5. Review older branches and stale registrations before retention or retirement.
+Continue in this order:
+
+1. Collect operator-authorized Pi and physical OneTouch acceptance evidence.
+2. Choose the intended observer behavior before history repair or integration.
+3. Compare older settings and topology branches with current `main`.
+4. Review each remaining standalone fix before integration or retirement.
 
 ## Outstanding (actionable)
 

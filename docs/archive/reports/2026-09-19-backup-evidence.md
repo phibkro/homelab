@@ -1,9 +1,10 @@
 # OneTouch backup evidence — September 19, 2026
 
-Read-only inspection from workstation while reconciling stale disabled-backup
-documentation. Source baseline: `93807ae`; policy enabled by `2810695`.
-No backup, restore, deployment, credential access, or disk mutation was triggered
-by this inspection. Times below are UTC.
+The first pass inspected the workstation while stale backup guidance was being
+reconciled. Source baseline: `93807ae`; policy enabled by `2810695`.
+A later operator-authorized pass ran the service-state restore drill and weekly
+repository check. It did not start a backup job, deploy a system, or change a
+source archive. The restore drill used disposable directories. Times are UTC.
 
 | Layer | Observed evidence | Limit |
 |---|---|---|
@@ -13,7 +14,7 @@ by this inspection. Times below are UTC.
 | Service-state restore | `restore-drill-services.service` exited 0 at 01:41:35; journal reports all 17 repositories restored | File restores and nonempty-file checks; no application startup or database import validation |
 | Metadata integrity | `restic-check-weekly.service` exited 0 at 01:44:55; journal records no errors and successful completion | Weekly metadata checks do not read every stored data block |
 | Wider restore coverage | `restore-drill-user-data.service` and `restore-drill-all.service` have empty last-exit timestamps in the inspected manager state | No completed user-data/media restore demonstrated by this inspection; a default `Result=success` is not a run |
-| Pi | No remote session or Pi repository inspection performed | No claim about Pi backup freshness, restored state, or production transport isolation |
+| Pi | Tailscale reports Pi online. The workstation receiver host key and installed `restic` authorized key match `inventory/backup.nix`. Eight Pi repository directories exist, with changes about two weeks old. | Pi's SSH host key differs from the local trusted entry. No remote login, fresh Pi backup, restore, or sender credential check was performed. |
 
 The deployed service scripts were inspected through `systemctl show ... -p
 ExecStart`. The restore script reads `/mnt/backup/$repo`; the weekly script
@@ -21,6 +22,10 @@ checks the OneTouch repositories at that mount. This ties the recorded service
 outcomes to the inspected destination. The restore drill also computes sample
 hashes, but does not compare those hashes against an independent source digest;
 the log's sample count is not an application consistency proof.
+
+The Pi host-key mismatch is a trust decision, not a connectivity failure. Do
+not replace the trusted entry or bypass host-key checks until the operator
+confirms why the Pi identity changed.
 
 ## Reproduce the read-only inspection
 
