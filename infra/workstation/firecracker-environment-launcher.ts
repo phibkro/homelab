@@ -435,15 +435,19 @@ const frame = async (socket: Socket): Promise<string> => {
   const { promise, resolve, reject } = Promise.withResolvers<string>();
   let data = "";
   let settled = false;
+  let timer: NodeJS.Timeout | undefined;
   const finish = (error?: Error, value?: string) => {
     if (settled) return;
     settled = true;
     clearTimeout(timer);
-    socket.destroy();
-    if (error) reject(error);
-    else resolve(value!);
+    if (error) {
+      socket.destroy();
+      reject(error);
+    } else {
+      resolve(value!);
+    }
   };
-  const timer = setTimeout(() => finish(new Error("request timed out")), TIMEOUT);
+  timer = setTimeout(() => finish(new Error("request timed out")), TIMEOUT);
   socket.on("data", (chunk) => {
     data += chunk.toString();
     if (Buffer.byteLength(data) > MAX_FRAME) {
