@@ -121,7 +121,7 @@ assert_plan '.hosts == [] and .reasons == ["docs-or-tests:docs/old.md"]'
 git restore docs/old.md
 printf new >unknown-source
 plan --changed-since HEAD
-assert_plan '.hosts == ["pi", "workstation"] and .untrackedFiles == ["unknown-source"]'
+assert_plan '.hosts == ["adelie", "pi", "workstation"] and .untrackedFiles == ["unknown-source"]'
 
 plan --host workstation --workload jellyfin
 assert_plan '.hosts == ["workstation"] and .activationOrder == ["workstation"]'

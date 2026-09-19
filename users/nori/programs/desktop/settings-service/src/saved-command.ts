@@ -1,13 +1,9 @@
+/* schema-boundary: canonical saved-command profile model shared by the daemon and clients. */
 import { basename, isAbsolute } from "node:path";
 import { Effect, Schema } from "effect";
 
-export const outputModes = [
-  "fullOutput",
-  "compact",
-  "silent",
-  "inline",
-  "terminal",
-] as const;
+export const outputModes = ["fullOutput", "compact", "silent", "inline", "terminal"] as const;
+const maxSavedCommandBytes = 4 * 1024;
 
 const Parameter = Schema.Struct({
   name: Schema.String,
@@ -42,53 +38,50 @@ export const SavedCommand = Schema.Struct({
   execution: Schema.Union([ArgvExecution, ShellExecution]),
 });
 
-export const SavedCommandProfile = Schema.Struct({
-  version: Schema.Literal(1),
-  revision: Schema.Number,
-  commands: Schema.Array(SavedCommand),
-});
-
 export type CreateCommandRequest = typeof CreateCommandRequest.Type;
 export type SavedCommand = typeof SavedCommand.Type;
-export type SavedCommandProfile = typeof SavedCommandProfile.Type;
 
-export class CommandError extends Schema.TaggedError<CommandError>()(
-  "CommandError",
-  { message: Schema.String },
-) {}
+export class CommandError extends Schema.TaggedError<CommandError>()("CommandError", {
+  message: Schema.String,
+}) {}
 
-const strictParseOptions = {
+export const strictParseOptions = {
   errors: "all",
   onExcessProperty: "error",
 } as const;
+
 const privilegedExecutables: Record<string, true> = {
   doas: true,
   pkexec: true,
   run0: true,
   su: true,
   sudo: true,
+  sudoedit: true,
 };
 
 const parameterNamePattern = /^[a-z][a-z0-9-]*$/;
 const placeholderPattern = /\{\{([a-z][a-z0-9-]*)\}\}/g;
 const oneLinePattern = /^[^\r\n]+$/;
+const savedCommandIdPattern = /^user\.[a-z0-9]+(?:[.-][a-z0-9]+)*$/;
 
 const fail = (message: string) => Effect.fail(new CommandError({ message }));
 
 export const decodeCreateRequest = (input: unknown) =>
   Schema.decodeUnknownEffect(CreateCommandRequest, strictParseOptions)(input).pipe(
-    Effect.mapError(
-      (error) => new CommandError({ message: `Invalid create request: ${error}` }),
-    ),
+    Effect.mapError((error) => new CommandError({ message: `Invalid create request: ${error}` })),
     Effect.flatMap(validateCreateRequest),
   );
 
-export const decodeProfile = (input: unknown) =>
-  Schema.decodeUnknownEffect(SavedCommandProfile, strictParseOptions)(input).pipe(
-    Effect.mapError(
-      (error) => new CommandError({ message: `Invalid saved-command profile: ${error}` }),
-    ),
-    Effect.flatMap(validateProfile),
+export const decodeSavedCommand = (input: unknown) =>
+  Schema.decodeUnknownEffect(SavedCommand, strictParseOptions)(input).pipe(
+    Effect.mapError((error) => new CommandError({ message: `Invalid saved command: ${error}` })),
+    Effect.flatMap(validateSavedCommand),
+  );
+
+export const decodeSavedCommands = (input: unknown) =>
+  Schema.decodeUnknownEffect(Schema.Array(SavedCommand), strictParseOptions)(input).pipe(
+    Effect.mapError((error) => new CommandError({ message: `Invalid saved commands: ${error}` })),
+    Effect.flatMap(validateSavedCommands),
   );
 
 function validateCreateRequest(request: CreateCommandRequest) {
@@ -96,6 +89,9 @@ function validateCreateRequest(request: CreateCommandRequest) {
     const title = request.title.trim();
     if (!oneLinePattern.test(title)) {
       return yield* fail("Title must be one non-empty line");
+    }
+    if (new TextEncoder().encode(JSON.stringify(request)).byteLength > maxSavedCommandBytes) {
+      return yield* fail(`Saved command exceeds the ${maxSavedCommandBytes / 1024} KiB command budget`);
     }
     if (request.parameters.length > 3) {
       return yield* fail("A command can declare at most three parameters");
@@ -119,10 +115,7 @@ function validateCreateRequest(request: CreateCommandRequest) {
       parameterNames.add(parameter.name);
     }
 
-    if (
-      request.workingDirectory !== undefined &&
-      !isAbsolute(request.workingDirectory)
-    ) {
+    if (request.workingDirectory !== undefined && !isAbsolute(request.workingDirectory)) {
       return yield* fail("Working directory must be an absolute path");
     }
 
@@ -137,9 +130,7 @@ function validateCreateRequest(request: CreateCommandRequest) {
         );
       }
       if (privilegedExecutables[basename(executable).toLowerCase()] === true) {
-        return yield* fail(
-          `${basename(executable)} is a privilege wrapper and is not allowed`,
-        );
+        return yield* fail(`${basename(executable)} is a privilege wrapper and is not allowed`);
       }
 
       const referenced = new Set<string>();
@@ -174,23 +165,27 @@ function validateCreateRequest(request: CreateCommandRequest) {
   });
 }
 
-function validateProfile(profile: SavedCommandProfile) {
+function validateSavedCommand(command: SavedCommand) {
   return Effect.gen(function* () {
-    if (!Number.isSafeInteger(profile.revision) || profile.revision < 0) {
-      return yield* fail("Profile revision must be a non-negative integer");
+    if (!savedCommandIdPattern.test(command.id)) {
+      return yield* fail(`Invalid saved-command ID: ${command.id}`);
     }
+    yield* validateCreateRequest(command);
+    return command;
+  });
+}
+
+function validateSavedCommands(commands: ReadonlyArray<SavedCommand>) {
+  return Effect.gen(function* () {
     const ids = new Set<string>();
-    for (const command of profile.commands) {
-      if (!/^user\.[a-z0-9]+(?:[.-][a-z0-9]+)*$/.test(command.id)) {
-        return yield* fail(`Invalid saved-command ID: ${command.id}`);
-      }
+    for (const command of commands) {
       if (ids.has(command.id)) {
         return yield* fail(`Duplicate saved-command ID: ${command.id}`);
       }
       ids.add(command.id);
-      yield* validateCreateRequest(command);
+      yield* validateSavedCommand(command);
     }
-    return profile;
+    return commands;
   });
 }
 
@@ -206,12 +201,18 @@ export function makeSavedCommand(
   return { ...request, id: `user.${slug}.${idSuffix.toLowerCase()}` };
 }
 
+export function lookupSavedCommand(
+  commands: ReadonlyArray<SavedCommand>,
+  id: string,
+): SavedCommand | undefined {
+  return commands.find((command) => command.id === id);
+}
+
 export function commandArguments(
   command: SavedCommand,
   values: ReadonlyArray<string>,
 ): Effect.Effect<ReadonlyArray<string>, CommandError> {
-  const required = command.parameters.filter((parameter) => !parameter.optional)
-    .length;
+  const required = command.parameters.filter((parameter) => !parameter.optional).length;
   if (values.length < required || values.length > command.parameters.length) {
     return fail(
       `Expected ${required === command.parameters.length ? required : `${required}-${command.parameters.length}`} parameters, received ${values.length}`,
@@ -219,10 +220,7 @@ export function commandArguments(
   }
 
   const byName = new Map(
-    command.parameters.map((parameter, index) => [
-      parameter.name,
-      values[index] ?? "",
-    ]),
+    command.parameters.map((parameter, index) => [parameter.name, values[index] ?? ""]),
   );
 
   if (command.execution.type === "shell") return Effect.succeed(values);
@@ -237,11 +235,7 @@ function shellQuote(value: string): string {
   return `'${value.replaceAll("'", `'"'"'`)}'`;
 }
 
-export function renderScript(
-  command: SavedCommand,
-  runner: string,
-  shell: string,
-): string {
+export function renderScript(command: SavedCommand, runner: string, shell: string): string {
   const directives = command.parameters.map(
     (parameter, index) =>
       `# @vicinae.argument${index + 1} ${JSON.stringify({ type: "text", placeholder: parameter.name, optional: parameter.optional })}`,
@@ -255,7 +249,25 @@ export function renderScript(
     '# @vicinae.keywords ["saved", "user"]',
     ...directives,
     "",
-    `exec ${shellQuote(runner)} run ${shellQuote(command.id)} -- \"$@\"`,
+    `exec ${shellQuote(runner)} run ${shellQuote(command.id)} -- "$@"`,
     "",
   ].join("\n");
+}
+
+export type SavedCommandProjection = {
+  readonly id: string;
+  readonly filename: string;
+  readonly script: string;
+};
+
+export function renderProjection(
+  commands: ReadonlyArray<SavedCommand>,
+  runner: string,
+  shell: string,
+): ReadonlyArray<SavedCommandProjection> {
+  return commands.map((command) => ({
+    id: command.id,
+    filename: `${command.id.replaceAll(".", "-")}.sh`,
+    script: renderScript(command, runner, shell),
+  }));
 }

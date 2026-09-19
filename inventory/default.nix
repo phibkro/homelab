@@ -29,7 +29,6 @@ let
   ];
   profileNames = lib.attrNames profiles;
   workloadNames = lib.attrNames workloadCatalog;
-  diskNames = lib.attrNames disks;
 
   invalidDiskDeclarations = lib.filterAttrs (
     _name: disk:

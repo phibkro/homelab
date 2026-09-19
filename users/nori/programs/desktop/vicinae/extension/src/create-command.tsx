@@ -1,11 +1,5 @@
 import { spawn } from "node:child_process";
-import {
-  Action,
-  ActionPanel,
-  Form,
-  showToast,
-  Toast,
-} from "@vicinae/api";
+import { Action, ActionPanel, Form, showToast, Toast } from "@vicinae/api";
 import { useState } from "react";
 
 type OutputMode = "fullOutput" | "compact" | "silent" | "inline" | "terminal";
@@ -64,13 +58,9 @@ function parseCreateResult(text: string): CreateResult {
 
 function createSavedCommand(request: object): Promise<CreateResult> {
   const { promise, resolve, reject } = Promise.withResolvers<CreateResult>();
-  const child = spawn(
-    process.env.RICE_SAVED_COMMAND_BIN ?? "rice-saved-command",
-    ["create"],
-    {
-      stdio: ["pipe", "pipe", "pipe"],
-    },
-  );
+  const child = spawn(process.env.RICE_SAVED_COMMAND_BIN ?? "rice-saved-command", ["create"], {
+    stdio: ["pipe", "pipe", "pipe"],
+  });
   let stdout = "";
   let stderr = "";
   child.stdout.setEncoding("utf8");
@@ -159,11 +149,7 @@ export default function CreateCommand() {
         </ActionPanel>
       }
     >
-      <Form.TextField
-        id="title"
-        title="Title"
-        placeholder="Deploy status page"
-      />
+      <Form.TextField id="title" title="Title" placeholder="Deploy status page" />
       <Form.Checkbox
         id="shellMode"
         title="Execution"
@@ -172,22 +158,14 @@ export default function CreateCommand() {
         onChange={setShellMode}
       />
       {shellMode ? (
-        <Form.TextArea
-          id="shellSource"
-          title="Shell source"
-          placeholder={'printf "%s\\n" "$1"'}
-        />
+        <Form.TextArea id="shellSource" title="Shell source" placeholder={'printf "%s\\n" "$1"'} />
       ) : (
         <>
-          <Form.TextField
-            id="executable"
-            title="Executable"
-            placeholder="printf"
-          />
+          <Form.TextField id="executable" title="Executable" placeholder="printf" />
           <Form.TextArea
             id="arguments"
             title="Arguments"
-            placeholder={'One argument per line\n%s\\n\n{{message}}'}
+            placeholder={"One argument per line\n%s\\n\n{{message}}"}
           />
         </>
       )}
@@ -201,41 +179,13 @@ export default function CreateCommand() {
         title="Parameters"
         text="Use {{name}} in argv arguments. Shell mode receives parameters as $1, $2, and $3."
       />
-      <Form.TextField
-        id="parameter1"
-        title="Parameter 1"
-        placeholder="message"
-      />
-      <Form.Checkbox
-        id="parameter1Optional"
-        title="Parameter 1"
-        label="Optional"
-      />
-      <Form.TextField
-        id="parameter2"
-        title="Parameter 2"
-        placeholder="Optional parameter name"
-      />
-      <Form.Checkbox
-        id="parameter2Optional"
-        title="Parameter 2"
-        label="Optional"
-      />
-      <Form.TextField
-        id="parameter3"
-        title="Parameter 3"
-        placeholder="Optional parameter name"
-      />
-      <Form.Checkbox
-        id="parameter3Optional"
-        title="Parameter 3"
-        label="Optional"
-      />
-      <Form.Dropdown
-        id="outputMode"
-        title="Output"
-        defaultValue="fullOutput"
-      >
+      <Form.TextField id="parameter1" title="Parameter 1" placeholder="message" />
+      <Form.Checkbox id="parameter1Optional" title="Parameter 1" label="Optional" />
+      <Form.TextField id="parameter2" title="Parameter 2" placeholder="Optional parameter name" />
+      <Form.Checkbox id="parameter2Optional" title="Parameter 2" label="Optional" />
+      <Form.TextField id="parameter3" title="Parameter 3" placeholder="Optional parameter name" />
+      <Form.Checkbox id="parameter3Optional" title="Parameter 3" label="Optional" />
+      <Form.Dropdown id="outputMode" title="Output" defaultValue="fullOutput">
         <Form.Dropdown.Item value="fullOutput" title="Full output" />
         <Form.Dropdown.Item value="compact" title="Notification" />
         <Form.Dropdown.Item value="silent" title="HUD" />
