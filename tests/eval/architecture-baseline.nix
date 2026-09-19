@@ -40,6 +40,10 @@ let
   actualWorkloads = lib.mapAttrs (_: host: host.workloads) inventory.hosts;
 
   expectedWorkloads = {
+    adelie = [
+      "beszel-agent"
+      "node-exporter"
+    ];
     pi = [
       "authelia"
       "beszel-agent"
