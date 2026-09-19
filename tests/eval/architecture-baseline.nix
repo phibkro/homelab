@@ -249,8 +249,9 @@ let
     && qbittorrentConfig.Preferences.WebUI.LocalHostAuth == false
     && qbittorrentConfig.Preferences.WebUI.HostHeaderValidation == false
     && qbittorrentConfig.Preferences.WebUI.CSRFProtection == false
-    && qbittorrentConfig.Preferences.WebUI.AuthSubnetWhitelist
-    == "${hosts.workstation.config.nori.inventory.hosts.pi.tailnetIp}/32"
+    &&
+      qbittorrentConfig.Preferences.WebUI.AuthSubnetWhitelist
+      == "${hosts.workstation.config.nori.inventory.hosts.pi.tailnetIp}/32"
     && qbittorrentConfig.Preferences.WebUI.AuthSubnetWhitelistEnabled
     &&
       qbittorrentConfig.BitTorrent.Session.DefaultSavePath
