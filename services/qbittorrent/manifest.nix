@@ -1,7 +1,7 @@
 let
-  # Operator pause, 2026-07-31. Keep placement and retained state while
-  # suppressing the runtime and every endpoint-derived projection.
-  active = false;
+  # Enabled for the local-first acquisition path. Sonarr and Radarr already
+  # target the retained qBittorrent state; completed imports stay on @downloads.
+  active = true;
 in
 {
   inherit active;
