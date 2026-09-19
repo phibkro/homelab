@@ -17,13 +17,16 @@ import {
   ApplyJob,
   DesktopSettingsError,
   EvaluationResult,
+  ObservationRecord,
   PreviewReceipt,
   Profile,
   decodeJob,
+  decodeObservationRecord,
   decodeProfile,
   parseJson,
   profileHash,
   type GenerationMetadata,
+  type Observation,
 } from "./contracts.ts";
 import { maxFrameBytes } from "./framing.ts";
 
@@ -272,6 +275,40 @@ export class ResolvedStore {
       evaluation.metadata.profileHash === hash
       ? evaluation
       : undefined;
+  }
+}
+
+/** Latest untrusted Waybar evidence submitted by the nori session runtime agent. */
+export class ObservationStore {
+  readonly path: string;
+
+  constructor(stateHome: string) {
+    this.path = join(stateHome, "observation.json");
+  }
+
+  async initialize(): Promise<void> {
+    await ensurePrivateDirectory(dirname(this.path));
+  }
+
+  async save(observation: Observation): Promise<ObservationRecord> {
+    await this.initialize();
+    const record: ObservationRecord = {
+      observedAt: new Date().toISOString(),
+      observation,
+    };
+    await writeAtomic(this.path, `${JSON.stringify(record, null, 2)}\n`);
+    return record;
+  }
+
+  async read(): Promise<ObservationRecord | undefined> {
+    await this.initialize();
+    const bytes = await readOptionalPrivateFile(this.path, maxProfileBytes);
+    if (bytes === undefined) return undefined;
+    return Effect.runPromise(
+      parseJson(ObservationRecord, bytes, "runtime observation").pipe(
+        Effect.flatMap(decodeObservationRecord),
+      ),
+    );
   }
 }
 

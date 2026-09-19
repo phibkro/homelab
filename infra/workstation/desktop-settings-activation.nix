@@ -1,25 +1,19 @@
 {
   config,
   lib,
+  inputs,
   pkgs,
   ...
 }:
 let
-  approvedSource = builtins.path {
-    path = ../..;
-    name = "nori-desktop-approved-source";
-    filter =
-      path: _type:
-      let
-        name = builtins.baseNameOf path;
-      in
-      !(builtins.elem name [
-        ".git"
-        "dist"
-        "node_modules"
-        "result"
-      ]);
-  };
+  approvedSource =
+    assert lib.assertMsg (
+      inputs.self ? rev
+      && !(inputs.self ? dirtyRev)
+      && inputs.self.rev != null
+      && inputs.self.rev != ""
+    ) "nori-desktop-settings activation requires a clean committed flake source";
+    inputs.self.outPath;
   sourceMarker = builtins.toJSON {
     source = toString approvedSource;
     host = "workstation";
@@ -498,6 +492,8 @@ in
     config.home-manager.users.nori.nori.desktop.generated.outputSchema;
   environment.etc."nori-desktop-settings/components.json".source =
     config.home-manager.users.nori.nori.desktop.generated.presentation;
+  environment.etc."nori-desktop-settings/resolved-settings.json".source =
+    config.home-manager.users.nori.nori.desktop.generated.resolvedSettings;
   environment.systemPackages = [
     settingsPreview
     settingsBuilder

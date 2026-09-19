@@ -8,6 +8,8 @@ import {
   strictParseOptions,
 } from "./saved-command.ts";
 
+const isoTimestamp = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
 export const Profile = Schema.Struct({
   formatVersion: Schema.Literal(1),
   revision: Schema.Number,
@@ -84,6 +86,13 @@ export const Observation = Schema.Struct({
 });
 
 export type Observation = typeof Observation.Type;
+
+export const ObservationRecord = Schema.Struct({
+  observedAt: Schema.String,
+  observation: Observation,
+});
+
+export type ObservationRecord = typeof ObservationRecord.Type;
 
 export const ReconcileRequest = Schema.Struct({
   applyId: Schema.String,
@@ -240,6 +249,22 @@ export function decodeProfile(input: unknown) {
         ),
         Effect.map((savedCommands) => ({ ...profile, savedCommands })),
       );
+    }),
+  );
+}
+
+export function decodeObservationRecord(input: unknown) {
+  return Schema.decodeUnknownEffect(ObservationRecord, strictParseOptions)(input).pipe(
+    Effect.mapError(
+      (error) => new DesktopSettingsError("invalid_profile", `Invalid runtime observation: ${error}`),
+    ),
+    Effect.flatMap((record) => {
+      if (!isoTimestamp.test(record.observedAt) || !Number.isFinite(Date.parse(record.observedAt))) {
+        return Effect.fail(
+          new DesktopSettingsError("invalid_profile", "Runtime observation timestamp must be an ISO timestamp"),
+        );
+      }
+      return Effect.succeed(record);
     }),
   );
 }

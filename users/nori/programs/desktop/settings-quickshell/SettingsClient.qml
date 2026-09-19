@@ -20,6 +20,20 @@ Scope {
     property string stderrText: ""
     property bool busy: false
     property bool stateLoaded: false
+    property bool pollingStopped: false
+    readonly property bool hasNonterminalJobs: {
+        const knownJobs = root.jobs.slice();
+        if (root.lastJob && !knownJobs.some(job => job && job.id === root.lastJob.id))
+            knownJobs.push(root.lastJob);
+        for (const job of knownJobs) {
+            if (!job)
+                continue;
+            const status = job.status;
+            if (status !== "active" && status !== "failed" && status !== "interrupted")
+                return true;
+        }
+        return false;
+    }
     readonly property bool hasDrafts: Object.keys(root.drafts).length > 0
     readonly property bool hasCommittedPreview: root.state
         && typeof root.state.committedPreviewId === "string"
@@ -245,39 +259,32 @@ Scope {
         return root.owns(component, settingKey) ? component[settingKey] : undefined;
     }
 
-    function latestObservedJob() {
-        for (const job of root.jobs) {
-            if (job && job.observed)
-                return job;
-        }
-
-        if (root.lastJob && root.lastJob.observed)
-            return root.lastJob;
-
-        return null;
+    function persistedObservation() {
+        const record = root.state ? root.state.observed : null;
+        return record && record.observation ? record : null;
     }
-    function waybarObservation() {
-        const direct = root.state && root.state.observed ? root.state.observed.waybar : null;
-        if (direct)
-            return direct;
 
-        const job = root.latestObservedJob();
-        return job && job.observed ? job.observed.waybar : null;
+    function observationFreshness() {
+        const record = root.state ? root.state.observed : null;
+        return record && typeof record.freshness === "string"
+            ? record.freshness
+            : "never_observed";
+    }
+
+    function waybarObservation() {
+        const record = root.persistedObservation();
+        return record && record.observation ? record.observation.waybar : null;
     }
 
 
     function observedValue(componentId, settingKey) {
-        const directObservation = root.state ? root.state.observed : null;
-        const directComponent = root.objectForComponent(directObservation, componentId);
+        const record = root.persistedObservation();
+        const directComponent = root.objectForComponent(
+            record && record.observation ? record.observation : null,
+            componentId
+        );
         if (root.owns(directComponent, settingKey))
             return directComponent[settingKey];
-
-        const generationObservation = root.activeGeneration && root.activeGeneration.observed
-            ? root.activeGeneration.observed
-            : null;
-        const generationComponent = root.objectForComponent(generationObservation, componentId);
-        if (root.owns(generationComponent, settingKey))
-            return generationComponent[settingKey];
 
         const waybar = root.waybarObservation();
         if (componentId === "desktop.waybar" && settingKey === "position"
@@ -294,10 +301,19 @@ Scope {
                 const waybar = root.waybarObservation();
                 const unit = waybar && waybar.unit ? waybar.unit : "unit status not reported";
                 const reason = waybar && waybar.reason ? ": " + waybar.reason : "";
-                return root.displayValue(value) + " (" + unit + reason + ")";
+                const record = root.persistedObservation();
+                const observedAt = record && record.observedAt ? " at " + record.observedAt : "";
+                return root.displayValue(value) + " (" + unit + reason
+                    + "; " + root.observationFreshness() + observedAt + ")";
             }
             return root.displayValue(value);
         }
+
+        if (root.observationFreshness() === "never_observed")
+            return "Runtime observation unavailable: never observed";
+
+        if (root.observationFreshness() === "stale")
+            return "Stale runtime observation has no value";
 
         if (root.activeGeneration)
             return "Active generation reported; setting value not observed";
@@ -824,10 +840,24 @@ Scope {
             Qt.callLater(function() { root.completeProcess(exitCode); });
         }
     }
+    Timer {
+        id: jobPollingTimer
+
+        interval: 2000
+        repeat: true
+        running: !root.pollingStopped && root.hasNonterminalJobs
+        onTriggered: {
+            if (!root.busy && !commandProcess.running)
+                root.refresh();
+        }
+    }
+
 
     Component.onCompleted: root.refresh()
 
     Component.onDestruction: {
+        root.pollingStopped = true;
+        jobPollingTimer.stop();
         if (commandProcess.running)
             commandProcess.running = false;
     }

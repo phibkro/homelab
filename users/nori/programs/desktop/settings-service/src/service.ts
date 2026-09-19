@@ -14,12 +14,20 @@ import {
   type CreateSavedCommandRequest,
   type GenerationMetadata,
   type Observation,
+  type ObservationRecord,
   type ReconcileRequest,
   type PreviewRequest,
   type Profile,
   type SavedCommandLookupRequest,
 } from "./contracts.ts";
-import { JobStore, PreviewStore, ProfileStore, ResolvedStore, type StoredProfile } from "./files.ts";
+import {
+  JobStore,
+  ObservationStore,
+  PreviewStore,
+  ProfileStore,
+  ResolvedStore,
+  type StoredProfile,
+} from "./files.ts";
 import {
   DesktopRuntime,
   NixBuilder,
@@ -64,7 +72,7 @@ export type ServiceState = {
     readonly outputSchema: Record<string, unknown>;
   };
   readonly activeGeneration: ActiveGeneration | null;
-  readonly observed: Observation;
+  readonly observed: PersistedObservationState;
   readonly jobs: ReadonlyArray<ApplyJob>;
 };
 
@@ -99,13 +107,30 @@ class MutationCoordinator {
   }
 }
 
-function unavailableObservation(cause: unknown): Observation {
+export const runtimeObservationFreshnessMilliseconds = 30_000;
+
+export type PersistedObservationState = {
+  readonly freshness: "fresh" | "stale" | "never_observed";
+  readonly observedAt: string | null;
+  readonly observation: Observation | null;
+};
+
+function observationState(record: ObservationRecord | undefined): PersistedObservationState {
+  if (record === undefined) {
+    return {
+      freshness: "never_observed",
+      observedAt: null,
+      observation: null,
+    };
+  }
+  const age = Date.now() - Date.parse(record.observedAt);
   return {
-    waybar: {
-      unit: "unknown",
-      edge: "unavailable",
-      reason: cause instanceof Error ? cause.message : String(cause),
-    },
+    freshness:
+      age >= 0 && age <= runtimeObservationFreshnessMilliseconds
+        ? "fresh"
+        : "stale",
+    observedAt: record.observedAt,
+    observation: record.observation,
   };
 }
 
@@ -144,6 +169,7 @@ export class DesktopSettingsService {
   readonly catalog: SchemaCatalog;
   readonly profiles: ProfileStore;
   readonly resolved: ResolvedStore;
+  readonly observations: ObservationStore;
   readonly previews: PreviewStore;
   readonly jobs: JobStore;
   readonly builder: NixBuilder;
@@ -158,6 +184,7 @@ export class DesktopSettingsService {
     this.catalog = catalog;
     this.profiles = new ProfileStore(config.configHome, config.stateHome);
     this.resolved = new ResolvedStore(config.stateHome);
+    this.observations = new ObservationStore(config.stateHome);
     this.previews = new PreviewStore(config.stateHome);
     this.jobs = new JobStore(config.stateHome);
     this.builder = new NixBuilder(config);
@@ -171,6 +198,7 @@ export class DesktopSettingsService {
     const profile = await service.profiles.initialize(catalog.initialComponents());
     catalog.validateComponents(profile.profile.components);
     await service.resolved.initialize();
+    await service.observations.initialize();
     await service.previews.initialize();
     const source = await service.approvedSource().catch(() => undefined);
     if (source !== undefined) {
@@ -179,18 +207,14 @@ export class DesktopSettingsService {
     await service.jobs.initialize();
     const interrupted = await service.jobs.recoverInterrupted();
     if (interrupted.length > 0) {
-      const [activeGeneration, observed] = await Promise.all([
-        service.desktop.activeGeneration().catch(() => undefined),
-        service.desktop.observe().catch(unavailableObservation),
-      ]);
+      const activeGeneration = await service.desktop.activeGeneration().catch(() => undefined);
       await Promise.all(
         interrupted.map((job) =>
           service.jobs.save({
             ...job,
             ...(activeGeneration === undefined ? {} : { activeGeneration }),
-            observed,
             updatedAt: new Date().toISOString(),
-            log: [...job.log, "Observed active generation and Waybar state after daemon restart"].slice(-64),
+            log: [...job.log, "Observed active generation after daemon restart"].slice(-64),
           }),
         ),
       );
@@ -199,11 +223,11 @@ export class DesktopSettingsService {
   }
 
   async state(): Promise<ServiceState> {
-    const [stored, jobs, activeGeneration, observed] = await Promise.all([
+    const [stored, jobs, activeGeneration, observation] = await Promise.all([
       this.profiles.read(),
       this.jobs.list(),
       this.desktop.activeGeneration().catch(() => undefined),
-      this.desktop.observe().catch(unavailableObservation),
+      this.observations.read(),
     ]);
     const source = await this.approvedSource().catch(() => undefined);
     const [evaluated, committedPreviewId] =
@@ -225,7 +249,7 @@ export class DesktopSettingsService {
         outputSchema: this.catalog.outputDocument,
       },
       activeGeneration: activeGeneration ?? null,
-      observed,
+      observed: observationState(observation),
       jobs,
     };
     if (Buffer.byteLength(JSON.stringify(state), "utf8") > maxFrameBytes) {
@@ -504,6 +528,7 @@ export class DesktopSettingsService {
       if (job === undefined || job.status !== "reconciling") {
         throw new DesktopSettingsError("not_found", "No activation awaiting runtime reconciliation");
       }
+      await this.observations.save(request.observed);
       const activeGeneration = await this.desktop.activeGeneration();
       const expected = {
         source: job.source,
@@ -581,12 +606,10 @@ export class DesktopSettingsService {
       });
       return job;
     } catch (cause) {
-      const observed = await this.desktop.observe().catch(unavailableObservation);
       job = {
         ...appendLog(job, `Apply failed: ${failure(cause).message}`),
         status: "failed",
         error: failure(cause),
-        observed,
       };
       await this.jobs.save(job);
       return job;

@@ -19,6 +19,9 @@ let
   settingsPackage = config.nori.desktop.settingsService.package;
   settingsCli = lib.getExe' settingsPackage "nori-desktop-settings";
   savedCommand = lib.getExe' settingsPackage "rice-saved-command";
+  settingsFixtureImplementation = config.nori.desktop.settingsService.fixtureImplementation;
+  settingsFixtureClient = "${settingsFixtureImplementation}/libexec/nori-desktop-settings";
+  settingsFixtureSavedCommand = "${settingsFixtureImplementation}/libexec/rice-saved-command";
   savedCommandProjectionSync = pkgs.writeShellApplication {
     name = "nori-desktop-saved-command-projection-sync";
     runtimeInputs = [ pkgs.coreutils ];
@@ -260,8 +263,8 @@ let
     text = ''
       export RICE_VICINAE_ACTION_SCRIPTS=${lib.escapeShellArg actionScriptsPackage}
       export RICE_VICINAE_EXTENSION=${lib.escapeShellArg noriDesktopExtension}
-      export RICE_SAVED_COMMAND_BIN=${lib.escapeShellArg savedCommand}
-      export RICE_NORI_DESKTOP_SETTINGS_BIN=${lib.escapeShellArg settingsCli}
+      export RICE_SAVED_COMMAND_BIN=${lib.escapeShellArg settingsFixtureSavedCommand}
+      export RICE_NORI_DESKTOP_SETTINGS_BIN=${lib.escapeShellArg settingsFixtureClient}
       export RICE_DESKTOP_COMPONENTS=${lib.escapeShellArg config.nori.desktop.generated.presentation}
       export RICE_DESKTOP_INPUT_SCHEMA=${lib.escapeShellArg config.nori.desktop.generated.inputSchema}
       export RICE_DESKTOP_OUTPUT_SCHEMA=${lib.escapeShellArg config.nori.desktop.generated.outputSchema}

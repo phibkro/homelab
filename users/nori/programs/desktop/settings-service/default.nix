@@ -110,27 +110,74 @@ let
     runtimeInputs = [
       pkgs.coreutils
       pkgs.jq
+      pkgs.systemd
     ];
     text = ''
       ${commonEnvironment}
       while true; do
-        ${settingsCli}/bin/nori-desktop-settings state --json 2>/dev/null \
-          | jq -r '.state.jobs[]? | select(.status == "awaiting_authorization") | [.id, .revision] | @tsv' \
-          | while IFS="$(printf '\t')" read -r apply_id revision; do
+        jobs=$(
+          ${settingsCli}/bin/nori-desktop-settings state --json 2>/dev/null \
+            | jq -r '.state.jobs[]? | select(.status == "awaiting_authorization" or .status == "reconciling") | [.status, .id, .revision] | @tsv'
+        ) || {
+          printf '%s\n' 'nori-desktop-settings-runtime-agent: cannot read pending apply jobs' >&2
+          sleep 2
+          continue
+        }
+        while IFS="$(printf '\t')" read -r status apply_id revision; do
+          [ -n "$apply_id" ] || continue
+          case "$status" in
+            awaiting_authorization)
               if ! /run/wrappers/bin/pkexec /run/current-system/sw/bin/nori-desktop-settings-activate \
                 --operation org.nori.desktop-settings.activate \
                 --apply-id "$apply_id" \
                 --expected-revision "$revision"; then
-                ${settingsCli}/bin/nori-desktop-settings authorization-failed \
-                  --apply-id "$apply_id" --json >/dev/null || true
+                if ! ${settingsCli}/bin/nori-desktop-settings authorization-failed \
+                  --apply-id "$apply_id" --json >/dev/null; then
+                  printf '%s\n' 'nori-desktop-settings-runtime-agent: could not record failed authorization' >&2
+                  exit 1
+                fi
                 continue
               fi
-              if ! observed=$(${settingsCli}/bin/nori-desktop-settings observe-runtime --json 2>/dev/null); then
-                observed='{"waybar":{"unit":"unknown","edge":"unavailable","reason":"runtime observation command failed"}}'
-              fi
-              ${settingsCli}/bin/nori-desktop-settings reconcile \
-                --apply-id "$apply_id" --observed "$observed" --json >/dev/null || true
-            done
+              ;;
+            reconciling)
+              ;;
+            *)
+              printf 'nori-desktop-settings-runtime-agent: unsupported pending job status: %s\n' "$status" >&2
+              exit 1
+              ;;
+          esac
+
+          reload_failed=false
+          reload_error=""
+          if ! reload_error=$(${pkgs.systemd}/bin/systemctl --user reload waybar.service 2>&1); then
+            reload_failed=true
+            reload_error=$(printf '%s' "$reload_error" | cut -c1-4096)
+          fi
+          if ! observed=$(${settingsCli}/bin/nori-desktop-settings observe-runtime --json 2>/dev/null); then
+            reason='runtime observation command failed'
+            if [ "$reload_failed" = true ]; then
+              reason="Waybar reload failed: $reload_error; $reason"
+            fi
+            observed=$(jq -cn --arg reason "$reason" \
+              '{waybar: {unit: "unknown", edge: "unavailable", reason: $reason}}')
+          elif [ "$reload_failed" = true ]; then
+            if ! observed=$(printf '%s' "$observed" | jq --arg reload "$reload_error" '
+              .waybar.reason =
+                (if .waybar.reason
+                 then "Waybar reload failed: " + $reload + "; " + .waybar.reason
+                 else "Waybar reload failed: " + $reload
+                 end)
+            '); then
+              printf '%s\n' 'nori-desktop-settings-runtime-agent: could not record Waybar reload failure' >&2
+              exit 1
+            fi
+          fi
+          if ! ${settingsCli}/bin/nori-desktop-settings reconcile \
+            --apply-id "$apply_id" --observed "$observed" --json >/dev/null; then
+            printf '%s\n' 'nori-desktop-settings-runtime-agent: could not reconcile runtime observation' >&2
+            exit 1
+          fi
+        done <<< "$jobs"
         sleep 2
       done
     '';
@@ -168,6 +215,12 @@ in
     internal = true;
     description = "Installed client and daemon executables for the desktop settings service.";
   };
+  options.nori.desktop.settingsService.fixtureImplementation = lib.mkOption {
+    type = lib.types.package;
+    readOnly = true;
+    internal = true;
+    description = "Raw service binaries for the isolated launcher fixture only.";
+  };
   options.nori.desktop.settingsService.profileValidator = lib.mkOption {
     type = lib.types.package;
     readOnly = true;
@@ -183,6 +236,7 @@ in
 
   config = {
     nori.desktop.settingsService.package = package;
+    nori.desktop.settingsService.fixtureImplementation = serviceImplementation;
     nori.desktop.settingsService.profileValidator = profileValidator;
     nori.desktop.settingsService.ingress = nativeIngress;
     systemd.user.services.nori-desktop-settings-runtime-agent = {

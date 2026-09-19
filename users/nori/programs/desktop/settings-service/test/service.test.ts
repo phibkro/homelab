@@ -492,6 +492,73 @@ test("reconciliation records an untrusted user runtime warning after a matching 
   expect(active.error).toBeUndefined();
 });
 
+test("state persists agent observations across restart and reports their freshness without probing the session", async () => {
+  const { config } = await fixture();
+  const jobs = new JobStore(config.stateHome);
+  await jobs.initialize();
+  const job = {
+    id: "persisted-observation",
+    revision: 1,
+    profileHash: "d".repeat(64),
+    source: "/nix/store/approved-source",
+    previewArtifact: "/nix/store/generated",
+    status: "reconciling" as const,
+    createdAt: "2026-09-12T00:00:00.000Z",
+    updatedAt: "2026-09-12T00:00:01.000Z",
+    log: ["Generation activated"],
+  };
+  const observation = { waybar: { unit: "active" as const, edge: "bottom" as const } };
+  const service = await DesktopSettingsService.make(config);
+  let probedSession = false;
+  service.desktop.observe = async () => {
+    probedSession = true;
+    throw new Error("authority must not probe the nori session");
+  };
+  expect((await service.state()).observed).toEqual({
+    freshness: "never_observed",
+    observedAt: null,
+    observation: null,
+  });
+  expect(probedSession).toBeFalse();
+
+  await jobs.save(job);
+  service.desktop.activeGeneration = async () => ({
+    path: "/nix/store/current-system",
+    source: job.source,
+    profileRevision: job.revision,
+    profileHash: job.profileHash,
+  });
+  await service.reconcile({ applyId: job.id, observed: observation });
+  const persisted = await service.state();
+  expect(persisted.observed).toMatchObject({
+    freshness: "fresh",
+    observation,
+  });
+  expect(typeof persisted.observed.observedAt).toBe("string");
+  expect(probedSession).toBeFalse();
+
+  const restarted = await DesktopSettingsService.make(config);
+  restarted.desktop.observe = async () => {
+    probedSession = true;
+    throw new Error("authority must not probe the nori session");
+  };
+  expect((await restarted.state()).observed).toMatchObject({
+    freshness: "fresh",
+    observation,
+  });
+  expect(probedSession).toBeFalse();
+
+  await writeAtomic(
+    join(config.stateHome, "observation.json"),
+    `${JSON.stringify({ observedAt: "2020-01-01T00:00:00.000Z", observation })}\n`,
+  );
+  expect((await (await DesktopSettingsService.make(config)).state()).observed).toEqual({
+    freshness: "stale",
+    observedAt: "2020-01-01T00:00:00.000Z",
+    observation,
+  });
+});
+
 test("saved command IPC round trip keeps a parameter literal across the generated script", async () => {
   const { config, root } = await fixture();
   const runner = join(root, "rice-saved-command");
