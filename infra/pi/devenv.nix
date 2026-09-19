@@ -75,8 +75,11 @@
        and .pi_appliances.hosts.pi.pi_domain == "home.phibkro.org"
        and .pi_appliances.hosts.pi.pihole_lan_address == "192.168.1.225"
        and .pi_appliances.hosts.pi.pihole_tailnet_address == "100.100.71.3"
-       and .pi_appliances.hosts.pi.pi_backup_enabled == false
-       and (.pi_appliances.hosts.pi | has("pi_backup_target_address") | not)
+       and .pi_appliances.hosts.pi.pi_backup_enabled == true
+       and .pi_appliances.hosts.pi.pi_backup_target_address == "100.81.5.122"
+       and .pi_appliances.hosts.pi.pi_backup_target_host == "workstation.saola-matrix.ts.net"
+       and ([.pi_appliances.hosts.pi.pi_backup_jobs[].name] | sort)
+         == ["authelia", "beszel", "caddy", "ntfy", "pihole", "vector", "victorialogs", "victoriametrics"]
        and (.pi_appliances.hosts.pi.pi_routes | any(.name == "pihole"))
        and (.pi_appliances.hosts.pi.pi_routes | any(.name == "auth"))
        and (.pi_appliances.hosts.pi.pi_routes

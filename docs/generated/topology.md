@@ -70,8 +70,8 @@ this. **Never touch `nvme0n1` without verifying the model string via
 
 Family services, media services, research tools, and the operator desktop
 are colocated here. Pi remains the always-on entry and observability plane;
-SSDs hold hot data and IronWolf Pro holds cold data. Backup delivery
-is disabled pending a verified OneTouch connection.
+SSDs hold hot data and IronWolf Pro holds cold data. OneTouch stores
+independent Restic history on a separate disk attached to this host.
 
 ## Sleep + GPU constraint
 
@@ -88,7 +88,7 @@ prevents idle-sleep during ambient sound. Full debt note in
 |---|---|---|---|---|---|---|---|
 | **adelie** | `nixos` | adelie | `workhorse` (staged storage and media host) | `100.107.90.3` | — | Node 304 · Ryzen 5 5600X · 16 GB DDR4 · RTX 2060 Super · Samsung 990 Pro 1 TB NVMe | Future storage and media workhorse. Phase one is a minimal, bootable NixOS host on its Samsung NVMe; the IronWolf Pro and OneTouch remain undeclared until their physical migration and backup roles are verified. |
 | **pi** | `ansible` | fairy | `appliance` (always-on entry plane) | `100.100.71.3` | `192.168.1.225` | Raspberry Pi 4 8 GB · aarch64 · USB-boot from Samsung FIT 128 GB | HTTP entry plane (Caddy + Authelia + Pi-hole, LE wildcard cert on `*.${nori.domain}`), observability hub, alert plane, Tailscale subnet router + exit node. |
-| **workstation** | `nixos` | emperor | `workhorse` (always-on converged desktop/server) | `100.81.5.122` | `192.168.1.181` | Ryzen 9 5950X · 64 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) · WD SN750 1 TB NVMe + Corsair MP510 960 GB NVMe + Seagate IronWolf Pro 4 TB SATA | Always-on graphical workstation and homelab server: GPU services (Ollama / Jellyfin NVENC), `*arr` stack + qBittorrent, family services and Samba shares on the attached IronWolf disk, and the fleet's re-derivable Attic cache. SSDs hold hot data and the IronWolf Pro holds cold archives. OneTouch backup policy is prepared but disabled pending safe attachment; same-disk snapshots provide local rollback. |
+| **workstation** | `nixos` | emperor | `workhorse` (always-on converged desktop/server) | `100.81.5.122` | `192.168.1.181` | Ryzen 9 5950X · 64 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) · WD SN750 1 TB NVMe + Corsair MP510 960 GB NVMe + Seagate IronWolf Pro 4 TB SATA | Always-on graphical workstation and homelab server: GPU services (Ollama / Jellyfin NVENC), `*arr` stack + qBittorrent, family services and Samba shares on the attached IronWolf disk, and the fleet's re-derivable Attic cache. SSDs hold hot data and the IronWolf Pro holds cold archives. OneTouch stores independent Restic history on a separate disk attached to this host; same-disk snapshots provide local rollback. |
 
 ## Registry schema (`nori.hosts.<name>.*`)
 

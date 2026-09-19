@@ -30,8 +30,8 @@
 
   Family services, media services, research tools, and the operator desktop
   are colocated here. Pi remains the always-on entry and observability plane;
-  SSDs hold hot data and IronWolf Pro holds cold data. Backup delivery
-  is disabled pending a verified OneTouch connection.
+  SSDs hold hot data and IronWolf Pro holds cold data. OneTouch stores
+  independent Restic history on a separate disk attached to this host.
 
   ## Sleep + GPU constraint
 

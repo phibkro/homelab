@@ -95,8 +95,8 @@
         qBittorrent, family services and Samba shares on the attached
         IronWolf disk, and the fleet's re-derivable Attic cache.
         SSDs hold hot data and the IronWolf Pro holds cold archives.
-        OneTouch backup policy is prepared but disabled pending safe attachment;
-        same-disk snapshots provide local rollback.
+        OneTouch stores independent Restic history on a separate disk attached
+        to this host; same-disk snapshots provide local rollback.
       '';
     };
     capabilities = {
