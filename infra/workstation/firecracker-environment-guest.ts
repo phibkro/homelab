@@ -110,43 +110,70 @@ if (
   throw new Error("missing generation binding");
 }
 
-const readLine = async (
+const createLineReader = (
   stream: NodeJS.ReadableStream,
   maxFrame = MAX_RESPONSE_FRAME,
   timeoutMessage = "OMP RPC timed out",
-): Promise<string> => {
-  const { promise, resolve, reject } = Promise.withResolvers<string>();
+) => {
   let buffer = "";
-  let settled = false;
-  const timer = setTimeout(() => reject(new Error(timeoutMessage)), RPC_TIMEOUT_MS);
-  timer.unref();
-  const cleanup = () => {
-    clearTimeout(timer);
-    stream.off("data", onData);
-    stream.off("error", onError);
-    stream.off("end", onEnd);
+  let terminalError: Error | undefined;
+  let pending:
+    | {
+        readonly resolve: (line: string) => void;
+        readonly reject: (error: Error) => void;
+        readonly timer: NodeJS.Timeout;
+      }
+    | undefined;
+  const finish = (result: { readonly line: string } | { readonly error: Error }) => {
+    const current = pending;
+    if (!current) return;
+    pending = undefined;
+    clearTimeout(current.timer);
+    if ("error" in result) current.reject(result.error);
+    else current.resolve(result.line);
   };
-  const settle = (result: () => void) => {
-    if (settled) return;
-    settled = true;
-    cleanup();
-    result();
-  };
-  const onData = (chunk: Buffer | string) => {
-    buffer += chunk.toString();
-    if (Buffer.byteLength(buffer) > maxFrame) {
-      settle(() => reject(new Error("OMP RPC frame exceeds limit")));
+  const pump = () => {
+    if (!pending) return;
+    const end = buffer.indexOf("\n");
+    if (end >= 0) {
+      const line = buffer.slice(0, end);
+      buffer = buffer.slice(end + 1);
+      if (Buffer.byteLength(line) > maxFrame) {
+        terminalError = new Error("OMP RPC frame exceeds limit");
+        finish({ error: terminalError });
+      } else {
+        finish({ line });
+      }
       return;
     }
-    const end = buffer.indexOf("\n");
-    if (end >= 0) settle(() => resolve(buffer.slice(0, end)));
+    if (Buffer.byteLength(buffer) > maxFrame) {
+      terminalError = new Error("OMP RPC frame exceeds limit");
+      finish({ error: terminalError });
+    } else if (terminalError) {
+      finish({ error: terminalError });
+    }
   };
-  const onError = (error: Error) => settle(() => reject(error));
-  const onEnd = () => settle(() => reject(new Error("stdin closed before frame")));
-  stream.on("data", onData);
-  stream.once("error", onError);
-  stream.once("end", onEnd);
-  return promise;
+  stream.on("data", (chunk: Buffer | string) => {
+    buffer += chunk.toString();
+    pump();
+  });
+  stream.once("error", (error) => {
+    terminalError = error;
+    pump();
+  });
+  stream.once("end", () => {
+    terminalError = new Error("OMP RPC closed without response");
+    pump();
+  });
+  return (): Promise<string> => {
+    if (pending) return Promise.reject(new Error("concurrent OMP response reads are unsupported"));
+    const { promise, resolve, reject } = Promise.withResolvers<string>();
+    const timer = setTimeout(() => finish({ error: new Error(timeoutMessage) }), RPC_TIMEOUT_MS);
+    timer.unref();
+    pending = { resolve, reject, timer };
+    pump();
+    return promise;
+  };
 };
 
 const readRequestLine = async (): Promise<string> => {
@@ -266,7 +293,8 @@ const getState = async (requestId: string, observeIsolation: () => unknown): Pro
       reject(exitError);
     });
   });
-  const nextLine = () => Promise.race([readLine(omp.stdout), exited]);
+  const readResponseLine = createLineReader(omp.stdout);
+  const nextLine = () => Promise.race([readResponseLine(), exited]);
   try {
     for (;;) {
       const readyLine = await nextLine();

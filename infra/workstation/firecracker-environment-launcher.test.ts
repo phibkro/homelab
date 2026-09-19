@@ -2,7 +2,15 @@ import { afterAll, expect, test } from "bun:test";
 import { type ChildProcess, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { once } from "node:events";
-import { mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -29,7 +37,7 @@ const resources = {
   cpuMaxMicros: 100_000,
   cpuWeight: 100,
   memoryHighBytes: 128 * 1024 * 1024,
-  memoryMaxBytes: 128 * 1024 * 1024,
+  memoryMaxBytes: 256 * 1024 * 1024,
   vmmProcessTreePidsMax: 16,
   stateVolumeBytes: 4 * 1024 * 1024,
   ioMaxBytesPerSecond: 1024,
@@ -85,7 +93,7 @@ try {
 );
 
 const request = (
-  action: "observe" | "probe" | "drain" | "stop" | "reconcile",
+  action: "observe" | "probe" | "drain" | "stop" | "reconcile" | "destroy",
   environmentId: string,
   ordinal = 1,
 ) => ({
@@ -102,6 +110,10 @@ const state = (environmentId: string, overrides: Record<string, unknown> = {}) =
   pidNetns: "",
   pidExe: "",
   netns: "",
+  cgroupPath: "",
+  jailerPid: 0,
+  jailerStartTime: "",
+  jailerExe: "",
   netnsPid: 0,
   netnsStartTime: "",
   netnsExe: "",
@@ -403,3 +415,26 @@ for (const action of ["observe", "probe", "drain", "stop"] as const) {
     }
   });
 }
+
+test("destroy removes an incomplete generation with placeholder process ids", async () => {
+  const environmentId = `destroy-incomplete-${process.pid}`;
+  writeState(environmentId, state(environmentId));
+
+  const result = await runLauncher(request("destroy", environmentId));
+
+  expect(result.exitCode).toBe(0);
+  expect(existsSync(join(stateRoot, environmentId, generation.generationId))).toBe(false);
+});
+
+test("destroy rejects a request with the wrong generation ordinal", async () => {
+  const environmentId = `wrong-ordinal-destroy-${process.pid}`;
+  writeState(environmentId, state(environmentId));
+
+  const result = await runLauncher(request("destroy", environmentId, 2));
+
+  expect(result.exitCode).not.toBe(0);
+  expect(result.stderr).toContain("generation binding mismatch");
+  expect(existsSync(join(stateRoot, environmentId, generation.generationId, "state.json"))).toBe(
+    true,
+  );
+});

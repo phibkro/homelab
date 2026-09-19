@@ -16,16 +16,20 @@ import {
   readdirSync,
   renameSync,
   rmSync,
+  rmdirSync,
   unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { execFileSync, spawn } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
+import { setTimeout as sleep } from "node:timers/promises";
 
 const MAX_FRAME = 64 * 1024;
 const MAX_RESPONSE_FRAME = 1024 * 1024;
 const TIMEOUT = 10_000;
 const READINESS_TIMEOUT = 90_000;
+const GUEST_MEMORY_OVERHEAD_BYTES = 128 * 1024 * 1024;
 const GUEST_RPC_TIMEOUT = 60_000;
 const MATERIALIZATION_IPC_TIMEOUT = 180_000;
 const ID = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
@@ -149,28 +153,8 @@ const environmentStateFor = (environmentId: string): Dict | undefined => {
     "environment state",
   );
 };
-const waitDead = async (pid: number, timeout = TIMEOUT) => {
-  const deadline = Date.now() + timeout;
-  while (live(pid) && Date.now() < deadline)
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  if (live(pid)) {
-    try {
-      process.kill(pid, "SIGKILL");
-    } catch {}
-    while (live(pid) && Date.now() < deadline + 2_000)
-      await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  return !live(pid);
-};
 const saveEnvironmentState = (environmentId: string, state: Dict) =>
   saveState(environmentPath(environmentId), state, "environment.json");
-const terminate = async (pid: number) => {
-  if (!pid || !live(pid)) return;
-  try {
-    process.kill(pid, "SIGTERM");
-  } catch {}
-  if (!(await waitDead(pid))) fail(`process ${String(pid)} did not terminate`);
-};
 const stateFor = (environmentId: string, generationId: string): Dict => {
   const path = join(pathFor(environmentId, generationId), "state.json");
   if (!existsSync(path)) fail("generation is not materialized");
@@ -186,6 +170,10 @@ const stateFor = (environmentId: string, generationId: string): Dict => {
       "pidNetns",
       "pidExe",
       "netns",
+      "cgroupPath",
+      "jailerPid",
+      "jailerStartTime",
+      "jailerExe",
       "netnsPid",
       "netnsStartTime",
       "netnsExe",
@@ -228,6 +216,7 @@ const saveState = (path: string, state: Dict, file = "state.json") => {
   }
 };
 const live = (pid: number) => {
+  if (!Number.isSafeInteger(pid) || pid <= 0) return false;
   try {
     process.kill(pid, 0);
     return true;
@@ -310,54 +299,117 @@ const enableCgroupControllers = (parent: string) => {
     fail(`delegated cgroup did not enable controllers: ${missing.join(", ")}`);
   return cgroup;
 };
+interface ProcessIdentity {
+  readonly pid: number;
+  readonly start: string;
+  readonly exe: string;
+  readonly cgroup?: string;
+  readonly netns?: string;
+}
+
 const processNetns = (pid: number) => readlinkSync(`/proc/${pid}/ns/net`);
 const processExe = (pid: number) => readlinkSync(`/proc/${pid}/exe`);
 const processMatches = (
-  pid: number,
-  expected: { start: string; cgroup?: string; netns?: string; exe: string },
-  processIsLive = recordedPidLive(pid),
+  identity: ProcessIdentity,
+  processIsLive = recordedPidLive(identity.pid),
 ) => {
   try {
     return (
       processIsLive &&
-      processStartTime(pid) === expected.start &&
-      processExe(pid) === expected.exe &&
-      (expected.cgroup === undefined || processCgroup(pid) === expected.cgroup) &&
-      (expected.netns === undefined || processNetns(pid) === expected.netns)
+      processStartTime(identity.pid) === identity.start &&
+      processExe(identity.pid) === identity.exe &&
+      (identity.cgroup === undefined || processCgroup(identity.pid) === identity.cgroup) &&
+      (identity.netns === undefined || processNetns(identity.pid) === identity.netns)
     );
   } catch {
     return false;
   }
+};
+const observedIdentity = (
+  pid: number,
+  fields: { readonly cgroup?: boolean; readonly netns?: boolean } = {},
+): ProcessIdentity => ({
+  pid,
+  start: processStartTime(pid),
+  exe: processExe(pid),
+  ...(fields.cgroup ? { cgroup: processCgroup(pid) } : {}),
+  ...(fields.netns ? { netns: processNetns(pid) } : {}),
+});
+const vmmIdentity = (state: Dict): ProcessIdentity => ({
+  pid: Number(state.pid),
+  start: String(state.pidStartTime),
+  cgroup: String(state.pidCgroup),
+  netns: String(state.pidNetns),
+  exe: String(state.pidExe),
+});
+const netnsIdentity = (state: Dict): ProcessIdentity => ({
+  pid: Number(state.netnsPid),
+  start: String(state.netnsStartTime),
+  exe: String(state.netnsExe),
+});
+const jailerIdentity = (state: Dict): ProcessIdentity => ({
+  pid: Number(state.jailerPid),
+  start: String(state.jailerStartTime),
+  exe: String(state.jailerExe),
+});
+const terminate = async (identity: ProcessIdentity) => {
+  if (!recordedPidLive(identity.pid)) return;
+  if (!processMatches(identity))
+    fail(`refusing to signal process ${String(identity.pid)} after identity changed`);
+  try {
+    process.kill(identity.pid, "SIGTERM");
+  } catch {}
+  const deadline = Date.now() + TIMEOUT;
+  while (processMatches(identity) && Date.now() < deadline) await sleep(100);
+  if (!processMatches(identity)) return;
+  try {
+    process.kill(identity.pid, "SIGKILL");
+  } catch {}
+  const killDeadline = Date.now() + 2_000;
+  while (processMatches(identity) && Date.now() < killDeadline) await sleep(100);
+  if (processMatches(identity)) fail(`process ${String(identity.pid)} did not terminate`);
+};
+const terminateChild = async (child: ChildProcess | undefined) => {
+  if (!child || child.exitCode !== null || child.pid === undefined) return;
+  child.kill("SIGTERM");
+  const deadline = Date.now() + TIMEOUT;
+  while (child.exitCode === null && Date.now() < deadline) await sleep(100);
+  if (child.exitCode === null) {
+    child.kill("SIGKILL");
+    const killDeadline = Date.now() + 2_000;
+    while (child.exitCode === null && Date.now() < killDeadline) await sleep(100);
+  }
+  if (child.exitCode === null)
+    fail(`child process ${String(child.pid)} did not terminate after SIGKILL`);
+};
+const removeGenerationCgroup = (cgroupPath: string) => {
+  if (cgroupPath.length === 0) return;
+  const delegatedRoot = join(CGROUP_ROOT, delegatedParentCgroup());
+  if (dirname(cgroupPath) !== delegatedRoot)
+    fail(`refusing to remove cgroup outside delegated root: ${cgroupPath}`);
+  if (existsSync(cgroupPath)) rmdirSync(cgroupPath);
 };
 const run = (program: string, args: string[]) =>
   execFileSync(program, args, {
     encoding: "utf8",
     maxBuffer: MAX_FRAME,
   }).trim();
-const cleanup = async (path: string, _namespace: string, pids: number[], removePath = true) => {
-  for (const pid of pids) await terminate(pid);
+const cleanup = async (
+  path: string,
+  identities: readonly ProcessIdentity[],
+  cgroupPath: string,
+  removePath = true,
+) => {
+  for (const identity of identities) await terminate(identity);
+  removeGenerationCgroup(cgroupPath);
   if (removePath && existsSync(path)) rmSync(path, { recursive: true, force: true });
 };
 const stateNetnsLive = (state: Dict, processIsLive = recordedPidLive(state.netnsPid)) =>
-  processMatches(
-    Number(state.netnsPid),
-    {
-      start: String(state.netnsStartTime),
-      exe: String(state.netnsExe),
-    },
-    processIsLive,
-  );
+  processMatches(netnsIdentity(state), processIsLive);
 const stateVmmLive = (state: Dict, processIsLive = recordedPidLive(state.pid)) =>
-  processMatches(
-    Number(state.pid),
-    {
-      start: String(state.pidStartTime),
-      cgroup: String(state.pidCgroup),
-      netns: String(state.pidNetns),
-      exe: String(state.pidExe),
-    },
-    processIsLive,
-  );
+  processMatches(vmmIdentity(state), processIsLive);
+const stateJailerLive = (state: Dict, processIsLive = recordedPidLive(state.jailerPid)) =>
+  processMatches(jailerIdentity(state), processIsLive);
 const verifiedVmmLive = (state: Dict) => {
   const rawLive = recordedPidLive(state.pid);
   if (!rawLive) return false;
@@ -372,29 +424,37 @@ const verifiedNetnsLive = (state: Dict) => {
     fail("recorded netns keeper identity mismatch; launcher action unavailable");
   return true;
 };
-
+const verifiedJailerLive = (state: Dict) => {
+  const rawLive = recordedPidLive(state.jailerPid);
+  if (!rawLive) return false;
+  if (!stateJailerLive(state, rawLive))
+    fail("recorded Jailer process identity mismatch; launcher action unavailable");
+  return true;
+};
 const frame = async (socket: Socket): Promise<string> => {
   const { promise, resolve, reject } = Promise.withResolvers<string>();
   let data = "";
-  const timer = setTimeout(() => {
+  let settled = false;
+  const finish = (error?: Error, value?: string) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timer);
     socket.destroy();
-    reject(new Error("request timed out"));
-  }, TIMEOUT);
+    if (error) reject(error);
+    else resolve(value!);
+  };
+  const timer = setTimeout(() => finish(new Error("request timed out")), TIMEOUT);
   socket.on("data", (chunk) => {
     data += chunk.toString();
     if (Buffer.byteLength(data) > MAX_FRAME) {
-      clearTimeout(timer);
-      socket.destroy();
-      reject(new Error("request exceeds frame limit"));
+      finish(new Error("request exceeds frame limit"));
       return;
     }
     const end = data.indexOf("\n");
-    if (end >= 0) {
-      clearTimeout(timer);
-      resolve(data.slice(0, end));
-    }
+    if (end >= 0) finish(undefined, data.slice(0, end));
   });
-  socket.once("error", reject);
+  socket.once("error", (error) => finish(error));
+  socket.once("end", () => finish(new Error("request closed without a frame")));
   return promise;
 };
 const rpc = async (request: Dict, state: Dict): Promise<Dict> => {
@@ -413,34 +473,46 @@ const rpc = async (request: Dict, state: Dict): Promise<Dict> => {
   )
     fail("get_state payload must be empty");
   if (request.operation !== "get_state") fail("unsupported RPC operation");
+  if (typeof request.requestId !== "string" || request.requestId.length === 0)
+    fail("requestId is required");
   const socketPath = `/proc/${Number(state.pid)}/root/vsock.sock`;
   const { promise, resolve, reject } = Promise.withResolvers<Dict>();
   let data = Buffer.alloc(0);
   let handshake = true;
+  let settled = false;
   const client = createConnection(socketPath);
-  let timer: ReturnType<typeof setTimeout> | undefined;
+  let timer: NodeJS.Timeout | undefined;
+  const finish = (error?: Error, result?: Dict) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timer);
+    client.destroy();
+    if (error) reject(error);
+    else resolve(result!);
+  };
   const armTimeout = (timeout: number) => {
     clearTimeout(timer);
-    timer = setTimeout(() => {
-      client.destroy();
-      reject(
-        new Error(
-          `guest RPC timed out${handshake ? `; handshakeRaw=${JSON.stringify(data.subarray(0, 4096).toString())}` : ""}`,
+    timer = setTimeout(
+      () =>
+        finish(
+          new Error(
+            `guest RPC timed out${handshake ? `; handshakeRaw=${JSON.stringify(data.subarray(0, 4096).toString())}` : ""}`,
+          ),
         ),
-      );
-    }, timeout);
+      timeout,
+    );
   };
   armTimeout(TIMEOUT);
-  const finish = (error?: Error) => {
-    clearTimeout(timer);
-    if (error) reject(error);
-  };
   client.once("error", (error) => finish(error));
+  client.once("end", () => finish(new Error("guest RPC closed before response")));
+  client.once("close", (hadError) => {
+    if (!hadError) finish(new Error("guest RPC closed before response"));
+  });
   client.on("connect", () => client.write(`CONNECT ${PORT}\n`));
   client.on("data", (chunk) => {
+    if (settled) return;
     data = Buffer.concat([data, chunk]);
     if (data.length > MAX_RESPONSE_FRAME) {
-      client.destroy();
       finish(new Error("guest response exceeds frame limit"));
       return;
     }
@@ -452,7 +524,6 @@ const rpc = async (request: Dict, state: Dict): Promise<Dict> => {
       try {
         parseVsockHandshake(line);
       } catch {
-        client.destroy();
         finish(
           new Error(`guest vsock handshake failed; raw=${JSON.stringify(line.slice(0, 4096))}`),
         );
@@ -479,11 +550,9 @@ const rpc = async (request: Dict, state: Dict): Promise<Dict> => {
         typeof result.stateJson !== "string"
       )
         fail("guest response generation mismatch");
-      resolve(result);
+      finish(undefined, result);
     } catch (error) {
-      reject(error instanceof Error ? error : new Error("guest response failed"));
-    } finally {
-      client.destroy();
+      finish(error instanceof Error ? error : new Error("guest response failed"));
     }
   });
   return promise;
@@ -645,7 +714,11 @@ const materialize = async (request: Dict): Promise<Dict> => {
   const id = checkEnvironmentId(spec.environmentId);
   const generation = checkGeneration(request.generation);
   const generationId = String(generation.generationId);
-  const jailerId = generationId.replaceAll("_", "-");
+  const rawJailerId = generationId.replaceAll("_", "-");
+  const jailerId =
+    rawJailerId.length <= 64
+      ? rawJailerId
+      : `shg-${createHash("sha256").update(generationId).digest("hex").slice(0, 60)}`;
   if (spec._tag !== "SelfHostedEnvironmentSpec" || spec.networkMode !== "off")
     fail("invalid environment spec");
   const resource = exact(
@@ -667,6 +740,7 @@ const materialize = async (request: Dict): Promise<Dict> => {
   if (
     Number(resource.cpuMaxMicros) > 8_000_000 ||
     Number(resource.cpuWeight) > 10_000 ||
+    Number(resource.memoryMaxBytes) < GUEST_MEMORY_OVERHEAD_BYTES + 128 * 1024 * 1024 ||
     Number(resource.memoryMaxBytes) > 4 * 1024 * 1024 * 1024 ||
     Number(resource.memoryHighBytes) > Number(resource.memoryMaxBytes) ||
     Number(resource.vmmProcessTreePidsMax) > 4096 ||
@@ -691,15 +765,28 @@ const materialize = async (request: Dict): Promise<Dict> => {
   mkdirSync(path, { recursive: true, mode: 0o700 });
   if (existsSync(join(path, "state.json"))) {
     const existing = stateFor(id, generationId);
+    assertStateGeneration(existing, id, generation);
     if (existing.receipt !== null) {
       const receipt = persistedReceiptFor(existing, id, generation);
       if (receipt && receipt.specificationDigest === spec.specificationDigest) return receipt;
       fail("generation already has a materialization receipt");
     }
     const vmmLive = verifiedVmmLive(existing);
+    const jailerLive = verifiedJailerLive(existing);
     const netnsLive = verifiedNetnsLive(existing);
     if (vmmLive) fail("refusing materialization replacement for a verified live VMM");
-    await cleanup(path, String(existing.netns), [...(netnsLive ? [Number(existing.netnsPid)] : [])]);
+    await cleanup(
+      path,
+      [
+        ...(jailerLive ? [jailerIdentity(existing)] : []),
+        ...(netnsLive ? [netnsIdentity(existing)] : []),
+      ],
+      String(existing.cgroupPath),
+    );
+  }
+  else {
+    rmSync(path, { recursive: true, force: true });
+    mkdirSync(path, { recursive: true, mode: 0o700 });
   }
   const existingEnvironment = environmentStateFor(id);
   if (existingEnvironment && existingEnvironment.stateVolumeBytes !== resource.stateVolumeBytes)
@@ -738,8 +825,12 @@ const materialize = async (request: Dict): Promise<Dict> => {
   });
   const root = join(path, "jailer", "firecracker", jailerId, "root");
   let namespace = "";
-  let keeper = 0;
-  let vmm = 0;
+  let keeperChild: ChildProcess | undefined;
+  let jailerChild: ChildProcess | undefined;
+  let keeperProcess: ProcessIdentity | undefined;
+  let jailerProcess: ProcessIdentity | undefined;
+  let vmmProcess: ProcessIdentity | undefined;
+  let generationCgroup = "";
   try {
     const artifactDigests: Record<string, string> = {};
     for (const [source, target] of [
@@ -775,7 +866,9 @@ const materialize = async (request: Dict): Promise<Dict> => {
         },
         "machine-config": {
           vcpu_count: Math.max(1, Math.floor(Number(resource.cpuMaxMicros) / 1_000_000)),
-          mem_size_mib: Math.max(128, Math.floor(Number(resource.memoryMaxBytes) / 1048576)),
+          mem_size_mib: Math.floor(
+            (Number(resource.memoryMaxBytes) - GUEST_MEMORY_OVERHEAD_BYTES) / 1048576,
+          ),
           smt: false,
         },
         drives: [
@@ -798,7 +891,11 @@ const materialize = async (request: Dict): Promise<Dict> => {
     );
     chownSync(root, UID, GID);
     chmodSync(root, 0o755);
-    saveState(path, {
+    const parentCgroup = delegatedParentCgroup();
+    const delegatedRoot = enableCgroupControllers(parentCgroup);
+    generationCgroup = join(delegatedRoot, jailerId);
+    if (existsSync(generationCgroup)) fail("generation cgroup already exists");
+    const state: Dict = {
       environmentId: id,
       generation,
       pid: 0,
@@ -806,21 +903,42 @@ const materialize = async (request: Dict): Promise<Dict> => {
       pidCgroup: "",
       pidNetns: "",
       pidExe: JAILER,
-      netns: namespace,
-      netnsPid: keeper,
-      netnsStartTime: keeper ? processStartTime(keeper) : "",
-      netnsExe: keeper ? processExe(keeper) : "",
+      netns: "",
+      cgroupPath: generationCgroup,
+      jailerPid: 0,
+      jailerStartTime: "",
+      jailerExe: JAILER,
+      netnsPid: 0,
+      netnsStartTime: "",
+      netnsExe: "",
       draining: false,
       receipt: null,
-    });
+    };
+    saveState(path, state);
     const log = join(path, "vmm.log");
-    const keeperChild = spawn("unshare", ["--net", "sleep", "1000000"], { stdio: "ignore" });
-    keeper = keeperChild.pid;
-    await waitForLive(keeper);
-    namespace = `/proc/${keeper}/ns/net`;
-    const parentCgroup = delegatedParentCgroup();
-    const delegatedCgroup = enableCgroupControllers(parentCgroup);
-    const child = spawn(
+    keeperChild = spawn("unshare", ["--net", "sleep", "1000000"], { stdio: "ignore" });
+    if (keeperChild.pid === undefined) fail("netns keeper did not report a pid");
+    await waitForLive(keeperChild.pid);
+    keeperProcess = observedIdentity(keeperChild.pid);
+    namespace = `/proc/${keeperChild.pid}/ns/net`;
+    Object.assign(state, {
+      netns: namespace,
+      netnsPid: keeperProcess.pid,
+      netnsStartTime: keeperProcess.start,
+      netnsExe: keeperProcess.exe,
+    });
+    saveState(path, state);
+    mkdirSync(generationCgroup);
+    for (const [file, value] of Object.entries({
+      "cpu.max": controls.cpuMax,
+      "cpu.weight": controls.cpuWeight,
+      "memory.high": controls.memoryHigh,
+      "memory.max": controls.memoryMax,
+      "pids.max": controls.pidsMax,
+      "io.max": controls.ioMax,
+    }))
+      writeFileSync(join(generationCgroup, file), value);
+    jailerChild = spawn(
       JAILER,
       [
         "--id",
@@ -834,19 +952,7 @@ const materialize = async (request: Dict): Promise<Dict> => {
         "--cgroup-version",
         "2",
         "--parent-cgroup",
-        parentCgroup,
-        "--cgroup",
-        `cpu.max=${controls.cpuMax}`,
-        "--cgroup",
-        `cpu.weight=${controls.cpuWeight}`,
-        "--cgroup",
-        `memory.high=${controls.memoryHigh}`,
-        "--cgroup",
-        `memory.max=${controls.memoryMax}`,
-        "--cgroup",
-        `pids.max=${controls.pidsMax}`,
-        "--cgroup",
-        `io.max=${controls.ioMax}`,
+        join(parentCgroup, jailerId),
         "--netns",
         namespace,
         "--chroot-base-dir",
@@ -862,14 +968,22 @@ const materialize = async (request: Dict): Promise<Dict> => {
       ],
       { cwd: root, stdio: ["ignore", "pipe", "pipe"] },
     );
-    child.stdout.on("data", (chunk) => appendLog(log, chunk));
-    child.stderr.on("data", (chunk) => appendLog(log, chunk));
-    vmm = await waitForPidFile(join(root, "firecracker.pid"));
-    const cgroup = `${CGROUP_ROOT}${unifiedCgroupPath(
-      readFileSync(`/proc/${vmm}/cgroup`, "utf8"),
-    )}`;
-    if (!cgroup.startsWith(`${delegatedCgroup}/`))
-      fail("VMM escaped the launcher delegated cgroup subtree");
+    jailerChild.stdout?.on("data", (chunk) => appendLog(log, chunk));
+    jailerChild.stderr?.on("data", (chunk) => appendLog(log, chunk));
+    if (jailerChild.pid === undefined) fail("Jailer did not report a pid");
+    await waitForLive(jailerChild.pid);
+    jailerProcess = observedIdentity(jailerChild.pid);
+    Object.assign(state, {
+      jailerPid: jailerProcess.pid,
+      jailerStartTime: jailerProcess.start,
+      jailerExe: jailerProcess.exe,
+    });
+    saveState(path, state);
+    const vmmPid = await waitForPidFile(join(root, "firecracker.pid"));
+    vmmProcess = observedIdentity(vmmPid, { cgroup: true, netns: true });
+    const cgroup = `${CGROUP_ROOT}${unifiedCgroupPath(vmmProcess.cgroup!)}`;
+    if (cgroup !== generationCgroup)
+      fail("VMM escaped the generation resource-control cgroup");
     const effective = Object.fromEntries(
       Object.entries({
         cpuMax: "cpu.max",
@@ -878,23 +992,18 @@ const materialize = async (request: Dict): Promise<Dict> => {
         memoryMax: "memory.max",
         pidsMax: "pids.max",
         ioMax: "io.max",
-      }).map(([key, file]) => [key, readFileSync(join(cgroup, file), "utf8").trim()]),
+      }).map(([key, file]) => [
+        key,
+        readFileSync(join(generationCgroup, file), "utf8").trim(),
+      ]),
     );
-    const state = {
-      environmentId: id,
-      generation,
-      pid: vmm,
-      pidStartTime: processStartTime(vmm),
-      pidCgroup: processCgroup(vmm),
-      pidNetns: processNetns(vmm),
-      pidExe: processExe(vmm),
-      netnsPid: keeper,
-      netnsStartTime: processStartTime(keeper),
-      netnsExe: processExe(keeper),
-      netns: namespace,
-      draining: false,
-      receipt: null,
-    };
+    Object.assign(state, {
+      pid: vmmProcess.pid,
+      pidStartTime: vmmProcess.start,
+      pidCgroup: vmmProcess.cgroup,
+      pidNetns: vmmProcess.netns,
+      pidExe: vmmProcess.exe,
+    });
     saveState(path, state);
     const ready = await waitForGuestReady(state);
     if (!ready.stateJson) fail("guest OMP readiness failed");
@@ -926,15 +1035,40 @@ const materialize = async (request: Dict): Promise<Dict> => {
     return receipt;
   } catch (error) {
     const log = join(path, "vmm.log");
-    preserveVmmLog(log, id, String(generation.generationId));
-    const diagnostic = existsSync(log) ? readFileSync(log, "utf8").slice(-4 * 1024) : "";
-    await cleanup(
-      path,
-      namespace,
-      [vmm, keeper].filter((pid) => pid > 0),
-    );
+    const details: string[] = [];
+    if (existsSync(log)) {
+      try {
+        details.push(`VMM log: ${readFileSync(log, "utf8").slice(-4 * 1024)}`);
+      } catch (diagnosticError) {
+        details.push(
+          `VMM log read failed: ${diagnosticError instanceof Error ? diagnosticError.message : String(diagnosticError)}`,
+        );
+      }
+    }
+    try {
+      preserveVmmLog(log, id, String(generation.generationId));
+    } catch (preservationError) {
+      details.push(
+        `VMM log preservation failed: ${preservationError instanceof Error ? preservationError.message : String(preservationError)}`,
+      );
+    }
+    try {
+      await terminateChild(jailerChild);
+      await terminateChild(keeperChild);
+      await cleanup(
+        path,
+        [vmmProcess, jailerProcess, keeperProcess].filter(
+          (identity): identity is ProcessIdentity => identity !== undefined,
+        ),
+        generationCgroup,
+      );
+    } catch (cleanupError) {
+      details.push(
+        `cleanup failed: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+      );
+    }
     const message = error instanceof Error ? error.message : "materialization failed";
-    throw new Error(`${message}${diagnostic ? `; VMM log: ${diagnostic}` : ""}`);
+    throw new Error(`${message}${details.length > 0 ? `; ${details.join("; ")}` : ""}`);
   }
 };
 export const runLauncherAction = async (request: unknown): Promise<Dict> => {
@@ -963,9 +1097,11 @@ export const runLauncherAction = async (request: unknown): Promise<Dict> => {
       return { ok: true };
     }
     const vmmLive = verifiedVmmLive(state);
+    const jailerLive = verifiedJailerLive(state);
     const netnsLive = verifiedNetnsLive(state);
-    if (vmmLive) await terminate(Number(state.pid));
-    if (netnsLive) await terminate(Number(state.netnsPid));
+    if (vmmLive) await terminate(vmmIdentity(state));
+    if (jailerLive) await terminate(jailerIdentity(state));
+    if (netnsLive) await terminate(netnsIdentity(state));
     return { ok: true };
   }
   if (action === "destroy") {
@@ -978,22 +1114,37 @@ export const runLauncherAction = async (request: unknown): Promise<Dict> => {
     );
     const id = checkEnvironmentId(value.environmentId);
     const root = environmentPath(id);
-    const ids = value.generation
-      ? [String(checkGeneration(value.generation).generationId)]
+    const requestedGeneration =
+      value.generation === undefined ? undefined : checkGeneration(value.generation);
+    const ids = requestedGeneration
+      ? [String(requestedGeneration.generationId)]
       : existsSync(root)
         ? readdirSync(root).filter((entry) => GEN.test(entry))
         : [];
     for (const generationId of ids) {
+      const generationPath = pathFor(id, generationId);
+      if (!existsSync(generationPath)) continue;
+      if (!existsSync(join(generationPath, "state.json"))) {
+        rmSync(generationPath, { recursive: true, force: true });
+        continue;
+      }
       const state = stateFor(id, generationId);
+      if (requestedGeneration) assertStateGeneration(state, id, requestedGeneration);
       if (
         (live(Number(state.pid)) && !stateVmmLive(state)) ||
+        (live(Number(state.jailerPid)) && !stateJailerLive(state)) ||
         (live(Number(state.netnsPid)) && !stateNetnsLive(state))
       )
         fail("refusing destroy for an unverified process identity");
-      await cleanup(pathFor(id, generationId), String(state.netns), [
-        ...(stateVmmLive(state) ? [Number(state.pid)] : []),
-        ...(stateNetnsLive(state) ? [Number(state.netnsPid)] : []),
-      ]);
+      await cleanup(
+        generationPath,
+        [
+          ...(stateVmmLive(state) ? [vmmIdentity(state)] : []),
+          ...(stateJailerLive(state) ? [jailerIdentity(state)] : []),
+          ...(stateNetnsLive(state) ? [netnsIdentity(state)] : []),
+        ],
+        String(state.cgroupPath),
+      );
     }
     if (value.generation === undefined && existsSync(root)) {
       const remaining = readdirSync(root).filter((entry) => GEN.test(entry));

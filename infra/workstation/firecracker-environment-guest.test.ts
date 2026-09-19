@@ -7,13 +7,13 @@ import { spawn } from "node:child_process";
 const guest = join(import.meta.dir, "firecracker-environment-guest.ts");
 
 describe("generation-bound guest RPC", () => {
-  test("responds while request stdin remains open", async () => {
+  test("preserves coalesced frames while request stdin remains open", async () => {
     const dir = mkdtempSync(join(tmpdir(), "adlc-guest-test-"));
     const omp = join(dir, "omp");
     writeFileSync(
       omp,
-      `#!/bin/sh
-printf '%s\\n' '{"type":"ready"}'
+    `#!/bin/sh
+printf '%s\n%s\n' '{"type":"diagnostic"}' '{"type":"ready"}'
 while IFS= read -r line; do
   printf '%s\\n' '{"id":"test-request","type":"response","command":"get_state","success":true,"data":{"ready":true}}'
 done
