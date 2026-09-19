@@ -1,10 +1,10 @@
-# Enable OneTouch backups after verifying the connection
+# Verify or reconnect OneTouch backups
 
-The prepared destination is the existing OneTouch HDD attached to workstation.
-`inventory/backup.nix` keeps `enabled = false` until this procedure passes.
-Disabled configuration creates no workstation restic jobs, receiver account,
-restore schedules, or OneTouch mount. Pi disabled convergence stops its
-role-owned backup schedules and preserves recovery files and credentials.
+Use this procedure when reconnecting the existing OneTouch HDD, changing its
+transport, or verifying recovery. [`inventory/backup.nix`](../../inventory/backup.nix)
+owns the current enable switch; this runbook is not a declaration that backups
+are disabled. The [September 19 inspection](../archive/reports/2026-09-19-backup-evidence.md)
+records the enabled policy and observed workstation backup/restore evidence.
 
 ```text
 verify existing drive → safe attachment → verify identity + capacity
@@ -14,9 +14,9 @@ verify existing drive → safe attachment → verify identity + capacity
 This procedure changes live configuration and requires operator approval.
 It does not format a disk or delete existing archives.
 
-## Existing Aurora connection
+## Historical Aurora connection
 
-The operator reports OneTouch remains connected to Aurora. On September 6,
+During the September 6 preflight, the operator reported OneTouch on Aurora.
 Tailscale reported Aurora offline (last seen August 31, 23:50 UTC), and SSH to
 its recorded tailnet address timed out. These observations do not prove that
 Aurora is powered off or that its disk is safely removable.
@@ -28,7 +28,8 @@ Treat it as an external backup endpoint; it need not rejoin the workstation/Pi
 deployment inventory. A temporary remote destination requires an explicit,
 reviewed transport configuration before sending data.
 
-Before physically moving OneTouch, stop writers and safely unmount it on its
+The September 19 inspection found OneTouch mounted on workstation. Before any
+future physical move, stop writers and safely unmount it on its
 current owner. Do not disconnect a drive whose write activity is unknown.
 
 ## Identify and mount the existing filesystem
@@ -49,21 +50,23 @@ archives. The media source trees occupied approximately 489 GiB during this
 migration; this allocated-size observation is not a compressed backup estimate.
 
 Verify the workstation SSH host public key through a trusted local session.
-Compare it with the future Pi host-key pin in inventory. Derive only the public
+Compare it with the Pi host-key pin in inventory. Derive only the public
 half of Pi's protected backup credential and compare it with the receiver's
 authorized key. Do not display or copy private credentials.
 
 Pi's recorded SSH host key did not match the responding device during the
 September 6 preflight. Resolve that through an independently trusted Pi session
 before remote administration; do not disable strict checking or accept a scan
-as identity proof. Production credential matching remains unverified.
+as identity proof. That preflight did not verify production credential matching;
+recheck it when changing or recovering the transport.
 
 ## Enable and verify both senders
 
-Once connection, identity, capacity and credentials pass, change the canonical
-backup `enabled` field to true. Build and review workstation first, then activate
-it after approval. Confirm the real OneTouch filesystem is mounted at the
-declared path and the receiver is restricted to its Pi subtree.
+If the canonical backup policy is disabled, enable it only after connection,
+identity, capacity and credentials pass. For configuration changes, build and
+review workstation first, then activate it after approval. Confirm the real
+OneTouch filesystem is mounted at the declared path and the receiver is
+restricted to its Pi subtree.
 
 From Pi, use the pinned transport to verify a disposable write/read within that
 subtree. Confirm sibling workstation repositories and shell execution are

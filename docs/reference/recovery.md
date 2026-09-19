@@ -12,9 +12,10 @@ RTO targets for each failure class, the runbooks that hit them, and the permanen
 ## Current recovery posture
 
 The two SSDs hold hot data; IronWolf Pro holds cold data. OneTouch is the
-planned external workstation backup destination, but backups are explicitly
-disabled until its connection and recovery journey are verified. Existing
-MP510 archives, local filesystem snapshots, and application dumps are preserved;
+external workstation backup destination selected by `inventory/backup.nix`.
+The [September 19 evidence](../archive/reports/2026-09-19-backup-evidence.md)
+records a completed workstation service-state restore drill and its limits.
+Existing MP510 archives, local filesystem snapshots, and application dumps are preserved;
 none establishes current backup coverage by itself. Same-disk snapshots and
 dumps do not survive loss of that disk.
 
@@ -67,11 +68,11 @@ These are **inviolable** — every recovery action must respect them or the reco
 
 | Constraint | Reason |
 |---|---|
-| **Preserve existing data and verify disk identity before recovery** | MP510 is an SSD with preserved historical archives, not the planned OneTouch backup destination. Its historical Windows label in older plans is not authority to format it. Formatting or repartitioning requires a separate reviewed recovery procedure and explicit operator approval. |
+| **Preserve existing data and verify disk identity before recovery** | MP510 is an SSD with preserved historical archives, distinct from the OneTouch backup destination. Its historical Windows label in older plans is not authority to format it. Formatting or repartitioning requires a separate reviewed recovery procedure and explicit operator approval. |
 | **Disko configs MUST target `/dev/disk/by-id/...`** | by-id paths follow the hardware; `/dev` paths follow PCIe scan order |
 | **Disambiguate disks by model + by-id, never `/dev/nvmeN`** | Same reason as above; codified in `Mnemopi recall: gotcha-nvme-enumeration` |
 | **Don't schedule destructive system changes during weeks with Aker demo pressure** | The lab is the operator's daily-driver; outage during high-load weeks isn't acceptable |
-| **Backup verification is part of the system, not optional** | Backups are currently disabled. Before enabling OneTouch, require actual fresh snapshots and disposable restore evidence; green CI or retained same-disk snapshots do not establish coverage |
+| **Backup verification is part of the system, not optional** | Require fresh snapshots and disposable restore evidence for the affected data; an enabled policy, green CI, or retained same-disk snapshots do not establish coverage |
 
 ## Capacity baseline
 

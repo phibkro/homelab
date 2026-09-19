@@ -41,7 +41,7 @@ application recovered.
 4. Re-enroll Tailscale through `just pi::enroll` if needed, with operator
    approval. Do not run two nodes concurrently with a copied node identity.
 5. Inspect any surviving historical archives and their protected recovery
-   credentials. Backups are disabled, so do not assume Pi snapshots exist on
+   credentials. Do not assume Pi snapshots exist on
    MP510 or OneTouch, or that a disposable restore helper remains installed.
    If a usable snapshot exists, restore to scratch, inspect its contents, and
    copy selected data into stopped services. Validate databases separately.
@@ -49,8 +49,8 @@ application recovered.
    affected service rather than claiming it was restored.
 
 The [OneTouch cutover runbook](onetouch-backup-cutover.md) describes backup transport
-identity, repository isolation, and restore checks for later activation.
-OneTouch is planned but disabled until its connection is verified.
+identity, repository isolation, and restore checks. Destination policy lives in
+`inventory/backup.nix`; workstation restore evidence does not establish Pi coverage.
 
 ## Temporary failover
 
@@ -66,8 +66,8 @@ Any DNS/provider change requires explicit operator approval.
   authentication, and representative backend routes without bypassing TLS.
 - Verify subnet/exit routing for clients that use Pi and check monitoring and
   off-host heartbeat delivery.
-- Confirm the reviewed disabled-backup policy remains in effect. Preserve
-  historical recovery credentials and archives. Later activation must follow
-  the OneTouch runbook and establish fresh backup and restore evidence.
+- Confirm deployed backup policy matches the reviewed inventory. Preserve
+  historical recovery credentials and archives. Use the OneTouch runbook to
+  establish fresh Pi backup and restore evidence after recovery.
 - Record the revision, restored snapshot IDs, remaining failures, and elapsed
   recovery time. Keep historical archives intact.
