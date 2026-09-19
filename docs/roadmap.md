@@ -38,8 +38,10 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
   Podman realization. Complete the physical reboot, off-LAN, and restore gates
   in `docs/specs/ansible-pi-plan-b.md`. Ansible is now the sole live
   deployment owner; the verified NixOS image remains only as an offline
-  rollback artifact. Connect and verify OneTouch, then enable backups using
-  `docs/runbooks/onetouch-backup-cutover.md`; Aurora and Pavilion are retired.
+  rollback artifact. Establish fresh Pi backup and restore evidence using
+  `docs/runbooks/onetouch-backup-cutover.md`; the workstation observations in
+  `docs/archive/reports/2026-09-19-backup-evidence.md` do not establish Pi coverage.
+  Aurora and Pavilion are retired.
 
 - **Sunshine remote-desktop pairing.** Deployed (`services/sunshine/nixos.nix`); NVENC builds confirmed (`h264/hevc/av1_nvenc`). Outstanding: one-time Moonlight pairing.
 

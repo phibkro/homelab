@@ -13,11 +13,12 @@ The IronWolf Pro 4TB (`/mnt/media`) fails. Symptoms:
 
 ## Establish what survives
 
-IronWolf Pro is the cold-data HDD; the two SSDs hold hot data. Backups are
-explicitly disabled, and OneTouch is only a planned destination pending
-connection verification. Existing MP510 archives remain intact, but the
-observed `media-irreplaceable` directory was approximately 40 KiB and no usable
-media snapshots have been verified. Do not assume its name implies coverage.
+IronWolf Pro is the cold-data HDD; the two SSDs hold hot data. Inspect the
+OneTouch destination selected by `inventory/backup.nix` and preserved MP510
+archives. The [September 19 inspection](../archive/reports/2026-09-19-backup-evidence.md)
+established service-state restore evidence, not a media restore. The earlier
+preflight found an approximately 40 KiB MP510 `media-irreplaceable` directory;
+neither a repository name nor that historical size establishes usable coverage.
 
 Inspect surviving devices, historical archives, and any independently held
 copies before provisioning a replacement. Same-disk snapshots cannot recover
@@ -56,8 +57,8 @@ Wipes + creates the btrfs filesystem with the subvolumes declared in the reviewe
 ### 4. Inspect archives before restoring
 
 Use a protected recovery credential obtained through its authorized provider;
-`/run/secrets/restic-password` is not automatically populated while backups
-are disabled. These commands are templates for an existing verified repository:
+do not assume `/run/secrets/restic-password` is available on a recovery system.
+These commands are templates for an existing verified repository:
 
 ```text
 sudo restic -r <existing-repository> --password-file <protected-credential-file> snapshots
@@ -78,15 +79,15 @@ For media that can be acquired again, recovery options include:
 - **Sonarr / Radarr** (when the arr stack is set up) automate this — they re-grab from indexers based on the library state
 
 If content is irreplaceable, record its protection requirement explicitly.
-Changing its directory or value tier does not enable a backup while the
-backup policy is disabled.
+Changing its directory or value tier does not establish a usable backup;
+verify inclusion in the selected destination and a fresh restore.
 
 ### 6. Verify
 
 Inspect recovered file contents and application behavior. Record the actual
 archive, snapshot ID, recovered paths, and remaining loss. Use the
-[OneTouch cutover runbook](onetouch-backup-cutover.md) before later enabling
-backups; a planned destination is not recovery evidence.
+[OneTouch cutover runbook](onetouch-backup-cutover.md) to re-establish backups
+after recovery; a configured destination is not recovery evidence.
 
 ## Failure-mode notes
 

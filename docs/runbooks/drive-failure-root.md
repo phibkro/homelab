@@ -86,10 +86,10 @@ approved credential operation; do not assume a key backup exists.
 
 The new install has empty service and user state. Verify the existing MP510
 mount at `/mnt/backup-local` and inspect repository snapshots before restoring.
-OneTouch is a planned, disabled destination; inspect any historical archives
-without assuming their existence or coverage. Backup password files are not
-automatically materialized while backups are disabled. Use a protected recovery
-credential file obtained through its authorized provider.
+Inspect the OneTouch destination declared in `inventory/backup.nix` as well;
+verify its identity and usable snapshots before selecting a repository.
+Do not assume a new install has materialized backup credentials. Use a
+protected recovery credential file obtained through its authorized provider.
 Stop affected services and inspect snapshot paths before writing restored data.
 
 ```text
@@ -126,10 +126,9 @@ service health, and operator access. Record the snapshot IDs actually used and
 any missing state. Retained local btrfs snapshots and application dumps help
 with logical failures but do not provide independent disk-loss protection.
 
-The [OneTouch cutover runbook](onetouch-backup-cutover.md) owns later backup
-activation. Keep backups disabled until its connection, destination identity,
-and backup/restore journey are verified; no timer-check result substitutes
-for that evidence.
+Use the [OneTouch cutover runbook](onetouch-backup-cutover.md) to re-establish
+connection, destination identity, and the backup/restore journey after recovery;
+no timer-check result substitutes for that evidence.
 
 ## Don't forget
 
