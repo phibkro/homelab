@@ -394,6 +394,7 @@ therefore change with configuration instead of being duplicated in prose.
 | `navidrome` | `service` | `onetouch` | `/var/lib/private/navidrome`<br>`/var/backup/navidrome` |
 | `paperless` | `irreplaceable` | `onetouch` | `/var/backup/postgresql/paperless.sql.gz` |
 | `prowlarr` | `service` | `onetouch` | `/var/lib/private/prowlarr` |
+| `qbittorrent` | `service` | `onetouch` | `/var/lib/qBittorrent` |
 | `radarr` | `service` | `onetouch` | `/var/lib/radarr` |
 | `radicale` | `service` | `onetouch` | `/var/lib/radicale` |
 | `sonarr` | `service` | `onetouch` | `/var/lib/sonarr` |

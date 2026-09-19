@@ -218,6 +218,7 @@ let
     ollama.ai = "workstation";
     paperless.papers = "workstation";
     prowlarr.indexers = "workstation";
+    qbittorrent.downloads = "workstation";
     radarr.movies = "workstation";
     radicale.calendar = "workstation";
     sonarr.tv = "workstation";
@@ -241,9 +242,9 @@ let
     inventory.workloads.ollama.active
     && !inventory.workloads.open-webui.active
     && inventory.workloads.open-webui.endpoints == { }
-    && !inventory.workloads.qbittorrent.active
-    && inventory.workloads.qbittorrent.endpoints == { }
-    && !hosts.workstation.config.services.qbittorrent.enable;
+    && inventory.workloads.qbittorrent.active
+    && inventory.workloads.qbittorrent.endpoints.downloads.runsOn == "workstation"
+    && hosts.workstation.config.services.qbittorrent.enable;
 
   papersFetchCompatibility = lib.all (
     hostName:
@@ -394,6 +395,15 @@ let
       port = 8085;
       runsOn = "workstation";
       audience = "family";
+      exposeOnTailnet = true;
+      auth = "forward-auth";
+      monitored = true;
+      dashboard = true;
+    };
+    downloads = {
+      port = 8083;
+      runsOn = "workstation";
+      audience = "operator";
       exposeOnTailnet = true;
       auth = "forward-auth";
       monitored = true;
