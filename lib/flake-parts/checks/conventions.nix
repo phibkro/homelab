@@ -438,6 +438,8 @@
                   "injected topology; eval-deployment and eval-workload-role-placement";
                 "infra/common/nixos/inventory.nix" =
                   "read-only projection; eval-inventory-public-safe and eval-deployment";
+                "infra/common/nixos/wifi.nix" =
+                  "hardware-bound network capability; Adelie system build and post-deployment network verification";
               };
               accountedSchemas = builtins.attrNames expectedRecipes ++ builtins.attrNames evaluationOnlySchemas;
             in
