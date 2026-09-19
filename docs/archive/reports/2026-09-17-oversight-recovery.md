@@ -41,7 +41,7 @@ The operator then authorized live Pi recovery and observability work:
 - The Beszel hub creates missing inventory systems and corrects changed endpoints during deployment. It does not delete historical records.
 - SecretSpec supplies a deployment-only Beszel superuser. The repository and managed hub container do not retain its password.
 - A new hub initializes its owner on a loopback-only listener. It publishes the LAN listener only after successful authentication.
-- The live catalog contains Adelie, Aurora, Pavilion, Pi, and workstation. Pi and workstation are online. The API reports the three historical records as offline.
+- The live catalog contains Adelie, Aurora, Pavilion, Pi, and workstation. Pi and workstation report live metrics. Adelie is powered on, but its Tailscale and Beszel paths were unreachable during inspection. The API reports Aurora and Pavilion as offline historical records.
 - The Pi agent reports **55 systemd services, 0 failed**. Workstation reports **102 systemd services, 0 failed**.
 - `just pi::check` passed. The authorized `just pi::deploy` completed with `failed=0`.
 - The post-deployment `just pi::plan` completed with `changed=0`, `unreachable=0`, and `failed=0`.
@@ -60,7 +60,7 @@ Unmerged or dirty worktrees remain preserved. Compare each branch with current `
 
 | Priority | Outcome | Present state | Next action |
 |---:|---|---|---|
-| 1 | Pi recovery and observability | Pi backups are fresh. One restore path passed. Core Pi observability services are healthy. Beszel now monitors Pi and workstation and retains Adelie as offline. | Treat reboot, off-LAN operation, and wider application restore tests as separate acceptance work. |
+| 1 | Pi recovery and observability | Pi backups are fresh. One restore path passed. Core Pi observability services are healthy. Beszel monitors Pi and workstation. Adelie is powered on, but its monitoring path is not connected. | Restore Adelie's Tailscale path before an operator-authorized activation. Treat reboot, off-LAN operation, and wider application restore tests as separate acceptance work. |
 | 2 | Observer and history repair | Several clean but divergent observer, revert, timer, and mixed-history worktrees remain. | Choose the desired observer behavior. Review one exact candidate before history repair or integration. |
 | 3 | Older settings and topology lines | Their reconciled outcomes are on `main`, but predecessor branches are not Git ancestors of `main`. | Compare content with current `main`. Remove a branch only when it is clean and fully superseded. |
 | 4 | Standalone fixes | Backup-list, chatlog, format-drift, and multi-host verification branches remain unmerged. | Review each branch as its own outcome. Integrate or retire it from direct evidence. |
