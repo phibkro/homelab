@@ -8,6 +8,22 @@
   resolvedEndpointsFor,
 }:
 let
+  schema = import ../lib/topology/schema.nix;
+  inherit (schema) capabilityPropertySchemas relationshipTypeSegments;
+  jsonScalarType =
+    value:
+    if builtins.isString value then
+      "string"
+    else if builtins.isInt value then
+      "integer"
+    else if builtins.isFloat value then
+      "float"
+    else if builtins.isBool value then
+      "boolean"
+    else if builtins.isNull value then
+      "nil"
+    else
+      null;
   isJsonScalar =
     value:
     builtins.isBool value
@@ -27,15 +43,7 @@ let
   endpointId = workloadName: endpointName: "endpoint.${workloadName}.${endpointName}";
   datasetId = name: "dataset.${name}";
 
-  relationshipTypeSegments = {
-    "nori.relationships.HostedOn" = "hosted-on";
-    "nori.relationships.ProvidedBy" = "provided-by";
-    "nori.relationships.AttachedTo" = "attached-to";
-    "nori.relationships.Writes" = "writes";
-    "nori.relationships.Reads" = "reads";
-    "nori.relationships.Uses" = "uses";
-    "nori.relationships.AuthenticatedBy" = "authenticated-by";
-  };
+  unsupportedKeys = allowed: value: lib.filter (name: !lib.elem name allowed) (lib.attrNames value);
   relationshipSegment =
     type:
     let
@@ -79,17 +87,20 @@ let
   datasetNames = lib.attrNames datasets;
 
   topologyDeclarationsOf =
-    owner: declaration:
+    owner: allowedKeys: declaration:
     let
       topology = declaration.topology or { };
+      unexpectedKeys = if builtins.isAttrs topology then unsupportedKeys allowedKeys topology else [ ];
     in
     assert lib.assertMsg (builtins.isAttrs topology)
       "topology: ${owner} topology declaration must be an attrset";
+    assert lib.assertMsg (unexpectedKeys == [ ])
+      "topology: ${owner} topology declaration has unsupported fields ${builtins.toJSON unexpectedKeys}";
     topology;
   capabilitiesOf =
-    owner: declaration:
+    owner: allowedTopologyKeys: declaration:
     let
-      topology = topologyDeclarationsOf owner declaration;
+      topology = topologyDeclarationsOf owner allowedTopologyKeys declaration;
       capabilities = topology.capabilities or { };
     in
     assert lib.assertMsg (builtins.isAttrs capabilities)
@@ -106,7 +117,10 @@ let
   requirementsOf =
     workloadName:
     let
-      topology = topologyDeclarationsOf (workloadId workloadName) workloadCatalog.${workloadName};
+      topology = topologyDeclarationsOf (workloadId workloadName) [
+        "capabilities"
+        "requires"
+      ] workloadCatalog.${workloadName};
       requirements = topology.requires or { };
     in
     assert lib.assertMsg (builtins.isAttrs requirements)
@@ -146,7 +160,10 @@ let
       "runtimeModule"
       "topology"
     ];
-    capabilities = capabilitiesOf (workloadId workloadName) workload;
+    capabilities = capabilitiesOf (workloadId workloadName) [
+      "capabilities"
+      "requires"
+    ] workload;
   }) workloadCatalog;
   endpointNodes = lib.concatMap (
     workloadName:
@@ -154,7 +171,7 @@ let
       id = endpointId workloadName endpointName;
       kind = "endpoint";
       properties = endpointProperties endpoint;
-      capabilities = capabilitiesOf (endpointId workloadName endpointName) endpoint;
+      capabilities = capabilitiesOf (endpointId workloadName endpointName) [ "capabilities" ] endpoint;
     }) (resolvedEndpointsFor workloadName)
   ) workloadNames;
   datasetNodes = lib.mapAttrsToList (datasetName: dataset: {
@@ -244,6 +261,16 @@ let
       capability = field "capability";
       relationship = field "relationship";
       constraints = field "constraints";
+      unexpectedKeys =
+        if builtins.isAttrs declaration then
+          unsupportedKeys [
+            "capability"
+            "relationship"
+            "target"
+            "constraints"
+          ] declaration
+        else
+          [ ];
       targets =
         if builtins.isNull rawTarget then
           map hostId (workloadHosts.${workloadName} or [ ])
@@ -271,6 +298,9 @@ let
       };
     in
     assert lib.assertMsg (isStableName name) (failure "has an invalid requirement name");
+    assert lib.assertMsg (unexpectedKeys == [ ]) (
+      failure "has unsupported fields ${builtins.toJSON unexpectedKeys}"
+    );
     assert lib.assertMsg (builtins.isNull rawTarget || builtins.isString rawTarget) (
       failure "has an invalid target"
     );
@@ -363,16 +393,22 @@ let
     "owner='${requirement.owner}' name='${requirement.name}' target='${requirement.target}' ${message}";
   constraintShapeFailures = lib.concatMap (
     requirement:
+    let
+      capabilitySchema = capabilityPropertySchemas.${requirement.capability} or { };
+    in
     lib.concatMap (
       property:
       let
         operatorSet = requirement.constraints.${property};
       in
-      if !builtins.isAttrs operatorSet then
+      if !builtins.hasAttr property capabilitySchema then
+        [ (requirementFailure requirement "constrains unsupported capability property '${property}'") ]
+      else if !builtins.isAttrs operatorSet then
         [ (requirementFailure requirement "constraint '${property}' must declare exactly one operator") ]
       else
         let
           operators = lib.attrNames operatorSet;
+          expectedType = capabilitySchema.${property};
         in
         if lib.length operators != 1 then
           [ (requirementFailure requirement "constraint '${property}' must declare exactly one operator") ]
@@ -389,16 +425,22 @@ let
             ]
           then
             [ (requirementFailure requirement "constraint '${property}' uses unknown operator '${operator}'") ]
-          else if operator == "equal" && !isJsonScalar value then
-            [ (requirementFailure requirement "constraint '${property}.equal' must be a JSON-safe scalar") ]
-          else if operator == "atLeast" && !builtins.isInt value then
-            [ (requirementFailure requirement "constraint '${property}.atLeast' must be an integer") ]
+          else if operator == "equal" && jsonScalarType value != expectedType then
+            [ (requirementFailure requirement "constraint '${property}.equal' must be ${expectedType}") ]
+          else if operator == "atLeast" && (expectedType != "integer" || !builtins.isInt value) then
+            [
+              (requirementFailure requirement "constraint '${property}.atLeast' requires an integer property and value")
+            ]
           else if
             operator == "oneOf"
-            && (!builtins.isList value || lib.length value == 0 || !lib.all isJsonScalar value)
+            && (
+              !builtins.isList value
+              || lib.length value == 0
+              || !lib.all (candidate: jsonScalarType candidate == expectedType) value
+            )
           then
             [
-              (requirementFailure requirement "constraint '${property}.oneOf' must be a non-empty list of JSON-safe scalars")
+              (requirementFailure requirement "constraint '${property}.oneOf' must be a non-empty list of ${expectedType} values")
             ]
           else
             [ ]
@@ -457,17 +499,22 @@ let
         capabilityName:
         let
           properties = capabilities.${capabilityName};
+          propertySchema = capabilityPropertySchemas.${capabilityName} or null;
         in
         if !isTypedName "nori.capabilities." capabilityName then
           [ "node '${node.id}' has invalid capability type '${capabilityName}'" ]
+        else if builtins.isNull propertySchema || capabilityName == "nori.capabilities.TopologyTarget" then
+          [ "node '${node.id}' has unsupported capability type '${capabilityName}'" ]
         else if !builtins.isAttrs properties then
           [ "node '${node.id}' capability '${capabilityName}' properties must be an attrset" ]
         else
           lib.concatMap (
             property:
-            lib.optional (
-              !isJsonScalar properties.${property}
-            ) "node '${node.id}' capability '${capabilityName}.${property}' must be a JSON-safe scalar"
+            if !builtins.hasAttr property propertySchema then
+              [ "node '${node.id}' capability '${capabilityName}' has unsupported property '${property}'" ]
+            else
+              lib.optional (jsonScalarType properties.${property} != propertySchema.${property})
+                "node '${node.id}' capability '${capabilityName}.${property}' must be ${propertySchema.${property}}"
           ) (lib.attrNames properties)
       ) (lib.attrNames capabilities)
   ) nodes;

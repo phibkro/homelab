@@ -90,10 +90,72 @@ let
       };
     }
   );
+  unknownRequirementField = evaluate (
+    withWorkload (workloadWithRequirement {
+      placementPolicy = "best-fit";
+    })
+  );
+  unknownCapabilityProperty = evaluate (
+    validFixture
+    // {
+      hosts.workstation = validFixture.hosts.workstation // {
+        capabilities = validFixture.hosts.workstation.capabilities // {
+          "nori.capabilities.GpuCompute" =
+            validFixture.hosts.workstation.capabilities."nori.capabilities.GpuCompute"
+            // {
+              device = "gpu0";
+            };
+        };
+      };
+    }
+  );
+  mistypedConstraintValue = evaluate (
+    withWorkload (workloadWithRequirement {
+      constraints.vendor.oneOf = [
+        "nvidia"
+        1
+      ];
+    })
+  );
+  unknownTopologyField = evaluate (
+    withWorkload (
+      validFixture.workloadCatalog.ollama
+      // {
+        topology = validFixture.workloadCatalog.ollama.topology // {
+          require = validFixture.workloadCatalog.ollama.topology.requires;
+        };
+      }
+    )
+  );
+  reservedCapability = evaluate (
+    validFixture
+    // {
+      hosts.workstation = validFixture.hosts.workstation // {
+        capabilities = validFixture.hosts.workstation.capabilities // {
+          "nori.capabilities.TopologyTarget" = { };
+        };
+      };
+    }
+  );
+  unsupportedEndpointRequirement = evaluate (
+    validFixture
+    // {
+      resolvedEndpointsFor = _: {
+        api.topology.requires.accelerator =
+          validFixture.workloadCatalog.ollama.topology.requires.accelerator;
+      };
+    }
+  );
 in
 assert production.success;
 assert validBaseline.success;
 assert !unknownTarget.success;
 assert !missingCapability.success;
 assert !failedNumericConstraint.success;
-"ok — topology compiler accepts the production graph and rejects unknown target, missing capability, and failed numeric constraint"
+assert !unknownRequirementField.success;
+assert !unknownCapabilityProperty.success;
+assert !mistypedConstraintValue.success;
+assert !unknownTopologyField.success;
+assert !reservedCapability.success;
+assert !unsupportedEndpointRequirement.success;
+"ok — topology compiler accepts the production graph and rejects malformed targets, capabilities, constraints, and declaration fields"

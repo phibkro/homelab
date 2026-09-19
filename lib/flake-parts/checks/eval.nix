@@ -156,11 +156,11 @@
             echo ${lib.escapeShellArg result} > $out
           '';
 
-        topology-conformance =
+        eval-topology-conformance =
           let
             result = import ../../../tests/eval/topology-conformance.nix { inherit inputs lib; };
           in
-          pkgs.runCommandLocal "topology-conformance" { } ''
+          pkgs.runCommandLocal "eval-topology-conformance" { } ''
             echo ${lib.escapeShellArg result} > $out
           '';
 

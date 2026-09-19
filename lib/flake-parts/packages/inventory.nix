@@ -72,10 +72,23 @@
             test "$(head -n 1 ${topologyIntentTosca})" = 'tosca_definitions_version: tosca_2_0'
             yq -o=json '.' ${topologyIntentTosca} |
               jq -e '
-                .tosca_definitions_version == "tosca_2_0"
-                and ([.service_template.node_templates["workload.ollama"].requirements[] | has("accelerator")] | any)
-                and ([.service_template.node_templates["workload.vaultwarden"].requirements[] | has("identity")] | any)
-                and ([.service_template.node_templates["workload.vaultwarden"].requirements[] | has("persistent-storage")] | any)
+                def requirement($node; $name):
+                  [.service_template.node_templates[$node].requirements[] | .[$name]?]
+                  | map(select(. != null))
+                  | first;
+                requirement("workload.ollama"; "accelerator") as $accelerator
+                | requirement("workload.vaultwarden"; "identity") as $identity
+                | requirement("workload.vaultwarden"; "persistent-storage") as $storage
+                | .tosca_definitions_version == "tosca_2_0"
+                and (.service_template.node_templates[$accelerator.node].capabilities | has($accelerator.capability))
+                and (.service_template.node_templates[$identity.node].capabilities | has($identity.capability))
+                and (.service_template.node_templates[$storage.node].capabilities | has($storage.capability))
+                and (
+                  (.service_template.node_templates["host.adelie"].type) as $adelieType
+                  | .node_types[$adelieType].properties.lanIp.type == "nil"
+                )
+                and (.service_template.node_templates["host.adelie"].properties | has("lanIp"))
+                and (.service_template.node_templates["host.adelie"].properties.lanIp == null)
               ' >/dev/null
             touch "$out"
           '';

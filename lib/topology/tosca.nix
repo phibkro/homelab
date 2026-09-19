@@ -24,6 +24,8 @@ let
     sort
     typeOf
     ;
+  schema = import ./schema.nix;
+  inherit (schema) capabilityPropertySchemas relationshipTypeSegments;
 
   fail = message: throw "TOSCA projection: ${message}";
 
@@ -137,45 +139,7 @@ let
     else
       [ ];
 
-  capabilityPropertySchemas = {
-    "nori.capabilities.Compute" = {
-      architecture = "string";
-      cores = "integer";
-      memoryBytes = "integer";
-    };
-    "nori.capabilities.GpuCompute" = {
-      backend = "string";
-      vendor = "string";
-      vramBytes = "integer";
-    };
-    "nori.capabilities.PersistentStorage" = {
-      class = "string";
-    };
-    "nori.capabilities.OidcProvider" = {
-      protocol = "string";
-    };
-    "nori.capabilities.TopologyTarget" = { };
-  };
-
-  relationshipTypeNames = [
-    "nori.relationships.HostedOn"
-    "nori.relationships.ProvidedBy"
-    "nori.relationships.AttachedTo"
-    "nori.relationships.Writes"
-    "nori.relationships.Reads"
-    "nori.relationships.Uses"
-    "nori.relationships.AuthenticatedBy"
-  ];
-
-  relationshipTypeSegments = {
-    "nori.relationships.HostedOn" = "hosted-on";
-    "nori.relationships.ProvidedBy" = "provided-by";
-    "nori.relationships.AttachedTo" = "attached-to";
-    "nori.relationships.Writes" = "writes";
-    "nori.relationships.Reads" = "reads";
-    "nori.relationships.Uses" = "uses";
-    "nori.relationships.AuthenticatedBy" = "authenticated-by";
-  };
+  relationshipTypeNames = attrNames relationshipTypeSegments;
 
   nodeKindTypes = {
     machine = "nori.nodes.Machine";
@@ -630,7 +594,7 @@ let
     {
       ${requirementSymbol requirement} = {
         node = requirement.target;
-        inherit (requirement) capability;
+        capability = capabilitySymbol requirement.capability;
         relationship = relationshipTemplateName (relationshipForRequirement requirement);
         optional = false;
       }

@@ -343,7 +343,7 @@ Run these journeys:
 nix eval .#lib.noriInventory.topology --json
 nix build .#topology-intent-json
 nix build .#topology-intent-tosca
-nix build .#checks.x86_64-linux.topology-conformance
+nix build .#checks.x86_64-linux.eval-topology-conformance
 nix build .#checks.x86_64-linux.topology-tosca-structure
 nix build .#checks.x86_64-linux.eval-inventory-public-safe
 ```
