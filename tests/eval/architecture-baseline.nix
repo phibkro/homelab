@@ -23,7 +23,8 @@ let
   homes = {
     workstation = hosts.workstation.config.home-manager.users.nori;
   };
-  qbittorrentConfig = hosts.workstation.config.services.qbittorrent.serverConfig;
+  qbittorrentServerConfig = hosts.workstation.config.services.qbittorrent.serverConfig;
+  qbittorrentPreStart = hosts.workstation.config.systemd.services.qbittorrent.preStart;
 
   hasHomePackage =
     homeName: packageName:
@@ -246,18 +247,14 @@ let
     && inventory.workloads.qbittorrent.active
     && inventory.workloads.qbittorrent.endpoints.downloads.runsOn == "workstation"
     && hosts.workstation.config.services.qbittorrent.enable
-    && qbittorrentConfig.Preferences.WebUI.LocalHostAuth == false
-    && qbittorrentConfig.Preferences.WebUI.HostHeaderValidation == false
-    && qbittorrentConfig.Preferences.WebUI.CSRFProtection == false
-    &&
-      qbittorrentConfig.Preferences.WebUI.AuthSubnetWhitelist
-      == "${hosts.workstation.config.nori.inventory.hosts.pi.tailnetIp}/32"
-    && qbittorrentConfig.Preferences.WebUI.AuthSubnetWhitelistEnabled
-    &&
-      qbittorrentConfig.BitTorrent.Session.DefaultSavePath
-      == "${hosts.workstation.config.nori.fs.downloads.path}/.downloads/complete"
-    && qbittorrentConfig.BitTorrent.Session.TempPath == "/var/lib/qBittorrent/qBittorrent/incomplete"
-    && qbittorrentConfig.BitTorrent.Session.TempPathEnabled
+    && qbittorrentServerConfig == { }
+    && hosts.workstation.config.systemd.services.qbittorrent.serviceConfig.UMask == "0002"
+    && lib.hasInfix "qbt-configure.py" qbittorrentPreStart
+    && lib.hasInfix "/var/lib/qBittorrent/qBittorrent/config/qBittorrent.conf" qbittorrentPreStart
+    && lib.hasInfix "${hosts.workstation.config.nori.fs.downloads.path}/.downloads/complete" qbittorrentPreStart
+    && lib.hasInfix "${hosts.workstation.config.nori.inventory.hosts.pi.tailnetIp}/32" qbittorrentPreStart
+    && inventory.workloads.qbittorrent.endpoints.downloads.forwardAuth.exemptPaths == [ ]
+    && compiledInventory.internal.lanRoutes.downloads.forwardAuth.exemptPaths == [ ]
     && lib.elem "d /var/lib/qBittorrent/qBittorrent/incomplete 0755 qbittorrent qbittorrent -" hosts.workstation.config.systemd.tmpfiles.rules;
 
   papersFetchCompatibility = lib.all (

@@ -16,7 +16,7 @@ in
         downloads = {
           port = 8083;
           exposeOnTailnet = true;
-          forwardAuth = { };
+          forwardAuth.exemptPaths = [ ];
           monitor = { };
           audience = "operator";
           dashboard = {
