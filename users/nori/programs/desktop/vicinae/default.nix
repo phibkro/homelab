@@ -259,6 +259,7 @@ let
       pkgs.coreutils
       pkgs.jq
       pkgs.sway
+      pkgs.util-linux
     ];
     text = ''
       export RICE_VICINAE_ACTION_SCRIPTS=${lib.escapeShellArg actionScriptsPackage}
