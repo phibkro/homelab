@@ -8,10 +8,7 @@
 let
   approvedSource =
     assert lib.assertMsg (
-      inputs.self ? rev
-      && !(inputs.self ? dirtyRev)
-      && inputs.self.rev != null
-      && inputs.self.rev != ""
+      inputs.self ? rev && !(inputs.self ? dirtyRev) && inputs.self.rev != null && inputs.self.rev != ""
     ) "nori-desktop-settings activation requires a clean committed flake source";
     inputs.self.outPath;
   sourceMarker = builtins.toJSON {
