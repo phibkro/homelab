@@ -27,6 +27,11 @@ let
     "ansible"
     "nixos"
   ];
+  supportedPlacementStrategies = [
+    "all-matches"
+    "first-unique"
+  ];
+  hostTags = lib.unique (lib.concatMap (host: host.tags or [ ]) (lib.attrValues hosts));
   profileNames = lib.attrNames profiles;
   workloadNames = lib.attrNames workloadCatalog;
 
@@ -59,6 +64,8 @@ let
   invalidHostRoles = lib.filterAttrs (_name: host: !lib.elem host.identity.role hostRoles) hosts;
   validSourceRoot =
     root: builtins.isString root && root != "" && !lib.hasPrefix "/" root && !lib.hasInfix ".." root;
+  isStableName = name: builtins.isString name && builtins.match "[a-z0-9][a-z0-9-]*" name != null;
+  invalidProfileDeclarations = lib.filterAttrs (_name: profile: profile ? workloads) profiles;
   invalidHostDeclarations = lib.filterAttrs (
     _name: host:
     !lib.elem (host.kind or null) supportedHostKinds
@@ -66,6 +73,10 @@ let
     || host.managementRoot == ""
     || lib.hasPrefix "/" host.managementRoot
     || lib.hasInfix ".." host.managementRoot
+    || !builtins.isList (host.tags or [ ])
+    || !lib.all isStableName (host.tags or [ ])
+    || lib.unique (host.tags or [ ]) != (host.tags or [ ])
+    || host ? workloads
     || !builtins.isList (host.additionalSourceRoots or [ ])
     || !lib.all validSourceRoot (host.additionalSourceRoots or [ ])
     || (host.kind == "nixos" && (!(host ? systemModule) || !(host ? homeModule) || host ? deployment))
@@ -85,12 +96,61 @@ let
   referencedProfiles = lib.unique (lib.concatMap (host: host.profiles) (lib.attrValues hosts));
   unknownProfiles = lib.subtractLists profileNames referencedProfiles;
 
-  referencedWorkloads = lib.unique (
-    lib.concatMap (profile: profile.workloads) (lib.attrValues profiles)
-    ++ lib.concatMap (host: host.workloads) (lib.attrValues hosts)
-  );
-  unknownWorkloads = lib.subtractLists workloadNames referencedWorkloads;
-  unusedWorkloads = lib.subtractLists referencedWorkloads workloadNames;
+  selectorIsValid =
+    selector:
+    builtins.isAttrs selector
+    && lib.length (lib.attrNames selector) == 1
+    && (
+      (selector ? host && builtins.isString selector.host && builtins.hasAttr selector.host hosts)
+      || (
+        selector ? tags
+        && builtins.isList selector.tags
+        && selector.tags != [ ]
+        && lib.all isStableName selector.tags
+        && lib.unique selector.tags == selector.tags
+        && lib.all (tag: lib.elem tag hostTags) selector.tags
+      )
+      || (
+        selector ? roles
+        && builtins.isList selector.roles
+        && selector.roles != [ ]
+        && lib.all builtins.isString selector.roles
+        && lib.unique selector.roles == selector.roles
+        && lib.all (role: lib.elem role hostRoles) selector.roles
+      )
+    );
+  placementIsValid =
+    workload:
+    let
+      placement = workload.placement or null;
+      cardinality = if builtins.isAttrs placement then placement.cardinality or null else null;
+      strategy = if builtins.isAttrs placement then placement.strategy or null else null;
+    in
+    builtins.isAttrs placement
+    &&
+      lib.attrNames placement == [
+        "cardinality"
+        "selectors"
+        "strategy"
+      ]
+    && lib.elem strategy supportedPlacementStrategies
+    && builtins.isList placement.selectors
+    && placement.selectors != [ ]
+    && lib.all selectorIsValid placement.selectors
+    && builtins.isAttrs cardinality
+    &&
+      lib.attrNames cardinality == [
+        "max"
+        "min"
+      ]
+    && builtins.isInt cardinality.min
+    && cardinality.min >= 1
+    && builtins.isInt cardinality.max
+    && cardinality.max >= cardinality.min
+    && (strategy != "first-unique" || (cardinality.min == 1 && cardinality.max == 1));
+  invalidPlacementDeclarations = lib.filterAttrs (
+    _: workload: !placementIsValid workload
+  ) workloadCatalog;
 
   invalidHostRoleDeclarations = lib.filterAttrs (
     _name: workload:
@@ -138,16 +198,73 @@ let
     || (!legacy && (!artifact.immutable || artifact ? legacyException))
   ) artifactWorkloads;
 
+  selectorHosts =
+    selector:
+    if selector ? host then
+      [ selector.host ]
+    else if selector ? tags then
+      lib.filter (
+        hostName: lib.all (tag: lib.elem tag (hosts.${hostName}.tags or [ ])) selector.tags
+      ) hostNames
+    else
+      lib.filter (hostName: lib.elem hosts.${hostName}.identity.role selector.roles) hostNames;
+
+  rawHostsForWorkload =
+    workloadName:
+    let
+      placement = workloadCatalog.${workloadName}.placement;
+      selectorResults = map selectorHosts placement.selectors;
+      firstNonEmpty = lib.findFirst (matches: matches != [ ]) [ ] selectorResults;
+    in
+    if placement.strategy == "first-unique" then
+      firstNonEmpty
+    else
+      lib.sort builtins.lessThan (lib.unique (lib.concatLists selectorResults));
+
+  placementResolutionFailures = lib.concatMap (
+    workloadName:
+    let
+      placement = workloadCatalog.${workloadName}.placement;
+      selected = rawHostsForWorkload workloadName;
+      count = lib.length selected;
+      tooFew = count < placement.cardinality.min;
+      tooMany = count > placement.cardinality.max;
+      ambiguous = placement.strategy == "first-unique" && count > 1;
+    in
+    lib.optional (count == 0) "${workloadName}: no selector matched"
+    ++ lib.optional ambiguous "${workloadName}: first non-empty selector matched multiple hosts [${lib.concatStringsSep ", " selected}]"
+    ++
+      lib.optional (count != 0 && tooFew)
+        "${workloadName}: selected ${toString count} host(s), below minimum ${toString placement.cardinality.min}"
+    ++
+      lib.optional (count != 0 && tooMany)
+        "${workloadName}: selected ${toString count} host(s), above maximum ${toString placement.cardinality.max}"
+  ) workloadNames;
+
+  hostsForWorkload = rawHostsForWorkload;
+
   workloadsFor =
     hostName:
+    lib.filter (workloadName: lib.elem hostName (hostsForWorkload workloadName)) workloadNames;
+
+  realizationId = workloadName: instanceName: "realization.${workloadName}.${instanceName}";
+  realizationsFor =
+    workloadName:
     let
-      host = hosts.${hostName};
+      placement = workloadCatalog.${workloadName}.placement;
+      selectedHosts = hostsForWorkload workloadName;
     in
-    lib.sort builtins.lessThan (
-      lib.unique (
-        lib.concatMap (profileName: profiles.${profileName}.workloads) host.profiles ++ host.workloads
-      )
-    );
+    map (
+      hostName:
+      let
+        instanceName = if placement.strategy == "first-unique" then "primary" else hostName;
+      in
+      {
+        id = realizationId workloadName instanceName;
+        inherit workloadName hostName instanceName;
+      }
+    ) selectedHosts;
+  workloadRealizations = lib.genAttrs workloadNames realizationsFor;
 
   systemModulesFor =
     hostName:
@@ -157,9 +274,6 @@ let
     lib.unique (
       lib.concatMap (profileName: profiles.${profileName}.systemModules) hosts.${hostName}.profiles
     );
-
-  hostsForWorkload =
-    workloadName: lib.filter (hostName: lib.elem workloadName (workloadsFor hostName)) hostNames;
 
   invalidRolePlacements = lib.concatMap (
     workloadName:
@@ -183,20 +297,17 @@ let
     let
       workload = workloadCatalog.${workloadName};
       endpoints = workload.endpoints or { };
-      placements = hostsForWorkload workloadName;
-      resolveEndpoint =
-        endpointName: endpoint:
-        let
-          explicitHost = endpoint.runsOn or null;
-          resolvedHost = if explicitHost != null then explicitHost else lib.head placements;
-        in
-        assert lib.assertMsg (explicitHost != null || lib.length placements == 1)
-          "inventory: endpoint '${endpointName}' on multi-host workload '${workloadName}' must declare runsOn";
-        assert lib.assertMsg (lib.elem resolvedHost placements)
-          "inventory: endpoint '${endpointName}' on workload '${workloadName}' runs on '${resolvedHost}', which is not a placement host";
-        endpoint // { runsOn = resolvedHost; };
+      realizations = realizationsFor workloadName;
     in
-    lib.mapAttrs resolveEndpoint endpoints;
+    assert lib.assertMsg (lib.all (endpoint: !(endpoint ? runsOn)) (lib.attrValues endpoints))
+      "inventory: endpoint placement is derived from workload realizations; '${workloadName}' must not declare runsOn";
+    assert lib.assertMsg (
+      endpoints == { } || lib.length realizations == 1
+    ) "inventory: endpoints on workload '${workloadName}' require exactly one realization";
+    let
+      resolvedHost = (builtins.head realizations).hostName;
+    in
+    lib.mapAttrs (_endpointName: endpoint: endpoint // { runsOn = resolvedHost; }) endpoints;
 
   endpointNames = lib.concatMap (
     workloadName: lib.attrNames (workloadCatalog.${workloadName}.endpoints or { })
@@ -234,19 +345,15 @@ let
       )
     );
 
-  profilesForWorkload =
-    workloadName:
-    lib.attrNames (lib.filterAttrs (_: profile: lib.elem workloadName profile.workloads) profiles);
-
   publicProfiles = lib.mapAttrs (_: profile: {
-    inherit (profile) description workloads;
+    inherit (profile) description;
   }) profiles;
 
   publicHosts = lib.mapAttrs (
     name: host:
     host.identity
     // {
-      inherit (host) kind profiles;
+      inherit (host) kind profiles tags;
       workloads = workloadsFor name;
     }
   ) hosts;
@@ -254,13 +361,18 @@ let
   publicWorkloads = lib.mapAttrs (
     name: workload:
     removeAttrs workload [
+      "_manifestPath"
       "runtimeModule"
       "topology"
     ]
     // {
       active = workload.active or true;
       hosts = hostsForWorkload name;
-      profiles = profilesForWorkload name;
+      realizations = map (realization: {
+        inherit (realization) id;
+        host = realization.hostName;
+        instance = realization.instanceName;
+      }) (realizationsFor name);
       endpoints = resolvedEndpointsFor name;
     }
   ) workloadCatalog;
@@ -276,7 +388,7 @@ let
       workloadCatalog
       datasets
       disks
-      workloadHosts
+      workloadRealizations
       resolvedEndpointsFor
       ;
   };
@@ -350,27 +462,26 @@ let
   };
 
   repoRoot = toString ../.;
-  runtimeRootFor =
-    workload:
-    let
-      relativeModule = lib.removePrefix "${repoRoot}/" (toString workload.runtimeModule);
-    in
-    builtins.dirOf relativeModule;
+  relativePathFor = path: lib.removePrefix "${repoRoot}/" (toString path);
+  runtimeRootFor = workload: builtins.dirOf (relativePathFor workload.runtimeModule);
+  manifestPathFor = workload: relativePathFor workload._manifestPath;
+  addSourceRoot =
+    roots: root: selectedHosts:
+    roots
+    // {
+      ${root} = lib.unique ((roots.${root} or [ ]) ++ selectedHosts);
+    };
   sourceRootHosts = lib.foldl' (
     roots: workloadName:
     let
       workload = workloadCatalog.${workloadName};
+      selectedHosts = workloadHosts.${workloadName};
+      rootsWithManifest = addSourceRoot roots (manifestPathFor workload) selectedHosts;
     in
     if !(workload ? runtimeModule) then
-      roots
+      rootsWithManifest
     else
-      let
-        root = runtimeRootFor workload;
-      in
-      roots
-      // {
-        ${root} = lib.unique ((roots.${root} or [ ]) ++ workloadHosts.${workloadName});
-      }
+      addSourceRoot rootsWithManifest (runtimeRootFor workload) selectedHosts
   ) { } workloadNames;
   machineRootHosts = lib.foldlAttrs (
     roots: name: host:
@@ -413,19 +524,22 @@ in
 assert lib.assertMsg (
   unknownProfiles == [ ]
 ) "inventory: host profile reference(s) do not exist: ${lib.concatStringsSep ", " unknownProfiles}";
+assert lib.assertMsg (invalidProfileDeclarations == { })
+  "inventory: profiles must not own workload placement: ${lib.concatStringsSep ", " (lib.attrNames invalidProfileDeclarations)}";
 assert lib.assertMsg (invalidHostDeclarations == { })
-  "inventory: hosts must declare exactly one supported management backend and a safe managementRoot: ${lib.concatStringsSep ", " (lib.attrNames invalidHostDeclarations)}";
+  "inventory: hosts must declare unique stable tags, exactly one supported management backend, and a safe managementRoot: ${lib.concatStringsSep ", " (lib.attrNames invalidHostDeclarations)}";
 assert lib.assertMsg (invalidHostRoles == { })
   "inventory: host roles must be drawn from [${lib.concatStringsSep ", " hostRoles}]: ${lib.concatStringsSep ", " (lib.attrNames invalidHostRoles)}";
+assert lib.assertMsg (invalidPlacementDeclarations == { })
+  "inventory: workloads must declare valid ordered placement selectors and cardinality: ${lib.concatStringsSep ", " (lib.attrNames invalidPlacementDeclarations)}";
+assert lib.assertMsg (placementResolutionFailures == [ ])
+  "inventory: workload placement resolution failed:\n${
+    lib.concatStringsSep "\n" (map (failure: "- ${failure}") placementResolutionFailures)
+  }";
 assert lib.assertMsg (invalidDiskDeclarations == { })
   "inventory: external disks must have a known host, by-id identity, filesystem contract, and supported role: ${lib.concatStringsSep ", " (lib.attrNames invalidDiskDeclarations)}";
 assert lib.assertMsg (duplicateDiskByIds == [ ])
   "inventory: external disks must not share a whole-disk by-id identity: ${lib.concatStringsSep ", " duplicateDiskByIds}";
-assert lib.assertMsg (unknownWorkloads == [ ])
-  "inventory: profile/host workload reference(s) do not exist: ${lib.concatStringsSep ", " unknownWorkloads}";
-assert lib.assertMsg (
-  unusedWorkloads == [ ]
-) "inventory: catalog workload(s) have no placement: ${lib.concatStringsSep ", " unusedWorkloads}";
 assert lib.assertMsg (invalidHostRoleDeclarations == { })
   "inventory: workload hostRoles must be a non-empty list drawn from [${lib.concatStringsSep ", " hostRoles}]: ${lib.concatStringsSep ", " (lib.attrNames invalidHostRoleDeclarations)}";
 assert lib.assertMsg (invalidRolePlacements == [ ])
@@ -458,6 +572,8 @@ builtins.deepSeq topology {
       backup
       site
       workloadCatalog
+      realizationsFor
+      workloadRealizations
       workloadsFor
       systemModulesFor
       runtimeModulesFor

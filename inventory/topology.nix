@@ -4,7 +4,7 @@
   workloadCatalog,
   datasets,
   disks,
-  workloadHosts,
+  workloadRealizations,
   resolvedEndpointsFor,
 }:
 let
@@ -143,6 +143,7 @@ let
     kind = "machine";
     properties = host.identity // {
       managementBackend = host.kind;
+      inherit (host) tags;
     };
     capabilities = hostCapabilitiesOf hostName;
   }) hosts;
@@ -156,7 +157,9 @@ let
     id = workloadId workloadName;
     kind = "workload";
     properties = removeAttrs workload [
+      "_manifestPath"
       "endpoints"
+      "placement"
       "runtimeModule"
       "topology"
     ];
@@ -165,6 +168,18 @@ let
       "requires"
     ] workload;
   }) workloadCatalog;
+  realizationNodes = lib.concatMap (
+    workloadName:
+    map (realization: {
+      inherit (realization) id;
+      kind = "realization";
+      properties = {
+        workload = workloadName;
+        host = realization.hostName;
+      };
+      capabilities = { };
+    }) workloadRealizations.${workloadName}
+  ) workloadNames;
   endpointNodes = lib.concatMap (
     workloadName:
     lib.mapAttrsToList (endpointName: endpoint: {
@@ -183,7 +198,9 @@ let
     ];
     capabilities = { };
   }) datasets;
-  nodes = sortById (hostNodes ++ deviceNodes ++ workloadNodes ++ endpointNodes ++ datasetNodes);
+  nodes = sortById (
+    hostNodes ++ deviceNodes ++ workloadNodes ++ realizationNodes ++ endpointNodes ++ datasetNodes
+  );
   nodeIndex = builtins.listToAttrs (
     map (node: {
       name = node.id;
@@ -208,6 +225,11 @@ let
       lib.length segments == 2
       && builtins.elemAt segments 0 == "workload"
       && isStableName (builtins.elemAt segments 1)
+    else if node.kind == "realization" then
+      lib.length segments == 3
+      && builtins.elemAt segments 0 == "realization"
+      && isStableName (builtins.elemAt segments 1)
+      && isStableName (builtins.elemAt segments 2)
     else if node.kind == "endpoint" then
       lib.length segments == 3
       && builtins.elemAt segments 0 == "endpoint"
@@ -223,7 +245,6 @@ let
   declaredRequirements = lib.concatMap (
     workloadName:
     lib.mapAttrsToList (name: declaration: {
-      owner = workloadId workloadName;
       inherit workloadName name declaration;
     }) (requirementsOf workloadName)
   ) workloadNames;
@@ -231,11 +252,11 @@ let
     requirement:
     let
       inherit (requirement)
-        owner
         workloadName
         name
         declaration
         ;
+      owner = workloadId workloadName;
       rawTarget =
         if !builtins.isAttrs declaration then
           throw "topology: requirement owner='${owner}' name='${name}' target='<invalid>' declaration must be an attrset"
@@ -271,31 +292,33 @@ let
           ] declaration
         else
           [ ];
-      targets =
-        if builtins.isNull rawTarget then
-          map hostId (workloadHosts.${workloadName} or [ ])
-        else
-          [ rawTarget ];
-      mkRequirement = target: {
-        id = requirementId {
+      realizations = workloadRealizations.${workloadName};
+      mkRequirement =
+        realization:
+        let
+          target = if builtins.isNull rawTarget then hostId realization.hostName else rawTarget;
+          realizationOwner = realization.id;
+        in
+        {
+          id = requirementId {
+            owner = realizationOwner;
+            inherit
+              name
+              target
+              capability
+              relationship
+              constraints
+              ;
+          };
+          owner = realizationOwner;
           inherit
-            owner
             name
-            target
             capability
             relationship
+            target
             constraints
             ;
         };
-        inherit
-          owner
-          name
-          capability
-          relationship
-          target
-          constraints
-          ;
-      };
     in
     assert lib.assertMsg (isStableName name) (failure "has an invalid requirement name");
     assert lib.assertMsg (unexpectedKeys == [ ]) (
@@ -311,33 +334,53 @@ let
       failure "has an invalid relationship"
     );
     assert lib.assertMsg (builtins.isAttrs constraints) (failure "has non-attrset constraints");
-    if targets == [ ] then
-      throw "topology: requirement owner='${owner}' name='${name}' target='<none>' has no selected placement host"
+    if realizations == [ ] then
+      throw "topology: requirement owner='${owner}' name='${name}' target='<none>' has no selected realization"
     else
-      map mkRequirement targets;
+      map mkRequirement realizations;
   requirements = sortById (lib.concatMap requirementsForDeclaration declaredRequirements);
 
-  workloadRelationships = lib.concatMap (
+  realizationRelationships = lib.concatMap (
     workloadName:
-    map (
-      hostName:
-      mkRelationship {
+    lib.concatMap (realization: [
+      (mkRelationship {
+        type = "nori.relationships.Realizes";
+        source = realization.id;
+        target = workloadId workloadName;
+      })
+      (mkRelationship {
         type = "nori.relationships.HostedOn";
-        source = workloadId workloadName;
-        target = hostId hostName;
-      }
-    ) (workloadHosts.${workloadName} or [ ])
+        source = realization.id;
+        target = hostId realization.hostName;
+      })
+    ]) workloadRealizations.${workloadName}
+  ) workloadNames;
+  endpointRealizationFailures = lib.concatMap (
+    workloadName:
+    let
+      endpointNames = lib.attrNames (resolvedEndpointsFor workloadName);
+      realizationCount = lib.length workloadRealizations.${workloadName};
+    in
+    lib.optional (endpointNames != [ ] && realizationCount != 1)
+      "workload '${workloadName}' owns endpoint(s) [${lib.concatStringsSep ", " endpointNames}] but has ${toString realizationCount} realization(s)"
   ) workloadNames;
   endpointRelationships = lib.concatMap (
     workloadName:
-    lib.mapAttrsToList (
-      endpointName: _endpoint:
-      mkRelationship {
+    let
+      realization = builtins.head workloadRealizations.${workloadName};
+    in
+    lib.concatMap (endpointName: [
+      (mkRelationship {
         type = "nori.relationships.ProvidedBy";
         source = endpointId workloadName endpointName;
         target = workloadId workloadName;
-      }
-    ) (resolvedEndpointsFor workloadName)
+      })
+      (mkRelationship {
+        type = "nori.relationships.BoundTo";
+        source = endpointId workloadName endpointName;
+        target = realization.id;
+      })
+    ]) (lib.attrNames (resolvedEndpointsFor workloadName))
   ) workloadNames;
   diskRelationships = lib.mapAttrsToList (
     diskName: disk:
@@ -379,7 +422,7 @@ let
     }
   ) requirements;
   relationshipRecords =
-    workloadRelationships
+    realizationRelationships
     ++ endpointRelationships
     ++ diskRelationships
     ++ datasetRelationships
@@ -570,7 +613,7 @@ let
       [ "${path}: is not JSON-safe" ];
 
   graph = {
-    schemaVersion = 1;
+    schemaVersion = 2;
     inherit nodes requirements relationships;
   };
   invalidNodeIds = lib.filter (node: !isStableNodeId node) nodes;
@@ -615,6 +658,9 @@ let
   ) requirements;
   publicValueViolations = publicValueViolationsAt "topology" graph;
 in
+assert lib.assertMsg (endpointRealizationFailures == [ ]) (
+  formatFailures "endpoint realization invariant failed" endpointRealizationFailures
+);
 assert lib.assertMsg (invalidNodeIds == [ ]) (
   formatFailures "invalid stable node ID(s)" invalidNodeIds
 );

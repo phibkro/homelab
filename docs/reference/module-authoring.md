@@ -58,10 +58,10 @@ importing every runtime.
 
 ## Configuration derivation from inventory
 
-`inventory/hosts.nix` explicitly enumerates every managed host and its
-deployment owner. `lib/machines.nix` compiles profile modules and
-selected workload runtimes only for NixOS-owned hosts before calling
-`lib.nixosSystem`; it never chooses imports from `config` or descriptive tags.
+`inventory/hosts.nix` explicitly enumerates each managed host, its deployment
+owner, profiles, and placement tags. Service manifests own ordered placement
+selectors. The inventory compiler resolves them before `lib/machines.nix`
+selects NixOS runtime modules; imports never depend on `config`.
 
 | Inventory kind | Produces |
 |---|---|
@@ -69,20 +69,20 @@ selected workload runtimes only for NixOS-owned hosts before calling
 | `kind = "ansible"` | explicit `plan`, `apply`, and `verify` commands; never a `nixosConfiguration` or Nix build target |
 
 Every NixOS host gets the same shared Home Manager wrapper from the factory and
-imports its declared `homeModule`. Ansible hosts retain inventory profiles for
-logical workload placement, but their system realization is owned exclusively
-by their declared management root and deployment commands.
+imports its declared `homeModule`. Ansible hosts retain profiles for shared
+inventory classification, but their system realization is owned exclusively by
+their declared management root and deployment commands.
 
 ## Concerns compose host identity
 
-Host identity is the explicit sum of inventory profiles, selected workloads,
-hardware/storage realization, and genuine local deviations:
+Host identity combines inventory profiles, placement tags, hardware/storage
+realization, and genuine local deviations:
 
 | Concern | What it adds | Imported by |
 |---|---|---|
-| inventory profile | Reusable system modules and workload identifiers | hosts selecting that capability |
-| workload manifest | Global ID, tags, endpoints, audience, artifact contract | inventory and presentation/deployment consumers |
-| workload runtime | Units, secrets, hardening, backup and local effects | selected placement hosts only |
+| inventory profile | Reusable system modules | hosts selecting that capability |
+| workload manifest | Global ID, ordered placement selectors, tags, endpoints, audience, artifact contract | inventory and presentation/deployment consumers |
+| workload runtime | Units, secrets, hardening, backup and local effects | resolved realization hosts only |
 | machine realization | Hardware, disks, boot, host-specific overrides | one physical host |
 | Home capability profile | Composable operator tools and desktop/product capabilities | selected home modules |
 
@@ -98,15 +98,15 @@ workstation = {
   systemModule = ../infra/workstation;
   homeModule = ../users/nori/home.nix;
   profiles = [ "base" "desktop" "media-compute" "observability-agent" ];
-  workloads = [ "disk-alert" ]; # genuine deviations only
+  tags = [ "nixos" "primary-service-host" ];
   identity = { /* public-safe topology */ };
 };
 ```
 
 <!-- path-coherence: end-skip -->
 
-`profiles/default.nix` is the reviewed composition surface. Tags describe and
-support queries; they never deploy a runtime.
+`profiles/default.nix` selects reusable system modules. Host tags are typed
+placement inputs. Workload tags remain descriptive metadata.
 
 ### Coupling vs categorization
 
@@ -136,6 +136,14 @@ contain no secret values, host-local state, or NixOS `config` dependency.
 {
   kind = "service";
   hostRoles = [ "workhorse" ];
+  placement = {
+    strategy = "first-unique";
+    selectors = [ { tags = [ "primary-service-host" ]; } ];
+    cardinality = {
+      min = 1;
+      max = 1;
+    };
+  };
   runtimeModule = ./nixos.nix;
   tags = [ "family-tier" ];
   endpoints.example = {
@@ -181,11 +189,11 @@ The concrete realization owns its backend translation and collected effects:
 }
 ```
 
-Add the manifest to `inventory/workloads.nix`, then place its identifier in one
-explicit profile or host deviation. Profiles are only recurring compositions;
-a one-machine service belongs directly on that host. Import its physical
-binding explicitly from the machine composition. Never activate from a tag,
-directory scan, or generic realization dispatcher.
+Add the manifest to `inventory/workloads.nix`. Its ordered selectors are the
+only placement authority. Use `first-unique` for a singleton or an ordered
+fallback. Use `all-matches` only for an explicit per-host workload, with fixed
+cardinality. The compiler rejects unknown selectors, ambiguous singletons,
+role violations, and endpoint workloads without exactly one realization.
 
 <!-- path-coherence: end-skip -->
 

@@ -17,11 +17,11 @@ this document deliberately contains no copied host table or expected IP address.
 1. Which hosts are managed, and which backend manages each? What are their
    selected workloads? Which host receives a NixOS build target?
 2. Locate Jellyfin's placement, endpoint declaration and implementation. Explain
-   how changing a profile can change placement without editing the runtime.
+   how its ordered selector resolves one realization without editing the runtime.
 3. Locate the current backup policy. Distinguish declared intent, enabled
    scheduling and evidence of a recoverable live backup.
 4. Where would you add a workload's shared endpoint metadata, NixOS implementation
-   and Pi implementation? How do you select which backend owns it?
+   and Pi implementation? How does its manifest select realization hosts?
 5. How do modules reference a host's identity without copying an address? Trace
    the fact from inventory into a consumer.
 6. Select checks for an inventory-only change, a Nix runtime change and a Pi role

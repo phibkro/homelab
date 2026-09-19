@@ -145,6 +145,7 @@ let
     machine = "nori.nodes.Machine";
     device = "nori.nodes.Device";
     workload = "nori.nodes.Workload";
+    realization = "nori.nodes.Realization";
     endpoint = "nori.nodes.Endpoint";
     dataset = "nori.nodes.Dataset";
   };
@@ -170,8 +171,8 @@ let
           ] topology
         )
       }"
-    else if !(topology ? schemaVersion) || topology.schemaVersion != 1 then
-      fail "schemaVersion must be 1"
+    else if !(topology ? schemaVersion) || topology.schemaVersion != 2 then
+      fail "schemaVersion must be 2"
     else if !(topology ? nodes) || !isList topology.nodes then
       fail "nodes must be a list"
     else if !(topology ? requirements) || !isList topology.requirements then
@@ -629,6 +630,7 @@ let
     "nori.nodes.Machine" = { };
     "nori.nodes.Device" = { };
     "nori.nodes.Workload" = { };
+    "nori.nodes.Realization" = { };
     "nori.nodes.Endpoint" = { };
     "nori.nodes.Dataset" = { };
   };
@@ -779,7 +781,7 @@ let
     node_types = baseNodeTypes // perNodeTypes;
     service_template = {
       metadata = {
-        "nori.schema-version" = "1";
+        "nori.schema-version" = "2";
       };
       node_templates = nodeTemplates;
       relationship_templates = relationshipTemplates;

@@ -18,12 +18,14 @@ mkdir -p \
   services/bazarr \
   services/caddy/ansible \
   services/filmder \
-  services/recyclarr/implementation
+  services/recyclarr/implementation \
+  services/ntfy/manifests
 printf baseline > infra/common/ansible/roles/base/tasks/main.yml
 printf baseline > services/bazarr/manifest.nix
 printf baseline > services/filmder/nixos.nix
 printf baseline > services/caddy/ansible/tasks.yml
 printf baseline > services/recyclarr/implementation/radarr.yml
+printf baseline > services/ntfy/manifests/notify.nix
 printf ignored > .gitignore
 printf baseline > docs/old.md
 git add .
@@ -80,6 +82,10 @@ printf changed >> services/bazarr/manifest.nix
 plan --changed-since HEAD
 assert_plan '.hosts == ["workstation"]'
 git restore services/bazarr/manifest.nix
+printf changed >> services/ntfy/manifests/notify.nix
+plan --changed-since HEAD
+assert_plan '.hosts == ["pi", "workstation"]'
+git restore services/ntfy/manifests/notify.nix
 printf changed >> services/recyclarr/implementation/radarr.yml
 plan --changed-since HEAD
 assert_plan '.hosts == ["workstation"]'

@@ -6,11 +6,10 @@
 /**
   NixOS configuration factory backed by the pure homelab inventory.
 
-  `inventory/default.nix` is evaluated before the NixOS module fixed point and
-  owns host enumeration, identity, profile selection, intended workload
-  placement, and reusable system-module composition. Host realizations carry
-  only hardware/storage and genuine deviations; profiles and workload
-  manifests select reusable modules before the NixOS fixed point.
+  `inventory/default.nix` evaluates before the NixOS module fixed point.
+  Host inventory owns identity, profiles, and placement tags. Workload
+  manifests own ordered selectors. The compiler resolves explicit realization
+  instances, then selects profile and workload modules for each NixOS host.
 
   ## Topology
 
@@ -20,9 +19,11 @@
       P[pi · Ansible<br/>entry plane + observability hub]
     end
     subgraph "workhorse tier"
+      A[adelie<br/>staged storage + fleet agents]
       W[workstation<br/>family + media services + desktop]
     end
     P -- "*.${nori.domain} proxy" --> W
+    A -- "scraped by" --> P
     W -- "scraped by" --> P
   ```
 

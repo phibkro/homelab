@@ -39,15 +39,24 @@ let
           "nixos"
         ];
       };
+      tags = mkOption {
+        type = types.listOf types.str;
+        default = [ ];
+      };
       profiles = mkOption { type = types.listOf types.str; };
       workloads = mkOption { type = types.listOf types.str; };
     };
   };
 
   profileType = types.submodule {
+    options.description = mkOption { type = types.str; };
+  };
+
+  realizationType = types.submodule {
     options = {
-      description = mkOption { type = types.str; };
-      workloads = mkOption { type = types.listOf types.str; };
+      id = mkOption { type = types.str; };
+      host = mkOption { type = types.str; };
+      instance = mkOption { type = types.str; };
     };
   };
 
@@ -72,13 +81,17 @@ let
         type = types.listOf (types.enum hostRoles);
         description = "Host roles on which this workload may be placed.";
       };
+      placement = mkOption {
+        type = types.attrs;
+        description = "Compiler-validated ordered placement selectors and cardinality.";
+      };
       endpoints = mkOption {
         type = types.attrsOf types.anything;
         default = { };
         description = "Resolved, secret-free endpoint metadata; validated by the networking route schema when projected.";
       };
       hosts = mkOption { type = types.listOf types.str; };
-      profiles = mkOption { type = types.listOf types.str; };
+      realizations = mkOption { type = types.listOf realizationType; };
       artifact = mkOption {
         type = types.nullOr artifactType;
         default = null;
@@ -237,6 +250,7 @@ let
           "machine"
           "device"
           "workload"
+          "realization"
           "endpoint"
           "dataset"
         ];
@@ -310,7 +324,7 @@ in
     currentWorkloads = mkOption {
       type = types.listOf types.str;
       readOnly = true;
-      description = "Workload identifiers resolved from this host's explicit profiles and direct additions.";
+      description = "Workload identifiers resolved from service-owned ordered placement selectors.";
     };
     hosts = mkOption {
       type = types.attrsOf hostType;
@@ -320,7 +334,7 @@ in
     profiles = mkOption {
       type = types.attrsOf profileType;
       readOnly = true;
-      description = "Explicit reusable profile descriptions and workload membership.";
+      description = "Explicit reusable profile descriptions.";
     };
     workloads = mkOption {
       type = types.attrsOf workloadType;

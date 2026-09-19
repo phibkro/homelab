@@ -7,7 +7,14 @@
   ];
   placement = {
     strategy = "all-matches";
-    selectors = [ { roles = [ "workhorse" "appliance" ]; } ];
+    selectors = [
+      {
+        roles = [
+          "workhorse"
+          "appliance"
+        ];
+      }
+    ];
     cardinality = {
       min = 3;
       max = 3;

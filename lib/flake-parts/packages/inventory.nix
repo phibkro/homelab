@@ -76,13 +76,29 @@
                   [.service_template.node_templates[$node].requirements[] | .[$name]?]
                   | map(select(. != null))
                   | first;
-                requirement("workload.ollama"; "accelerator") as $accelerator
-                | requirement("workload.vaultwarden"; "identity") as $identity
-                | requirement("workload.vaultwarden"; "persistent-storage") as $storage
+                def relation($type; $source; $target):
+                  [.service_template.relationship_templates[]
+                    | select(
+                        .type == $type
+                        and .metadata["nori.source"] == $source
+                        and .metadata["nori.target"] == $target
+                      )]
+                  | length == 1;
+                requirement("realization.ollama.primary"; "accelerator") as $accelerator
+                | requirement("realization.vaultwarden.primary"; "identity") as $identity
+                | requirement("realization.vaultwarden.primary"; "persistent-storage") as $storage
                 | .tosca_definitions_version == "tosca_2_0"
+                and (.service_template.metadata["nori.schema-version"] == "2")
                 and (.service_template.node_templates[$accelerator.node].capabilities | has($accelerator.capability))
                 and (.service_template.node_templates[$identity.node].capabilities | has($identity.capability))
                 and (.service_template.node_templates[$storage.node].capabilities | has($storage.capability))
+                and (
+                  (.service_template.node_templates["realization.ollama.primary"].type) as $realizationType
+                  | .node_types[$realizationType].derived_from == "nori.nodes.Realization"
+                )
+                and relation("nori.relationships.Realizes"; "realization.ollama.primary"; "workload.ollama")
+                and relation("nori.relationships.HostedOn"; "realization.ollama.primary"; "host.workstation")
+                and relation("nori.relationships.BoundTo"; "endpoint.ollama.ai"; "realization.ollama.primary")
                 and (
                   (.service_template.node_templates["host.adelie"].type) as $adelieType
                   | .node_types[$adelieType].properties.lanIp.type == "nil"

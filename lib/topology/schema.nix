@@ -21,6 +21,8 @@
 
   relationshipTypeSegments = {
     "nori.relationships.HostedOn" = "hosted-on";
+    "nori.relationships.Realizes" = "realizes";
+    "nori.relationships.BoundTo" = "bound-to";
     "nori.relationships.ProvidedBy" = "provided-by";
     "nori.relationships.AttachedTo" = "attached-to";
     "nori.relationships.Writes" = "writes";

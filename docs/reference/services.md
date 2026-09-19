@@ -42,7 +42,7 @@ realization such as `nixos.nix`. The manifest owns catalog, endpoint, audience,
 and presentation metadata; the realization owns upstream service configuration,
 secrets, units, hardening, backup intent, and backend-local effects. Physical
 paths and filesystem identities live in `infra/<machine>/`. The inventory
-compiler imports only realizations selected by explicit host placement.
+compiler imports only runtimes selected by service-owned placement selectors.
 
 ### About Immich's Postgres
 

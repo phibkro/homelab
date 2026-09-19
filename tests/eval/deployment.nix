@@ -54,6 +54,18 @@ let
     && deployment.sourceRoots."services/filmder" == [ "workstation" ]
     && deployment.sourceRoots."services/restic-target" == [ "workstation" ]
     && deployment.sourceRoots."services/caddy" == [ "pi" ]
+    &&
+      deployment.sourceRoots."services/beszel/manifests/agent.nix" == [
+        "adelie"
+        "pi"
+        "workstation"
+      ]
+    &&
+      deployment.sourceRoots."services/ntfy/manifests/notify.nix" == [
+        "pi"
+        "workstation"
+      ]
+    && deployment.sourceRoots."services/clamor/manifest.nix" == [ "workstation" ]
     && deployment.machineRoots."services/caddy/ansible" == [ "pi" ]
     && deployment.machineRoots."services/beszel/ansible/agent" == [ "pi" ]
     && deployment.machineRoots."services/beszel/ansible/hub" == [ "pi" ]
@@ -69,7 +81,6 @@ let
     && deployment.machineRoots."infra/common/ansible" == [ "pi" ]
     && deployment.machineRoots."infra/adelie" == [ "adelie" ]
     && deployment.machineRoots."infra/pi" == [ "pi" ]
-    && deployment.machineRoots."infra/adelie" == [ "adelie" ]
     && deployment.machineRoots."infra/workstation" == [ "workstation" ];
 
   targetsCorrect =

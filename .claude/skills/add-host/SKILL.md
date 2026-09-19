@@ -9,7 +9,7 @@ Host enumeration comes exclusively from inventory keys; directories do not activ
 Declare exactly one backend. NixOS hosts provide system/home module paths and
 hardware configuration under `infra/<host>/`; Ansible hosts provide a management
 root and explicit plan/apply/check commands. The existing Pi remains Ansible-owned.
-Select workloads explicitly through inventory profiles and host additions.
+Add placement tags and profiles to the host. Workload manifests remain the only placement authority.
 
 Update shared topology facts in inventory, then regenerate documentation and
 check the deployment projection. Run backend-appropriate evaluation/build or

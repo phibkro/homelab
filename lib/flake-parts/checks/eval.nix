@@ -156,6 +156,18 @@
             echo ${lib.escapeShellArg result} > $out
           '';
 
+        /**
+          Ordered manifest selectors resolve to explicit realizations.
+          Invalid, ambiguous, cardinality, and role combinations fail.
+        */
+        eval-placement-resolution =
+          let
+            result = import ../../../tests/eval/placement-resolution.nix { inherit lib; };
+          in
+          pkgs.runCommandLocal "eval-placement-resolution" { } ''
+            echo ${lib.escapeShellArg result} > $out
+          '';
+
         eval-topology-conformance =
           let
             result = import ../../../tests/eval/topology-conformance.nix { inherit inputs lib; };

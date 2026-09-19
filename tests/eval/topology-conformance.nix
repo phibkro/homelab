@@ -4,6 +4,7 @@ let
   validFixture = {
     hosts.workstation = {
       kind = "nixos";
+      tags = [ "nixos" ];
       identity = {
         tailnetIp = "100.81.5.122";
         lanIp = "192.168.1.181";
@@ -43,8 +44,23 @@ let
     };
     datasets = { };
     disks = { };
-    workloadHosts.ollama = [ "workstation" ];
-    resolvedEndpointsFor = _: { };
+    workloadRealizations.ollama = [
+      {
+        id = "realization.ollama.primary";
+        workloadName = "ollama";
+        hostName = "workstation";
+        instanceName = "primary";
+      }
+    ];
+    resolvedEndpointsFor = _: {
+      api = {
+        port = 11434;
+        audience = "operator";
+        exposeOnTailnet = true;
+        reachability = "internal";
+        noAuthReason = "test fixture";
+      };
+    };
   };
   evaluate = fixture: builtins.tryEval (builtins.deepSeq (compiler fixture) true);
   workloadWithRequirement =
@@ -61,6 +77,30 @@ let
 
   production = builtins.tryEval (builtins.deepSeq inputs.self.lib.noriInventory.topology true);
   validBaseline = evaluate validFixture;
+  graph = compiler validFixture;
+  realizationNode = lib.findFirst (node: node.id == "realization.ollama.primary") null graph.nodes;
+  acceleratorRequirement = lib.findFirst (
+    requirement: requirement.name == "accelerator"
+  ) null graph.requirements;
+  hasRelationship =
+    type: source: target:
+    lib.any (
+      relationship:
+      relationship.type == type && relationship.source == source && relationship.target == target
+    ) graph.relationships;
+  multipleEndpointRealizations = evaluate (
+    validFixture
+    // {
+      workloadRealizations.ollama = validFixture.workloadRealizations.ollama ++ [
+        {
+          id = "realization.ollama.secondary";
+          workloadName = "ollama";
+          hostName = "workstation";
+          instanceName = "secondary";
+        }
+      ];
+    }
+  );
   unknownTarget = evaluate (
     withWorkload (workloadWithRequirement {
       target = "host.unknown";
@@ -149,6 +189,21 @@ let
 in
 assert production.success;
 assert validBaseline.success;
+assert graph.schemaVersion == 2;
+assert
+  realizationNode.properties == {
+    workload = "ollama";
+    host = "workstation";
+  };
+assert acceleratorRequirement.owner == "realization.ollama.primary";
+assert acceleratorRequirement.target == "host.workstation";
+assert hasRelationship "nori.relationships.Realizes" "realization.ollama.primary" "workload.ollama";
+assert hasRelationship "nori.relationships.HostedOn" "realization.ollama.primary"
+  "host.workstation";
+assert hasRelationship "nori.relationships.ProvidedBy" "endpoint.ollama.api" "workload.ollama";
+assert hasRelationship "nori.relationships.BoundTo" "endpoint.ollama.api"
+  "realization.ollama.primary";
+assert !multipleEndpointRealizations.success;
 assert !unknownTarget.success;
 assert !missingCapability.success;
 assert !failedNumericConstraint.success;
