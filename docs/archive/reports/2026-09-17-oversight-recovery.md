@@ -53,6 +53,19 @@ The operator then authorized live Pi recovery and observability work:
 The recovery source changes are in the local `main` history. They were not pushed.
 No fetch, merge, push, workstation activation, or Adelie activation ran. The operator authorized the Pi deployments and Cloudflare status publication.
 
+### Deployment update: 2026-09-20
+
+The operator authorized deployment to every target and publication of the verified local history.
+
+- The workstation activated the clean committed `main` configuration. Home Manager, the settings authority and ingress, Beszel agent, qBittorrent, Glance, the settings runtime agent, and Vicinae were active with no failed system units.
+- The live settings client returned state through its UID-checked public ingress. The isolated Vicinae launcher journey passed.
+- Activation exposed and repaired four source defects: an implicit desktop UID, a user-to-system unit dependency, Bun's full-close behavior on the IPC request, and a startup race between Vicinae and its saved-command projection.
+- `just pi::plan` completed with `ok=182`, `changed=0`, `unreachable=0`, and `failed=0`. All declared Pi containers were running. The LAN Beszel and Gatus health endpoints responded.
+- Old failed notification-unit records were cleared only after the hourly backup-freshness unit showed repeated successful runs. The Pi then reported no failed units.
+- The public status HTML and JSON returned HTTP 200. A browser rendered Navidrome, Jellyfin, and Seerr. Their state remains `unknown` because no scheduled probe result exists.
+- The current Adelie closure built successfully. Adelie was not activated: its Tailscale peer remained offline, inventory declares no LAN address, and `192.168.1.140` is the workstation's local Wi-Fi address rather than Adelie.
+- The source tree was clean after the deployment repairs. Publication had not yet run when this update was recorded.
+
 Cleanup removed temporary playbooks, inventory output, the bootstrap smoke container, and the upstream research clone.
 The restored archive and the pre-restore Pi rollback directory remain preserved.
 

@@ -133,13 +133,15 @@ In an isolated Wayland session, start the built Vicinae service and open it. Sea
 
 ## Evidence boundary
 
-These gates describe required behavior. They are not proof until the commands run against the built artifacts. Workstation activation and login persistence require a later authorized activation check.
+These gates describe required behavior. Repository checks, live activation, and the isolated launcher journey provide the evidence listed below. Logout and login persistence still require a separate journey.
 
-Implemented and verified on 2026-09-12:
+Implemented and verified on 2026-09-12, then activated on 2026-09-20:
 
 - The saved-command type check and five behavioral tests passed.
 - The extension type check passed.
 - The launcher projection and existing Hyprland layout checks built.
 - The built launcher passed the private headless-Sway journey.
+- A clean committed `main` activated on the workstation with `just rebuild`.
+- The live settings service returned its state, the Vicinae user service stayed active, and `vicinae-launcher-live-test` passed.
 
-The workstation was not activated. Login persistence still requires an authorized activation and logout journey.
+The activation did not include a logout and login cycle. Login persistence remains unverified.

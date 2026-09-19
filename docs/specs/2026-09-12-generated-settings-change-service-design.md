@@ -1,7 +1,7 @@
 ---
 summary: Generate desktop setting contracts from Nix and apply one real setting through a shared local service.
 date: 2026-09-12
-status: frozen; implementation authorized; workstation activation remains operator-gated
+status: implemented; live service activation verified; full desktop apply journey outstanding
 owner: operator
 ---
 
@@ -23,7 +23,7 @@ The Vicinae milestone is isolated in commit `27deced` on this branch.
 
 Its saved-command checks, extension type check, focused Nix checks, and private launcher journey passed from the clean worktree.
 
-The workstation is not activated. Continue implementation in this worktree and never evaluate the original mixed checkout from a client.
+The implementation is on `main`. The workstation activated it from a clean committed tree on 2026-09-20.
 
 ## User journey
 
@@ -457,7 +457,7 @@ The unrelated blue-light toggle in Waybar remains unchanged.
 
 ## Acceptance gates
 
-These scenarios are required during implementation. They have not run for this specification.
+These scenarios define the complete acceptance boundary. The evidence section records the subset that has run.
 
 ### Schema generation
 
@@ -490,9 +490,9 @@ These scenarios are required during implementation. They have not run for this s
   the dedicated UID owns its profile, job, and preview state.
 - Confirm the only authority sockets are the fixed
   `/run/nori-desktop-settings/backend.sock` (`0600`) and
-  `/run/nori-desktop-settings/public.sock` (`0660`) paths.
-- Confirm a `nori` client cannot connect to the private backend socket and
-  public ingress rejects any peer whose `SO_PEERCRED` is not `nori`.
+  `/run/nori-desktop-settings/public.sock` (`0666`) paths.
+- Confirm a `nori` client cannot connect to the private backend socket. The
+  public ingress must reject every peer whose `SO_PEERCRED` UID is not `nori`.
 - Confirm concurrent activation attempts serialize through the root-owned
   `/run/lock/nori-desktop-settings-activation.lock`.
 
@@ -542,10 +542,10 @@ In a disposable NixOS fixture:
 - Run focused Effect behavior tests for validation, conflicts, and persistence
   failure boundaries.
 - Build generated schema drift checks.
-- Run the real group-gated public-ingress CLI bridge and Settings journeys.
-- Confirm the private `0600` backend socket rejects the `nori` client and the
-  `0660` public socket accepts only a group-authorized peer whose
-  `SO_PEERCRED` is `nori`.
+- Run the public-ingress security VM and the Settings journeys.
+- Confirm the private `0600` backend socket rejects the `nori` client. Confirm
+  the client-traversable `0666` public socket accepts only a peer whose
+  `SO_PEERCRED` UID is `nori`.
 - Build the exact workstation projection from a clean committed tree.
 
 ## Non-goals
@@ -576,9 +576,16 @@ Before changing exported Nix options or TypeScript symbols, implementation must 
 
 ## Evidence boundary
 
-This document specifies proposed behavior. No schema generation, Settings UI, service, build, activation, or runtime scenario has run.
+Verified on 2026-09-20:
 
-Source inspection established the current service, action, session, launcher, and Home Manager ownership. It did not prove the proposed design.
+- `devenv shell -- just check` passed against the source candidate.
+- The service type check and all 19 behavior tests passed.
+- The public-ingress VM passed. It covered the full-duplex client path, peer-UID rejection, frame bounds, and relay saturation recovery.
+- `just rebuild` activated the committed workstation configuration.
+- The live service returned state through the public ingress. Its authority, ingress, runtime agent, Home Manager, and Vicinae units were active.
+- `vicinae-launcher-live-test` passed against the activated environment.
+
+The real Waybar top-to-bottom apply, forced failure paths, reboot, and logout and login persistence journeys did not run.
 
 ## Primary sources
 
