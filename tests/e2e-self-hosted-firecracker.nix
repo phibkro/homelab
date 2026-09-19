@@ -43,9 +43,9 @@ pkgs.testers.runNixOSTest {
         )
         assert status != 0 and "request action is required" in output and "EACCES" not in output, output
     with subtest("daemon carries VMM isolation policy"):
-        props = workstation.succeed("systemctl show agent-engine-self-hosted-launcher.service -p ProtectHome -p ProtectSystem -p RestrictAddressFamilies -p MemoryMax -p TasksMax -p Slice")
+        props = workstation.succeed("systemctl show agent-engine-self-hosted-launcher.service -p ProtectHome -p ProtectSystem -p RestrictAddressFamilies -p MemoryMax -p TasksMax -p Slice -p DelegateSubgroup")
         assert "ProtectHome=yes" in props and "ProtectSystem=strict" in props, props
         assert "MemoryMax=4294967296" in props and "TasksMax=256" in props, props
-        assert "Slice=adlc-firecracker.slice" in props and "AF_NETLINK" in props, props
+        assert "Slice=adlc-firecracker.slice" in props and "AF_NETLINK" in props and "DelegateSubgroup=launcher" in props, props
   '';
 }

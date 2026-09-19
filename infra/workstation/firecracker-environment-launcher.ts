@@ -19,7 +19,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { execFileSync, spawn } from "node:child_process";
 
 const MAX_FRAME = 64 * 1024;
@@ -45,6 +45,8 @@ const SOCKET_GID = Number(process.env.ADLC_SOCKET_GID ?? GID);
 const CID = 3;
 const PORT = 5000;
 const FAILURE_LOG_ROOT = process.env.ADLC_FAILURE_LOG_ROOT;
+const CGROUP_ROOT = "/sys/fs/cgroup";
+const CGROUP_CONTROLLERS = ["cpu", "io", "memory", "pids"] as const;
 export const parseVsockHandshake = (line: string): string => {
   const match = /^OK ([1-9][0-9]*)$/.exec(line);
   if (!match) throw new Error("invalid Firecracker VSOCK handshake");
@@ -269,6 +271,45 @@ const processStartTime = (pid: number) => {
   return stat.slice(stat.lastIndexOf(")") + 2).split(" ")[19];
 };
 const processCgroup = (pid: number) => readFileSync(`/proc/${pid}/cgroup`, "utf8").trim();
+const unifiedCgroupPath = (membership: string) => {
+  const hierarchy = membership
+    .trim()
+    .split("\n")
+    .find((entry) => entry.startsWith("0::"));
+  if (!hierarchy) fail("launcher requires a unified cgroup v2 hierarchy");
+  const path = hierarchy.slice(3);
+  if (!path.startsWith("/")) fail("launcher received an invalid unified cgroup path");
+  return path;
+};
+const delegatedParentCgroup = () => {
+  const current = unifiedCgroupPath(readFileSync("/proc/self/cgroup", "utf8"));
+  if (basename(current) !== "launcher")
+    fail("launcher must run in its configured delegated cgroup subgroup");
+  const parent = dirname(current);
+  if (parent === "/" || parent === ".")
+    fail("launcher must run in a delegated systemd subgroup");
+  return parent.slice(1);
+};
+const enableCgroupControllers = (parent: string) => {
+  const cgroup = join(CGROUP_ROOT, parent);
+  const available = new Set(
+    readFileSync(join(cgroup, "cgroup.controllers"), "utf8").trim().split(/\s+/).filter(Boolean),
+  );
+  const unavailable = CGROUP_CONTROLLERS.filter((controller) => !available.has(controller));
+  if (unavailable.length > 0)
+    fail(`delegated cgroup lacks required controllers: ${unavailable.join(", ")}`);
+  writeFileSync(
+    join(cgroup, "cgroup.subtree_control"),
+    CGROUP_CONTROLLERS.map((controller) => `+${controller}`).join(" "),
+  );
+  const enabled = new Set(
+    readFileSync(join(cgroup, "cgroup.subtree_control"), "utf8").trim().split(/\s+/).filter(Boolean),
+  );
+  const missing = CGROUP_CONTROLLERS.filter((controller) => !enabled.has(controller));
+  if (missing.length > 0)
+    fail(`delegated cgroup did not enable controllers: ${missing.join(", ")}`);
+  return cgroup;
+};
 const processNetns = (pid: number) => readlinkSync(`/proc/${pid}/ns/net`);
 const processExe = (pid: number) => readlinkSync(`/proc/${pid}/exe`);
 const processMatches = (
@@ -777,6 +818,8 @@ const materialize = async (request: Dict): Promise<Dict> => {
     keeper = keeperChild.pid;
     await waitForLive(keeper);
     namespace = `/proc/${keeper}/ns/net`;
+    const parentCgroup = delegatedParentCgroup();
+    const delegatedCgroup = enableCgroupControllers(parentCgroup);
     const child = spawn(
       JAILER,
       [
@@ -791,7 +834,7 @@ const materialize = async (request: Dict): Promise<Dict> => {
         "--cgroup-version",
         "2",
         "--parent-cgroup",
-        "adlc-firecracker.slice",
+        parentCgroup,
         "--cgroup",
         `cpu.max=${controls.cpuMax}`,
         "--cgroup",
@@ -802,6 +845,8 @@ const materialize = async (request: Dict): Promise<Dict> => {
         `memory.max=${controls.memoryMax}`,
         "--cgroup",
         `pids.max=${controls.pidsMax}`,
+        "--cgroup",
+        `io.max=${controls.ioMax}`,
         "--netns",
         namespace,
         "--chroot-base-dir",
@@ -820,8 +865,11 @@ const materialize = async (request: Dict): Promise<Dict> => {
     child.stdout.on("data", (chunk) => appendLog(log, chunk));
     child.stderr.on("data", (chunk) => appendLog(log, chunk));
     vmm = await waitForPidFile(join(root, "firecracker.pid"));
-    const cgroup = `/sys/fs/cgroup${readFileSync(`/proc/${vmm}/cgroup`, "utf8").split(":").pop()!.trim()}`;
-    writeFileSync(join(cgroup, "io.max"), controls.ioMax);
+    const cgroup = `${CGROUP_ROOT}${unifiedCgroupPath(
+      readFileSync(`/proc/${vmm}/cgroup`, "utf8"),
+    )}`;
+    if (!cgroup.startsWith(`${delegatedCgroup}/`))
+      fail("VMM escaped the launcher delegated cgroup subtree");
     const effective = Object.fromEntries(
       Object.entries({
         cpuMax: "cpu.max",

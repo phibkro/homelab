@@ -39,6 +39,7 @@ interface ControllerResult extends CommandResult {
 interface LauncherRuntime {
   readonly executable: string;
   readonly environment: Record<string, string>;
+  readonly delegatedCgroup?: string;
   readonly cleanup: () => Promise<void>;
 }
 
@@ -119,6 +120,16 @@ const wrapperEnvironment = (wrapper: string) => ({
   ADLC_GUEST_UID: exported(wrapper, "ADLC_GUEST_UID"),
   ADLC_GUEST_GID: exported(wrapper, "ADLC_GUEST_GID"),
 });
+const unifiedCgroupPath = (membership: string) => {
+  const hierarchy = membership
+    .trim()
+    .split("\n")
+    .find((entry) => entry.startsWith("0::"));
+  if (!hierarchy) fail("missing unified cgroup membership");
+  const path = hierarchy.slice(3);
+  if (!path.startsWith("/")) fail("invalid unified cgroup membership");
+  return path;
+};
 const projectSource = async (sourceRoot: string): Promise<string> => {
   const projection = mkdtempSync(join(tmpdir(), "adlc-homelab-source-"));
   try {
@@ -192,7 +203,8 @@ const transientLauncher = async (directory: string): Promise<LauncherRuntime> =>
   );
   const properties = [
     "Slice=adlc-firecracker.slice",
-    "Delegate=yes",
+    "Delegate=cpu io memory pids",
+    "DelegateSubgroup=launcher",
     "TasksAccounting=yes",
     "CPUQuota=100%",
     "CPUWeight=100",
@@ -228,6 +240,20 @@ const transientLauncher = async (directory: string): Promise<LauncherRuntime> =>
   }
   assert(existsSync(socket), "transient launcher socket did not appear");
   accessSync(socket, 2);
+  const unitCgroup = required(
+    await run(["sudo", "--", "systemctl", "show", unit, "--property=ControlGroup", "--value"]),
+    "read transient launcher cgroup",
+  ).stdout.trim();
+  assert(unitCgroup.startsWith("/"), "transient launcher does not have a cgroup");
+  const mainPid = required(
+    await run(["sudo", "--", "systemctl", "show", unit, "--property=MainPID", "--value"]),
+    "read transient launcher main PID",
+  ).stdout.trim();
+  assert(/^[1-9][0-9]*$/.test(mainPid), "transient launcher does not have a main PID");
+  assert(
+    unifiedCgroupPath(await rootText(`/proc/${mainPid}/cgroup`)) === `${unitCgroup}/launcher`,
+    "transient launcher daemon is not in its delegated leaf subgroup",
+  );
   const client = join(directory, launcherName);
   writeFileSync(
     client,
@@ -238,6 +264,7 @@ const transientLauncher = async (directory: string): Promise<LauncherRuntime> =>
   chmodSync(client, 0o755);
   return {
     executable: client,
+    delegatedCgroup: `/sys/fs/cgroup${unitCgroup}`,
     environment,
     cleanup: async () => {
       const log = await run(["sudo", "--", "journalctl", "--no-pager", "-u", unit, "-n", "80"]);
@@ -360,7 +387,19 @@ const schedulerAllocationCount = (databasePath: string): number => {
     database.close();
   }
 };
-const assertCgroup = async (receipt: Record<string, unknown>) => {
+const assertCgroup = async (receipt: Record<string, unknown>, delegatedCgroup?: string) => {
+  const cgroup = String(receipt.cgroupPath);
+  if (delegatedCgroup) {
+    assert(
+      cgroup.startsWith(`${delegatedCgroup}/`),
+      `VMM cgroup escaped delegated service subtree: ${cgroup}`,
+    );
+    const enabled = (await rootText(join(delegatedCgroup, "cgroup.subtree_control")))
+      .trim()
+      .split(/\s+/);
+    for (const controller of ["cpu", "io", "memory", "pids"])
+      assert(enabled.includes(controller), `delegated cgroup did not enable ${controller}`);
+  }
   const controls = receipt.cgroupControls as Record<string, unknown>;
   const names = {
     cpuMax: "cpu.max",
@@ -372,7 +411,7 @@ const assertCgroup = async (receipt: Record<string, unknown>) => {
   };
   for (const [key, file] of Object.entries(names))
     assert(
-      (await rootText(join(String(receipt.cgroupPath), file))).trim() === controls[key],
+      (await rootText(join(cgroup, file))).trim() === controls[key],
       `cgroup ${file} differs from receipt`,
     );
 };
@@ -535,7 +574,7 @@ try {
     "receipt has the wrong vsock binding",
   );
   const first = await recordState(stateRoot, environmentId, generation);
-  await assertCgroup(receipt);
+  await assertCgroup(receipt, runtime.delegatedCgroup);
   await assertNetns(Number(first.state.pid));
   await assertFirecrackerConfig(first.base);
 

@@ -221,7 +221,8 @@ in
           "AF_VSOCK"
           "AF_NETLINK"
         ];
-        Delegate = true;
+        Delegate = "cpu io memory pids";
+        DelegateSubgroup = "launcher";
         TasksAccounting = true;
         CPUQuota = "100%";
         CPUWeight = 100;
