@@ -291,27 +291,14 @@ in
   home.packages = [ vicinaeLauncherLiveTest ];
 
   systemd.user.services = {
-    nori-desktop-saved-command-projection = {
-      Unit = {
-        Description = "Project saved commands into Vicinae search";
-        Before = [ "vicinae.service" ];
-      };
-      Service = {
-        Type = "oneshot";
-        ExecStart = lib.getExe savedCommandProjectionSync;
-      };
-      Install.WantedBy = [ config.wayland.systemd.target ];
-    };
-
     vicinae = {
-      Unit = {
-        After = [ "nori-desktop-saved-command-projection.service" ];
-        Requires = [ "nori-desktop-saved-command-projection.service" ];
+      Service = {
+        ExecStartPre = lib.getExe savedCommandProjectionSync;
+        Environment = [
+          "RICE_NORI_DESKTOP_SETTINGS_BIN=${settingsCli}"
+          "RICE_SAVED_COMMAND_BIN=${savedCommand}"
+        ];
       };
-      Service.Environment = [
-        "RICE_NORI_DESKTOP_SETTINGS_BIN=${settingsCli}"
-        "RICE_SAVED_COMMAND_BIN=${savedCommand}"
-      ];
     };
   };
 
