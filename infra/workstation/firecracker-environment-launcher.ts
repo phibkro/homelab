@@ -240,9 +240,14 @@ const waitForExecutableIdentity = async (
   pid: number,
   executable: string,
   fields: { readonly cgroup?: boolean; readonly netns?: boolean } = {},
+  child?: ChildProcess,
 ): Promise<ProcessIdentity> => {
   const deadline = Date.now() + TIMEOUT;
   while (Date.now() < deadline) {
+    if (child && (child.exitCode !== null || child.signalCode !== null))
+      fail(
+        `process ${String(pid)} exited before exec of ${executable}: ${child.exitCode === null ? `signal ${String(child.signalCode)}` : `exit ${String(child.exitCode)}`}`,
+      );
     if (!live(pid)) fail(`process ${String(pid)} exited before exec of ${executable}`);
     try {
       if (basename(processExe(pid)) === executable) return observedIdentity(pid, fields);
@@ -369,16 +374,28 @@ const terminate = async (identity: ProcessIdentity) => {
   if (processMatches(identity)) fail(`process ${String(identity.pid)} did not terminate`);
 };
 const terminateChild = async (child: ChildProcess | undefined) => {
-  if (!child || child.exitCode !== null || child.pid === undefined) return;
+  if (
+    !child ||
+    child.pid === undefined ||
+    child.exitCode !== null ||
+    child.signalCode !== null
+  )
+    return;
   child.kill("SIGTERM");
   const deadline = Date.now() + TIMEOUT;
-  while (child.exitCode === null && Date.now() < deadline) await sleep(100);
-  if (child.exitCode === null) {
+  while (child.exitCode === null && child.signalCode === null && Date.now() < deadline)
+    await sleep(100);
+  if (child.exitCode === null && child.signalCode === null) {
     child.kill("SIGKILL");
     const killDeadline = Date.now() + 2_000;
-    while (child.exitCode === null && Date.now() < killDeadline) await sleep(100);
+    while (
+      child.exitCode === null &&
+      child.signalCode === null &&
+      Date.now() < killDeadline
+    )
+      await sleep(100);
   }
-  if (child.exitCode === null)
+  if (child.exitCode === null && child.signalCode === null)
     fail(`child process ${String(child.pid)} did not terminate after SIGKILL`);
 };
 const checkedGenerationCgroup = (cgroupPath: string) => {
@@ -936,10 +953,13 @@ const materialize = async (request: Dict): Promise<Dict> => {
       "io.max": controls.ioMax,
     }))
       writeFileSync(join(generationCgroup, file), value);
-    keeperChild = spawn("unshare", ["--net", "sleep", "1000000"], { stdio: "ignore" });
+    keeperChild = spawn("unshare", ["--net", "sleep", "1000000"], {
+      stdio: ["ignore", "ignore", "pipe"],
+    });
     if (keeperChild.pid === undefined) fail("netns keeper did not report a pid");
+    keeperChild.stderr?.on("data", (chunk) => appendLog(log, chunk));
     writeFileSync(join(generationCgroup, "cgroup.procs"), String(keeperChild.pid));
-    keeperProcess = await waitForExecutableIdentity(keeperChild.pid, "sleep");
+    keeperProcess = await waitForExecutableIdentity(keeperChild.pid, "sleep", {}, keeperChild);
     namespace = `/proc/${keeperChild.pid}/ns/net`;
     Object.assign(state, {
       netns: namespace,
