@@ -28,6 +28,11 @@
         e2e-music-ingest = import ../../../services/music-ingest/tests/nixos.nix {
           inherit pkgs lib;
         };
+        e2e-desktop-settings-unix-ingress =
+          import ../../../users/nori/programs/desktop/settings-service/test/unix-ingress.nix
+            {
+              inherit pkgs lib;
+            };
 
         /**
           E2E — hypr-session user-journey nixosTest. Boots a real
@@ -42,6 +47,9 @@
             {
               inherit pkgs;
             };
+        e2e-self-hosted-firecracker = import ../../../tests/e2e-self-hosted-firecracker.nix {
+          inherit pkgs lib inputs;
+        };
       };
     };
 }

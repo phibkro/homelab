@@ -1,7 +1,7 @@
 ---
 summary: Replace the Fuzzel action palette with Vicinae and add persistent saved commands.
 date: 2026-09-12
-status: frozen
+status: implemented
 ---
 
 # Vicinae launcher and saved commands
@@ -46,9 +46,9 @@ A user can create a saved command in Vicinae without opening a terminal. The sav
 
 ## Data contract
 
-The profile is JSON at `$XDG_CONFIG_HOME/nori-desktop/saved-commands.json`.
+The profile is JSON at `$XDG_CONFIG_HOME/nori-desktop/profile.json`.
 
-The root object contains `version`, `revision`, and `commands`. Version 1 commands contain:
+The root object contains `formatVersion`, `revision`, `components`, and `savedCommands`.
 
 - A stable ID in the `user.*` namespace.
 - A title and output mode.
@@ -67,7 +67,7 @@ The service rejects unknown fields, duplicate parameter names, unknown placehold
 - `users/nori/programs/desktop/action-model.nix` declares the internal Home Manager action contract.
 - `users/nori/programs/desktop/hypr-rice/runtime.nix` defines existing actions, the dispatcher, and direct bindings.
 - `users/nori/programs/desktop/vicinae/default.nix` owns Vicinae integration and generated script entries.
-- `users/nori/programs/desktop/vicinae/saved-command/` owns the Effect/Bun saved-command service and CLI.
+- `users/nori/programs/desktop/settings-service/` owns the Effect/Bun profile service, saved-command state, and CLI.
 - `users/nori/programs/desktop/vicinae/extension/` owns the Vicinae create-command form.
 - `users/nori/programs/desktop/default.nix` composes these modules and keeps session ownership.
 
@@ -134,3 +134,12 @@ In an isolated Wayland session, start the built Vicinae service and open it. Sea
 ## Evidence boundary
 
 These gates describe required behavior. They are not proof until the commands run against the built artifacts. Workstation activation and login persistence require a later authorized activation check.
+
+Implemented and verified on 2026-09-12:
+
+- The saved-command type check and five behavioral tests passed.
+- The extension type check passed.
+- The launcher projection and existing Hyprland layout checks built.
+- The built launcher passed the private headless-Sway journey.
+
+The workstation was not activated. Login persistence still requires an authorized activation and logout journey.

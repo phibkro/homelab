@@ -67,13 +67,25 @@ let
     && deployment.machineRoots."services/recyclarr" == [ "workstation" ]
     && deployment.machineRoots."services/sonarr" == [ "workstation" ]
     && deployment.machineRoots."infra/common/ansible" == [ "pi" ]
+    && deployment.machineRoots."infra/adelie" == [ "adelie" ]
     && deployment.machineRoots."infra/pi" == [ "pi" ]
     && deployment.machineRoots."infra/adelie" == [ "adelie" ]
     && deployment.machineRoots."infra/workstation" == [ "workstation" ];
 
   targetsCorrect =
-    deployment.targets.adelie.buildAttribute
-    == "nixosConfigurations.adelie.config.system.build.toplevel"
+    deployment.targets.adelie == {
+      kind = "nixos";
+      profiles = [
+        "base"
+        "log-forwarder"
+        "observability-agent"
+      ];
+      workloads = inventory.hosts.adelie.workloads;
+      buildAttribute = "nixosConfigurations.adelie.config.system.build.toplevel";
+      planCommand = null;
+      applyCommand = null;
+      verifyCommand = null;
+    }
     &&
       deployment.targets.workstation.buildAttribute
       == "nixosConfigurations.workstation.config.system.build.toplevel"
