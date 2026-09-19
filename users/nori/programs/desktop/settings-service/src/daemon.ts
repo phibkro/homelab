@@ -151,7 +151,7 @@ export function isSafeRuntimeDirectory(
 ): boolean {
   if (!directory.isDirectory() || directory.isSymbolicLink() || directory.uid !== currentUid) return false;
   const mode = directory.mode & 0o777;
-  return mode === 0o700 || mode === 0o710;
+  return mode === 0o700 || mode === 0o710 || mode === 0o711;
 }
 
 async function prepareSocket(socket: string): Promise<void> {

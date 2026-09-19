@@ -12,7 +12,6 @@ pkgs.testers.runNixOSTest {
     users.users.nori = {
       isNormalUser = true;
       uid = 1000;
-      extraGroups = [ "nori-desktop-settings" ];
     };
     users.users.other = {
       isNormalUser = true;
@@ -35,8 +34,8 @@ pkgs.testers.runNixOSTest {
   };
   testScript = ''
     start_all()
-    machine.succeed("install -d -m 0710 -o nori-desktop-settings -g nori-desktop-settings /run/nori-desktop-settings")
-    machine.succeed("stat -c %U:%G:%a /run/nori-desktop-settings | grep -x nori-desktop-settings:nori-desktop-settings:710")
+    machine.succeed("install -d -m 0711 -o nori-desktop-settings -g nori-desktop-settings /run/nori-desktop-settings")
+    machine.succeed("stat -c %U:%G:%a /run/nori-desktop-settings | grep -x nori-desktop-settings:nori-desktop-settings:711")
     machine.succeed("install -m 0640 -o root -g nori-desktop-settings-authority /dev/null /run/lock/nori-desktop-settings-activation.lock")
     machine.succeed("stat -c %U:%G:%a /run/lock/nori-desktop-settings-activation.lock | grep -x root:nori-desktop-settings-authority:640")
     machine.succeed("runuser -u nori-desktop-settings -- flock -xn /run/lock/nori-desktop-settings-activation.lock true")
@@ -51,14 +50,15 @@ pkgs.testers.runNixOSTest {
     machine.wait_until_succeeds("test -S /run/nori-desktop-settings/backend.sock")
     machine.succeed("runuser -u nori-desktop-settings -- /run/nori-desktop-settings/ingress /run/nori-desktop-settings/public.sock /run/nori-desktop-settings/backend.sock 1000 >/tmp/ingress.log 2>&1 &")
     machine.wait_until_succeeds("test -S /run/nori-desktop-settings/public.sock")
-    machine.succeed("stat -c %a /run/nori-desktop-settings/public.sock | grep -x 660")
+    machine.succeed("stat -c %a /run/nori-desktop-settings/public.sock | grep -x 666")
     machine.succeed("printf '\\000\\000\\000\\007allowed' | runuser -u nori -- socat - UNIX-CONNECT:/run/nori-desktop-settings/public.sock | tail -c 7 | grep -x allowed")
+    machine.succeed("rm -f /tmp/full-duplex-response; timeout 1 sh -c '(printf \"\\000\\000\\000\\007allowed\"; sleep 2) | runuser -u nori -- socat - UNIX-CONNECT:/run/nori-desktop-settings/public.sock > /tmp/full-duplex-response' || test $? -eq 124")
+    machine.succeed("tail -c 7 /tmp/full-duplex-response | grep -x allowed")
     machine.fail("runuser -u nori -- touch /run/nori-desktop-settings/nori-file")
     machine.fail("runuser -u nori -- rm /run/nori-desktop-settings/public.sock")
 
-    # Deliberately relax only this disposable test socket. A different UID can
-    # connect, but the ingress must reject it before the backend reads bytes.
-    machine.succeed("chmod 0711 /run/nori-desktop-settings && chmod 0666 /run/nori-desktop-settings/public.sock")
+    # The public socket is reachable by design. The ingress rejects a different
+    # peer UID before it can dispatch a request to the protected backend.
     machine.fail("timeout 2 runuser -u other -- sh -c 'printf \"\" | socat - UNIX-CONNECT:/run/nori-desktop-settings/public.sock' | grep -x allowed")
 
     # The ingress buffers and verifies the complete client half before opening

@@ -146,6 +146,7 @@ test("daemon accepts only current-UID private or production runtime directories"
   });
   expect(isSafeRuntimeDirectory(directory(1000, 0o700), 1000)).toBeTrue();
   expect(isSafeRuntimeDirectory(directory(1000, 0o710), 1000)).toBeTrue();
+  expect(isSafeRuntimeDirectory(directory(1000, 0o711), 1000)).toBeTrue();
   expect(isSafeRuntimeDirectory(directory(1000, 0o730), 1000)).toBeFalse();
   expect(isSafeRuntimeDirectory(directory(0, 0o710), 1000)).toBeFalse();
 });

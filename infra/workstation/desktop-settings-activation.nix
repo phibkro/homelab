@@ -430,7 +430,6 @@ in
     group = "nori-desktop-settings";
     extraGroups = [ "nori-desktop-settings-authority" ];
   };
-  users.users.nori.extraGroups = lib.mkAfter [ "nori-desktop-settings" ];
   systemd.tmpfiles.rules = [
     "f /run/lock/nori-desktop-settings-activation.lock 0640 root nori-desktop-settings-authority -"
   ];
@@ -445,7 +444,7 @@ in
       StateDirectory = "nori-desktop-settings";
       StateDirectoryMode = "0700";
       RuntimeDirectory = "nori-desktop-settings";
-      RuntimeDirectoryMode = "0710";
+      RuntimeDirectoryMode = "0711";
       ExecStart = "${settingsServicePackage}/bin/nori-desktop-settings-daemon";
       Restart = "on-failure";
       RestartSec = 2;

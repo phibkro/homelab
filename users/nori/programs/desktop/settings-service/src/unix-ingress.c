@@ -79,7 +79,7 @@ static int unix_socket(const char *path, bool listener) {
     int result = bind(fd, (const struct sockaddr *)&address,
                       offsetof(struct sockaddr_un, sun_path) + length + 1);
     umask(old_mask);
-    if (result < 0 || chmod(path, 0660) < 0 || listen(fd, backlog) < 0) {
+    if (result < 0 || chmod(path, 0666) < 0 || listen(fd, backlog) < 0) {
       int saved = errno;
       close(fd);
       unlink(path);

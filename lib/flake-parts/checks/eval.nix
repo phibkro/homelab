@@ -340,8 +340,8 @@
             tmpfilesRules = evaluated.config.systemd.tmpfiles.rules;
             hasSafeRuntimeDirectory =
               settingsService.serviceConfig.RuntimeDirectory == "nori-desktop-settings"
-              && settingsService.serviceConfig.RuntimeDirectoryMode == "0710"
-              && lib.elem "nori-desktop-settings" evaluated.config.users.users.nori.extraGroups;
+              && settingsService.serviceConfig.RuntimeDirectoryMode == "0711"
+              && !lib.elem "nori-desktop-settings" evaluated.config.users.users.nori.extraGroups;
             hasPrivateAuthorityLock =
               lib.elem "f /run/lock/nori-desktop-settings-activation.lock 0640 root nori-desktop-settings-authority -" tmpfilesRules
               && lib.elem "nori-desktop-settings-authority" evaluated.config.users.users.nori-desktop-settings.extraGroups
@@ -367,7 +367,7 @@
           assert lib.assertMsg hasIngressRestartCoupling
             "desktop settings ingress must restart with its authority";
           assert lib.assertMsg hasSafeRuntimeDirectory
-            "desktop settings runtime directory must be authority-owned with group traverse access only";
+            "desktop settings runtime directory must be authority-owned, client-traversable, and not client-writable";
           assert lib.assertMsg hasPrivateAuthorityLock
             "desktop settings authority lock must exclude the desktop user";
           assert lib.assertMsg hasExactSocketPaths
