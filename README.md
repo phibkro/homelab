@@ -7,7 +7,7 @@ inventory/ ──→ infra/workstation: NixOS + Home Manager
            └─→ infra/pi: Ansible appliance
 
 hot data → SSDs       cold data → IronWolf Pro
-planned backups → OneTouch (disabled pending connection)
+backup destination → OneTouch (policy: inventory/backup.nix)
 ```
 
 Workstation owns the desktop, application services, and attached data disks.
@@ -24,7 +24,7 @@ and encrypted secret recipients are handled separately from host removal.
 | Add or change configuration | [Module authoring](docs/reference/module-authoring.md) |
 | Build and deploy | [Deployment](docs/reference/deployment.md) |
 | Understand backups | [Storage](docs/reference/storage.md) |
-| Connect and enable OneTouch backups | [Cutover runbook](docs/runbooks/onetouch-backup-cutover.md) |
+| Verify or reconnect OneTouch backups | [Cutover runbook](docs/runbooks/onetouch-backup-cutover.md) |
 | Review the repository reorganization | [Migration spec](docs/specs/2026-09-06-complete-reorganization.md) |
 
 ## Common commands
