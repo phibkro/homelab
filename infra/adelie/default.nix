@@ -25,6 +25,8 @@
     ./disko.nix
   ];
 
+  # First admission uses wired DHCP. Wi-Fi would require host-scoped secret
+  # enrollment and belongs to the later physical activation milestone.
   networking.useDHCP = lib.mkDefault true;
 
   # Prefer the local entry-plane DNS while DHCP still advertises the router.

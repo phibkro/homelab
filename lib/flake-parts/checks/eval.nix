@@ -168,6 +168,18 @@
             echo ${lib.escapeShellArg result} > $out
           '';
 
+        /**
+          Adelie remains a source-only minimal host: exact Samsung system disk,
+          fleet agents only, no cache publisher, no secrets, and no apply path.
+        */
+        eval-adelie-admission =
+          let
+            result = import ../../../tests/eval/adelie-admission.nix { inherit inputs lib; };
+          in
+          pkgs.runCommandLocal "eval-adelie-admission" { } ''
+            echo ${lib.escapeShellArg result} > $out
+          '';
+
         eval-topology-conformance =
           let
             result = import ../../../tests/eval/topology-conformance.nix { inherit inputs lib; };

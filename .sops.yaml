@@ -1,33 +1,25 @@
 # sops policy: which age public keys can decrypt which file paths.
 #
-# Bootstrap (one-time, see secrets/README.md for full walkthrough):
-#   1. On the Mac:
-#        brew install age sops ssh-to-age
-#        mkdir -p ~/.config/sops/age && chmod 700 ~/.config/sops/age
-#        age-keygen -o ~/.config/sops/age/keys.txt && chmod 600 ~/.config/sops/age/keys.txt
-#        # Copy the line that starts with `# public key: age1...`
-#   2. Get workstation's age public key:
-#        ssh-keyscan -t ed25519 192.168.1.181 | ssh-to-age
-#   3. Replace the two `<...>` placeholders below with the real values.
-#   4. Initialize the secrets file:
-#        sops secrets/secrets.yaml
-#      (editor opens; add `placeholder: ok` so the file is non-empty,
-#      save & quit; sops encrypts on save)
-#   5. Commit `.sops.yaml` and `secrets/secrets.yaml` (encrypted form).
+# Host enrollment:
+#   1. Read /etc/ssh/ssh_host_ed25519_key.pub at the physical console or
+#      through an existing independently pinned SSH session.
+#   2. Record and compare the SSH fingerprint out of band.
+#   3. Convert that exact public key with ssh-to-age.
+#   4. Add the recipient only to the narrow creation rule for files the host
+#      must decrypt.
+#   5. Run `sops updatekeys` for those files and inspect recipient metadata.
 #
-# Adding a new host later (e.g. pi):
-#   - Get its age pubkey via ssh-to-age, add to `keys:` block, add to
-#     the creation_rules anchor list.
-#   - Run `sops updatekeys secrets/secrets.yaml` to re-encrypt to the
-#     expanded recipient set.
-#   - Commit and rebuild.
+# `ssh-keyscan` can collect a candidate key. It cannot establish host identity
+# and must not authorize a SOPS recipient.
+# Removing a recipient from current ciphertext does not revoke its access to
+# historical ciphertext. Rotate affected credentials when prior access was not
+# authorized.
 
 keys:
   - &mac age1nxq07zper943wz4eredgt82e5jghx7d0sfldzqngn2kfdnwyhuhsl3h0r4
   - &workstation age1d893pv2w42vtharqse3e3yd7rpc8nst7mlw2csssy7e9ql3lcd2q7vw4s0
   - &workstation-user age1lezvx39h43ua5r3zlk34fmfs0wqzz7g3ltfmkg9gm350fw7fq5jsrefr78
   - &pi age108jlf67tj7tcdmlrg8h0wpdyvg24pud3k7u4nfa4zyz9meqml5sskcdncr
-  - &adelie age1dkv97zyhtmd7rwglypnqguqp48pg4cjwa9sj5zqfyvued7t5jsws9df98e
 
 creation_rules:
   - path_regex: secrets/.*\.yaml$
@@ -37,4 +29,3 @@ creation_rules:
           - *workstation
           - *workstation-user
           - *pi
-          - *adelie

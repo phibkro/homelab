@@ -1,27 +1,10 @@
 {
   config,
-  inputs,
   lib,
   pkgs,
   ...
 }:
 
-let
-  atticClientConfig = pkgs.writeTextDir "attic/config.toml" ''
-    default-server = "nori"
-
-    [servers.nori]
-    endpoint = "https://cache.${config.nori.domain}/"
-    token-file = "${config.sops.secrets.attic-push-token.path}"
-  '';
-  atticPush = pkgs.writeShellApplication {
-    name = "nori-cache-push";
-    text = ''
-      export XDG_CONFIG_HOME=${atticClientConfig}
-      exec ${lib.getExe pkgs.attic-client} push nori "$@"
-    '';
-  };
-in
 {
   # --- nix ---------------------------------------------------------------
 
@@ -77,76 +60,6 @@ in
   };
 
   nixpkgs.config.allowUnfree = true;
-  sops.secrets.attic-push-token = {
-    sopsFile = inputs.self + "/secrets/apps.yaml";
-    key = "attic_push_token";
-    owner = "root";
-    mode = "0400";
-    restartUnits = [
-      "attic-cache-seed.service"
-      "attic-cache-watch.service"
-    ];
-  };
-
-  /*
-    Seed the complete active system at boot, then watch individual store
-    additions continuously. The seed closes the watcher's intentional gap:
-    watch-store only sees paths completed while it is running.
-    Attic filters paths already signed by configured upstream caches.
-  */
-  systemd.services.attic-cache-seed = {
-    description = "Publish the active system closure to the homelab Attic cache";
-    wants = [ "network-online.target" ];
-    after = [ "network-online.target" ];
-    environment.XDG_CONFIG_HOME = atticClientConfig;
-    serviceConfig = {
-      # Complete the start job after execve, not after the entire closure has
-      # uploaded. Activation must not wait across an optional publisher's
-      # direct retry loop.
-      Type = "exec";
-      ExecStart = "${lib.getExe pkgs.attic-client} push nori --jobs 2 /run/current-system";
-      Restart = "on-failure";
-      # Keep a transient cache outage inside the retry ladder instead of
-      # briefly exposing `failed`, which can veto an unrelated activation.
-      RestartMode = "direct";
-      RestartSec = "60s";
-    };
-  };
-
-  systemd.services.attic-cache-watch = {
-    description = "Publish new Nix store paths to the homelab Attic cache";
-    wants = [ "network-online.target" ];
-    after = [ "network-online.target" ];
-    environment.XDG_CONFIG_HOME = atticClientConfig;
-    serviceConfig = {
-      Type = "exec";
-      ExecStart = "${lib.getExe pkgs.attic-client} watch-store nori --jobs 2";
-      Restart = "on-failure";
-      RestartMode = "direct";
-      RestartSec = "60s";
-    };
-  };
-
-  # Cache publication is an optional accelerator. Start it after activation so
-  # an unavailable off-host cache cannot veto an otherwise healthy rebuild.
-  systemd.timers.attic-cache-seed = {
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnActiveSec = "2m";
-      OnUnitActiveSec = "1d";
-      Unit = "attic-cache-seed.service";
-    };
-  };
-  systemd.timers.attic-cache-watch = {
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnActiveSec = "2m";
-      Unit = "attic-cache-watch.service";
-    };
-  };
-
-  nori.harden.attic-cache-seed = { };
-  nori.harden.attic-cache-watch = { };
 
   /*
     Known-insecure packages we accept. Each entry is a deliberate
@@ -195,7 +108,6 @@ in
     tree
     vim
     wget
-    atticPush
   ];
 
   /*

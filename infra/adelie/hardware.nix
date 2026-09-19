@@ -26,11 +26,6 @@
   ];
   boot.kernelModules = [ "kvm-amd" ];
 
-  nori.wifi = {
-    enable = true;
-    interface = "wlp5s0";
-  };
-
   hardware.enableRedistributableFirmware = true;
   hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
 }

@@ -76,37 +76,34 @@ chmod 600 ~/.config/sops/age/keys.txt
 
 ## One-time host enrollment (per host that needs to decrypt secrets)
 
-Each host decrypts using its **SSH ed25519 host key**, derived to age
-form by sops-nix at activation time. To enroll a host, derive its age
-public key from its SSH host key.
-
-The cleanest way is to do the derivation **on the host itself** via
-nix-shell — avoids needing `ssh-to-age` installed on the operator
-machine:
+Each host decrypts using its **SSH Ed25519 host key**, derived to age form
+by sops-nix at activation time. Read the public host key at the physical
+console or through an existing independently pinned SSH session. Record and
+compare its fingerprint out of band before enrollment.
 
 ```bash
-# On a NixOS host (run on the host directly):
+# Run on the independently verified NixOS host.
+ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
 cat /etc/ssh/ssh_host_ed25519_key.pub \
   | nix shell nixpkgs#ssh-to-age --command ssh-to-age
-
-# Or via SSH from the operator machine:
-ssh user@host 'cat /etc/ssh/ssh_host_ed25519_key.pub \
-  | nix shell nixpkgs#ssh-to-age --command ssh-to-age'
 ```
 
-(If `ssh-to-age` is available locally — e.g. via `go install
-github.com/Mic92/ssh-to-age/cmd/ssh-to-age@latest` or a brew tap — you
-can also just `ssh-keyscan -t ed25519 <host> | ssh-to-age`.)
+`ssh-keyscan` can collect a candidate public key. It does not authenticate the
+host and must not authorize SSH trust or a SOPS recipient.
 
-Add the resulting `age1...` value to `.sops.yaml` (both in the `keys:`
-block and as an alias inside `creation_rules`), then run:
+Add the resulting `age1...` recipient only to the narrow `.sops.yaml`
+creation rule for files that the host must decrypt. Do not add a minimal host
+to the complete fleet or application secret corpus. Then update only those
+files:
 
 ```bash
-sops updatekeys secrets/secrets.yaml
+sops updatekeys secrets/<host-or-domain>.yaml
 ```
 
-…to re-encrypt with the expanded recipient set. Commit both
-`.sops.yaml` and `secrets/secrets.yaml`.
+Inspect recipient metadata before committing. Removing a recipient from current
+ciphertext does not revoke access to historical Git ciphertext. Rotate affected
+credentials when the former recipient's private key was exposed or its access
+was not authorized.
 
 ## Initial setup of secrets.yaml
 

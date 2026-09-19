@@ -6,29 +6,15 @@
 
 {
   /**
-    beszel-agent — per-host metrics collector. Hub on pi pulls
-    over tailnet (cross-host: hub-host opens an outbound TCP connection
-    to each agent's port 45876). Stateless from this host's perspective:
-    the hub's SSH public key from sops, metrics streamed in-memory.
-
-    Single shared `beszel-hub-pubkey` sops secret — Beszel uses a
-    symmetric trust model where every agent installs the hub's public
-    key as KEY. Operator mints the hub keypair via the Beszel admin UI;
-    the same pubkey lands on every agent.
+    beszel-agent — per-host metrics collector. Hub on Pi pulls over
+    tailnet. The agent trusts the hub's SSH public key. This is a public
+    trust anchor, not confidential key material, so it remains visible in
+    source and the Nix store instead of widening SOPS recipient access.
   */
-
-  sops.secrets.beszel-hub-pubkey = {
-    mode = "0400";
-    /*
-      No `group` set: systemd reads EnvironmentFile as PID 1 and injects
-      KEY into the DynamicUser process — beszel-agent never reads the
-      file directly, so SupplementaryGroups=keys is unneeded.
-    */
-  };
 
   services.beszel.agent = {
     enable = true;
-    environmentFile = config.sops.secrets.beszel-hub-pubkey.path;
+    environment.KEY = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF2lWbtgJ4ahX4/ceH3PTHJ8xgbteUj+OLFtXYWbXBcI";
   };
 
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 45876 ];
@@ -48,5 +34,5 @@
     config.nori.gpu.nvidiaDevices != [ ]
   ) (lib.mkForce false);
 
-  nori.backups.beszel-agent.skip = "Stateless — SSH key from sops, metrics streamed to hub (no local persistence).";
+  nori.backups.beszel-agent.skip = "Stateless — hub public key is declarative and metrics stream to the hub.";
 }

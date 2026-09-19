@@ -656,6 +656,9 @@ in
       ports = lib.mapAttrsToList (_: r: r.port) routes;
       names = lib.attrNames routes;
       oidcRoutes = filterAttrs (_: r: r.oidc != null) routes;
+      localOidcRoutes = filterAttrs (
+        _: r: r.oidc != null && r.runsOn == config.networking.hostName
+      ) routes;
       forwardAuthRoutes = filterAttrs (_: r: r.forwardAuth != null) routes;
       internetIdentityRoutes = filterAttrs (
         _: r: r.reachability == "internet" && (r.oidc != null || r.forwardAuth != null)
@@ -960,15 +963,10 @@ in
             keeps hash material out of committed Nix entirely.
       */
       sops.secrets =
-        let
-          routesWithOidc = filterAttrs (_: cfg: cfg.oidc != null) config.nori.lanRoutes;
-        in
         /*
-          Raw client secrets: emitted on any host that has routes
-          declared, since service modules read them on the host where
-          the BACKEND runs (via `EnvironmentFile` from the sops template
-          below). Owned by the `keys` group; consuming services join
-          that group via `SupplementaryGroups`.
+          Raw client secrets exist only on the host that runs each backend.
+          Hosts importing the shared route registry receive no unrelated
+          credential material.
         */
         (mapAttrs' (
           name: _:
@@ -976,7 +974,7 @@ in
             mode = "0440";
             group = "keys";
           }
-        ) routesWithOidc)
+        ) localOidcRoutes)
         /*
           PBKDF2 hashes: only emit on hosts that run Authelia (the user
           `authelia-main` only exists there). Other hosts importing the
@@ -989,7 +987,7 @@ in
               mode = "0400";
               owner = "authelia-main";
             }
-          ) routesWithOidc
+          ) oidcRoutes
         ));
 
       sops.templates = mapAttrs' (
@@ -1001,7 +999,7 @@ in
             ${cfg.oidc.secretEnvName}=${config.sops.placeholder."oidc-${name}-client-secret"}
           '';
         }
-      ) (filterAttrs (_: cfg: cfg.oidc != null) config.nori.lanRoutes);
+      ) localOidcRoutes;
     }
   );
 }

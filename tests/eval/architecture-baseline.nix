@@ -309,20 +309,28 @@ let
     let
       cacheUrl = "https://cache.${hosts.workstation.config.nori.domain}/nori";
       cacheKey = "attic.nori.lan-1:3zt/aS8K1bSEjNvZQB9ga9OeZTxcRkvbb7aYRI/vobo=";
-      everyHostPublishes = lib.all (
+      everyHostSubscribes = lib.all (
         host:
         lib.elem cacheUrl host.config.nix.settings.extra-substituters
         && lib.elem cacheKey host.config.nix.settings.extra-trusted-public-keys
-        && host.config.systemd.timers.attic-cache-watch.wantedBy == [ "timers.target" ]
-        && host.config.systemd.timers.attic-cache-seed.wantedBy == [ "timers.target" ]
-        && host.config.systemd.services.attic-cache-watch.serviceConfig.Type == "exec"
-        && host.config.systemd.services.attic-cache-seed.serviceConfig.Type == "exec"
-        && host.config.systemd.services.attic-cache-watch.serviceConfig.RestartMode == "direct"
-        && host.config.systemd.services.attic-cache-seed.serviceConfig.RestartMode == "direct"
       ) (lib.attrValues hosts);
       workstation = hosts.workstation.config;
+      workstationPublishes =
+        workstation.systemd.timers.attic-cache-watch.wantedBy == [ "timers.target" ]
+        && workstation.systemd.timers.attic-cache-seed.wantedBy == [ "timers.target" ]
+        && workstation.systemd.services.attic-cache-watch.serviceConfig.Type == "exec"
+        && workstation.systemd.services.attic-cache-seed.serviceConfig.Type == "exec"
+        && workstation.systemd.services.attic-cache-watch.serviceConfig.RestartMode == "direct"
+        && workstation.systemd.services.attic-cache-seed.serviceConfig.RestartMode == "direct";
+      adelie = hosts.adelie.config;
+      adelieCannotPublish =
+        !(builtins.hasAttr "attic-push-token" adelie.sops.secrets)
+        && !(builtins.hasAttr "attic-cache-watch" adelie.systemd.services)
+        && !(builtins.hasAttr "attic-cache-seed" adelie.systemd.services);
     in
-    everyHostPublishes
+    everyHostSubscribes
+    && workstationPublishes
+    && adelieCannotPublish
     && workstation.services.atticd.enable
     && workstation.services.atticd.settings.storage.path == "/mnt/backup-local/attic"
     && workstation.services.atticd.settings.garbage-collection.default-retention-period == "30 days"
