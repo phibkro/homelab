@@ -22,7 +22,7 @@ During the initial evidence collection, no source worktree was switched, staged,
 
 ## Execution update
 
-The recovery moved from evidence collection to integration on 2026-09-19. The committed `main` head is now `29ccd4ab0f4cd816f7b33b1702f1feda1207c91d`. The tree is clean. No activation, deployment, fetch, push, credential use, backup write, or restore ran.
+The recovery moved from evidence collection to integration on 2026-09-19. Product integration reached commit `29ccd4ab0f4cd816f7b33b1702f1feda1207c91d` before this report update. The tree was clean. No activation, deployment, fetch, push, credential use, backup write, or restore ran.
 
 Completed source outcomes:
 
