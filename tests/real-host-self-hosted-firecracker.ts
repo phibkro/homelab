@@ -4,7 +4,6 @@ import { Database } from "bun:sqlite";
 import {
   accessSync,
   chmodSync,
-  cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -14,7 +13,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 const launcherName = "agent-engine-self-hosted-launcher";
 const stateVolumeBytes = 256 * 1024 * 1024;
@@ -130,53 +130,28 @@ const unifiedCgroupPath = (membership: string) => {
   if (!path.startsWith("/")) fail("invalid unified cgroup membership");
   return path;
 };
-const projectSource = async (sourceRoot: string): Promise<string> => {
-  const projection = mkdtempSync(join(tmpdir(), "adlc-homelab-source-"));
-  try {
-    const files = required(
-      await run(["git", "-C", sourceRoot, "ls-files", "-co", "--exclude-standard", "-z"]),
-      "list current homelab source files",
-    ).stdout.split("\0");
-    for (const relativePath of files) {
-      if (!relativePath || relativePath === ".git" || relativePath.startsWith(".worktrees/"))
-        continue;
-      const source = resolve(sourceRoot, relativePath);
-      if (!source.startsWith(`${sourceRoot}/`))
-        fail(`source projection escapes checkout: ${relativePath}`);
-      if (!existsSync(source)) continue;
-      const target = join(projection, relativePath);
-      mkdirSync(dirname(target), { recursive: true });
-      cpSync(source, target, { dereference: false, recursive: true });
-    }
-    return projection;
-  } catch (error) {
-    rmSync(projection, { recursive: true, force: true });
-    throw error;
-  }
-};
 
 const transientLauncher = async (directory: string): Promise<LauncherRuntime> => {
   const sourceRoot = resolve(import.meta.dir, "..");
-  const projection = await projectSource(sourceRoot);
-  const build = await (async () => {
-    try {
-      return required(
-        await run(
-          [
-            "nix",
-            "build",
-            "--no-link",
-            "--print-out-paths",
-            `path:${projection}#nixosConfigurations.workstation.config.system.build.toplevel`,
-          ],
-          { cwd: projection, timeoutMs: 900_000 },
-        ),
-        "build current workstation toplevel",
-      );
-    } finally {
-      rmSync(projection, { recursive: true, force: true });
-    }
-  })();
+  const revision = required(
+    await run(["git", "-C", sourceRoot, "rev-parse", "HEAD"]),
+    "resolve committed homelab revision",
+  ).stdout.trim();
+  assert(/^[0-9a-f]{40}$/.test(revision), "homelab HEAD is not a full Git revision");
+  const source = `git+${pathToFileURL(sourceRoot).href}?rev=${revision}`;
+  const build = required(
+    await run(
+      [
+        "nix",
+        "build",
+        "--no-link",
+        "--print-out-paths",
+        `${source}#nixosConfigurations.workstation.config.system.build.toplevel`,
+      ],
+      { cwd: sourceRoot, timeoutMs: 900_000 },
+    ),
+    "build current workstation toplevel",
+  );
   const toplevel = build.stdout.trim();
   assert(toplevel.startsWith("/nix/store/"), "Nix did not report a workstation toplevel");
   const wrapper = join(toplevel, "sw/bin", launcherName);
