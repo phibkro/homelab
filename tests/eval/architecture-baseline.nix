@@ -23,6 +23,7 @@ let
   homes = {
     workstation = hosts.workstation.config.home-manager.users.nori;
   };
+  qbittorrentConfig = hosts.workstation.config.services.qbittorrent.serverConfig;
 
   hasHomePackage =
     homeName: packageName:
@@ -244,7 +245,19 @@ let
     && inventory.workloads.open-webui.endpoints == { }
     && inventory.workloads.qbittorrent.active
     && inventory.workloads.qbittorrent.endpoints.downloads.runsOn == "workstation"
-    && hosts.workstation.config.services.qbittorrent.enable;
+    && hosts.workstation.config.services.qbittorrent.enable
+    && qbittorrentConfig.Preferences.WebUI.LocalHostAuth == false
+    && qbittorrentConfig.Preferences.WebUI.HostHeaderValidation == false
+    && qbittorrentConfig.Preferences.WebUI.CSRFProtection == false
+    && qbittorrentConfig.Preferences.WebUI.AuthSubnetWhitelist
+    == "${hosts.workstation.config.nori.inventory.hosts.pi.tailnetIp}/32"
+    && qbittorrentConfig.Preferences.WebUI.AuthSubnetWhitelistEnabled
+    &&
+      qbittorrentConfig.BitTorrent.Session.DefaultSavePath
+      == "${hosts.workstation.config.nori.fs.downloads.path}/.downloads/complete"
+    && qbittorrentConfig.BitTorrent.Session.TempPath == "/var/lib/qBittorrent/qBittorrent/incomplete"
+    && qbittorrentConfig.BitTorrent.Session.TempPathEnabled
+    && lib.elem "d /var/lib/qBittorrent/qBittorrent/incomplete 0755 qbittorrent qbittorrent -" hosts.workstation.config.systemd.tmpfiles.rules;
 
   papersFetchCompatibility = lib.all (
     hostName:
