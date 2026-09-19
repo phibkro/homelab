@@ -91,7 +91,7 @@ pkgs.testers.runNixOSTest {
       # A real mounted filesystem exercises the production mount guard.
       nori.inventory.backup =
         let
-          backup = import ../inventory/backup.nix;
+          backup = import ../inventory/backup.nix { };
         in
         backup
         // {
