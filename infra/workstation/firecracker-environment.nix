@@ -223,6 +223,7 @@ in
         ];
         Delegate = "cpu io memory pids";
         DelegateSubgroup = "launcher";
+        KillMode = "control-group";
         TasksAccounting = true;
         CPUQuota = "100%";
         CPUWeight = 100;
