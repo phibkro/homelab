@@ -44,7 +44,7 @@ pkgs.testers.runNixOSTest {
     machine.succeed("runuser -u nori-desktop-settings -- sh -c 'touch /run/nori-desktop-settings/service-file && rm /run/nori-desktop-settings/service-file'")
     machine.fail("runuser -u nori -- touch /run/nori-desktop-settings/nori-file")
     machine.succeed("runuser -u nori-desktop-settings -- sh -c 'touch /run/nori-desktop-settings/service-file'")
-    machine.fail("runuser -u nori -- rm /run/nori-desktop-settings/service-file")
+    machine.fail("runuser -u nori -- rm -f /run/nori-desktop-settings/service-file")
     machine.succeed("rm /run/nori-desktop-settings/service-file")
     machine.succeed("gcc -D_GNU_SOURCE -O2 -Wall -Wextra -Werror -o /run/nori-desktop-settings/ingress /etc/nori-test/unix-ingress.c")
     machine.succeed("runuser -u nori-desktop-settings -- socat UNIX-LISTEN:/run/nori-desktop-settings/backend.sock,mode=0600,fork EXEC:'${pkgs.runtimeShell} /etc/nori-test/backend' >/tmp/backend.log 2>&1 &")
