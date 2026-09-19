@@ -209,12 +209,18 @@ const transientLauncher = async (directory: string): Promise<LauncherRuntime> =>
     { timeoutMs: 60_000 },
   );
   required(daemon, "start transient launcher daemon");
+  let socketWritable = false;
   for (let attempt = 0; attempt < 100; attempt += 1) {
-    if (existsSync(socket)) break;
+    if (existsSync(socket)) {
+      try {
+        accessSync(socket, 2);
+        socketWritable = true;
+        break;
+      } catch {}
+    }
     await Bun.sleep(100);
   }
-  assert(existsSync(socket), "transient launcher socket did not appear");
-  accessSync(socket, 2);
+  assert(socketWritable, "transient launcher socket did not become writable");
   const unitCgroup = required(
     await run(["sudo", "--", "systemctl", "show", unit, "--property=ControlGroup", "--value"]),
     "read transient launcher cgroup",
