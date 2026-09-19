@@ -18,10 +18,11 @@ committed on a clean `main`.
 
 Continue in this order:
 
-1. Collect operator-authorized Pi and physical OneTouch acceptance evidence.
-2. Choose the intended observer behavior before history repair or integration.
-3. Compare older settings and topology branches with current `main`.
-4. Review each remaining standalone fix before integration or retirement.
+1. Choose the intended observer behavior before history repair or integration.
+2. Compare older settings and topology branches with current `main`.
+3. Review each remaining standalone fix before integration or retirement.
+4. Plan Adelie's operator-authorized physical admission without moving IronWolf
+   or OneTouch.
 
 ## Outstanding (actionable)
 
@@ -49,14 +50,26 @@ Continue in this order:
   appliance plane (DNS, HTTPS entry, identity, monitoring, alerting, Tailscale
   routing, and appliance backups), while workstation owns desktop, storage,
   applications, compute, and GPU workloads. `inventory/hosts.nix` remains the
-  topology authority while `infra/pi/` provisions the replacement Debian/Ansible/
-  Podman realization. Complete the physical reboot, off-LAN, and restore gates
-  in `docs/specs/ansible-pi-plan-b.md`. Ansible is now the sole live
+  topology authority while `infra/pi/` provisions the replacement
+  Debian/Ansible/Podman realization. Complete the physical reboot and off-LAN
+  gates in `docs/specs/ansible-pi-plan-b.md`. Ansible is now the sole live
   deployment owner; the verified NixOS image remains only as an offline
-  rollback artifact. Establish fresh Pi backup and restore evidence using
-  `docs/runbooks/onetouch-backup-cutover.md`; the workstation observations in
-  `docs/archive/reports/2026-09-19-backup-evidence.md` do not establish Pi coverage.
-  Aurora and Pavilion are retired.
+  rollback artifact. The September 19 acceptance pass established the Pi
+  identity, backup transport, eight fresh snapshots, eight metadata checks, and
+  one byte-for-byte Pi-hole configuration restore. Remaining gates are physical
+  reboot, off-LAN behavior, application/database recovery, user-data/media
+  restore coverage, and full data-block integrity. Evidence:
+  `docs/archive/reports/2026-09-19-backup-evidence.md`. Aurora and Pavilion are
+  retired.
+
+- **Admit Adelie physically without moving storage.** Source admission is
+  complete and the clean committed NixOS closure builds. The later physical
+  milestone must verify the Samsung by-id disk and UEFI mode, establish unique
+  SSH/SOPS identity through an independently trusted channel, install and boot,
+  verify Tailscale identity and rollback, and confirm the fleet-agent allow-list.
+  IronWolf and OneTouch remain attached to workstation. Contract and evidence:
+  `docs/specs/2026-09-19-adelie-admission.md` and
+  `docs/archive/reports/2026-09-19-adelie-admission.md`.
 
 - **Sunshine remote-desktop pairing.** Deployed (`services/sunshine/nixos.nix`); NVENC builds confirmed (`h264/hevc/av1_nvenc`). Outstanding: one-time Moonlight pairing.
 
