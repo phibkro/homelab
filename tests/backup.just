@@ -32,4 +32,4 @@
 
 # List restic snapshots for a repo. Usage: just list-snapshots <repo>
 @list-snapshots repo:
-    sudo /run/current-system/sw/bin/restic -r /mnt/backup/{{repo}} --password-file /run/secrets/restic-password snapshots
+    sudo RESTIC_PASSWORD_FILE=/run/secrets/restic-password nix shell nixpkgs#restic -c restic -r /mnt/backup/{{repo}} snapshots
