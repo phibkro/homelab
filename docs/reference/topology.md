@@ -14,20 +14,19 @@ catalog and hardware details; change inventory rather than duplicating it here.
 | pi | Ansible under `infra/pi/` | HTTP entry plane, DNS, monitoring, alerts, subnet routing and exit-node services |
 
 Aurora and Pavilion are outside the main deployment inventory. Aurora may
-serve as a temporary backup endpoint if independently verified reachable; its
-existing OneTouch connection is not evidence of current backup coverage.
+serve as a temporary backup endpoint if independently verified reachable;
+historical attachment records do not establish its current disks or coverage.
 
 ## Failure domains
 
 ```text
 clients → Pi entry plane → workstation application backends
-planned backups → OneTouch (disabled pending connection)
+backup destination → OneTouch (policy: inventory/backup.nix)
 ```
 
 Keeping the entry plane on Pi preserves monitoring and network functions during
-a workstation outage. Backup delivery is currently disabled; local snapshots
-share their source disk's failure domain. Once connected, OneTouch provides
-a separate disk, but an attached workstation backup still shares its power
+a workstation outage. Local snapshots share their source disk's failure domain.
+OneTouch provides a separate disk, but an attached workstation backup still shares its power
 and administrative failure domain. No off-site copy is provided by this plan.
 
 ## Ownership and cross-host configuration

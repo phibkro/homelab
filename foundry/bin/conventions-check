@@ -42,8 +42,6 @@ STAMPED_FILES=(.oxlintrc.json .oxfmtrc.json AGENTS.md STATE.md)
 # there. If that layout does not hold, set APP_TEMPLATE_DIR explicitly.
 APP_STAMP="foundry@app-v1"
 APP_STAMPED_FILES=(README.md package.root.json tsconfig.base.json vite.config.ts vitest.config.ts justfile.app.fragment commitlint.config.ts effx.config.json .githooks/pre-commit .githooks/pre-push .githooks/commit-msg scripts/no-throw-ratchet.sh scripts/no-throw-baseline.txt .claude/settings.json .vscode/settings.json .vscode/extensions.json infra/alchemy.run.ts.skel .changeset/README.md .github/workflows/quality-bun.yml)
-LAYOUT_CHECK=false
-
 LC_ALL=C
 
 err() { printf '%s\n' "$*" >&2; }
@@ -178,8 +176,8 @@ N_SKIP=0
 report_declared_or_drift() {
 	# $1 exception key, or |-separated alternatives (e.g. stamped-artifacts|linter)
 	# $2 drift message
-	local keys=$1 msg=$2 matched="" alt
-	for alt in ${keys//|/ }; do
+	local exception_keys=$1 msg=$2 matched="" alt
+	for alt in ${exception_keys//|/ }; do
 		if has_exception "$alt"; then
 			matched=$alt
 			break
@@ -234,7 +232,8 @@ check_repo() {
 		if [[ $lifecycle_valid == false ]]; then
 			report_declared_or_drift state-lifecycle \
 				"STATE.md must declare Lifecycle: <idea|spec|spec-frozen|build|park|archive>"
-		elif [[ $lifecycle != idea && ! -d $repo/design-specs ]]; then
+		elif [[ $lifecycle != idea && ! -d $repo/docs/specs ]]; then
+			# Preserve the published exception key; it is not a directory alias.
 			report_declared_or_drift design-specs \
 				"docs/specs/ required once lifecycle >= spec (now: $lifecycle)"
 		fi

@@ -85,5 +85,6 @@ Workstation SSH, Samba exports, and snapshot policy are declared in
 
 Family members use per-service accounts. Tailscale invitations are needed
 for internal services; internet-facing family-media routes use their native
-accounts. The planned Pi backup account will use an SFTP jail on workstation's
-OneTouch after backups are enabled; see the [cutover runbook](../runbooks/onetouch-backup-cutover.md).
+accounts. Pi's declared backup transport uses an SFTP jail on workstation's
+OneTouch; verify the deployed identity and isolation using the
+[cutover runbook](../runbooks/onetouch-backup-cutover.md).

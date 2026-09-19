@@ -132,7 +132,7 @@ nori.backups.navidrome = {
 };
 ```
 
-`prepareCommand` runs as `ExecStartPre` on each configured target unit. OneTouch is the planned target, currently disabled; retain flock to serialize any concurrent dump callers. `VACUUM INTO` requires destination absent — that's why `rm -f` precedes it.
+`prepareCommand` runs as `ExecStartPre` on each configured target unit. Destination selection comes from `inventory/backup.nix`; retain flock to serialize any concurrent dump callers. `VACUUM INTO` requires destination absent — that's why `rm -f` precedes it.
 
 Runtime check: `just test-backups` asserts per-target snapshot ≤25h.
 
