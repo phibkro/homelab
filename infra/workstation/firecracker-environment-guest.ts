@@ -165,6 +165,10 @@ const createLineReader = (
     terminalError = new Error("OMP RPC closed without response");
     pump();
   });
+  stream.once("close", () => {
+    terminalError ??= new Error("OMP RPC closed without response");
+    pump();
+  });
   return (): Promise<string> => {
     if (pending) return Promise.reject(new Error("concurrent OMP response reads are unsupported"));
     const { promise, resolve, reject } = Promise.withResolvers<string>();
@@ -284,14 +288,14 @@ const getState = async (requestId: string, observeIsolation: () => unknown): Pro
       `${error instanceof Error ? error.message : "OMP RPC failed"} (${status}${detail})`,
     );
   };
+  const { promise: exited, reject: rejectExited } = Promise.withResolvers<never>();
   omp.once("error", (error) => {
     exitError = diagnostics(error);
+    rejectExited(exitError);
   });
-  const exited = new Promise<never>((_, reject) => {
-    omp.once("exit", () => {
-      exitError = diagnostics(new Error("OMP exited"));
-      reject(exitError);
-    });
+  omp.once("close", () => {
+    exitError ??= diagnostics(new Error("OMP exited"));
+    rejectExited(exitError);
   });
   const readResponseLine = createLineReader(omp.stdout);
   const nextLine = () => Promise.race([readResponseLine(), exited]);

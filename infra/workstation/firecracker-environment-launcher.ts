@@ -171,9 +171,6 @@ const stateFor = (environmentId: string, generationId: string): Dict => {
       "pidExe",
       "netns",
       "cgroupPath",
-      "jailerPid",
-      "jailerStartTime",
-      "jailerExe",
       "netnsPid",
       "netnsStartTime",
       "netnsExe",
@@ -246,6 +243,18 @@ const waitForLive = async (pid: number) => {
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
   fail(`process ${pid} did not remain alive after spawn`);
+};
+const waitForVmmIdentity = async (pid: number): Promise<ProcessIdentity> => {
+  const deadline = Date.now() + TIMEOUT;
+  while (Date.now() < deadline) {
+    if (!live(pid)) fail(`VMM process ${String(pid)} exited before exec`);
+    try {
+      if (basename(processExe(pid)) === "firecracker")
+        return observedIdentity(pid, { cgroup: true, netns: true });
+    } catch {}
+    await sleep(10);
+  }
+  fail(`VMM process ${String(pid)} did not exec Firecracker`);
 };
 const waitForPath = async (path: string) => {
   const deadline = Date.now() + TIMEOUT;
@@ -347,11 +356,6 @@ const netnsIdentity = (state: Dict): ProcessIdentity => ({
   start: String(state.netnsStartTime),
   exe: String(state.netnsExe),
 });
-const jailerIdentity = (state: Dict): ProcessIdentity => ({
-  pid: Number(state.jailerPid),
-  start: String(state.jailerStartTime),
-  exe: String(state.jailerExe),
-});
 const terminate = async (identity: ProcessIdentity) => {
   if (!recordedPidLive(identity.pid)) return;
   if (!processMatches(identity))
@@ -382,12 +386,30 @@ const terminateChild = async (child: ChildProcess | undefined) => {
   if (child.exitCode === null)
     fail(`child process ${String(child.pid)} did not terminate after SIGKILL`);
 };
-const removeGenerationCgroup = (cgroupPath: string) => {
-  if (cgroupPath.length === 0) return;
+const checkedGenerationCgroup = (cgroupPath: string) => {
   const delegatedRoot = join(CGROUP_ROOT, delegatedParentCgroup());
   if (dirname(cgroupPath) !== delegatedRoot)
-    fail(`refusing to remove cgroup outside delegated root: ${cgroupPath}`);
-  if (existsSync(cgroupPath)) rmdirSync(cgroupPath);
+    fail(`generation cgroup is outside delegated root: ${cgroupPath}`);
+  return cgroupPath;
+};
+const killGenerationCgroup = async (cgroupPath: string) => {
+  if (cgroupPath.length === 0) return;
+  const cgroup = checkedGenerationCgroup(cgroupPath);
+  if (!existsSync(cgroup)) return;
+  const killPath = join(cgroup, "cgroup.kill");
+  if (existsSync(killPath)) writeFileSync(killPath, "1");
+  const deadline = Date.now() + TIMEOUT;
+  const populated = () =>
+    existsSync(cgroup) &&
+    /(?:^|\n)populated 1(?:\n|$)/.test(readFileSync(join(cgroup, "cgroup.events"), "utf8"));
+  while (populated() && Date.now() < deadline) await sleep(100);
+  if (populated()) fail(`generation cgroup remained populated: ${cgroup}`);
+};
+const removeGenerationCgroup = async (cgroupPath: string) => {
+  if (cgroupPath.length === 0) return;
+  const cgroup = checkedGenerationCgroup(cgroupPath);
+  await killGenerationCgroup(cgroup);
+  if (existsSync(cgroup)) rmdirSync(cgroup);
 };
 const run = (program: string, args: string[]) =>
   execFileSync(program, args, {
@@ -400,16 +422,14 @@ const cleanup = async (
   cgroupPath: string,
   removePath = true,
 ) => {
+  await removeGenerationCgroup(cgroupPath);
   for (const identity of identities) await terminate(identity);
-  removeGenerationCgroup(cgroupPath);
   if (removePath && existsSync(path)) rmSync(path, { recursive: true, force: true });
 };
 const stateNetnsLive = (state: Dict, processIsLive = recordedPidLive(state.netnsPid)) =>
   processMatches(netnsIdentity(state), processIsLive);
 const stateVmmLive = (state: Dict, processIsLive = recordedPidLive(state.pid)) =>
   processMatches(vmmIdentity(state), processIsLive);
-const stateJailerLive = (state: Dict, processIsLive = recordedPidLive(state.jailerPid)) =>
-  processMatches(jailerIdentity(state), processIsLive);
 const verifiedVmmLive = (state: Dict) => {
   const rawLive = recordedPidLive(state.pid);
   if (!rawLive) return false;
@@ -422,13 +442,6 @@ const verifiedNetnsLive = (state: Dict) => {
   if (!rawLive) return false;
   if (!stateNetnsLive(state, rawLive))
     fail("recorded netns keeper identity mismatch; launcher action unavailable");
-  return true;
-};
-const verifiedJailerLive = (state: Dict) => {
-  const rawLive = recordedPidLive(state.jailerPid);
-  if (!rawLive) return false;
-  if (!stateJailerLive(state, rawLive))
-    fail("recorded Jailer process identity mismatch; launcher action unavailable");
   return true;
 };
 const frame = async (socket: Socket): Promise<string> => {
@@ -508,9 +521,13 @@ const rpc = async (request: Dict, state: Dict): Promise<Dict> => {
   };
   armTimeout(TIMEOUT);
   client.once("error", (error) => finish(error));
-  client.once("end", () => finish(new Error("guest RPC closed before response")));
+  const closedBeforeResponse = () =>
+    new Error(
+      `guest RPC closed before ${handshake ? "handshake" : "response"}; raw=${JSON.stringify(data.subarray(0, 4096).toString())}`,
+    );
+  client.once("end", () => finish(closedBeforeResponse()));
   client.once("close", (hadError) => {
-    if (!hadError) finish(new Error("guest RPC closed before response"));
+    if (!hadError) finish(closedBeforeResponse());
   });
   client.on("connect", () => client.write(`CONNECT ${PORT}\n`));
   client.on("data", (chunk) => {
@@ -585,9 +602,10 @@ const waitForGuestReady = async (state: Dict): Promise<Dict> => {
           (error.code === "ECONNREFUSED" ||
             error.code === "ECONNRESET" ||
             error.code === "ENOENT")) ||
-        message === 'guest RPC timed out; handshakeRaw=""';
+        message === 'guest RPC timed out; handshakeRaw=""' ||
+        message.startsWith("guest RPC closed before");
       if (!transient) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await sleep(100);
     }
   }
   fail("guest OMP readiness deadline exceeded");
@@ -747,6 +765,7 @@ const materialize = async (request: Dict): Promise<Dict> => {
     Number(resource.memoryMaxBytes) < GUEST_MEMORY_OVERHEAD_BYTES + 128 * 1024 * 1024 ||
     Number(resource.memoryMaxBytes) > 4 * 1024 * 1024 * 1024 ||
     Number(resource.memoryHighBytes) > Number(resource.memoryMaxBytes) ||
+    Number(resource.vmmProcessTreePidsMax) < 16 ||
     Number(resource.vmmProcessTreePidsMax) > 4096 ||
     Number(resource.stateVolumeBytes) > 64 * 1024 * 1024 * 1024 ||
     Number(resource.ioMaxBytesPerSecond) > 1024 * 1024 * 1024
@@ -776,15 +795,11 @@ const materialize = async (request: Dict): Promise<Dict> => {
       fail("generation already has a materialization receipt");
     }
     const vmmLive = verifiedVmmLive(existing);
-    const jailerLive = verifiedJailerLive(existing);
     const netnsLive = verifiedNetnsLive(existing);
     if (vmmLive) fail("refusing materialization replacement for a verified live VMM");
     await cleanup(
       path,
-      [
-        ...(jailerLive ? [jailerIdentity(existing)] : []),
-        ...(netnsLive ? [netnsIdentity(existing)] : []),
-      ],
+      [...(netnsLive ? [netnsIdentity(existing)] : [])],
       String(existing.cgroupPath),
     );
   }
@@ -832,7 +847,6 @@ const materialize = async (request: Dict): Promise<Dict> => {
   let keeperChild: ChildProcess | undefined;
   let jailerChild: ChildProcess | undefined;
   let keeperProcess: ProcessIdentity | undefined;
-  let jailerProcess: ProcessIdentity | undefined;
   let vmmProcess: ProcessIdentity | undefined;
   let generationCgroup = "";
   try {
@@ -909,9 +923,6 @@ const materialize = async (request: Dict): Promise<Dict> => {
       pidExe: JAILER,
       netns: "",
       cgroupPath: generationCgroup,
-      jailerPid: 0,
-      jailerStartTime: "",
-      jailerExe: JAILER,
       netnsPid: 0,
       netnsStartTime: "",
       netnsExe: "",
@@ -975,16 +986,8 @@ const materialize = async (request: Dict): Promise<Dict> => {
     jailerChild.stdout?.on("data", (chunk) => appendLog(log, chunk));
     jailerChild.stderr?.on("data", (chunk) => appendLog(log, chunk));
     if (jailerChild.pid === undefined) fail("Jailer did not report a pid");
-    await waitForLive(jailerChild.pid);
-    jailerProcess = observedIdentity(jailerChild.pid);
-    Object.assign(state, {
-      jailerPid: jailerProcess.pid,
-      jailerStartTime: jailerProcess.start,
-      jailerExe: jailerProcess.exe,
-    });
-    saveState(path, state);
     const vmmPid = await waitForPidFile(join(root, "firecracker.pid"));
-    vmmProcess = observedIdentity(vmmPid, { cgroup: true, netns: true });
+    vmmProcess = await waitForVmmIdentity(vmmPid);
     const cgroup = `${CGROUP_ROOT}${unifiedCgroupPath(vmmProcess.cgroup!)}`;
     if (cgroup !== generationCgroup)
       fail("VMM escaped the generation resource-control cgroup");
@@ -1061,7 +1064,7 @@ const materialize = async (request: Dict): Promise<Dict> => {
       await terminateChild(keeperChild);
       await cleanup(
         path,
-        [vmmProcess, jailerProcess, keeperProcess].filter(
+        [vmmProcess, keeperProcess].filter(
           (identity): identity is ProcessIdentity => identity !== undefined,
         ),
         generationCgroup,
@@ -1100,11 +1103,9 @@ export const runLauncherAction = async (request: unknown): Promise<Dict> => {
       saveState(pathFor(id, generationId), state);
       return { ok: true };
     }
-    const vmmLive = verifiedVmmLive(state);
-    const jailerLive = verifiedJailerLive(state);
+    verifiedVmmLive(state);
     const netnsLive = verifiedNetnsLive(state);
-    if (vmmLive) await terminate(vmmIdentity(state));
-    if (jailerLive) await terminate(jailerIdentity(state));
+    await killGenerationCgroup(String(state.cgroupPath));
     if (netnsLive) await terminate(netnsIdentity(state));
     return { ok: true };
   }
@@ -1136,7 +1137,6 @@ export const runLauncherAction = async (request: unknown): Promise<Dict> => {
       if (requestedGeneration) assertStateGeneration(state, id, requestedGeneration);
       if (
         (live(Number(state.pid)) && !stateVmmLive(state)) ||
-        (live(Number(state.jailerPid)) && !stateJailerLive(state)) ||
         (live(Number(state.netnsPid)) && !stateNetnsLive(state))
       )
         fail("refusing destroy for an unverified process identity");
@@ -1144,7 +1144,6 @@ export const runLauncherAction = async (request: unknown): Promise<Dict> => {
         generationPath,
         [
           ...(stateVmmLive(state) ? [vmmIdentity(state)] : []),
-          ...(stateJailerLive(state) ? [jailerIdentity(state)] : []),
           ...(stateNetnsLive(state) ? [netnsIdentity(state)] : []),
         ],
         String(state.cgroupPath),

@@ -7,16 +7,15 @@ import { spawn } from "node:child_process";
 const guest = join(import.meta.dir, "firecracker-environment-guest.ts");
 
 describe("generation-bound guest RPC", () => {
-  test("preserves coalesced frames while request stdin remains open", async () => {
+  test("preserves coalesced frames when OMP exits after its response", async () => {
     const dir = mkdtempSync(join(tmpdir(), "adlc-guest-test-"));
     const omp = join(dir, "omp");
     writeFileSync(
       omp,
-    `#!/bin/sh
+      `#!/bin/sh
 printf '%s\n%s\n' '{"type":"diagnostic"}' '{"type":"ready"}'
-while IFS= read -r line; do
-  printf '%s\\n' '{"id":"test-request","type":"response","command":"get_state","success":true,"data":{"ready":true}}'
-done
+IFS= read -r line
+printf '%s\\n' '{"id":"test-request","type":"response","command":"get_state","success":true,"data":{"ready":true}}'
 `,
     );
     chmodSync(omp, 0o755);
@@ -75,7 +74,6 @@ done
           isolation: { source: "test-isolation" },
         }),
       });
-      expect(child.exitCode).toBeNull();
     } finally {
       child.kill("SIGTERM");
       rmSync(dir, { recursive: true, force: true });
