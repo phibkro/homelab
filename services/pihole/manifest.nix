@@ -1,4 +1,4 @@
-# Production Pi DNS is owned by Ansible; Nix Blocky is a test adapter.
+# Production Pi DNS is owned by Ansible; this manifest supplies its compiled ports and probes.
 {
   kind = "service";
   hostRoles = [ "appliance" ];

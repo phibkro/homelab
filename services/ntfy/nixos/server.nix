@@ -74,11 +74,5 @@ in
 
   nori.harden.ntfy-sh = { };
 
-  /*
-    The alert endpoint is declared by manifests/server.nix. Open the
-    backend port on the tailnet so Caddy can reach it.
-  */
-  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ alert.port ];
-
   nori.backups.ntfy.skip = "Hub on appliance host (pi). Pi flash anti-write posture; auth db tiny (one publisher row), recreated from sops + manual ntfy user add if lost.";
 }

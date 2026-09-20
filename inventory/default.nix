@@ -653,27 +653,26 @@ let
         failureThreshold = monitor.failureThreshold or 3;
         name = monitor.name or null;
       };
-  routeProjectionFor =
-    workloadName: endpointName: endpoint: {
-      name = endpointName;
-      workload = workloadName;
-      endpoint = endpointName;
-      host = endpoint.runsOn;
-      inherit (endpoint) hostname port;
-      scheme = endpoint.scheme or "http";
-      reachability = endpoint.reachability or "internal";
-      audience = endpoint.audience or "operator";
-      authentication = authenticationFor endpoint;
-      auth = routeAuthFor endpoint;
-      exposeOnTailnet = endpoint.exposeOnTailnet or false;
-      forwardAuth = endpoint.forwardAuth or null;
-      oidc = endpoint.oidc or null;
-      monitor = normalizedMonitorFor endpoint.hostname (endpoint.monitor or null);
-      dashboard = endpoint.dashboard or null;
-      publicStatus = endpoint.publicStatus or false;
-      upstreamHostHeader = endpoint.upstreamHostHeader or null;
-      upstreamOriginHeader = endpoint.upstreamOriginHeader or null;
-    };
+  routeProjectionFor = workloadName: endpointName: endpoint: {
+    name = endpointName;
+    workload = workloadName;
+    endpoint = endpointName;
+    host = endpoint.runsOn;
+    inherit (endpoint) hostname port;
+    scheme = endpoint.scheme or "http";
+    reachability = endpoint.reachability or "internal";
+    audience = endpoint.audience or "operator";
+    authentication = authenticationFor endpoint;
+    auth = routeAuthFor endpoint;
+    exposeOnTailnet = endpoint.exposeOnTailnet or false;
+    forwardAuth = endpoint.forwardAuth or null;
+    oidc = endpoint.oidc or null;
+    monitor = normalizedMonitorFor endpoint.hostname (endpoint.monitor or null);
+    dashboard = endpoint.dashboard or null;
+    publicStatus = endpoint.publicStatus or false;
+    upstreamHostHeader = endpoint.upstreamHostHeader or null;
+    upstreamOriginHeader = endpoint.upstreamOriginHeader or null;
+  };
   activeRoutes = lib.foldl' (
     routes: workloadName:
     if workloadIsActive workloadCatalog.${workloadName} then
@@ -735,9 +734,9 @@ let
     let
       bindings = portBindingsFor hostName;
       ports = map (binding: binding.port) bindings;
-      duplicatePorts = lib.filter (
-        port: lib.count (candidate: candidate == port) ports > 1
-      ) (lib.unique ports);
+      duplicatePorts = lib.filter (port: lib.count (candidate: candidate == port) ports > 1) (
+        lib.unique ports
+      );
     in
     map (
       port:
@@ -1041,7 +1040,10 @@ let
       { pi_backup_enabled = false; };
   piholeAdminPort = routePortFor "pihole";
   piholeDnsPort =
-    if workloadIsActive workloadCatalog.pihole then workloadCatalog.pihole._probes.pihole-dns.port else null;
+    if workloadIsActive workloadCatalog.pihole then
+      workloadCatalog.pihole._probes.pihole-dns.port
+    else
+      null;
   workloadRunsOnPi =
     workloadName:
     workloadIsActive workloadCatalog.${workloadName}
@@ -1057,8 +1059,8 @@ let
     pi_deprecated_domains = site.deprecatedDomains;
     pi_routes = piRoutes;
     pi_tailnet_workload_ports = piTailnetWorkloadPorts;
-    caddy_http_port = workloadCatalog.caddy.listenerPorts.http;
-    caddy_https_port = workloadCatalog.caddy.listenerPorts.https;
+    caddy_http_port = activeListenerPortFor "caddy" "http";
+    caddy_https_port = activeListenerPortFor "caddy" "https";
     authelia_port = routePortFor "auth";
     beszel_bind_port = routePortFor "metrics";
     gatus_port = routePortFor "uptime";

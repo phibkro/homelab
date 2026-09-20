@@ -13,8 +13,8 @@
     "network-appliance"
     "stateful"
   ];
-  listenerPorts = {
-    http = 80;
-    https = 443;
+  listeners = {
+    http.port = 80;
+    https.port = 443;
   };
 }

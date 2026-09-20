@@ -1,5 +1,8 @@
 { config, ... }:
 
+let
+  logs = config.nori.inventory.routes.logs;
+in
 {
   /**
     VictoriaLogs — single-binary log database (events + logs). Daemon
@@ -21,7 +24,7 @@
 
   services.victorialogs = {
     enable = true;
-    listenAddress = ":9428";
+    listenAddress = ":${toString logs.port}";
     extraOptions = [
       /*
         Two-week wall: long enough to catch a vacation-length absence,
@@ -48,9 +51,6 @@
   };
 
   nori.harden.victorialogs = { };
-
-  # Cross-host: station's Caddy hits Pi's tailnet IP on :9428.
-  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 9428 ];
 
   nori.backups.victorialogs.skip = "Daemon on appliance host (pi). Flash anti-write posture + non-load-bearing event history; alert path (ntfy + Gatus) is independent of this index.";
 }

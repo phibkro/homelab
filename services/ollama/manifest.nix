@@ -1,8 +1,5 @@
-let
-  active = true;
-in
 {
-  inherit active;
+  active = true;
   kind = "service";
   hostRoles = [ "workhorse" ];
   placement = {
@@ -29,15 +26,9 @@ in
     };
   };
 
-  endpoints =
-    if active then
-      {
-        ai = {
-          port = 11434;
-          exposeOnTailnet = true;
-          monitor.path = "/api/tags";
-        };
-      }
-    else
-      { };
+  endpoints.ai = {
+    port = 11434;
+    exposeOnTailnet = true;
+    monitor.path = "/api/tags";
+  };
 }

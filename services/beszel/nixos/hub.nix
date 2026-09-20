@@ -32,8 +32,6 @@ in
 
   nori.harden.beszel-hub = { };
 
-  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ metrics.port ];
-
   /*
     Gatus alerts come independently via ntfy.sh, so a hub rebuild
     loses only recent metrics history. Revisit when Pi gains the

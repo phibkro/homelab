@@ -1,8 +1,5 @@
-let
-  active = false;
-in
 {
-  inherit active;
+  active = false;
   kind = "service";
   hostRoles = [ "workhorse" ];
   placement = {
@@ -19,28 +16,22 @@ in
     "stateful"
   ];
 
-  endpoints =
-    if active then
-      {
-        chat = {
-          port = 8080;
-          exposeOnTailnet = true;
-          monitor = { };
-          audience = "family";
-          oidc = {
-            clientName = "Open WebUI";
-            redirectPath = "/oauth/oidc/callback";
-            tokenEndpointAuthMethod = "client_secret_basic";
-            secretHashEnvName = "OIDC_CHAT_CLIENT_SECRET_HASH";
-          };
-          dashboard = {
-            title = "Open WebUI";
-            icon = "sh:open-webui";
-            group = "Consume";
-            description = "Local LLM chat (Ollama-backed)";
-          };
-        };
-      }
-    else
-      { };
+  endpoints.chat = {
+    port = 8080;
+    exposeOnTailnet = true;
+    monitor = { };
+    audience = "family";
+    oidc = {
+      clientName = "Open WebUI";
+      redirectPath = "/oauth/oidc/callback";
+      tokenEndpointAuthMethod = "client_secret_basic";
+      secretHashEnvName = "OIDC_CHAT_CLIENT_SECRET_HASH";
+    };
+    dashboard = {
+      title = "Open WebUI";
+      icon = "sh:open-webui";
+      group = "Consume";
+      description = "Local LLM chat (Ollama-backed)";
+    };
+  };
 }
