@@ -327,10 +327,18 @@ let
         && host.systemd.services.attic-cache-seed.serviceConfig.Type == "exec"
         && host.systemd.services.attic-cache-watch.serviceConfig.RestartMode == "direct"
         && host.systemd.services.attic-cache-seed.serviceConfig.RestartMode == "direct";
+      waitsForLocalCache =
+        service:
+        lib.elem "attic-cache-bootstrap.service" service.after
+        && lib.elem "attic-cache-bootstrap.service" service.requires;
     in
     everyHostSubscribes
     && publishes workstation
     && publishes adelie
+    && waitsForLocalCache adelie.systemd.services.attic-cache-watch
+    && waitsForLocalCache adelie.systemd.services.attic-cache-seed
+    && !(lib.elem "attic-cache-bootstrap.service" workstation.systemd.services.attic-cache-watch.after)
+    && !(lib.elem "attic-cache-bootstrap.service" workstation.systemd.services.attic-cache-seed.after)
     && !(workstation.services.atticd.enable or false)
     && adelie.services.atticd.enable
     && adelie.services.atticd.settings.storage.path == "/var/lib/attic/chunks"

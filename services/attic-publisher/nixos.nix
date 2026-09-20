@@ -7,6 +7,8 @@
 }:
 let
   cache = config.nori.inventory.routes.cache;
+  localCache = lib.elem "attic" config.nori.inventory.currentWorkloads;
+  localCacheDependencies = lib.optionals localCache [ "attic-cache-bootstrap.service" ];
   atticClientConfig = pkgs.writeTextDir "attic/config.toml" ''
     default-server = "nori"
 
@@ -34,8 +36,9 @@ in
 
   systemd.services.attic-cache-seed = {
     description = "Publish the active system closure to the homelab Attic cache";
-    wants = [ "network-online.target" ];
-    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ] ++ localCacheDependencies;
+    after = [ "network-online.target" ] ++ localCacheDependencies;
+    requires = localCacheDependencies;
     environment.XDG_CONFIG_HOME = atticClientConfig;
     restartTriggers = [ config.sops.secrets.attic-push-token.sopsFile ];
     serviceConfig = {
@@ -49,8 +52,9 @@ in
 
   systemd.services.attic-cache-watch = {
     description = "Publish new Nix store paths to the homelab Attic cache";
-    wants = [ "network-online.target" ];
-    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ] ++ localCacheDependencies;
+    after = [ "network-online.target" ] ++ localCacheDependencies;
+    requires = localCacheDependencies;
     environment.XDG_CONFIG_HOME = atticClientConfig;
     restartTriggers = [ config.sops.secrets.attic-push-token.sopsFile ];
     serviceConfig = {
