@@ -37,11 +37,10 @@ pkgs.testers.runNixOSTest {
     {
       imports = [
         inputs.sops-nix.nixosModules.sops
-        ../infra/common/nixos/hosts.nix
+        ../infra/common/nixos/inventory.nix
         ../infra/common/nixos/service-hardening.nix
         ../infra/common/nixos/storage
         ../infra/common/nixos/backup.nix
-        ../infra/common/nixos/routes.nix
         ../services/disk-alert/nixos.nix
         ../services/ntfy/nixos/notify.nix
       ];
@@ -53,27 +52,36 @@ pkgs.testers.runNixOSTest {
       sops.secrets.restic-password = { };
 
       networking.hostName = "pi";
-      nori.domain = "test.lan";
-      nori.lanIp = lib.mkForce "10.0.0.20";
 
-      nori.hosts = {
-        pi = {
-          tailnetIp = "100.0.0.1";
-          lanIp = "10.0.0.10";
-          role = "appliance";
-          roleOneLiner = "";
-          codename = "test-pi";
-          hardware = "test-qemu";
-          primaryJob = "disk-alert";
-        };
-        workstation = {
-          tailnetIp = "100.0.0.2";
-          lanIp = "10.0.0.20";
-          role = "workhorse";
-          roleOneLiner = "test";
-          codename = "test-station";
-          hardware = "test-qemu";
-          primaryJob = "—";
+      nori.inventory = {
+        currentHost = "pi";
+        hosts = {
+          pi = {
+            kind = "nixos";
+            tags = [ "network-appliance" ];
+            profiles = [ ];
+            workloads = [ ];
+            tailnetIp = "100.0.0.1";
+            lanIp = "10.0.0.10";
+            role = "appliance";
+            roleOneLiner = "";
+            codename = "test-pi";
+            hardware = "test-qemu";
+            primaryJob = "disk-alert";
+          };
+          workstation = {
+            kind = "nixos";
+            tags = [ "workhorse" ];
+            profiles = [ ];
+            workloads = [ ];
+            tailnetIp = "100.0.0.2";
+            lanIp = "10.0.0.20";
+            role = "workhorse";
+            roleOneLiner = "test";
+            codename = "test-station";
+            hardware = "test-qemu";
+            primaryJob = "—";
+          };
         };
       };
 

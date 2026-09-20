@@ -50,7 +50,7 @@
   services.ntfy-sh = {
     enable = true;
     settings = {
-      base-url = "https://alert.${config.nori.domain}";
+      base-url = "https://alert.${config.nori.inventory.site.domain}";
       listen-http = ":8091";
       auth-default-access = "deny";
       auth-file = "/var/lib/ntfy-sh/user.db";

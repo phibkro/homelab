@@ -14,6 +14,7 @@
     "observability"
     "stateful"
   ];
+  vectorApiPort = 8686;
 
   endpoints.logs = {
     port = 9428;

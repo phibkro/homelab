@@ -47,13 +47,11 @@ pkgs.testers.runNixOSTest {
       imports = [
         inputs.sops-nix.nixosModules.sops
         ../infra/common/nixos/inventory.nix
-        ../infra/common/nixos/hosts.nix
         ../infra/common/nixos/service-hardening.nix
         ../infra/common/nixos/storage
         ../infra/common/nixos/backup.nix
         ../services/restic-backup/nixos.nix
         ../services/restic-target/nixos.nix
-        ../infra/common/nixos/routes.nix
       ];
 
       environment.etc."sops-test-age.txt".source = ./keys/test-age.txt;
@@ -63,29 +61,37 @@ pkgs.testers.runNixOSTest {
       sops.secrets.restic-password = { };
 
       networking.hostName = "workstation";
-      nori.domain = "test.lan";
-      nori.lanIp = lib.mkForce "10.0.0.20";
 
-      # Synthetic hosts registry — workstation is role=workhorse
-      # which is what unlocks local restic targets per the placement
-      # assertion (appliance hosts can't have local repos).
-      nori.hosts.pi = {
-        tailnetIp = "100.0.0.1";
-        lanIp = "10.0.0.10";
-        role = "appliance";
-        roleOneLiner = "";
-        codename = "test-pi";
-        hardware = "test-qemu";
-        primaryJob = "—";
-      };
-      nori.hosts.workstation = {
-        tailnetIp = "100.0.0.2";
-        lanIp = "10.0.0.20";
-        role = "workhorse";
-        roleOneLiner = "test workhorse";
-        codename = "test-station";
-        hardware = "test-qemu";
-        primaryJob = "backup roundtrip";
+      # Synthetic compiler projection: workstation is the workhorse, which
+      # permits local restic targets. Appliance hosts cannot own local repos.
+      nori.inventory.currentHost = "workstation";
+      nori.inventory.hosts = {
+        pi = {
+          kind = "nixos";
+          tags = [ "network-appliance" ];
+          profiles = [ ];
+          workloads = [ ];
+          tailnetIp = "100.0.0.1";
+          lanIp = "10.0.0.10";
+          role = "appliance";
+          roleOneLiner = "";
+          codename = "test-pi";
+          hardware = "test-qemu";
+          primaryJob = "—";
+        };
+        workstation = {
+          kind = "nixos";
+          tags = [ "workhorse" ];
+          profiles = [ ];
+          workloads = [ ];
+          tailnetIp = "100.0.0.2";
+          lanIp = "10.0.0.20";
+          role = "workhorse";
+          roleOneLiner = "test workhorse";
+          codename = "test-station";
+          hardware = "test-qemu";
+          primaryJob = "backup roundtrip";
+        };
       };
 
       # A real mounted filesystem exercises the production mount guard.

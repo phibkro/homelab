@@ -379,8 +379,6 @@
               expectedRecipes = {
                 "infra/common/nixos/alerts.nix" = "test-observability";
                 "infra/common/nixos/backup.nix" = "test-backups";
-                "infra/common/nixos/gatus-probes.nix" = "test-observability";
-                "infra/common/nixos/routes.nix" = "test-routes";
                 "infra/common/nixos/service-hardening.nix" = "test-harden";
                 "infra/common/nixos/storage/default.nix" = "test-fs";
                 "infra/common/nixos/storage/replication.nix" = "test-replicas";
@@ -388,8 +386,6 @@
               evaluationOnlySchemas = {
                 "infra/common/nixos/gpu.nix" =
                   "hardware-bound capability; host build and GPU service evaluation, outside the original */default.nix runtime-test scope";
-                "infra/common/nixos/hosts.nix" =
-                  "injected topology; eval-deployment and eval-workload-role-placement";
                 "infra/common/nixos/inventory.nix" =
                   "read-only projection; eval-inventory-public-safe and eval-deployment";
                 "infra/common/nixos/wifi.nix" =

@@ -25,6 +25,7 @@
       clientName = "Immich";
       redirectPath = "/auth/login";
       tokenEndpointAuthMethod = "client_secret_post";
+      secretHashEnvName = "OIDC_PHOTOS_CLIENT_SECRET_HASH";
     };
     dashboard = {
       title = "Immich";

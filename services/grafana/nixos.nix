@@ -56,7 +56,7 @@
           tell Grafana the public URL so its self-generated links
           don't point at 127.0.0.1.
         */
-        root_url = "https://ops.${config.nori.domain}/";
+        root_url = "https://ops.${config.nori.inventory.site.domain}/";
         enforce_domain = false;
       };
 

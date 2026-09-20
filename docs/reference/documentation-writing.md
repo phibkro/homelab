@@ -36,30 +36,19 @@ Nix carries two distinct documentation surfaces. Both extract to markdown automa
 
 | Surface | Applies to | Extracted by | Canonical example |
 |---|---|---|---|
-| `mkOption { description = ''...''; }` | NixOS module **options** (every `nori.<X>` schema field) | [`nixosOptionsDoc`](https://github.com/NixOS/nixpkgs/blob/master/nixos/lib/make-options-doc/default.nix) | `infra/common/nixos/routes.nix` → `nori.lanRoutes.<name>.audience` |
+| `mkOption { description = ''...''; }` | NixOS module **options** (every `nori.<X>` schema field) | [`nixosOptionsDoc`](https://github.com/NixOS/nixpkgs/blob/master/nixos/lib/make-options-doc/default.nix) | `infra/common/nixos/inventory.nix` → `nori.inventory.routes` |
 | `/** ... */` doc-comments ([RFC 145](https://github.com/NixOS/rfcs/blob/master/rfcs/0145-doc-strings.md)) | **Non-option** code: lib functions, let bindings, attrset entries, lambda formals | [`nixdoc`](https://github.com/nix-community/nixdoc) | [`nixpkgs/lib/attrsets.nix`](https://github.com/NixOS/nixpkgs/blob/master/lib/attrsets.nix) → `lib.attrByPath` |
 
 ### mkOption description shape
 
 ```nix
-options.nori.lanRoutes = mkOption {
-  type = types.attrsOf (types.submodule {
-    options.audience = mkOption {
-      type = types.enum [ "operator" "family" "public" ];
-      default = "operator";
-      description = ''
-        Who this route is for. Documents intent + drives the
-        auth-stacking principle:
-
-        - operator — admin-only management UIs. Tailnet membership
-          IS the auth; layering Authelia duplicates the perimeter
-          guarantee for no per-user-state value.
-        - family — services with per-user state inside the app.
-          Native OIDC propagates user identity into the app.
-        - public — intentionally open dashboards + the SSO portal.
-      '';
-    };
-  });
+options.nori.inventory.routes = mkOption {
+  type = types.attrsOf routeType;
+  readOnly = true;
+  description = ''
+    Compiler-owned active HTTP route projection shared by NixOS and Pi
+    adapters.
+  '';
 };
 ```
 
@@ -118,7 +107,7 @@ Format precedence (lifted from RFC 145):
 | `mkOption { ... }` declaration | `description = ''...''` |
 | Lib function in `lib/`, `flake.nix`, or `lint/default.nix` | `/** ... */` |
 | Let-binding with non-obvious purpose (e.g. our `lintLib`, `lintRules`, `baseNonServicePatterns`) | `/** ... */` |
-| Attribute set entry that's effectively a function or registry (e.g. `nori.lanRoutes.<X>`, public contracts in a workload `manifest.nix`) | `/** ... */` |
+| Attribute set entry that acts as a function or registry, such as a public contract in a workload `manifest.nix` | `/** ... */` |
 | **Module overview** — file-level docstring at the top of a `default.nix` carrying mental models, architecture diagrams, and rationale for the concern as a whole (mermaid diagrams, three-zone tables, registry shape rationale) | `/** ... */` (file-level, above the `let`/`{}` body) |
 | Rationale, runbook, or intent narrative (bootstrap procedures, "why we chose Pattern A", "reapply this UI state if X gets stomped", config-line trade-offs) | `/* ... */` |
 | Inline implementation detail not part of the public surface | standard `#` comment |
@@ -158,11 +147,9 @@ extraction site, and pretending otherwise distorts the content.
 Concrete examples from the homelab:
 
 ```
-infra/common/nixos/routes.nix /** */ carries  the DNS architecture
-                                                     mermaid, audience trust
-                                                     model, Caddy + TLS
-                                                     rationale, function-
-                                                     over-brand naming
+inventory/default.nix /** */ carries              the workload compiler
+                                                     invariants, placement,
+                                                     and projection boundaries
 
 lib/machines.nix /** */ carries          the topology mermaid,
                                                      the tier principle,
@@ -239,10 +226,9 @@ docs/reference/topology.md             routing + cross-host patterns;
                                        per-host details from inventory/hosts.nix
 docs/reference/storage.md              value-tier framing + routing;
                                        subvol details from disko
-docs/reference/network.md              routing + DNS arch + audience
-                                       model; option details
-                                       from `docs/generated/lan-route.md`
-                                       (generated)
+docs/reference/network.md              routing + DNS arch + audience model;
+                                       active routes from
+                                       `docs/generated/routes.md` (generated)
 docs/reference/services.md             backup pattern doctrine + routing;
                                        per-service from each module
 ```
@@ -281,8 +267,8 @@ question.
 Stage 2 deliverables:
 
 ```
-K2  infra/common/nixos/hosts.nix      — schema extended (hardware,
-                                     primaryJob, roleOneLiner)
+K2  [historical] infra/common/nixos/hosts.nix — schema prototype;
+    now inventory/hosts.nix + typed projection
 K3  flake.nix                      — packages.docs-topology
     docs/reference/topology-       — generated artifact
     generated.md
@@ -307,7 +293,7 @@ R3  docs/specs/2026-06-17-         — structure-by-tier restructure
     structure-by-tier.md             spec; phase sequencing
 ```
 
-Sprint 6 (`feat(docs-gen): Sprint 6 prototype`) landed Stage 0 — proof-of-concept for the mkOption surface via `nixosOptionsDoc` on `nori.lanRoutes`. Stages 3+ are their own sprints with their own Prologues; Stage 2.5 (structure-by-tier) is a multi-PR restructure arc preceding Stages 3-5.
+The original Sprint 6 prototype used `nori.lanRoutes` to prove generated option documentation. The active route reference now derives from `lib.noriInventory.routes`.
 
 ## Why this lives in docs (the amnesiac-teammate loop)
 
@@ -422,9 +408,8 @@ without examples drift; examples without rules don't generalise.
 - [nixpkgs/lib/attrsets.nix](https://github.com/NixOS/nixpkgs/blob/master/lib/attrsets.nix)
   — canonical reference for how nixpkgs uses RFC 145 (also at
   `/srv/share/projects/nixpkgs/lib/`).
-- [`nixosOptionsDoc`](https://github.com/NixOS/nixpkgs/blob/master/nixos/lib/make-options-doc/default.nix)
-  — the extractor for mkOption descriptions; consumed by the
-  `docs-lan-route` flake package output.
+- `lib/flake-parts/packages/docs-routes.nix` — generates the active route table
+  directly from `lib.noriInventory.routes`.
 - `docs/specs/2026-06-16-generated-docs-and-okf.md` — Sprint 6 research
   seed; combines generated-docs + Open Knowledge Format (OKF v0.1)
   compliance.

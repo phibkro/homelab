@@ -6,43 +6,18 @@ regenerate: nix build .#docs-topology
 
 # Topology — generated reference
 
-Auto-derived from the `nori.hosts` schema + values in
-`inventory/hosts.nix`. Do not hand-edit; the
-hand-curated overview lives at `docs/reference/topology.md`
-(kept parallel for the generated-vs-handwritten coverage
-experiment).
+Auto-derived from the `nori.inventory.hosts` schema + values in
+`inventory/hosts.nix`. Do not hand-edit; the hand-curated overview
+lives at `docs/reference/topology.md` (kept parallel for the
+generated-vs-handwritten coverage experiment).
 
-NixOS configuration factory backed by the pure homelab inventory.
+Typed, read-only projection of the pure pre-evaluation inventory.
 
-`inventory/default.nix` evaluates before the NixOS module fixed point.
-Host inventory owns identity, profiles, and placement tags. Workload
-manifests own ordered selectors. The compiler resolves explicit realization
-instances, then selects profile and workload modules for each NixOS host.
+Values are injected by `lib/machines.nix`; modules consume this
+interface but cannot use it to select imports. Compiler-private module paths
+and future artifact handles never enter the projection.
 
-## Topology
-
-```mermaid
-graph TB
-  subgraph "appliance tier"
-    P[pi · Ansible<br/>entry plane + observability hub]
-  end
-  subgraph "workhorse tier"
-    A[adelie<br/>SSD application tier]
-    W[workstation<br/>desktop + GPU + media + storage]
-  end
-  P -- "*.${nori.domain} proxy" --> A
-  P -- "*.${nori.domain} proxy" --> W
-  A -- "Restic to OneTouch" --> W
-  A -- "scraped by" --> P
-  W -- "scraped by" --> P
-```
-
-Cross-host references continue through the compatibility `nori.hosts`
-registry. New architecture consumers use the typed, public-safe
-`nori.inventory` projection. Both derive from the same pure source; there is
-no parallel identity map.
-
-# Topology — overview {#sec-functions-library-topology}
+# Inventory host registry — overview {#sec-functions-library-inventory-hosts}
 
 
 
@@ -89,47 +64,33 @@ prevents idle-sleep during ambient sound. Full debt note in
 | Host | Managed by | Codename | Role | Tailnet | LAN | Hardware | Primary job |
 |---|---|---|---|---|---|---|---|
 | **adelie** | `nixos` | adelie | `workhorse` (SSD-local application host) | `100.107.90.3` | — | Node 304 · Ryzen 5 5600X · 16 GB DDR4 · RTX 2060 Super · Samsung 990 Pro 1 TB NVMe | SSD-local application backends: Attic, Filmder, Grafana, Heim, Miniflux, Radicale, Stremio, and Vaultwarden. Each stateful service backs up to its own restricted repository on the workstation-attached OneTouch disk. Media and portable disks remain on workstation. |
-| **pi** | `ansible` | fairy | `appliance` (always-on entry plane) | `100.100.71.3` | `192.168.1.225` | Raspberry Pi 4 8 GB · aarch64 · 32 GB SD boot | HTTP entry plane (Caddy + Authelia + Pi-hole and the LE wildcard certificate on `*.${nori.domain}`), Glance home page, observability hub, alert plane, and Tailscale subnet router and exit node. |
+| **pi** | `ansible` | fairy | `appliance` (always-on entry plane) | `100.100.71.3` | `192.168.1.225` | Raspberry Pi 4 8 GB · aarch64 · 32 GB SD boot | HTTP entry plane (Caddy + Authelia + Pi-hole and the site wildcard certificate), Glance home page, observability hub, alert plane, and Tailscale subnet router and exit node. |
 | **workstation** | `nixos` | emperor | `workhorse` (desktop, media, and storage host) | `100.81.5.122` | `192.168.1.181` | Ryzen 9 5950X · 64 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) · WD SN750 1 TB NVMe + Corsair MP510 960 GB NVMe + Seagate IronWolf Pro 4 TB SATA | Graphical workstation, GPU services, media acquisition and playback, and Samba shares on the attached IronWolf disk. It publishes re-derivable Nix paths to Adelie's Attic cache. OneTouch receives independent Restic history from both workhorses; same-disk snapshots provide local rollback for workstation datasets. |
 
-## Registry schema (`nori.hosts.<name>.*`)
+## Registry schema (`nori.inventory.hosts.<name>.*`)
 
 What an `inventory/hosts.nix` identity entry must declare to
-satisfy the schema. Schema lives in `infra/common/nixos/hosts.nix`.
+satisfy the schema. Schema lives in `infra/common/nixos/inventory.nix`.
 
-## nori.hosts
+## nori.inventory.hosts
 
-Topology registry. Single source of truth for cross-host
-references. Projected from ` inventory/hosts.nix ` before NixOS
-module evaluation.
+Public-safe host identity, profile, and resolved workload inventory.
 
 
 
 *Type:*
-attribute set of (submodule)
-
-
-
-*Default:*
-
-```nix
-{ }
-```
+attribute set of (submodule) *(read only)*
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/hosts.nix)
+ - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
 
 
 
-## nori.hosts.<name>.codename
+## nori.inventory.hosts.<name>.codename
 
 
 
-Aesthetic codename for MOTD / dashboards / casual reference.
-The hostname (not the codename) stays the identifier that
-SSH / Tailscale / nix flakes know — codename is decoration.
-
-Theme: cold / polar / penguin.
+Human-readable host codename.
 
 
 
@@ -137,22 +98,15 @@ Theme: cold / polar / penguin.
 string
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/hosts.nix)
+ - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
 
 
 
-## nori.hosts.<name>.hardware
+## nori.inventory.hosts.<name>.hardware
 
 
 
-One-line hardware identification — chassis · CPU · RAM · GPU
-· notable storage. Drives the hosts-at-a-glance table in
-the generated topology doc; not consumed by evaluation.
-
-Format guidance: model · CPU family · RAM · GPU (if any) ·
-storage notes. Keep terse — the field is a table cell, not
-a spec sheet. Detailed posture lives in infra/<n>/default.nix
-header comments (anti-write posture, impermanence, etc.).
+Human-readable hardware summary.
 
 
 
@@ -160,18 +114,31 @@ header comments (anti-write posture, impermanence, etc.).
 string
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/hosts.nix)
+ - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
 
 
 
-## nori.hosts.<name>.lanIp
+## nori.inventory.hosts.<name>.kind
 
 
 
-Static-DHCP LAN IP, or null. Used by ops tooling (Justfile
-rsync targets) when the tailnet hostname doesn’t resolve —
-e.g., ` workstation.saola-matrix.ts.net ` from Mac without
-tailnet DNS.
+Deployment backend selected for the host.
+
+
+
+*Type:*
+one of “ansible”, “nixos”
+
+*Declared by:*
+ - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
+
+
+
+## nori.inventory.hosts.<name>.lanIp
+
+
+
+Stable LAN IPv4 address, or null when the host is tailnet-only.
 
 
 
@@ -187,24 +154,15 @@ null
 ```
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/hosts.nix)
+ - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
 
 
 
-## nori.hosts.<name>.primaryJob
+## nori.inventory.hosts.<name>.primaryJob
 
 
 
-Multi-clause prose describing what this host does — the
-“Primary job” cell in the topology table. CommonMark
-permitted (bullets, inline code, links). Keep to a
-paragraph; deeper rationale belongs in infra/<n>/default.nix
-or the relevant ADR.
-
-Drift policy: when a host’s job changes materially (gains
-or loses a service tier), update this string in the same
-commit. The generator surfaces it; the prose-only
-topology.md no longer carries it.
+Primary responsibility of the host.
 
 
 
@@ -212,73 +170,55 @@ topology.md no longer carries it.
 string
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/hosts.nix)
+ - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
 
 
 
-## nori.hosts.<name>.role
+## nori.inventory.hosts.<name>.profiles
 
 
 
-Structural role driving placement assertions:
-
- - ` workhorse ` — heavy compute, state, GPU, large disks.
-   Workstation combines desktop, application backends,
-   and attached data disks under this role.
-
- - ` appliance ` — observability + alerting + DNS + network
-   plumbing + HTTP entry plane (Caddy + Authelia +
-   DNS). Survives workhorse failure.
-   Anti-write storage (no swap, volatile journald, flash)
-   → local backup repositories are a build error (assertion in
-   infra/common/nixos/backup.nix).
-
- - ` agent ` — untrusted-compute quarantine. Stateless by
-   design: tmpfs root + impermanence /persist. No GPU
-   (inference offloaded to workhorse), no GH credential.
-   ` nori.backups.<X> ` declarations are a build error —
-   anything escaping the box sandbox vanishes on reboot.
-
-Adding a role = extend the enum, document its constraints,
-and add the assertions that key off it.
+Resolved reusable profiles selected for the host.
 
 
 
 *Type:*
-one of “workhorse”, “appliance”, “agent”
+list of string
+
+
+
+*Default:*
+
+```nix
+[ ]
+```
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/hosts.nix)
+ - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
 
 
 
-## nori.hosts.<name>.roleOneLiner
+## nori.inventory.hosts.<name>.role
 
 
 
-Short qualifier appended to the ` role ` cell in the topology
-table — disambiguates the role for hosts that share a typed
-role but differ in shape (e.g. desktop and headless servers may
-both be ` workhorse `). Empty string when the role itself is the
-full story (for example, ` agent `).
+Host role used by workload placement constraints.
 
 
 
 *Type:*
-string
+one of “workhorse”, “appliance”, “agent”, “client”
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/hosts.nix)
+ - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
 
 
 
-## nori.hosts.<name>.tailnetIp
+## nori.inventory.hosts.<name>.roleOneLiner
 
 
 
-Tailnet (100.x.y.z) IP. Stable per device once authed —
-survives reboots and re-IPs. The canonical address for
-cross-host references in this flake.
+Short operator-facing summary of the host role.
 
 
 
@@ -286,6 +226,78 @@ cross-host references in this flake.
 string
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/hosts.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/hosts.nix)
+ - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
+
+
+
+## nori.inventory.hosts.<name>.tags
+
+
+
+Stable placement capabilities declared by the host.
+
+
+
+*Type:*
+list of string
+
+
+
+*Default:*
+
+```nix
+[ ]
+```
+
+*Declared by:*
+ - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
+
+
+
+## nori.inventory.hosts.<name>.tailnetIp
+
+
+
+Stable Tailscale IPv4 address, or null when the host is not enrolled.
+
+
+
+*Type:*
+null or string
+
+
+
+*Default:*
+
+```nix
+null
+```
+
+*Declared by:*
+ - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
+
+
+
+## nori.inventory.hosts.<name>.workloads
+
+
+
+Resolved workloads selected for the host.
+
+
+
+*Type:*
+list of string
+
+
+
+*Default:*
+
+```nix
+[ ]
+```
+
+*Declared by:*
+ - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
 
 

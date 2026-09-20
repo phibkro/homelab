@@ -1,16 +1,6 @@
 ---
-# Plan B backup role.  The caller must provide the complete, explicit state
-# manifest in pi_backup_jobs; this role deliberately has no guessed paths.
-# The pi_backup_* names are the playbook's public boundary contract; each
-# declaration carries a narrow no-role-prefix exemption for that reason.
-pi_backup_enabled: false # noqa: var-naming[no-role-prefix]
-pi_backup_jobs: [] # noqa: var-naming[no-role-prefix]
-
-pi_backup_target_host: "" # noqa: var-naming[no-role-prefix]
-pi_backup_target_address: "" # noqa: var-naming[no-role-prefix]
-pi_backup_target_user: "" # noqa: var-naming[no-role-prefix]
-pi_backup_repository_prefix: "" # noqa: var-naming[no-role-prefix]
-pi_backup_target_known_host: "" # noqa: var-naming[no-role-prefix]
+# Plan B backup role. The inventory compiler supplies the complete state
+# manifest and destination identity; this role never guesses paths or targets.
 
 # SecretSpec supplies these values at execution time.  They are never
 # rendered into a unit or command line; only root-readable files receive

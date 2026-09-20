@@ -58,7 +58,7 @@ let
     && deployment.sourceRoots."profiles/media-acquisition" == [ "workstation" ]
     && deployment.sourceRoots."services/filmder" == [ "adelie" ]
     && deployment.sourceRoots."services/restic-target" == [ "workstation" ]
-    && deployment.sourceRoots."services/caddy" == [ "pi" ]
+    && deployment.sourceRoots."services/caddy/manifest.nix" == [ "pi" ]
     &&
       deployment.sourceRoots."services/beszel/manifests/agent.nix" == [
         "adelie"

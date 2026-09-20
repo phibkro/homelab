@@ -6,7 +6,7 @@
 }:
 let
   cachePath = config.nori.fs.cache.path;
-  cacheHost = "cache.${config.nori.domain}";
+  cacheHost = "cache.${config.nori.inventory.site.domain}";
   loopbackBaseUrl = "http://127.0.0.1:5000";
   publicBaseUrl = "https://${cacheHost}";
   cachePublicKey = "attic.nori.lan-1:3zt/aS8K1bSEjNvZQB9ga9OeZTxcRkvbb7aYRI/vobo=";

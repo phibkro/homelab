@@ -32,7 +32,7 @@
         This is the next free route port between `home` and `metrics`.
       */
       LISTEN_ADDR = "0.0.0.0:8087";
-      BASE_URL = "https://news.${config.nori.domain}";
+      BASE_URL = "https://news.${config.nori.inventory.site.domain}";
 
       /*
         OIDC via Authelia. Non-secret OIDC vars live here; the secret
@@ -41,8 +41,8 @@
       */
       OAUTH2_PROVIDER = "oidc";
       OAUTH2_CLIENT_ID = "news";
-      OAUTH2_REDIRECT_URL = "https://news.${config.nori.domain}/oauth2/oidc/callback";
-      OAUTH2_OIDC_DISCOVERY_ENDPOINT = "https://auth.${config.nori.domain}";
+      OAUTH2_REDIRECT_URL = "https://news.${config.nori.inventory.site.domain}/oauth2/oidc/callback";
+      OAUTH2_OIDC_DISCOVERY_ENDPOINT = "https://auth.${config.nori.inventory.site.domain}";
       /*
         Auto-create miniflux user on first SSO. With this off, the
         admin would have to pre-create every family member's account

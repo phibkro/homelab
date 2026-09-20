@@ -110,7 +110,7 @@
   # on the host that runs the fleet.
   nori.alerts.channels.agents = {
     topicSecret = config.sops.secrets.ntfy-agents-channel.path;
-    baseUrl = "https://alert.${config.nori.domain}";
+    baseUrl = "https://alert.${config.nori.inventory.site.domain}";
     authTokenSecret = config.sops.secrets.ntfy-publisher-token.path;
   };
   nori.alerts.routes.agents = [ "agents" ];
@@ -167,9 +167,4 @@
     })
   ];
 
-  /*
-    Local non-HTTP service probe. Entry-plane DNS and SSH probes live in
-    the Ansible inventory generator; HTTP services derive probes from routes.
-  */
-  nori.gatusProbes.samba-smb.url = "tcp://127.0.0.1:445";
 }

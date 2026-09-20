@@ -1,25 +1,23 @@
 ---
-summary: Cross-module network concerns — Authelia OIDC overview, Tailscale roles, SPOF mitigation, and the SSH/Samba/snapshot access summary that cuts across networking + access + storage modules. Single-module narrative (zones, DNS architecture, Caddy + TLS, lanRoutes overview, naming convention, audience trust model) lives co-located with the code at `infra/common/nixos/routes.nix` and is surfaced in `docs/generated/lan-route.md`.
+summary: Cross-module network concerns: compiler-owned routes, Authelia OIDC, Tailscale roles, SPOF mitigation, and access paths across networking, identity, and storage.
 ---
 
 # Network — cross-module synthesis
 
-The single-module narrative (zones, DNS architecture, `nori.lanRoutes`
-schema, Caddy + TLS rationale, naming convention, audience trust model)
-lives in [`docs/generated/lan-route.md`](../generated/lan-route.md),
-extracted from the file-level doc-comment at
-`infra/common/nixos/routes.nix`. This file keeps the cross-module
-content that doesn't fit one extraction site.
+Workload manifests own endpoint declarations. `inventory/default.nix` validates
+them, resolves host placement, and publishes `lib.noriInventory.routes`.
+[`docs/generated/routes.md`](../generated/routes.md) is the generated active
+route table. The Pi Ansible projection derives Caddy, Pi-hole, Gatus, and
+Authelia configuration from the same compiler output.
 
 ## Authelia OIDC (overview)
 
-Workstation services declare OIDC clients in `nori.lanRoutes.<X>.oidc`.
-`infra/pi/scripts/generate-inventory.sh` derives the Pi client registry from those
-routes; `services/authelia/ansible/` renders the appliance configuration. Pi secrets
-come from the production SecretSpec profile; workstation client secrets
-remain in sops. See `infra/pi/secretspec.toml` and the deployment reference for
-credential setup. Neither generated inventory nor committed configuration
-contains production client hashes.
+Services declare OIDC clients under `endpoints.<name>.oidc` in their manifests.
+The inventory compiler derives the Pi client registry. The Authelia Ansible
+role resolves each declared hash input through the production SecretSpec
+environment. Nix-managed workloads receive only their host-local raw client
+secret. Generated inventory and committed configuration contain no production
+client hashes.
 
 ## Tailscale
 
@@ -34,11 +32,11 @@ name.
 
 ## Internet entry plane
 
-WAN TCP 443 may be forwarded to Caddy on pi. This does not publish the
-whole wildcard vhost: each `nori.lanRoutes` entry defaults to
-`reachability = "internal"`, which combines its host matcher with a
-private/LAN or Tailscale-source matcher. Only `reachability = "internet"`
-omits that address gate. Unknown hostnames hit a final 404 handler.
+WAN TCP 443 may be forwarded to Caddy on Pi. This does not publish the
+whole wildcard vhost. Each manifest endpoint defaults to internal
+reachability. The compiler makes that boundary explicit in every projected
+route. Only `reachability = "internet"` removes the private-address gate.
+Unknown hostnames receive a 404 response.
 
 The current internet allowlist is `media` (Jellyfin), `requests` (Seerr),
 and `audio` (Navidrome). Each uses its application's native per-user

@@ -108,6 +108,6 @@ The previously-killed Hetzner path from ADR-0002 (offsite restic) and LE are ind
 
 - ADR-0003 — pi-central entry plane decision; this ADR refines the TLS portion of that.
 - ADR-0006 — later internet exposure of an exact family-media allowlist; certificate issuance here is unchanged.
-- `infra/common/nixos/routes.nix` § `nori.domain` and the wildcard Caddy vhost generator.
-- `services/caddy/nixos.nix` § `withPlugins`, `acme_dns`, `acme_ca`, sops token wiring.
+- `inventory/default.nix` — site domain, endpoint validation, and compiled Caddy route projection.
+- `services/caddy/ansible/` — current Caddy build, DNS-01, and SecretSpec wiring.
 - `docs/archive/plans/2026-06-11-aurora-migration.md` — P7 standup on pi inherits this Caddy config wholesale.

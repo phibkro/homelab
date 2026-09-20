@@ -157,9 +157,9 @@
       codename = "fairy";
       hardware = "Raspberry Pi 4 8 GB · aarch64 · 32 GB SD boot";
       primaryJob = ''
-        HTTP entry plane (Caddy + Authelia + Pi-hole and the LE wildcard
-        certificate on `*.''${nori.domain}`), Glance home page, observability
-        hub, alert plane, and Tailscale subnet router and exit node.
+        HTTP entry plane (Caddy + Authelia + Pi-hole and the site wildcard
+        certificate), Glance home page, observability hub, alert plane, and
+        Tailscale subnet router and exit node.
       '';
     };
     capabilities = {

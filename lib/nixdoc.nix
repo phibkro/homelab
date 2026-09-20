@@ -33,7 +33,7 @@ let
     artifact is byte-stable across builds (the docs-fresh check would
     otherwise fire on every commit because the store path's hash
     differs each rebuild). The output is the literal repo-relative
-    path (e.g. `infra/common/nixos/routes.nix`) — readable, stable, no
+    path (for example `infra/common/nixos/inventory.nix`) — readable, stable, no
     regex syntax leaking into rendered docs.
   */
   stripStorePrefix =
@@ -130,10 +130,8 @@ let
 
   /*
     Minimal generator (module overview + per-option schema + optional
-    evaluated appendix) used by single-schema `nori.<X>` docs. The richer multi-section
-    generators (docs-lan-route, docs-topology, docs-capabilities)
-    stay inline because their structure varies enough that a helper
-    would over-fit.
+    evaluated appendix) used by single-schema `nori.<X>` docs. Generators with
+    different structures stay inline because a shared helper would over-fit.
 
     Inputs:
       name        — `nori.<name>` registry to render
@@ -196,7 +194,7 @@ let
         ## Option schema
 
         SCHEMA_HEADER
-        # See docs-lan-route for the GFM-cleanup rationale.
+        # Normalize nixosOptionsDoc output to plain GFM.
         sed -e 's/\\\([.<>()]\)/\1/g' \
             -e 's|\[<nixpkgs/\([^]]*\)>\](https://github\.com/[^)]*)|`\1`|g' \
             -e 's|\[\([^]]*\)\](file://[^)]*)|`\1`|g' \

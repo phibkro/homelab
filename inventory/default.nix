@@ -77,24 +77,20 @@ let
   nonEmptyString = value: builtins.isString value && value != "";
   validStringList = values: builtins.isList values && lib.all nonEmptyString values;
   validHeaderName =
-    value:
-    nonEmptyString value && !lib.hasInfix "\n" value && !lib.hasInfix "\r" value;
+    value: nonEmptyString value && !lib.hasInfix "\n" value && !lib.hasInfix "\r" value;
   validHeaders =
     headers:
     builtins.isAttrs headers
     && lib.all validHeaderName (lib.attrNames headers)
-    && lib.all (
-      value: nonEmptyString value && !lib.hasInfix "\n" value && !lib.hasInfix "\r" value
-    ) (lib.attrValues headers);
+    && lib.all (value: nonEmptyString value && !lib.hasInfix "\n" value && !lib.hasInfix "\r" value) (
+      lib.attrValues headers
+    );
   validMonitor =
     monitor:
     monitor == null
     || (
       builtins.isAttrs monitor
-      && (
-        !(monitor ? path)
-        || (nonEmptyString monitor.path && lib.hasPrefix "/" monitor.path)
-      )
+      && (!(monitor ? path) || (nonEmptyString monitor.path && lib.hasPrefix "/" monitor.path))
       && (!(monitor ? interval) || nonEmptyString monitor.interval)
       && (
         !(monitor ? failureThreshold)
@@ -130,6 +126,7 @@ let
       && (!(oidc ? scopes) || validStringList oidc.scopes)
       && (!(oidc ? authorizationPolicy) || nonEmptyString oidc.authorizationPolicy)
       && (!(oidc ? secretEnvName) || nonEmptyString oidc.secretEnvName)
+      && nonEmptyString (oidc.secretHashEnvName or "")
     );
   validDashboard =
     dashboard:
@@ -165,14 +162,17 @@ let
     ]
     && lib.elem (endpoint.audience or "operator") audiences.keys
     && (!(endpoint ? publicStatus) || builtins.isBool endpoint.publicStatus)
-    && (!(endpoint ? noAuthReason) || endpoint.noAuthReason == null || nonEmptyString endpoint.noAuthReason)
+    && (
+      !(endpoint ? noAuthReason) || endpoint.noAuthReason == null || nonEmptyString endpoint.noAuthReason
+    )
     && validMonitor (endpoint.monitor or null)
     && validForwardAuth (endpoint.forwardAuth or null)
     && validOidc (endpoint.oidc or null)
+    && !(endpoint ? oidc && endpoint ? forwardAuth)
     && validDashboard (endpoint.dashboard or null)
     && !(endpoint ? runsOn);
-  endpointDeclarationsFor = workload:
-    if builtins.isAttrs (workload.endpoints or { }) then workload.endpoints or { } else { };
+  endpointDeclarationsFor =
+    workload: if builtins.isAttrs (workload.endpoints or { }) then workload.endpoints or { } else { };
   invalidEndpointDeclarations = lib.filter (declaration: declaration != "") (
     lib.concatMap (
       workloadName:
@@ -185,7 +185,9 @@ let
       else
         lib.mapAttrsToList (
           endpointName: endpoint:
-          lib.optionalString (!(isStableName endpointName && validEndpoint endpoint)) "${workloadName}.${endpointName}"
+          lib.optionalString (
+            !(isStableName endpointName && validEndpoint endpoint)
+          ) "${workloadName}.${endpointName}"
         ) endpoints
     ) workloadNames
   );
@@ -202,10 +204,7 @@ let
     && probe.port < 65536
     && nonEmptyString (probe.interval or "")
     && validStringList (probe.conditions or [ ])
-    && (
-      !(probe ? path)
-      || (nonEmptyString probe.path && lib.hasPrefix "/" probe.path)
-    );
+    && (!(probe ? path) || (nonEmptyString probe.path && lib.hasPrefix "/" probe.path));
   probeDeclarationsFor =
     workload: if builtins.isAttrs (workload._probes or { }) then workload._probes or { } else { };
   invalidProbeDeclarations = lib.filter (declaration: declaration != "") (
@@ -509,8 +508,7 @@ let
       map (workloadName: workloadCatalog.${workloadName}.runtimeModule) (
         lib.filter (
           workloadName:
-          workloadIsActive workloadCatalog.${workloadName}
-          && workloadCatalog.${workloadName} ? runtimeModule
+          workloadIsActive workloadCatalog.${workloadName} && workloadCatalog.${workloadName} ? runtimeModule
         ) (workloadsFor hostName)
       )
     );
@@ -609,9 +607,11 @@ let
       {
         path = monitor.path or "/";
         interval = monitor.interval or "60s";
-        headers = (monitor.headers or { }) // lib.optionalAttrs (monitor.routeHostHeader or false) {
-          Host = hostname;
-        };
+        headers =
+          (monitor.headers or { })
+          // lib.optionalAttrs (monitor.routeHostHeader or false) {
+            Host = hostname;
+          };
         conditions = monitor.conditions or [ "[STATUS] == 200" ];
         failureThreshold = monitor.failureThreshold or 3;
         name = monitor.name or null;
@@ -646,12 +646,26 @@ let
     routes: workloadName:
     if workloadIsActive workloadCatalog.${workloadName} then
       routes
-      // lib.mapAttrs (
-        endpointName: endpoint: routeProjectionFor workloadName endpointName endpoint
-      ) (resolvedEndpointsFor workloadName)
+      // lib.mapAttrs (endpointName: endpoint: routeProjectionFor workloadName endpointName endpoint) (
+        resolvedEndpointsFor workloadName
+      )
     else
       routes
   ) { } workloadNames;
+  activeRouteValues = lib.attrValues activeRoutes;
+  activeRoutePorts = map (route: route.port) activeRouteValues;
+  duplicateRoutePorts = lib.filter (
+    port: lib.count (candidate: candidate == port) activeRoutePorts > 1
+  ) (lib.unique activeRoutePorts);
+  unsafeInternetOperatorRoutes = lib.attrNames (
+    lib.filterAttrs (
+      _name: route: route.reachability == "internet" && route.audience == "operator"
+    ) activeRoutes
+  );
+  internetIdentityRoutes = lib.filterAttrs (
+    _name: route: route.reachability == "internet" && (route.oidc != null || route.forwardAuth != null)
+  ) activeRoutes;
+  internetAuthAvailable = activeRoutes ? auth && activeRoutes.auth.reachability == "internet";
   activeForwardAuthRoutes = lib.filterAttrs (_: route: route.forwardAuth != null) activeRoutes;
   piHost = hosts.${site.entryPlaneHost};
   piLanAddress = piHost.identity.lanIp;
@@ -660,31 +674,35 @@ let
     if route.host == site.entryPlaneHost then piLanAddress else hosts.${route.host}.identity.tailnetIp;
   piForwardAuthUpstream =
     if activeRoutes ? auth then "${piLanAddress}:${toString activeRoutes.auth.port}" else null;
-  piRouteFor =
-    route:
-    {
-      inherit (route) name hostname scheme reachability audience auth;
-      upstream_address = piBackendAddressFor route;
-      upstream_port = route.port;
-      forward_auth_exempt_paths =
-        if route.forwardAuth == null then [ ] else route.forwardAuth.exemptPaths or [ ];
-      forward_auth_upstream = if route.forwardAuth == null then null else piForwardAuthUpstream;
-      oidc_redirect_path = if route.oidc == null then null else route.oidc.redirectPath;
-      upstream_host_header = route.upstreamHostHeader;
-      upstream_origin_header = route.upstreamOriginHeader;
-    };
+  piRouteFor = route: {
+    inherit (route)
+      name
+      hostname
+      scheme
+      reachability
+      audience
+      auth
+      ;
+    upstream_address = piBackendAddressFor route;
+    upstream_port = route.port;
+    forward_auth_exempt_paths =
+      if route.forwardAuth == null then [ ] else route.forwardAuth.exemptPaths or [ ];
+    forward_auth_upstream = if route.forwardAuth == null then null else piForwardAuthUpstream;
+    oidc_redirect_path = if route.oidc == null then null else route.oidc.redirectPath;
+    upstream_host_header = route.upstreamHostHeader;
+    upstream_origin_header = route.upstreamOriginHeader;
+  };
   piServiceRouteNames = lib.attrNames activeRoutes;
   piRouteNames =
-    lib.optional (activeRoutes ? pihole) "pihole"
-    ++ lib.remove "pihole" piServiceRouteNames;
+    lib.optional (activeRoutes ? pihole) "pihole" ++ lib.remove "pihole" piServiceRouteNames;
   piServiceRoutes = map (name: piRouteFor activeRoutes.${name}) piRouteNames;
   piRoutes = piServiceRoutes;
   piTailnetWorkloadPorts = lib.sort builtins.lessThan (
     lib.unique (
       map (route: route.port) (
-        lib.filter (
-          route: route.host == site.entryPlaneHost && route.exposeOnTailnet
-        ) (lib.attrValues activeRoutes)
+        lib.filter (route: route.host == site.entryPlaneHost && route.exposeOnTailnet) (
+          lib.attrValues activeRoutes
+        )
       )
     )
   );
@@ -705,9 +723,7 @@ let
     // {
       ${route.dashboard.group} = (groups.${route.dashboard.group} or [ ]) ++ [ (dashboardLinkFor route) ];
     }
-  ) { } (
-    lib.filter (route: route.dashboard != null) (lib.attrValues activeRoutes)
-  );
+  ) { } (lib.filter (route: route.dashboard != null) (lib.attrValues activeRoutes));
   glanceBookmarkGroups = lib.concatMap (
     group:
     lib.optional (builtins.hasAttr group dashboardGroups) {
@@ -720,26 +736,28 @@ let
     name:
     let
       route = oidcRoutes.${name};
-      oidc = route.oidc;
+      inherit (route) oidc;
     in
     {
       client_id = route.name;
       client_name = oidc.clientName;
       authorization_policy = oidc.authorizationPolicy or "one_factor";
       token_endpoint_auth_method = oidc.tokenEndpointAuthMethod;
+      secret_hash_env_name = oidc.secretHashEnvName;
       redirect_uris = [ "https://${route.hostname}${oidc.redirectPath}" ];
-      scopes = oidc.scopes or [
-        "openid"
-        "profile"
-        "email"
-        "groups"
-      ];
+      scopes =
+        oidc.scopes or [
+          "openid"
+          "profile"
+          "email"
+          "groups"
+        ];
     }
   ) (lib.attrNames oidcRoutes);
   routeProbeFor =
     route:
     let
-      monitor = route.monitor;
+      inherit (route) monitor;
     in
     {
       name = if monitor.name == null then route.name else monitor.name;
@@ -750,12 +768,10 @@ let
     }
     // lib.optionalAttrs (monitor.headers != { }) { inherit (monitor) headers; };
   monitoredRoutes = lib.filterAttrs (_: route: route.monitor != null) activeRoutes;
-  piholeAdminProbes = lib.optional (monitoredRoutes ? pihole) (
-    routeProbeFor monitoredRoutes.pihole
+  piholeAdminProbes = lib.optional (monitoredRoutes ? pihole) (routeProbeFor monitoredRoutes.pihole);
+  routeProbes = map (name: routeProbeFor monitoredRoutes.${name}) (
+    lib.remove "pihole" (lib.attrNames monitoredRoutes)
   );
-  routeProbes = map (
-    name: routeProbeFor monitoredRoutes.${name}
-  ) (lib.remove "pihole" (lib.attrNames monitoredRoutes));
   probeProjectionFor =
     workloadName: probeName: probe:
     let
@@ -782,9 +798,9 @@ let
       probes = probeDeclarationsFor workload;
     in
     if workloadIsActive workload then
-      map (
-        probeName: probeProjectionFor workloadName probeName probes.${probeName}
-      ) (lib.attrNames probes)
+      map (probeName: probeProjectionFor workloadName probeName probes.${probeName}) (
+        lib.attrNames probes
+      )
     else
       [ ]
   ) workloadNames;
@@ -809,19 +825,19 @@ let
         name = "entry-caddy";
         url = "http://${piLanAddress}";
         interval = "120s";
-        client = { "ignore-redirect" = true; };
+        client = {
+          "ignore-redirect" = true;
+        };
         conditions = [ "[STATUS] == 308" ];
       }
     ];
   exporterTargetsFor =
     workloadName: port:
     if workloadIsActive workloadCatalog.${workloadName} then
-      map (
-        hostName: {
-          target = "${hosts.${hostName}.identity.tailnetIp}:${toString port}";
-          host = hostName;
-        }
-      ) (hostsForWorkload workloadName)
+      map (hostName: {
+        target = "${hosts.${hostName}.identity.tailnetIp}:${toString port}";
+        host = hostName;
+      }) (hostsForWorkload workloadName)
     else
       [ ];
   nodeTargets = exporterTargetsFor "node-exporter" 9100;
@@ -863,21 +879,27 @@ let
         job_name = "node";
         static_configs = map (target: {
           targets = [ target.target ];
-          labels = { host = target.host; };
+          labels = {
+            inherit (target) host;
+          };
         }) nodeTargets;
       }
       ++ lib.optional (processTargets != [ ]) {
         job_name = "process";
         static_configs = map (target: {
           targets = [ target.target ];
-          labels = { host = target.host; };
+          labels = {
+            inherit (target) host;
+          };
         }) processTargets;
       }
       ++ lib.optional (gpuTargets != [ ]) {
         job_name = "nvidia-gpu";
         static_configs = map (target: {
           targets = [ target.target ];
-          labels = { host = target.host; };
+          labels = {
+            inherit (target) host;
+          };
         }) gpuTargets;
       }
     else
@@ -897,12 +919,10 @@ let
         }
     ) hostNames
   );
-  piRouteRecords = map (
-    route: {
-      address = piLanAddress;
-      names = [ route.hostname ] ++ map (domain: "${route.name}.${domain}") site.deprecatedDomains;
-    }
-  ) piRoutes;
+  piRouteRecords = map (route: {
+    address = piLanAddress;
+    names = [ route.hostname ] ++ map (domain: "${route.name}.${domain}") site.deprecatedDomains;
+  }) piRoutes;
   dnsRecordKey = record: "${record.address}|${lib.concatStringsSep "|" record.names}";
   piDnsRecords = lib.sort (left: right: dnsRecordKey left < dnsRecordKey right) (
     piHostRecords ++ piRouteRecords
@@ -922,6 +942,10 @@ let
       { pi_backup_enabled = false; };
   piholeAdminPort = activeRoutes.pihole.port;
   piholeDnsPort = workloadCatalog.pihole._probes.pihole-dns.port;
+  workloadRunsOnPi =
+    workloadName:
+    workloadIsActive workloadCatalog.${workloadName}
+    && lib.elem site.entryPlaneHost (hostsForWorkload workloadName);
   piProjection = {
     pi_lan_address = piLanAddress;
     pi_service_bind_address = piLanAddress;
@@ -933,10 +957,30 @@ let
     pi_deprecated_domains = site.deprecatedDomains;
     pi_routes = piRoutes;
     pi_tailnet_workload_ports = piTailnetWorkloadPorts;
-    glance_enabled =
-      workloadIsActive workloadCatalog.glance
-      && lib.elem site.entryPlaneHost (hostsForWorkload "glance");
+    caddy_http_port = workloadCatalog.caddy.listenerPorts.http;
+    caddy_https_port = workloadCatalog.caddy.listenerPorts.https;
+    authelia_port = activeRoutes.auth.port;
+    beszel_bind_port = activeRoutes.metrics.port;
+    gatus_port = activeRoutes.uptime.port;
+    glance_port = activeRoutes.home.port;
+    ntfy_port = activeRoutes.alert.port;
+    vector_bind_port = workloadCatalog."victorialogs-server".vectorApiPort;
+    victorialogs_bind_port = activeRoutes.logs.port;
+    victoriametrics_bind_port = activeRoutes.tsdb.port;
+    pihole_enabled = workloadRunsOnPi "pihole";
+    caddy_enabled = workloadRunsOnPi "caddy";
+    authelia_enabled = workloadRunsOnPi "authelia";
+    glance_enabled = workloadRunsOnPi "glance";
     glance_bookmark_groups = glanceBookmarkGroups;
+    ddns_enabled = workloadRunsOnPi "cloudflare-ddns";
+    ntfy_enabled = workloadRunsOnPi "ntfy-server";
+    victorialogs_enabled = workloadRunsOnPi "victorialogs-server";
+    vector_enabled = workloadRunsOnPi "victorialogs-server";
+    victoriametrics_enabled = workloadRunsOnPi "victoriametrics";
+    beszel_enabled = workloadRunsOnPi "beszel-hub";
+    beszel_agent_enabled = workloadRunsOnPi "beszel-agent";
+    gatus_enabled = workloadRunsOnPi "gatus";
+    heartbeat_enabled = workloadRunsOnPi "heartbeat";
     authelia_oidc_clients = oidcClients;
     gatus_endpoints = explicitProbes ++ routeProbes;
     victoriametrics_scrape_jobs = victoriametricsScrapeJobs;
@@ -946,7 +990,8 @@ let
       lib.filter (route: route.reachability == "internet") piServiceRoutes
     );
     pihole_local_dns_records = piDnsRecords;
-  } // backupProjection;
+  }
+  // backupProjection;
 
   presentationFor =
     endpointName: endpoint:
@@ -959,7 +1004,7 @@ let
       description = if dashboard == null then "" else dashboard.description;
       url = "https://${endpointName}.${site.domain}";
       inherit audience;
-      authentication = authenticationFor endpoint;
+      inherit (endpoint) authentication;
       registrationRequired = audiences.registrationRequired audience;
       visibleTo = audiences.visibleToFor audience;
     };
@@ -1081,12 +1126,20 @@ assert lib.assertMsg (invalidRolePlacements == [ ])
   "inventory: workload placement violates its declared hostRoles: ${lib.concatStringsSep ", " invalidRolePlacements}";
 assert lib.assertMsg (duplicateEndpoints == [ ])
   "inventory: endpoint name(s) have multiple owners: ${lib.concatStringsSep ", " duplicateEndpoints}";
+assert lib.assertMsg (duplicateRoutePorts == [ ])
+  "inventory: active routes have duplicate backend ports: ${lib.concatStringsSep ", " (map toString duplicateRoutePorts)}";
+assert lib.assertMsg (unsafeInternetOperatorRoutes == [ ])
+  "inventory: internet routes cannot use the operator audience: ${lib.concatStringsSep ", " unsafeInternetOperatorRoutes}";
+assert lib.assertMsg (
+  internetIdentityRoutes == { } || internetAuthAvailable
+) "inventory: internet routes using identity require an internet-reachable auth route";
 assert lib.assertMsg (edgeHostnameCollisions == [ ])
   "inventory: lanRoute hostname(s) collide with edge-owned domain(s): ${
     lib.concatStringsSep ", " (map (name: "${name}.${site.domain}") edgeHostnameCollisions)
   }";
-assert lib.assertMsg (activeForwardAuthRoutes == { } || activeRoutes ? auth)
-  "inventory: active forward-auth routes require an active auth endpoint";
+assert lib.assertMsg (
+  activeForwardAuthRoutes == { } || activeRoutes ? auth
+) "inventory: active forward-auth routes require an active auth endpoint";
 assert lib.assertMsg (invalidPublicStatusEndpoints == [ ])
   "inventory: publicStatus endpoints must be monitored and non-operator: ${lib.concatStringsSep ", " invalidPublicStatusEndpoints}";
 assert lib.assertMsg (unknownDatasetWorkloads == [ ])

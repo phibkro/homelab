@@ -70,7 +70,7 @@
             ## Option schema
 
             SCHEMA_HEADER
-            # See docs-lan-route for the GFM-cleanup rationale.
+            # Normalize nixosOptionsDoc output to plain GFM.
             sed -e 's/\\\([.<>()]\)/\1/g' \
                 -e 's|\[<nixpkgs/\([^]]*\)>\](https://github\.com/[^)]*)|`\1`|g' \
                 -e 's|\[\([^]]*\)\](file://[^)]*)|`\1`|g' \

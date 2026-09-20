@@ -12,8 +12,8 @@ let
     this single boolean restores:
       * the systemd unit + CUDA acceleration
       * the https://ai.home.phibkro.org Caddy route
-      * Gatus monitor + Glance dashboard entry (both downstream of
-        nori.lanRoutes.ai)
+      * Gatus monitor + Glance dashboard entry derived from the `ai`
+        endpoint in this service's manifest
   */
   enabled = (import ./manifest.nix).active;
 in

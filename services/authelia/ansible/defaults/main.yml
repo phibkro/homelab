@@ -1,5 +1,4 @@
 ---
-authelia_enabled: true
 
 # Authelia 4.39.20 multi-architecture image. Keep this reference immutable;
 # update it only as a deliberate dependency change after ARM64 validation.
@@ -11,7 +10,6 @@ authelia_secret_dir: /etc/authelia/secrets
 authelia_state_dir: /var/lib/authelia
 authelia_config_file: /etc/authelia/configuration.yml
 authelia_users_database_file: /etc/authelia/users_database.yml
-authelia_port: 9091
 authelia_bind_address: "{{ pi_service_bind_address }}"
 authelia_uid: 8000
 authelia_gid: 9000
@@ -36,8 +34,5 @@ authelia_oidc_hmac_secret: ""
 authelia_oidc_issuer_private_key: ""
 authelia_users_database: ""
 
-# Each item must provide client_id, client_name, authorization_policy,
-# redirect_uris, and scopes. Its secret hash is supplied separately in
-# authelia_oidc_client_secret_hashes keyed by client_id.
-authelia_oidc_clients: []
+# SecretSpec supplies client hashes separately from compiler-owned client metadata.
 authelia_oidc_client_secret_hashes: {}

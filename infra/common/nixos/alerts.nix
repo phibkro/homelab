@@ -24,7 +24,7 @@
   agent-notify — the convention rung, three copies free to drift. Here it's
   one construct; a producer declares INTENT (`--audience operator`), routing
   owns delivery. Adding a channel or re-routing is one config edit, no
-  producer touched. Same collected-Writer shape as nori.lanRoutes.
+    producer touched. This is the same collected-Writer shape as `nori.harden`.
 
   A producer never names a channel — it names an audience. The audience→
   channel map lives with whoever provisions the channel secret (infra

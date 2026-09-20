@@ -10,7 +10,7 @@ let
     default-server = "nori"
 
     [servers.nori]
-    endpoint = "https://cache.${config.nori.domain}/"
+    endpoint = "https://cache.${config.nori.inventory.site.domain}/"
     token-file = "${config.sops.secrets.attic-push-token.path}"
   '';
   atticPush = pkgs.writeShellApplication {

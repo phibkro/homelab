@@ -26,6 +26,7 @@
           - pihole_web_password | length >= 12
         fail_msg: Set PIHOLE_WEB_PASSWORD to at least 12 characters.
       no_log: true
+      when: pihole_enabled | bool
 
     - name: Require the production ACME credential
       ansible.builtin.assert:

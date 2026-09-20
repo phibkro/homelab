@@ -44,74 +44,6 @@
           '';
 
         /**
-          Layer-1 eval test — `nori.lanRoutes` → blocky.customDNS
-          auto-generation. Sub-second; runs at every flake check
-          via the import below. Per docs/reference/testing-
-          methodology.md: eval tests catch schema regressions +
-          cross-module composition errors before they surface in
-          the nixosTest (which is much slower).
-        */
-        eval-lanroute-customdns =
-          let
-            result = import ../../../tests/eval/lanroute-customdns.nix {
-              inherit pkgs lib inputs;
-            };
-          in
-          pkgs.runCommandLocal "eval-lanroute-customdns" { } ''
-            echo ${lib.escapeShellArg result} > $out
-          '';
-
-        /**
-          Layer-1 eval test — `nori.lanRoutes.<X>.port` validates as
-          16-bit unsigned (types.port). Demonstrates the
-          negative-path eval pattern: assert that a BAD config
-          throws, not just that a good config succeeds.
-        */
-        eval-lanroute-port-validation =
-          let
-            result = import ../../../tests/eval/lanroute-port-validation.nix {
-              inherit pkgs lib inputs;
-            };
-          in
-          pkgs.runCommandLocal "eval-lanroute-port-validation" { } ''
-            echo ${lib.escapeShellArg result} > $out
-          '';
-
-        /**
-          Layer-1 eval test — cross-product invariants over
-          nori.lanRoutes. Verifies module assertions in
-          infra/common/nixos/routes.nix actually FIRE on
-          the failure modes (port collisions, runsOn ∉ nori.hosts).
-          Catches regressions that drop an assertion silently.
-        */
-        eval-route-invariants =
-          let
-            result = import ../../../tests/eval/route-invariants.nix {
-              inherit pkgs lib inputs;
-            };
-          in
-          pkgs.runCommandLocal "eval-route-invariants" { } ''
-            echo ${lib.escapeShellArg result} > $out
-          '';
-
-        /**
-          Layer-1 eval test — `nori.lanRoutes.<X>.monitor` →
-          `services.gatus.settings.endpoints`. Pins the registry-
-          to-Gatus contract so a schema regression that silently
-          drops endpoints (and the operator's alerting) fails the
-          check.
-        */
-        eval-gatus-probes =
-          let
-            result = import ../../../tests/eval/gatus-probes.nix {
-              inherit pkgs lib inputs;
-            };
-          in
-          pkgs.runCommandLocal "eval-gatus-probes" { } ''
-            echo ${lib.escapeShellArg result} > $out
-          '';
-
-        /**
           Phase-0 architecture migration baseline. Pins the resolved
           workload placement per host and the entry-plane route policy
           fingerprint while implementation moves from global imports to
@@ -139,6 +71,19 @@
             };
           in
           pkgs.runCommandLocal "eval-inventory-public-safe" { } ''
+            echo ${lib.escapeShellArg result} > $out
+          '';
+
+        /**
+          Workload endpoint declarations compile into one route projection.
+          Invalid ports, ownership, exposure, and authentication graphs fail
+          before any NixOS or Ansible adapter can consume them.
+        */
+        eval-inventory-route-invariants =
+          let
+            result = import ../../../tests/eval/inventory-route-invariants.nix { inherit lib; };
+          in
+          pkgs.runCommandLocal "eval-inventory-route-invariants" { } ''
             echo ${lib.escapeShellArg result} > $out
           '';
 
@@ -516,9 +461,9 @@
                   fail=1
                 fi
               }
-              check "docs-lan-route" \
-                ${../../../docs/generated/lan-route.md} \
-                ${inputs.self.packages.${system}.docs-lan-route}
+              check "docs-routes" \
+                ${../../../docs/generated/routes.md} \
+                ${inputs.self.packages.${system}.docs-routes}
               check "docs-topology" \
                 ${../../../docs/generated/topology.md} \
                 ${inputs.self.packages.${system}.docs-topology}

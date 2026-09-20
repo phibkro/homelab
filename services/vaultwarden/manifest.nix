@@ -49,6 +49,7 @@
       redirectPath = "/identity/connect/oidc-signin";
       tokenEndpointAuthMethod = "client_secret_basic";
       secretEnvName = "SSO_CLIENT_SECRET";
+      secretHashEnvName = "OIDC_VAULT_CLIENT_SECRET_HASH";
       scopes = [
         "openid"
         "profile"

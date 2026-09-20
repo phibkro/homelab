@@ -18,9 +18,10 @@ chmod 0755 "$fake_bin/nix"
 
 cat >"$fake_bin/ansible-inventory" <<'EOF'
 #!/usr/bin/env bash
-cat <<'JSON'
-{"pi_appliances":{"hosts":["pi"]},"_meta":{"hostvars":{"pi":{"ansible_host":"192.168.1.225","ansible_user":"nori"}}}}
-JSON
+jq --null-input \
+  --arg target "${FAKE_TARGET:?}" \
+  --arg user "${FAKE_USER:?}" \
+  '{pi_appliances: {hosts: ["pi"]}, _meta: {hostvars: {pi: {ansible_host: $target, ansible_user: $user}}}}'
 EOF
 
 cat >"$fake_bin/ssh-keygen" <<'EOF'
@@ -36,7 +37,7 @@ args=" $* "
 [[ $args == *" -o ConnectTimeout=10 "* ]]
 [[ $args == *" -o StrictHostKeyChecking=yes "* ]]
 [[ $args == *" -o UserKnownHostsFile="* ]]
-[[ $args == *" nori@192.168.1.225 sudo --non-interactive podman exec caddy cat /etc/caddy/Caddyfile "* ]]
+[[ $args == *" ${FAKE_USER:?}@${FAKE_TARGET:?} sudo --non-interactive podman exec caddy cat /etc/caddy/Caddyfile "* ]]
 cat <<'CADDY'
 {
   admin off
@@ -53,7 +54,10 @@ CADDY
 EOF
 chmod 0755 "$fake_bin/ansible-inventory" "$fake_bin/ssh-keygen" "$fake_bin/ssh"
 
-printf '192.168.1.225 ssh-ed25519 fixture\n' >"$known_hosts"
+target="$(jq --raw-output '.pi_lan_address' "$script_dir/fixtures/inventory.json")"
+export FAKE_TARGET="$target"
+export FAKE_USER=nori
+printf '%s ssh-ed25519 fixture\n' "$target" >"$known_hosts"
 
 PATH="$fake_bin:$PATH" \
   INVENTORY_FIXTURE="$script_dir/fixtures/inventory.json" \

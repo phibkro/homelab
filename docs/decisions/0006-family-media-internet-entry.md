@@ -30,7 +30,7 @@ explicit family-media allowlist:
 | `requests.home.phibkro.org` | Seerr | Imported Jellyfin users |
 | `audio.home.phibkro.org` | Navidrome | Native Navidrome users |
 
-`nori.lanRoutes.<name>.reachability` is independent from `audience`:
+An endpoint manifest's `reachability` is independent from its `audience`:
 
 - `internal` is the default and adds a Caddy client-IP matcher for private
   ranges plus Tailscale's `100.64.0.0/10` range.

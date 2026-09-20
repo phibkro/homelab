@@ -1,7 +1,6 @@
 ---
 # The role is enabled when selected by the Pi appliance. Deployment must
 # provide the secret ping URL explicitly; an empty URL fails the contract.
-heartbeat_enabled: true
 heartbeat_url: ""
 
 heartbeat_secret_dir: /etc/heartbeat

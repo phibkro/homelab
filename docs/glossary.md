@@ -25,17 +25,17 @@ Models make the heuristics make sense.
 
 | Term | Meaning | Source |
 |---|---|---|
-| **workhorse** | Host role: services land here by default — desktop, GPU, state-heavy, storage, and application workloads. The HTTP entry plane is an appliance concern because it must remain available independently of the workhorse. The `role` field on the host. | `infra/common/nixos/hosts.nix` (`role`); declared in `inventory/hosts.nix` |
-| **appliance** | Host role: only services that must survive the workhorse's failure (observability, alerting, DNS) or are network-appliance functions (subnet routing, exit node). Drives the placement assertion (appliance hosts can't use `paths`-based backups). | `infra/common/nixos/hosts.nix`; assertion in `infra/common/nixos/backup.nix` |
-| **`nori.<X>`** | The repo's infra-concern option family — one declarative input, many generated outputs. Reader + collected-Writer shape. | `infra/common/nixos/`; see § "Infra-concern interface deep-dive" below |
-| **Reader (concern)** | `nori.<X>` flavor that hosts *produce* and workloads *read*: host-scoped context (`nori.hosts`, `nori.gpu`, `nori.fs`). `lib/machines.nix` injects host identity from `inventory/hosts.nix`; host `hardware.nix` and `disko*.nix` declare hardware and filesystem facts. | `infra/common/nixos/hosts.nix` · `infra/common/nixos/gpu.nix` · `infra/common/nixos/storage/default.nix` |
-| **Writer (concern)** | `nori.<X>` flavor that workloads *contribute* and generators *interpret*: declarations assembled across modules (`nori.lanRoutes`, `nori.backups`, `nori.harden`). | `infra/common/nixos/routes.nix` · `infra/common/nixos/backup.nix` · `infra/common/nixos/service-hardening.nix` |
-| **infra concern** | Shared NixOS mechanism in `infra/common/nixos/`: backup, storage, routes, access policy, capabilities, or observability schema. | The corresponding file under `infra/common/nixos/` |
-| **workload** | An operator-installed application under `services/` (vaultwarden, immich, jellyfin, …). Consumes the shared infra layer via `nori.<X>` opt-ins. | `services/<name>/{manifest,nixos}.nix` |
-| **value tier** | Data-protection level driving snapshot/backup/retention: `re-derivable` (minimal) → `user`/`service` (daily + local) → `irreplaceable` (snapshots + local + off-site). | `infra/common/nixos/storage/default.nix` (tier); STORAGE.md "Value tiers" |
-| **audience** | Per-route trust level: `operator` (trusts tailnet, no Authelia) / `family` (needs OIDC for per-user state) / `public` (intentionally open). Decides where Authelia layers on. | `infra/common/nixos/routes.nix` (`audience`); CLAUDE.md bias section |
-| **split-module pattern** | Cross-host service shipped as two modules: daemon module on the host that runs it, client/proxy module on every host. Live: `beszel`, `ntfy`. | `services/beszel/`, `services/ntfy/`; `/relocate-to-pi` skill |
-| **fate-sharing** | The placement test: a service moves to the appliance only when "fate-sharing breaks the function" (it must outlive the workhorse), not because it "feels lightweight." | TOPOLOGY.md "Service placement"; CLAUDE.md "workhorse-by-default" bias |
+| **workhorse** | Host role for desktop, GPU, state-heavy, storage, and application workloads. The HTTP entry plane stays on the appliance so workstation failure cannot remove it. | `inventory/host-roles.nix`; assigned in `inventory/hosts.nix` |
+| **appliance** | Host role for failure-independent observability, alerting, DNS, and network functions. | `inventory/host-roles.nix`; assigned in `inventory/hosts.nix` |
+| **inventory compiler** | Pure pre-evaluation function that validates host and workload declarations, resolves placement, and emits projections for each backend. | `inventory/default.nix` |
+| **projection** | Read-only output derived by the inventory compiler for one consumer, such as a NixOS host, the Pi Ansible inventory, deployment planning, or generated documentation. | `inventory/default.nix`; `lib/flake-parts/packages/` |
+| **`nori.<X>`** | NixOS option family for host-local infrastructure concerns that need module merge semantics, such as identity, storage, backup, hardening, and alerts. | `infra/common/nixos/` |
+| **workload manifest** | Canonical workload declaration. It owns activation, placement constraints, runtime module, endpoints, and product metadata. | `services/<name>/manifest.nix` |
+| **workload** | An operator-installed application under `services/`. Its manifest is backend-neutral; its NixOS or Ansible adapter consumes a compiler projection. | `services/<name>/` |
+| **value tier** | Data-protection level driving snapshot, backup, and retention policy: `re-derivable`, `user`, `service`, or `irreplaceable`. | `infra/common/nixos/storage/default.nix`; `docs/reference/storage.md` |
+| **audience** | Endpoint trust level: `operator`, `family`, or `public`. The compiler combines it with authentication and reachability declarations. | `services/<name>/manifest.nix`; `inventory/default.nix` |
+| **split-module pattern** | Cross-host service with separate daemon and client modules. Live examples are `beszel` and `ntfy`. | `services/beszel/`; `services/ntfy/` |
+| **fate-sharing** | Placement rule: move a service to the appliance only when workstation failure would break the service's purpose. | `inventory/host-roles.nix`; `tests/eval/workload-role-placement.nix` |
 
 ## Mental models — frameworks for reasoning about the lab
 
@@ -46,43 +46,38 @@ first principles. These aren't rules; they're what makes the rules make sense.
 | Model | What it represents | Source |
 |---|---|---|
 | **Amnesiac team** | Each agent session is a fresh teammate who quits at the end. Predicts which software-team practices transfer (anything that externalizes knowledge or verifies a claim — docs, tests, skills, INVARIANTS) and which don't (anything that assumes persistent humans — feature branches, code review as gate, onboarding meetings). | ADR-0001 |
-| **Reader + collected-Writer interface** | Cross-cutting concerns assemble in two flavors: hosts *produce* read values (Reader: `nori.hosts`, `nori.gpu`, `nori.fs`), workloads *contribute* write values (Writer: `nori.lanRoutes`, `nori.backups`, `nori.harden`), generators *interpret* the collected whole. Predicts where any new abstraction lives. | `infra/common/nixos/`; full prose below in § "Infra-concern interface deep-dive" |
-| **Audience-driven trust topology** | Trust isn't a property of a service — it's the intersection of *who's reaching it* (operator / family / public) and *what network layer they arrived on* (tailnet / LAN / internet). The auth stack is layered selectively from this intersection. Predicts where Authelia / OIDC layers on without re-litigating per service. | `infra/common/nixos/routes.nix` (`audience`); CLAUDE.md "What's the bias" |
+| **Compiler and projections** | Manifests and host declarations contain intent once. The pure inventory compiler validates the complete graph, resolves placement, and emits narrow backend projections. This predicts where a new cross-host fact belongs. | `inventory/`; `docs/reference/services.md` |
+| **Audience-driven trust topology** | Trust is the intersection of caller audience, network reachability, and endpoint authentication. The compiler rejects unsafe combinations before any backend adapter runs. | `inventory/default.nix`; `docs/reference/network.md` |
 | **Workhorse / appliance fate-sharing** | A host's *role* defines what it must survive. A service migrates to the appliance only when "fate-sharing breaks the function" — its purpose requires outliving the workhorse. Predicts placement without taste arguments ("feels lightweight" isn't a reason). | TOPOLOGY.md "Service placement"; CLAUDE.md "workhorse-by-default" |
 | **Enforcement ladder** | A claim's truth lives on `prose → comment → test → type / lint / CI rule`; each rung is a different mechanism for staying true. Predicts what protects a claim from drift, and which `[prose: unchecked]` items are worth promoting. | `docs/invariants.md` |
 | **Value-tier protection tree** | `re-derivable → user → service → irreplaceable` maps to a specific snapshot + local-backup + off-site-backup shape per tier. Predicts what to do with any new state-bearing service without designing protection per-service. | `infra/common/nixos/storage/default.nix`; STORAGE.md "Value tiers" |
 
-## Infra-concern interface deep-dive
+## Compiler and host-local concerns
 
-`nori.<X>` = structural Reader + collected-Writer over NixOS module fixed-point. Same merge semantics → one infra-concern folder per cross-cutting category. Distinction within a concern = *who produces*.
+Cross-host intent is compiled before NixOS or Ansible evaluates a backend.
+Host-local effects still use NixOS module options when merge semantics are
+needed.
 
 ```mermaid
 flowchart LR
-  Hosts -- "set in identityFor + per-host hardware + disko*" --> R["Reader<br/>nori.hosts<br/>nori.gpu<br/>nori.fs"]
-  R -- read --> Workloads
-  Workloads -- "contribute" --> W["Writer<br/>nori.lanRoutes<br/>nori.backups<br/>nori.harden"]
-  W -- "interpreted by" --> G["infra/common/nixos/<br/>schema + adapters"]
+  H["inventory/hosts.nix"] --> C["inventory/default.nix"]
+  M["services/*/manifest.nix"] --> C
+  C --> N["NixOS host projections"]
+  C --> P["Pi Ansible projection"]
+  C --> D["deployment and docs projections"]
+  N --> E["nori.* host-local effects"]
 ```
 
-Each matching module under `infra/common/nixos/` carries its concern's full surface:
-
-| Layer | What | Mechanism |
+| Layer | Owns | Mechanism |
 |---|---|---|
-| **type signature** | option schema, type constraints | `mkOption` |
-| **contracts** | port uniqueness, DNS-safe names, appliance-role gating | `assertions` |
-| **interpretation** | collected attrset → systemd / Caddy / restic | `config = mkIf …` |
+| **declaration** | host identity, workload placement, endpoints, product metadata | typed Nix attrsets |
+| **compiler** | graph validation, placement resolution, public-safe filtering | assertions in `inventory/default.nix` |
+| **projection** | exact data for one backend or document | `lib.noriInventory.*` |
+| **host adapter** | systemd, firewall, storage, backup, and process configuration | NixOS modules or Ansible roles |
 
-Convention-not-rule (Reader/Writer split isn't structurally prevented). Enforced via:
+**Add a workload or endpoint:**
 
-| Mechanism | Catches |
-|---|---|
-| Type system | shape inside one option (port range, DNS regex) |
-| Module assertions | cross-attribute invariants (paths-XOR-skip, port uniqueness, appliance ≠ `paths`) |
-| `lint.tailnetIp` flake check | textual: no `100.x.y.z` literals outside the inventory and documented operator-tool exception — cross-host refs use `config.nori.hosts.<n>.tailnetIp` |
-
-**Adding an effect:**
-
-1. The matching file under `infra/common/nixos/` — option schema + assertions + Writer-shaped consumer logic
-2. Import in `infra/common/nixos/default.nix`
-3. Header comment names the producer/consumer split (Reader/Writer at a glance)
-4. **Ship its test** — adding an effect = committing to `just test-<n>` (see `docs/reference/runtime-tests.md`)
+1. Update its `services/<name>/manifest.nix`.
+2. Add or update its runtime adapter only when execution changes.
+3. Extend the compiler only for a new shared invariant or projection field.
+4. Add a behavioral check for the new invariant or effect.

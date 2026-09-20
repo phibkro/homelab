@@ -25,8 +25,8 @@ The pattern: **a declaration produces multi-effect derived state via an opaque t
 
 | Lever | What it captures | Maxes out at |
 |---|---|---|
-| **Leverage** | How many downstream effects one declaration produces | `nori.lanRoutes` — 7 effects |
-| **Volatility** | How often the registry changes | `lanRoutes` (new svc), Hyprland binds (per tweak) |
+| **Leverage** | How many downstream effects one declaration produces | compiler-owned routes: Caddy, DNS, monitors, identity, and status |
+| **Volatility** | How often the registry changes | manifest endpoints and Hyprland binds |
 | **Opacity** | How silent a partial desync is | backups (silent until restore), observability (you don't know what you don't know) |
 | **Blast radius** | Cost if desync goes undetected | backups (data loss), routes (auth bypass), observability (incident detection) |
 
@@ -40,28 +40,29 @@ One lever maxed = nice-to-have. Two = ship it. Three+ = required.
 | `HYPR_RICE_LIVE_TEST=1 just test-hypr-layout-live` | Explicit controlled-window journey: stable-ID visual ordering, real spacer target, drift/reinsertion/replacement, special-workspace targeting, and absolute focused ratios | `users/nori/programs/desktop/hypr-rice/hypr-layout-live-test.sh` |
 | `VICINAE_LAUNCHER_LIVE_TEST=1 just test-vicinae-launcher-live` | Private headless-Sway journey: desktop application and generated action indexing, extension loading, real launcher display, and command execution | `users/nori/programs/desktop/vicinae/vicinae-launcher-live-test.sh` |
 | `just test-backups` | `nori.backups.<n>` → restic units exist + per-target snapshots ≤25h | `infra/common/nixos/backup.nix` |
-| `just test-routes` | `nori.lanRoutes.<n>` → Caddy route + DNS + HTTPS reachable | `infra/common/nixos/routes.nix` |
-| `just test-observability` | VM scrape targets up + process-exporter publishing + pi heartbeat <90s + zero failing gatus probes | `infra/common/nixos/gatus-probes.nix` + `services/victoriametrics/` |
+| `just test-routes` | `lib.noriInventory.routes` → deployed Pi Caddy route + DNS + HTTPS | `inventory/default.nix` + Pi Ansible roles |
+| `just test-observability` | VM scrape targets up + process-exporter publishing + Pi heartbeat <90s + zero failing Gatus probes | compiler Pi projection + `services/{gatus,victoriametrics}/ansible/` |
 | `just test-replicas` | `nori.replicas.<n>` → per-replica verifier oneshot succeeded within freshness budget on the target host (smoke-passes on empty registry) | `infra/common/nixos/storage/replication.nix` |
-| `just test-authelia` | Authelia live ↔ `nori.lanRoutes.<n>.oidc` declarations: systemd active, /api/health OK, OIDC discovery issuer correct, /run/secrets/oidc-<n>-* present + non-empty for every declared OIDC route | `services/authelia/nixos.nix` + `infra/common/nixos/routes.nix` |
+| `just test-authelia` | projected OIDC clients → Pi Authelia active, healthy, correct issuer, and non-empty hashed secret files | `inventory/default.nix` + `services/authelia/ansible/` |
 | `just test-music-ingest` | Disposable real-filesystem journey for claim, recovery, publication, conflict, and rejection behavior | `services/music-ingest/tests/runtime.sh` |
 | `just test` | All non-destructive recipes above; the opt-in Ghostty geometry and headless launcher journeys are intentionally excluded | composite |
 | `just test-self-hosted-firecracker` | Disposable transient KVM journey for a net-off Firecracker Environment. It checks exact create replay, guest isolation, drain rejection, stopped recovery, lease release, and cleanup. | `infra/workstation/firecracker-environment.nix` |
 
 ## The architectural correlation worth knowing
 
-**The homelab's testable surface is the Reader+Writer-shaped modules under `infra/common/nixos/`, their service consumers, and user runtime behavior.** Every `nori.<X>` registry is a producer of effects whose runtime state can silently desync from the declaration. Pure inventory and manifest declarations are verified at evaluation time.
+The pure inventory owns cross-host route intent. NixOS and Ansible modules
+adapt that projection to runtime state. Runtime tests compare deployed state
+with the compiler output. Nix-only Reader+Writer modules keep their existing
+runtime checks.
 
-| Authoritative module | Reader-Writer shape | Test | Test value |
-|---|:-:|---|:-:|
-| `infra/common/nixos/backup.nix` | ✓ `nori.backups` | `test-backups` | ★★★★★ |
-| `infra/common/nixos/routes.nix` | ✓ `nori.lanRoutes` | `test-routes` | ★★★★★ |
-| `infra/common/nixos/gatus-probes.nix` | ✓ embedded + standalone | `test-observability` | ★★★★★ |
-| `infra/common/nixos/storage/replication.nix` | ✓ `nori.replicas` | `test-replicas` | ★★★★ (silent-stale class, blast = data divergence) |
-| `services/authelia/nixos.nix` | ✓ consumes `nori.lanRoutes.<X>.oidc` | `test-authelia` | ★★★★★ (silent-OIDC-broken class, blast = every family-tier service login fails) |
+| Authoritative source | Runtime adapter | Test | Test value |
+|---|---|---|:-:|
+| `infra/common/nixos/backup.nix` | NixOS restic units | `test-backups` | ★★★★★ |
+| `inventory/default.nix` + workload manifests | Pi Caddy, Pi-hole, Gatus, Authelia | `test-routes`, `test-authelia`, `test-observability` | ★★★★★ |
+| `infra/common/nixos/storage/replication.nix` | NixOS replica units | `test-replicas` | ★★★★ |
 | `infra/common/nixos/service-hardening.nix` | ✓ `nori.harden` | — | ★★ (flake check is primary defence) |
 | `infra/common/nixos/storage/default.nix` | ✓ `nori.fs` | — | ★★ |
-| `infra/common/nixos/hosts.nix` | ✓ Reader-only | — | ★ (used transitively) |
+| `infra/common/nixos/inventory.nix` | ✓ Read-only compiler projection | — | ★ (covered by inventory eval checks) |
 | `infra/common/nixos/restart-policy.nix` | ✓ sweeps systemd | — | ★★ |
 | `infra/common/nixos/motd.nix` | — config wrapper | — | n/a |
 | `infra/common/nixos/gpu.nix` | — config wrapper | — | n/a |
@@ -77,8 +78,8 @@ These are the unshipped recipes the four-lever evaluation flagged as worth-doing
 | `test-harden` | For each `nori.harden.<n>`: declared `ProtectSystem/PrivateTmp/binds` actually applied to the systemd unit (`systemctl show` matches the option declaration) | `infra/common/nixos/service-hardening.nix` | leverage 3 · volatility 2 · opacity 3 · blast 3 | A hardening-bypass incident, or after the `every-service-has-fs-hardening` flake check is removed |
 | `test-fs` | For each `nori.fs.<n>`: path exists, owner/mode/subvolume matches, AND entry exists in `nori.backups` or has an explicit excluded flag | `infra/common/nixos/storage/default.nix` | leverage 3 · volatility 1 · opacity 3 · blast 4 | The "I added a folder but forgot to wire backup" class — likely if user-data shape changes |
 | `test-secrets` | For each `sops.secrets.<n>`: rendered file exists at expected path, mode/owner/group matches declaration, sops can decrypt with current key | sops integration | leverage 2 · volatility 1 · opacity 3 · blast 4 | Next sops key rotation, or any "service can't read secret" deploy break |
-| `test-firewall` | Declared tailnet-only ports actually bound to tailscale0 (not 0.0.0.0); declared LAN-public ports actually open | implicit in service modules + `nori.lanRoutes` | leverage 3 · volatility 1 · opacity 4 · blast 4 | After any change that adds a new exposed port; the silent-exposure class |
-| `test-network` | DNS: blocky resolves every `*.${nori.domain}`, Tailscale MagicDNS resolves tailnet hostnames, subnet routes advertised correctly | `infra/common/nixos/hosts.nix` + tailscale | leverage 3 · volatility 1 · opacity 2 · blast 3 | DNS failure mostly loud; ship only after a subnet-route or DNS subtlety bites |
+| `test-firewall` | Projected tailnet-only ports are subnet-bound and no unrelated ports are open | compiler Pi projection + firewall role | leverage 3 · volatility 1 · opacity 4 · blast 4 | After any change that adds a new exposed port |
+| `test-network` | Pi-hole resolves every active route, MagicDNS resolves hosts, and subnet routes are advertised | inventory route projection + Tailscale | leverage 3 · volatility 1 · opacity 2 · blast 3 | After a subnet-route or DNS incident |
 | `test-systemd` | Generic safety net — no failed units, all timers scheduled, no `bad-setting` states | cross-cutting | leverage 1 · volatility 4 · opacity 1 · blast 1 | (skip — `systemctl --failed` is already loud) |
 
 **Pattern for shipping new tests:** when an incident occurs in an effect's area, the post-mortem question is "which test would have caught this?" If the answer maps to one of these unshipped recipes, that recipe becomes worth the ~50 lines of bash. Otherwise the framework's ratings predicted correctly that the recipe wasn't yet earning its keep.

@@ -1,4 +1,12 @@
 ---
+- name: Remove Pi-hole when it is not selected by the inventory
+  containers.podman.podman_container:
+    name: pihole
+    state: absent
+  when:
+    - not pihole_enabled | bool
+    - podman_available | bool
+
 - name: Validate the explicit Pi-hole listener contract
   ansible.builtin.assert:
     that:
@@ -11,6 +19,7 @@
     fail_msg: >-
       Pi-hole DNS requires concrete LAN and optional tailnet addresses plus a
       valid DNS port; wildcard bindings are not allowed.
+  when: pihole_enabled | bool
 
 - name: Create the Pi-hole application directory
   ansible.builtin.file:
@@ -24,6 +33,7 @@
       mode: "0750"
     - path: /opt/pihole/dnsmasq.d
       mode: "0755"
+  when: pihole_enabled | bool
 
 - name: Ensure Podman restart waits for the Tailscale interface
   ansible.builtin.file:
@@ -33,6 +43,7 @@
     group: root
     mode: "0755"
   when:
+    - pihole_enabled | bool
     - podman_available | bool
     - pihole_tailnet_address | length > 0
 
@@ -45,6 +56,7 @@
     mode: "0644"
   notify: Reload systemd after Pi-hole boot ordering changes
   when:
+    - pihole_enabled | bool
     - podman_available | bool
     - pihole_tailnet_address | length > 0
 
@@ -54,7 +66,7 @@
     state: absent
   notify: Reload systemd after Pi-hole boot ordering changes
   when:
-    - pihole_tailnet_address | length == 0
+    - not pihole_enabled | bool or pihole_tailnet_address | length == 0
 
 - name: Wait for the declared Tailscale DNS address
   ansible.builtin.command:
@@ -73,6 +85,7 @@
     - pihole_tailnet_interface.rc == 0
     - pihole_tailnet_address ~ '/' in pihole_tailnet_interface.stdout
   when:
+    - pihole_enabled | bool
     - podman_available | bool
     - pihole_tailnet_address | length > 0
     - not ansible_check_mode
@@ -85,12 +98,15 @@
     group: root
     mode: "0644"
   register: pihole_local_records
+  when: pihole_enabled | bool
 
 - name: Create the Pi-hole data volume
   containers.podman.podman_volume:
     name: pihole-data
     state: present
-  when: podman_available | bool
+  when:
+    - pihole_enabled | bool
+    - podman_available | bool
 
 - name: Run the Pi-hole container
   containers.podman.podman_container:
@@ -123,14 +139,18 @@
       - NET_ADMIN
   no_log: "{{ not pi_emulation_mode }}"
   register: pihole_container
-  when: podman_available | bool
+  when:
+    - pihole_enabled | bool
+    - podman_available | bool
 
 - name: Wait for Pi-hole DNS
   ansible.builtin.wait_for:
     host: "{{ pihole_lan_address }}"
     port: "{{ pihole_dns_port }}"
     timeout: 120
-  when: not ansible_check_mode
+  when:
+    - pihole_enabled | bool
+    - not ansible_check_mode
 
 - name: Report Pi-hole convergence
   ansible.builtin.debug:
@@ -145,3 +165,4 @@
       Pi-hole container changed={{ pihole_container.changed }};
       local records changed={{ pihole_local_records.changed }}.
       {% endif %}
+  when: pihole_enabled | bool

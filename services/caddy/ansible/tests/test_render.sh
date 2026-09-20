@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if ! command -v ansible-playbook >/dev/null || ! command -v caddy >/dev/null; then
-  echo "caddy render contract: SKIP (ansible-playbook and caddy are required in the dev shell)"
-  exit 0
-fi
+for command in ansible-playbook caddy jq nix; do
+  if ! command -v "$command" >/dev/null; then
+    echo "caddy render contract: SKIP ($command is required in the Pi dev shell)"
+    exit 0
+  fi
+done
 
 role_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 state_dir="$(mktemp -d)"
@@ -88,5 +90,36 @@ rg -q 'header_up Origin https://secure\.backend\.lan' "$state_dir/Caddyfile"
 
 caddy adapt --config "$state_dir/Caddyfile" --adapter caddyfile >/dev/null
 caddy validate --config "$state_dir/Caddyfile" --adapter caddyfile >/dev/null
+
+# Exercise the real compiler boundary as well as the focused fixture above.
+repo_root="$(cd "$role_dir/../../.." && pwd)"
+"$repo_root/infra/pi/scripts/generate-inventory.sh" "$state_dir/inventory.json" >/dev/null
+jq '.pi_appliances.hosts.pi' "$state_dir/inventory.json" >"$state_dir/inventory-vars.json"
+cat >"$state_dir/production-playbook.yml" <<EOF
+---
+- name: Render Caddy from the compiler projection
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - "$role_dir/defaults/main.yml"
+    - "$state_dir/inventory-vars.json"
+  vars:
+    caddy_template: "$role_dir/templates/Caddyfile.j2"
+    caddy_output: "$state_dir/ProductionCaddyfile"
+    caddy_acme_email: test@example.invalid
+    pi_emulation_mode: true
+  tasks:
+    - name: Render Caddyfile
+      ansible.builtin.template:
+        src: "{{ caddy_template }}"
+        dest: "{{ caddy_output }}"
+EOF
+ansible-playbook -i localhost, "$state_dir/production-playbook.yml"
+caddy adapt --config "$state_dir/ProductionCaddyfile" --adapter caddyfile >/dev/null
+caddy validate --config "$state_dir/ProductionCaddyfile" --adapter caddyfile >/dev/null
+while IFS= read -r hostname; do
+  rg -Fq "host $hostname" "$state_dir/ProductionCaddyfile"
+done < <(jq -r '.pi_appliances.hosts.pi.pi_routes[].hostname' "$state_dir/inventory.json")
 
 echo "caddy render contract: PASS"

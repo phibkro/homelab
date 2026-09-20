@@ -14,10 +14,10 @@
   imports = [ ../../../infra/common/nixos/alerts.nix ];
 
   /*
-    Both knobs default to production shape; the e2e nixosTest
-    (the reusable module test in tests/e2e-pi-smoke.nix) overrides them to
-    point at a stub receiver in-VM with a sub-second recovery window. Production
-    keeps the 120s window + ntfy.sh URL.
+    Both knobs default to the production shape. The reusable NixOS test in
+    tests/e2e-disk-alert.nix points them at an in-VM stub receiver and uses a
+    sub-second recovery window. Production keeps the 120-second window and
+    the ntfy.sh URL.
   */
   options.nori.observability.ntfyNotify = {
     baseUrl = lib.mkOption {

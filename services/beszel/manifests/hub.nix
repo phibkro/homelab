@@ -23,6 +23,7 @@
       clientName = "Beszel";
       redirectPath = "/api/oauth2-redirect";
       tokenEndpointAuthMethod = "client_secret_basic";
+      secretHashEnvName = "OIDC_METRICS_CLIENT_SECRET_HASH";
     };
     dashboard = {
       title = "Beszel";

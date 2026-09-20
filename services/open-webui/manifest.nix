@@ -31,6 +31,7 @@ in
             clientName = "Open WebUI";
             redirectPath = "/oauth/oidc/callback";
             tokenEndpointAuthMethod = "client_secret_basic";
+            secretHashEnvName = "OIDC_CHAT_CLIENT_SECRET_HASH";
           };
           dashboard = {
             title = "Open WebUI";

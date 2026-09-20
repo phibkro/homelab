@@ -35,7 +35,7 @@ in
       3. Log in → the consume dir (/var/lib/paperless/consume) is
          watched; anything dropped there is OCR'd + indexed.
       4. On phone: install the Paperless mobile app, point at
-         https://papers.${config.nori.domain} over the tailnet, log in.
+         https://papers.${config.nori.inventory.site.domain} over the tailnet, log in.
   */
   services.paperless = {
     enable = true;
@@ -59,11 +59,11 @@ in
     settings = {
       PAPERLESS_OCR_LANGUAGE = "eng"; # academic papers; add "+nor" if needed
       PAPERLESS_ADMIN_USER = "nori"; # matches the existing superuser
-      PAPERLESS_URL = "https://papers.${config.nori.domain}";
+      PAPERLESS_URL = "https://papers.${config.nori.inventory.site.domain}";
       # Accept the public Caddy route and the converged host's direct tailnet
       # endpoint for operator recovery.
-      PAPERLESS_ALLOWED_HOSTS = "papers.${config.nori.domain},${selfTailnetIp}";
-      PAPERLESS_CSRF_TRUSTED_ORIGINS = "https://papers.${config.nori.domain},http://${selfTailnetIp}:28981";
+      PAPERLESS_ALLOWED_HOSTS = "papers.${config.nori.inventory.site.domain},${selfTailnetIp}";
+      PAPERLESS_CSRF_TRUSTED_ORIGINS = "https://papers.${config.nori.inventory.site.domain},http://${selfTailnetIp}:28981";
     };
   };
 

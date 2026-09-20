@@ -26,13 +26,13 @@ nix eval .#nixosConfigurations.<host>.config.nori.inventory.currentWorkloads
 # Global public-safe workload catalog (placement, tags, endpoints)
 nix eval .#nixosConfigurations.<host>.config.nori.inventory.workloads
 
-# Where each route's backend runs (the placement decisions):
-nix eval .#nixosConfigurations.workstation.config.nori.lanRoutes \
-  --apply 'with builtins; mapAttrs (_: r: r.runsOn) it'
+# Where each route's backend runs
+nix eval .#lib.noriInventory.routes \
+  --apply 'with builtins; mapAttrs (_: route: route.host) it'
 
-# Per-route exposure summary (audience, port, monitor):
-nix eval .#nixosConfigurations.workstation.config.nori.lanRoutes \
-  --apply 'with builtins; mapAttrs (_: r: { inherit (r) runsOn port audience; }) it'
+# Per-route exposure summary
+nix eval .#lib.noriInventory.routes \
+  --apply 'with builtins; mapAttrs (_: route: { inherit (route) host port audience reachability; }) it'
 ```
 
 Cross-host services use the split-module pattern (`docs/reference/topology.md` § cross-host services).

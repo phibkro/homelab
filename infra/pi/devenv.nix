@@ -79,20 +79,11 @@ in
     shellcheck scripts/*.sh scripts/tests/*.sh scripts/tests/fixtures/nix \
       ansible/roles/firewall/tests/*.sh \
       ../../services/*/ansible/tests/*.sh ../../.githooks/pre-commit
-    ../../services/pihole/ansible/tests/test_contract.sh
-    ../../services/authelia/ansible/tests/test_contract.sh
     ../../services/cloudflare-ddns/ansible/tests/test-contract.sh
     ansible/roles/firewall/tests/test_contract.sh
-    ../../services/gatus/ansible/tests/test_contract.sh
-    ../../services/ntfy/ansible/tests/test_contract.sh
-    ../../services/heartbeat/ansible/tests/test_contract.sh
-    ../../services/victoriametrics/ansible/tests/test_contract.sh
-    ../../services/victorialogs/ansible/tests/test_contract.sh
-    ../../services/vector/ansible/tests/test_contract.sh
-    ../../services/restic-backup/ansible/tests/test_contract.sh
     ../../services/restic-backup/ansible/tests/test_state_identity.sh
-    ../../services/caddy/ansible/tests/test_contract.sh
     ../../services/caddy/ansible/tests/test_render.sh
+    ../../services/authelia/ansible/tests/test_render.sh
     scripts/tests/generate-inventory.test.sh
     scripts/tests/run-production-inspect.test.sh
     scripts/tests/test-vm-lifecycle.test.sh

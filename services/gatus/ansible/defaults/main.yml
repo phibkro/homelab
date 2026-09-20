@@ -1,5 +1,4 @@
 ---
-gatus_enabled: true
 gatus_container_name: gatus
 
 # Gatus 5.36.0 publishes linux/amd64, linux/arm/v7, and linux/arm64
@@ -15,17 +14,11 @@ gatus_image: >-
 # the integration layer; wildcard listeners are not part of this appliance.
 gatus_web_address: "{{ pi_service_bind_address }}"
 gatus_bind_address: "{{ pi_service_bind_address }}"
-gatus_port: 8082
 gatus_config_dir: /etc/gatus
 gatus_config_file: /etc/gatus/config.yaml
 gatus_validation_config_file: /etc/gatus/validation.yaml
 gatus_uid: 65532
 gatus_gid: 65532
-
-# Parent inventory supplies the complete generated probe list. Each item must
-# provide name and url; client, headers, interval, conditions,
-# failure_threshold, and send_on_resolved are accepted as per-probe overrides.
-gatus_endpoints: []
 
 gatus_metrics_enabled: true
 gatus_storage_type: memory

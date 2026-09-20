@@ -37,7 +37,7 @@ This filter explains and justifies the existing shape of the homelab. It also gi
 - **Conventional commits + structured messages.** Commits encode the *why* for future-you; the conventional-commit type makes intent grep-able. This ADR layer carries the heavier decisions commit messages can't fit.
 - **Skills for procedures, prose for facts.** Cross-provider procedures live under `users/nori/programs/agent-skills/`; project-specific procedures live under `.claude/skills/` until the neutral `.agents/` surface supports them. They load on demand when their trigger fires. Prose facts stay in `CLAUDE.md` and `docs/`; tactical landmines stay in Mnemopi.
 - **Flake checks as binding contracts.** `every-service-has-fs-hardening`, `every-service-has-backup-intent`, `forbidden-patterns` derivations bind doc claims to CI evidence. A claim with a check is self-defending; a claim without is staleness-prone — `docs/invariants.md` is the catalog of which is which.
-- **`nori.<X>` effect modules.** Each effect is one input → multiple generators (Reader + collected Writer). Single source for cross-cutting declarations: `nori.lanRoutes.<name>` generates Caddy + DNS + Gatus + dashboard from one entry. This *externalizes* the cross-cutting knowledge a human would otherwise have to remember.
+- **Pure inventory compiler.** Host and workload declarations are each written once. `inventory/default.nix` validates their complete graph and generates NixOS, Ansible, deployment, public, and documentation projections. This externalizes cross-cutting knowledge without a second registry.
 
 **Practices that do NOT transfer (deliberately skipped):**
 

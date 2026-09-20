@@ -117,17 +117,6 @@ HEARTBEAT_URL="https://hc-ping.test/test-only-no-real-hc-id"
 # until then, these are stubs.
 NTFY_CHANNEL="test-channel"
 NTFY_PUB_TOKEN="tk_test_not_a_real_ntfy_token"
-# OIDC test client — authelia REJECTS the config when
-# identity_providers.oidc.clients is empty, so the test declares one
-# OIDC route (`nori.lanRoutes.testapp.oidc`) which auto-generates two
-# sops secrets per the networking module:
-#   oidc-testapp-client-secret       raw secret, group=keys
-#   oidc-testapp-client-secret-hash  PBKDF2 hash, owner=authelia-main
-# Authelia uses its own variant of base64 in the pbkdf2 hash format,
-# so generate it via authelia's own `crypto hash generate pbkdf2` tool
-# — guaranteed parseable, deterministic per password.
-TESTAPP_RAW="test-client-secret-not-a-real-secret"
-TESTAPP_HASH="$(authelia crypto hash generate pbkdf2 --password "$TESTAPP_RAW" 2>/dev/null | sed -n 's/^Digest: //p')"
 
 echo "==> generating RSA 2048 OIDC issuer key"
 ISSUER_KEY="$(openssl genrsa 2048 2>/dev/null)"
@@ -162,7 +151,6 @@ CF_ACME_TOKEN="$CF_ACME_TOKEN" GATUS_ENV="$GATUS_ENV" \
 RESTIC_SSH_KEY="$RESTIC_SSH_KEY" \
 HEARTBEAT_URL="$HEARTBEAT_URL" \
 NTFY_CHANNEL="$NTFY_CHANNEL" NTFY_PUB_TOKEN="$NTFY_PUB_TOKEN" \
-TESTAPP_RAW="$TESTAPP_RAW" TESTAPP_HASH="$TESTAPP_HASH" \
 python3 -c '
 import os, sys, json
 data = {
@@ -178,8 +166,6 @@ data = {
     "heartbeat-pi-url": os.environ["HEARTBEAT_URL"],
     "ntfy-channel": os.environ["NTFY_CHANNEL"],
     "ntfy-publisher-token": os.environ["NTFY_PUB_TOKEN"],
-    "oidc-testapp-client-secret": os.environ["TESTAPP_RAW"],
-    "oidc-testapp-client-secret-hash": os.environ["TESTAPP_HASH"],
     # Key intentionally uses underscore — caddy.nix references it as
     # `cloudflare_acme_token` via sops `key` field (the secret is named
     # `cloudflare-acme-token` with a hyphen). When the sopsFile is

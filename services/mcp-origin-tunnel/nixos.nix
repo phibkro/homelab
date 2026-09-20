@@ -10,8 +10,8 @@ let
   inherit (devShareRoute) tunnelId;
   hindsightHostname = "hindsight-origin.phibkro.org";
   projectsHostname = "projects-origin.phibkro.org";
-  hindsightOriginPort = config.nori.lanRoutes.memory-origin.port;
-  projectsOriginPort = config.nori.lanRoutes.projects-origin.port;
+  hindsightOriginPort = config.nori.inventory.routes.memory-origin.port;
+  projectsOriginPort = config.nori.inventory.routes.projects-origin.port;
 
   tunnelConfig = pkgs.writeText "mcp-origin-cloudflared.yaml" ''
     tunnel: ${tunnelId}
@@ -76,7 +76,8 @@ in
       message = "The shared MCP origin tunnel runtime was imported while its manifest is inactive.";
     }
     {
-      assertion = config.nori.lanRoutes ? memory-origin && config.nori.lanRoutes ? projects-origin;
+      assertion =
+        config.nori.inventory.routes ? memory-origin && config.nori.inventory.routes ? projects-origin;
       message = "The shared MCP origin tunnel requires both memory-origin and projects-origin inventory endpoints.";
     }
   ];

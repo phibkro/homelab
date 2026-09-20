@@ -70,7 +70,7 @@ Fallback ladder if production breaks: `production` → `beta` →
 
 ## Why the registry shape
 
-Same Reader+Writer shape as `nori.lanRoutes` and `nori.harden`. Each
+Same Reader+Writer shape as `nori.harden`. Each
 host's `hardware.nix` is the Reader (sets `nori.gpu.nvidiaDevices`);
 each service that needs the GPU is the Writer (reads
 `config.nori.gpu.nvidiaDevices` for its `accelerationDevices` /

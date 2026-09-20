@@ -18,28 +18,10 @@ tailscale_accept_dns: false
 tailscale_apt_suite: trixie
 tailscale_apt_key_sha256: 3e03dacf222698c60b8e2f990b809ca1b3e104de127767864284e6c228f1fb39
 
-pihole_image: >-
-  docker.io/pihole/pihole@sha256:f7d1be836e3bc608b56d82fc9904f5a831cdfbc0dc9c6d58f94e4c985c70038b
 pihole_web_password: "{{ lookup('env', 'PIHOLE_WEB_PASSWORD') }}"
-pihole_upstream_dns:
-  - 1.1.1.1
-  - 9.9.9.9
 
-caddy_enabled: true
-caddy_http_port: 80
-caddy_https_port: 443
-caddy_tls_mode: "{{ 'internal' if pi_emulation_mode else 'cloudflare' }}"
 caddy_acme_email: philib.krogh@gmail.com
 caddy_cloudflare_api_token: "{{ lookup('env', 'CLOUDFLARE_ACME_TOKEN') }}"
-caddy_builder_image: >-
-  docker.io/library/caddy:2.10.2-builder-alpine@sha256:4cff3ae272ea05842adb4546e35961e4947aeea65f80fa1eb62a35b960e84971
-caddy_runtime_image: >-
-  docker.io/library/caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
-caddy_cloudflare_plugin: github.com/caddy-dns/cloudflare@v0.2.4
-caddy_build_custom_image: "{{ not pi_emulation_mode }}"
-caddy_image: >-
-  {{ 'localhost/homelab-caddy:2.10.2-cloudflare-0.2.4'
-     if caddy_build_custom_image else caddy_runtime_image }}
 
 # Appliance identity and access plane. Secret values are injected by
 # SecretSpec into the environment at execution time; no plaintext belongs in
@@ -50,14 +32,8 @@ authelia_storage_encryption_key: "{{ lookup('env', 'AUTHELIA_STORAGE_ENCRYPTION_
 authelia_oidc_hmac_secret: "{{ lookup('env', 'AUTHELIA_OIDC_HMAC_SECRET') }}"
 authelia_oidc_issuer_private_key: "{{ lookup('env', 'AUTHELIA_OIDC_ISSUER_PRIVATE_KEY') }}"
 authelia_users_database: "{{ lookup('env', 'AUTHELIA_USERS_DATABASE') }}"
-authelia_oidc_client_secret_hashes:
-  metrics: "{{ lookup('env', 'OIDC_METRICS_CLIENT_SECRET_HASH') }}"
-  photos: "{{ lookup('env', 'OIDC_PHOTOS_CLIENT_SECRET_HASH') }}"
-  news: "{{ lookup('env', 'OIDC_NEWS_CLIENT_SECRET_HASH') }}"
-  vault: "{{ lookup('env', 'OIDC_VAULT_CLIENT_SECRET_HASH') }}"
 
 # Dynamic public records are generated from the inventory's internet routes.
-ddns_enabled: true
 # Cloudflare's authoritative zone is the parent of the private service
 # namespace. Keep these explicit: pi_domain is not a Cloudflare zone ID.
 ddns_zone_name: phibkro.org

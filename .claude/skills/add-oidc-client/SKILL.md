@@ -6,11 +6,11 @@ description: USE WHEN bootstrapping a new Authelia OIDC client — stores the ra
 # Bootstrap a new Authelia OIDC client
 
 OIDC client metadata comes from `endpoints.<name>.oidc` in the service
-manifest. The inventory projection derives `nori.lanRoutes` and the Pi
-Authelia client list from that source. The workstation client receives the raw
-value from `workstation-runtime.yaml`. Pi Authelia receives only the PBKDF2
-verifier through its production SecretSpec profile. The service module owns
-its non-secret OIDC variables and runtime wiring.
+manifest. The inventory compiler derives the canonical route and Pi Authelia
+client projections. Each Nix-managed workload receives only its host-local raw
+value. Pi Authelia receives only the PBKDF2 verifier through its production
+SecretSpec profile. The service module owns its non-secret OIDC variables and
+runtime wiring.
 
 The raw value and verifier must derive from the same password-manager value.
 Neither value belongs in committed Nix or an unscoped process environment.
@@ -51,13 +51,9 @@ devenv shell -- secretspec set \
 ```
 
 Before this command, declare the variable in `infra/pi/secretspec.toml` and add
-it to the `deployment` scope. Also map the client ID to that variable in
-`infra/pi/playbooks/group_vars/all.yml`:
-
-```yaml
-authelia_oidc_client_secret_hashes:
-  <name>: "{{ lookup('env', 'OIDC_<NAME>_CLIENT_SECRET_HASH') }}"
-```
+it to the `deployment` scope. Set the same environment-variable name as
+`secretHashEnvName` in the manifest OIDC block. The Pi adapter resolves it at
+deployment time.
 
 The raw client value and verifier have different recipients. Do not copy both
 into one SOPS file.
@@ -76,6 +72,7 @@ endpoints.<name> = {
     clientName = "Display Name";
     redirectPath = "/path/the/service/uses";
     tokenEndpointAuthMethod = "client_secret_basic";
+    secretHashEnvName = "OIDC_<NAME>_CLIENT_SECRET_HASH";
     # Optional overrides:
     # scopes = [ "openid" "profile" "email" "groups" ];
     # authorizationPolicy = "one_factor";
@@ -106,7 +103,7 @@ systemd.services.<svc>.serviceConfig = {
 Plus non-secret OIDC env vars in `services.<svc>.environment`:
 
 ```nix
-OPENID_PROVIDER_URL = "https://auth.${config.nori.domain}/.well-known/openid-configuration";
+OPENID_PROVIDER_URL = "https://auth.${config.nori.inventory.site.domain}/.well-known/openid-configuration";
 OAUTH_CLIENT_ID     = "<name>";
 OAUTH_PROVIDER_NAME = "Authelia";
 ENABLE_OAUTH_SIGNUP = "True";

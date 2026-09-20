@@ -111,32 +111,27 @@
     just test-fs
     just test-eval
 
-# Each `nori.lanRoutes.<X>` is a Reader-Writer effect: one declaration
-# emits Caddy route + Gatus monitor + DNS record + (optional) Authelia
-# OIDC client. The test walks each layer for desync from the declaration.
+# The compiler-owned route projection drives the Pi's Caddy, Pi-hole, Gatus,
+# and Authelia configuration. This check compares deployed entry-plane state
+# with that one projection.
 #
-# Post-ADR-0003 the Caddy + Blocky entry plane lives on pi — DNS for
-# `*.${nori.domain}` resolves to pi's LAN IP regardless of which host
-# runs the backend (`runsOn`). The Caddy admin probe SSHes to pi; the
-# DNS + HTTPS probes run from wherever you invoke `just test-routes`.
+# DNS for `*.${site.domain}` resolves to the Pi's LAN address regardless of
+# the backend host. The Caddy inspection uses the production inventory and
+# pinned host key. DNS and HTTPS probes run from the invoking host.
 #
-# Runtime-introspection test: `nori.lanRoutes.<X>` → Caddy + Gatus + DNS + OIDC, per layer.
+# Runtime-introspection test: canonical routes → deployed Caddy + DNS + HTTPS.
 @test-routes:
     #!/usr/bin/env bash
     set -euo pipefail
     fail=0
 
-    host_self=$(hostname)
-    flake_ref=".#nixosConfigurations.${host_self}.config"
-    declared=$(nix eval --json "${flake_ref}.nori.lanRoutes" \
-                 --apply 'r: builtins.attrNames r' 2>/dev/null \
+    inventory_ref=".#lib.noriInventory"
+    declared=$(nix eval --json "${inventory_ref}.routes" \
+                 --apply 'routes: builtins.attrNames routes' 2>/dev/null \
                | nix shell nixpkgs#jq -c jq -r '.[]')
-    domain=$(nix eval --raw "${flake_ref}.nori.domain" 2>/dev/null)
-    # nori.lanIp is overridden to Pi's LAN address in the shared NixOS
-    # realization. Every declared route's DNS record resolves here regardless
-    # of `runsOn`, because Pi owns the entry plane.
-    expected_ip=$(nix eval --raw "${flake_ref}.nori.lanIp" 2>/dev/null)
-    pi_tailnet=$(nix eval --raw "${flake_ref}.nori.inventory.hosts.pi.tailnetIp" 2>/dev/null)
+    domain=$(nix eval --raw "${inventory_ref}.site.domain" 2>/dev/null)
+    expected_ip=$(nix eval --raw "${inventory_ref}.hosts.pi.lanIp" 2>/dev/null)
+    pi_tailnet=$(nix eval --raw "${inventory_ref}.hosts.pi.tailnetIp" 2>/dev/null)
 
     # Production Caddy deliberately disables its admin API. Inspect the
     # Caddyfile mounted in the running container through the production
@@ -188,31 +183,26 @@
     echo
     [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
 
-# Authelia is the value-prop linchpin for family-tier services: every
-# OIDC route depends on it. When it silently goes wrong (sops key
-# rotation without `sops updatekeys`, config schema drift on upgrade,
-# OIDC client count desync), users discover via "login is broken" and
-# the operator hears about it from a phone. Catch it on a probe instead.
+# Authelia is the value-prop linchpin for family-tier services. This probe
+# verifies the Ansible-managed Pi runtime against the compiler-owned OIDC
+# client projection.
 #
-# Tier 1 — systemd: authelia-main.service is active on pi.
-# Tier 2 — health: /api/health responds OK via the local loopback.
-# Tier 3 — OIDC: /.well-known/openid-configuration declares the right
-#                issuer (caddy reverse-proxy + cert + authelia all
-#                compose cleanly).
-# Tier 4 — clients: count of OIDC clients authelia knows about ==
-#                   count of nori.lanRoutes.<X>.oidc declarations
-#                   (catches a route added without a rebuild on pi).
+# Tier 1 — systemd: authelia.service is active on Pi.
+# Tier 2 — health: /api/health responds OK on the inventory-declared address.
+# Tier 3 — OIDC discovery declares the canonical issuer through Caddy.
+# Tier 4 — every projected OIDC client has a non-empty hashed secret on Pi.
 #
-# Runtime-introspection test: authelia live ↔ nori.lanRoutes.<X>.oidc declarations.
+# Runtime-introspection test: canonical OIDC routes ↔ deployed Pi Authelia.
 @test-authelia:
     #!/usr/bin/env bash
     set -euo pipefail
     fail=0
 
     host_self=$(hostname)
-    flake_ref=".#nixosConfigurations.${host_self}.config"
-    domain=$(nix eval --raw "${flake_ref}.nori.domain" 2>/dev/null)
-    pi_tailnet=$(nix eval --raw "${flake_ref}.nori.inventory.hosts.pi.tailnetIp" 2>/dev/null)
+    inventory_ref=".#lib.noriInventory"
+    domain=$(nix eval --raw "${inventory_ref}.site.domain" 2>/dev/null)
+    pi_lan=$(nix eval --raw "${inventory_ref}.hosts.pi.lanIp" 2>/dev/null)
+    pi_tailnet=$(nix eval --raw "${inventory_ref}.hosts.pi.tailnetIp" 2>/dev/null)
 
     # Helpers — every probe lands on pi regardless of which host invoked
     # this recipe (authelia only runs there).
@@ -227,16 +217,16 @@
       fi
     }
 
-    echo "=== Tier 1 — authelia-main.service active on pi ==="
-    active=$(pi_ssh "systemctl is-active authelia-main.service" 2>/dev/null || echo "unknown")
+    echo "=== Tier 1 — authelia.service active on Pi ==="
+    active=$(pi_ssh "systemctl is-active authelia.service" 2>/dev/null || echo "unknown")
     if [[ "$active" == "active" ]]; then
       echo "  ✓ active"
     else
       echo "  ✗ $active"; fail=1
     fi
 
-    echo "=== Tier 2 — /api/health on loopback ==="
-    health=$(pi_curl http://127.0.0.1:9091/api/health 2>/dev/null || echo "")
+    echo "=== Tier 2 — /api/health on Pi service address ==="
+    health=$(pi_curl "http://${pi_lan}:9091/api/health" 2>/dev/null || echo "")
     if echo "$health" | grep -qi 'ok'; then
       echo "  ✓ OK"
     else
@@ -253,24 +243,17 @@
       echo "  ✗ issuer=$issuer_actual (expected $issuer_expected)"; fail=1
     fi
 
-    echo "=== Tier 4 — sops secrets for every declared OIDC route present + non-empty ==="
-    # Authelia config validation rejects empty/malformed secrets at
-    # startup, so if Tier 1 passed, the secrets evaluated OK. But the
-    # *files* in /run/secrets can desync after a sops updatekeys race;
-    # this tier catches that class. One file per declared OIDC route
-    # (raw client-secret + PBKDF2 hash).
-    declared_oidc=$(nix eval --raw "${flake_ref}.nori.lanRoutes" \
-                      --apply 'r: builtins.concatStringsSep " " (builtins.filter (n: r.${n}.oidc != null) (builtins.attrNames r))' 2>/dev/null)
+    echo "=== Tier 4 — hashed secret for every projected OIDC client ==="
+    declared_oidc=$(nix eval --raw "${inventory_ref}.routes" \
+                      --apply 'routes: builtins.concatStringsSep " " (builtins.filter (name: routes.${name}.oidc != null) (builtins.attrNames routes))' 2>/dev/null)
     for route in $declared_oidc; do
-      for kind in client-secret client-secret-hash; do
-        path="/run/secrets/oidc-${route}-${kind}"
-        sz=$(pi_ssh "stat -c '%s' '$path' 2>/dev/null || echo 0")
-        if [[ "$sz" -gt 0 ]]; then
-          echo "  ✓ oidc-${route}-${kind} ($sz bytes)"
-        else
-          echo "  ✗ oidc-${route}-${kind} missing or empty"; fail=1
-        fi
-      done
+      path="/etc/authelia/secrets/oidc-${route}-client-secret-hash"
+      sz=$(pi_ssh "stat -c '%s' '$path' 2>/dev/null || echo 0")
+      if [[ "$sz" -gt 0 ]]; then
+        echo "  ✓ oidc-${route}-client-secret-hash ($sz bytes)"
+      else
+        echo "  ✗ oidc-${route}-client-secret-hash missing or empty"; fail=1
+      fi
     done
 
     echo

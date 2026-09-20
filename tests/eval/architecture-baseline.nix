@@ -171,7 +171,6 @@ let
     ];
     ntfy-server = [ "pi" ];
     ollama = [ "workstation" ];
-    open-webui = [ "workstation" ];
     paperless = [ "workstation" ];
     prowlarr = [ "workstation" ];
     qbittorrent = [ "workstation" ];
@@ -199,14 +198,17 @@ let
   runtimeEvidenceName = workloadName: runtimeEvidenceNames.${workloadName} or workloadName;
   hasMigratedRuntime =
     workloadName: host: builtins.hasAttr (runtimeEvidenceName workloadName) host.config.nori.backups;
-  runtimePlacementCorrect = lib.all (
+  runtimePlacementMismatches = lib.concatMap (
     workloadName:
-    lib.all (
+    lib.concatMap (
       hostName:
-      hasMigratedRuntime workloadName hosts.${hostName}
-      == lib.elem hostName migratedRuntimePlacements.${workloadName}
+      lib.optional (
+        hasMigratedRuntime workloadName hosts.${hostName}
+        != lib.elem hostName migratedRuntimePlacements.${workloadName}
+      ) "${workloadName}@${hostName}"
     ) (lib.attrNames hosts)
   ) (lib.attrNames migratedRuntimePlacements);
+  runtimePlacementCorrect = runtimePlacementMismatches == [ ];
 
   migratedCatalogEndpoints = {
     authelia.auth = "pi";
@@ -316,7 +318,7 @@ let
 
   cacheContractCorrect =
     let
-      cacheUrl = "https://cache.${hosts.workstation.config.nori.domain}/nori";
+      cacheUrl = "https://cache.${hosts.workstation.config.nori.inventory.site.domain}/nori";
       cacheKey = "attic.nori.lan-1:3zt/aS8K1bSEjNvZQB9ga9OeZTxcRkvbb7aYRI/vobo=";
       everyHostSubscribes = lib.all (
         host:
@@ -561,6 +563,15 @@ let
       monitored = true;
       dashboard = true;
     };
+    pihole = {
+      port = 8081;
+      runsOn = "pi";
+      audience = "operator";
+      exposeOnTailnet = false;
+      auth = "exception";
+      monitored = true;
+      dashboard = false;
+    };
     projects-origin = {
       port = 9081;
       runsOn = "workstation";
@@ -670,7 +681,7 @@ else
 
     Workload placement matches: ${toString workloadsMatch}
     Route fingerprints match:   ${toString routesMatch}
-    Migrated runtime placement: ${toString runtimePlacementCorrect}
+    Migrated runtime placement: ${toString runtimePlacementCorrect} (${lib.concatStringsSep ", " runtimePlacementMismatches})
     Migrated catalog global:    ${toString catalogVisibleEverywhere}
     Lifecycle state correct:    ${toString lifecycleStateCorrect}
     Papers-fetch compatibility: ${toString papersFetchCompatibility}

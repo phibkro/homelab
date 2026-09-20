@@ -1,4 +1,4 @@
-{ config, ... }:
+{ ... }:
 
 /**
   Universal NixOS bits every host imports regardless of role.
@@ -8,15 +8,11 @@
    - `base.nix` / `users.nix` / `tailscale.nix` / `sops.nix` —
      baseline OS-level config (locale, sshd, the `nori` operator
      user, tailnet daemon, sops machinery).
-   - `../<concern>/` — PaaS layer (storage / networking /
-     access / backup / capabilities / observability) exposing
-     `nori.<X>` options. Hosts receive the typed `nori.inventory`
-     projection alongside `nori.gpu` hardware capabilities and `nori.fs`
-     filesystem layout; workloads in `services/` consume context and
-     contribute declarations (`nori.lanRoutes`, `nori.backups`,
-     `nori.harden`) which infra generators interpret.
-  Topology: `nori.inventory.hosts` is injected from `inventory/hosts.nix`
-  before module evaluation. Its typed schema lives in
+   - `../<concern>/` — PaaS options for storage, access, backup,
+     capabilities, and observability.
+
+  The pure inventory compiles workload declarations before NixOS and Ansible
+  adapters consume them. Its typed NixOS projection lives in
   `infra/common/nixos/inventory.nix`.
 */
 {
@@ -31,7 +27,7 @@
     # Infra layer — the PaaS concerns + their schemas.
     ./inventory.nix
     ./storage
-    ./routes.nix
+    ./workload-oidc.nix
     ./backup.nix
     ./service-hardening.nix
     ./alerts.nix
@@ -42,13 +38,4 @@
     ./motd.nix # codename banner + live MOTD on login
   ];
 
-  /**
-    Pi-central entry plane (ADR-0003 + ADR-0004): family-tier
-    traffic lands on pi's Caddy via wildcard `*.${nori.domain}`
-    LE cert. The lan-route default would otherwise derive lanIp
-    from the unique workhorse with a non-null lanIp (workstation)
-    and route every client through workstation's now-retired
-    Caddy.
-  */
-  nori.lanIp = config.nori.inventory.hosts.${config.nori.inventory.site.entryPlaneHost}.lanIp;
 }

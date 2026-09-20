@@ -110,16 +110,16 @@ REFACTOR  consolidate; ensure the test still passes on the cleanest
 Eval tests look like:
 
 ```nix
-# tests/eval/lanroute-port-validation.nix
+# tests/eval/inventory-route-invariants.nix
 let
-  config = ... eval a NixOS config with two routes on the same port ... ;
+  invalid = ... compile two active endpoints with the same port ...;
 in
-  assert (config exists →  this should fail eval);
-  "ok"
+assert !invalid.success;
+"ok"
 ```
 
-Run: `nix-instantiate --eval tests/eval/lanroute-port-validation.nix`.
-Sub-second. Add to flake checks via `runCommand`.
+Run the registered flake check:
+`nix build .#checks.x86_64-linux.eval-inventory-route-invariants`.
 
 ### nixosTest (layer 2)
 

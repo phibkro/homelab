@@ -40,7 +40,7 @@
         runsOn ≠ proxy host. `exposeOnTailnet = true` on the route
         opens 8222 on tailscale0; LAN stays closed.
       */
-      DOMAIN = "https://vault.${config.nori.domain}";
+      DOMAIN = "https://vault.${config.nori.inventory.site.domain}";
       ROCKET_ADDRESS = "0.0.0.0";
       ROCKET_PORT = 8222;
 
@@ -68,7 +68,7 @@
         asymmetric case (Authelia broken, Vaultwarden fine) is real.
       */
       SSO_ENABLED = true;
-      SSO_AUTHORITY = "https://auth.${config.nori.domain}";
+      SSO_AUTHORITY = "https://auth.${config.nori.inventory.site.domain}";
       SSO_CLIENT_ID = "vault";
       # SSO_CLIENT_SECRET injected via EnvironmentFile (sops template);
       # see systemd.services.vaultwarden.serviceConfig below.

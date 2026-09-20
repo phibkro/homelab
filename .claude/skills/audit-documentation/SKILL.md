@@ -61,17 +61,12 @@ When file A's comment refers to file B's behavior, apply this test:
 > Just restates B → CUT (downstream-of-canonical-home paraphrase).
 
 Worked examples (from `git show fb1edfc`, the auth-perimeter run):
-
-* **KEEP**: `services/authelia/nixos.nix` cookies-domain comment that references Caddy
-  terminating TLS. The Caddy reference explains why the cookie domain
-  is `nori.lan` — load-bearing decision in `services/authelia/nixos.nix`.
-* **KEEP**: `services/caddy/nixos.nix` firewall comment that references `nori.lanIp`
-  in `infra/common/nixos/routes.nix`. The reference explains why caddy
-  can listen globally (the resolution chain `*.nori.lan → nori.lanIp`
-  determines which interface traffic arrives on).
-* **CUT**: `services/authelia/nixos.nix` preamble that restates Caddy's reverse-proxy
-  framing without adding why-it-matters-here. Pure paraphrase of
-  Caddy's role.
+* **KEEP**: `inventory/default.nix` comments that explain why a projected route
+  uses the entry-plane address instead of its backend address.
+* **KEEP**: service manifest comments that record a non-obvious authentication
+  or placement constraint.
+* **CUT**: comments in an adapter that restate the manifest fields without
+  explaining a local constraint.
 
 The cross-file pointer earns rent when it's *load-bearing for the file
 it lives in*; it's paraphrase when it just restates the other file.

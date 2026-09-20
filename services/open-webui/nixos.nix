@@ -47,9 +47,9 @@ in
       WEBUI_AUTH = "True";
       ENABLE_SIGNUP = "False";
       DEFAULT_MODELS = "";
-      # OAUTH_CLIENT_SECRET is injected via EnvironmentFile below
-      # (sops template auto-declared by `nori.lanRoutes.chat.oidc`).
-      OPENID_PROVIDER_URL = "https://auth.${config.nori.domain}/.well-known/openid-configuration";
+      # OAUTH_CLIENT_SECRET is injected through the host-local template
+      # derived from this workload's manifest OIDC declaration.
+      OPENID_PROVIDER_URL = "https://auth.${config.nori.inventory.site.domain}/.well-known/openid-configuration";
       OAUTH_CLIENT_ID = "chat";
       OAUTH_PROVIDER_NAME = "Authelia";
       ENABLE_OAUTH_SIGNUP = "True";

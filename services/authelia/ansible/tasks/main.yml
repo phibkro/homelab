@@ -1,4 +1,20 @@
 ---
+- name: Resolve inventory-declared OIDC hash inputs from SecretSpec
+  ansible.builtin.set_fact:
+    authelia_oidc_client_secret_hashes: >-
+      {{
+        authelia_oidc_client_secret_hashes
+        | combine({
+            item.client_id:
+              lookup('ansible.builtin.env', item.secret_hash_env_name)
+          })
+      }}
+  loop: "{{ authelia_oidc_clients }}"
+  loop_control:
+    label: "{{ item.client_id }}"
+  no_log: true
+  when: authelia_enabled | bool
+
 - name: Require the Authelia integration inputs
   ansible.builtin.assert:
     that:
@@ -36,6 +52,9 @@
         == (authelia_oidc_clients | length)
       - >-
         (authelia_oidc_clients | selectattr('scopes', 'defined') | list | length)
+        == (authelia_oidc_clients | length)
+      - >-
+        (authelia_oidc_clients | selectattr('secret_hash_env_name', 'defined') | list | length)
         == (authelia_oidc_clients | length)
       - >-
         (authelia_oidc_clients | selectattr('token_endpoint_auth_method', 'defined') | list | length)

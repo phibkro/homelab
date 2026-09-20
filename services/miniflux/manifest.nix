@@ -25,6 +25,7 @@
       redirectPath = "/oauth2/oidc/callback";
       tokenEndpointAuthMethod = "client_secret_basic";
       secretEnvName = "OAUTH2_CLIENT_SECRET";
+      secretHashEnvName = "OIDC_NEWS_CLIENT_SECRET_HASH";
     };
   };
 }

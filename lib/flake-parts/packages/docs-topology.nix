@@ -110,7 +110,7 @@
             satisfy the schema. Schema lives in `infra/common/nixos/inventory.nix`.
 
             SCHEMA_HEADER
-            # See docs-lan-route for the GFM-cleanup rationale.
+            # Normalize nixosOptionsDoc output to plain GFM.
             sed -e 's/\\\([.<>()]\)/\1/g' \
                 -e 's|\[\([^]]*\)\](file://[^)]*)|`\1`|g' \
                 ${optionsDoc.optionsCommonMark} >> $out

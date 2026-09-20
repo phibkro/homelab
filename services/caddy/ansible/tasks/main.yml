@@ -1,4 +1,12 @@
 ---
+- name: Remove Caddy when it is not selected by the inventory
+  containers.podman.podman_container:
+    name: caddy
+    state: absent
+  when:
+    - not caddy_enabled | bool
+    - podman_available | bool
+
 - name: Validate the Caddy domain contract
   ansible.builtin.assert:
     that:

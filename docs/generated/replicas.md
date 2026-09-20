@@ -152,7 +152,7 @@ submodule
 
 
 
-Source host name (key into ` nori.hosts `).
+Source host name (key into ` nori.inventory.hosts `).
 
 
 
@@ -200,7 +200,7 @@ submodule
 
 
 
-Target host name (key into ` nori.hosts `).
+Target host name (key into ` nori.inventory.hosts `).
 
 
 

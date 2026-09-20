@@ -45,7 +45,7 @@
           host. Its signing key is declarative, so a cache response is accepted
           only when it matches this trust root.
         */
-        "https://cache.${config.nori.domain}/nori"
+        "https://cache.${config.nori.inventory.site.domain}/nori"
       ];
       extra-trusted-public-keys = [
         "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="

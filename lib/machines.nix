@@ -39,7 +39,6 @@ let
   hosts = inventory.internal.hosts;
   nixosHosts = lib.filterAttrs (_: host: host.kind == "nixos") hosts;
 
-
   mkHost =
     name: host:
     lib.nixosSystem {
@@ -55,7 +54,6 @@ let
           {
             config.networking.hostName = name;
             config.nori.inventory = inventory.forHost name;
-            config.nori.lanRoutes = inventory.internal.lanRoutes;
             config.home-manager = {
               useGlobalPkgs = true;
               useUserPackages = true;
