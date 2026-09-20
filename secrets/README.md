@@ -8,7 +8,9 @@ SOPS, SecretSpec, or the final authorized process.
 | File | Authority | Recipients |
 |---|---|---|
 | `network.yaml` | Shared Akkar Wi-Fi credential | Mac, workstation user, workstation host, Adelie host |
+| `shared-runtime.yaml` | Runtime values consumed by both NixOS hosts | Mac, workstation user, workstation host, Adelie host |
 | `workstation-runtime.yaml` | Values materialized for workstation services | Mac, workstation user, workstation host |
+| `adelie-runtime.yaml` | Values materialized for Adelie services | Mac, workstation user, Adelie host |
 | `operator-tools.yaml` | Interactive infrastructure-control credentials | Mac, workstation user |
 
 `.sops.yaml` has one explicit creation rule for each file. There is no
@@ -26,6 +28,7 @@ Use a masked SecretSpec prompt to set or rotate a value:
 
 ```bash
 secretspec set --profile workstation EXA_API_KEY
+secretspec set --profile adelie OIDC_NEWS_CLIENT_SECRET
 secretspec set --profile wifi AKKAR_WPA_PSK
 ```
 
@@ -53,8 +56,9 @@ or DDNS runtime adapter, its composition must supply that host's SOPS source.
 
 ## NixOS routing
 
-`infra/common/nixos/sops.nix` sets `workstation-runtime.yaml` as the default
-source. A shared or host-specific value must declare its file explicitly.
+`infra/common/nixos/sops.nix` sets `workstation-runtime.yaml` as the shared
+default. Adelie overrides the default with `adelie-runtime.yaml`. A shared or
+host-specific value must declare its file explicitly.
 
 The Wi-Fi module uses:
 
@@ -68,16 +72,17 @@ The consuming declaration must set the narrow owner, group, and mode.
 
 ## OIDC client rotation
 
-Raw OIDC client values belong to the workstation client. PBKDF2 verifier hashes
-belong to the Pi identity provider. Do not store both in one recipient domain.
+Raw OIDC client values belong to the host that runs the client. PBKDF2
+verifier hashes belong to the Pi identity provider. Do not store both in one
+recipient domain.
 
 For an existing client such as `news`:
 
 1. Generate a random raw value in the operator password manager.
-2. Store it through the workstation SecretSpec profile:
+2. Store it through the consuming host's SecretSpec profile:
 
    ```bash
-   secretspec set --profile workstation OIDC_NEWS_CLIENT_SECRET
+   secretspec set --profile adelie OIDC_NEWS_CLIENT_SECRET
    ```
 
 3. Generate the verifier through Authelia's masked terminal prompt:

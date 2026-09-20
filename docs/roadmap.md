@@ -41,12 +41,10 @@ Continue in this order:
   known-internal and random-host 404s. Confirm the router preserves the real
   client source IP.
 
-- **Finish the Pi appliance migration.** The intended steady state is a
-  two-machine operational core: Pi owns the failure-independent network
-  appliance plane (DNS, HTTPS entry, identity, monitoring, alerting, Tailscale
-  routing, and appliance backups), while workstation owns desktop, storage,
-  applications, compute, and GPU workloads. `inventory/hosts.nix` remains the
-  topology authority while `infra/pi/` provisions the replacement
+- **Finish the Pi appliance migration.** Pi owns the failure-independent
+  network appliance plane: DNS, HTTPS entry, identity, Glance, monitoring,
+  alerting, Tailscale routing, and appliance backups. `inventory/hosts.nix`
+  remains the topology authority while `infra/pi/` provisions the
   Debian/Ansible/Podman realization. Complete the physical reboot and off-LAN
   gates in `docs/specs/ansible-pi-plan-b.md`. Ansible is now the sole live
   deployment owner; the verified NixOS image remains only as an offline
@@ -58,14 +56,14 @@ Continue in this order:
   `docs/archive/reports/2026-09-19-backup-evidence.md`. Aurora and Pavilion are
   retired.
 
-- **Admit Adelie physically without moving storage.** Source admission is
-  complete and the clean committed NixOS closure builds. The later physical
-  milestone must verify the Samsung by-id disk and UEFI mode, establish unique
-  SSH/SOPS identity through an independently trusted channel, install and boot,
-  verify Tailscale identity and rollback, and confirm the fleet-agent allow-list.
-  IronWolf and OneTouch remain attached to workstation. Contract and evidence:
-  `docs/specs/2026-09-19-adelie-admission.md` and
-  `docs/archive/reports/2026-09-19-adelie-admission.md`.
+- **Activate and accept the three-host service migration.** The source
+  configuration moves the SSD-local application tier to Adelie, keeps media and
+  GPU services on workstation, and moves Glance to Pi. Adelie sends four
+  authoritative-state Restic repositories to a restricted OneTouch SFTP namespace.
+  Before activation, verify Adelie's hardware identity, build both NixOS
+  closures, plan the Pi change, snapshot each authoritative state directory,
+  and follow the per-service stop/copy/start gates. Contract:
+  `docs/specs/2026-09-20-three-host-service-migration.md`.
 
 - **Sunshine remote-desktop pairing.** Deployed (`services/sunshine/nixos.nix`); NVENC builds confirmed (`h264/hevc/av1_nvenc`). Outstanding: one-time Moonlight pairing.
 
@@ -106,10 +104,6 @@ Continue in this order:
   - **Native OIDC:** Komga could move from forward-auth to per-user OIDC if family members start wanting separate read-history; Spring Security OAuth2 config is verbose but doable.
   - **Skip / problematic:** Jellyfin (mobile/TV clients bypass cookie-based forward-auth; native SSO plugin has sharp historical edges). Radicale CalDAV clients can't follow forward-auth redirects, must stay on htpasswd. Glance/Gatus are intentionally public. Syncthing is single-admin. ntfy push API path exemption ends up too permissive to be worth gating the web UI alone.
 
-- **Lower-priority appliance additions.** Glance and Radicale remain on
-  workstation: neither must move to Pi merely because it is lightweight. Move
-  another service onto the appliance only when its function must survive a
-  workstation outage and it fits the Pi's bounded-write posture.
 
 ## Promotion register (from `docs/invariants.md`)
 

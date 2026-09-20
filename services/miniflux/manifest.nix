@@ -3,7 +3,7 @@
   hostRoles = [ "workhorse" ];
   placement = {
     strategy = "first-unique";
-    selectors = [ { tags = [ "primary-service-host" ]; } ];
+    selectors = [ { tags = [ "application-service-host" ]; } ];
     cardinality = {
       min = 1;
       max = 1;

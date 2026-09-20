@@ -7,8 +7,9 @@ are disabled. The [September 19 inspection](../archive/reports/2026-09-19-backup
 records the enabled policy and observed workstation backup/restore evidence.
 
 ```text
-verify existing drive → safe attachment → verify identity + capacity
- → enable workstation destination → verify SFTP → enable Pi → backup + restore
+verify drive → safe attachment → verify identity + capacity
+ → activate workstation receiver → verify Pi and Adelie namespaces
+ → enable each sender → backup + check + restore
 ```
 
 This procedure changes live configuration and requires operator approval.
@@ -50,9 +51,9 @@ archives. The media source trees occupied approximately 489 GiB during this
 migration; this allocated-size observation is not a compressed backup estimate.
 
 Verify the workstation SSH host public key through a trusted local session.
-Compare it with the Pi host-key pin in inventory. Derive only the public
-half of Pi's protected backup credential and compare it with the receiver's
-authorized key. Do not display or copy private credentials.
+Compare it with both sender host-key pins in inventory. Derive only the public
+half of each protected backup credential. Compare each key with its receiver
+account. Do not display or copy private credentials.
 
 Pi's recorded SSH host key did not match the responding device during the
 September 6 preflight. Resolve that through an independently trusted Pi session
@@ -60,23 +61,49 @@ before remote administration; do not disable strict checking or accept a scan
 as identity proof. That preflight did not verify production credential matching;
 recheck it when changing or recovering the transport.
 
-## Enable and verify both senders
+## Enable and verify remote senders
 
 If the canonical backup policy is disabled, enable it only after connection,
-identity, capacity and credentials pass. For configuration changes, build and
-review workstation first, then activate it after approval. Confirm the real
-OneTouch filesystem is mounted at the declared path and the receiver is
-restricted to its Pi subtree.
+identity, capacity, and credential checks pass. Build and review workstation
+first. Activate it only after approval.
 
-From Pi, use the pinned transport to verify a disposable write/read within that
-subtree. Confirm sibling workstation repositories and shell execution are
-inaccessible. Remove only the test file you created.
+Confirm OneTouch is mounted at `/mnt/backup`. The receiver must create two
+root-owned chroots:
 
-Generate inventory, run `just pi::plan`, review it, then deploy Pi after approval.
-For both hosts, trigger fresh jobs from the evaluated manifest, record snapshot
-IDs, run integrity checks and restore into disposable directories. Compare
-restored content with the backed-up source. Validate database dumps separately;
-a successful file restore alone does not prove application recovery.
+- `/mnt/backup/pi` for `restic`
+- `/mnt/backup/adelie` for `restic-adelie`
+
+Pi gets one writable directory per declared job, such as `/pihole`. Adelie gets
+the writable `/repos` prefix for its four repositories. Confirm that each
+account cannot see the sibling chroot and cannot run a shell.
+
+From Pi, use its pinned transport for a disposable write and read inside one
+declared job directory. Confirm that `/adelie` is inaccessible. Remove only the
+test file.
+
+From Adelie, use its pinned transport for a disposable write and read under
+`/repos`. Confirm that `/pi` is inaccessible. Remove only the test file.
+
+Do not create `/var/lib/nori/migration/backups-ready` on Adelie until both
+transport checks pass.
+
+Generate inventory and run `just pi::plan`. Review it, then deploy Pi after
+approval. Trigger the four Adelie jobs for `miniflux`, `radicale`, `stremio`,
+and `vaultwarden`. Run an integrity check after all four jobs complete.
+
+On workstation, inspect these repositories:
+
+- `/mnt/backup/adelie/repos/miniflux`
+- `/mnt/backup/adelie/repos/radicale`
+- `/mnt/backup/adelie/repos/stremio`
+- `/mnt/backup/adelie/repos/vaultwarden`
+
+Record snapshot IDs. Restore each repository into a disposable directory.
+Compare restored content with its source. Validate database dumps separately.
+A successful file restore alone does not prove application recovery.
+
+Run the equivalent backup, check, and restore journey for Pi and workstation
+jobs. Their success does not establish Adelie recovery.
 
 Existing MP510 archives remain preserved until a separately approved relocation
 or retention decision. Policy changes in `.sops.yaml` do not re-encrypt old

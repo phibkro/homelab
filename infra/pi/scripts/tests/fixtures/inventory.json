@@ -66,6 +66,27 @@
               "/api/*"
             ]
           },
+          "monitor": {},
+          "dashboard": {
+            "title": "Calibre Web",
+            "icon": "sh:calibre-web",
+            "group": "Consume",
+            "description": "Ebook reader"
+          }
+        }
+      }
+    },
+    "glance": {
+      "active": true,
+      "hosts": [
+        "pi"
+      ],
+      "endpoints": {
+        "home": {
+          "port": 8086,
+          "runsOn": "pi",
+          "audience": "public",
+          "exposeOnTailnet": true,
           "monitor": {}
         }
       }

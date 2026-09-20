@@ -1,5 +1,6 @@
 {
   config,
+  lib,
   pkgs,
   ...
 }:
@@ -12,7 +13,7 @@
 
     === Bootstrap ===
       1. Follow secrets/README.md "OIDC client rotation" for `vault`.
-      2. Run the deployment plan, then activate the workstation.
+      2. Run the deployment plan, then activate Adelie.
       3. Connect to https://vault.home.phibkro.org.
       4. Create master account (used as password-fallback if Authelia
          is ever down; SSO_ONLY = false leaves the door open).
@@ -84,18 +85,15 @@
 
   nori.harden.vaultwarden = { };
 
-  /*
-    SSO_CLIENT_SECRET comes from the sops template auto-generated
-    by lan-route. Vaultwarden runs under a static `vaultwarden`
-    user (not DynamicUser) so technically `SupplementaryGroups`
-    could be skipped — but the upstream module owns the user, and
-    the env file's mode is 0440 root:keys, so adding `keys`
-    explicitly keeps the convention uniform across services.
-  */
-  systemd.services.vaultwarden.serviceConfig = {
-    EnvironmentFile = config.sops.templates."oidc-vault-env".path;
-    SupplementaryGroups = [ "keys" ];
+  # Vaultwarden is a static user, so its OIDC environment file needs no shared
+  # credential-reader group.
+  sops.templates."oidc-vault-env" = {
+    owner = lib.mkForce "vaultwarden";
+    group = lib.mkForce "vaultwarden";
+    mode = lib.mkForce "0400";
   };
+  systemd.services.vaultwarden.serviceConfig.EnvironmentFile =
+    config.sops.templates."oidc-vault-env".path;
 
   /*
     Pattern C2 — VACUUM INTO snapshot before restic. Static
@@ -110,13 +108,15 @@
     ];
     prepareCommand = ''
       if [ -f /var/lib/vaultwarden/db.sqlite3 ]; then
-        mkdir -p /var/backup/vaultwarden
+        umask 0077
+        ${pkgs.coreutils}/bin/install -d -m 0700 -o root -g root /var/backup/vaultwarden
+        ${pkgs.coreutils}/bin/touch /var/backup/vaultwarden/.prep.lock
+        ${pkgs.coreutils}/bin/chmod 0600 /var/backup/vaultwarden/.prep.lock
         # VACUUM INTO + PRAGMA busy_timeout — see the long-form # multi-line: ok
         # rationale in navidrome.nix. The sqlite3 CLI's `.backup`
         # ignores busy_timeout, so the previous `.timeout 30000` was
         # a no-op. Vaultwarden writes on every sync/login.
-        # Serialize concurrent prep — onetouch + mp510 race fix.
-        # See navidrome.nix for the long form.
+        # Serialize concurrent backup preparations.
         (
           ${pkgs.util-linux}/bin/flock -x 9
           rm -f /var/backup/vaultwarden/db.sqlite3.tmp
@@ -124,6 +124,7 @@
             "PRAGMA busy_timeout = 30000;" \
             "VACUUM INTO '/var/backup/vaultwarden/db.sqlite3.tmp';"
           mv /var/backup/vaultwarden/db.sqlite3.tmp /var/backup/vaultwarden/db.sqlite3
+          ${pkgs.coreutils}/bin/chmod 0600 /var/backup/vaultwarden/db.sqlite3
         ) 9>/var/backup/vaultwarden/.prep.lock
       fi
     '';

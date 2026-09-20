@@ -93,6 +93,8 @@ pkgs.testers.runNixOSTest {
       # infra channel that disk-alert now delivers through (nori.alerts);
       # its baseUrl knob redirects delivery → stub receiver.
       nori.observability.ntfyNotify.baseUrl = "http://127.0.0.1:9999";
+      nori.observability.ntfyNotify.sopsFile = ./secrets/test.yaml;
+      nori.observability.ntfyNotify.secretOwner = "root";
 
       # Phase 7's stub receiver pattern — captures POST bodies + headers
       # to a file so the testScript can assert on the alert shape.

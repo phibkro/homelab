@@ -1,0 +1,140 @@
+---
+- name: Validate the explicit Glance runtime contract
+  ansible.builtin.assert:
+    that:
+      - glance_image is match('^docker\.io/glanceapp/glance:v[0-9.]+@sha256:[0-9a-f]{64}$')
+      - glance_bind_address == pi_service_bind_address
+      - glance_bind_address is match('^[0-9]+(\.[0-9]+){3}$')
+      - glance_bind_address not in ['0.0.0.0', '255.255.255.255']
+      - glance_port | int >= 1
+      - glance_port | int <= 65535
+      - glance_container_port | int == 8080
+      - glance_bookmark_groups is sequence
+      - glance_bookmark_groups is not string
+      - glance_bookmark_groups | length > 0
+    fail_msg: >-
+      Glance requires a digest-pinned image, the inventory LAN address, and
+      generated bookmark groups.
+  when: glance_enabled | bool
+
+- name: Create the Glance configuration directory
+  ansible.builtin.file:
+    path: "{{ glance_config_dir }}"
+    state: directory
+    owner: "{{ glance_uid }}"
+    group: "{{ glance_gid }}"
+    mode: "0750"
+  when: glance_enabled | bool
+
+- name: Render the Glance configuration
+  ansible.builtin.template:
+    src: glance.yml.j2
+    dest: "{{ glance_config_file }}"
+    owner: "{{ glance_uid }}"
+    group: "{{ glance_gid }}"
+    mode: "0440"
+  register: glance_config
+  when: glance_enabled | bool
+
+- name: Pull the pinned Glance image
+  containers.podman.podman_image:
+    name: "{{ glance_image }}"
+    pull: true
+    force: false
+  changed_when: false
+  when:
+    - glance_enabled | bool
+    - podman_available | bool
+
+- name: Validate the rendered Glance configuration
+  ansible.builtin.command:
+    argv:
+      - timeout
+      - 30s
+      - podman
+      - run
+      - --rm
+      - --network=none
+      - --volume={{ glance_config_file }}:/app/config/glance.yml:ro
+      - --user={{ glance_uid }}:{{ glance_gid }}
+      - --read-only
+      - --cap-drop=ALL
+      - --security-opt=no-new-privileges:true
+      - "{{ glance_image }}"
+      - config:print
+  changed_when: false
+  when:
+    - glance_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Run the Glance container
+  containers.podman.podman_container:
+    name: "{{ glance_container_name }}"
+    image: "{{ glance_image }}"
+    state: started
+    restart_policy: always
+    pull: never
+    publish:
+      - "{{ glance_bind_address }}:{{ glance_port }}:{{ glance_container_port }}"
+    user: "{{ glance_uid }}:{{ glance_gid }}"
+    recreate: "{{ glance_config.changed }}"
+    volume:
+      - "{{ glance_config_file }}:/app/config/glance.yml:ro"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      /tmp: rw,noexec,nosuid,size=16m
+  register: glance_container
+  no_log: true
+  when:
+    - glance_enabled | bool
+    - podman_available | bool
+
+- name: Verify the Glance HTTP journey
+  ansible.builtin.uri:
+    url: "http://{{ glance_bind_address }}:{{ glance_port }}/"
+    method: GET
+    status_code: 200
+    timeout: 10
+    return_content: false
+  register: glance_health
+  until: glance_health.status | default(0) == 200
+  retries: 30
+  delay: 2
+  changed_when: false
+  when:
+    - glance_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Remove Glance when explicitly disabled
+  containers.podman.podman_container:
+    name: "{{ glance_container_name }}"
+    state: absent
+  when:
+    - not glance_enabled | bool
+    - podman_available | bool
+
+- name: Remove disabled Glance configuration
+  ansible.builtin.file:
+    path: "{{ glance_config_file }}"
+    state: absent
+  when: not glance_enabled | bool
+
+- name: Report Glance convergence
+  ansible.builtin.debug:
+    msg: >-
+      {% if not podman_available %}
+      Glance runtime checks are deferred until Podman exists.
+      {% elif ansible_check_mode %}
+      Glance would converge with {{ glance_bookmark_groups | length }} bookmark groups.
+      {% else %}
+      Glance container changed={{ glance_container.changed | default(false) }};
+      configuration changed={{ glance_config.changed | default(false) }};
+      the HTTP journey passed.
+      {% endif %}
+  when: glance_enabled | bool

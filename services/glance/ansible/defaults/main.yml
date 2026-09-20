@@ -1,0 +1,18 @@
+---
+glance_enabled: true
+glance_container_name: glance
+
+# Glance 0.8.6 multi-architecture image index. The immutable index includes
+# linux/arm64 for the Pi.
+glance_image: >-
+  docker.io/glanceapp/glance:v0.8.6@sha256:9dfb09470b207dcb67ac715994bdb1929374ba3f9c0d7df7462c24adf10fd073
+glance_bind_address: "{{ pi_service_bind_address }}"
+glance_port: 8086
+glance_container_port: 8080
+glance_config_dir: /etc/glance
+glance_config_file: /etc/glance/glance.yml
+glance_uid: 65532
+glance_gid: 65532
+
+# Generated from endpoint dashboard metadata in the canonical inventory.
+glance_bookmark_groups: []

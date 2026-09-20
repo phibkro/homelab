@@ -1,19 +1,21 @@
 # nori homelab
 
-Two deployment targets share one inventory:
+Three deployment targets share one inventory:
 
 ```text
 inventory/ ──→ infra/workstation: NixOS + Home Manager
+           ├─→ infra/adelie: NixOS application host
            └─→ infra/pi: Ansible appliance
 
 hot data → SSDs       cold data → IronWolf Pro
 backup destination → OneTouch (policy: inventory/backup.nix)
 ```
 
-Workstation owns the desktop, application services, and attached data disks.
-Pi owns the HTTP entry plane, DNS, monitoring, and network appliance services.
-Aurora and Pavilion are retired from active configuration. Historical archives
-and encrypted secret recipients are handled separately from host removal.
+Workstation owns the desktop, GPU workloads, and attached data disks. Adelie
+owns the SSD-local application tier. Pi owns the HTTP entry plane, DNS,
+monitoring, and network appliance services. Aurora and Pavilion are retired
+from active configuration. Historical archives and encrypted secret recipients
+are handled separately from host removal.
 
 ## Start here
 
@@ -42,9 +44,9 @@ devenv shell -- just pi::test
 devenv shell -- just pi::plan
 ```
 
-Activation is a separate operator step: `just rebuild` for workstation and
-`just pi::deploy` for Pi. Follow the deployment reference and backup cutover
-runbook before activating migration changes.
+Activation is a separate operator step: `just rebuild` for workstation,
+`just push adelie` for Adelie, and `just pi::deploy` for Pi. Follow the
+deployment reference and backup cutover runbook before migration activation.
 
 Shared facts live in `inventory/`; generated catalogs live in
 [docs/generated](docs/generated). Nix implementation lives under the paths in

@@ -5,18 +5,13 @@
 }:
 
 /**
-  adelie — staged storage and media host
+  adelie — SSD-local application host
 
-  Phase one intentionally owns only the Samsung 990 Pro system disk. The
-  IronWolf Pro and OneTouch are not attached yet, so declaring either would
-  turn a physical-migration decision into a boot dependency. Their eventual
-  storage and backup roles will be introduced together with a verified
-  migration plan.
+  IronWolf Pro and OneTouch remain attached to workstation. Adelie owns only
+  its Samsung system disk, SSD-local applications, and the cache directory.
 
-  The base profile supplies the shared Nix, SOPS, SSH, Tailscale and Norwegian
-  console-keymap policy. `users/nori/identity.nix` supplies the existing
-  Emperor automation key as an authorized key, so first boot is reachable
-  without a one-off installer exception.
+  The base profile supplies shared Nix, SOPS, SSH, Tailscale, and Norwegian
+  console-keymap policy. Workload placement supplies application modules.
 */
 {
   imports = [
@@ -33,13 +28,53 @@
     interface = "wlp5s0";
   };
 
+  # Adelie receives only the credentials consumed by its selected workloads.
+  # The workstation host identity is not a recipient for this file.
+  sops.defaultSopsFile = lib.mkForce (inputs.self + "/secrets/adelie-runtime.yaml");
+
+  # Attic cache chunks are re-derivable and stay on Adelie's local NVMe.
+  nori.fs.cache = {
+    path = "/var/lib/attic/chunks";
+    tier = "re-derivable";
+  };
+
   # Prefer the local entry-plane DNS while DHCP still advertises the router.
   networking.nameservers = [
     "192.168.1.225"
     "1.1.1.1"
   ];
 
-  # Keep the first boot a light, headless host. GPU/media policy comes with
-  # the data-drive and workload placement decision, not before it.
+  # First activation creates users and state directories but cannot start a
+  # writable target before its authoritative state arrives. The operator adds
+  # each root-owned gate only after that service's transfer and restore pass.
+  systemd.tmpfiles.rules = [ "d /var/lib/nori/migration 0700 root root -" ];
+  systemd.services = lib.mkMerge [
+    (lib.genAttrs
+      [
+        "miniflux"
+        "radicale"
+        "stremio"
+        "vaultwarden"
+      ]
+      (service: {
+        unitConfig.ConditionPathExists = "/var/lib/nori/migration/${service}-ready";
+      })
+    )
+    (lib.genAttrs
+      [
+        "restic-backups-miniflux-onetouch"
+        "restic-backups-radicale-onetouch"
+        "restic-backups-stremio-onetouch"
+        "restic-backups-vaultwarden-onetouch"
+        "restic-check-monthly"
+        "restic-check-weekly"
+      ]
+      (_: {
+        unitConfig.ConditionPathExists = "/var/lib/nori/migration/backups-ready";
+      })
+    )
+  ];
+
+  # Media and portable-disk policy remains on workstation.
   services.tailscale.extraSetFlags = [ "--accept-dns=true" ];
 }

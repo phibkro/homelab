@@ -47,11 +47,16 @@ let
     !evaluated.success;
 
   rootsCorrect =
-    deployment.sourceRoots."services/attic" == [ "workstation" ]
+    deployment.sourceRoots."services/attic" == [ "adelie" ]
+    &&
+      deployment.sourceRoots."services/attic-publisher" == [
+        "adelie"
+        "workstation"
+      ]
     && deployment.sourceRoots."services/music-ingest" == [ "workstation" ]
     && deployment.sourceRoots."services/jellyfin" == [ "workstation" ]
     && deployment.sourceRoots."profiles/media-acquisition" == [ "workstation" ]
-    && deployment.sourceRoots."services/filmder" == [ "workstation" ]
+    && deployment.sourceRoots."services/filmder" == [ "adelie" ]
     && deployment.sourceRoots."services/restic-target" == [ "workstation" ]
     && deployment.sourceRoots."services/caddy" == [ "pi" ]
     &&
@@ -62,11 +67,13 @@ let
       ]
     &&
       deployment.sourceRoots."services/ntfy/manifests/notify.nix" == [
+        "adelie"
         "pi"
         "workstation"
       ]
     && deployment.sourceRoots."services/clamor/manifest.nix" == [ "workstation" ]
     && deployment.machineRoots."services/caddy/ansible" == [ "pi" ]
+    && deployment.machineRoots."services/glance/ansible" == [ "pi" ]
     && deployment.machineRoots."services/beszel/ansible/agent" == [ "pi" ]
     && deployment.machineRoots."services/beszel/ansible/hub" == [ "pi" ]
     && deployment.machineRoots."services/ntfy/ansible" == [ "pi" ]
@@ -89,6 +96,7 @@ let
       profiles = [
         "base"
         "log-forwarder"
+        "remote-backup-source"
         "observability-agent"
       ];
       workloads = inventory.hosts.adelie.workloads;

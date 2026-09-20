@@ -82,8 +82,27 @@
        and (.pi_appliances.hosts.pi.pi_routes | any(.name == "auth"))
        and (.pi_appliances.hosts.pi.pi_routes
          | any(.name == "cache"
-               and .upstream_address == "100.81.5.122"
+               and .upstream_address == "100.107.90.3"
                and .upstream_port == 5000))
+       and (.pi_appliances.hosts.pi.pi_routes
+         | any(.name == "home"
+               and .upstream_address == "192.168.1.225"
+               and .upstream_port == 8086))
+       and (.pi_appliances.hosts.pi.pi_routes
+         | any(.name == "news"
+               and .upstream_address == "100.107.90.3"
+               and .upstream_port == 8087))
+       and (.pi_appliances.hosts.pi.pi_routes
+         | any(.name == "vault"
+               and .upstream_address == "100.107.90.3"
+               and .upstream_port == 8222))
+       and ([.pi_appliances.hosts.pi.pi_routes[]
+             | select(.upstream_address == "100.107.90.3")
+             | .name] | sort)
+         == ["cache", "calendar", "filmder", "heim", "news", "ops", "stremio", "vault"]
+       and .pi_appliances.hosts.pi.glance_enabled == true
+       and .pi_appliances.hosts.pi.pi_tailnet_workload_ports == [8086]
+       and (.pi_appliances.hosts.pi.glance_bookmark_groups | length == 5)
        and (.pi_appliances.hosts.pi.pi_routes | length > 1)
        and ([.pi_appliances.hosts.pi.authelia_oidc_clients[].client_id] | sort)
          == ["metrics", "news", "photos", "vault"]

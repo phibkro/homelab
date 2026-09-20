@@ -19,10 +19,12 @@
       P[pi · Ansible<br/>entry plane + observability hub]
     end
     subgraph "workhorse tier"
-      A[adelie<br/>staged storage + fleet agents]
-      W[workstation<br/>family + media services + desktop]
+      A[adelie<br/>SSD application tier]
+      W[workstation<br/>desktop + GPU + media + storage]
     end
+    P -- "*.${nori.domain} proxy" --> A
     P -- "*.${nori.domain} proxy" --> W
+    A -- "Restic to OneTouch" --> W
     A -- "scraped by" --> P
     W -- "scraped by" --> P
   ```

@@ -1,5 +1,5 @@
 ---
-summary: Two deployment owners, shared inventory, and failure domains.
+summary: Three deployment owners, shared inventory, and failure domains.
 ---
 
 # Topology
@@ -10,9 +10,9 @@ tags. Service manifests own ordered placement selectors. Use the
 
 | Target | Runtime owner | Responsibility |
 |---|---|---|
-| adelie | NixOS | Staged storage and media host; currently realizes fleet agents only |
-| workstation | NixOS + Home Manager | Desktop, application backends, hot SSD storage and cold IronWolf Pro storage |
-| pi | Ansible under `infra/pi/` | HTTP entry plane, DNS, monitoring, alerts, subnet routing and exit-node services |
+| adelie | NixOS | SSD-local application backends and fleet agents |
+| workstation | NixOS + Home Manager | Desktop, GPU and media workloads, hot SSD storage, and attached IronWolf Pro and OneTouch disks |
+| pi | Ansible under `infra/pi/` | HTTP entry plane, DNS, Glance, monitoring, alerts, subnet routing, and exit-node services |
 
 Aurora and Pavilion are outside the main deployment inventory. Aurora may
 serve as a temporary backup endpoint if independently verified reachable;
@@ -21,8 +21,9 @@ historical attachment records do not establish its current disks or coverage.
 ## Failure domains
 
 ```text
-clients → Pi entry plane → workstation or Adelie application backends
-backup destination → OneTouch (policy: inventory/backup.nix)
+clients → Pi entry plane → Adelie or workstation application backends
+Adelie backups → restricted SFTP → workstation-attached OneTouch
+workstation backups → OneTouch (policy: inventory/backup.nix)
 ```
 
 Keeping the entry plane on Pi preserves monitoring and network functions during

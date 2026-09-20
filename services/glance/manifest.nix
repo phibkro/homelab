@@ -1,15 +1,14 @@
 {
   kind = "service";
-  hostRoles = [ "workhorse" ];
+  hostRoles = [ "appliance" ];
   placement = {
     strategy = "first-unique";
-    selectors = [ { tags = [ "primary-service-host" ]; } ];
+    selectors = [ { tags = [ "entry-plane" ]; } ];
     cardinality = {
       min = 1;
       max = 1;
     };
   };
-  runtimeModule = ./nixos.nix;
   tags = [
     "family-tier"
     "stateless"

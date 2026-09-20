@@ -30,12 +30,25 @@ creation_rules:
           - *workstation
           - *workstation-user
           - *adelie
+  - path_regex: secrets/shared-runtime\.yaml$
+    key_groups:
+      - age:
+          - *mac
+          - *workstation
+          - *workstation-user
+          - *adelie
   - path_regex: secrets/workstation-runtime\.yaml$
     key_groups:
       - age:
           - *mac
           - *workstation
           - *workstation-user
+  - path_regex: secrets/adelie-runtime\.yaml$
+    key_groups:
+      - age:
+          - *mac
+          - *workstation-user
+          - *adelie
   - path_regex: secrets/operator-tools\.yaml$
     key_groups:
       - age:

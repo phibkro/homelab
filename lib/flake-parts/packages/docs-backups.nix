@@ -16,27 +16,34 @@
       ...
     }:
     let
-      eval = inputs.self.nixosConfigurations.workstation;
+      hostEvals = inputs.self.nixosConfigurations;
+      eval = hostEvals.workstation;
       helpers = import ../../nixdoc.nix { inherit pkgs lib eval; };
-      activeJobs = lib.filterAttrs (_: cfg: cfg.include != null) eval.config.nori.backups;
-      defaultTargets = lib.attrNames eval.config.nori.backupTargets;
       renderList = values: lib.concatStringsSep "<br>" (map (value: "`${value}`") values);
-      renderJob =
-        name: cfg:
+      renderHostJobs =
+        hostName:
         let
-          targets = if cfg.targets == null then defaultTargets else cfg.targets;
+          host = hostEvals.${hostName};
+          activeJobs = lib.filterAttrs (_: cfg: cfg.include != null) host.config.nori.backups;
+          defaultTargets = lib.attrNames host.config.nori.backupTargets;
+          renderJob =
+            name: cfg:
+            let
+              targets = if cfg.targets == null then defaultTargets else cfg.targets;
+            in
+            "| `${hostName}` | `${name}` | `${cfg.tier}` | ${renderList targets} | ${renderList cfg.include} |";
         in
-        "| `${name}` | `${cfg.tier}` | ${renderList targets} | ${renderList cfg.include} |";
+        lib.concatStringsSep "\n" (lib.mapAttrsToList renderJob activeJobs);
       activeJobsAppendix = ''
 
-        ## Evaluated workstation jobs
+        ## Evaluated NixOS host jobs
 
-        Generated from the evaluated `nori.backups` registry. Counts and membership
-        therefore change with configuration instead of being duplicated in prose.
+        Generated from each evaluated NixOS host's `nori.backups` registry.
+        Counts, membership, and placement therefore change with configuration.
 
-        | Job | Tier | Effective targets | Include paths |
-        |---|---|---|---|
-        ${lib.concatStringsSep "\n" (lib.mapAttrsToList renderJob activeJobs)}
+        | Host | Job | Tier | Effective targets | Include paths |
+        |---|---|---|---|---|
+        ${lib.concatMapStringsSep "\n" renderHostJobs (lib.attrNames hostEvals)}
       '';
     in
     {

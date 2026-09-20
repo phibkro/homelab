@@ -26,6 +26,9 @@ all:
           # Never emit a synthetic liveness ping to an external service from
           # the disposable guest; the role's helper has an offline contract.
           heartbeat_enabled: false
+          # Glance deployment needs network access to pull its release image.
+          # The generator contract covers enabled production inputs.
+          glance_enabled: false
           # One job exercises the complete backup runner/service/timer path.
           # Production's full manifest remains covered by role contracts.
           pi_backup_jobs:

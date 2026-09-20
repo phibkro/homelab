@@ -95,6 +95,7 @@
     - role: podman
     - role: pihole/ansible
     - role: authelia/ansible
+    - role: glance/ansible
     - role: cloudflare-ddns/ansible
     - role: ntfy/ansible
     - role: victorialogs/ansible

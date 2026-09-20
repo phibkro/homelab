@@ -43,8 +43,18 @@ let
 
   expectedWorkloads = {
     adelie = [
+      "attic"
+      "attic-publisher"
       "beszel-agent"
+      "filmder"
+      "grafana"
+      "heim"
+      "miniflux"
       "node-exporter"
+      "ntfy-notify"
+      "radicale"
+      "stremio"
+      "vaultwarden"
     ];
     pi = [
       "authelia"
@@ -53,6 +63,7 @@ let
       "caddy"
       "cloudflare-ddns"
       "gatus"
+      "glance"
       "heartbeat"
       "ntfy-notify"
       "ntfy-server"
@@ -61,16 +72,12 @@ let
       "victoriametrics"
     ];
     workstation = [
-      "attic"
+      "attic-publisher"
       "bazarr"
       "beszel-agent"
       "calibre-web"
       "clamor"
       "disk-alert"
-      "filmder"
-      "glance"
-      "grafana"
-      "heim"
       "herdr-projects-mcp"
       "hindsight"
       "immich"
@@ -79,7 +86,6 @@ let
       "komga"
       "lidarr"
       "mcp-origin-tunnel"
-      "miniflux"
       "music-ingest"
       "navidrome"
       "node-exporter"
@@ -91,15 +97,12 @@ let
       "prowlarr"
       "qbittorrent"
       "radarr"
-      "radicale"
       "recyclarr"
       "restic-target"
       "samba"
       "sonarr"
-      "stremio"
       "suwayomi"
       "syncthing"
-      "vaultwarden"
     ];
   };
 
@@ -126,6 +129,11 @@ let
   actualRoutes = lib.mapAttrs (_: routeFingerprint) compiledInventory.internal.lanRoutes;
 
   migratedRuntimePlacements = {
+    attic = [ "adelie" ];
+    attic-publisher = [
+      "adelie"
+      "workstation"
+    ];
     authelia = [ "pi" ];
     bazarr = [ "workstation" ];
     beszel-agent = [
@@ -138,18 +146,18 @@ let
     caddy = [ "pi" ];
     calibre-web = [ "workstation" ];
     disk-alert = [ "workstation" ];
-    filmder = [ "workstation" ];
-    glance = [ "workstation" ];
-    grafana = [ "workstation" ];
+    filmder = [ "adelie" ];
+    glance = [ "pi" ];
+    grafana = [ "adelie" ];
     gatus = [ "pi" ];
     heartbeat = [ "pi" ];
-    heim = [ "workstation" ];
+    heim = [ "adelie" ];
     immich = [ "workstation" ];
     jellyfin = [ "workstation" ];
     jellyseerr = [ "workstation" ];
     komga = [ "workstation" ];
     lidarr = [ "workstation" ];
-    miniflux = [ "workstation" ];
+    miniflux = [ "adelie" ];
     music-ingest = [ "workstation" ];
     navidrome = [ "workstation" ];
     node-exporter = [
@@ -158,6 +166,7 @@ let
     ];
     nvidia-gpu-exporter = [ "workstation" ];
     ntfy-notify = [
+      "adelie"
       "pi"
       "workstation"
     ];
@@ -168,19 +177,21 @@ let
     prowlarr = [ "workstation" ];
     qbittorrent = [ "workstation" ];
     radarr = [ "workstation" ];
-    radicale = [ "workstation" ];
+    radicale = [ "adelie" ];
     recyclarr = [ "workstation" ];
     samba = [ "workstation" ];
     sonarr = [ "workstation" ];
-    stremio = [ "workstation" ];
+    stremio = [ "adelie" ];
     suwayomi = [ "workstation" ];
     syncthing = [ "workstation" ];
-    vaultwarden = [ "workstation" ];
+    vaultwarden = [ "adelie" ];
     victorialogs-server = [ "pi" ];
     victoriametrics = [ "pi" ];
   };
 
   runtimeEvidenceNames = {
+    attic = "atticd";
+    attic-publisher = "attic-cache-seed";
     beszel-hub = "beszel";
     ntfy-notify = "notify";
     ntfy-server = "ntfy";
@@ -205,31 +216,31 @@ let
     ntfy-server.alert = "pi";
     calibre-web.books = "workstation";
     clamor.agents = "workstation";
-    filmder.filmder = "workstation";
-    glance.home = "workstation";
-    grafana.ops = "workstation";
+    filmder.filmder = "adelie";
+    glance.home = "pi";
+    grafana.ops = "adelie";
     gatus.uptime = "pi";
-    heim.heim = "workstation";
+    heim.heim = "adelie";
     immich.photos = "workstation";
     jellyfin.media = "workstation";
     jellyseerr.requests = "workstation";
     komga.comics = "workstation";
     lidarr.music = "workstation";
-    miniflux.news = "workstation";
+    miniflux.news = "adelie";
     navidrome.audio = "workstation";
     ollama.ai = "workstation";
     paperless.papers = "workstation";
     prowlarr.indexers = "workstation";
     qbittorrent.downloads = "workstation";
     radarr.movies = "workstation";
-    radicale.calendar = "workstation";
+    radicale.calendar = "adelie";
     sonarr.tv = "workstation";
-    stremio.stremio = "workstation";
+    stremio.stremio = "adelie";
     suwayomi.manga = "workstation";
     syncthing.sync = "workstation";
     victorialogs-server.logs = "pi";
     victoriametrics.tsdb = "pi";
-    vaultwarden.vault = "workstation";
+    vaultwarden.vault = "adelie";
   };
   catalogVisibleEverywhere = lib.all (
     workloadName:
@@ -315,26 +326,24 @@ let
         && lib.elem cacheKey host.config.nix.settings.extra-trusted-public-keys
       ) (lib.attrValues hosts);
       workstation = hosts.workstation.config;
-      workstationPublishes =
-        workstation.systemd.timers.attic-cache-watch.wantedBy == [ "timers.target" ]
-        && workstation.systemd.timers.attic-cache-seed.wantedBy == [ "timers.target" ]
-        && workstation.systemd.services.attic-cache-watch.serviceConfig.Type == "exec"
-        && workstation.systemd.services.attic-cache-seed.serviceConfig.Type == "exec"
-        && workstation.systemd.services.attic-cache-watch.serviceConfig.RestartMode == "direct"
-        && workstation.systemd.services.attic-cache-seed.serviceConfig.RestartMode == "direct";
       adelie = hosts.adelie.config;
-      adelieCannotPublish =
-        !(builtins.hasAttr "attic-push-token" adelie.sops.secrets)
-        && !(builtins.hasAttr "attic-cache-watch" adelie.systemd.services)
-        && !(builtins.hasAttr "attic-cache-seed" adelie.systemd.services);
+      publishes =
+        host:
+        host.systemd.timers.attic-cache-watch.wantedBy == [ "timers.target" ]
+        && host.systemd.timers.attic-cache-seed.wantedBy == [ "timers.target" ]
+        && host.systemd.services.attic-cache-watch.serviceConfig.Type == "exec"
+        && host.systemd.services.attic-cache-seed.serviceConfig.Type == "exec"
+        && host.systemd.services.attic-cache-watch.serviceConfig.RestartMode == "direct"
+        && host.systemd.services.attic-cache-seed.serviceConfig.RestartMode == "direct";
     in
     everyHostSubscribes
-    && workstationPublishes
-    && adelieCannotPublish
-    && workstation.services.atticd.enable
-    && workstation.services.atticd.settings.storage.path == "/mnt/backup-local/attic"
-    && workstation.services.atticd.settings.garbage-collection.default-retention-period == "30 days"
-    && workstation.systemd.services.attic-cache-bootstrap.wantedBy == [ "multi-user.target" ];
+    && publishes workstation
+    && publishes adelie
+    && !(workstation.services.atticd.enable or false)
+    && adelie.services.atticd.enable
+    && adelie.services.atticd.settings.storage.path == "/var/lib/attic/chunks"
+    && adelie.services.atticd.settings.garbage-collection.default-retention-period == "30 days"
+    && adelie.systemd.services.attic-cache-bootstrap.wantedBy == [ "multi-user.target" ];
 
   expectedRoutes = {
     agents = {
@@ -394,7 +403,7 @@ let
     };
     cache = {
       port = 5000;
-      runsOn = "workstation";
+      runsOn = "adelie";
       audience = "operator";
       exposeOnTailnet = true;
       auth = "exception";
@@ -403,7 +412,7 @@ let
     };
     calendar = {
       port = 5232;
-      runsOn = "workstation";
+      runsOn = "adelie";
       audience = "family";
       exposeOnTailnet = true;
       auth = "exception";
@@ -430,16 +439,16 @@ let
     };
     filmder = {
       port = 9092;
-      runsOn = "workstation";
-      audience = "public";
+      runsOn = "adelie";
+      audience = "family";
       exposeOnTailnet = true;
-      auth = "none";
+      auth = "forward-auth";
       monitored = true;
       dashboard = true;
     };
     heim = {
       port = 9094;
-      runsOn = "workstation";
+      runsOn = "adelie";
       audience = "public";
       exposeOnTailnet = true;
       auth = "none";
@@ -448,7 +457,7 @@ let
     };
     home = {
       port = 8086;
-      runsOn = "workstation";
+      runsOn = "pi";
       audience = "public";
       exposeOnTailnet = true;
       auth = "none";
@@ -529,7 +538,7 @@ let
     };
     news = {
       port = 8087;
-      runsOn = "workstation";
+      runsOn = "adelie";
       audience = "family";
       exposeOnTailnet = true;
       auth = "oidc";
@@ -538,7 +547,7 @@ let
     };
     ops = {
       port = 3000;
-      runsOn = "workstation";
+      runsOn = "adelie";
       audience = "operator";
       exposeOnTailnet = true;
       auth = "none";
@@ -593,7 +602,7 @@ let
     };
     stremio = {
       port = 11470;
-      runsOn = "workstation";
+      runsOn = "adelie";
       audience = "operator";
       exposeOnTailnet = true;
       auth = "none";
@@ -638,7 +647,7 @@ let
     };
     vault = {
       port = 8222;
-      runsOn = "workstation";
+      runsOn = "adelie";
       audience = "family";
       exposeOnTailnet = true;
       auth = "oidc";

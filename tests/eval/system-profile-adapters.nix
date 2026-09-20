@@ -35,7 +35,10 @@ let
       "workstation"
     ];
     btrbk = [ "workstation" ];
-    restic = [ "workstation" ];
+    restic = [
+      "adelie"
+      "workstation"
+    ];
     restore-drill = [ "workstation" ];
     research = [ "workstation" ];
   };

@@ -1,24 +1,20 @@
 {
   kind = "service";
-  hostRoles = [
-    "workhorse"
-    "appliance"
-  ];
+  hostRoles = [ "workhorse" ];
   placement = {
     strategy = "all-matches";
     selectors = [
-      { host = "pi"; }
       { host = "workstation"; }
       { host = "adelie"; }
     ];
     cardinality = {
-      min = 3;
-      max = 3;
+      min = 2;
+      max = 2;
     };
   };
-  runtimeModule = ../nixos/notify.nix;
+  runtimeModule = ./nixos.nix;
   tags = [
-    "observability"
-    "alerting"
+    "cache"
+    "publisher"
   ];
 }

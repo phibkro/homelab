@@ -1,4 +1,4 @@
-{ config, ... }:
+{ config, lib, ... }:
 
 {
   /*
@@ -7,9 +7,8 @@
 
     === Bootstrap ===
       1. Follow secrets/README.md "OIDC client rotation" for `news`.
-      2. Store MINIFLUX_ADMIN_PASSWORD through the root workstation
-         SecretSpec profile.
-      3. Run the deployment plan, then activate the workstation.
+      2. Store MINIFLUX_ADMIN_PASSWORD through the Adelie SecretSpec profile.
+      3. Run the deployment plan, then activate Adelie.
       4. https://news.home.phibkro.org → click "Continue with Authelia". OIDC
          auto-creates the matching miniflux account on first SSO via
          OAUTH2_USER_CREATION=1; first user in is the admin.
@@ -17,11 +16,10 @@
          master fallback (Authelia-down recovery). Keep it in a real
          password manager.
 
-    === Postgres sharing ===
-    `createDatabaseLocally = true` joins the shared
-    `services.postgresql` instance (already on via
-    services.immich.database.enable). immich + miniflux live
-    side-by-side with separate users — standard nixpkgs idiom.
+    === Postgres ownership ===
+    `createDatabaseLocally = true` enables Adelie's local PostgreSQL instance
+    and creates an isolated `miniflux` database and user. No cross-host
+    database dependency exists.
   */
 
   services.miniflux = {
@@ -30,9 +28,8 @@
 
     config = {
       /*
-        Caddy at news.<nori.domain> reverse-proxies to localhost:8087.
-        8087 is the next free port in the lanRoutes table (between
-        8086 `home` and 8090 `metrics`).
+        Pi Caddy reverse-proxies `news.<nori.domain>` to this service on 8087.
+        This is the next free route port between `home` and `metrics`.
       */
       LISTEN_ADDR = "0.0.0.0:8087";
       BASE_URL = "https://news.${config.nori.domain}";
@@ -70,9 +67,16 @@
     adminCredentialsFile = config.sops.templates."miniflux-env".path;
   };
 
+  users.groups.miniflux-secrets = { };
+
+  sops.templates."oidc-news-env" = {
+    group = lib.mkForce "miniflux-secrets";
+    mode = lib.mkForce "0440";
+  };
+
   sops.templates."miniflux-env" = {
     mode = "0440";
-    group = "keys";
+    group = "miniflux-secrets";
     content = ''
       ADMIN_USERNAME=admin
       ADMIN_PASSWORD=${config.sops.placeholder."miniflux-admin-password"}
@@ -82,12 +86,9 @@
 
   sops.secrets."miniflux-admin-password" = { };
 
-  /*
-    DynamicUser=true upstream → the unit can't read /run/secrets/*
-    without an extra group. `keys` is the sops-nix convention for
-    the secret-file owner; SupplementaryGroups grants read.
-  */
-  systemd.services.miniflux.serviceConfig.SupplementaryGroups = [ "keys" ];
+  # DynamicUser cannot own a file during activation. A service-specific group
+  # grants Miniflux access without exposing other services' credentials.
+  systemd.services.miniflux.serviceConfig.SupplementaryGroups = [ "miniflux-secrets" ];
 
   nori.harden.miniflux = { };
 
@@ -101,6 +102,13 @@
     databases = [ "miniflux" ];
     startAt = "*-*-* 03:30:00"; # before restic-backups-miniflux at 04:30
     pgdumpOptions = "--no-owner";
+  };
+
+  # Every Miniflux Restic run must refresh its logical dump first. The unit
+  # dependency makes a stale pre-cutover dump an invalid backup execution.
+  systemd.services."restic-backups-miniflux-onetouch" = {
+    requires = [ "postgresqlBackup-miniflux.service" ];
+    after = [ "postgresqlBackup-miniflux.service" ];
   };
 
   nori.backups.miniflux = {

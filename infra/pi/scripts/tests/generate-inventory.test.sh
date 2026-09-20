@@ -104,6 +104,21 @@ jq --exit-status '
       upstream_origin_header: null
     },
     {
+      name: "home",
+      hostname: "home.home.example",
+      upstream_address: "192.168.1.225",
+      upstream_port: 8086,
+      scheme: "http",
+      reachability: "internal",
+      audience: "public",
+      auth: "none",
+      forward_auth_exempt_paths: [],
+      forward_auth_upstream: "192.168.1.225:9091",
+      oidc_redirect_path: null,
+      upstream_host_header: null,
+      upstream_origin_header: null
+    },
+    {
       name: "media",
       hostname: "media.home.example",
       upstream_address: "100.81.5.122",
@@ -134,9 +149,24 @@ jq --exit-status '
       upstream_origin_header: null
     }
   ]
-  and (.pi_appliances.hosts.pi.pi_routes | length == 6)
+  and (.pi_appliances.hosts.pi.pi_routes | length == 7)
   and .pi_appliances.hosts.pi.ddns_hostnames == ["media.home.example"]
   and .pi_appliances.hosts.pi.pi_deprecated_domains == ["nori.lan"]
+  and .pi_appliances.hosts.pi.glance_enabled == true
+  and .pi_appliances.hosts.pi.pi_tailnet_workload_ports == [8086]
+  and .pi_appliances.hosts.pi.glance_bookmark_groups == [
+    {
+      title: "Consume",
+      links: [
+        {
+          title: "Calibre Web",
+          icon: "sh:calibre-web",
+          description: "Ebook reader",
+          url: "https://books.home.example"
+        }
+      ]
+    }
+  ]
   and (.pi_appliances.hosts.pi.pihole_local_dns_records
        | any(.[]; .names[] == "books.home.example"))
   and (.pi_appliances.hosts.pi.pihole_local_dns_records
@@ -171,6 +201,9 @@ jq --exit-status '
                     and .interval == "60s")
        and any(.[]; .name == "cache"
                     and .url == "http://100.81.5.122:5000/"
+                    and .interval == "60s")
+       and any(.[]; .name == "home"
+                    and .url == "http://192.168.1.225:8086/"
                     and .interval == "60s")
        and any(.[]; .name == "media"
                     and .url == "http://100.81.5.122:8096/health"

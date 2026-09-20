@@ -86,4 +86,11 @@ in
       }
     ];
   };
+  adelie = {
+    user = "restic-adelie";
+    directory = "adelie";
+    repositoryPrefix = "repos";
+    hostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFFYfsviUipugcpG8pMGtNh4C6lhm51dTF4uJj+BsuNj";
+    authorizedKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILYmfjvN43rLHlfDWGbubLwRlCZLN89/vWkzNcAN5NwI adelie-restic";
+  };
 }

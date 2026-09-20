@@ -3,7 +3,7 @@
   hostRoles = [ "workhorse" ];
   placement = {
     strategy = "first-unique";
-    selectors = [ { tags = [ "primary-service-host" ]; } ];
+    selectors = [ { tags = [ "application-service-host" ]; } ];
     cardinality = {
       min = 1;
       max = 1;
@@ -28,8 +28,8 @@
     };
     legacyException = {
       owner = "homelab operator";
-      reason = "Filmder currently embeds its TMDB credential during the Vite build, so a hermetic public artifact cannot carry the production configuration.";
-      removalTrigger = "Filmder publishes an immutable package or release artifact whose TMDB integration accepts runtime configuration without embedding the production credential.";
+      reason = "Filmder has no published immutable package; the selected workhorse builds the reviewed upstream branch into an atomic local static tree.";
+      removalTrigger = "Filmder publishes a pinned flake package or checksummed release archive containing the static site.";
       verification = "tests/eval/product-artifacts.nix";
     };
   };
@@ -37,7 +37,8 @@
   endpoints.filmder = {
     port = 9092;
     exposeOnTailnet = true;
-    audience = "public";
+    audience = "family";
+    forwardAuth.exemptPaths = [ ];
     monitor = { };
     dashboard = {
       title = "Filmder";

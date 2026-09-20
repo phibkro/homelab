@@ -29,6 +29,11 @@
     ];
   };
 
+  remote-backup-source = {
+    description = "Restic delivery to a remote target without local disk snapshot or restore ownership";
+    systemModules = [ ../services/restic-backup/nixos.nix ];
+  };
+
   research = {
     description = "Operator research acquisition tools colocated with their data sink";
     systemModules = [ ../profiles/research/nixos.nix ];

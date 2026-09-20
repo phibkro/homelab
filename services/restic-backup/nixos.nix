@@ -7,6 +7,11 @@
 
 let
   backup = config.nori.inventory.backup;
+  remoteBackup = config.networking.hostName == "adelie";
+  remote = backup.adelie;
+  remoteKnownHosts = pkgs.writeText "adelie-backup-known-hosts" ''
+    ${backup.hostname} ${remote.hostKey}
+  '';
   /*
     Shared (job, target) iteration for the weekly + monthly check
     scripts. Each check carries the target's `extraOptions` and
@@ -90,7 +95,7 @@ in
   imports = [
     { nori.backupDelivery.enable = backup.enabled; }
     {
-      config = lib.mkIf backup.enabled {
+      config = lib.mkIf (backup.enabled && !remoteBackup) {
         systemd.services = lib.listToAttrs (
           map
             (
@@ -137,20 +142,38 @@ in
       the backup policy is explicitly enabled after disk identity verification.
     */
 
-    sops.secrets.restic-password = {
-      owner = "root";
-      mode = "0400";
+    sops.secrets = {
+      restic-password = {
+        owner = "root";
+        mode = "0400";
+      };
+    }
+    // lib.optionalAttrs remoteBackup {
+      restic-ssh-key = {
+        owner = "root";
+        mode = "0400";
+      };
     };
 
     systemd.tmpfiles.rules = [
       "d /var/backup 0755 root root -"
     ];
 
-    # Backup target registry — schema in infra/common/nixos/backup.nix.
-    nori.backupTargets.${backup.targetName} = {
-      repository = backup.mountPoint;
-      description = "Locally attached ${backup.targetName} backup filesystem.";
-    };
+    nori.backupTargets.${backup.targetName} =
+      if remoteBackup then
+        {
+          repository = "sftp:${remote.user}@${backup.hostname}:/${remote.repositoryPrefix}";
+          description = "Restricted Adelie namespace on workstation-attached ${backup.targetName}.";
+          tailnetPeer = backup.hostname;
+          extraOptions = [
+            "sftp.command='ssh -i ${config.sops.secrets.restic-ssh-key.path} -o IdentitiesOnly=yes -o UserKnownHostsFile=${remoteKnownHosts} ${remote.user}@${backup.hostname} -s sftp'"
+          ];
+        }
+      else
+        {
+          repository = backup.mountPoint;
+          description = "Locally attached ${backup.targetName} backup filesystem.";
+        };
 
     # Refuse backup/check execution when the dedicated filesystem is absent.
     # RequiresMountsFor starts it; AssertPathIsMountPoint also rejects fallback
@@ -225,7 +248,7 @@ in
       `user` → user-data.include.
     */
 
-    nori.backups.user-data = {
+    nori.backups.user-data = lib.mkIf (!remoteBackup) {
       include = lib.mapAttrsToList (_: f: f.path) (
         lib.filterAttrs (_: f: f.tier == "user") config.nori.fs
       );
@@ -265,7 +288,7 @@ in
       The enabled destination receives this repository. Verify available capacity
       and source readability before the first full run.
     */
-    nori.backups.media-irreplaceable = {
+    nori.backups.media-irreplaceable = lib.mkIf (!remoteBackup) {
       include = lib.mapAttrsToList (_: f: f.path) (
         lib.filterAttrs (_: f: f.tier == "irreplaceable") config.nori.fs
       );

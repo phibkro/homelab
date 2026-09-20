@@ -51,7 +51,6 @@ esac
 [[ -r "$topic_file" ]] || { echo "nori-alert: topic secret unreadable" >&2; exit 1; }
 topic="$(<"$topic_file")"
 [[ -n "$topic" ]] || { echo "nori-alert: topic secret is empty" >&2; exit 1; }
-endpoint="${route_url%/}/$topic"
 
 case "$severity" in
   urgent) priority=urgent; severity_tag=rotating_light ;;
@@ -65,13 +64,20 @@ tags="$severity_tag"
 [[ -z "$extra_tags" ]] || tags="$tags,$extra_tags"
 
 echo "nori-alert audience=$audience severity=$severity category=${category:-none} title=\"$title\"" >&2
-curl_args=(--retry 2 --retry-connrefused \
+if [[ -n "$token_file" ]]; then
+  [[ -r "$token_file" ]] || { echo "nori-alert: publisher token unreadable" >&2; exit 1; }
+  auth_token="$(<"$token_file")"
+fi
+printf '%s' "$body" | curl -fsS \
+  --config <(
+    printf 'url = "%s/%s"\n' "${route_url%/}" "$topic"
+    if [[ -n "$token_file" ]]; then
+      printf 'header = "Authorization: Bearer %s"\n' "$auth_token"
+    fi
+  ) \
+  --retry 2 \
+  --retry-connrefused \
   -H "Title: $title" \
   -H "Priority: $priority" \
   -H "Tags: $tags" \
-  --data-binary "$body")
-if [[ -n "$token_file" ]]; then
-  [[ -r "$token_file" ]] || { echo "nori-alert: publisher token unreadable" >&2; exit 1; }
-  curl_args+=( -H "Authorization: Bearer $(<"$token_file")" )
-fi
-curl -fsS "${curl_args[@]}" "$endpoint" >/dev/null
+  --data-binary @- >/dev/null

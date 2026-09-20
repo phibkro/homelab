@@ -12,6 +12,7 @@ in
 {
   authelia = manifest ../services/authelia/manifest.nix;
   attic = manifest ../services/attic/manifest.nix;
+  attic-publisher = manifest ../services/attic-publisher/manifest.nix;
   bazarr = manifest ../services/bazarr/manifest.nix;
   beszel-agent = manifest ../services/beszel/manifests/agent.nix;
   beszel-hub = manifest ../services/beszel/manifests/hub.nix;

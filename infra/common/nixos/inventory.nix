@@ -31,6 +31,13 @@ let
     primaryJob = mkOption { type = types.str; };
   };
 
+  remoteBackupSourceOptions = {
+    user = mkOption { type = types.strMatching "[a-z][a-z0-9-]*"; };
+    directory = mkOption { type = types.strMatching "[a-z][a-z0-9-]*"; };
+    hostKey = mkOption { type = types.str; };
+    authorizedKey = mkOption { type = types.str; };
+  };
+
   hostType = types.submodule {
     options = identityOptions // {
       kind = mkOption {
@@ -358,7 +365,7 @@ in
     };
     backup = mkOption {
       readOnly = true;
-      description = "Public backup destination, pinned SSH keys, and explicit Pi repository manifest.";
+      description = "Public backup destination, pinned SSH keys, and explicit remote repository manifests.";
       type = types.submodule {
         options = {
           enabled = mkOption { type = types.bool; };
@@ -382,12 +389,8 @@ in
           };
           pi = mkOption {
             type = types.submodule {
-              options = {
-                user = mkOption { type = types.strMatching "[a-z][a-z0-9-]*"; };
-                directory = mkOption { type = types.strMatching "[a-z][a-z0-9-]*"; };
+              options = remoteBackupSourceOptions // {
                 repositoryPrefix = mkOption { type = types.enum [ "" ]; };
-                hostKey = mkOption { type = types.str; };
-                authorizedKey = mkOption { type = types.str; };
                 jobs = mkOption {
                   type = types.listOf (
                     types.submodule {
@@ -398,6 +401,13 @@ in
                     }
                   );
                 };
+              };
+            };
+          };
+          adelie = mkOption {
+            type = types.submodule {
+              options = remoteBackupSourceOptions // {
+                repositoryPrefix = mkOption { type = types.enum [ "repos" ]; };
               };
             };
           };

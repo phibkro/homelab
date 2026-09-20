@@ -14,9 +14,11 @@
     profiles = [
       "base"
       "log-forwarder"
+      "remote-backup-source"
       "observability-agent"
     ];
     tags = [
+      "application-service-host"
       "gpu-host"
       "nas"
       "nixos"
@@ -25,13 +27,14 @@
       tailnetIp = "100.107.90.3";
       lanIp = null;
       role = "workhorse";
-      roleOneLiner = "staged storage and media host";
+      roleOneLiner = "SSD-local application host";
       codename = "adelie";
       hardware = "Node 304 · Ryzen 5 5600X · 16 GB DDR4 · RTX 2060 Super · Samsung 990 Pro 1 TB NVMe";
       primaryJob = ''
-        Future storage and media workhorse. Phase one is a minimal, bootable
-        NixOS host on its Samsung NVMe; the IronWolf Pro and OneTouch remain
-        undeclared until their physical migration and backup roles are verified.
+        SSD-local application backends: Attic, Filmder, Grafana, Heim,
+        Miniflux, Radicale, Stremio, and Vaultwarden. Each stateful service
+        backs up to its own restricted repository on the workstation-attached
+        OneTouch disk. Media and portable disks remain on workstation.
       '';
     };
     capabilities = {
@@ -86,17 +89,15 @@
       tailnetIp = "100.81.5.122";
       lanIp = "192.168.1.181";
       role = "workhorse";
-      roleOneLiner = "always-on converged desktop/server";
+      roleOneLiner = "desktop, media, and storage host";
       codename = "emperor";
       hardware = "Ryzen 9 5950X · 64 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) · WD SN750 1 TB NVMe + Corsair MP510 960 GB NVMe + Seagate IronWolf Pro 4 TB SATA";
       primaryJob = ''
-        Always-on graphical workstation and homelab server:
-        GPU services (Ollama / Jellyfin NVENC), `*arr` stack +
-        qBittorrent, family services and Samba shares on the attached
-        IronWolf disk, and the fleet's re-derivable Attic cache.
-        SSDs hold hot data and the IronWolf Pro holds cold archives.
-        OneTouch stores independent Restic history on a separate disk attached
-        to this host; same-disk snapshots provide local rollback.
+        Graphical workstation, GPU services, media acquisition and playback,
+        and Samba shares on the attached IronWolf disk. It publishes
+        re-derivable Nix paths to Adelie's Attic cache. OneTouch receives
+        independent Restic history from both workhorses; same-disk snapshots
+        provide local rollback for workstation datasets.
       '';
     };
     capabilities = {
@@ -127,6 +128,7 @@
       "services/caddy/ansible"
       "services/cloudflare-ddns/ansible"
       "services/gatus/ansible"
+      "services/glance/ansible"
       "services/heartbeat/ansible"
       "services/ntfy/ansible"
       "services/pihole/ansible"
@@ -155,9 +157,9 @@
       codename = "fairy";
       hardware = "Raspberry Pi 4 8 GB · aarch64 · USB-boot from Samsung FIT 128 GB";
       primaryJob = ''
-        HTTP entry plane (Caddy + Authelia + Pi-hole,
-        LE wildcard cert on `*.''${nori.domain}`), observability
-        hub, alert plane, Tailscale subnet router + exit node.
+        HTTP entry plane (Caddy + Authelia + Pi-hole and the LE wildcard
+        certificate on `*.''${nori.domain}`), Glance home page, observability
+        hub, alert plane, and Tailscale subnet router and exit node.
       '';
     };
     capabilities = {

@@ -1,0 +1,67 @@
+server:
+  host: 0.0.0.0
+  port: {{ glance_container_port }}
+  proxied: true
+
+theme:
+  background-color: 0 0 13
+  contrast-multiplier: 1.0
+  light: false
+  negative-color: 197 31 77
+  positive-color: 0 0 19
+  primary-color: 180 100 97
+
+pages:
+  - name: Home
+    hide-desktop-navigation: true
+    columns:
+      - size: small
+        widgets:
+          - type: calendar
+            first-day-of-week: monday
+          - type: weather
+            location: Oslo, Norway
+            units: metric
+            hour-format: 24h
+          - type: server-stats
+            servers:
+              - type: local
+                name: pi
+      - size: full
+        widgets:
+          - type: bookmarks
+            groups:
+{% for group in glance_bookmark_groups %}
+              - title: {{ group.title | to_json }}
+                links:
+{% for link in group.links %}
+                  - title: {{ link.title | to_json }}
+                    url: {{ link.url | to_json }}
+                    icon: {{ link.icon | to_json }}
+                    description: {{ link.description | to_json }}
+{% endfor %}
+{% endfor %}
+      - size: small
+        widgets:
+          - type: twitch-channels
+            channels:
+              - clintstevens
+              - jerma985
+          - type: group
+            widgets:
+              - type: rss
+                title: Papers
+                limit: 10
+                cache: 12h
+                feeds:
+                  - title: Compositionality Journal
+                    url: https://api.episciences.org/api/feed/rss/compositionality
+              - type: rss
+                title: Dev
+                limit: 10
+                cache: 12h
+                feeds:
+                  - title: Zig Lang
+                    url: https://ziglang.org/news/index.xml
+                  - title: Effect TS
+                    url: https://effect.website/blog/rss.xml

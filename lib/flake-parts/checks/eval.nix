@@ -169,14 +169,14 @@
           '';
 
         /**
-          Adelie remains a source-only minimal host: exact Samsung system disk,
-          fleet agents only, no cache publisher, no secrets, and no apply path.
+          Adelie's post-admission source keeps application authority narrow,
+          portable disks absent, and stateful backups remote to workstation.
         */
-        eval-adelie-admission =
+        eval-three-host-migration =
           let
-            result = import ../../../tests/eval/adelie-admission.nix { inherit inputs lib; };
+            result = import ../../../tests/eval/three-host-migration.nix { inherit inputs lib; };
           in
-          pkgs.runCommandLocal "eval-adelie-admission" { } ''
+          pkgs.runCommandLocal "eval-three-host-migration" { } ''
             echo ${lib.escapeShellArg result} > $out
           '';
 

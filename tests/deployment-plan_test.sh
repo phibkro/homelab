@@ -64,13 +64,13 @@ printf changed >> services/filmder/nixos.nix
 jq '.sourceRoots["services/filmder"] = "invalid-host-array"' "$index" >"$scratch/bad.json"
 (HOMELAB_DEPLOYMENT_INDEX="$scratch/bad.json"; reject --changed-since HEAD)
 plan --changed-since HEAD
-assert_plan '.hosts == ["workstation"] and .activationOrder == ["workstation"]'
+assert_plan '.hosts == ["adelie"] and .activationOrder == ["adelie"]'
 git add .
 plan --changed-since HEAD
-assert_plan '.hosts == ["workstation"]'
-git commit --quiet -m workstation
+assert_plan '.hosts == ["adelie"]'
+git commit --quiet -m adelie
 plan --changed-since "$base"
-assert_plan '.hosts == ["workstation"]'
+assert_plan '.hosts == ["adelie"]'
 printf changed >> services/caddy/ansible/tasks.yml
 plan --changed-since HEAD
 assert_plan '.hosts == ["pi"] and .builds == [] and .plans == ["just pi::plan"] and .applies == ["just pi::deploy"] and .verifies == ["just pi::check"] and .activationOrder == ["pi"]'
@@ -84,7 +84,7 @@ assert_plan '.hosts == ["workstation"]'
 git restore services/bazarr/manifest.nix
 printf changed >> services/ntfy/manifests/notify.nix
 plan --changed-since HEAD
-assert_plan '.hosts == ["pi", "workstation"]'
+assert_plan '.hosts == ["adelie", "pi", "workstation"]'
 git restore services/ntfy/manifests/notify.nix
 printf changed >> services/recyclarr/implementation/radarr.yml
 plan --changed-since HEAD
@@ -113,10 +113,10 @@ git commit --quiet -m pi
 # Moves must invalidate both old and new owners even when Git detects a rename.
 git mv services/filmder/nixos.nix services/caddy/ansible/moved.nix
 plan --changed-since HEAD
-assert_plan '.hosts == ["pi", "workstation"]'
+assert_plan '.hosts == ["adelie", "pi"]'
 git commit --quiet -m rename
 plan --changed-since HEAD~1
-assert_plan '.hosts == ["pi", "workstation"]'
+assert_plan '.hosts == ["adelie", "pi"]'
 rm services/caddy/ansible/moved.nix
 plan --changed-since HEAD
 assert_plan '.hosts == ["pi"]'

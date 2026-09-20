@@ -8,7 +8,8 @@ The intended placement separates access needs from protection:
 
 | Storage | Role |
 |---|---|
-| Workstation NVMe SSDs | Hot system, application and working data; caches |
+| Workstation NVMe SSDs | Desktop, GPU, media-service, and working data |
+| Adelie NVMe SSD | SSD-local application state and re-derivable Attic chunks |
 | IronWolf Pro HDD | Cold media, libraries and archives |
 | OneTouch HDD | Independent backup disk; destination policy in `inventory/backup.nix` |
 
@@ -32,16 +33,17 @@ that HDD, while active service state and working trees remain on SSD storage.
 ## Backup policy and observed recovery
 
 [`inventory/backup.nix`](../../inventory/backup.nix) owns destination selection
-and its enable switch. Workstation's declared destination is local OneTouch;
-Pi's declared transport uses a restricted workstation SFTP account backed by that disk.
-The [generated backup reference](../generated/backups.md) and
-[service patterns](services.md) describe the declared jobs and preparation.
+and its enable switch. Workstation writes directly to its attached OneTouch.
+Pi and Adelie use separate restricted workstation SFTP accounts and namespaces
+backed by that disk. The [generated backup reference](../generated/backups.md)
+and [service patterns](services.md) describe the declared jobs and preparation.
 
 Configuration, mounted storage, successful backups, and usable restores are
 separate evidence. The [September 19 inspection](../archive/reports/2026-09-19-backup-evidence.md)
 records the enabled source, mounted drive, completed workstation service-state
 restore drill and metadata check, with their limits. It does not establish Pi
-coverage, user-data/media restore coverage, or application database recovery.
+or Adelie coverage, user-data/media restore coverage, or application database
+recovery.
 Use the [cutover runbook](../runbooks/onetouch-backup-cutover.md) when reconnecting,
 changing transport, or collecting fresh recovery evidence.
 

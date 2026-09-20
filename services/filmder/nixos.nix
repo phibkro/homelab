@@ -1,6 +1,5 @@
 {
   config,
-  inputs,
   lib,
   pkgs,
   ...
@@ -15,13 +14,10 @@
   `memory/reference/tailscale_funnel_implementation.md`.
 
   ── Build/deploy shape ─────────────────────────────────────────────
-  Build is a manually triggered *host-side systemd oneshot* rather than a Nix
-  flake build, because filmder's TMDB token is read at *build time*
-  by Vite and embedded into the JS bundle (`import.meta.env.VITE_*`).
-  Nix's hermetic build sandbox can't read /run/secrets/X, so the
-  clean `nix build → /nix/store/<hash>-filmder` path doesn't apply.
-  A host-side build with the secret read in the script is the
-  pragmatic compromise.
+  The upstream Vite app expects a build-time TMDB bearer. The host build
+  rewrites its two API calls to the local `/tmdb` proxy instead. Three UIDs
+  isolate the mutable build, credentialless static server, and credential-
+  bearing proxy, so neither the build nor a served symlink can read the bearer.
 
   ── Trigger ──────────────────────────────────────────────────────
   `filmder-build.service` is a oneshot but NOT in `wantedBy` — every
@@ -38,26 +34,76 @@
 */
 
 let
-  inherit (config.sops) secrets;
   artifact = config.nori.inventory.workloads.filmder.artifact;
   filmderRepo = artifact.source.repository;
   filmderRef = artifact.source.ref;
   servePort = 9092;
+  filmderCaddyfile = pkgs.writeText "filmder-Caddyfile" ''
+    {
+      admin off
+      auto_https off
+    }
+
+    :${toString servePort} {
+      @tmdb path /tmdb/movie/*
+      handle @tmdb {
+        uri strip_prefix /tmdb
+        rewrite * /3{uri}
+        reverse_proxy https://api.themoviedb.org {
+          header_up Host api.themoviedb.org
+          header_up Authorization "{env.TMDB_TOKEN}"
+        }
+      }
+
+      handle {
+        reverse_proxy http://127.0.0.1:9093
+      }
+    }
+  '';
 in
 {
   sops.secrets.tmdb-token = {
-    sopsFile = inputs.self + "/secrets/workstation-runtime.yaml";
-    owner = "filmder";
+    owner = "filmder-proxy";
     mode = "0400";
   };
 
-  users.users.filmder = {
-    isSystemUser = true;
-    group = "filmder";
-    home = "/var/lib/filmder";
-    description = "filmder build + serve user";
+  sops.templates.filmder-env = {
+    owner = "filmder-proxy";
+    group = "filmder-proxy";
+    mode = "0400";
+    content = ''
+      TMDB_TOKEN=Bearer ${config.sops.placeholder.tmdb-token}
+    '';
   };
-  users.groups.filmder = { };
+
+  users.users = {
+    filmder-builder = {
+      isSystemUser = true;
+      group = "filmder-static";
+      home = "/var/lib/filmder";
+      description = "Unprivileged Filmder source build user";
+    };
+    filmder-static = {
+      isSystemUser = true;
+      group = "filmder-static";
+      description = "Credentialless Filmder static-file user";
+    };
+    filmder-proxy = {
+      isSystemUser = true;
+      group = "filmder-proxy";
+      description = "Filmder TMDB proxy user";
+    };
+  };
+  users.groups = {
+    filmder-static = { };
+    filmder-proxy = { };
+  };
+
+  # Keep the credentialless listener alive before the first manual build.
+  systemd.tmpfiles.rules = [
+    "d /var/lib/filmder 0750 filmder-builder filmder-static -"
+    "d /var/lib/filmder/dist 0750 filmder-builder filmder-static -"
+  ];
 
   systemd.services.${artifact.consumer.unit} = {
     description = "Build filmder static site (manual trigger via `just deploy-app filmder`)";
@@ -67,15 +113,18 @@ in
     path = with pkgs; [
       git
       bun
+      gnugrep
+      gnused
     ];
 
     serviceConfig = {
       Type = "oneshot";
-      User = "filmder";
-      Group = "filmder";
+      User = "filmder-builder";
+      Group = "filmder-static";
+      ExecStartPost = [ "+${pkgs.systemd}/bin/systemctl restart filmder-static.service" ];
 
-      # systemd-managed state dir — exposes $STATE_DIRECTORY to the
-      # script. Created with mode 0750, owned by filmder:filmder.
+      # systemd-managed state dir — exposes $STATE_DIRECTORY to the script.
+      # The builder owns writes; the credential-bearing server reads the group.
       StateDirectory = "filmder";
       StateDirectoryMode = "0750";
       WorkingDirectory = "/var/lib/filmder";
@@ -105,14 +154,20 @@ in
         exit 0
       fi
 
-      # 3. Inject the TMDB token. sops stores the raw v4 read-access # multi-line: ok
-      #    JWT; filmder uses the env var as the full Authorization
-      #    header value verbatim, so we prepend `Bearer ` here. Other
-      #    consumers of `tmdb-token` get the raw value and format
-      #    their own header — secret stays convention-free in sops.
-      export VITE_API_READ_ACCESS_TOKEN="Bearer $(cat ${secrets.tmdb-token.path})"
+      # 3. Replace the build-time bearer with the narrow local proxy. Fail if
+      #    upstream changed either security-sensitive call site.
+      grep -Fq 'https://api.themoviedb.org/3' src/server/api.ts
+      grep -Fq 'Authorization: import.meta.env.VITE_API_READ_ACCESS_TOKEN,' src/server/api.ts
+      sed -i \
+        -e 's#https://api.themoviedb.org/3#/tmdb#g' \
+        -e '/Authorization: import\.meta\.env\.VITE_API_READ_ACCESS_TOKEN,/d' \
+        src/server/api.ts
+      if grep -Eq 'VITE_API_READ_ACCESS_TOKEN|api\.themoviedb\.org' src/server/api.ts; then
+        echo "filmder credential rewrite incomplete" >&2
+        exit 1
+      fi
 
-      # 4. Build.
+      # 4. Build without production credentials.
       bun install
       bun run build
 
@@ -129,25 +184,39 @@ in
       echo "$CURRENT_COMMIT" > "$SENTINEL"
     '';
   };
-
-  # Static-file server fronting /var/lib/filmder/dist; Caddy reverse-
-  # proxies `https://filmder.home.phibkro.org` → here.
-  systemd.services.filmder-serve = {
-    description = "Serve filmder static files for Caddy reverse-proxy";
+  # A credentialless process reads builder output. The credential-bearing
+  # Caddy process only proxies bytes and the narrow TMDB API path.
+  systemd.services.filmder-static = {
+    description = "Serve credentialless Filmder static files";
     after = [ "filmder-build.service" ];
     wantedBy = [ "multi-user.target" ];
-
     serviceConfig = {
       Type = "simple";
-      User = "filmder";
-      Group = "filmder";
+      User = "filmder-static";
+      Group = "filmder-static";
       ExecStart = lib.concatStringsSep " " [
         "${pkgs.darkhttpd}/bin/darkhttpd"
         "/var/lib/filmder/dist"
-        "--addr 0.0.0.0"
-        "--port ${toString servePort}"
+        "--addr 127.0.0.1"
+        "--port 9093"
         "--no-listing"
       ];
+      Restart = "on-failure";
+      RestartSec = 5;
+    };
+  };
+
+  systemd.services.filmder-serve = {
+    description = "Proxy Filmder and its narrow TMDB API";
+    requires = [ "filmder-static.service" ];
+    after = [ "filmder-static.service" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "simple";
+      User = "filmder-proxy";
+      Group = "filmder-proxy";
+      EnvironmentFile = config.sops.templates.filmder-env.path;
+      ExecStart = "${lib.getExe pkgs.caddy} run --config ${filmderCaddyfile} --adapter caddyfile";
       Restart = "on-failure";
       RestartSec = 5;
     };
@@ -156,9 +225,10 @@ in
   nori.harden.filmder-build = {
     binds = [ "/var/lib/filmder" ];
   };
-  nori.harden.filmder-serve = {
+  nori.harden.filmder-static = {
     readOnlyBinds = [ "/var/lib/filmder" ];
   };
+  nori.harden.filmder-serve = { };
 
-  nori.backups.filmder.skip = "stateless static site, rebuilt from public GitHub source + sops token";
+  nori.backups.filmder.skip = "Stateless static site rebuilt from public GitHub source; the TMDB bearer stays in the runtime proxy.";
 }

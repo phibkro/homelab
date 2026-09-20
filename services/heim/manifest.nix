@@ -3,7 +3,7 @@
   hostRoles = [ "workhorse" ];
   placement = {
     strategy = "first-unique";
-    selectors = [ { tags = [ "primary-service-host" ]; } ];
+    selectors = [ { tags = [ "application-service-host" ]; } ];
     cardinality = {
       min = 1;
       max = 1;
@@ -28,7 +28,7 @@
     };
     legacyException = {
       owner = "homelab operator";
-      reason = "Heim has no published immutable package or release archive yet; Workstation builds the reviewed upstream branch into an atomic local static tree.";
+      reason = "Heim has no published immutable package or release archive yet; the selected workhorse builds the reviewed upstream branch into an atomic local static tree.";
       removalTrigger = "Heim publishes a pinned flake package or checksummed release archive containing the static site.";
       verification = "tests/eval/product-artifacts.nix";
     };

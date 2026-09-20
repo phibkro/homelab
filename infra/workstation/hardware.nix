@@ -9,7 +9,7 @@
 /**
   ## workstation — hardware inventory: `inventory/hosts.nix`
 
-  Primary service compute and storage host:
+  Desktop, media, GPU, and attached storage host:
 
    - **WD SN750 1 TB NVMe** — root + service state (`@`, `@home`,
      `@nix`, `@var-lib`, `@var-log`). disko at `./disko.nix`.
@@ -28,10 +28,10 @@
 
   ## Service posture
 
-  Family services, media services, research tools, and the operator desktop
-  are colocated here. Pi remains the always-on entry and observability plane;
-  SSDs hold hot data and IronWolf Pro holds cold data. OneTouch stores
-  independent Restic history on a separate disk attached to this host.
+  Media services, GPU workloads, research tools, and the operator desktop
+  stay here. Adelie owns the SSD-local application tier. Pi remains the
+  always-on entry and observability plane. IronWolf stores cold media.
+  OneTouch stores independent Restic history from both workhorses.
 
   ## Sleep + GPU constraint
 

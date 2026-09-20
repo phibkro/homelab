@@ -375,30 +375,30 @@ string
 
 
 
-## Evaluated workstation jobs
+## Evaluated NixOS host jobs
 
-Generated from the evaluated `nori.backups` registry. Counts and membership
-therefore change with configuration instead of being duplicated in prose.
+Generated from each evaluated NixOS host's `nori.backups` registry.
+Counts, membership, and placement therefore change with configuration.
 
-| Job | Tier | Effective targets | Include paths |
-|---|---|---|---|
-| `bazarr` | `service` | `onetouch` | `/var/lib/bazarr` |
-| `calibre-web` | `service` | `onetouch` | `/var/lib/calibre-web` |
-| `herdr-projects-mcp` | `service` | `onetouch` | `/home/nori/.local/state/herdr-mcp/projects` |
-| `jellyfin` | `service` | `onetouch` | `/var/lib/jellyfin` |
-| `jellyseerr` | `service` | `onetouch` | `/var/lib/private/jellyseerr` |
-| `komga` | `service` | `onetouch` | `/var/lib/komga` |
-| `lidarr` | `service` | `onetouch` | `/var/lib/lidarr` |
-| `media-irreplaceable` | `irreplaceable` | `onetouch` | `/mnt/media/archive`<br>`/mnt/media/home-videos`<br>`/mnt/media/library`<br>`/mnt/media/photos`<br>`/mnt/media/projects` |
-| `miniflux` | `service` | `onetouch` | `/var/backup/postgresql/miniflux.sql.gz` |
-| `navidrome` | `service` | `onetouch` | `/var/lib/private/navidrome`<br>`/var/backup/navidrome` |
-| `paperless` | `irreplaceable` | `onetouch` | `/var/backup/postgresql/paperless.sql.gz` |
-| `prowlarr` | `service` | `onetouch` | `/var/lib/private/prowlarr` |
-| `qbittorrent` | `service` | `onetouch` | `/var/lib/qBittorrent` |
-| `radarr` | `service` | `onetouch` | `/var/lib/radarr` |
-| `radicale` | `service` | `onetouch` | `/var/lib/radicale` |
-| `sonarr` | `service` | `onetouch` | `/var/lib/sonarr` |
-| `stremio` | `service` | `onetouch` | `/var/lib/stremio` |
-| `suwayomi` | `service` | `onetouch` | `/var/lib/suwayomi-server` |
-| `user-data` | `user` | `onetouch` | `/home`<br>`/srv/nori`<br>`/srv/share` |
-| `vaultwarden` | `service` | `onetouch` | `/var/lib/vaultwarden`<br>`/var/backup/vaultwarden` |
+| Host | Job | Tier | Effective targets | Include paths |
+|---|---|---|---|---|
+| `adelie` | `miniflux` | `service` | `onetouch` | `/var/backup/postgresql/miniflux.sql.gz` |
+| `adelie` | `radicale` | `service` | `onetouch` | `/var/lib/radicale` |
+| `adelie` | `stremio` | `service` | `onetouch` | `/var/lib/stremio` |
+| `adelie` | `vaultwarden` | `service` | `onetouch` | `/var/lib/vaultwarden`<br>`/var/backup/vaultwarden` |
+| `workstation` | `bazarr` | `service` | `onetouch` | `/var/lib/bazarr` |
+| `workstation` | `calibre-web` | `service` | `onetouch` | `/var/lib/calibre-web` |
+| `workstation` | `herdr-projects-mcp` | `service` | `onetouch` | `/home/nori/.local/state/herdr-mcp/projects` |
+| `workstation` | `jellyfin` | `service` | `onetouch` | `/var/lib/jellyfin` |
+| `workstation` | `jellyseerr` | `service` | `onetouch` | `/var/lib/private/jellyseerr` |
+| `workstation` | `komga` | `service` | `onetouch` | `/var/lib/komga` |
+| `workstation` | `lidarr` | `service` | `onetouch` | `/var/lib/lidarr` |
+| `workstation` | `media-irreplaceable` | `irreplaceable` | `onetouch` | `/mnt/media/archive`<br>`/mnt/media/home-videos`<br>`/mnt/media/library`<br>`/mnt/media/photos`<br>`/mnt/media/projects` |
+| `workstation` | `navidrome` | `service` | `onetouch` | `/var/lib/private/navidrome`<br>`/var/backup/navidrome` |
+| `workstation` | `paperless` | `irreplaceable` | `onetouch` | `/var/backup/postgresql/paperless.sql.gz` |
+| `workstation` | `prowlarr` | `service` | `onetouch` | `/var/lib/private/prowlarr` |
+| `workstation` | `qbittorrent` | `service` | `onetouch` | `/var/lib/qBittorrent` |
+| `workstation` | `radarr` | `service` | `onetouch` | `/var/lib/radarr` |
+| `workstation` | `sonarr` | `service` | `onetouch` | `/var/lib/sonarr` |
+| `workstation` | `suwayomi` | `service` | `onetouch` | `/var/lib/suwayomi-server` |
+| `workstation` | `user-data` | `user` | `onetouch` | `/home`<br>`/srv/nori`<br>`/srv/share` |

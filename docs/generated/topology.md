@@ -27,10 +27,12 @@ graph TB
     P[pi · Ansible<br/>entry plane + observability hub]
   end
   subgraph "workhorse tier"
-    A[adelie<br/>staged storage + fleet agents]
-    W[workstation<br/>family + media services + desktop]
+    A[adelie<br/>SSD application tier]
+    W[workstation<br/>desktop + GPU + media + storage]
   end
+  P -- "*.${nori.domain} proxy" --> A
   P -- "*.${nori.domain} proxy" --> W
+  A -- "Restic to OneTouch" --> W
   A -- "scraped by" --> P
   W -- "scraped by" --> P
 ```
@@ -49,7 +51,7 @@ no parallel identity map.
 
 ## workstation — hardware inventory: `inventory/hosts.nix`
 
-Primary service compute and storage host:
+Desktop, media, GPU, and attached storage host:
 
  - **WD SN750 1 TB NVMe** — root + service state (`@`, `@home`,
    `@nix`, `@var-lib`, `@var-log`). disko at `./disko.nix`.
@@ -68,10 +70,10 @@ this. **Never touch `nvme0n1` without verifying the model string via
 
 ## Service posture
 
-Family services, media services, research tools, and the operator desktop
-are colocated here. Pi remains the always-on entry and observability plane;
-SSDs hold hot data and IronWolf Pro holds cold data. OneTouch stores
-independent Restic history on a separate disk attached to this host.
+Media services, GPU workloads, research tools, and the operator desktop
+stay here. Adelie owns the SSD-local application tier. Pi remains the
+always-on entry and observability plane. IronWolf stores cold media.
+OneTouch stores independent Restic history from both workhorses.
 
 ## Sleep + GPU constraint
 
@@ -86,9 +88,9 @@ prevents idle-sleep during ambient sound. Full debt note in
 
 | Host | Managed by | Codename | Role | Tailnet | LAN | Hardware | Primary job |
 |---|---|---|---|---|---|---|---|
-| **adelie** | `nixos` | adelie | `workhorse` (staged storage and media host) | `100.107.90.3` | — | Node 304 · Ryzen 5 5600X · 16 GB DDR4 · RTX 2060 Super · Samsung 990 Pro 1 TB NVMe | Future storage and media workhorse. Phase one is a minimal, bootable NixOS host on its Samsung NVMe; the IronWolf Pro and OneTouch remain undeclared until their physical migration and backup roles are verified. |
-| **pi** | `ansible` | fairy | `appliance` (always-on entry plane) | `100.100.71.3` | `192.168.1.225` | Raspberry Pi 4 8 GB · aarch64 · USB-boot from Samsung FIT 128 GB | HTTP entry plane (Caddy + Authelia + Pi-hole, LE wildcard cert on `*.${nori.domain}`), observability hub, alert plane, Tailscale subnet router + exit node. |
-| **workstation** | `nixos` | emperor | `workhorse` (always-on converged desktop/server) | `100.81.5.122` | `192.168.1.181` | Ryzen 9 5950X · 64 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) · WD SN750 1 TB NVMe + Corsair MP510 960 GB NVMe + Seagate IronWolf Pro 4 TB SATA | Always-on graphical workstation and homelab server: GPU services (Ollama / Jellyfin NVENC), `*arr` stack + qBittorrent, family services and Samba shares on the attached IronWolf disk, and the fleet's re-derivable Attic cache. SSDs hold hot data and the IronWolf Pro holds cold archives. OneTouch stores independent Restic history on a separate disk attached to this host; same-disk snapshots provide local rollback. |
+| **adelie** | `nixos` | adelie | `workhorse` (SSD-local application host) | `100.107.90.3` | — | Node 304 · Ryzen 5 5600X · 16 GB DDR4 · RTX 2060 Super · Samsung 990 Pro 1 TB NVMe | SSD-local application backends: Attic, Filmder, Grafana, Heim, Miniflux, Radicale, Stremio, and Vaultwarden. Each stateful service backs up to its own restricted repository on the workstation-attached OneTouch disk. Media and portable disks remain on workstation. |
+| **pi** | `ansible` | fairy | `appliance` (always-on entry plane) | `100.100.71.3` | `192.168.1.225` | Raspberry Pi 4 8 GB · aarch64 · USB-boot from Samsung FIT 128 GB | HTTP entry plane (Caddy + Authelia + Pi-hole and the LE wildcard certificate on `*.${nori.domain}`), Glance home page, observability hub, alert plane, and Tailscale subnet router and exit node. |
+| **workstation** | `nixos` | emperor | `workhorse` (desktop, media, and storage host) | `100.81.5.122` | `192.168.1.181` | Ryzen 9 5950X · 64 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) · WD SN750 1 TB NVMe + Corsair MP510 960 GB NVMe + Seagate IronWolf Pro 4 TB SATA | Graphical workstation, GPU services, media acquisition and playback, and Samba shares on the attached IronWolf disk. It publishes re-derivable Nix paths to Adelie's Attic cache. OneTouch receives independent Restic history from both workhorses; same-disk snapshots provide local rollback for workstation datasets. |
 
 ## Registry schema (`nori.hosts.<name>.*`)
 

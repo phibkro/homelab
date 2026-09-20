@@ -212,6 +212,8 @@ pkgs.testers.runNixOSTest {
       nori.observability.ntfyNotify = {
         baseUrl = "http://127.0.0.1:9999";
         recoveryWindowSeconds = 3;
+        sopsFile = ./secrets/test.yaml;
+        secretOwner = "root";
       };
 
       # Stub ntfy receiver — a tiny python HTTP server that writes

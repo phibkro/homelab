@@ -42,6 +42,35 @@ nix eval --json "$repo_root#lib.noriInventory" | jq \
             )
           }
       ] as $active_endpoints
+    | ($active_endpoints
+      | map(
+          select(
+            .endpoint.runsOn == $entry_plane_host
+            and (.endpoint.exposeOnTailnet // false)
+          )
+          | .endpoint.port
+        )
+      | unique
+      | sort) as $tailnet_workload_ports
+    | ["Consume", "Acquire", "Personal", "Projects", "Admin"] as $dashboard_group_order
+    | ($active_endpoints
+      | map(select(.endpoint.dashboard != null) | {
+          group: .endpoint.dashboard.group,
+          title: .endpoint.dashboard.title,
+          icon: .endpoint.dashboard.icon,
+          description: .endpoint.dashboard.description,
+          url: ("https://" + .hostname)
+        })
+      | group_by(.group)
+      | map({
+          title: .[0].group,
+          links: (map(del(.group)) | sort_by(.title))
+        })
+      | sort_by(
+          .title as $title
+          | (($dashboard_group_order | index($title)) // 999),
+          .title
+        )) as $glance_bookmark_groups
     | ($active_endpoints | map({
         name: .name,
         hostname: .hostname,
@@ -238,6 +267,12 @@ nix eval --json "$repo_root#lib.noriInventory" | jq \
               pi_domain: $domain,
               pi_deprecated_domains: $inventory.site.deprecatedDomains,
               pi_routes: $appliance_routes,
+              pi_tailnet_workload_ports: $tailnet_workload_ports,
+              glance_enabled: (
+                $inventory.workloads.glance.active != false
+                and any($inventory.workloads.glance.hosts[]; . == $entry_plane_host)
+              ),
+              glance_bookmark_groups: $glance_bookmark_groups,
               authelia_oidc_clients: $oidc_clients,
               gatus_endpoints: ($explicit_probes + $route_probes),
               victoriametrics_scrape_jobs: $scrape_jobs,
@@ -293,6 +328,9 @@ jq --exit-status \
    | .pi_appliances.hosts.pi.victoriametrics_scrape_jobs as $scrape_jobs
    | .pi_appliances.hosts.pi.beszel_systems as $beszel_systems
    | .pi_appliances.hosts.pi.beszel_agent_listen_port as $beszel_agent_port
+   | .pi_appliances.hosts.pi.glance_enabled as $glance_enabled
+   | .pi_appliances.hosts.pi.glance_bookmark_groups as $glance_bookmark_groups
+   | .pi_appliances.hosts.pi.pi_tailnet_workload_ports as $tailnet_workload_ports
    | ([$routes[] | select(.reachability == "internet") | .hostname]) as $expected_ddns_hostnames
    | .pi_appliances.hosts.pi.pi_lan_address != null
    and .pi_appliances.hosts.pi.pihole_lan_address == .pi_appliances.hosts.pi.pi_lan_address
@@ -319,6 +357,22 @@ jq --exit-status \
         (.name | type == "string" and test("^[a-z][a-z0-9-]*$"))
         and (.host | type == "string" and length > 0)
         and .port == $beszel_agent_port
+      ))
+   and ($glance_enabled | type == "boolean")
+   and (($glance_enabled == false) or ($glance_bookmark_groups | type == "array" and length > 0))
+   and ($tailnet_workload_ports | type == "array")
+   and (all($tailnet_workload_ports[]; type == "number" and . > 0 and . < 65536))
+   and ($tailnet_workload_ports | unique | length == ($tailnet_workload_ports | length))
+   and ([ $glance_bookmark_groups[] | .title ] | unique | length == ($glance_bookmark_groups | length))
+   and (all($glance_bookmark_groups[];
+        (.title | type == "string" and length > 0)
+        and (.links | type == "array" and length > 0)
+        and all(.links[];
+          (.title | type == "string" and length > 0)
+          and (.url | type == "string" and test("^https://[a-z0-9.-]+$"))
+          and (.icon | type == "string" and length > 0)
+          and (.description | type == "string" and length > 0)
+        )
       ))
    and (.pi_appliances.hosts.pi.pi_routes | length > 1)
    and ([ $routes[] | .name ] | unique | length == ($routes | length))

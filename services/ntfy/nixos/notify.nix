@@ -1,5 +1,6 @@
 {
   config,
+  inputs,
   lib,
   ...
 }:
@@ -41,6 +42,16 @@
         Tests override to ~3s for fast iteration.
       '';
     };
+    sopsFile = lib.mkOption {
+      type = lib.types.path;
+      default = inputs.self + "/secrets/shared-runtime.yaml";
+      description = "Encrypted file that owns the operator alert topic.";
+    };
+    secretOwner = lib.mkOption {
+      type = lib.types.str;
+      default = "nori";
+      description = "User allowed to emit alerts through the operator topic.";
+    };
   };
 
   config = {
@@ -61,7 +72,9 @@
     */
 
     sops.secrets.ntfy-channel = {
-      mode = "0444";
+      sopsFile = config.nori.observability.ntfyNotify.sopsFile;
+      owner = config.nori.observability.ntfyNotify.secretOwner;
+      mode = "0400";
     };
 
     /*

@@ -15,7 +15,6 @@ let
   inventory = inputs.self.lib.noriInventory;
   compiler = import ../../inventory;
   workloadCatalog = import ../../inventory/workloads.nix { inherit lib; };
-  workstation = inputs.self.nixosConfigurations.workstation.config;
   statusServices = inventory.status.services;
   portalServices = inventory.portal.services;
 
@@ -103,9 +102,11 @@ let
     && portalServices.downloads.authentication == "forward-auth"
     && portalServices.downloads.registrationRequired
     && portalServices.downloads.visibleTo == [ "operator" ]
+    && portalServices.filmder.audience == "family"
+    && portalServices.filmder.authentication == "forward-auth"
+    && portalServices.filmder.registrationRequired
     &&
       portalServices.filmder.visibleTo == [
-        "public"
         "family"
         "operator"
       ];
@@ -113,16 +114,16 @@ let
   entryPlaneOwnershipIsExplicit =
     inventory.hosts.${inventory.site.entryPlaneHost}.kind == "ansible"
     && !(builtins.hasAttr inventory.site.entryPlaneHost inputs.self.nixosConfigurations);
-  glanceSettings = builtins.toJSON workstation.services.glance.settings;
-  portalUsesCanonicalDomain =
-    lib.hasInfix "https://media.home.phibkro.org" glanceSettings
-    && !lib.hasInfix ".nori.lan" glanceSettings;
+  portalUsesCanonicalDomain = lib.all (
+    service: lib.hasSuffix ".home.phibkro.org" service.url && !lib.hasInfix ".nori.lan" service.url
+  ) (lib.attrValues portalServices);
   entryPlaneEndpointsFollowSite =
     lib.all (endpoint: endpoint.runsOn == inventory.site.entryPlaneHost)
       [
         inventory.workloads.authelia.endpoints.auth
         inventory.workloads."beszel-hub".endpoints.metrics
         inventory.workloads.gatus.endpoints.uptime
+        inventory.workloads.glance.endpoints.home
         inventory.workloads."ntfy-server".endpoints.alert
         inventory.workloads.victoriametrics.endpoints.tsdb
         inventory.workloads."victorialogs-server".endpoints.logs

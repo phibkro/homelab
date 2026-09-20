@@ -86,9 +86,8 @@ let
     };
   };
 
-  # One post_<channel> shell function per channel — reads its secret and
-  # curls. Kept per-channel (not a data loop) because each closes over a
-  # distinct secret path resolved at build.
+  # One post_<channel> shell function per channel. Topic and authorization
+  # capabilities travel through a private file descriptor, never curl argv.
   postFn = name: ch: ''
     post_${name}() {
       if [ ! -r ${lib.escapeShellArg ch.topicSecret} ]; then
@@ -97,21 +96,25 @@ let
       fi
       local topic
       topic="$(cat ${lib.escapeShellArg ch.topicSecret})"
-      local auth_header=()
       ${lib.optionalString (ch.authTokenSecret != null) ''
         if [ ! -r ${lib.escapeShellArg ch.authTokenSecret} ]; then
           echo "nori-alert: channel ${name} auth token unreadable; skipping" >&2
           return 0
         fi
-        auth_header=(-H "Authorization: Bearer $(cat ${lib.escapeShellArg ch.authTokenSecret})")
+        local auth_token
+        auth_token="$(cat ${lib.escapeShellArg ch.authTokenSecret})"
       ''}
-      curl -fsS \
-        "''${auth_header[@]}" \
+      printf '%s' "$body" | curl -fsS \
+        --config <(
+          printf 'url = "%s/%s"\n' ${lib.escapeShellArg ch.baseUrl} "$topic"
+          ${lib.optionalString (ch.authTokenSecret != null) ''
+            printf 'header = "Authorization: Bearer %s"\n' "$auth_token"
+          ''}
+        ) \
         -H "Title: $title" \
         -H "Priority: $prio" \
         -H "Tags: $tags" \
-        --data-binary "$body" \
-        "${ch.baseUrl}/$topic" >/dev/null || true
+        --data-binary @- >/dev/null || true
     }
   '';
 

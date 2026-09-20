@@ -1,6 +1,5 @@
 {
   config,
-  inputs,
   lib,
   pkgs,
   ...
@@ -11,20 +10,6 @@ let
   loopbackBaseUrl = "http://127.0.0.1:5000";
   publicBaseUrl = "https://${cacheHost}";
   cachePublicKey = "attic.nori.lan-1:3zt/aS8K1bSEjNvZQB9ga9OeZTxcRkvbb7aYRI/vobo=";
-  atticClientConfig = pkgs.writeTextDir "attic/config.toml" ''
-    default-server = "nori"
-
-    [servers.nori]
-    endpoint = "https://cache.${config.nori.domain}/"
-    token-file = "${config.sops.secrets.attic-push-token.path}"
-  '';
-  atticPush = pkgs.writeShellApplication {
-    name = "nori-cache-push";
-    text = ''
-      export XDG_CONFIG_HOME=${atticClientConfig}
-      exec ${lib.getExe pkgs.attic-client} push nori "$@"
-    '';
-  };
   bootstrapScript = pkgs.writeShellScript "attic-cache-bootstrap" ''
     set -euo pipefail
 
@@ -173,7 +158,6 @@ let
 in
 {
   sops.secrets.attic-jwt-environment = {
-    sopsFile = inputs.self + "/secrets/workstation-runtime.yaml";
     key = "attic_jwt_environment";
     owner = "root";
     mode = "0400";
@@ -183,79 +167,16 @@ in
     ];
   };
   sops.secrets.attic-cache-keypair = {
-    sopsFile = inputs.self + "/secrets/workstation-runtime.yaml";
     key = "attic_cache_keypair";
     owner = "root";
     mode = "0400";
     restartUnits = [ "attic-cache-bootstrap.service" ];
   };
   sops.secrets.attic-admin-token = {
-    sopsFile = inputs.self + "/secrets/workstation-runtime.yaml";
     key = "attic_admin_token";
     owner = "root";
     mode = "0400";
     restartUnits = [ "attic-cache-bootstrap.service" ];
-  };
-  sops.secrets.attic-push-token = {
-    sopsFile = inputs.self + "/secrets/workstation-runtime.yaml";
-    key = "attic_push_token";
-    owner = "root";
-    mode = "0400";
-    restartUnits = [
-      "attic-cache-seed.service"
-      "attic-cache-watch.service"
-    ];
-  };
-
-  environment.systemPackages = [ atticPush ];
-
-  /*
-    Cache publication is credentialed workload authority. Keep it with the
-    workstation's selected Attic realization instead of the shared host
-    baseline. Read-only substitution remains available on every NixOS host.
-  */
-  systemd.services.attic-cache-seed = {
-    description = "Publish the active system closure to the homelab Attic cache";
-    wants = [ "network-online.target" ];
-    after = [ "network-online.target" ];
-    environment.XDG_CONFIG_HOME = atticClientConfig;
-    serviceConfig = {
-      Type = "exec";
-      ExecStart = "${lib.getExe pkgs.attic-client} push nori --jobs 2 /run/current-system";
-      Restart = "on-failure";
-      RestartMode = "direct";
-      RestartSec = "60s";
-    };
-  };
-
-  systemd.services.attic-cache-watch = {
-    description = "Publish new Nix store paths to the homelab Attic cache";
-    wants = [ "network-online.target" ];
-    after = [ "network-online.target" ];
-    environment.XDG_CONFIG_HOME = atticClientConfig;
-    serviceConfig = {
-      Type = "exec";
-      ExecStart = "${lib.getExe pkgs.attic-client} watch-store nori --jobs 2";
-      Restart = "on-failure";
-      RestartMode = "direct";
-      RestartSec = "60s";
-    };
-  };
-
-  systemd.timers.attic-cache-seed = {
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnActiveSec = "2m";
-      OnUnitActiveSec = "1d";
-      Unit = "attic-cache-seed.service";
-    };
-  };
-  systemd.timers.attic-cache-watch = {
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnActiveSec = "2m";
-      Unit = "attic-cache-watch.service";
-    };
   };
 
   users.users.atticd = {
@@ -294,7 +215,7 @@ in
   };
 
   # The upstream module defaults to DynamicUser=true. Stable ownership of the
-  # OneTouch-backed cache path requires a declared static account instead.
+  # local NVMe cache path requires a declared static account instead.
   systemd.services.atticd.serviceConfig = {
     DynamicUser = lib.mkForce false;
     User = "atticd";
@@ -324,8 +245,6 @@ in
 
   nori.harden.atticd.binds = [ cachePath ];
   nori.harden.attic-cache-bootstrap = { };
-  nori.harden.attic-cache-seed = { };
-  nori.harden.attic-cache-watch = { };
 
   nori.backups.atticd.skip = "Attic cache chunks are re-derivable from upstream and local builds; the SQLite state is not backed up.";
   nori.backups.attic-cache-bootstrap.skip = "One-shot Attic cache reconciler has no persistent state.";
