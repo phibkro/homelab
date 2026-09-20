@@ -11,4 +11,5 @@
   };
   runtimeModule = ./nixos.nix;
   tags = [ "network-appliance" ];
+  _hardeningException = "Samba intentionally requires full /srv visibility for declared shares.";
 }

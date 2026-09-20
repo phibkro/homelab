@@ -11,36 +11,29 @@
     {
       checks =
         let
-          /*
-            Files under `services/` that aren't concrete service modules —
-            folder aggregators, the *arr group's `media`-bootstrap helper,
-            and the backup-cluster framework. Both `every-service-has-<X>`
-            checks share this baseline; per-check additions (e.g. samba's
-            /srv exception, notify@'s template-only file) are appended
-            below at the call site.
-          */
-          baseNonServicePatterns = [
-            "*/default.nix"
-            "*/manifest.nix"
-            "*/manifests/*.nix"
-            "*/tests/*.nix"
-            # Each path below moved from a legacy system concern and was never
-            # in the service-catalog scanner's pre-migration input set.
-            "services/agent-fix/nixos.nix" # failure-response mechanism
-            "services/btrbk/nixos.nix" # snapshot/replication generator
-            "services/greetd/nixos.nix" # graphical session mechanism
-            "services/restic-backup/nixos.nix" # backup generator
-            "services/restore-drill/nixos.nix" # backup verifier
-            "services/sunshine/nixos.nix" # graphical session mechanism
-            "services/tailscale/nixos.nix" # host networking mechanism
-            "services/vector/nixos.nix" # host log-forwarding mechanism
-          ];
-          /**
-            Generate a `case` glob from a list of patterns, joined with
-            `|`. Used at the head of each scanner loop to skip framework
-            / aggregator files.
-          */
-          mkCasePattern = ps: lib.concatStringsSep "|" ps;
+          sourceRoot = toString ../../..;
+          workloadCatalog = import ../../../inventory/workloads.nix { inherit lib; };
+          serviceRootFor =
+            workload:
+            let
+              manifestPath = lib.removePrefix "${sourceRoot}/" (toString workload._manifestPath);
+              manifestDirectory = builtins.dirOf manifestPath;
+            in
+            if builtins.baseNameOf manifestDirectory == "manifests" then
+              builtins.dirOf manifestDirectory
+            else
+              manifestDirectory;
+          catalogServiceRoots = lib.unique (
+            map serviceRootFor (
+              lib.attrValues (lib.filterAttrs (_: workload: workload ? runtimeModule) workloadCatalog)
+            )
+          );
+          hardeningExceptionRoots = lib.unique (
+            map serviceRootFor (
+              lib.attrValues (lib.filterAttrs (_: workload: workload ? _hardeningException) workloadCatalog)
+            )
+          );
+          mkCasePattern = patterns: lib.concatStringsSep "|" patterns;
 
           workstationHome = inputs.self.nixosConfigurations.workstation.config.home-manager.users.nori.home;
           homePackageNamed =
@@ -302,107 +295,68 @@
               '';
 
           /**
-            Every service module under either service root must declare a
-            backup intent — either `nori.backups.<name>.include = [...]`
-            for what to back up, or `nori.backups.<name>.skip = "..."`
-            for explicit opt-out. Forgetting to declare anything is the
-            systemic cause of silent coverage gaps; this check turns
-            forgetting into a build error.
+            Every cataloged service root must own a backup intent: either
+            `nori.backups.<name>.include` or an explicit
+            `nori.backups.<name>.skip`. The workload catalog selects the roots,
+            so helper and retired files outside active service ownership cannot
+            create false positives.
           */
           every-service-has-backup-intent =
             pkgs.runCommandLocal "every-service-has-backup-intent"
               {
-                nativeBuildInputs = [
-                  pkgs.gnugrep
-                  pkgs.findutils
-                ];
+                nativeBuildInputs = [ pkgs.gnugrep ];
               }
               ''
-                cd ${../../..}
                 fail=0
-
-                # Excluded paths — see baseNonServicePatterns at the
-                # top of `checks.${system}` for the shared list.
-                test -d services
-                for f in $(find services -name '*.nix' | sort); do
-                  case "$f" in
-                    ${mkCasePattern baseNonServicePatterns})
-                      continue;;
-                  esac
-                  if ! grep -qE 'nori\.backups\.' "$f"; then
-                    echo "✗ $f: no nori.backups.<name> declaration."
+                source_root=${../../..}
+                for root in ${lib.escapeShellArgs catalogServiceRoots}; do
+                  if ! grep -qRE --include='*.nix' 'nori\.backups\.' "$source_root/$root"; then
+                    echo "✗ $root: no nori.backups.<name> declaration."
                     fail=1
                   fi
                 done
 
-                if [ $fail -eq 0 ]; then
-                  touch $out
+                if [ "$fail" -eq 0 ]; then
+                  touch "$out"
                 else
                   echo
-                  echo "Every service module must declare a backup intent."
-                  echo "Either:"
-                  echo "  nori.backups.<name>.include = [ \"/var/lib/<svc>\" ];"
-                  echo "or:"
-                  echo "  nori.backups.<name>.skip = \"<one-line reason>\";"
-                  echo
+                  echo "Every cataloged service must declare a backup intent."
                   echo "See infra/common/nixos/backup.nix for the schema."
                   exit 1
                 fi
               '';
 
           /**
-            Every service module under either service root must declare a
-            filesystem-hardening intent via `nori.harden.<name>`. Same
-            silent-coverage-gap rationale as `every-service-has-backup-
-            intent`: forgetting to harden a new service means it inherits
-            only upstream's defaults, which often leaves /mnt and /home
-            visible. This check turns forgetting into a build error.
+            Every cataloged service root must own a filesystem-hardening intent
+            through `nori.harden.<name>`. A workload can declare the private
+            `_hardeningException` field only when the policy cannot apply. The
+            inventory compiler validates and strips that field from public
+            projections.
           */
           every-service-has-fs-hardening =
             pkgs.runCommandLocal "every-service-has-fs-hardening"
               {
-                nativeBuildInputs = [
-                  pkgs.gnugrep
-                  pkgs.findutils
-                ];
+                nativeBuildInputs = [ pkgs.gnugrep ];
               }
               ''
-                cd ${../../..}
                 fail=0
-
-                # Shared exclusions in baseNonServicePatterns at the top  # multi-line: ok (bash heredoc)
-                # of `checks.${system}`. Plus this check's specifics:
-                #   * ntfy/notify.nix — template only, no service of its own
-                #   * samba.nix       — legitimate /srv-full-access exception
-                test -d services
-                for f in $(find services -name '*.nix' | sort); do
-                  case "$f" in
-                    ${
-                      mkCasePattern (
-                        baseNonServicePatterns
-                        ++ [
-                          "services/ntfy/nixos/notify.nix"
-                          "services/samba/nixos.nix"
-                        ]
-                      )
-                    })
+                source_root=${../../..}
+                for root in ${lib.escapeShellArgs catalogServiceRoots}; do
+                  case "$root" in
+                    ${mkCasePattern hardeningExceptionRoots})
                       continue;;
                   esac
-                  if ! grep -qE 'nori\.harden\.' "$f"; then
-                    echo "✗ $f: no nori.harden.<name> declaration."
+                  if ! grep -qRE --include='*.nix' 'nori\.harden\.' "$source_root/$root"; then
+                    echo "✗ $root: no nori.harden.<name> declaration."
                     fail=1
                   fi
                 done
 
-                if [ $fail -eq 0 ]; then
-                  touch $out
+                if [ "$fail" -eq 0 ]; then
+                  touch "$out"
                 else
                   echo
-                  echo "Every service module must declare a filesystem-hardening"
-                  echo "intent via nori.harden.<service-name>. Default-deny baseline:"
-                  echo "  ProtectHome=true, TemporaryFileSystem=[/mnt:ro,/srv:ro]"
-                  echo "Set binds=[...] for writable paths, readOnlyBinds=[...] for"
-                  echo "read-only, protectHome=null to leave upstream's value alone."
+                  echo "Every cataloged service must declare a filesystem-hardening intent."
                   echo "See infra/common/nixos/service-hardening.nix for the schema."
                   exit 1
                 fi

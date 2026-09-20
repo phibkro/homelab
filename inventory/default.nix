@@ -65,6 +65,11 @@ let
   validSourceRoot =
     root: builtins.isString root && root != "" && !lib.hasPrefix "/" root && !lib.hasInfix ".." root;
   isStableName = name: builtins.isString name && builtins.match "[a-z0-9][a-z0-9-]*" name != null;
+  invalidHardeningExceptions = lib.filterAttrs (
+    _name: workload:
+    workload ? _hardeningException
+    && (!builtins.isString workload._hardeningException || workload._hardeningException == "")
+  ) workloadCatalog;
   invalidProfileDeclarations = lib.filterAttrs (_name: profile: profile ? workloads) profiles;
   invalidHostDeclarations = lib.filterAttrs (
     _name: host:
@@ -362,6 +367,7 @@ let
     name: workload:
     removeAttrs workload [
       "_manifestPath"
+      "_hardeningException"
       "runtimeModule"
       "topology"
     ]
@@ -542,6 +548,8 @@ assert lib.assertMsg (duplicateDiskByIds == [ ])
   "inventory: external disks must not share a whole-disk by-id identity: ${lib.concatStringsSep ", " duplicateDiskByIds}";
 assert lib.assertMsg (invalidHostRoleDeclarations == { })
   "inventory: workload hostRoles must be a non-empty list drawn from [${lib.concatStringsSep ", " hostRoles}]: ${lib.concatStringsSep ", " (lib.attrNames invalidHostRoleDeclarations)}";
+assert lib.assertMsg (invalidHardeningExceptions == { })
+  "inventory: _hardeningException must be a non-empty reason: ${lib.concatStringsSep ", " (lib.attrNames invalidHardeningExceptions)}";
 assert lib.assertMsg (invalidRolePlacements == [ ])
   "inventory: workload placement violates its declared hostRoles: ${lib.concatStringsSep ", " invalidRolePlacements}";
 assert lib.assertMsg (duplicateEndpoints == [ ])
