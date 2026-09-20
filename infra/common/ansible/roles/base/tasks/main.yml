@@ -17,14 +17,14 @@
 
 - name: Set the appliance hostname
   ansible.builtin.hostname:
-    name: "{{ pi_hostname }}"
+    name: "{{ inventory_hostname }}"
     use: systemd
 
 - name: Keep the appliance hostname locally resolvable
   ansible.builtin.lineinfile:
     path: /etc/hosts
     regexp: '^127\.0\.1\.1\s+'
-    line: "127.0.1.1 {{ pi_hostname }}"
+    line: "127.0.1.1 {{ inventory_hostname }}"
     owner: root
     group: root
     mode: "0644"
