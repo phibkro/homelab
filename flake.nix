@@ -164,7 +164,9 @@
         ./lib/flake-parts/packages/docs-fs.nix
         ./lib/flake-parts/packages/docs-replicas.nix
         ./lib/flake-parts/packages/inventory.nix
-        ./lib/flake-parts/packages/docs-helpers.nix
+        ./lib/flake-parts/packages/docs-lan-route.nix
+        ./lib/flake-parts/packages/docs-topology.nix
+        ./lib/flake-parts/packages/docs-capabilities.nix
         ./lib/flake-parts/checks/conventions.nix
         ./lib/flake-parts/checks/lint.nix
         ./lib/flake-parts/checks/e2e.nix

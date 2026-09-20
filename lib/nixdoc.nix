@@ -19,6 +19,7 @@
                             repo-relative (byte-stability for docs-fresh)
     mkFileDocstring       — extract just the file-level RFC-145 doc-comment block
     mkNixdocSection       — RFC 145 doc-comment extraction via nixdoc
+    mkOptionsDoc          — render a selected option subtree with stable paths
     mkSimpleDocsArtifact  — 2-section (overview + schema) generator
 */
 {
@@ -107,6 +108,27 @@ let
       '';
 
   /*
+    Render the selected portion of an evaluated NixOS option tree. All
+    generated-reference packages use this transform so their "Declared by"
+    paths are normalized identically before CommonMark rendering.
+
+    Input: predicate receiving an option record and returning whether it is
+    visible in the output.
+  */
+  mkOptionsDoc =
+    isIncluded:
+    pkgs.nixosOptionsDoc {
+      inherit (eval) options;
+      transformOptions =
+        opt:
+        let
+          base = if isIncluded opt then opt else opt // { visible = false; };
+        in
+        base // { declarations = map stripStorePrefix base.declarations; };
+      documentType = "none";
+    };
+
+  /*
     Minimal generator (module overview + per-option schema + optional
     evaluated appendix) used by single-schema `nori.<X>` docs. The richer multi-section
     generators (docs-lan-route, docs-topology, docs-capabilities)
@@ -138,16 +160,7 @@ let
           second = if builtins.length loc >= 2 then builtins.elemAt loc 1 else "";
         in
         prefix == "nori" && second == name;
-      optionsDoc = pkgs.nixosOptionsDoc {
-        inherit (eval) options;
-        transformOptions =
-          opt:
-          let
-            base = if isOpt opt then opt else opt // { visible = false; };
-          in
-          base // { declarations = map stripStorePrefix base.declarations; };
-        documentType = "none";
-      };
+      optionsDoc = mkOptionsDoc isOpt;
       moduleDoc = mkNixdocSection {
         file = moduleFile;
         description = "${name} concern — overview";
@@ -196,6 +209,7 @@ in
     stripStorePrefix
     mkFileDocstring
     mkNixdocSection
+    mkOptionsDoc
     mkSimpleDocsArtifact
     ;
 }
