@@ -98,6 +98,7 @@
     group: root
     mode: "0644"
   register: pihole_local_records
+  notify: Restart Pi-hole after local DNS changes
   when: pihole_enabled | bool
 
 - name: Create the Pi-hole data volume
