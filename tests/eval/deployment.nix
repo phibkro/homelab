@@ -71,7 +71,6 @@ let
         "pi"
         "workstation"
       ]
-    && deployment.sourceRoots."services/clamor/manifest.nix" == [ "workstation" ]
     && deployment.machineRoots."services/caddy/ansible" == [ "pi" ]
     && deployment.machineRoots."services/glance/ansible" == [ "pi" ]
     && deployment.machineRoots."services/beszel/ansible/agent" == [ "pi" ]

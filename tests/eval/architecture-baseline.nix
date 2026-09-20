@@ -76,7 +76,6 @@ let
       "bazarr"
       "beszel-agent"
       "calibre-web"
-      "clamor"
       "disk-alert"
       "herdr-projects-mcp"
       "hindsight"
@@ -215,7 +214,6 @@ let
     beszel-hub.metrics = "pi";
     ntfy-server.alert = "pi";
     calibre-web.books = "workstation";
-    clamor.agents = "workstation";
     filmder.filmder = "adelie";
     glance.home = "pi";
     grafana.ops = "adelie";
@@ -346,15 +344,6 @@ let
     && adelie.systemd.services.attic-cache-bootstrap.wantedBy == [ "multi-user.target" ];
 
   expectedRoutes = {
-    agents = {
-      port = 4173;
-      runsOn = "workstation";
-      audience = "operator";
-      exposeOnTailnet = true;
-      auth = "none";
-      monitored = true;
-      dashboard = false;
-    };
     ai = {
       port = 11434;
       runsOn = "workstation";
