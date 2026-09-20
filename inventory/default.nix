@@ -34,6 +34,10 @@ let
   hostTags = lib.unique (lib.concatMap (host: host.tags or [ ]) (lib.attrValues hosts));
   profileNames = lib.attrNames profiles;
   workloadNames = lib.attrNames workloadCatalog;
+  workloadIsActive = workload: workload.active or true;
+  invalidWorkloadActivation = lib.filterAttrs (
+    _name: workload: !builtins.isBool (workload.active or true)
+  ) workloadCatalog;
 
   invalidDiskDeclarations = lib.filterAttrs (
     _name: disk:
@@ -70,6 +74,119 @@ let
     workload ? _hardeningException
     && (!builtins.isString workload._hardeningException || workload._hardeningException == "")
   ) workloadCatalog;
+  nonEmptyString = value: builtins.isString value && value != "";
+  validStringList = values: builtins.isList values && lib.all nonEmptyString values;
+  validHeaderName =
+    value:
+    nonEmptyString value && !lib.hasInfix "\n" value && !lib.hasInfix "\r" value;
+  validHeaders =
+    headers:
+    builtins.isAttrs headers
+    && lib.all validHeaderName (lib.attrNames headers)
+    && lib.all (
+      value: nonEmptyString value && !lib.hasInfix "\n" value && !lib.hasInfix "\r" value
+    ) (lib.attrValues headers);
+  validMonitor =
+    monitor:
+    monitor == null
+    || (
+      builtins.isAttrs monitor
+      && (
+        !(monitor ? path)
+        || (nonEmptyString monitor.path && lib.hasPrefix "/" monitor.path)
+      )
+      && (!(monitor ? interval) || nonEmptyString monitor.interval)
+      && (
+        !(monitor ? failureThreshold)
+        || (builtins.isInt monitor.failureThreshold && monitor.failureThreshold > 0)
+      )
+      && (!(monitor ? conditions) || validStringList monitor.conditions)
+      && (!(monitor ? headers) || validHeaders monitor.headers)
+      && (!(monitor ? routeHostHeader) || builtins.isBool monitor.routeHostHeader)
+      && !((monitor.routeHostHeader or false) && builtins.hasAttr "Host" (monitor.headers or { }))
+      && (!(monitor ? name) || isStableName monitor.name)
+    );
+  validForwardAuth =
+    forwardAuth:
+    forwardAuth == null
+    || (
+      builtins.isAttrs forwardAuth
+      && (
+        !(forwardAuth ? exemptPaths)
+        || (builtins.isList forwardAuth.exemptPaths && lib.all nonEmptyString forwardAuth.exemptPaths)
+      )
+    );
+  validOidc =
+    oidc:
+    oidc == null
+    || (
+      builtins.isAttrs oidc
+      && nonEmptyString (oidc.clientName or "")
+      && (nonEmptyString (oidc.redirectPath or "") && lib.hasPrefix "/" oidc.redirectPath)
+      && lib.elem (oidc.tokenEndpointAuthMethod or null) [
+        "client_secret_basic"
+        "client_secret_post"
+      ]
+      && (!(oidc ? scopes) || validStringList oidc.scopes)
+      && (!(oidc ? authorizationPolicy) || nonEmptyString oidc.authorizationPolicy)
+      && (!(oidc ? secretEnvName) || nonEmptyString oidc.secretEnvName)
+    );
+  validDashboard =
+    dashboard:
+    dashboard == null
+    || (
+      builtins.isAttrs dashboard
+      && nonEmptyString (dashboard.title or "")
+      && nonEmptyString (dashboard.icon or "")
+      && lib.elem (dashboard.group or null) [
+        "Consume"
+        "Acquire"
+        "Personal"
+        "Projects"
+        "Admin"
+      ]
+      && nonEmptyString (dashboard.description or "")
+      && (!(dashboard ? allowInsecure) || builtins.isBool dashboard.allowInsecure)
+    );
+  validEndpoint =
+    endpoint:
+    builtins.isAttrs endpoint
+    && builtins.isInt (endpoint.port or 0)
+    && endpoint.port > 0
+    && endpoint.port < 65536
+    && lib.elem (endpoint.scheme or "http") [
+      "http"
+      "https"
+    ]
+    && (!(endpoint ? exposeOnTailnet) || builtins.isBool endpoint.exposeOnTailnet)
+    && lib.elem (endpoint.reachability or "internal") [
+      "internal"
+      "internet"
+    ]
+    && lib.elem (endpoint.audience or "operator") audiences.keys
+    && (!(endpoint ? publicStatus) || builtins.isBool endpoint.publicStatus)
+    && (!(endpoint ? noAuthReason) || endpoint.noAuthReason == null || nonEmptyString endpoint.noAuthReason)
+    && validMonitor (endpoint.monitor or null)
+    && validForwardAuth (endpoint.forwardAuth or null)
+    && validOidc (endpoint.oidc or null)
+    && validDashboard (endpoint.dashboard or null)
+    && !(endpoint ? runsOn);
+  endpointDeclarationsFor = workload:
+    if builtins.isAttrs (workload.endpoints or { }) then workload.endpoints else { };
+  invalidEndpointDeclarations = lib.concatMap (
+    workloadName:
+    let
+      workload = workloadCatalog.${workloadName};
+      endpoints = endpointDeclarationsFor workload;
+    in
+    if !builtins.isAttrs (workload.endpoints or { }) then
+      [ "${workloadName}.endpoints" ]
+    else
+      lib.mapAttrsToList (
+        endpointName: endpoint:
+        lib.optionalString (!(isStableName endpointName && validEndpoint endpoint)) "${workloadName}.${endpointName}"
+      ) endpoints
+  ) workloadNames;
   invalidProfileDeclarations = lib.filterAttrs (_name: profile: profile ? workloads) profiles;
   invalidHostDeclarations = lib.filterAttrs (
     _name: host:
