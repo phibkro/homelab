@@ -173,20 +173,22 @@ let
     && !(endpoint ? runsOn);
   endpointDeclarationsFor = workload:
     if builtins.isAttrs (workload.endpoints or { }) then workload.endpoints else { };
-  invalidEndpointDeclarations = lib.concatMap (
-    workloadName:
-    let
-      workload = workloadCatalog.${workloadName};
-      endpoints = endpointDeclarationsFor workload;
-    in
-    if !builtins.isAttrs (workload.endpoints or { }) then
-      [ "${workloadName}.endpoints" ]
-    else
-      lib.mapAttrsToList (
-        endpointName: endpoint:
-        lib.optionalString (!(isStableName endpointName && validEndpoint endpoint)) "${workloadName}.${endpointName}"
-      ) endpoints
-  ) workloadNames;
+  invalidEndpointDeclarations = lib.filter (declaration: declaration != "") (
+    lib.concatMap (
+      workloadName:
+      let
+        workload = workloadCatalog.${workloadName};
+        endpoints = endpointDeclarationsFor workload;
+      in
+      if !builtins.isAttrs (workload.endpoints or { }) then
+        [ "${workloadName}.endpoints" ]
+      else
+        lib.mapAttrsToList (
+          endpointName: endpoint:
+          lib.optionalString (!(isStableName endpointName && validEndpoint endpoint)) "${workloadName}.${endpointName}"
+        ) endpoints
+    ) workloadNames
+  );
   invalidProfileDeclarations = lib.filterAttrs (_name: profile: profile ? workloads) profiles;
   invalidHostDeclarations = lib.filterAttrs (
     _name: host:
@@ -370,6 +372,13 @@ let
     lib.filter (workloadName: lib.elem hostName (hostsForWorkload workloadName)) workloadNames;
 
   realizationId = workloadName: instanceName: "realization.${workloadName}.${instanceName}";
+  activeWorkloadsFor =
+    hostName:
+    lib.filter (
+      workloadName:
+      workloadIsActive workloadCatalog.${workloadName}
+      && lib.elem hostName (hostsForWorkload workloadName)
+    ) workloadNames;
   realizationsFor =
     workloadName:
     let
@@ -418,8 +427,8 @@ let
     workloadName:
     let
       workload = workloadCatalog.${workloadName};
-      endpoints = workload.endpoints or { };
       realizations = realizationsFor workloadName;
+      endpoints = endpointDeclarationsFor workload;
     in
     assert lib.assertMsg (lib.all (endpoint: !(endpoint ? runsOn)) (lib.attrValues endpoints))
       "inventory: endpoint placement is derived from workload realizations; '${workloadName}' must not declare runsOn";
@@ -432,7 +441,7 @@ let
     lib.mapAttrs (_endpointName: endpoint: endpoint // { runsOn = resolvedHost; }) endpoints;
 
   endpointNames = lib.concatMap (
-    workloadName: lib.attrNames (workloadCatalog.${workloadName}.endpoints or { })
+    workloadName: lib.attrNames (endpointDeclarationsFor workloadCatalog.${workloadName})
   ) workloadNames;
   duplicateEndpoints = lib.filter (
     endpointName: lib.count (candidate: candidate == endpointName) endpointNames > 1
@@ -444,7 +453,7 @@ let
         _endpointName: endpoint:
         (endpoint.publicStatus or false)
         && ((endpoint.monitor or null) == null || (endpoint.audience or "operator") == "operator")
-      ) (workloadCatalog.${workloadName}.endpoints or { })
+      ) (endpointDeclarationsFor workloadCatalog.${workloadName})
     )
   ) workloadNames;
 
@@ -463,7 +472,11 @@ let
     ) "inventory.runtimeModulesFor: '${hostName}' is managed by ${hosts.${hostName}.kind}, not NixOS";
     lib.unique (
       map (workloadName: workloadCatalog.${workloadName}.runtimeModule) (
-        lib.filter (workloadName: workloadCatalog.${workloadName} ? runtimeModule) (workloadsFor hostName)
+        lib.filter (
+          workloadName:
+          workloadIsActive workloadCatalog.${workloadName}
+          && workloadCatalog.${workloadName} ? runtimeModule
+        ) (workloadsFor hostName)
       )
     );
 
@@ -544,6 +557,336 @@ let
       "service-native-or-exception"
     else
       "none";
+  routeAuthFor =
+    endpoint:
+    if endpoint ? forwardAuth then
+      "forward-auth"
+    else if endpoint ? oidc then
+      "oidc"
+    else
+      "none";
+  normalizedMonitorFor =
+    hostname: monitor:
+    if monitor == null then
+      null
+    else
+      {
+        path = monitor.path or "/";
+        interval = monitor.interval or "60s";
+        headers = (monitor.headers or { }) // lib.optionalAttrs (monitor.routeHostHeader or false) {
+          Host = hostname;
+        };
+        conditions = monitor.conditions or [ "[STATUS] == 200" ];
+        failureThreshold = monitor.failureThreshold or 3;
+        name = monitor.name or null;
+      };
+  routeProjectionFor =
+    workloadName: endpointName: endpoint:
+    let
+      hostname = "${endpointName}.${site.domain}";
+    in
+    {
+      name = endpointName;
+      workload = workloadName;
+      endpoint = endpointName;
+      host = endpoint.runsOn;
+      inherit hostname;
+      inherit (endpoint) port;
+      scheme = endpoint.scheme or "http";
+      reachability = endpoint.reachability or "internal";
+      audience = endpoint.audience or "operator";
+      authentication = authenticationFor endpoint;
+      auth = routeAuthFor endpoint;
+      exposeOnTailnet = endpoint.exposeOnTailnet or false;
+      forwardAuth = endpoint.forwardAuth or null;
+      oidc = endpoint.oidc or null;
+      monitor = normalizedMonitorFor hostname (endpoint.monitor or null);
+      dashboard = endpoint.dashboard or null;
+      publicStatus = endpoint.publicStatus or false;
+      upstreamHostHeader = endpoint.upstreamHostHeader or null;
+      upstreamOriginHeader = endpoint.upstreamOriginHeader or null;
+    };
+  activeRoutes = lib.foldl' (
+    routes: workloadName:
+    if workloadIsActive workloadCatalog.${workloadName} then
+      routes
+      // lib.mapAttrs (
+        endpointName: endpoint: routeProjectionFor workloadName endpointName endpoint
+      ) (resolvedEndpointsFor workloadName)
+    else
+      routes
+  ) { } workloadNames;
+  activeForwardAuthRoutes = lib.filterAttrs (_: route: route.forwardAuth != null) activeRoutes;
+  piHost = hosts.${site.entryPlaneHost};
+  piLanAddress = piHost.identity.lanIp;
+  piBackendAddressFor =
+    route:
+    if route.host == site.entryPlaneHost then piLanAddress else hosts.${route.host}.identity.tailnetIp;
+  piForwardAuthUpstream =
+    if activeRoutes ? auth then "${piLanAddress}:${toString activeRoutes.auth.port}" else null;
+  piRouteFor =
+    route:
+    {
+      inherit (route) name hostname scheme reachability audience auth;
+      upstream_address = piBackendAddressFor route;
+      upstream_port = route.port;
+      forward_auth_exempt_paths =
+        if route.forwardAuth == null then [ ] else route.forwardAuth.exemptPaths or [ ];
+      forward_auth_upstream = piForwardAuthUpstream;
+      oidc_redirect_path = if route.oidc == null then null else route.oidc.redirectPath;
+      upstream_host_header = route.upstreamHostHeader;
+      upstream_origin_header = route.upstreamOriginHeader;
+    };
+  piServiceRoutes = map (name: piRouteFor activeRoutes.${name}) (lib.attrNames activeRoutes);
+  piPiholeRoute = {
+    name = "pihole";
+    hostname = "pihole.${site.domain}";
+    upstream_address = piLanAddress;
+    upstream_port = 8081;
+    scheme = "http";
+    reachability = "internal";
+    audience = "operator";
+    auth = "none";
+    forward_auth_exempt_paths = [ ];
+    forward_auth_upstream = null;
+    oidc_redirect_path = null;
+    upstream_host_header = null;
+    upstream_origin_header = null;
+  };
+  piRoutes = [ piPiholeRoute ] ++ piServiceRoutes;
+  piTailnetWorkloadPorts = lib.sort builtins.lessThan (
+    lib.unique (
+      map (route: route.port) (
+        lib.filter (
+          route: route.host == site.entryPlaneHost && route.exposeOnTailnet
+        ) (lib.attrValues activeRoutes)
+      )
+    )
+  );
+  dashboardGroupOrder = [
+    "Consume"
+    "Acquire"
+    "Personal"
+    "Projects"
+    "Admin"
+  ];
+  dashboardLinkFor = route: {
+    inherit (route.dashboard) title icon description;
+    url = "https://${route.hostname}";
+  };
+  dashboardGroups = lib.foldl' (
+    groups: route:
+    groups
+    // {
+      ${route.dashboard.group} = (groups.${route.dashboard.group} or [ ]) ++ [ (dashboardLinkFor route) ];
+    }
+  ) { } (
+    lib.filter (route: route.dashboard != null) (lib.attrValues activeRoutes)
+  );
+  glanceBookmarkGroups = lib.concatMap (
+    group:
+    lib.optional (builtins.hasAttr group dashboardGroups) {
+      title = group;
+      links = lib.sort (left: right: left.title < right.title) dashboardGroups.${group};
+    }
+  ) dashboardGroupOrder;
+  oidcRoutes = lib.filterAttrs (_: route: route.oidc != null) activeRoutes;
+  oidcClients = map (
+    name:
+    let
+      route = oidcRoutes.${name};
+      oidc = route.oidc;
+    in
+    {
+      client_id = route.name;
+      client_name = oidc.clientName;
+      authorization_policy = oidc.authorizationPolicy or "one_factor";
+      token_endpoint_auth_method = oidc.tokenEndpointAuthMethod;
+      redirect_uris = [ "https://${route.hostname}${oidc.redirectPath}" ];
+      scopes = oidc.scopes or [
+        "openid"
+        "profile"
+        "email"
+        "groups"
+      ];
+    }
+  ) (lib.attrNames oidcRoutes);
+  routeProbes = map (
+    name:
+    let
+      route = activeRoutes.${name};
+      monitor = route.monitor;
+    in
+    {
+      name = if monitor.name == null then route.name else monitor.name;
+      url = "${route.scheme}://${piBackendAddressFor route}:${toString route.port}${monitor.path}";
+      inherit (monitor) interval headers conditions;
+      failure_threshold = monitor.failureThreshold;
+      send_on_resolved = true;
+    }
+  ) (
+    lib.attrNames (lib.filterAttrs (_: route: route.monitor != null) activeRoutes)
+  );
+  explicitProbe =
+    probe:
+    probe
+    // {
+      failure_threshold = 3;
+      send_on_resolved = true;
+    };
+  explicitProbes = map explicitProbe [
+    {
+      name = "pihole-dns";
+      url = "tcp://${piLanAddress}:53";
+      interval = "60s";
+      conditions = [ "[CONNECTED] == true" ];
+    }
+    {
+      name = "pihole-admin";
+      url = "http://${piLanAddress}:8081/admin/";
+      interval = "60s";
+      conditions = [ "[STATUS] == 200" ];
+    }
+    {
+      name = "station-ssh";
+      url = "tcp://${hosts.workstation.identity.lanIp}:22";
+      interval = "60s";
+      conditions = [ "[CONNECTED] == true" ];
+    }
+    {
+      name = "entry-caddy";
+      url = "http://${piLanAddress}";
+      interval = "120s";
+      client = { "ignore-redirect" = true; };
+      conditions = [ "[STATUS] == 308" ];
+    }
+  ];
+  exporterTargetsFor =
+    workloadName: port:
+    if workloadIsActive workloadCatalog.${workloadName} then
+      map (
+        hostName: {
+          target = "${hosts.${hostName}.identity.tailnetIp}:${toString port}";
+          host = hostName;
+        }
+      ) (hostsForWorkload workloadName)
+    else
+      [ ];
+  nodeTargets = exporterTargetsFor "node-exporter" 9100;
+  processTargets = exporterTargetsFor "node-exporter" 9256;
+  gpuTargets = exporterTargetsFor "nvidia-gpu-exporter" 9835;
+  beszelAgentPort = workloadCatalog."beszel-agent".listenPort;
+  beszelSystems =
+    if workloadIsActive workloadCatalog."beszel-agent" then
+      map (
+        hostName:
+        let
+          host = hosts.${hostName};
+        in
+        {
+          name = hostName;
+          host =
+            if hostName == site.entryPlaneHost && host.identity.lanIp != null then
+              host.identity.lanIp
+            else
+              host.identity.tailnetIp;
+          port = beszelAgentPort;
+        }
+      ) (hostsForWorkload "beszel-agent")
+    else
+      [ ];
+  victoriametricsScrapeJobs =
+    if workloadIsActive workloadCatalog.victoriametrics then
+      lib.optional (workloadIsActive workloadCatalog.gatus) {
+        job_name = "gatus";
+        static_configs = [ { targets = [ "${piLanAddress}:8082" ]; } ];
+      }
+      ++ [
+        {
+          job_name = "victoriametrics";
+          static_configs = [ { targets = [ "${piLanAddress}:8428" ]; } ];
+        }
+      ]
+      ++ lib.optional (nodeTargets != [ ]) {
+        job_name = "node";
+        static_configs = map (target: {
+          targets = [ target.target ];
+          labels = { host = target.host; };
+        }) nodeTargets;
+      }
+      ++ lib.optional (processTargets != [ ]) {
+        job_name = "process";
+        static_configs = map (target: {
+          targets = [ target.target ];
+          labels = { host = target.host; };
+        }) processTargets;
+      }
+      ++ lib.optional (gpuTargets != [ ]) {
+        job_name = "nvidia-gpu";
+        static_configs = map (target: {
+          targets = [ target.target ];
+          labels = { host = target.host; };
+        }) gpuTargets;
+      }
+    else
+      [ ];
+  piHostRecords = lib.filter (record: record != null) (
+    map (
+      hostName:
+      let
+        lanIp = hosts.${hostName}.identity.lanIp;
+      in
+      if lanIp == null then
+        null
+      else
+        {
+          address = lanIp;
+          names = [ "${hostName}.${site.domain}" ];
+        }
+    ) hostNames
+  );
+  piRouteRecords = map (
+    route: {
+      address = piLanAddress;
+      names = [ route.hostname ] ++ map (domain: "${route.name}.${domain}") site.deprecatedDomains;
+    }
+  ) piRoutes;
+  backupProjection =
+    if backup.enabled then
+      {
+        pi_backup_enabled = true;
+        pi_backup_target_address = hosts.${backup.targetHost}.identity.tailnetIp;
+        pi_backup_target_host = backup.hostname;
+        pi_backup_target_user = backup.pi.user;
+        pi_backup_repository_prefix = backup.pi.repositoryPrefix;
+        pi_backup_target_known_host = "${backup.hostname} ${backup.pi.hostKey}";
+        pi_backup_jobs = backup.pi.jobs;
+      }
+    else
+      { pi_backup_enabled = false; };
+  piProjection = {
+    pi_lan_address = piLanAddress;
+    pi_service_bind_address = piLanAddress;
+    pihole_lan_address = piLanAddress;
+    pihole_tailnet_address = piHost.identity.tailnetIp;
+    pi_domain = site.domain;
+    pi_deprecated_domains = site.deprecatedDomains;
+    pi_routes = piRoutes;
+    pi_tailnet_workload_ports = piTailnetWorkloadPorts;
+    glance_enabled =
+      workloadIsActive workloadCatalog.glance
+      && lib.elem site.entryPlaneHost (hostsForWorkload "glance");
+    glance_bookmark_groups = glanceBookmarkGroups;
+    authelia_oidc_clients = oidcClients;
+    gatus_endpoints = explicitProbes ++ routeProbes;
+    victoriametrics_scrape_jobs = victoriametricsScrapeJobs;
+    beszel_agent_listen_port = beszelAgentPort;
+    beszel_systems = beszelSystems;
+    ddns_hostnames = map (route: route.hostname) (
+      lib.filter (route: route.reachability == "internet") piServiceRoutes
+    );
+    pihole_local_dns_records = piHostRecords ++ piRouteRecords;
+  } // backupProjection;
 
   presentationFor =
     endpointName: endpoint:
@@ -561,12 +904,12 @@ let
       visibleTo = audiences.visibleToFor audience;
     };
 
-  presentationCatalog = lib.mapAttrs presentationFor lanRoutes;
+  presentationCatalog = lib.mapAttrs presentationFor activeRoutes;
   dashboardEndpointNames = lib.attrNames (
-    lib.filterAttrs (_name: endpoint: (endpoint.dashboard or null) != null) lanRoutes
+    lib.filterAttrs (_name: endpoint: endpoint.dashboard != null) activeRoutes
   );
   statusEndpointNames = lib.attrNames (
-    lib.filterAttrs (_name: endpoint: endpoint.publicStatus or false) lanRoutes
+    lib.filterAttrs (_name: endpoint: endpoint.publicStatus) activeRoutes
   );
   statusPresentationFor = endpointName: {
     inherit (presentationCatalog.${endpointName}) title description url;
@@ -629,6 +972,8 @@ let
     hosts = publicHosts;
     profiles = publicProfiles;
     workloads = publicWorkloads;
+    routes = activeRoutes;
+    pi = piProjection;
     inherit topology;
     inherit datasets disks backup;
     deployment = publicDeployment;
@@ -641,7 +986,7 @@ let
     public
     // {
       currentHost = hostName;
-      currentWorkloads = workloadsFor hostName;
+      currentWorkloads = activeWorkloadsFor hostName;
     };
 in
 assert lib.assertMsg (
@@ -653,8 +998,10 @@ assert lib.assertMsg (invalidHostDeclarations == { })
   "inventory: hosts must declare unique stable tags, exactly one supported management backend, and a safe managementRoot: ${lib.concatStringsSep ", " (lib.attrNames invalidHostDeclarations)}";
 assert lib.assertMsg (invalidHostRoles == { })
   "inventory: host roles must be drawn from [${lib.concatStringsSep ", " hostRoles}]: ${lib.concatStringsSep ", " (lib.attrNames invalidHostRoles)}";
-assert lib.assertMsg (invalidPlacementDeclarations == { })
-  "inventory: workloads must declare valid ordered placement selectors and cardinality: ${lib.concatStringsSep ", " (lib.attrNames invalidPlacementDeclarations)}";
+assert lib.assertMsg (invalidWorkloadActivation == { })
+  "inventory: workload active must be an explicit boolean: ${lib.concatStringsSep ", " (lib.attrNames invalidWorkloadActivation)}";
+assert lib.assertMsg (invalidEndpointDeclarations == [ ])
+  "inventory: malformed endpoint or monitor declaration(s): ${lib.concatStringsSep ", " invalidEndpointDeclarations}";
 assert lib.assertMsg (placementResolutionFailures == [ ])
   "inventory: workload placement resolution failed:\n${
     lib.concatStringsSep "\n" (map (failure: "- ${failure}") placementResolutionFailures)
@@ -675,6 +1022,8 @@ assert lib.assertMsg (edgeHostnameCollisions == [ ])
   "inventory: lanRoute hostname(s) collide with edge-owned domain(s): ${
     lib.concatStringsSep ", " (map (name: "${name}.${site.domain}") edgeHostnameCollisions)
   }";
+assert lib.assertMsg (activeForwardAuthRoutes == { } || activeRoutes ? auth)
+  "inventory: active forward-auth routes require an active auth endpoint";
 assert lib.assertMsg (invalidPublicStatusEndpoints == [ ])
   "inventory: publicStatus endpoints must be monitored and non-operator: ${lib.concatStringsSep ", " invalidPublicStatusEndpoints}";
 assert lib.assertMsg (unknownDatasetWorkloads == [ ])
@@ -700,6 +1049,9 @@ builtins.deepSeq topology {
       realizationsFor
       workloadRealizations
       workloadsFor
+      activeWorkloadsFor
+      activeRoutes
+      piProjection
       systemModulesFor
       runtimeModulesFor
       lanRoutes
