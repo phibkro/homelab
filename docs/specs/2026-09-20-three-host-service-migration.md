@@ -126,6 +126,11 @@ check complete.
 
 ## Cutover sequence
 
+The read-only planner emits the generic backend-before-entry-plane order. It
+cannot encode this migration's per-service source and target gates. For this
+migration, use its `activationOrder` only to confirm host selection. Follow the
+sequence below for activation.
+
 1. Build the Adelie and workstation NixOS closures, then run the Pi checks.
 2. Generate Pi inventory and validate every route target.
 3. Verify OneTouch is mounted on workstation.
