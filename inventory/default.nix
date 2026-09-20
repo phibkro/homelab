@@ -170,7 +170,8 @@ let
     && validOidc (endpoint.oidc or null)
     && !(endpoint ? oidc && endpoint ? forwardAuth)
     && validDashboard (endpoint.dashboard or null)
-    && !(endpoint ? runsOn);
+    && !(endpoint ? runsOn)
+    && !(endpoint ? hostname);
   endpointDeclarationsFor =
     workload: if builtins.isAttrs (workload.endpoints or { }) then workload.endpoints or { } else { };
   invalidEndpointDeclarations = lib.filter (declaration: declaration != "") (
@@ -189,6 +190,34 @@ let
             !(isStableName endpointName && validEndpoint endpoint)
           ) "${workloadName}.${endpointName}"
         ) endpoints
+    ) workloadNames
+  );
+  validListener =
+    listener:
+    builtins.isAttrs listener
+    && builtins.isInt (listener.port or 0)
+    && listener.port > 0
+    && listener.port < 65536;
+  listenerDeclarationsFor =
+    workload: if builtins.isAttrs (workload.listeners or { }) then workload.listeners or { } else { };
+  invalidListenerDeclarations = lib.filter (declaration: declaration != "") (
+    lib.concatMap (
+      workloadName:
+      let
+        workload = workloadCatalog.${workloadName};
+        listeners = listenerDeclarationsFor workload;
+        listenerNames = lib.attrNames listeners;
+      in
+      if !builtins.isAttrs (workload.listeners or { }) then
+        [ "${workloadName}.listeners" ]
+      else
+        lib.optional (lib.unique listenerNames != listenerNames) "${workloadName}.listeners"
+        ++ lib.mapAttrsToList (
+          listenerName: listener:
+          lib.optionalString (
+            !(isStableName listenerName && validListener listener)
+          ) "${workloadName}.listeners.${listenerName}"
+        ) listeners
     ) workloadNames
   );
   validProbe =
@@ -472,7 +501,14 @@ let
     let
       resolvedHost = (builtins.head realizations).hostName;
     in
-    lib.mapAttrs (_endpointName: endpoint: endpoint // { runsOn = resolvedHost; }) endpoints;
+    lib.mapAttrs (
+      endpointName: endpoint:
+      endpoint
+      // {
+        runsOn = resolvedHost;
+        hostname = "${endpointName}.${site.domain}";
+      }
+    ) endpoints;
 
   endpointNames = lib.concatMap (
     workloadName: lib.attrNames (endpointDeclarationsFor workloadCatalog.${workloadName})
@@ -544,6 +580,7 @@ let
         instance = realization.instanceName;
       }) (realizationsFor name);
       endpoints = resolvedEndpointsFor name;
+      listeners = listenerDeclarationsFor workload;
     }
   ) workloadCatalog;
 
@@ -617,17 +654,12 @@ let
         name = monitor.name or null;
       };
   routeProjectionFor =
-    workloadName: endpointName: endpoint:
-    let
-      hostname = "${endpointName}.${site.domain}";
-    in
-    {
+    workloadName: endpointName: endpoint: {
       name = endpointName;
       workload = workloadName;
       endpoint = endpointName;
       host = endpoint.runsOn;
-      inherit hostname;
-      inherit (endpoint) port;
+      inherit (endpoint) hostname port;
       scheme = endpoint.scheme or "http";
       reachability = endpoint.reachability or "internal";
       audience = endpoint.audience or "operator";
@@ -636,7 +668,7 @@ let
       exposeOnTailnet = endpoint.exposeOnTailnet or false;
       forwardAuth = endpoint.forwardAuth or null;
       oidc = endpoint.oidc or null;
-      monitor = normalizedMonitorFor hostname (endpoint.monitor or null);
+      monitor = normalizedMonitorFor endpoint.hostname (endpoint.monitor or null);
       dashboard = endpoint.dashboard or null;
       publicStatus = endpoint.publicStatus or false;
       upstreamHostHeader = endpoint.upstreamHostHeader or null;
@@ -653,10 +685,68 @@ let
       routes
   ) { } workloadNames;
   activeRouteValues = lib.attrValues activeRoutes;
-  activeRoutePorts = map (route: route.port) activeRouteValues;
-  duplicateRoutePorts = lib.filter (
-    port: lib.count (candidate: candidate == port) activeRoutePorts > 1
-  ) (lib.unique activeRoutePorts);
+  routeFor =
+    endpointName:
+    if builtins.hasAttr endpointName activeRoutes then activeRoutes.${endpointName} else null;
+  routePortFor =
+    endpointName:
+    let
+      route = routeFor endpointName;
+    in
+    if route == null then null else route.port;
+  listenerPortFor =
+    workloadName: listenerName:
+    let
+      listeners = listenerDeclarationsFor workloadCatalog.${workloadName};
+    in
+    assert lib.assertMsg (builtins.hasAttr listenerName listeners)
+      "inventory: workload '${workloadName}' must declare private listener '${listenerName}'";
+    listeners.${listenerName}.port;
+  activeListenerPortFor =
+    workloadName: listenerName:
+    if workloadIsActive workloadCatalog.${workloadName} then
+      listenerPortFor workloadName listenerName
+    else
+      null;
+  privateListenerBindingsFor =
+    hostName:
+    lib.concatMap (
+      workloadName:
+      let
+        workload = workloadCatalog.${workloadName};
+      in
+      if workloadIsActive workload && lib.elem hostName (hostsForWorkload workloadName) then
+        lib.mapAttrsToList (listenerName: listener: {
+          owner = "${workloadName}.listeners.${listenerName}";
+          inherit (listener) port;
+        }) (listenerDeclarationsFor workload)
+      else
+        [ ]
+    ) workloadNames;
+  routeBindingsFor =
+    hostName:
+    map (route: {
+      owner = "${route.workload}.endpoints.${route.endpoint}";
+      inherit (route) port;
+    }) (lib.filter (route: route.host == hostName) activeRouteValues);
+  portBindingsFor = hostName: routeBindingsFor hostName ++ privateListenerBindingsFor hostName;
+  portCollisions = lib.concatMap (
+    hostName:
+    let
+      bindings = portBindingsFor hostName;
+      ports = map (binding: binding.port) bindings;
+      duplicatePorts = lib.filter (
+        port: lib.count (candidate: candidate == port) ports > 1
+      ) (lib.unique ports);
+    in
+    map (
+      port:
+      let
+        owners = map (binding: binding.owner) (lib.filter (binding: binding.port == port) bindings);
+      in
+      "${hostName}:${toString port} (${lib.concatStringsSep ", " owners})"
+    ) duplicatePorts
+  ) hostNames;
   unsafeInternetOperatorRoutes = lib.attrNames (
     lib.filterAttrs (
       _name: route: route.reachability == "internet" && route.audience == "operator"
@@ -672,6 +762,12 @@ let
   piBackendAddressFor =
     route:
     if route.host == site.entryPlaneHost then piLanAddress else hosts.${route.host}.identity.tailnetIp;
+  piRouteTargetFor =
+    endpointName:
+    let
+      route = routeFor endpointName;
+    in
+    if route == null then null else "${piBackendAddressFor route}:${toString route.port}";
   piForwardAuthUpstream =
     if activeRoutes ? auth then "${piLanAddress}:${toString activeRoutes.auth.port}" else null;
   piRouteFor = route: {
@@ -832,18 +928,21 @@ let
       }
     ];
   exporterTargetsFor =
-    workloadName: port:
+    workloadName: listenerName:
     if workloadIsActive workloadCatalog.${workloadName} then
+      let
+        port = listenerPortFor workloadName listenerName;
+      in
       map (hostName: {
         target = "${hosts.${hostName}.identity.tailnetIp}:${toString port}";
         host = hostName;
       }) (hostsForWorkload workloadName)
     else
       [ ];
-  nodeTargets = exporterTargetsFor "node-exporter" 9100;
-  processTargets = exporterTargetsFor "node-exporter" 9256;
-  gpuTargets = exporterTargetsFor "nvidia-gpu-exporter" 9835;
-  beszelAgentPort = workloadCatalog."beszel-agent".listenPort;
+  nodeTargets = exporterTargetsFor "node-exporter" "node";
+  processTargets = exporterTargetsFor "node-exporter" "process";
+  gpuTargets = exporterTargetsFor "nvidia-gpu-exporter" "metrics";
+  beszelAgentPort = activeListenerPortFor "beszel-agent" "agent";
   beszelSystems =
     if workloadIsActive workloadCatalog."beszel-agent" then
       map (
@@ -863,18 +962,18 @@ let
       ) (hostsForWorkload "beszel-agent")
     else
       [ ];
+  gatusTarget = piRouteTargetFor "uptime";
+  victoriametricsTarget = piRouteTargetFor "tsdb";
   victoriametricsScrapeJobs =
     if workloadIsActive workloadCatalog.victoriametrics then
-      lib.optional (workloadIsActive workloadCatalog.gatus) {
+      lib.optional (gatusTarget != null) {
         job_name = "gatus";
-        static_configs = [ { targets = [ "${piLanAddress}:8082" ]; } ];
+        static_configs = [ { targets = [ gatusTarget ]; } ];
       }
-      ++ [
-        {
-          job_name = "victoriametrics";
-          static_configs = [ { targets = [ "${piLanAddress}:8428" ]; } ];
-        }
-      ]
+      ++ lib.optional (victoriametricsTarget != null) {
+        job_name = "victoriametrics";
+        static_configs = [ { targets = [ victoriametricsTarget ]; } ];
+      }
       ++ lib.optional (nodeTargets != [ ]) {
         job_name = "node";
         static_configs = map (target: {
@@ -940,8 +1039,9 @@ let
       }
     else
       { pi_backup_enabled = false; };
-  piholeAdminPort = activeRoutes.pihole.port;
-  piholeDnsPort = workloadCatalog.pihole._probes.pihole-dns.port;
+  piholeAdminPort = routePortFor "pihole";
+  piholeDnsPort =
+    if workloadIsActive workloadCatalog.pihole then workloadCatalog.pihole._probes.pihole-dns.port else null;
   workloadRunsOnPi =
     workloadName:
     workloadIsActive workloadCatalog.${workloadName}
@@ -959,14 +1059,14 @@ let
     pi_tailnet_workload_ports = piTailnetWorkloadPorts;
     caddy_http_port = workloadCatalog.caddy.listenerPorts.http;
     caddy_https_port = workloadCatalog.caddy.listenerPorts.https;
-    authelia_port = activeRoutes.auth.port;
-    beszel_bind_port = activeRoutes.metrics.port;
-    gatus_port = activeRoutes.uptime.port;
-    glance_port = activeRoutes.home.port;
-    ntfy_port = activeRoutes.alert.port;
-    vector_bind_port = workloadCatalog."victorialogs-server".vectorApiPort;
-    victorialogs_bind_port = activeRoutes.logs.port;
-    victoriametrics_bind_port = activeRoutes.tsdb.port;
+    authelia_port = routePortFor "auth";
+    beszel_bind_port = routePortFor "metrics";
+    gatus_port = routePortFor "uptime";
+    glance_port = routePortFor "home";
+    ntfy_port = routePortFor "alert";
+    vector_bind_port = activeListenerPortFor "victorialogs-server" "vector-api";
+    victorialogs_bind_port = routePortFor "logs";
+    victoriametrics_bind_port = routePortFor "tsdb";
     pihole_enabled = workloadRunsOnPi "pihole";
     caddy_enabled = workloadRunsOnPi "caddy";
     authelia_enabled = workloadRunsOnPi "authelia";
@@ -1091,6 +1191,7 @@ let
     // {
       currentHost = hostName;
       currentWorkloads = activeWorkloadsFor hostName;
+      routes = activeRoutes;
     };
 in
 assert lib.assertMsg (
@@ -1108,6 +1209,8 @@ assert lib.assertMsg (invalidWorkloadActivation == { })
   "inventory: workload active must be an explicit boolean: ${lib.concatStringsSep ", " (lib.attrNames invalidWorkloadActivation)}";
 assert lib.assertMsg (invalidEndpointDeclarations == [ ])
   "inventory: malformed endpoint or monitor declaration(s): ${lib.concatStringsSep ", " invalidEndpointDeclarations}";
+assert lib.assertMsg (invalidListenerDeclarations == [ ])
+  "inventory: malformed private listener declaration(s): ${lib.concatStringsSep ", " invalidListenerDeclarations}";
 assert lib.assertMsg (invalidProbeDeclarations == [ ])
   "inventory: malformed workload probe declaration(s): ${lib.concatStringsSep ", " invalidProbeDeclarations}";
 assert lib.assertMsg (placementResolutionFailures == [ ])
@@ -1126,8 +1229,8 @@ assert lib.assertMsg (invalidRolePlacements == [ ])
   "inventory: workload placement violates its declared hostRoles: ${lib.concatStringsSep ", " invalidRolePlacements}";
 assert lib.assertMsg (duplicateEndpoints == [ ])
   "inventory: endpoint name(s) have multiple owners: ${lib.concatStringsSep ", " duplicateEndpoints}";
-assert lib.assertMsg (duplicateRoutePorts == [ ])
-  "inventory: active routes have duplicate backend ports: ${lib.concatStringsSep ", " (map toString duplicateRoutePorts)}";
+assert lib.assertMsg (portCollisions == [ ])
+  "inventory: resolved route/private listener port collision(s): ${lib.concatStringsSep ", " portCollisions}";
 assert lib.assertMsg (unsafeInternetOperatorRoutes == [ ])
   "inventory: internet routes cannot use the operator audience: ${lib.concatStringsSep ", " unsafeInternetOperatorRoutes}";
 assert lib.assertMsg (

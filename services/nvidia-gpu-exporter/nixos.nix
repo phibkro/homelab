@@ -9,7 +9,7 @@
   NVIDIA GPU power + utilisation metrics → scraped by pi VictoriaMetrics.
 
   Wraps the upstream utkuozdemir/nvidia_gpu_exporter, which shells out
-  to nvidia-smi and exposes the result on :9835. Power draw lives in
+  to nvidia-smi and exposes Prometheus metrics. Power draw lives in
   `nvidia_smi_power_draw_watts` — the load-bearing series for the
   electricity-bill audit.
 
@@ -19,7 +19,9 @@
 */
 
 let
-  tailnetIp = config.nori.inventory.hosts.${config.nori.inventory.currentHost}.tailnetIp;
+  inventory = config.nori.inventory;
+  tailnetIp = inventory.hosts.${inventory.currentHost}.tailnetIp;
+  metricsPort = inventory.workloads."nvidia-gpu-exporter".listeners.metrics.port;
   hasNvidia = config.nori.gpu.nvidiaDevices != [ ];
 in
 {
@@ -34,7 +36,7 @@ in
       config.hardware.nvidia.package.bin # provides nvidia-smi
     ];
     serviceConfig = {
-      ExecStart = "${pkgs.prometheus-nvidia-gpu-exporter}/bin/nvidia_gpu_exporter --web.listen-address=${tailnetIp}:9835";
+      ExecStart = "${pkgs.prometheus-nvidia-gpu-exporter}/bin/nvidia_gpu_exporter --web.listen-address=${tailnetIp}:${toString metricsPort}";
       DynamicUser = true;
       Restart = "on-failure";
       # nvidia-smi reads /dev/nvidia* nodes — allow them. Same
@@ -44,5 +46,5 @@ in
     };
   };
 
-  networking.firewall.interfaces."tailscale0".allowedTCPPorts = lib.mkIf hasNvidia [ 9835 ];
+  networking.firewall.interfaces."tailscale0".allowedTCPPorts = lib.mkIf hasNvidia [ metricsPort ];
 }

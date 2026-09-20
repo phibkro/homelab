@@ -10,6 +10,7 @@
     };
   };
   runtimeModule = ./nixos.nix;
+  listeners.metrics.port = 9835;
   tags = [
     "observability"
     "gpu-bound"

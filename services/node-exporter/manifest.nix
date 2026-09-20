@@ -14,5 +14,9 @@
     };
   };
   runtimeModule = ./nixos.nix;
+  listeners = {
+    node.port = 9100;
+    process.port = 9256;
+  };
   tags = [ "observability" ];
 }

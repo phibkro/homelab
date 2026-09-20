@@ -1,6 +1,6 @@
 {
   kind = "service";
-  listenPort = 45876;
+  listeners.agent.port = 45876;
   hostRoles = [
     "workhorse"
     "appliance"

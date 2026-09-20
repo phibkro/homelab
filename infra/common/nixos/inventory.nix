@@ -1,4 +1,4 @@
-{ lib, ... }:
+{ config, lib, ... }:
 
 /**
   Typed, read-only projection of the pure pre-evaluation inventory.
@@ -12,6 +12,16 @@ let
   inherit (lib) mkOption types;
   hostRoles = import ../../../inventory/host-roles.nix;
   audienceKeys = (import ../../../roles/audiences.nix).keys;
+  localTailnetRoutePorts = lib.sort builtins.lessThan (
+    lib.unique (
+      map (route: route.port) (
+        lib.filter (
+          route:
+          route.host == config.nori.inventory.currentHost && route.exposeOnTailnet
+        ) (lib.attrValues config.nori.inventory.routes)
+      )
+    )
+  );
 
   identityOptions = {
     tailnetIp = mkOption {
@@ -244,6 +254,12 @@ let
       };
     };
   };
+  listenerType = types.submodule {
+    options.port = mkOption {
+      type = types.port;
+      description = "Private host-local listener port projected from a workload manifest.";
+    };
+  };
 
   workloadType = types.submodule {
     options = {
@@ -275,10 +291,10 @@ let
         default = { };
         description = "Resolved, secret-free endpoint metadata; validated by the networking route schema when projected.";
       };
-      listenPort = mkOption {
-        type = types.nullOr types.port;
-        default = null;
-        description = "Host-local listener shared by every realization of a replicated workload.";
+      listeners = mkOption {
+        type = types.attrsOf listenerType;
+        default = { };
+        description = "Private listener metadata projected unchanged from the workload manifest.";
       };
       hosts = mkOption { type = types.listOf types.str; };
       realizations = mkOption { type = types.listOf realizationType; };
@@ -636,4 +652,6 @@ in
       description = "Access-tiered portal/onboarding catalog for an authenticated future frontend.";
     };
   };
+
+  config.networking.firewall.interfaces."tailscale0".allowedTCPPorts = localTailnetRoutePorts;
 }

@@ -8,18 +8,21 @@
   Workstation system + per-process metrics → scraped by pi VictoriaMetrics.
 
   Two exporters because they target different cardinality regimes:
-    * node-exporter  (:9100) — system aggregates: CPU, mem, fs, net, swap.
-                               Low cardinality, broad coverage.
-    * process-exporter (:9256) — per-process RSS / CPU / FD count, grouped
-                                 by `comm`. Higher cardinality but bounded
-                                 by N processes. THIS is the leak hunter.
+    * node-exporter — system aggregates: CPU, mem, fs, net, swap.
+                     Low cardinality, broad coverage.
+    * process-exporter — per-process RSS / CPU / FD count, grouped by
+                       `comm`. Higher cardinality but bounded by N processes.
+                       THIS is the leak hunter.
 
   Bind on the tailnet IP only — these are operator-tier observability
   endpoints, not LAN-public. VM on pi scrapes them via the tailnet route.
 */
 
 let
-  tailnetIp = config.nori.inventory.hosts.${config.nori.inventory.currentHost}.tailnetIp;
+  inventory = config.nori.inventory;
+  tailnetIp = inventory.hosts.${inventory.currentHost}.tailnetIp;
+  nodePort = inventory.workloads."node-exporter".listeners.node.port;
+  processPort = inventory.workloads."node-exporter".listeners.process.port;
 in
 {
   nori.backups.node-exporter.skip = "Stateless scrape exporters (node + process); no on-disk state.";
@@ -29,7 +32,7 @@ in
   services.prometheus.exporters.node = {
     enable = true;
     listenAddress = tailnetIp;
-    port = 9100;
+    port = nodePort;
     /*
       Default collector set is fine; explicitly enable processes
       (counts, states) which isn't on by default. RSS-per-process
@@ -78,7 +81,7 @@ in
   services.prometheus.exporters.process = {
     enable = true;
     listenAddress = tailnetIp;
-    port = 9256;
+    port = processPort;
     /*
       Group by the command name (`comm`). One time-series per unique
       binary, regardless of PID churn. The bounded {{.Comm}} keeps
@@ -104,9 +107,9 @@ in
     AmbientCapabilities = [ "CAP_SYS_PTRACE" ];
   };
 
-  # Tailnet-only scrape ports — pi reaches them via the host's tailnet IP.
+  # Tailnet-only scrape listeners — pi reaches them via the host's tailnet IP.
   networking.firewall.interfaces."tailscale0".allowedTCPPorts = [
-    9100
-    9256
+    nodePort
+    processPort
   ];
 }

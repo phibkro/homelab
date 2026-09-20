@@ -88,6 +88,21 @@
           '';
 
         /**
+          Private listener declarations, resolved endpoint hostnames, Pi
+          scrape targets, and NixOS route firewall openings share the pure
+          inventory compiler projection.
+        */
+        eval-inventory-listener-projections =
+          let
+            result = import ../../../tests/eval/inventory-listener-projections.nix {
+              inherit inputs lib;
+            };
+          in
+          pkgs.runCommandLocal "eval-inventory-listener-projections" { } ''
+            echo ${lib.escapeShellArg result} > $out
+          '';
+
+        /**
           Workload manifests declare their allowed host roles, and the
           pure inventory compiler rejects mismatched placements.
         */
