@@ -136,7 +136,7 @@
     # realization. Every declared route's DNS record resolves here regardless
     # of `runsOn`, because Pi owns the entry plane.
     expected_ip=$(nix eval --raw "${flake_ref}.nori.lanIp" 2>/dev/null)
-    pi_tailnet=$(nix eval --raw "${flake_ref}.nori.hosts.pi.tailnetIp" 2>/dev/null)
+    pi_tailnet=$(nix eval --raw "${flake_ref}.nori.inventory.hosts.pi.tailnetIp" 2>/dev/null)
 
     # Production Caddy deliberately disables its admin API. Inspect the
     # Caddyfile mounted in the running container through the production
@@ -212,7 +212,7 @@
     host_self=$(hostname)
     flake_ref=".#nixosConfigurations.${host_self}.config"
     domain=$(nix eval --raw "${flake_ref}.nori.domain" 2>/dev/null)
-    pi_tailnet=$(nix eval --raw "${flake_ref}.nori.hosts.pi.tailnetIp" 2>/dev/null)
+    pi_tailnet=$(nix eval --raw "${flake_ref}.nori.inventory.hosts.pi.tailnetIp" 2>/dev/null)
 
     # Helpers — every probe lands on pi regardless of which host invoked
     # this recipe (authelia only runs there).

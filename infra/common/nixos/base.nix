@@ -187,14 +187,14 @@
 
     Hostnames stay as identifiers (SSH / known_hosts / Tailscale /
     nix flake refs); codenames are aesthetic. Theme: polar / penguin.
-    See infra/common/nixos/hosts.nix for the full mapping.
+    See infra/common/nixos/inventory.nix for the typed host projection.
 
     Gated on rust-motd not being enabled; this static banner is the
     fallback for NixOS hosts without a dynamic MOTD.
   */
   environment.etc.motd =
     let
-      self = config.nori.hosts.${config.networking.hostName} or null;
+      self = config.nori.inventory.hosts.${config.nori.inventory.currentHost} or null;
       useRust = config.programs.rust-motd.enable or false;
     in
     lib.mkIf (self != null && !useRust) {

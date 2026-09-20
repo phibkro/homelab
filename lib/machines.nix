@@ -29,10 +29,9 @@
     W -- "scraped by" --> P
   ```
 
-  Cross-host references continue through the compatibility `nori.hosts`
-  registry. New architecture consumers use the typed, public-safe
-  `nori.inventory` projection. Both derive from the same pure source; there is
-  no parallel identity map.
+  Every NixOS module receives the typed, public-safe `nori.inventory`
+  projection generated from this pure source; there is no parallel identity
+  map.
 */
 
 let
@@ -40,9 +39,6 @@ let
   hosts = inventory.internal.hosts;
   nixosHosts = lib.filterAttrs (_: host: host.kind == "nixos") hosts;
 
-  # Cross-host topology is independent of deployment ownership: NixOS hosts
-  # still need the Ansible-managed Pi's addresses for DNS and metrics.
-  hostRegistry = lib.mapAttrs (_: host: host.identity) hosts;
 
   mkHost =
     name: host:
@@ -58,7 +54,6 @@ let
         ++ [
           {
             config.networking.hostName = name;
-            config.nori.hosts = hostRegistry;
             config.nori.inventory = inventory.forHost name;
             config.nori.lanRoutes = inventory.internal.lanRoutes;
             config.home-manager = {

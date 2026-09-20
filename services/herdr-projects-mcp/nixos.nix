@@ -12,7 +12,7 @@ let
   storePath = "${stateDir}/facade.sqlite";
   localPort = 9080;
   originPort = 9081;
-  originTailnetIp = config.nori.hosts.${config.networking.hostName}.tailnetIp;
+  originTailnetIp = config.nori.inventory.hosts.${config.nori.inventory.currentHost}.tailnetIp;
   herdrPackage = inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
   originCaddyfile = pkgs.writeText "herdr-projects-mcp-origin.Caddyfile" ''

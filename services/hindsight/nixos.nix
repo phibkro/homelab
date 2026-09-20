@@ -11,7 +11,7 @@ let
   originPort = 9078;
   uiProxyPort = 9998;
   controlPlanePort = 9999;
-  originTailnetIp = config.nori.hosts.${config.networking.hostName}.tailnetIp;
+  originTailnetIp = config.nori.inventory.hosts.${config.nori.inventory.currentHost}.tailnetIp;
 
   /*
     Upstream publishes the Control Plane as a self-contained Next.js npm

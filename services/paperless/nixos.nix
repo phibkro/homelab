@@ -3,7 +3,7 @@
   ...
 }:
 let
-  selfTailnetIp = config.nori.hosts.${config.networking.hostName}.tailnetIp;
+  selfTailnetIp = config.nori.inventory.hosts.${config.nori.inventory.currentHost}.tailnetIp;
 in
 {
   /*

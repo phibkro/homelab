@@ -1,9 +1,5 @@
 { config, ... }:
 
-let
-  site = import ../../../inventory/site.nix;
-in
-
 /**
   Universal NixOS bits every host imports regardless of role.
 
@@ -14,17 +10,14 @@ in
      user, tailnet daemon, sops machinery).
    - `../<concern>/` — PaaS layer (storage / networking /
      access / backup / capabilities / observability) exposing
-     `nori.<X>` options. Hosts produce context (`nori.hosts`
-     registry, `nori.gpu` hardware capabilities, `nori.fs`
-     filesystem layout); workloads in `services/`
-     consume context and contribute declarations (`nori.lanRoutes`,
-     `nori.backups`, `nori.harden`) which infra generators
-     interpret.
-
-  Topology: the `nori.hosts` registry is populated in
-  `inventory/hosts.nix` (single source of
-  truth — every host evals the same topology). The schema lives at
-  `infra/common/nixos/hosts.nix`.
+     `nori.<X>` options. Hosts receive the typed `nori.inventory`
+     projection alongside `nori.gpu` hardware capabilities and `nori.fs`
+     filesystem layout; workloads in `services/` consume context and
+     contribute declarations (`nori.lanRoutes`, `nori.backups`,
+     `nori.harden`) which infra generators interpret.
+  Topology: `nori.inventory.hosts` is injected from `inventory/hosts.nix`
+  before module evaluation. Its typed schema lives in
+  `infra/common/nixos/inventory.nix`.
 */
 {
   imports = [
@@ -36,7 +29,6 @@ in
     ./sops.nix
 
     # Infra layer — the PaaS concerns + their schemas.
-    ./hosts.nix
     ./inventory.nix
     ./storage
     ./routes.nix
@@ -58,5 +50,5 @@ in
     and route every client through workstation's now-retired
     Caddy.
   */
-  nori.lanIp = config.nori.hosts.${site.entryPlaneHost}.lanIp;
+  nori.lanIp = config.nori.inventory.hosts.${config.nori.inventory.site.entryPlaneHost}.lanIp;
 }

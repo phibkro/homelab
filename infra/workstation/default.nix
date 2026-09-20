@@ -40,7 +40,7 @@
     internal names intentionally remain unavailable in that state.
   */
   networking.nameservers = [
-    config.nori.hosts.pi.lanIp
+    config.nori.inventory.hosts.pi.lanIp
     "1.1.1.1"
   ];
 

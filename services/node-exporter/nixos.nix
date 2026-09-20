@@ -19,7 +19,7 @@
 */
 
 let
-  tailnetIp = config.nori.hosts.${config.networking.hostName}.tailnetIp;
+  tailnetIp = config.nori.inventory.hosts.${config.nori.inventory.currentHost}.tailnetIp;
 in
 {
   nori.backups.node-exporter.skip = "Stateless scrape exporters (node + process); no on-disk state.";

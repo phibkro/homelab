@@ -38,7 +38,7 @@ in
     example = lib.literalExpression ''
       {
         blocky-dns.url = "tcp://127.0.0.1:53";
-        pi-ssh.url = "tcp://''${config.nori.hosts.pi.tailnetIp}:22";
+        pi-ssh.url = "tcp://''${config.nori.inventory.hosts.pi.tailnetIp}:22";
         station-caddy = {
           url = "https://uptime.${config.nori.domain}";
           interval = "120s";

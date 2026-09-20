@@ -15,7 +15,7 @@
 */
 
 let
-  self = config.nori.hosts.${config.networking.hostName} or null;
+  self = config.nori.inventory.hosts.${config.nori.inventory.currentHost} or null;
   codename =
     if self != null then (self.codename or config.networking.hostName) else config.networking.hostName;
   role = if self != null then (self.role or "?") else "?";

@@ -421,11 +421,11 @@ in
       /*
         Host-aware placement check — appliance and agent both reject
         path-based backups, for different reasons (anti-write storage
-        vs intentional impermanence; see role enum in hosts.nix). The
+        vs intentional impermanence; see the typed inventory host role). The
         structural fix for appliance is the planned local SSD — see
         services/restic-backup/nixos.nix L28.
       */
-      myRole = config.nori.hosts.${config.networking.hostName}.role or null;
+      myRole = config.nori.inventory.hosts.${config.nori.inventory.currentHost}.role or null;
       backupPaths = lib.filter (cfg: cfg.include != null) (lib.attrValues config.nori.backups);
 
       /*
@@ -499,7 +499,7 @@ in
             in
             myRole != "appliance" || lib.all jobIsRemoteOnly backupPaths;
           message = ''
-            Host ${config.networking.hostName} has nori.hosts.<self>.role = "appliance"
+            Host ${config.networking.hostName} has nori.inventory.hosts.<currentHost>.role = "appliance"
             with nori.backups.<n> jobs that target a LOCAL restic
             repository. Appliance hosts have anti-write storage (no
             swap, volatile journald, flash-only — see hosts/${config.networking.hostName}/hardware.nix);
@@ -538,7 +538,7 @@ in
         {
           assertion = myRole != "agent" || backupPaths == [ ];
           message = ''
-            Host ${config.networking.hostName} has nori.hosts.<self>.role = "agent".
+            Host ${config.networking.hostName} has nori.inventory.hosts.<currentHost>.role = "agent".
             Agent hosts are designed to be wiped every boot (root on
             tmpfs via impermanence; only /persist survives — see the host's
             `systemModule` declaration in inventory/hosts.nix). Local

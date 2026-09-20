@@ -113,7 +113,7 @@
       sinks.vlogs = {
         type = "elasticsearch";
         inputs = [ "relabel" ];
-        endpoints = [ "http://${config.nori.hosts.pi.tailnetIp}:9428/insert/elasticsearch" ];
+        endpoints = [ "http://${config.nori.inventory.hosts.pi.tailnetIp}:9428/insert/elasticsearch" ];
         mode = "bulk";
         api_version = "v8";
         healthcheck.enabled = false;

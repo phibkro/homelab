@@ -112,7 +112,7 @@
           name = "VictoriaLogs";
           type = "victoriametrics-logs-datasource";
           access = "proxy";
-          url = "http://${config.nori.hosts.pi.tailnetIp}:9428";
+          url = "http://${config.nori.inventory.hosts.pi.tailnetIp}:9428";
           isDefault = true;
           jsonData.timeout = 60;
         }
@@ -134,7 +134,7 @@
           */
           type = "prometheus";
           access = "proxy";
-          url = "http://${config.nori.hosts.pi.tailnetIp}:8428";
+          url = "http://${config.nori.inventory.hosts.pi.tailnetIp}:8428";
           isDefault = false;
           jsonData.timeInterval = "30s"; # matches the scrape interval
         }

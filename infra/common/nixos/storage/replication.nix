@@ -59,7 +59,7 @@ in
               options = {
                 host = mkOption {
                   type = types.str;
-                  description = "Source host name (key into `nori.hosts`).";
+                  description = "Source host name (key into `nori.inventory.hosts`).";
                 };
                 path = mkOption {
                   type = types.path;
@@ -74,7 +74,7 @@ in
               options = {
                 host = mkOption {
                   type = types.str;
-                  description = "Target host name (key into `nori.hosts`).";
+                  description = "Target host name (key into `nori.inventory.hosts`).";
                 };
                 path = mkOption {
                   type = types.path;

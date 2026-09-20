@@ -32,7 +32,7 @@
           scheme = "http";
           static_configs = [
             {
-              targets = [ "${config.nori.hosts.pi.tailnetIp}:8082" ];
+              targets = [ "${config.nori.inventory.hosts.pi.tailnetIp}:8082" ];
               labels.host = "pi";
             }
           ];
@@ -44,7 +44,7 @@
           scheme = "http";
           static_configs = [
             {
-              targets = [ "${config.nori.hosts.workstation.tailnetIp}:9100" ];
+              targets = [ "${config.nori.inventory.hosts.workstation.tailnetIp}:9100" ];
               labels.host = "workstation";
             }
           ];
@@ -55,7 +55,7 @@
           scheme = "http";
           static_configs = [
             {
-              targets = [ "${config.nori.hosts.workstation.tailnetIp}:9256" ];
+              targets = [ "${config.nori.inventory.hosts.workstation.tailnetIp}:9256" ];
               labels.host = "workstation";
             }
           ];
@@ -71,7 +71,7 @@
           scheme = "http";
           static_configs = [
             {
-              targets = [ "${config.nori.hosts.workstation.tailnetIp}:9835" ];
+              targets = [ "${config.nori.inventory.hosts.workstation.tailnetIp}:9835" ];
               labels.host = "workstation";
             }
           ];
