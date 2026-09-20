@@ -1,10 +1,10 @@
-{ config, ... }:
+{ config, lib, ... }:
 
 let
   subtitles = config.nori.inventory.routes.subtitles;
 in
 
-{
+lib.mkIf (lib.elem "bazarr" config.nori.inventory.currentWorkloads) {
   /*
     Bazarr — subtitle automation. Reads Sonarr's + Radarr's libraries,
     finds missing subtitles per the user's language preferences, fetches

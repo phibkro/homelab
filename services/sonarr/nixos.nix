@@ -1,6 +1,6 @@
-{ config, ... }:
+{ config, lib, ... }:
 
-{
+lib.mkIf (lib.elem "sonarr" config.nori.inventory.currentWorkloads) {
   /*
     Sonarr — TV show management. Watches Prowlarr for new episode
     availability, hands matches to qBittorrent, scans the download

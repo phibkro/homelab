@@ -104,7 +104,7 @@ export ANSIBLE_LOG_PATH="$ansible_log"
 readonly test_inventory="$repo_root/infra/pi/inventory/test.yml"
 readonly test_projection="$state_dir/test-inventory.json"
 ansible-inventory --inventory "$test_inventory" --list >"$test_projection"
-readonly test_inventory_hostname="$(
+test_inventory_hostname="$(
   jq --exit-status --raw-output \
     '.pi_appliances.hosts
      | if type == "array" and length == 1 then .[0]
@@ -112,7 +112,8 @@ readonly test_inventory_hostname="$(
        end' \
     "$test_projection"
 )"
-readonly test_pi_domain="$(
+readonly test_inventory_hostname
+test_pi_domain="$(
   jq --exit-status --raw-output --arg host "$test_inventory_hostname" \
     '._meta.hostvars[$host].pi_domain
      | if type == "string" and length > 0 then .
@@ -120,7 +121,7 @@ readonly test_pi_domain="$(
        end' \
     "$test_projection"
 )"
-readonly pihole_hostname="$(
+pihole_hostname="$(
   jq --exit-status --raw-output --arg host "$test_inventory_hostname" \
     '._meta.hostvars[$host].pi_routes
      | map(select(.name == "pihole"))
@@ -130,6 +131,7 @@ readonly pihole_hostname="$(
        end' \
     "$test_projection"
 )"
+readonly test_pi_domain pihole_hostname
 readonly unknown_hostname="unknown.${test_pi_domain}"
 
 export PIHOLE_WEB_PASSWORD="emulation-only-password"

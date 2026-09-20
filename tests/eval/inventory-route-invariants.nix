@@ -38,6 +38,21 @@ let
       active = "true";
     };
   };
+  invalidSecretEnvNameCatalog = lib.recursiveUpdate catalog {
+    miniflux.endpoints.news.oidc.secretEnvName = "GOOD\nINJECT=1";
+  };
+  invalidSecretHashEnvNameCatalog = lib.recursiveUpdate catalog {
+    immich.endpoints.photos.oidc.secretHashEnvName = "bad-name";
+  };
+  inactiveCaddyCatalog = lib.recursiveUpdate catalog {
+    caddy.active = false;
+  };
+  inactiveAuthCatalog = lib.recursiveUpdate catalog {
+    authelia.active = false;
+  };
+  inactiveDdnsCatalog = lib.recursiveUpdate catalog {
+    "cloudflare-ddns".active = false;
+  };
 
   validInventory = compile catalog;
   ai = validInventory.public.routes.ai;
@@ -63,6 +78,11 @@ let
     conflictingAuth = evaluate conflictingAuthCatalog;
     missingActivation = evaluate missingActivationCatalog;
     nonBooleanActivation = evaluate nonBooleanActivationCatalog;
+    invalidSecretEnvName = evaluate invalidSecretEnvNameCatalog;
+    invalidSecretHashEnvName = evaluate invalidSecretHashEnvNameCatalog;
+    inactiveCaddy = evaluate inactiveCaddyCatalog;
+    inactiveAuth = evaluate inactiveAuthCatalog;
+    inactiveDdns = evaluate inactiveDdnsCatalog;
   };
   rejectedInvalidCatalogs = lib.all (result: !result.success) (lib.attrValues invalidResults);
 in

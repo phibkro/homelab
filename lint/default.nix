@@ -5,14 +5,9 @@
   outside that folder because lint is dev-time tooling — affects
   `nix flake check`, not running system state.
 
-  Mechanism note: unlike nori.lanRoutes / nori.backups / nori.harden,
-  which collect entries via the NixOS module system from MULTIPLE
-  service modules (fan-in), nori.lint's rules all live in one place
-  (./rules.toml, consumed by flake.nix). The NixOS module collection
-  mechanism would pay eval cost for zero benefit, so this exports a
-  plain Nix function instead of registering an `options.nori.lint`
-  attribute. The Reader+Writer pattern earns its keep when there's
-  fan-in to collect; here we just have one Reader and one Writer.
+  Mechanism note: every lint rule lives in one file (`rules.toml`). A NixOS
+  option would add module evaluation without collecting values from multiple
+  owners, so this file exports a plain Nix function.
 
   Usage (in flake.nix's `checks.${system}` let-block):
 

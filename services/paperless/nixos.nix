@@ -42,7 +42,7 @@ in
     enable = true;
     user = "paperless";
     address = "0.0.0.0"; # Caddy is co-located; tailnet direct access remains available
-    port = papers.port;
+    inherit (papers) port;
 
     database.createLocally = true;
 

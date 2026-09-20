@@ -20,6 +20,53 @@ let
       hostName:
       lib.elem (toString modulePath) (map toString (inventory.internal.systemModulesFor hostName))
     ) hostNames;
+  mediaConfig =
+    (lib.evalModules {
+      specialArgs.pkgs = { };
+      modules = [
+        {
+          options = {
+            nori.inventory.currentWorkloads = lib.mkOption {
+              type = lib.types.listOf lib.types.str;
+              default = [ ];
+            };
+            nori.fs.downloads.path = lib.mkOption {
+              type = lib.types.str;
+            };
+            nori.harden = lib.mkOption {
+              type = lib.types.attrsOf lib.types.anything;
+              default = { };
+            };
+            nori.backups = lib.mkOption {
+              type = lib.types.attrsOf lib.types.anything;
+              default = { };
+            };
+            services = lib.mkOption {
+              type = lib.types.attrsOf lib.types.anything;
+              default = { };
+            };
+            systemd = lib.mkOption {
+              type = lib.types.attrsOf lib.types.anything;
+              default = { };
+            };
+            users = lib.mkOption {
+              type = lib.types.attrsOf lib.types.anything;
+              default = { };
+            };
+          };
+          config = {
+            nori.fs.downloads.path = "/tmp/downloads";
+            nori.inventory.currentWorkloads = [ "sonarr" ];
+          };
+        }
+        ../../profiles/media-acquisition/nixos.nix
+      ];
+    }).config;
+  mediaActivationIsIsolated =
+    mediaConfig.services.sonarr.enable
+    && !(mediaConfig.services ? radarr)
+    && !(mediaConfig.services ? qbittorrent)
+    && !(mediaConfig.systemd.services ? recyclarr-sync);
 
   actual = {
     vector = hostsSelecting ../../services/vector/nixos.nix;
@@ -43,11 +90,12 @@ let
     research = [ "workstation" ];
   };
 in
-if actual == expected then
-  "ok — system-profile adapters have explicit, bounded placement"
+if actual == expected && mediaActivationIsIsolated then
+  "ok — system-profile adapters have explicit placement and media workload activation is isolated"
 else
   throw ''
     System-profile adapter placement drifted.
     Expected: ${builtins.toJSON expected}
     Actual:   ${builtins.toJSON actual}
+    Media activation isolated: ${toString mediaActivationIsIsolated}
   ''

@@ -70,6 +70,7 @@ let
   };
 
   workload = {
+    active = true;
     kind = "service";
     hostRoles = [ "workhorse" ];
     tags = [ ];

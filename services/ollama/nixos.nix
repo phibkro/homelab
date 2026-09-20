@@ -35,7 +35,7 @@ in
     */
     package = pkgs.ollama-cuda;
     host = "0.0.0.0";
-    port = ai.port;
+    inherit (ai) port;
     openFirewall = false;
 
     /*

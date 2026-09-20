@@ -121,7 +121,6 @@ cat >"$state_dir/production-playbook.yml" <<EOF
   connection: local
   gather_facts: false
   vars_files:
-    - "$role_dir/defaults/main.yml"
     - "$repo_root/infra/pi/playbooks/group_vars/all.yml"
     - "$state_dir/inventory-vars.json"
   vars:
@@ -129,6 +128,7 @@ cat >"$state_dir/production-playbook.yml" <<EOF
     caddy_output: "$state_dir/ProductionCaddyfile"
     caddy_acme_email: test@example.invalid
     pi_emulation_mode: true
+    caddy_tls_mode: internal
   tasks:
     - name: Render Caddyfile
       ansible.builtin.template:

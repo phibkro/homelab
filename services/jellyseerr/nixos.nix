@@ -1,9 +1,9 @@
-{ config, ... }:
+{ config, lib, ... }:
 let
   requests = config.nori.inventory.routes.requests;
 in
 
-{
+lib.mkIf (lib.elem "jellyseerr" config.nori.inventory.currentWorkloads) {
   /*
     Seerr — request UI for users. Family members log in with the same
     Jellyfin account they use for playback, search for a movie/show,
@@ -34,7 +34,7 @@ in
   services.seerr = {
     enable = true;
     openFirewall = false;
-    port = requests.port;
+    inherit (requests) port;
   };
 
   nori.harden.seerr = { };

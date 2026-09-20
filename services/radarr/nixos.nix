@@ -1,6 +1,6 @@
-{ config, ... }:
+{ config, lib, ... }:
 
-{
+lib.mkIf (lib.elem "radarr" config.nori.inventory.currentWorkloads) {
   /*
     Radarr — movie management. Same role as Sonarr but for films:
     watches Prowlarr for releases, hands grabs to qBittorrent, hardlinks

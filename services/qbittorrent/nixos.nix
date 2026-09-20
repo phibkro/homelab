@@ -65,7 +65,7 @@ let
             pass
   '';
 in
-{
+lib.mkIf (lib.elem "qbittorrent" config.nori.inventory.currentWorkloads) {
   /*
     qBittorrent — torrent download client for the *arr stack. WebUI only
     (no desktop GUI per the homelab's server/client separation).

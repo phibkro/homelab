@@ -53,7 +53,7 @@ in
     group = "calibre-web";
     listen = {
       ip = "0.0.0.0";
-      port = books.port;
+      inherit (books) port;
     };
     openFirewall = false;
     options = {

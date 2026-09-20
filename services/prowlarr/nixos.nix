@@ -1,6 +1,6 @@
-_:
+{ config, lib, ... }:
 
-{
+lib.mkIf (lib.elem "prowlarr" config.nori.inventory.currentWorkloads) {
   /*
     Prowlarr — indexer aggregator for the *arr stack. Holds the list of
     torrent trackers / Usenet indexers in one place; Sonarr + Radarr

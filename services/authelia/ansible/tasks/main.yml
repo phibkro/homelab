@@ -37,7 +37,6 @@
       - authelia_oidc_hmac_secret | length >= 32
       - authelia_oidc_issuer_private_key is search('-----BEGIN (RSA )?PRIVATE KEY-----')
       - authelia_users_database | length > 0
-      - authelia_oidc_clients | length > 0
       - >-
         (authelia_oidc_clients | map(attribute='client_id') | list | unique | length)
         == (authelia_oidc_clients | length)
@@ -74,13 +73,15 @@
         | select('string') | list | length
         == (authelia_oidc_client_secret_hashes | length)
       - >-
-        ((authelia_oidc_client_secret_hashes | dict2items | map(attribute='value')
-        | select('string') | map('length') | list | min | default(0, true)) >= 20)
+        (authelia_oidc_client_secret_hashes | length == 0)
+        or ((authelia_oidc_client_secret_hashes | dict2items | map(attribute='value')
+        | select('string') | map('length') | list | min) >= 20)
     fail_msg: >-
       Authelia requires a digest-pinned image and SecretSpec-provided
       credentials (JWT, session, storage, OIDC HMAC, issuer key, and users DB).
   no_log: true
   when: authelia_enabled | bool
+  tags: authelia-contract
 
 - name: Remove Authelia when explicitly disabled
   containers.podman.podman_container:

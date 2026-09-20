@@ -23,7 +23,7 @@ in
   services.beszel.hub = {
     enable = true;
     host = "0.0.0.0";
-    port = metrics.port;
+    inherit (metrics) port;
   };
 
   systemd.services.beszel-hub.environment = {

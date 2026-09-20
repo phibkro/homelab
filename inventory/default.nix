@@ -32,6 +32,8 @@ let
     "first-unique"
   ];
   hostTags = lib.unique (lib.concatMap (host: host.tags or [ ]) (lib.attrValues hosts));
+  isEnvironmentName =
+    value: builtins.isString value && builtins.match "[A-Za-z_][A-Za-z0-9_]*" value != null;
   profileNames = lib.attrNames profiles;
   workloadNames = lib.attrNames workloadCatalog;
   workloadIsActive = workload: workload.active;
@@ -125,8 +127,8 @@ let
       ]
       && (!(oidc ? scopes) || validStringList oidc.scopes)
       && (!(oidc ? authorizationPolicy) || nonEmptyString oidc.authorizationPolicy)
-      && (!(oidc ? secretEnvName) || nonEmptyString oidc.secretEnvName)
-      && nonEmptyString (oidc.secretHashEnvName or "")
+      && (!(oidc ? secretEnvName) || isEnvironmentName oidc.secretEnvName)
+      && isEnvironmentName (oidc.secretHashEnvName or "")
     );
   validDashboard =
     dashboard:
@@ -221,16 +223,24 @@ let
     ) workloadNames
   );
   validProbe =
-    probe:
+    workload: probe:
+    let
+      declaresPort = probe ? port;
+      declaresListener = probe ? listener;
+      validPort = declaresPort && builtins.isInt probe.port && probe.port > 0 && probe.port < 65536;
+      validListener =
+        declaresListener
+        && isStableName probe.listener
+        && builtins.hasAttr probe.listener (listenerDeclarationsFor workload);
+    in
     builtins.isAttrs probe
     && lib.elem (probe.scheme or null) [
       "http"
       "https"
       "tcp"
     ]
-    && builtins.isInt (probe.port or 0)
-    && probe.port > 0
-    && probe.port < 65536
+    && declaresPort != declaresListener
+    && (validPort || validListener)
     && nonEmptyString (probe.interval or "")
     && validStringList (probe.conditions or [ ])
     && (!(probe ? path) || (nonEmptyString probe.path && lib.hasPrefix "/" probe.path));
@@ -248,7 +258,9 @@ let
       else
         lib.mapAttrsToList (
           probeName: probe:
-          lib.optionalString (!(isStableName probeName && validProbe probe)) "${workloadName}.${probeName}"
+          lib.optionalString (
+            !(isStableName probeName && validProbe workload probe)
+          ) "${workloadName}.${probeName}"
         ) probes
     ) workloadNames
   );
@@ -527,13 +539,13 @@ let
     )
   ) workloadNames;
 
-  lanRoutes = lib.foldl' (
+  declaredRoutes = lib.foldl' (
     routes: workloadName: routes // resolvedEndpointsFor workloadName
   ) { } workloadNames;
   publicEdgeHostnames = [ "status.${site.domain}" ];
   edgeHostnameCollisions = lib.filter (
     endpointName: lib.elem "${endpointName}.${site.domain}" publicEdgeHostnames
-  ) (lib.attrNames lanRoutes);
+  ) (lib.attrNames declaredRoutes);
 
   runtimeModulesFor =
     hostName:
@@ -572,7 +584,7 @@ let
       "topology"
     ]
     // {
-      active = workload.active;
+      inherit (workload) active;
       hosts = hostsForWorkload name;
       realizations = map (realization: {
         inherit (realization) id;
@@ -746,6 +758,9 @@ let
       "${hostName}:${toString port} (${lib.concatStringsSep ", " owners})"
     ) duplicatePorts
   ) hostNames;
+  activeInternetRoutes = lib.filterAttrs (
+    _name: route: route.reachability == "internet"
+  ) activeRoutes;
   unsafeInternetOperatorRoutes = lib.attrNames (
     lib.filterAttrs (
       _name: route: route.reachability == "internet" && route.audience == "operator"
@@ -756,6 +771,7 @@ let
   ) activeRoutes;
   internetAuthAvailable = activeRoutes ? auth && activeRoutes.auth.reachability == "internet";
   activeForwardAuthRoutes = lib.filterAttrs (_: route: route.forwardAuth != null) activeRoutes;
+  activeOidcRoutes = lib.filterAttrs (_: route: route.oidc != null) activeRoutes;
   piHost = hosts.${site.entryPlaneHost};
   piLanAddress = piHost.identity.lanIp;
   piBackendAddressFor =
@@ -881,7 +897,9 @@ let
     in
     {
       name = probeName;
-      url = "${probe.scheme}://${address}:${toString probe.port}${path}";
+      url = "${probe.scheme}://${address}:${
+        toString (if probe ? listener then listenerPortFor workloadName probe.listener else probe.port)
+      }${path}";
       inherit (probe) interval conditions;
       failure_threshold = 3;
       send_on_resolved = true;
@@ -899,6 +917,11 @@ let
     else
       [ ]
   ) workloadNames;
+  workloadRunsOnPi =
+    workloadName:
+    builtins.hasAttr workloadName workloadCatalog
+    && workloadIsActive workloadCatalog.${workloadName}
+    && lib.elem site.entryPlaneHost (hostsForWorkload workloadName);
   explicitProbe =
     probe:
     probe
@@ -909,23 +932,25 @@ let
   explicitProbes =
     workloadProbes
     ++ piholeAdminProbes
-    ++ map explicitProbe [
-      {
-        name = "station-ssh";
-        url = "tcp://${hosts.workstation.identity.lanIp}:22";
-        interval = "60s";
-        conditions = [ "[CONNECTED] == true" ];
-      }
-      {
+    ++ map explicitProbe (
+      [
+        {
+          name = "station-ssh";
+          url = "tcp://${hosts.workstation.identity.lanIp}:22";
+          interval = "60s";
+          conditions = [ "[CONNECTED] == true" ];
+        }
+      ]
+      ++ lib.optional (workloadRunsOnPi "caddy") {
         name = "entry-caddy";
-        url = "http://${piLanAddress}";
+        url = "http://${piLanAddress}:${toString (listenerPortFor "caddy" "http")}";
         interval = "120s";
         client = {
           "ignore-redirect" = true;
         };
         conditions = [ "[STATUS] == 308" ];
       }
-    ];
+    );
   exporterTargetsFor =
     workloadName: listenerName:
     if workloadIsActive workloadCatalog.${workloadName} then
@@ -1039,15 +1064,7 @@ let
     else
       { pi_backup_enabled = false; };
   piholeAdminPort = routePortFor "pihole";
-  piholeDnsPort =
-    if workloadIsActive workloadCatalog.pihole then
-      workloadCatalog.pihole._probes.pihole-dns.port
-    else
-      null;
-  workloadRunsOnPi =
-    workloadName:
-    workloadIsActive workloadCatalog.${workloadName}
-    && lib.elem site.entryPlaneHost (hostsForWorkload workloadName);
+  piholeDnsPort = activeListenerPortFor "pihole" "dns";
   piProjection = {
     pi_lan_address = piLanAddress;
     pi_service_bind_address = piLanAddress;
@@ -1086,11 +1103,9 @@ let
     authelia_oidc_clients = oidcClients;
     gatus_endpoints = explicitProbes ++ routeProbes;
     victoriametrics_scrape_jobs = victoriametricsScrapeJobs;
-    beszel_agent_listen_port = beszelAgentPort;
+    beszel_agent_listen_port = if workloadRunsOnPi "beszel-agent" then beszelAgentPort else null;
     beszel_systems = beszelSystems;
-    ddns_hostnames = map (route: route.hostname) (
-      lib.filter (route: route.reachability == "internet") piServiceRoutes
-    );
+    ddns_hostnames = map (route: route.hostname) (lib.attrValues activeInternetRoutes);
     pihole_local_dns_records = piDnsRecords;
   }
   // backupProjection;
@@ -1229,6 +1244,12 @@ assert lib.assertMsg (invalidHardeningExceptions == { })
   "inventory: _hardeningException must be a non-empty reason: ${lib.concatStringsSep ", " (lib.attrNames invalidHardeningExceptions)}";
 assert lib.assertMsg (invalidRolePlacements == [ ])
   "inventory: workload placement violates its declared hostRoles: ${lib.concatStringsSep ", " invalidRolePlacements}";
+assert lib.assertMsg (
+  activeRoutes == { } || !(workloadCatalog ? caddy) || workloadRunsOnPi "caddy"
+) "inventory: active routes require an active Caddy workload on the entry-plane host";
+assert lib.assertMsg (
+  activeInternetRoutes == { } || workloadRunsOnPi "cloudflare-ddns"
+) "inventory: active internet routes require Cloudflare DDNS on the entry-plane host";
 assert lib.assertMsg (duplicateEndpoints == [ ])
   "inventory: endpoint name(s) have multiple owners: ${lib.concatStringsSep ", " duplicateEndpoints}";
 assert lib.assertMsg (portCollisions == [ ])
@@ -1245,6 +1266,9 @@ assert lib.assertMsg (edgeHostnameCollisions == [ ])
 assert lib.assertMsg (
   activeForwardAuthRoutes == { } || activeRoutes ? auth
 ) "inventory: active forward-auth routes require an active auth endpoint";
+assert lib.assertMsg (
+  activeOidcRoutes == { } || activeRoutes ? auth
+) "inventory: active OIDC consumers require an active auth endpoint";
 assert lib.assertMsg (invalidPublicStatusEndpoints == [ ])
   "inventory: publicStatus endpoints must be monitored and non-operator: ${lib.concatStringsSep ", " invalidPublicStatusEndpoints}";
 assert lib.assertMsg (unknownDatasetWorkloads == [ ])
@@ -1275,7 +1299,6 @@ builtins.deepSeq topology {
       piProjection
       systemModulesFor
       runtimeModulesFor
-      lanRoutes
       nixosHostNames
       ;
   };

@@ -12,6 +12,7 @@
     };
   };
   tags = [ "network-appliance" ];
+  listeners.dns.port = 53;
   endpoints.pihole = {
     port = 8081;
     noAuthReason = "Pi-hole provides its own administrator authentication.";
@@ -24,7 +25,7 @@
   };
   _probes.pihole-dns = {
     scheme = "tcp";
-    port = 53;
+    listener = "dns";
     interval = "60s";
     conditions = [ "[CONNECTED] == true" ];
   };

@@ -1,10 +1,10 @@
 /**
   Acquisition runtime — intentionally coupled.
 
-  Each component retains its own inventory identity and endpoint, while this
-  shared module keeps the storage, permissions, API, and lifecycle contract
-  atomic. The inventory compiler deduplicates this module when resolving the
-  eight colocated workload identities.
+  The stack shares storage and permissions, so one module owns its import
+  graph. Each child still gates its own realization from the compiler's
+  `currentWorkloads` projection. Disabling or moving one workload cannot start
+  it through an active sibling.
 */
 _: {
   imports = [

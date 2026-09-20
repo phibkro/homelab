@@ -27,14 +27,31 @@ let
   routeListenerCollisionCatalog = lib.recursiveUpdate catalog {
     "node-exporter".listeners.node.port = catalog.ollama.endpoints.ai.port;
   };
+  invalidProbeListenerCatalog = lib.recursiveUpdate catalog {
+    pihole._probes.pihole-dns.listener = "missing";
+  };
+  ambiguousProbePortCatalog = lib.recursiveUpdate catalog {
+    pihole._probes.pihole-dns.port = 53;
+  };
   inactiveGatusCatalog = lib.recursiveUpdate catalog {
     gatus.active = false;
+  };
+  offPiBeszelAgentCatalog = lib.recursiveUpdate catalog {
+    "beszel-agent".placement = {
+      strategy = "all-matches";
+      selectors = [ { roles = [ "workhorse" ]; } ];
+      cardinality = {
+        min = 2;
+        max = 2;
+      };
+    };
   };
 
   compiled = compile catalog;
   inventory = compiled.public;
   piProjection = compiled.internal.piProjection;
   inactiveGatus = compile inactiveGatusCatalog;
+  offPiBeszelAgent = compile offPiBeszelAgentCatalog;
 
   jobFor =
     name: lib.findFirst (job: job.job_name == name) null piProjection.victoriametrics_scrape_jobs;
@@ -49,9 +66,9 @@ let
     let
       port = inventory.workloads.${workloadName}.listeners.${listenerName}.port;
     in
-    map (hostName: "${inventory.hosts.${hostName}.tailnetIp}:${toString port}") (
-      inventory.workloads.${workloadName}.hosts
-    );
+    map (
+      hostName: "${inventory.hosts.${hostName}.tailnetIp}:${toString port}"
+    ) inventory.workloads.${workloadName}.hosts;
   routeTargetFor =
     endpointName:
     let
@@ -84,6 +101,7 @@ let
     && inventory.workloads."nvidia-gpu-exporter".listeners.metrics.port == 9835
     && inventory.workloads."beszel-agent".listeners.agent.port == 45876
     && inventory.workloads."victorialogs-server".listeners.vector-api.port == 8686
+    && inventory.workloads.pihole.listeners.dns.port == 53
     && lib.length inventory.workloads."node-exporter".hosts > 1;
   canonicalEndpointProjection =
     inventory.workloads.gatus.endpoints.uptime.hostname == "uptime.${inventory.site.domain}"
@@ -103,6 +121,7 @@ let
     && lib.elem (routeTargetFor "tsdb") (targetsFor "victoriametrics");
   piProjectionUsesListeners =
     piProjection.vector_bind_port == inventory.workloads."victorialogs-server".listeners.vector-api.port
+    && piProjection.pi_dns_port == inventory.workloads.pihole.listeners.dns.port
     && piProjection.beszel_systems != [ ]
     && lib.all (
       system: system.port == inventory.workloads."beszel-agent".listeners.agent.port
@@ -121,11 +140,16 @@ let
     && !inactiveGatus.internal.piProjection.gatus_enabled
     && inactiveGatus.internal.piProjection.gatus_port == null
     && !(lib.any (route: route.name == "uptime") inactiveGatus.internal.piProjection.pi_routes);
+  hostLocalPiProjection =
+    !offPiBeszelAgent.internal.piProjection.beszel_agent_enabled
+    && offPiBeszelAgent.internal.piProjection.beszel_agent_listen_port == null;
   invalidListenerDeclarationsRejected = lib.all (result: !result.success) [
     (evaluate invalidListenerPortCatalog)
     (evaluate invalidHighListenerPortCatalog)
     (evaluate invalidListenerShapeCatalog)
     (evaluate invalidListenerContainerCatalog)
+    (evaluate invalidProbeListenerCatalog)
+    (evaluate ambiguousProbePortCatalog)
     (evaluate routeListenerCollisionCatalog)
   ];
 in
@@ -136,6 +160,7 @@ if
   && piProjectionUsesListeners
   && routeFirewallsExposeLocalRoutes
   && inactivePiWorkloadProjection
+  && hostLocalPiProjection
   && invalidListenerDeclarationsRejected
 then
   "ok — listener declarations, endpoint hostnames, firewall ports, and Pi projections share one compiler contract"
@@ -148,5 +173,6 @@ else
     Pi listener projection: ${toString piProjectionUsesListeners}
     route firewalls: ${toString routeFirewallsExposeLocalRoutes}
     inactive Pi workload: ${toString inactivePiWorkloadProjection}
+    host-local Pi projection: ${toString hostLocalPiProjection}
     invalid declarations: ${toString invalidListenerDeclarationsRejected}
   ''

@@ -48,7 +48,7 @@ in
     openFirewall = false;
     settings.server = {
       ip = "0.0.0.0";
-      port = manga.port;
+      inherit (manga) port;
       downloadAsCbz = true;
       downloadsPath = "${config.nori.fs.library.path}/manga";
     };

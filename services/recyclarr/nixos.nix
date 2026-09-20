@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   pkgs,
   ...
@@ -25,7 +26,7 @@ let
   ];
   configFlags = lib.concatMapStringsSep " " (f: "--config ${f}") configs;
 in
-{
+lib.mkIf (lib.elem "recyclarr" config.nori.inventory.currentWorkloads) {
   /*
     Recyclarr — syncs TRaSH-guide quality profiles + custom formats into
     Sonarr and Radarr on a weekly cadence. No UI; pure batch job.

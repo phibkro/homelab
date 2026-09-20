@@ -57,8 +57,8 @@ Examples in this homelab:
 | "two services bind same port" | eval | port-conflict assertion at eval time |
 | "appliance host can't have local restic target" | eval | placement assertion (already exists) |
 | "ExecStart resolves to /nix/store/" | nixosTest | unit must actually try to start |
-| "blocky binds :53" | nixosTest | port-binding is runtime behavior |
-| "lanRoutes → caddy vhost emits valid config" | nixosTest | requires caddy to parse it |
+| "generated Pi inventory → Pi-hole role binds the declared DNS listener" | appliance VM | crosses compiler and Ansible role boundaries |
+| "manifest endpoint → rendered Caddy route parses" | appliance VM | requires Caddy to parse the generated configuration |
 | "restic snapshot < 25h old" | runtime | depends on actual schedule firing on the live host |
 | "process-exporter publishing for workstation" | runtime | requires real scrape from real VM |
 | "Caddy serves `https://<name>.home.phibkro.org` with 200" | runtime | DNS + TLS + service all live together |
@@ -338,9 +338,9 @@ declares a sops secret. CI catches the gap automatically.
   good: write an eval test for it (sub-second, direct)
 
 ✗ test the framework, not your code
-  bad: "blocky responds to DNS queries" (that's testing nixpkgs blocky)
-  good: "OUR homelab's lanRoutes → blocky.customDNS auto-generation
-         produces correct mappings" (testing the homelab's contribution)
+  bad: "Pi-hole responds to DNS queries" (that tests the upstream package)
+  good: "OUR manifest endpoint and listener projections render the expected
+        Pi Caddy, DNS, firewall, and monitor inputs" (tests our contribution)
 
 ✗ leave runtime tests unwired
   good: every runtime test is in `just test` (the composite); CI runs

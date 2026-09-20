@@ -117,12 +117,12 @@ realization needs it; do not pre-create a Cartesian hierarchy.
 
 | Cluster | Coupling |
 |---|---|
-| `profiles/media-acquisition/` | Sonarr/Radarr/Lidarr/Bazarr/Jellyseerr/Prowlarr/qBittorrent — reference each other via API and share `/mnt/media/streaming` plus the `media` group |
+| `profiles/media-acquisition/` | Shared resources and import graph for the acquisition stack; each child module enables only when its workload appears in `currentWorkloads` |
 | direct workload directory | `manifest.nix` is global and pure; `nixos.nix` is the deployable NixOS realization |
 
-Infrastructure-owned daemons such as Caddy, Blocky, exporters, and alerting keep
-their manifests next to their platform adapter. The compiler aggregates both
-locations explicitly in `inventory/workloads.nix`.
+Infrastructure-owned daemons such as Caddy, Pi-hole, exporters, and alerting
+keep their manifests next to their platform adapter. The compiler aggregates
+both locations explicitly in `inventory/workloads.nix`.
 
 ## Workload manifest and runtime template
 

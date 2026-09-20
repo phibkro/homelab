@@ -41,7 +41,6 @@
     - name: Validate the appliance route contract
       ansible.builtin.assert:
         that:
-          - pi_routes | length > 0
           - pi_routes | map(attribute='name') | unique | length == pi_routes | length
           - pi_routes | map(attribute='hostname') | unique | length == pi_routes | length
           - >-

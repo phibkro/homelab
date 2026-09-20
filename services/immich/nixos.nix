@@ -51,7 +51,7 @@ in
     user = "immich";
     group = "immich";
     host = "0.0.0.0";
-    port = photos.port;
+    inherit (photos) port;
     mediaLocation = "${config.nori.fs.photos.path}/_immich-managed";
 
     database.enable = true; # dedicated postgres + VectorChord ext

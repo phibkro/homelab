@@ -1,9 +1,9 @@
-{ config, ... }:
+{ config, lib, ... }:
 let
   musicDataset = config.nori.inventory.datasets.music;
   musicPath = "${config.nori.fs.library.path}/${musicDataset.storage.relativePath}";
 in
-{
+lib.mkIf (lib.elem "lidarr" config.nori.inventory.currentWorkloads) {
   /*
     Lidarr — music management. Same role as Sonarr/Radarr but for music:
     watches Prowlarr for releases, hands grabs to qBittorrent, hardlinks

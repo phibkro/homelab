@@ -27,6 +27,24 @@ fi
 
 inventory="$(bash "$repo_root/infra/pi/scripts/generate-inventory.sh")"
 readonly inventory
+
+if [[ "$action" == "plan" || "$action" == "deploy" ]]; then
+  missing_oidc_secrets=()
+  while IFS= read -r secret_name; do
+    if [[ -z "${!secret_name:-}" ]]; then
+      missing_oidc_secrets+=("$secret_name")
+    fi
+  done < <(
+    jq --exit-status --raw-output \
+      '.pi_appliances.hosts.pi.authelia_oidc_clients[].secret_hash_env_name' \
+      "$inventory"
+  )
+  if (( ${#missing_oidc_secrets[@]} > 0 )); then
+    printf 'Missing SecretSpec values for active OIDC clients: %s\n' \
+      "${missing_oidc_secrets[*]}" >&2
+    exit 1
+  fi
+fi
 target="$(jq --raw-output '.pi_appliances.hosts.pi.ansible_host' "$inventory")"
 readonly target
 

@@ -1,6 +1,8 @@
 ---
 ddns_zone_name: ""
 ddns_api_token: ""
+# Stable ownership marker for records created before the inventory compiler
+# replaced nori.lanRoutes. Changing it would orphan existing managed records.
 ddns_managed_comment: Managed by homelab nori.lanRoutes reachability=internet
 ddns_public_ipv4_url: https://api.ipify.org
 ddns_api_base_url: https://api.cloudflare.com/client/v4

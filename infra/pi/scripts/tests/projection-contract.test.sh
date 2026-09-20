@@ -128,14 +128,14 @@ for names in "$compiled_names" "$profile_names" "$deployment_names"; do
   fi
 done
 
-if ! cmp -s "$compiled_names" "$profile_names"; then
-  echo 'Compiled OIDC secret names differ from SecretSpec production declarations' >&2
-  diff -u "$profile_names" "$compiled_names" >&2 || true
+if ! cmp -s "$profile_names" "$deployment_names"; then
+  echo 'SecretSpec OIDC declarations differ from its deployment scope' >&2
+  diff -u "$profile_names" "$deployment_names" >&2 || true
   exit 1
 fi
-if ! cmp -s "$compiled_names" "$deployment_names"; then
-  echo 'Compiled OIDC secret names differ from the SecretSpec deployment scope' >&2
-  diff -u "$deployment_names" "$compiled_names" >&2 || true
+if ! comm -23 "$compiled_names" "$profile_names" | cmp -s - /dev/null; then
+  echo 'Compiled OIDC secret names are missing from SecretSpec' >&2
+  comm -23 "$compiled_names" "$profile_names" >&2
   exit 1
 fi
 

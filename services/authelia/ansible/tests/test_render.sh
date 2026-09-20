@@ -57,6 +57,43 @@ while IFS= read -r client_id; do
     "$state_dir/configuration.yml"
 done < <(jq -r '.pi_appliances.hosts.pi.authelia_oidc_clients[].client_id' "$state_dir/inventory.json")
 
+ansible-playbook -i localhost, "$state_dir/playbook.yml" \
+  --extra-vars '{"authelia_oidc_clients":[]}' >/dev/null
+rg -Uq $'    clients:\n      \[\]' "$state_dir/configuration.yml"
+if rg -q '^      - client_id:' "$state_dir/configuration.yml"; then
+  echo "authelia render contract: empty client projection rendered a client" >&2
+  exit 1
+fi
+
+cat >"$state_dir/contract-vars.yml" <<'EOF'
+authelia_enabled: true
+pi_service_bind_address: 192.168.1.225
+authelia_port: 9091
+authelia_jwt_secret: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+authelia_session_secret: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+authelia_storage_encryption_key: cccccccccccccccccccccccccccccccccccccccc
+authelia_oidc_hmac_secret: dddddddddddddddddddddddddddddddddddddddd
+authelia_oidc_issuer_private_key: "-----BEGIN PRIVATE KEY----- test"
+authelia_users_database: "users: {}"
+authelia_oidc_clients: []
+authelia_oidc_client_secret_hashes: {}
+EOF
+cat >"$state_dir/contract-playbook.yml" <<EOF
+---
+- name: Validate forward-auth-only Authelia inputs
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - "$role_dir/defaults/main.yml"
+    - "$state_dir/contract-vars.yml"
+  tasks:
+    - name: Load the actual Authelia role tasks
+      ansible.builtin.import_tasks: "$role_dir/tasks/main.yml"
+EOF
+ansible-playbook -i localhost, "$state_dir/contract-playbook.yml" \
+  --tags authelia-contract >/dev/null
+
 if rg -q 'client_id: "testapp"' "$state_dir/configuration.yml"; then
   echo "authelia render contract: stale test client was rendered" >&2
   exit 1

@@ -105,27 +105,18 @@ let
     ];
   };
 
-  authMode =
-    route:
-    if (route.oidc or null) != null then
-      "oidc"
-    else if (route.forwardAuth or null) != null then
-      "forward-auth"
-    else if (route.noAuthReason or null) != null then
-      "exception"
-    else
-      "none";
-
   routeFingerprint = route: {
-    inherit (route) port runsOn;
+    inherit (route) port;
+    runsOn = route.host;
     audience = route.audience or "operator";
     exposeOnTailnet = route.exposeOnTailnet or false;
-    auth = authMode route;
-    monitored = (route.monitor or null) != null;
-    dashboard = (route.dashboard or null) != null;
+    monitored = route.monitor != null;
+    dashboard = route.dashboard != null;
+    auth =
+      if route.authentication == "service-native-or-exception" then "exception" else route.authentication;
   };
 
-  actualRoutes = lib.mapAttrs (_: routeFingerprint) compiledInventory.internal.lanRoutes;
+  actualRoutes = lib.mapAttrs (_: routeFingerprint) compiledInventory.internal.activeRoutes;
 
   migratedRuntimePlacements = {
     attic = [ "adelie" ];
@@ -254,7 +245,8 @@ let
   lifecycleStateCorrect =
     inventory.workloads.ollama.active
     && !inventory.workloads.open-webui.active
-    && inventory.workloads.open-webui.endpoints == { }
+    && inventory.workloads.open-webui.endpoints.chat.runsOn == "workstation"
+    && !(compiledInventory.internal.activeRoutes ? chat)
     && inventory.workloads.qbittorrent.active
     && inventory.workloads.qbittorrent.endpoints.downloads.runsOn == "workstation"
     && hosts.workstation.config.services.qbittorrent.enable
@@ -265,7 +257,7 @@ let
     && lib.hasInfix "${hosts.workstation.config.nori.fs.downloads.path}/.downloads/complete" qbittorrentPreStart
     && lib.hasInfix "${hosts.workstation.config.nori.inventory.hosts.pi.tailnetIp}/32" qbittorrentPreStart
     && inventory.workloads.qbittorrent.endpoints.downloads.forwardAuth.exemptPaths == [ ]
-    && compiledInventory.internal.lanRoutes.downloads.forwardAuth.exemptPaths == [ ]
+    && compiledInventory.internal.activeRoutes.downloads.forwardAuth.exemptPaths == [ ]
     && lib.elem "d /var/lib/qBittorrent/qBittorrent/incomplete 0755 qbittorrent qbittorrent -" hosts.workstation.config.systemd.tmpfiles.rules;
 
   papersFetchCompatibility = lib.all (
