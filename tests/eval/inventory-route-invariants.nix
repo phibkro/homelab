@@ -30,6 +30,12 @@ let
   conflictingAuthCatalog = lib.recursiveUpdate catalog {
     immich.endpoints.photos.forwardAuth = { };
   };
+  missingActivationCatalog = catalog // {
+    ollama = removeAttrs catalog.ollama [ "active" ];
+  };
+  nonBooleanActivationCatalog = catalog // {
+    ollama = catalog.ollama // { active = "true"; };
+  };
 
   validInventory = compile catalog;
   ai = validInventory.public.routes.ai;
@@ -53,6 +59,8 @@ let
     unsafeOperator = evaluate unsafeOperatorCatalog;
     internalIssuer = evaluate internalIssuerCatalog;
     conflictingAuth = evaluate conflictingAuthCatalog;
+    missingActivation = evaluate missingActivationCatalog;
+    nonBooleanActivation = evaluate nonBooleanActivationCatalog;
   };
   rejectedInvalidCatalogs = lib.all (result: !result.success) (lib.attrValues invalidResults);
 in

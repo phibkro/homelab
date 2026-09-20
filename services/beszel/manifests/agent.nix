@@ -1,4 +1,5 @@
 {
+  active = true;
   kind = "service";
   listeners.agent.port = 45876;
   hostRoles = [

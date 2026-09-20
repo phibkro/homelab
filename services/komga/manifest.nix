@@ -1,4 +1,5 @@
 {
+  active = true;
   kind = "service";
   hostRoles = [ "workhorse" ];
   placement = {

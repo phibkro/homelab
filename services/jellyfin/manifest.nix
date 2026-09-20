@@ -6,6 +6,7 @@
   runtime.nix and never enter this projection.
 */
 {
+  active = true;
   kind = "service";
   hostRoles = [ "workhorse" ];
   placement = {

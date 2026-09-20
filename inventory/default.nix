@@ -34,9 +34,9 @@ let
   hostTags = lib.unique (lib.concatMap (host: host.tags or [ ]) (lib.attrValues hosts));
   profileNames = lib.attrNames profiles;
   workloadNames = lib.attrNames workloadCatalog;
-  workloadIsActive = workload: workload.active or true;
+  workloadIsActive = workload: workload.active;
   invalidWorkloadActivation = lib.filterAttrs (
-    _name: workload: !builtins.isBool (workload.active or true)
+    _name: workload: !(workload ? active) || !builtins.isBool workload.active
   ) workloadCatalog;
 
   invalidDiskDeclarations = lib.filterAttrs (
@@ -572,7 +572,7 @@ let
       "topology"
     ]
     // {
-      active = workload.active or true;
+      active = workload.active;
       hosts = hostsForWorkload name;
       realizations = map (realization: {
         inherit (realization) id;

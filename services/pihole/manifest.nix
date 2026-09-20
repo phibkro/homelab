@@ -1,5 +1,6 @@
 # Production Pi DNS is owned by Ansible; this manifest supplies its compiled ports and probes.
 {
+  active = true;
   kind = "service";
   hostRoles = [ "appliance" ];
   placement = {
