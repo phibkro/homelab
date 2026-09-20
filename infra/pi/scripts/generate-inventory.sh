@@ -129,6 +129,14 @@ nix eval --json "$repo_root#lib.noriInventory" | jq \
             + (.endpoint.port | tostring)
             + (.endpoint.monitor.path // "/")),
           interval: (.endpoint.monitor.interval // "60s"),
+          headers: (
+            if (.endpoint.monitor.routeHostHeader // false)
+            then {Host: .hostname}
+            elif .endpoint.upstreamHostHeader != null
+            then {Host: .endpoint.upstreamHostHeader}
+            else {}
+            end
+          ),
           conditions: (.endpoint.monitor.conditions // ["[STATUS] == 200"]),
           failure_threshold: (.endpoint.monitor.failureThreshold // 3),
           send_on_resolved: true
@@ -145,13 +153,7 @@ nix eval --json "$repo_root#lib.noriInventory" | jq \
           name: "pihole-admin",
           url: ("http://" + $pi.lanIp + ":8081/admin/"),
           interval: "60s",
-          conditions: ["[STATUS] == 302"]
-        },
-        {
-          name: "station-blocky-dns",
-          url: ("tcp://" + $station.lanIp + ":53"),
-          interval: "60s",
-          conditions: ["[CONNECTED] == true"]
+          conditions: ["[STATUS] == 200"]
         },
         {
           name: "station-ssh",
@@ -160,10 +162,11 @@ nix eval --json "$repo_root#lib.noriInventory" | jq \
           conditions: ["[CONNECTED] == true"]
         },
         {
-          name: "station-caddy",
-          url: ("https://uptime." + $domain),
+          name: "entry-caddy",
+          url: ("http://" + $pi.lanIp),
           interval: "120s",
-          conditions: ["[STATUS] == 200"]
+          client: {"ignore-redirect": true},
+          conditions: ["[STATUS] == 308"]
         }
       ] | map(. + {failure_threshold: 3, send_on_resolved: true})) as $explicit_probes
     | ([
@@ -429,10 +432,15 @@ jq --exit-status \
         and (.interval | type == "string" and length > 0)
         and (.conditions | type == "array" and length > 0)
         and all(.conditions[]; type == "string" and length > 0)
+        and ((.headers // {}) | type == "object")
+        and all((.headers // {}) | to_entries[];
+          (.key | type == "string" and length > 0 and (test("[\\r\\n]") | not))
+          and (.value | type == "string" and length > 0 and (test("[\\r\\n]") | not)))
+        and ((.client // {}) | type == "object")
         and (.failure_threshold | tonumber > 0)
         and (.send_on_resolved | type == "boolean")
       ))
-   and (all(["pihole-dns", "pihole-admin", "station-blocky-dns", "station-ssh", "station-caddy"][];
+   and (all(["pihole-dns", "pihole-admin", "station-ssh", "entry-caddy"][];
         . as $required | any($gatus_endpoints[]; .name == $required)
       ))
    and ($scrape_jobs | type == "array" and length >= 1)

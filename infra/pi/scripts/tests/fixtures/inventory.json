@@ -50,7 +50,9 @@
           "runsOn": "workstation",
           "audience": "operator",
           "noAuthReason": "Nix cache protocol",
-          "monitor": {}
+          "monitor": {
+            "routeHostHeader": true
+          }
         }
       }
     },

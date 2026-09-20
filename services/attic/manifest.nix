@@ -22,6 +22,9 @@
     reachability = "internal";
     audience = "operator";
     noAuthReason = "Nix protocol clients cannot follow HTTP authentication; Attic uses signed public pulls and JWT-protected push/admin APIs.";
-    monitor.path = "/nori/nix-cache-info";
+    monitor = {
+      path = "/nori/nix-cache-info";
+      routeHostHeader = true;
+    };
   };
 }

@@ -189,9 +189,8 @@ jq --exit-status '
     }
   ]
   and ([.pi_appliances.hosts.pi.gatus_endpoints[] | .name]
-       | .[0:5]
-       == ["pihole-dns", "pihole-admin", "station-blocky-dns", "station-ssh",
-           "station-caddy"])
+       | .[0:4]
+       == ["pihole-dns", "pihole-admin", "station-ssh", "entry-caddy"])
   and (.pi_appliances.hosts.pi.gatus_endpoints
        | any(.[]; .name == "auth"
                     and .url == "http://192.168.1.225:9091/api/health"
@@ -201,7 +200,14 @@ jq --exit-status '
                     and .interval == "60s")
        and any(.[]; .name == "cache"
                     and .url == "http://100.81.5.122:5000/"
+                    and .headers == {"Host": "cache.home.example"}
                     and .interval == "60s")
+       and any(.[]; .name == "pihole-admin"
+                    and .conditions == ["[STATUS] == 200"])
+       and any(.[]; .name == "entry-caddy"
+                    and .url == "http://192.168.1.225"
+                    and .client == {"ignore-redirect": true}
+                    and .conditions == ["[STATUS] == 308"])
        and any(.[]; .name == "home"
                     and .url == "http://192.168.1.225:8086/"
                     and .interval == "60s")

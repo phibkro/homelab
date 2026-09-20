@@ -44,6 +44,8 @@
         item.conditions is not defined
         or (item.conditions is sequence and item.conditions is not string
         and (item.conditions | select('string') | list | length) == (item.conditions | length))
+      - item.headers is not defined or item.headers is mapping
+      - item.client is not defined or item.client is mapping
       - item.failure_threshold is not defined or item.failure_threshold | int > 0
     fail_msg: Every Gatus endpoint needs a non-empty name and URL plus valid optional probe settings.
   loop: "{{ gatus_endpoints }}"

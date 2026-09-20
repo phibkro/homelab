@@ -23,8 +23,8 @@ gatus_uid: 65532
 gatus_gid: 65532
 
 # Parent inventory supplies the complete generated probe list. Each item must
-# provide name and url; interval, conditions, failure_threshold and
-# send_on_resolved are accepted as explicit per-probe overrides.
+# provide name and url; client, headers, interval, conditions,
+# failure_threshold, and send_on_resolved are accepted as per-probe overrides.
 gatus_endpoints: []
 
 gatus_metrics_enabled: true
