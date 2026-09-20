@@ -84,7 +84,7 @@
             | nix shell nixpkgs#jq -c jq -er '.data.result[0].value[1]')
     failing=$(curl -fsSG "$VM/api/v1/query" \
               --data-urlencode 'query=count(gatus_results_endpoint_success == 0)' \
-              | nix shell nixpkgs#jq -c jq -er '.data.result[0].value[1]')
+              | nix shell nixpkgs#jq -c jq -er '(.data.result[0].value[1] // "0")')
     if [[ "$total" -gt 0 && "$failing" -eq 0 ]]; then
       echo "  ✓ all $total gatus probes healthy"
     elif [[ "$total" -eq 0 ]]; then
