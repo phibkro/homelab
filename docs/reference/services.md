@@ -20,11 +20,14 @@ nix build .#inventory-json --no-link --print-out-paths
 nix build .#status-json --no-link --print-out-paths
 nix build .#portal-json --no-link --print-out-paths
 
-# Per-host selected workloads
+# Workload names selected for one NixOS host
 nix eval .#nixosConfigurations.<host>.config.nori.inventory.currentWorkloads
 
-# Global public-safe workload catalog (placement, tags, endpoints)
+# Resolved workload declarations available to that host
 nix eval .#nixosConfigurations.<host>.config.nori.inventory.workloads
+
+# Complete route projection available to runtime adapters
+nix eval .#nixosConfigurations.<host>.config.nori.inventory.routes
 
 # Where each route's backend runs
 nix eval .#lib.noriInventory.routes \
@@ -38,11 +41,13 @@ nix eval .#lib.noriInventory.routes \
 Cross-host services use the split-module pattern (`docs/reference/topology.md` § cross-host services).
 
 Every independently placed workload has a pure `manifest.nix` and a concrete
-realization such as `nixos.nix`. The manifest owns catalog, endpoint, audience,
-and presentation metadata; the realization owns upstream service configuration,
-secrets, units, hardening, backup intent, and backend-local effects. Physical
-paths and filesystem identities live in `infra/<machine>/`. The inventory
-compiler imports only runtimes selected by service-owned placement selectors.
+realization such as `nixos.nix`. The manifest owns catalog, endpoint, listener,
+audience, and presentation metadata. Runtime adapters consume the resolved
+`nori.inventory` projection; they do not repeat route names, hostnames, or
+ports. The adapter owns units, hardening, backup intent, and implementation-
+internal ports. Physical paths and filesystem identities live in
+`infra/<machine>/`. The compiler imports only runtimes selected by
+service-owned placement selectors.
 
 ### About Immich's Postgres
 
