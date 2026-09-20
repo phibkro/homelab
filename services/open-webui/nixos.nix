@@ -1,25 +1,10 @@
 {
   config,
-  lib,
   pkgs,
   ...
 }:
 
 let
-  /*
-    Flip to `false` to pause the chat front-end without dropping its
-    state at /var/lib/private/open-webui (DynamicUser symlink). The
-    single boolean toggles:
-      * the systemd unit
-      * the https://chat.home.phibkro.org Caddy route + Authelia OIDC client
-      * Gatus monitor + Glance dashboard entry
-      * the daily sqlite3-dump-then-restic backup
-    Paused 2026-06-06 — open-webui's Python process held a steady
-    multi-GB RSS contributing to the workstation memory-pressure
-    freeze. Re-flip to `true` when chat is wanted; sqlite + restic
-    state at /var/lib/private/open-webui survives the toggle.
-  */
-  enabled = (import ./manifest.nix).active;
   chat = config.nori.inventory.routes.chat;
   auth = config.nori.inventory.routes.auth;
   ai = config.nori.inventory.routes.ai;
@@ -40,7 +25,7 @@ in
   */
 
   services.open-webui = {
-    enable = enabled;
+    enable = true;
     host = "0.0.0.0";
     port = chat.port;
     openFirewall = false;
@@ -79,27 +64,17 @@ in
   };
 
   /*
-    Default-deny filesystem access beyond Open WebUI's own state dir
-    (DynamicUser StateDirectory at /var/lib/open-webui handles itself).
-    User-uploaded files land inside that state dir; no need for /mnt
-    or /srv access. If a future need arises (e.g. importing media into
-    Open WebUI's RAG knowledge base), add the path under
-    nori.harden.open-webui.binds.
-
-    mkIf-gated: when `enabled = false`, services.open-webui itself is
-    off (no ExecStart) but nori.harden + other systemd.services.open-webui
-    additions would still fire, producing a stub unit with `bad-setting`.
+    Default-deny filesystem access beyond Open WebUI's own state directory.
+    The inventory compiler imports this module only while the workload is
+    active, so no second activation gate is needed here.
   */
-  nori.harden = lib.mkIf enabled { open-webui = { }; };
+  nori.harden.open-webui = { };
 
   /*
-    DynamicUser needs supplementary group `keys` to read the sops-
-    rendered env file (mode 0440 root:keys). Wrapped in mkIf because
-    when `enabled = false`, the lanRoute is unregistered → no OIDC
-    block → no sops.templates."oidc-chat-env" generated, and referencing
-    the missing template would 400 at eval.
+    DynamicUser needs supplementary group `keys` to read the host-local OIDC
+    environment template.
   */
-  systemd.services.open-webui.serviceConfig = lib.mkIf enabled {
+  systemd.services.open-webui.serviceConfig = {
     SupplementaryGroups = [ "keys" ];
     EnvironmentFile = config.sops.templates."oidc-${chat.name}-env".path;
   };
@@ -111,44 +86,34 @@ in
     symlinks and would otherwise back up just the symlink record. So
     paths target /var/lib/private/open-webui directly. The
     prepareCommand can use either path — bash file ops follow symlinks.
-
-    When disabled, the backup is skipped — the state isn't changing,
-    the existing restic snapshots remain on /mnt/backup/open-webui as
-    the recovery surface. Resume the daily job by flipping `enabled`.
   */
-  nori.backups.open-webui =
-    if enabled then
-      {
-        include = [
-          "/var/lib/private/open-webui"
-          "/var/backup/open-webui"
-        ];
-        prepareCommand = ''
-          if [ -f /var/lib/open-webui/data/webui.db ]; then
-            mkdir -p /var/backup/open-webui
-            # VACUUM INTO + PRAGMA busy_timeout — see the long-form # multi-line: ok
-            # rationale in navidrome.nix. The sqlite3 CLI's `.backup`
-            # ignores busy_timeout (hard-coded ~2.5s retry), so the
-            # previous `.timeout 30000` was a no-op. Open WebUI's
-            # scheduler-worker polls every 10s + chat completions
-            # write constantly, so the lock is held more often than
-            # for navidrome — but the same fix applies.
-            # Serialize concurrent prep — onetouch + mp510 race fix.
-            # See navidrome.nix for the long form.
-            (
-              ${pkgs.util-linux}/bin/flock -x 9
-              rm -f /var/backup/open-webui/webui.db.tmp
-              ${pkgs.sqlite}/bin/sqlite3 /var/lib/open-webui/data/webui.db \
-                "PRAGMA busy_timeout = 30000;" \
-                "VACUUM INTO '/var/backup/open-webui/webui.db.tmp';"
-              mv /var/backup/open-webui/webui.db.tmp /var/backup/open-webui/webui.db
-            ) 9>/var/backup/open-webui/.prep.lock
-          fi
-        '';
-        timer = "*-*-* 04:00:00";
-      }
-    else
-      {
-        skip = "Service disabled — see `enabled` at top of file. Existing snapshots in /mnt/backup/open-webui retained.";
-      };
+  nori.backups.open-webui = {
+    include = [
+      "/var/lib/private/open-webui"
+      "/var/backup/open-webui"
+    ];
+    prepareCommand = ''
+      if [ -f /var/lib/open-webui/data/webui.db ]; then
+        mkdir -p /var/backup/open-webui
+        # VACUUM INTO + PRAGMA busy_timeout — see the long-form # multi-line: ok
+        # rationale in navidrome.nix. The sqlite3 CLI's `.backup`
+        # ignores busy_timeout (hard-coded ~2.5s retry), so the
+        # previous `.timeout 30000` was a no-op. Open WebUI's
+        # scheduler-worker polls every 10s + chat completions
+        # write constantly, so the lock is held more often than
+        # for navidrome — but the same fix applies.
+        # Serialize concurrent prep — onetouch + mp510 race fix.
+        # See navidrome.nix for the long form.
+        (
+          ${pkgs.util-linux}/bin/flock -x 9
+          rm -f /var/backup/open-webui/webui.db.tmp
+          ${pkgs.sqlite}/bin/sqlite3 /var/lib/open-webui/data/webui.db \
+            "PRAGMA busy_timeout = 30000;" \
+            "VACUUM INTO '/var/backup/open-webui/webui.db.tmp';"
+          mv /var/backup/open-webui/webui.db.tmp /var/backup/open-webui/webui.db
+        ) 9>/var/backup/open-webui/.prep.lock
+      fi
+    '';
+    timer = "*-*-* 04:00:00";
+  };
 }

@@ -72,10 +72,6 @@ in
 {
   assertions = [
     {
-      assertion = (import ./manifest.nix).active;
-      message = "The shared MCP origin tunnel runtime was imported while its manifest is inactive.";
-    }
-    {
       assertion =
         config.nori.inventory.routes ? memory-origin && config.nori.inventory.routes ? projects-origin;
       message = "The shared MCP origin tunnel requires both memory-origin and projects-origin inventory endpoints.";

@@ -37,12 +37,6 @@ let
   '';
 in
 {
-  assertions = [
-    {
-      assertion = (import ./manifest.nix).active;
-      message = "The Herdr projects MCP runtime was imported while its manifest is inactive.";
-    }
-  ];
 
   sops.secrets.herdr-projects-mcp-bearer-token = {
     sopsFile = inputs.self + "/secrets/workstation-runtime.yaml";

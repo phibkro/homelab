@@ -6,7 +6,6 @@
 }:
 
 let
-  enabled = (import ./manifest.nix).active;
   downloads = config.nori.inventory.routes.downloads;
   qbtConfig = "/var/lib/qBittorrent/qBittorrent/config/qBittorrent.conf";
   qbtConfigure = pkgs.writeText "qbt-configure.py" ''
@@ -97,7 +96,7 @@ in
          its library subdir.
   */
   services.qbittorrent = {
-    enable = enabled;
+    enable = true;
     webuiPort = downloads.port;
     user = "qbittorrent";
     group = "qbittorrent";
@@ -154,7 +153,7 @@ in
     copy — every torrent in @downloads stored twice (~2.9T doubled).
   */
 
-  systemd.services.qbittorrent = lib.mkIf enabled {
+  systemd.services.qbittorrent = {
     serviceConfig.UMask = "0002";
     preStart = lib.mkAfter ''
       install -d -m 0755 \
@@ -170,15 +169,15 @@ in
     '';
   };
 
-  systemd.tmpfiles.rules = lib.mkIf enabled [
+  systemd.tmpfiles.rules = [
     "d /var/lib/qBittorrent/qBittorrent/incomplete 0755 qbittorrent qbittorrent -"
   ];
 
-  users.users = lib.mkIf enabled {
+  users.users = {
     qbittorrent.extraGroups = [ "media" ];
   };
 
-  nori.harden.qbittorrent = lib.mkIf enabled {
+  nori.harden.qbittorrent = {
     binds = [ config.nori.fs.downloads.path ];
   };
 
@@ -188,14 +187,8 @@ in
     pinned by snapshots referencing a bygone full-incomplete state.
     Live state without it is ~31 MiB.
   */
-  nori.backups.qbittorrent =
-    if enabled then
-      {
-        include = [ "/var/lib/qBittorrent" ];
-        exclude = [ "/var/lib/qBittorrent/qBittorrent/incomplete" ];
-      }
-    else
-      {
-        skip = "Service paused by operator; retained state and existing snapshots are unchanged.";
-      };
+  nori.backups.qbittorrent = {
+    include = [ "/var/lib/qBittorrent" ];
+    exclude = [ "/var/lib/qBittorrent/qBittorrent/incomplete" ];
+  };
 }

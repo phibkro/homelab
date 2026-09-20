@@ -6,17 +6,10 @@
 
 let
   /*
-    Paused 2026-05-16 — operator not using local LLM inference recently,
-    the GPU + ~14 GiB VRAM at idle was not worth the cost. Flip to
-    `true` to resume. State at /var/lib/ollama is preserved across the
-    toggle (NixOS doesn't reap StateDirectory on disable). Flipping
-    this single boolean restores:
-      * the systemd unit + CUDA acceleration
-      * the https://ai.home.phibkro.org Caddy route
-      * Gatus monitor + Glance dashboard entry derived from the `ai`
-        endpoint in this service's manifest
+    The manifest's `active` field is the activation switch. When it is false,
+    the inventory compiler does not import this runtime module. State under
+    /var/lib/ollama remains available for a later activation.
   */
-  enabled = (import ./manifest.nix).active;
   ai = config.nori.inventory.routes.ai;
 in
 {
@@ -34,7 +27,7 @@ in
   */
 
   services.ollama = {
-    enable = enabled;
+    enable = true;
     /*
       CUDA-enabled package from the host's unstable nixpkgs. Unstable
       carries the mxfp8 / nvfp4-capable Ollama line directly, so the
@@ -88,9 +81,5 @@ in
   */
   nori.harden.ollama = { };
 
-  nori.backups.ollama.skip =
-    if enabled then
-      "Re-downloadable LLM weights (~32GB). Chat history is in Open WebUI's repo."
-    else
-      "Service disabled — see `enabled` at top of file.";
+  nori.backups.ollama.skip = "Re-downloadable LLM weights (~32GB). Chat history is in Open WebUI's repository.";
 }

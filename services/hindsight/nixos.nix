@@ -91,12 +91,6 @@ let
 
 in
 {
-  assertions = [
-    {
-      assertion = (import ./manifest.nix).active;
-      message = "The Hindsight runtime was imported while its manifest is inactive.";
-    }
-  ];
 
   sops.secrets.hindsight-mcp-bearer-token = {
     sopsFile = inputs.self + "/secrets/workstation-runtime.yaml";
