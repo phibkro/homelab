@@ -66,7 +66,8 @@ The operator authorized deployment to every target and publication of the verifi
 - Adelie was initially unreachable. After restoring its Ethernet connection and completing a clean boot, Tailscale established a direct path through `192.168.1.122`.
 - `just push adelie` activated `/nix/store/mn1kv6azsx7phbgzq7k9p7gz19il4jgr-nixos-system-adelie-26.11.20260910.8ce4ef6`.
 - Adelie reported `running` with no failed units. SSH, Tailscale, Beszel agent, Vector, and node exporter were active. The node-exporter and Vector metrics endpoints responded, and the Beszel listener accepted a Tailscale connection.
-- The source tree was clean after the deployment repairs. Publication had not yet run when this update was recorded.
+- Adelie's shared Akkar Wi-Fi profile uses `wlp5s0` and a host-scoped encrypted secret. With Ethernet disconnected, `wlp5s0` held `192.168.1.125`; Tailscale, SSH, both metrics endpoints, and the Beszel listener remained reachable.
+- The verified recovery history and Adelie Wi-Fi configuration were published through commit `c991175`.
 
 Cleanup removed temporary playbooks, inventory output, the bootstrap smoke container, and the upstream research clone.
 The restored archive and the pre-restore Pi rollback directory remain preserved.
