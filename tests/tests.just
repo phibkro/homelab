@@ -32,7 +32,10 @@
     #!/usr/bin/env bash
     set -euo pipefail
     fail=0
-    VM=http://127.0.0.1:8428
+    inventory_ref=".#lib.noriInventory"
+    pi_tailnet=$(nix eval --raw "${inventory_ref}.hosts.pi.tailnetIp" 2>/dev/null)
+    vm_hostname=$(nix eval --raw "${inventory_ref}.routes.tsdb.hostname" 2>/dev/null)
+    VM="https://${vm_hostname}"
 
     echo "=== Tier 1 — VictoriaMetrics scrape targets all up ==="
     targets=$(curl -s "$VM/api/v1/targets?state=any" \
@@ -59,9 +62,11 @@
 
     echo "=== Tier 3 — heartbeat fired recently (<90s) ==="
     # heartbeat timer is 60s; allow 90s buffer for jitter.
-    # StateChangeTimestamp tracks the latest active→inactive transition.
-    last=$(systemctl show heartbeat.service -p StateChangeTimestampMonotonic --value)
-    uptime_us=$(awk '{ printf "%d", $1 * 1000000 }' /proc/uptime)
+    # Query both values on Pi so monotonic timestamps share one boot clock.
+    last=$(ssh -o BatchMode=yes -o ConnectTimeout=3 "nori@${pi_tailnet}" \
+      "systemctl show heartbeat.service -p StateChangeTimestampMonotonic --value")
+    uptime_us=$(ssh -o BatchMode=yes -o ConnectTimeout=3 "nori@${pi_tailnet}" \
+      "awk '{ printf \"%d\", \$1 * 1000000 }' /proc/uptime")
     if [[ -n "$last" && -n "$uptime_us" && "$last" != "0" ]]; then
       age_s=$(( (uptime_us - last) / 1000000 ))
       if [[ "$age_s" -le 90 ]]; then
@@ -187,7 +192,7 @@
 # verifies the Ansible-managed Pi runtime against the compiler-owned OIDC
 # client projection.
 #
-# Tier 1 — systemd: authelia.service is active on Pi.
+# Tier 1 — the Authelia Podman container is running on Pi.
 # Tier 2 — health: /api/health responds OK on the inventory-declared address.
 # Tier 3 — OIDC discovery declares the canonical issuer through Caddy.
 # Tier 4 — every projected OIDC client has a non-empty hashed secret on Pi.
@@ -217,10 +222,10 @@
       fi
     }
 
-    echo "=== Tier 1 — authelia.service active on Pi ==="
-    active=$(pi_ssh "systemctl is-active authelia.service" 2>/dev/null || echo "unknown")
-    if [[ "$active" == "active" ]]; then
-      echo "  ✓ active"
+    echo "=== Tier 1 — Authelia container running on Pi ==="
+    active=$(pi_ssh "sudo podman inspect authelia | jq -r '.[0].State.Running'" 2>/dev/null || echo "unknown")
+    if [[ "$active" == "true" ]]; then
+      echo "  ✓ running"
     else
       echo "  ✗ $active"; fail=1
     fi
@@ -248,7 +253,7 @@
                       --apply 'routes: builtins.concatStringsSep " " (builtins.filter (name: routes.${name}.oidc != null) (builtins.attrNames routes))' 2>/dev/null)
     for route in $declared_oidc; do
       path="/etc/authelia/secrets/oidc-${route}-client-secret-hash"
-      sz=$(pi_ssh "stat -c '%s' '$path' 2>/dev/null || echo 0")
+      sz=$(pi_ssh "sudo stat -c '%s' '$path' 2>/dev/null || echo 0")
       if [[ "$sz" -gt 0 ]]; then
         echo "  ✓ oidc-${route}-client-secret-hash ($sz bytes)"
       else

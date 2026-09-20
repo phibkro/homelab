@@ -124,6 +124,7 @@ in
          == ["cache", "calendar", "filmder", "heim", "news", "ops", "stremio", "vault"]
        and .pi_appliances.hosts.pi.glance_enabled == true
        and .pi_appliances.hosts.pi.pi_tailnet_workload_ports == [8082, 8086]
+       and .pi_appliances.hosts.pi.pi_container_host_tcp_ports == [8082, 45876]
        and (.pi_appliances.hosts.pi.glance_bookmark_groups | length == 5)
        and (.pi_appliances.hosts.pi.pi_routes | length > 1)
        and ([.pi_appliances.hosts.pi.authelia_oidc_clients[].client_id] | sort)

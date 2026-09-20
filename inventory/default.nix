@@ -1076,6 +1076,12 @@ let
     pi_deprecated_domains = site.deprecatedDomains;
     pi_routes = piRoutes;
     pi_tailnet_workload_ports = piTailnetWorkloadPorts;
+    pi_container_host_tcp_ports = lib.sort (a: b: a < b) (
+      lib.optionals (workloadRunsOnPi "beszel-agent") [ beszelAgentPort ]
+      ++ lib.optionals (workloadRunsOnPi "victoriametrics" && workloadRunsOnPi "gatus") [
+        (routePortFor "uptime")
+      ]
+    );
     caddy_http_port = activeListenerPortFor "caddy" "http";
     caddy_https_port = activeListenerPortFor "caddy" "https";
     authelia_port = routePortFor "auth";

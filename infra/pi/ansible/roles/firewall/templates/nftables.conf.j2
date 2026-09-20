@@ -33,8 +33,8 @@ table inet appliance_filter {
 {% if pi_tailnet_tcp_ports | length > 0 %}
     iifname "{{ pi_tailnet_interface }}" tcp dport { {{ pi_tailnet_tcp_ports | map('int') | join(', ') }} } accept
 {% endif %}
-{% if beszel_agent_enabled %}
-    iifname "{{ pi_container_bridge_interface }}" tcp dport {{ beszel_agent_listen_port }} accept
+{% if pi_container_host_tcp_ports | length > 0 %}
+    iifname "{{ pi_container_bridge_interface }}" tcp dport { {{ pi_container_host_tcp_ports | map('int') | join(', ') }} } accept
 {% endif %}
 {% if caddy_enabled %}
     iifname "{{ pi_tailnet_interface }}" tcp dport { {{ caddy_http_port }}, {{ caddy_https_port }} } accept
