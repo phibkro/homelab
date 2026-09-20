@@ -8,22 +8,14 @@ summary: The forward plan — single home for outstanding work, deferred items, 
 
 The forward plan: actionable outstanding work, deferred-but-tracked items, and the idea backlog. **This is the single home for "what's next."** Items leave this file when done (folded into git log) or when explicitly killed.
 
-## Recovery follow-up
-
-The [2026-09-17 oversight recovery](archive/reports/2026-09-17-oversight-recovery.md)
-records the evidence, completed integrations, verification, and remaining
-worktrees. The mixed recovery, Pi observability follow-up, and public status
-publication are on `main`.
-
-Continue in this order:
-
-1. Choose the intended observer behavior before history repair or integration.
-2. Compare older settings and topology branches with current `main`.
-3. Review each remaining standalone fix before integration or retirement.
-4. Plan Adelie's operator-authorized physical admission without moving IronWolf
-   or OneTouch.
-
 ## Outstanding (actionable)
+
+- **Prove end-to-end service recovery.** Run isolated restore drills for each
+  state model: files, SQLite, PostgreSQL, and service-specific exports. Restore
+  one representative service first. Then cover application state, user data,
+  media metadata, and complete host reconstruction. Generate the evidence view
+  from service manifests and backup jobs. Record the latest snapshot, required
+  preparation, restore result, and verification date.
 
 - **Finish public status production acceptance.** The failure-independent
   `status.home.phibkro.org` Cloudflare Worker is deployed from the explicit
@@ -56,6 +48,24 @@ Continue in this order:
   `docs/archive/reports/2026-09-19-backup-evidence.md`. Aurora and Pavilion are
   retired.
 
+- **Build an inventory-derived operator view.** Generate a read-only service
+  view from the inventory and runtime probes. Show each service's host, route,
+  authentication method, health, backup freshness, deployment owner, and
+  recovery reference. Do not add another service registry or add mutations to
+  the first version.
+
+- **Build the authenticated family onboarding portal.** Reuse the access-tiered
+  route projection for capability filtering, registration guidance, Tailscale
+  setup, and generated walkthroughs. Keep its authentication and release
+  lifecycle separate from the public status Worker. Start after the public
+  status component contract passes production acceptance.
+
+- **Refine outcome-based monitoring.** Monitor DNS, authentication, external
+  HTTPS, application health, backup freshness, restore-evidence age, disk
+  headroom, and certificate lifetime. Remove duplicate alerts for the same
+  failure. Add maintenance suppression only after planned work causes proven
+  alert noise.
+
 - **Sunshine remote-desktop pairing.** Deployed (`services/sunshine/nixos.nix`); NVENC builds confirmed (`h264/hevc/av1_nvenc`). Outstanding: one-time Moonlight pairing.
 
   Pairing steps:
@@ -80,13 +90,6 @@ Continue in this order:
 
 ## Deferred (tracked, not currently worked)
 
-- **Authenticated family onboarding portal and documentation.** Reuse the
-  access-tiered `portal-json` contract and the public status component vocabulary
-  for capability filtering, registration guidance, Tailscale setup, and generated
-  walkthroughs. Keep its authentication and release lifecycle separate from the
-  unauthenticated status Worker. **Trigger:** the public status surface passes
-  production acceptance and its component/presentation contract is stable.
-
 - **~~Mac is on x86_64-darwin EOL clock.~~ RESOLVED 2026-07-26 — retired.** nixpkgs 26.11 dropped `x86_64-darwin` before a decision was made, which took `nix flake check` red on main. The Mac had already fallen out of use, so the configuration was removed rather than migrated or pinned. See ADR-0009 (supersedes ADR-0006). If a Mac returns it will be Apple Silicon and a fresh inventory entry.
 
 - **Remaining stabilisation (personal apps).** Phases 1-3 + 6-prep landed 2026-05-08 (CI + Renovate on all 4 app repos; zod validation on drinks-api; finnbydel → Astro + Hono; stateful apps → Drizzle + bun:sqlite; @sentry SDKs wired, no-op without DSN). Remaining: phase 4 (static sites → Cloudflare Pages, removes 3 attack surfaces from workstation), phase 5 (microvm.nix for drinks + finnbydel, kernel-level isolation for stateful apps that stay on workstation). Sentry activation when operator provisions projects: add 6 sops secrets `sentry-dsn-{heim,drinks-app,drinks-server,filmder,finnbydel-app,finnbydel-server}` to `secrets/apps.yaml`; update each module's environment block.
@@ -94,7 +97,6 @@ Continue in this order:
 - **Remaining SSO candidates.** Second batch landed (Immich + Beszel native OIDC, Komga + calibre-web forward-auth). Still on the table:
   - **Native OIDC:** Komga could move from forward-auth to per-user OIDC if family members start wanting separate read-history; Spring Security OAuth2 config is verbose but doable.
   - **Skip / problematic:** Jellyfin (mobile/TV clients bypass cookie-based forward-auth; native SSO plugin has sharp historical edges). Radicale CalDAV clients can't follow forward-auth redirects, must stay on htpasswd. Glance/Gatus are intentionally public. Syncthing is single-admin. ntfy push API path exemption ends up too permissive to be worth gating the web UI alone.
-
 
 ## Promotion register (from `docs/invariants.md`)
 
@@ -111,7 +113,6 @@ Continue in this order:
 
 ## Idea backlog (no commitment)
 
-- **UPS for workstation.** Single PSU is a non-goal for HA, but mid-write power loss on the attached IronWolf is a real recovery scenario. Cheap (~1500–3000 NOK for 600VA) insurance.
 - **`common-cpu-amd-pstate`** module on workstation hardware.
 - **NVIDIA Wayland edge cases** (multi-monitor VRR, suspend/resume nuances). Not blocking; document fixes in `hardware.nix` as encountered.
 - **CUDA/Ollama drift.** Ollama bundles its own CUDA libs; verify at install and pin nixpkgs version if it doesn't.
