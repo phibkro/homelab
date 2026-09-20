@@ -28,6 +28,10 @@
     interface = "wlp5s0";
   };
 
+  # RTL8852CE firmware 0.27.129.4 triggered rtw89 SER recovery on this host.
+  # Disable the firmware low-power path first; keep PCIe power management enabled.
+  boot.extraModprobeConfig = "options rtw89_core disable_ps_mode=Y";
+
   # Adelie receives only the credentials consumed by its selected workloads.
   # The workstation host identity is not a recipient for this file.
   sops.defaultSopsFile = lib.mkForce (inputs.self + "/secrets/adelie-runtime.yaml");
