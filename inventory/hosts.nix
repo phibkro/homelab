@@ -155,7 +155,7 @@
       role = "appliance";
       roleOneLiner = "always-on entry plane";
       codename = "fairy";
-      hardware = "Raspberry Pi 4 8 GB · aarch64 · USB-boot from Samsung FIT 128 GB";
+      hardware = "Raspberry Pi 4 8 GB · aarch64 · 32 GB SD boot";
       primaryJob = ''
         HTTP entry plane (Caddy + Authelia + Pi-hole and the LE wildcard
         certificate on `*.''${nori.domain}`), Glance home page, observability
