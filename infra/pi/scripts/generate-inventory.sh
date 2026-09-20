@@ -10,7 +10,7 @@ mkdir -p "$(dirname "$output")"
 
 # The compiler owns every appliance fact. This adapter adds only Ansible's
 # transport fields and serializes the secret-free Pi projection.
-nix eval --json "$repo_root#lib.noriInventory.pi" | jq \
+nix eval --json "$repo_root#lib.noriPiInventory" | jq \
   --arg ansible_user "$ansible_user" \
   '{
     pi_appliances: {

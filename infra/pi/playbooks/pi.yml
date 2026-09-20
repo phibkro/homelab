@@ -65,7 +65,7 @@
           - item | int >= 1
           - item | int <= 65535
         fail_msg: Tailnet diagnostic ports must be numeric TCP ports from 1 through 65535.
-      loop: "{{ pi_tailnet_tcp_ports | default([]) }}"
+      loop: "{{ pi_tailnet_tcp_ports }}"
       loop_control:
         label: "{{ item }}"
 
@@ -73,15 +73,15 @@
       ansible.builtin.assert:
         that:
           - >-
-            (pi_tailnet_tcp_ports | default([]) | map('int') | list | unique | length)
-            == (pi_tailnet_tcp_ports | default([]) | length)
+            (pi_tailnet_tcp_ports | map('int') | list | unique | length)
+            == (pi_tailnet_tcp_ports | length)
         fail_msg: Tailnet diagnostic ports must be unique.
 
     - name: Require subnet-bound services for diagnostic exposure
       ansible.builtin.assert:
         that:
           - >-
-            (pi_tailnet_tcp_ports | default([]) | length == 0)
+            (pi_tailnet_tcp_ports | length == 0)
             or pi_service_bind_address == pi_lan_address
         fail_msg: >-
           Tailnet diagnostic ports are subnet-reachable listeners; services

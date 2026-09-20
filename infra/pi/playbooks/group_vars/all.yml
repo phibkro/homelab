@@ -1,26 +1,12 @@
 ---
 pi_timezone: Europe/Oslo
 pi_hostname: pi
-pi_admin_port: 8081
-pi_dns_port: 53
 pi_disable_disk_swap: true
 pi_volatile_journal: true
 pi_emulation_mode: false
-pi_lan_address: 192.168.1.225
 pi_lan_cidr: 192.168.1.0/24
-pi_service_bind_address: "{{ pi_lan_address }}"
-pihole_lan_address: "{{ pi_lan_address }}"
-pihole_tailnet_address: ""
 pi_tailnet_interface: tailscale0
 pi_container_bridge_interface: podman0
-pi_domain: home.phibkro.org
-pi_routes:
-  - name: pihole
-    hostname: "pihole.{{ pi_domain }}"
-    upstream_address: "{{ pi_service_bind_address }}"
-    upstream_port: "{{ pi_admin_port }}"
-    reachability: internal
-
 tailscale_install: true
 tailscale_enroll: false
 tailscale_auth_key: "{{ lookup('env', 'TAILSCALE_AUTH_KEY') }}"
@@ -64,53 +50,18 @@ authelia_storage_encryption_key: "{{ lookup('env', 'AUTHELIA_STORAGE_ENCRYPTION_
 authelia_oidc_hmac_secret: "{{ lookup('env', 'AUTHELIA_OIDC_HMAC_SECRET') }}"
 authelia_oidc_issuer_private_key: "{{ lookup('env', 'AUTHELIA_OIDC_ISSUER_PRIVATE_KEY') }}"
 authelia_users_database: "{{ lookup('env', 'AUTHELIA_USERS_DATABASE') }}"
-authelia_oidc_clients:
-  - client_id: metrics
-    client_name: Beszel
-    authorization_policy: one_factor
-    token_endpoint_auth_method: client_secret_basic
-    redirect_uris:
-      - "https://metrics.{{ pi_domain }}/api/oauth2-redirect"
-    scopes: [openid, profile, email, groups]
-  - client_id: photos
-    client_name: Immich
-    authorization_policy: one_factor
-    token_endpoint_auth_method: client_secret_post
-    redirect_uris:
-      - "https://photos.{{ pi_domain }}/auth/login"
-    scopes: [openid, profile, email, groups]
-  - client_id: news
-    client_name: Miniflux
-    authorization_policy: one_factor
-    token_endpoint_auth_method: client_secret_basic
-    redirect_uris:
-      - "https://news.{{ pi_domain }}/oauth2/oidc/callback"
-    scopes: [openid, profile, email, groups]
-  - client_id: vault
-    client_name: Vaultwarden
-    authorization_policy: one_factor
-    token_endpoint_auth_method: client_secret_basic
-    redirect_uris:
-      - "https://vault.{{ pi_domain }}/identity/connect/oidc-signin"
-    scopes: [openid, profile, email, groups, offline_access]
 authelia_oidc_client_secret_hashes:
   metrics: "{{ lookup('env', 'OIDC_METRICS_CLIENT_SECRET_HASH') }}"
   photos: "{{ lookup('env', 'OIDC_PHOTOS_CLIENT_SECRET_HASH') }}"
   news: "{{ lookup('env', 'OIDC_NEWS_CLIENT_SECRET_HASH') }}"
   vault: "{{ lookup('env', 'OIDC_VAULT_CLIENT_SECRET_HASH') }}"
 
-# Dynamic public records are derived from the inventory's internet routes.
-# These defaults keep the contract explicit until generated host vars provide
-# an authoritative list.
+# Dynamic public records are generated from the inventory's internet routes.
 ddns_enabled: true
 # Cloudflare's authoritative zone is the parent of the private service
 # namespace. Keep these explicit: pi_domain is not a Cloudflare zone ID.
 ddns_zone_name: phibkro.org
 ddns_api_token: "{{ lookup('env', 'CLOUDFLARE_DDNS_API_TOKEN') }}"
-# The generated production inventory supplies ddns_hostnames from the typed
-# internet-route catalog. Keeping this empty prevents a stale hand-maintained
-# list from changing Cloudflare records.
-ddns_hostnames: []
 
 # ntfy is provisioned before Gatus so host-local alert producers can use its
 # authenticated route; Gatus itself remains on the off-host public route.
@@ -146,33 +97,6 @@ gatus_ntfy_url: https://ntfy.sh
 # A local ntfy token must never be sent to ntfy.sh. Set this path only when
 # gatus_ntfy_url is changed to the authenticated local HTTP endpoint.
 gatus_ntfy_token_path: ""
-gatus_endpoints:
-  - name: pihole-dns
-    url: "tcp://{{ pi_service_bind_address }}:{{ pi_dns_port }}"
-  - name: pihole-admin
-    url: "http://{{ pi_service_bind_address }}:{{ pi_admin_port }}/admin/"
-    conditions: ["[STATUS] == 302"]
-  - name: authelia
-    url: "http://{{ pi_service_bind_address }}:{{ authelia_port }}/api/health"
-  - name: ntfy
-    url: "http://{{ pi_service_bind_address }}:{{ ntfy_port }}/v1/health"
-  - name: beszel
-    url: "http://{{ pi_service_bind_address }}:{{ beszel_bind_port }}{{ beszel_health_path }}"
-  - name: victoriametrics
-    url: "http://{{ pi_service_bind_address }}:{{ victoriametrics_bind_port }}/health"
-  - name: victorialogs
-    url: "http://{{ pi_service_bind_address }}:{{ victorialogs_bind_port }}/health"
-
-victoriametrics_scrape_jobs:
-  - job_name: gatus
-    static_configs:
-      - targets:
-          - "{{ pi_service_bind_address }}:{{ gatus_port }}"
-  - job_name: victoriametrics
-    static_configs:
-      - targets:
-          - "{{ pi_service_bind_address }}:{{ victoriametrics_bind_port }}"
-
 vector_victorialogs_endpoint: >-
   http://{{ pi_service_bind_address }}:{{ victorialogs_bind_port }}/insert/elasticsearch/
 
@@ -195,19 +119,9 @@ pi_tailnet_tcp_ports: >-
         victoriametrics_bind_port,
         victorialogs_bind_port
       ]
-      + (pi_tailnet_workload_ports | default([]))
+      + pi_tailnet_workload_ports
     )
     | map('int')
     | unique
     | list
   }}
-
-# Emulation fallback only. Production receives inventory-derived records from
-# scripts/generate-inventory.sh.
-pihole_local_dns_records:
-  - address: 192.168.1.181
-    names:
-      - workstation.lan
-  - address: 192.168.1.225
-    names:
-      - pi.lan

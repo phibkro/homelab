@@ -172,7 +172,7 @@ let
     && validDashboard (endpoint.dashboard or null)
     && !(endpoint ? runsOn);
   endpointDeclarationsFor = workload:
-    if builtins.isAttrs (workload.endpoints or { }) then workload.endpoints else { };
+    if builtins.isAttrs (workload.endpoints or { }) then workload.endpoints or { } else { };
   invalidEndpointDeclarations = lib.filter (declaration: declaration != "") (
     lib.concatMap (
       workloadName:
@@ -187,6 +187,41 @@ let
           endpointName: endpoint:
           lib.optionalString (!(isStableName endpointName && validEndpoint endpoint)) "${workloadName}.${endpointName}"
         ) endpoints
+    ) workloadNames
+  );
+  validProbe =
+    probe:
+    builtins.isAttrs probe
+    && lib.elem (probe.scheme or null) [
+      "http"
+      "https"
+      "tcp"
+    ]
+    && builtins.isInt (probe.port or 0)
+    && probe.port > 0
+    && probe.port < 65536
+    && nonEmptyString (probe.interval or "")
+    && validStringList (probe.conditions or [ ])
+    && (
+      !(probe ? path)
+      || (nonEmptyString probe.path && lib.hasPrefix "/" probe.path)
+    );
+  probeDeclarationsFor =
+    workload: if builtins.isAttrs (workload._probes or { }) then workload._probes or { } else { };
+  invalidProbeDeclarations = lib.filter (declaration: declaration != "") (
+    lib.concatMap (
+      workloadName:
+      let
+        workload = workloadCatalog.${workloadName};
+        probes = probeDeclarationsFor workload;
+      in
+      if !builtins.isAttrs (workload._probes or { }) then
+        [ "${workloadName}._probes" ]
+      else
+        lib.mapAttrsToList (
+          probeName: probe:
+          lib.optionalString (!(isStableName probeName && validProbe probe)) "${workloadName}.${probeName}"
+        ) probes
     ) workloadNames
   );
   invalidProfileDeclarations = lib.filterAttrs (_name: profile: profile ? workloads) profiles;
@@ -499,6 +534,7 @@ let
       "_manifestPath"
       "_hardeningException"
       "runtimeModule"
+      "_probes"
       "topology"
     ]
     // {
@@ -632,28 +668,17 @@ let
       upstream_port = route.port;
       forward_auth_exempt_paths =
         if route.forwardAuth == null then [ ] else route.forwardAuth.exemptPaths or [ ];
-      forward_auth_upstream = piForwardAuthUpstream;
+      forward_auth_upstream = if route.forwardAuth == null then null else piForwardAuthUpstream;
       oidc_redirect_path = if route.oidc == null then null else route.oidc.redirectPath;
       upstream_host_header = route.upstreamHostHeader;
       upstream_origin_header = route.upstreamOriginHeader;
     };
-  piServiceRoutes = map (name: piRouteFor activeRoutes.${name}) (lib.attrNames activeRoutes);
-  piPiholeRoute = {
-    name = "pihole";
-    hostname = "pihole.${site.domain}";
-    upstream_address = piLanAddress;
-    upstream_port = 8081;
-    scheme = "http";
-    reachability = "internal";
-    audience = "operator";
-    auth = "none";
-    forward_auth_exempt_paths = [ ];
-    forward_auth_upstream = null;
-    oidc_redirect_path = null;
-    upstream_host_header = null;
-    upstream_origin_header = null;
-  };
-  piRoutes = [ piPiholeRoute ] ++ piServiceRoutes;
+  piServiceRouteNames = lib.attrNames activeRoutes;
+  piRouteNames =
+    lib.optional (activeRoutes ? pihole) "pihole"
+    ++ lib.remove "pihole" piServiceRouteNames;
+  piServiceRoutes = map (name: piRouteFor activeRoutes.${name}) piRouteNames;
+  piRoutes = piServiceRoutes;
   piTailnetWorkloadPorts = lib.sort builtins.lessThan (
     lib.unique (
       map (route: route.port) (
@@ -711,22 +736,58 @@ let
       ];
     }
   ) (lib.attrNames oidcRoutes);
-  routeProbes = map (
-    name:
+  routeProbeFor =
+    route:
     let
-      route = activeRoutes.${name};
       monitor = route.monitor;
     in
     {
       name = if monitor.name == null then route.name else monitor.name;
       url = "${route.scheme}://${piBackendAddressFor route}:${toString route.port}${monitor.path}";
-      inherit (monitor) interval headers conditions;
+      inherit (monitor) interval conditions;
       failure_threshold = monitor.failureThreshold;
       send_on_resolved = true;
     }
-  ) (
-    lib.attrNames (lib.filterAttrs (_: route: route.monitor != null) activeRoutes)
+    // lib.optionalAttrs (monitor.headers != { }) { inherit (monitor) headers; };
+  monitoredRoutes = lib.filterAttrs (_: route: route.monitor != null) activeRoutes;
+  piholeAdminProbes = lib.optional (monitoredRoutes ? pihole) (
+    routeProbeFor monitoredRoutes.pihole
   );
+  routeProbes = map (
+    name: routeProbeFor monitoredRoutes.${name}
+  ) (lib.remove "pihole" (lib.attrNames monitoredRoutes));
+  probeProjectionFor =
+    workloadName: probeName: probe:
+    let
+      hostName = builtins.head (hostsForWorkload workloadName);
+      host = hosts.${hostName};
+      address =
+        if hostName == site.entryPlaneHost && host.identity.lanIp != null then
+          host.identity.lanIp
+        else
+          host.identity.tailnetIp;
+      path = if probe.scheme == "tcp" then "" else probe.path or "/";
+    in
+    {
+      name = probeName;
+      url = "${probe.scheme}://${address}:${toString probe.port}${path}";
+      inherit (probe) interval conditions;
+      failure_threshold = 3;
+      send_on_resolved = true;
+    };
+  workloadProbes = lib.concatMap (
+    workloadName:
+    let
+      workload = workloadCatalog.${workloadName};
+      probes = probeDeclarationsFor workload;
+    in
+    if workloadIsActive workload then
+      map (
+        probeName: probeProjectionFor workloadName probeName probes.${probeName}
+      ) (lib.attrNames probes)
+    else
+      [ ]
+  ) workloadNames;
   explicitProbe =
     probe:
     probe
@@ -734,33 +795,24 @@ let
       failure_threshold = 3;
       send_on_resolved = true;
     };
-  explicitProbes = map explicitProbe [
-    {
-      name = "pihole-dns";
-      url = "tcp://${piLanAddress}:53";
-      interval = "60s";
-      conditions = [ "[CONNECTED] == true" ];
-    }
-    {
-      name = "pihole-admin";
-      url = "http://${piLanAddress}:8081/admin/";
-      interval = "60s";
-      conditions = [ "[STATUS] == 200" ];
-    }
-    {
-      name = "station-ssh";
-      url = "tcp://${hosts.workstation.identity.lanIp}:22";
-      interval = "60s";
-      conditions = [ "[CONNECTED] == true" ];
-    }
-    {
-      name = "entry-caddy";
-      url = "http://${piLanAddress}";
-      interval = "120s";
-      client = { "ignore-redirect" = true; };
-      conditions = [ "[STATUS] == 308" ];
-    }
-  ];
+  explicitProbes =
+    workloadProbes
+    ++ piholeAdminProbes
+    ++ map explicitProbe [
+      {
+        name = "station-ssh";
+        url = "tcp://${hosts.workstation.identity.lanIp}:22";
+        interval = "60s";
+        conditions = [ "[CONNECTED] == true" ];
+      }
+      {
+        name = "entry-caddy";
+        url = "http://${piLanAddress}";
+        interval = "120s";
+        client = { "ignore-redirect" = true; };
+        conditions = [ "[STATUS] == 308" ];
+      }
+    ];
   exporterTargetsFor =
     workloadName: port:
     if workloadIsActive workloadCatalog.${workloadName} then
@@ -851,6 +903,10 @@ let
       names = [ route.hostname ] ++ map (domain: "${route.name}.${domain}") site.deprecatedDomains;
     }
   ) piRoutes;
+  dnsRecordKey = record: "${record.address}|${lib.concatStringsSep "|" record.names}";
+  piDnsRecords = lib.sort (left: right: dnsRecordKey left < dnsRecordKey right) (
+    piHostRecords ++ piRouteRecords
+  );
   backupProjection =
     if backup.enabled then
       {
@@ -864,11 +920,15 @@ let
       }
     else
       { pi_backup_enabled = false; };
+  piholeAdminPort = activeRoutes.pihole.port;
+  piholeDnsPort = workloadCatalog.pihole._probes.pihole-dns.port;
   piProjection = {
     pi_lan_address = piLanAddress;
     pi_service_bind_address = piLanAddress;
     pihole_lan_address = piLanAddress;
     pihole_tailnet_address = piHost.identity.tailnetIp;
+    pi_admin_port = piholeAdminPort;
+    pi_dns_port = piholeDnsPort;
     pi_domain = site.domain;
     pi_deprecated_domains = site.deprecatedDomains;
     pi_routes = piRoutes;
@@ -885,7 +945,7 @@ let
     ddns_hostnames = map (route: route.hostname) (
       lib.filter (route: route.reachability == "internet") piServiceRoutes
     );
-    pihole_local_dns_records = piHostRecords ++ piRouteRecords;
+    pihole_local_dns_records = piDnsRecords;
   } // backupProjection;
 
   presentationFor =
@@ -973,7 +1033,6 @@ let
     profiles = publicProfiles;
     workloads = publicWorkloads;
     routes = activeRoutes;
-    pi = piProjection;
     inherit topology;
     inherit datasets disks backup;
     deployment = publicDeployment;
@@ -998,10 +1057,14 @@ assert lib.assertMsg (invalidHostDeclarations == { })
   "inventory: hosts must declare unique stable tags, exactly one supported management backend, and a safe managementRoot: ${lib.concatStringsSep ", " (lib.attrNames invalidHostDeclarations)}";
 assert lib.assertMsg (invalidHostRoles == { })
   "inventory: host roles must be drawn from [${lib.concatStringsSep ", " hostRoles}]: ${lib.concatStringsSep ", " (lib.attrNames invalidHostRoles)}";
+assert lib.assertMsg (invalidPlacementDeclarations == { })
+  "inventory: workloads must declare valid ordered placement selectors and cardinality: ${lib.concatStringsSep ", " (lib.attrNames invalidPlacementDeclarations)}";
 assert lib.assertMsg (invalidWorkloadActivation == { })
   "inventory: workload active must be an explicit boolean: ${lib.concatStringsSep ", " (lib.attrNames invalidWorkloadActivation)}";
 assert lib.assertMsg (invalidEndpointDeclarations == [ ])
   "inventory: malformed endpoint or monitor declaration(s): ${lib.concatStringsSep ", " invalidEndpointDeclarations}";
+assert lib.assertMsg (invalidProbeDeclarations == [ ])
+  "inventory: malformed workload probe declaration(s): ${lib.concatStringsSep ", " invalidProbeDeclarations}";
 assert lib.assertMsg (placementResolutionFailures == [ ])
   "inventory: workload placement resolution failed:\n${
     lib.concatStringsSep "\n" (map (failure: "- ${failure}") placementResolutionFailures)

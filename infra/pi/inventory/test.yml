@@ -15,6 +15,46 @@ all:
           pi_lan_address: 10.0.2.15
           pi_lan_cidr: 10.0.2.0/24
           pi_service_bind_address: 10.0.2.15
+          pihole_lan_address: 10.0.2.15
+          pihole_tailnet_address: ""
+          pi_admin_port: 8081
+          pi_dns_port: 53
+          pi_domain: home.test
+          pi_deprecated_domains: []
+          pi_routes:
+            - name: pihole
+              hostname: pihole.home.test
+              upstream_address: 10.0.2.15
+              upstream_port: 8081
+              scheme: http
+              reachability: internal
+              audience: operator
+              auth: none
+              forward_auth_exempt_paths: []
+              forward_auth_upstream: null
+              oidc_redirect_path: null
+              upstream_host_header: null
+              upstream_origin_header: null
+          pi_tailnet_workload_ports: []
+          authelia_oidc_clients: []
+          ddns_hostnames: []
+          gatus_endpoints:
+            - name: pihole-dns
+              url: tcp://10.0.2.15:53
+              interval: 60s
+              conditions: ["[CONNECTED] == true"]
+              failure_threshold: 3
+              send_on_resolved: true
+            - name: pihole-admin
+              url: http://10.0.2.15:8081/admin/
+              interval: 60s
+              conditions: ["[STATUS] == 200"]
+              failure_threshold: 3
+              send_on_resolved: true
+          victoriametrics_scrape_jobs: []
+          pihole_local_dns_records:
+            - address: 10.0.2.15
+              names: [pi.home.test, pihole.home.test]
           pi_backup_target_address: 100.81.5.122
           authelia_log_level: debug
           tailscale_apt_suite: bookworm
