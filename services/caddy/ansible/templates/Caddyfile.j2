@@ -40,12 +40,12 @@ http://*.{{ domain }} {
       not path {{ route.forward_auth_exempt_paths | join(' ') }}
     }
     forward_auth @{{ route.name }}AuthNeeded http://{{ route.forward_auth_upstream }} {
-      uri /api/verify?rd=https://auth.{{ pi_domain }}
+      uri /api/verify?rd={{ caddy_forward_auth_redirect_url }}
       copy_headers Remote-User Remote-Email Remote-Name Remote-Groups
     }
 {% else %}
     forward_auth http://{{ route.forward_auth_upstream }} {
-      uri /api/verify?rd=https://auth.{{ pi_domain }}
+      uri /api/verify?rd={{ caddy_forward_auth_redirect_url }}
       copy_headers Remote-User Remote-Email Remote-Name Remote-Groups
     }
 {% endif %}

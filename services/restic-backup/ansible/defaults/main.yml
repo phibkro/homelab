@@ -14,10 +14,16 @@ pi_backup_known_hosts_file: /etc/restic/target_known_hosts # noqa: var-naming[no
 
 # Completion markers belong to a destination identity. A receiver change must
 # create fresh snapshots even when old-host markers are present on the Pi.
+# Disabled projections intentionally omit target facts, so resolve this only
+# when the backup role is selected.
 pi_backup_state_dir: >- # noqa: var-naming[no-role-prefix]
-  {{ '/var/lib/pi-restic/' ~
-     ([pi_backup_target_host, pi_backup_target_address, pi_backup_target_user,
-       pi_backup_repository_prefix, pi_backup_target_known_host] | to_json | hash('sha256')) }}
+  {{
+    '/var/lib/pi-restic/' ~
+    ([pi_backup_target_host, pi_backup_target_address, pi_backup_target_user,
+      pi_backup_repository_prefix, pi_backup_target_known_host] | to_json | hash('sha256'))
+    if (pi_backup_enabled | default(false) | bool)
+    else ''
+  }}
 pi_backup_cache_dir: /var/cache/pi-restic # noqa: var-naming[no-role-prefix]
 pi_backup_restore_dir: /var/lib/pi-restic-restore # noqa: var-naming[no-role-prefix]
 pi_backup_max_age_hours: 36 # noqa: var-naming[no-role-prefix]

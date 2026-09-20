@@ -17,18 +17,23 @@ table inet appliance_filter {
     udp dport 41641 accept
 
     ip saddr {{ pi_lan_cidr }} tcp dport 22 accept
+{% if pihole_enabled %}
     ip saddr {{ pi_lan_cidr }} udp dport {{ pi_dns_port }} accept
-    ip saddr {{ pi_lan_cidr }} tcp dport {
-      {{ pi_dns_port }}, {{ pi_admin_port }}{% if caddy_enabled %}, {{ caddy_http_port }}, {{ caddy_https_port }}{% endif %}
-    } accept
+    ip saddr {{ pi_lan_cidr }} tcp dport { {{ pi_dns_port }}, {{ pi_admin_port }} } accept
+{% endif %}
+{% if caddy_enabled %}
+    ip saddr {{ pi_lan_cidr }} tcp dport { {{ caddy_http_port }}, {{ caddy_https_port }} } accept
+{% endif %}
 
     iifname "{{ pi_tailnet_interface }}" tcp dport 22 accept
+{% if pihole_enabled %}
     iifname "{{ pi_tailnet_interface }}" udp dport {{ pi_dns_port }} accept
     iifname "{{ pi_tailnet_interface }}" tcp dport {{ pi_dns_port }} accept
+{% endif %}
 {% if pi_tailnet_tcp_ports | length > 0 %}
     iifname "{{ pi_tailnet_interface }}" tcp dport { {{ pi_tailnet_tcp_ports | map('int') | join(', ') }} } accept
 {% endif %}
-{% if beszel_enabled %}
+{% if beszel_agent_enabled %}
     iifname "{{ pi_container_bridge_interface }}" tcp dport {{ beszel_agent_listen_port }} accept
 {% endif %}
 {% if caddy_enabled %}

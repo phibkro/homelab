@@ -18,7 +18,6 @@ authelia_system_group: authelia
 authelia_log_level: info
 authelia_theme: dark
 authelia_cookie_domain: "{{ pi_domain }}"
-authelia_url: "https://auth.{{ pi_domain }}"
 authelia_storage_path: /var/lib/authelia/db.sqlite3
 authelia_notification_file: /var/lib/authelia/notification.txt
 authelia_access_control_default_policy: one_factor

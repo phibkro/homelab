@@ -15,6 +15,12 @@
         pi_deprecated_domains | default([])
         | reject('match', '^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$')
         | list | length == 0
+      - >-
+        (pi_routes | selectattr('auth', 'equalto', 'forward-auth') | list | length == 0)
+        or (caddy_forward_auth_redirect_url is match('^https://[^ ]+$'))
+      - >-
+        (pi_routes | selectattr('auth', 'equalto', 'forward-auth') | list | length == 0)
+        or (caddy_forward_auth_redirect_url is not search('\\s'))
     fail_msg: Invalid Caddy domain input; refusing to render proxy directives.
   when: caddy_enabled | bool
 

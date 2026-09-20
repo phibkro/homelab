@@ -20,6 +20,7 @@
          + (['/var/lib/tailscale/tailscaled.state']
             if pi_backup_tailscale_identity_enabled | bool else []) }}
   changed_when: false
+  when: pi_backup_enabled | bool
 
 - name: Validate the explicit Pi backup contract
   ansible.builtin.assert:

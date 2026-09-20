@@ -17,8 +17,6 @@ all:
           pi_service_bind_address: 10.0.2.15
           pihole_lan_address: 10.0.2.15
           pihole_tailnet_address: ""
-          pi_admin_port: 8081
-          pi_dns_port: 53
           pi_domain: home.test
           pi_deprecated_domains: []
           pi_routes:
@@ -35,8 +33,95 @@ all:
               oidc_redirect_path: null
               upstream_host_header: null
               upstream_origin_header: null
+            - name: auth
+              hostname: auth.home.test
+              upstream_address: 10.0.2.15
+              upstream_port: 9091
+              scheme: http
+              reachability: internal
+              audience: public
+              auth: none
+              forward_auth_exempt_paths: []
+              forward_auth_upstream: null
+              oidc_redirect_path: null
+              upstream_host_header: null
+              upstream_origin_header: null
+            - name: alert
+              hostname: alert.home.test
+              upstream_address: 10.0.2.15
+              upstream_port: 8091
+              scheme: http
+              reachability: internal
+              audience: operator
+              auth: none
+              forward_auth_exempt_paths: []
+              forward_auth_upstream: null
+              oidc_redirect_path: null
+              upstream_host_header: null
+              upstream_origin_header: null
+            - name: metrics
+              hostname: metrics.home.test
+              upstream_address: 10.0.2.15
+              upstream_port: 8090
+              scheme: http
+              reachability: internal
+              audience: operator
+              auth: oidc
+              forward_auth_exempt_paths: []
+              forward_auth_upstream: null
+              oidc_redirect_path: /api/oauth2-redirect
+              upstream_host_header: null
+              upstream_origin_header: null
+            - name: books
+              hostname: books.home.test
+              upstream_address: 192.0.2.10
+              upstream_port: 8084
+              scheme: http
+              reachability: internal
+              audience: family
+              auth: forward-auth
+              forward_auth_exempt_paths: [/api/*]
+              forward_auth_upstream: 10.0.2.15:9091
+              oidc_redirect_path: null
+              upstream_host_header: null
+              upstream_origin_header: null
+          authelia_oidc_clients:
+            - client_id: metrics
+              client_name: Beszel
+              authorization_policy: one_factor
+              token_endpoint_auth_method: client_secret_basic
+              secret_hash_env_name: OIDC_METRICS_CLIENT_SECRET_HASH
+              redirect_uris:
+                - https://metrics.home.test/api/oauth2-redirect
+              scopes: [openid, profile, email, groups]
+          pihole_enabled: true
+          caddy_enabled: true
+          authelia_enabled: true
+          glance_enabled: false
+          ddns_enabled: false
+          ntfy_enabled: true
+          victorialogs_enabled: true
+          vector_enabled: true
+          victoriametrics_enabled: true
+          beszel_enabled: true
+          beszel_agent_enabled: true
+          gatus_enabled: true
+          heartbeat_enabled: false
+          pi_backup_enabled: false
+          pi_admin_port: 8081
+          pi_dns_port: 53
+          caddy_http_port: 80
+          caddy_https_port: 443
+          authelia_port: 9091
+          glance_port: 8086
+          ntfy_port: 8091
+          victorialogs_bind_port: 9428
+          vector_bind_port: 8686
+          victoriametrics_bind_port: 8428
+          beszel_bind_port: 8090
+          beszel_agent_listen_port: 45876
+          gatus_port: 8082
           pi_tailnet_workload_ports: []
-          authelia_oidc_clients: []
           ddns_hostnames: []
           gatus_endpoints:
             - name: pihole-dns
@@ -51,28 +136,33 @@ all:
               conditions: ["[STATUS] == 200"]
               failure_threshold: 3
               send_on_resolved: true
-          victoriametrics_scrape_jobs: []
+          victoriametrics_scrape_jobs:
+            - job_name: victoriametrics
+              static_configs:
+                - targets: ["10.0.2.15:8428"]
+          beszel_systems: []
           pihole_local_dns_records:
             - address: 10.0.2.15
-              names: [pi.home.test, pihole.home.test]
-          pi_backup_target_address: 100.81.5.122
-          authelia_log_level: debug
-          tailscale_apt_suite: bookworm
+              names:
+                - pi-emulated.home.test
+                - pihole.home.test
+                - auth.home.test
+                - alert.home.test
+                - metrics.home.test
           # DDNS mutates external Cloudflare records and is intentionally
           # excluded from the disposable guest. All appliance-local roles
           # remain enabled and receive safe-shaped credentials from
           # scripts/test-vm.sh.
-          ddns_enabled: false
           # Never emit a synthetic liveness ping to an external service from
           # the disposable guest; the role's helper has an offline contract.
-          heartbeat_enabled: false
           # Glance deployment needs network access to pull its release image.
           # The generator contract covers enabled production inputs.
-          glance_enabled: false
-          # One job exercises the complete backup runner/service/timer path.
-          # Production's full manifest remains covered by role contracts.
+          # Backup targets are injected only for the disposable receiver test;
+          # keeping the disabled projection target-free exercises retirement.
           pi_backup_jobs:
             - name: pihole
               paths:
                 - /var/lib/containers/storage/volumes/pihole-data/_data
                 - /opt/pihole/dnsmasq.d/05-homelab-local-records.conf
+          authelia_log_level: debug
+          tailscale_apt_suite: bookworm

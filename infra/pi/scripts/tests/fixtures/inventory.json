@@ -17,8 +17,77 @@
       "oidc_redirect_path": null,
       "upstream_host_header": null,
       "upstream_origin_header": null
+    },
+    {
+      "name": "auth",
+      "hostname": "auth.home.example",
+      "upstream_address": "192.0.2.10",
+      "upstream_port": 9091,
+      "scheme": "http",
+      "reachability": "internal",
+      "audience": "public",
+      "auth": "none",
+      "forward_auth_exempt_paths": [],
+      "forward_auth_upstream": null,
+      "oidc_redirect_path": null,
+      "upstream_host_header": null,
+      "upstream_origin_header": null
+    },
+    {
+      "name": "alert",
+      "hostname": "alert.home.example",
+      "upstream_address": "192.0.2.10",
+      "upstream_port": 8091,
+      "scheme": "http",
+      "reachability": "internal",
+      "audience": "operator",
+      "auth": "none",
+      "forward_auth_exempt_paths": [],
+      "forward_auth_upstream": null,
+      "oidc_redirect_path": null,
+      "upstream_host_header": null,
+      "upstream_origin_header": null
+    },
+    {
+      "name": "metrics",
+      "hostname": "metrics.home.example",
+      "upstream_address": "192.0.2.10",
+      "upstream_port": 8090,
+      "scheme": "http",
+      "reachability": "internal",
+      "audience": "operator",
+      "auth": "oidc",
+      "forward_auth_exempt_paths": [],
+      "forward_auth_upstream": null,
+      "oidc_redirect_path": "/api/oauth2-redirect",
+      "upstream_host_header": null,
+      "upstream_origin_header": null
     }
   ],
+  "authelia_oidc_clients": [
+    {
+      "client_id": "metrics",
+      "client_name": "Beszel",
+      "authorization_policy": "one_factor",
+      "token_endpoint_auth_method": "client_secret_basic",
+      "secret_hash_env_name": "OIDC_METRICS_CLIENT_SECRET_HASH",
+      "redirect_uris": [
+        "https://metrics.home.example/api/oauth2-redirect"
+      ],
+      "scopes": ["openid", "profile", "email", "groups"]
+    }
+  ],
+  "pihole_enabled": true,
+  "caddy_enabled": true,
+  "authelia_enabled": true,
+  "ntfy_enabled": true,
+  "beszel_enabled": true,
+  "caddy_http_port": 80,
+  "caddy_https_port": 443,
+  "pi_admin_port": 8081,
+  "authelia_port": 9091,
+  "ntfy_port": 8091,
+  "beszel_bind_port": 8090,
   "pi_backup_enabled": false,
   "gatus_endpoints": []
 }

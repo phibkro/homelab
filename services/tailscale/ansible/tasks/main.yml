@@ -77,7 +77,7 @@
       - tailscale
       - up
       - "--auth-key={{ tailscale_auth_key }}"
-      - "--hostname={{ tailscale_hostname }}"
+      - "--hostname={{ inventory_hostname }}"
       - "--advertise-routes={{ tailscale_advertise_routes | join(',') }}"
       - "--advertise-exit-node={{ tailscale_advertise_exit_node | ternary('true', 'false') }}"
       - "--accept-dns={{ tailscale_accept_dns | ternary('true', 'false') }}"
@@ -93,7 +93,7 @@
     argv:
       - tailscale
       - set
-      - "--hostname={{ tailscale_hostname }}"
+      - "--hostname={{ inventory_hostname }}"
       - "--advertise-routes={{ tailscale_advertise_routes | join(',') }}"
       - "--advertise-exit-node={{ tailscale_advertise_exit_node | ternary('true', 'false') }}"
       - "--accept-dns={{ tailscale_accept_dns | ternary('true', 'false') }}"

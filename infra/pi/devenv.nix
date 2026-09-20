@@ -82,9 +82,11 @@ in
     ../../services/cloudflare-ddns/ansible/tests/test-contract.sh
     ansible/roles/firewall/tests/test_contract.sh
     ../../services/restic-backup/ansible/tests/test_state_identity.sh
+    ../../services/restic-backup/ansible/tests/test_disabled_projection.sh
     ../../services/caddy/ansible/tests/test_render.sh
     ../../services/authelia/ansible/tests/test_render.sh
     scripts/tests/generate-inventory.test.sh
+    scripts/tests/projection-contract.test.sh
     scripts/tests/run-production-inspect.test.sh
     scripts/tests/test-vm-lifecycle.test.sh
     generated_inventory="$(generate-inventory)"

@@ -1,6 +1,5 @@
 ---
 pi_timezone: Europe/Oslo
-pi_hostname: pi
 pi_disable_disk_swap: true
 pi_volatile_journal: true
 pi_emulation_mode: false
@@ -10,7 +9,6 @@ pi_container_bridge_interface: podman0
 tailscale_install: true
 tailscale_enroll: false
 tailscale_auth_key: "{{ lookup('env', 'TAILSCALE_AUTH_KEY') }}"
-tailscale_hostname: pi
 tailscale_advertise_routes:
   - 192.168.1.0/24
 tailscale_advertise_exit_node: true
@@ -22,6 +20,27 @@ pihole_web_password: "{{ lookup('env', 'PIHOLE_WEB_PASSWORD') }}"
 
 caddy_acme_email: philib.krogh@gmail.com
 caddy_cloudflare_api_token: "{{ lookup('env', 'CLOUDFLARE_ACME_TOKEN') }}"
+# Service URLs and OIDC metadata are compiler projections. Route names select
+# their owning endpoint; hostnames and client IDs never live in this layer.
+pi_auth_route: >-
+  {{ pi_routes | selectattr('name', 'equalto', 'auth') | list | first }}
+pi_alert_route: >-
+  {{ pi_routes | selectattr('name', 'equalto', 'alert') | list | first }}
+pi_metrics_route: >-
+  {{ pi_routes | selectattr('name', 'equalto', 'metrics') | list | first }}
+authelia_url: "https://{{ pi_auth_route.hostname }}"
+caddy_forward_auth_redirect_url: "https://{{ pi_auth_route.hostname }}"
+ntfy_base_url: "https://{{ pi_alert_route.hostname }}"
+beszel_oidc_client: >-
+  {{
+    authelia_oidc_clients
+    | selectattr('client_id', 'equalto', pi_metrics_route.name)
+    | list
+    | first
+  }}
+beszel_oidc_client_id: "{{ beszel_oidc_client.client_id }}"
+beszel_oidc_issuer_url: "https://{{ pi_auth_route.hostname }}"
+
 
 # Appliance identity and access plane. Secret values are injected by
 # SecretSpec into the environment at execution time; no plaintext belongs in
@@ -97,6 +116,7 @@ pi_tailnet_tcp_ports: >-
       ]
       + pi_tailnet_workload_ports
     )
+    | reject('equalto', none)
     | map('int')
     | unique
     | list

@@ -24,6 +24,7 @@ cat >"$state_dir/playbook.yml" <<EOF
   gather_facts: false
   vars_files:
     - "$role_dir/defaults/main.yml"
+    - "$repo_root/infra/pi/playbooks/group_vars/all.yml"
     - "$state_dir/inventory-vars.json"
   vars:
     authelia_template: "$role_dir/templates/configuration.yml.j2"
@@ -40,6 +41,15 @@ ansible-playbook -i localhost, "$state_dir/playbook.yml" >/dev/null
 expected_count="$(jq '.pi_appliances.hosts.pi.authelia_oidc_clients | length' "$state_dir/inventory.json")"
 actual_count="$(rg -c '^      - client_id:' "$state_dir/configuration.yml")"
 [[ "$actual_count" == "$expected_count" ]]
+expected_authelia_url="$(jq --exit-status --raw-output '
+  .pi_appliances.hosts.pi.pi_routes
+  | map(select(.name == "auth"))
+  | if length == 1 then "https://" + .[0].hostname
+    else error("expected exactly one compiled auth route")
+    end
+' "$state_dir/inventory.json")"
+rg -Fq "authelia_url: \"$expected_authelia_url\"" "$state_dir/configuration.yml"
+
 
 while IFS= read -r client_id; do
   rg -Fq "      - client_id: \"$client_id\"" "$state_dir/configuration.yml"

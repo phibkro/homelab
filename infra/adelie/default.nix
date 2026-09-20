@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   lib,
   ...
@@ -44,7 +45,7 @@
 
   # Prefer the local entry-plane DNS while DHCP still advertises the router.
   networking.nameservers = [
-    "192.168.1.225"
+    config.nori.inventory.hosts.pi.lanIp
     "1.1.1.1"
   ];
 

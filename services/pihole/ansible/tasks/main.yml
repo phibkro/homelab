@@ -112,7 +112,7 @@
   containers.podman.podman_container:
     name: pihole
     image: "{{ pihole_image }}"
-    hostname: pi
+    hostname: "{{ inventory_hostname }}"
     state: started
     restart_policy: always
     pull: missing

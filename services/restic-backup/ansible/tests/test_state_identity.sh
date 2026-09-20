@@ -31,6 +31,7 @@ cat >"$test_dir/playbook.yml" <<'PLAYBOOK'
 
     - name: Select the initial destination
       ansible.builtin.set_fact:
+        pi_backup_enabled: true
         pi_backup_target_host: "{{ baseline_destination.host }}"
         pi_backup_target_address: "{{ baseline_destination.address }}"
         pi_backup_target_user: "{{ baseline_destination.user }}"

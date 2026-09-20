@@ -26,6 +26,16 @@ jq --exit-status --slurpfile expected "$fixture" '
   | ($pi | del(.ansible_host, .ansible_user)) == $expected[0]
     and $pi.ansible_host == $expected[0].pi_lan_address
     and $pi.ansible_user == "nori"
+    and ([$pi.pi_routes[].name] | sort) == ["alert", "auth", "metrics", "pihole"]
+    and $pi.authelia_oidc_clients == [{
+      client_id: "metrics",
+      client_name: "Beszel",
+      authorization_policy: "one_factor",
+      token_endpoint_auth_method: "client_secret_basic",
+      secret_hash_env_name: "OIDC_METRICS_CLIENT_SECRET_HASH",
+      redirect_uris: ["https://metrics.home.example/api/oauth2-redirect"],
+      scopes: ["openid", "profile", "email", "groups"]
+    }]
 ' "$output" >/dev/null
 
 PATH="$fake_bin:$PATH" \

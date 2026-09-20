@@ -101,6 +101,37 @@ vm_guard_process
 
 export PI_VM_SSH_KEY="$ssh_key"
 export ANSIBLE_LOG_PATH="$ansible_log"
+readonly test_inventory="$repo_root/infra/pi/inventory/test.yml"
+readonly test_projection="$state_dir/test-inventory.json"
+ansible-inventory --inventory "$test_inventory" --list >"$test_projection"
+readonly test_inventory_hostname="$(
+  jq --exit-status --raw-output \
+    '.pi_appliances.hosts
+     | if type == "array" and length == 1 then .[0]
+       else error("test inventory must contain exactly one Pi host")
+       end' \
+    "$test_projection"
+)"
+readonly test_pi_domain="$(
+  jq --exit-status --raw-output --arg host "$test_inventory_hostname" \
+    '._meta.hostvars[$host].pi_domain
+     | if type == "string" and length > 0 then .
+       else error("test inventory must project pi_domain")
+       end' \
+    "$test_projection"
+)"
+readonly pihole_hostname="$(
+  jq --exit-status --raw-output --arg host "$test_inventory_hostname" \
+    '._meta.hostvars[$host].pi_routes
+     | map(select(.name == "pihole"))
+     | if length == 1 and (.[0].hostname | type == "string")
+       then .[0].hostname
+       else error("test inventory must project exactly one Pi-hole route")
+       end' \
+    "$test_projection"
+)"
+readonly unknown_hostname="unknown.${test_pi_domain}"
+
 export PIHOLE_WEB_PASSWORD="emulation-only-password"
 export AUTHELIA_JWT_SECRET="emulation-authelia-jwt-secret-000000000000000000"
 export AUTHELIA_SESSION_SECRET="emulation-authelia-session-secret-00000000000000"
@@ -127,6 +158,9 @@ export NTFY_AGENTS_CHANNEL="agents-topic"
 export NTFY_OPERATOR_TOPIC="operator-topic"
 beszel_agent_public_key="$(<"$ssh_key.pub")"
 export BESZEL_AGENT_PUBLIC_KEY="$beszel_agent_public_key"
+export BESZEL_SUPERUSER_EMAIL="emulation-beszel@example.invalid"
+export BESZEL_SUPERUSER_PASSWORD="emulation-beszel-password"
+
 export RESTIC_PASSWORD="emulation-restic-password-000000000000"
 # A disposable key and SFTP receiver are provisioned inside the guest below.
 
@@ -180,7 +214,7 @@ wait_for_cloud_init() {
 
 wait_for_dns() {
   for _ in $(seq 1 60); do
-    if dig +time=2 +tries=1 @127.0.0.1 -p 8053 pi.hole A; then
+    if dig +time=2 +tries=1 @127.0.0.1 -p 8053 "${test_inventory_hostname}.hole" A; then
       return 0
     fi
     sleep 2
@@ -192,8 +226,8 @@ wait_for_dns() {
 wait_for_https() {
   for _ in $(seq 1 60); do
     if curl --fail --insecure --silent --max-time 5 --output /dev/null \
-      --resolve pihole.home.phibkro.org:9443:127.0.0.1 \
-      https://pihole.home.phibkro.org:9443/admin/; then
+      --resolve "${pihole_hostname}:9443:127.0.0.1" \
+      "https://${pihole_hostname}:9443/admin/"; then
       return 0
     fi
     sleep 2
@@ -209,16 +243,16 @@ verify_https_contract() {
   local unknown_status
 
   redirect_status="$(curl --silent --max-time 10 --output /dev/null --write-out '%{http_code}' \
-    --resolve pihole.home.phibkro.org:8080:127.0.0.1 \
-    http://pihole.home.phibkro.org:8080/admin/)"
+    --resolve "${pihole_hostname}:8080:127.0.0.1" \
+    "http://${pihole_hostname}:8080/admin/")"
   proxy_headers="$state_dir/proxy-headers"
   proxy_status="$(curl --insecure --silent --max-time 10 --output /dev/null \
     --dump-header "$proxy_headers" --write-out '%{http_code}' \
-    --resolve pihole.home.phibkro.org:9443:127.0.0.1 \
-    https://pihole.home.phibkro.org:9443/admin/)"
+    --resolve "${pihole_hostname}:9443:127.0.0.1" \
+    "https://${pihole_hostname}:9443/admin/")"
   unknown_status="$(curl --insecure --silent --max-time 10 --output /dev/null --write-out '%{http_code}' \
-    --resolve unknown.home.phibkro.org:9443:127.0.0.1 \
-    https://unknown.home.phibkro.org:9443/)"
+    --resolve "${unknown_hostname}:9443:127.0.0.1" \
+    "https://${unknown_hostname}:9443/")"
 
   if [[ "$redirect_status" != "308" ]]; then
     echo "Expected HTTP-to-HTTPS 308, got $redirect_status" >&2

@@ -18,6 +18,4 @@ beszel_api_url: "http://{{ beszel_health_address }}:{{ beszel_bind_port }}"
 beszel_superuser_email: ""
 beszel_superuser_password: ""
 beszel_oidc_provider_name: oidc
-beszel_oidc_client_id: metrics
-beszel_oidc_issuer_url: "https://auth.{{ pi_domain }}"
 beszel_oidc_discovery_url: "http://{{ authelia_bind_address }}:{{ authelia_port }}"

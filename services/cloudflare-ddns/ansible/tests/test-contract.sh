@@ -55,15 +55,15 @@ elif [[ "$url" == *'/zones?'* ]]; then
   body='{"success":true,"result":[{"id":"0123456789abcdef0123456789abcdef"}]}'
 elif [[ "$url" == *'/dns_records?type=A&'* ]]; then
   if [[ "${DDNS_MOCK_SCENARIO:-}" == cleanup ]]; then
-    body='{"success":true,"result":[{"id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","type":"A","name":"stale.home.example.test","content":"8.8.8.8","ttl":1,"proxied":false,"comment":"Managed by homelab internet route"},{"id":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","type":"A","name":"keep.home.example.test","content":"8.8.8.8","ttl":1,"proxied":false,"comment":"manual record"}],"result_info":{"page":1,"per_page":100,"total_pages":1,"total_count":2}}'
+    body='{"success":true,"result":[{"id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","type":"A","name":"stale.home.example.test","content":"8.8.8.8","ttl":1,"proxied":false,"comment":"Managed by homelab nori.lanRoutes reachability=internet"},{"id":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","type":"A","name":"keep.home.example.test","content":"8.8.8.8","ttl":1,"proxied":false,"comment":"manual record"}],"result_info":{"page":1,"per_page":100,"total_pages":1,"total_count":2}}'
   else
     body='{"success":true,"result":[],"result_info":{"page":1,"per_page":100,"total_pages":1,"total_count":0}}'
   fi
 elif [[ "$url" == *'/dns_records?'* ]]; then
   case "${DDNS_MOCK_SCENARIO:-}" in
-    update) body='{"success":true,"result":[{"id":"cccccccccccccccccccccccccccccccc","type":"A","name":"public.home.example.test","content":"1.1.1.1","ttl":1,"proxied":false,"comment":"Managed by homelab internet route"}]}' ;;
-    malformed) body='{"success":true,"result":[{"id":"bad","type":"A","name":"public.home.example.test","content":"1.1.1.1","ttl":1,"proxied":false,"comment":"Managed by homelab internet route"}]}' ;;
-    noop) body='{"success":true,"result":[{"id":"cccccccccccccccccccccccccccccccc","type":"A","name":"public.home.example.test","content":"8.8.8.8","ttl":1,"proxied":false,"comment":"Managed by homelab internet route"}]}' ;;
+    update) body='{"success":true,"result":[{"id":"cccccccccccccccccccccccccccccccc","type":"A","name":"public.home.example.test","content":"1.1.1.1","ttl":1,"proxied":false,"comment":"Managed by homelab nori.lanRoutes reachability=internet"}]}' ;;
+    malformed) body='{"success":true,"result":[{"id":"bad","type":"A","name":"public.home.example.test","content":"1.1.1.1","ttl":1,"proxied":false,"comment":"Managed by homelab nori.lanRoutes reachability=internet"}]}' ;;
+    noop) body='{"success":true,"result":[{"id":"cccccccccccccccccccccccccccccccc","type":"A","name":"public.home.example.test","content":"8.8.8.8","ttl":1,"proxied":false,"comment":"Managed by homelab nori.lanRoutes reachability=internet"}]}' ;;
     unmanaged) body='{"success":true,"result":[{"id":"cccccccccccccccccccccccccccccccc","type":"A","name":"public.home.example.test","content":"1.1.1.1","ttl":1,"proxied":false,"comment":"manual record"}]}' ;;
     *) body='{"success":true,"result":[]}' ;;
   esac
@@ -82,7 +82,7 @@ run_case() {
   DDNS_MOCK_SCENARIO=$scenario DDNS_MOCK_LOG="$tmp_dir/mock.log" \
   CLOUDFLARE_API_TOKEN=01234567890123456789012345678901 \
   DDNS_ZONE_NAME=home.example.test DDNS_HOSTNAMES_JSON="$desired" \
-  DDNS_MANAGED_COMMENT='Managed by homelab internet route' \
+  DDNS_MANAGED_COMMENT='Managed by homelab nori.lanRoutes reachability=internet' \
   DDNS_PUBLIC_IPV4_URL=https://api.ipify.org DDNS_API_BASE_URL=https://api.cloudflare.com/client/v4 \
   DDNS_TTL=1 DDNS_PROXIED=false DDNS_CURL_BIN="$tmp_dir/mock-curl" \
   "$tmp_dir/cloudflare-ddns" "$mode"
