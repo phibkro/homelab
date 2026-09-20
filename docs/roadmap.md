@@ -56,15 +56,6 @@ Continue in this order:
   `docs/archive/reports/2026-09-19-backup-evidence.md`. Aurora and Pavilion are
   retired.
 
-- **Activate and accept the three-host service migration.** The source
-  configuration moves the SSD-local application tier to Adelie, keeps media and
-  GPU services on workstation, and moves Glance to Pi. Adelie sends four
-  authoritative-state Restic repositories to a restricted OneTouch SFTP namespace.
-  Before activation, verify Adelie's hardware identity, build both NixOS
-  closures, plan the Pi change, snapshot each authoritative state directory,
-  and follow the per-service stop/copy/start gates. Contract:
-  `docs/specs/2026-09-20-three-host-service-migration.md`.
-
 - **Sunshine remote-desktop pairing.** Deployed (`services/sunshine/nixos.nix`); NVENC builds confirmed (`h264/hevc/av1_nvenc`). Outstanding: one-time Moonlight pairing.
 
   Pairing steps:

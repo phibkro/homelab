@@ -1,7 +1,7 @@
 ---
 summary: Move the dashboard to Pi and eight SSD-local services to Adelie while workstation keeps media and backup storage.
 date: 2026-09-20
-status: frozen; source implementation authorized; activation operator-gated
+status: implemented; live cutover and acceptance verified
 owner: operator
 ---
 
@@ -186,6 +186,25 @@ The change is complete when:
 10. Each moved service passes a local health check and its public HTTPS journey.
 11. One Adelie Restic backup completes and its repository is visible on OneTouch.
 12. IronWolf, OneTouch, `/mnt/media`, and `/mnt/backup` remain absent from Adelie's mounts.
+
+## Acceptance evidence
+
+Accepted on 2026-09-20.
+
+- Adelie's `/dev/disk/by-id` identities matched the declared boot and data
+  devices. IronWolf, OneTouch, `/mnt/media`, and `/mnt/backup` stayed absent.
+- Adelie served the eight moved services. Pi served Glance. Their local health
+  checks and public HTTPS routes passed.
+- Workstation stopped all nine old service units and removed their local
+  service users.
+- Gatus reported successful probes for `home`, `cache`, `filmder`, `heim`,
+  `news`, `calendar`, `stremio`, and `vault`.
+- The four Adelie backup jobs completed. The shared weekly Restic check found
+  no repository errors.
+- Disposable restores of Miniflux, Radicale, Stremio, and Vaultwarden matched
+  the migrated authoritative state.
+- OneTouch contained the four separate Adelie repositories. The restricted
+  receiver account could not open an interactive SSH session.
 
 ## Excluded
 
