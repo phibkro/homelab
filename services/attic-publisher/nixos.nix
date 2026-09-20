@@ -27,10 +27,6 @@ in
     key = "attic_push_token";
     owner = "root";
     mode = "0400";
-    restartUnits = [
-      "attic-cache-seed.service"
-      "attic-cache-watch.service"
-    ];
   };
 
   environment.systemPackages = [ atticPush ];
@@ -40,6 +36,7 @@ in
     wants = [ "network-online.target" ];
     after = [ "network-online.target" ];
     environment.XDG_CONFIG_HOME = atticClientConfig;
+    restartTriggers = [ config.sops.secrets.attic-push-token.sopsFile ];
     serviceConfig = {
       Type = "exec";
       ExecStart = "${lib.getExe pkgs.attic-client} push nori --jobs 2 /run/current-system";
@@ -54,6 +51,7 @@ in
     wants = [ "network-online.target" ];
     after = [ "network-online.target" ];
     environment.XDG_CONFIG_HOME = atticClientConfig;
+    restartTriggers = [ config.sops.secrets.attic-push-token.sopsFile ];
     serviceConfig = {
       Type = "exec";
       ExecStart = "${lib.getExe pkgs.attic-client} watch-store nori --jobs 2";

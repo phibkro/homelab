@@ -59,45 +59,45 @@ in
 
   sops.secrets = {
     /*
-      All base secrets carry `restartUnits` so a sops edit + rebuild
-      is sufficient — the live process picks up the new value without
-      a manual `systemctl restart authelia-main`. Without this the
-      in-memory copy survives the rebuild (caching users from the
-      file backend; signing tokens with the previous jwt/session/
-      storage/oidc-hmac/issuer-key) and silently runs on the stale
-      secret until the next reboot or manual restart.
+      The service unit tracks each encrypted source file. A secret edit
+      therefore changes the unit and restarts Authelia through NixOS
+      switch-to-configuration, without the deprecated activation-script
+      restart channel.
     */
     authelia-jwt-secret = {
       mode = "0400";
       owner = "authelia-main";
-      restartUnits = [ "authelia-main.service" ];
     };
     authelia-session-secret = {
       mode = "0400";
       owner = "authelia-main";
-      restartUnits = [ "authelia-main.service" ];
     };
     authelia-storage-encryption-key = {
       mode = "0400";
       owner = "authelia-main";
-      restartUnits = [ "authelia-main.service" ];
     };
     authelia-users-database = {
       mode = "0400";
       owner = "authelia-main";
-      restartUnits = [ "authelia-main.service" ];
     };
     authelia-oidc-hmac-secret = {
       mode = "0400";
       owner = "authelia-main";
-      restartUnits = [ "authelia-main.service" ];
     };
     authelia-oidc-issuer-private-key = {
       mode = "0400";
       owner = "authelia-main";
-      restartUnits = [ "authelia-main.service" ];
     };
   };
+
+  systemd.services.authelia-main.restartTriggers = map (name: config.sops.secrets.${name}.sopsFile) [
+    "authelia-jwt-secret"
+    "authelia-session-secret"
+    "authelia-storage-encryption-key"
+    "authelia-users-database"
+    "authelia-oidc-hmac-secret"
+    "authelia-oidc-issuer-private-key"
+  ];
 
   services.authelia.instances.main = {
     enable = true;

@@ -161,22 +161,16 @@ in
     key = "attic_jwt_environment";
     owner = "root";
     mode = "0400";
-    restartUnits = [
-      "atticd.service"
-      "attic-cache-bootstrap.service"
-    ];
   };
   sops.secrets.attic-cache-keypair = {
     key = "attic_cache_keypair";
     owner = "root";
     mode = "0400";
-    restartUnits = [ "attic-cache-bootstrap.service" ];
   };
   sops.secrets.attic-admin-token = {
     key = "attic_admin_token";
     owner = "root";
     mode = "0400";
-    restartUnits = [ "attic-cache-bootstrap.service" ];
   };
 
   users.users.atticd = {
@@ -222,6 +216,10 @@ in
     Group = "atticd";
   };
 
+  systemd.services.atticd.restartTriggers = [
+    config.sops.secrets.attic-jwt-environment.sopsFile
+  ];
+
   systemd.services.attic-cache-bootstrap = {
     description = "Initialize and reconcile the Attic nori cache";
     wantedBy = [ "multi-user.target" ];
@@ -231,6 +229,11 @@ in
       "atticd.service"
     ];
     requires = [ "atticd.service" ];
+    restartTriggers = [
+      config.sops.secrets.attic-jwt-environment.sopsFile
+      config.sops.secrets.attic-cache-keypair.sopsFile
+      config.sops.secrets.attic-admin-token.sopsFile
+    ];
     path = with pkgs; [
       coreutils
       curl

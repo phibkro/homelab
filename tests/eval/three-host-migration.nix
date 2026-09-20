@@ -125,7 +125,12 @@ let
     && adelie.systemd.services.miniflux.serviceConfig.SupplementaryGroups == [ "miniflux-secrets" ]
     && adelie.sops.templates."oidc-vault-env".owner == "vaultwarden"
     && adelie.sops.templates."oidc-vault-env".mode == "0400"
-    && (adelie.systemd.services.vaultwarden.serviceConfig.SupplementaryGroups or [ ]) == [ ];
+    && (adelie.systemd.services.vaultwarden.serviceConfig.SupplementaryGroups or [ ]) == [ ]
+    && lib.all (secret: secret.restartUnits == [ ]) (lib.attrValues adelie.sops.secrets)
+    && lib.elem adelie.sops.secrets.attic-jwt-environment.sopsFile adelie.systemd.services.atticd.restartTriggers
+    && lib.elem adelie.sops.secrets.attic-cache-keypair.sopsFile adelie.systemd.services.attic-cache-bootstrap.restartTriggers
+    && lib.elem adelie.sops.secrets.attic-push-token.sopsFile adelie.systemd.services.attic-cache-watch.restartTriggers
+    && lib.elem workstation.sops.secrets.attic-push-token.sopsFile workstation.systemd.services.attic-cache-watch.restartTriggers;
 
   storageBoundaryCorrect =
     lib.attrNames adelie.disko.devices.disk == [ "main" ]
