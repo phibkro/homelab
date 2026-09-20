@@ -172,9 +172,16 @@ mkdir -p "$fixture_dir/bin"
 printf '%s\n' 'operator-topic' > "$fixture_dir/operator-topic"
 printf '%s\n' 'agents-topic' > "$fixture_dir/agents-topic"
 printf '%s\n' 'tk_test_123456789012345678901234567' > "$fixture_dir/publisher-token"
+# Capture both argv and the process-substitution curl config. Secrets and
+# topic URLs belong in the config file descriptor, not the process list.
 # shellcheck disable=SC2016
 printf '%s\n' '#!/usr/bin/env bash' \
-  'printf "%s\\n" "$@" > "$NTFY_CURL_CAPTURE"' \
+  'previous=""' \
+  'for argument in "$@"; do' \
+  '  if [[ "$previous" == "--config" ]]; then cat "$argument"; fi' \
+  '  printf "%s\n" "$argument"' \
+  '  previous="$argument"' \
+  'done > "$NTFY_CURL_CAPTURE"' \
   > "$fixture_dir/bin/curl"
 chmod +x "$fixture_dir/bin/curl"
 printf '%s\n' \
@@ -192,18 +199,18 @@ chmod +x "$fixture_dir/nori-alert"
 NTFY_CURL_CAPTURE="$fixture_dir/operator-curl" PATH="$fixture_dir/bin:$PATH" \
   bash "$fixture_dir/nori-alert" --audience operator --severity urgent \
   --title operator-test --body operator-body
-rg -Fxq 'https://ntfy.sh/operator-topic' "$fixture_dir/operator-curl" \
+rg -Fxq 'url = "https://ntfy.sh/operator-topic"' "$fixture_dir/operator-curl" \
   || fail "operator route did not target ntfy.sh"
-if rg -q 'Authorization: Bearer' "$fixture_dir/operator-curl"; then
+if rg -q 'header = "Authorization: Bearer' "$fixture_dir/operator-curl"; then
   fail "operator route unexpectedly sent the local bearer token"
 fi
 
 NTFY_CURL_CAPTURE="$fixture_dir/agents-curl" PATH="$fixture_dir/bin:$PATH" \
   bash "$fixture_dir/nori-alert" --audience agents --severity info \
   --title agents-test --body agents-body
-rg -Fxq 'http://127.0.0.1:8091/agents-topic' "$fixture_dir/agents-curl" \
+rg -Fxq 'url = "http://127.0.0.1:8091/agents-topic"' "$fixture_dir/agents-curl" \
   || fail "agents route did not target the local ntfy endpoint"
-rg -Fxq 'Authorization: Bearer tk_test_123456789012345678901234567' \
+rg -Fxq 'header = "Authorization: Bearer tk_test_123456789012345678901234567"' \
   "$fixture_dir/agents-curl" \
   || fail "agents route did not load the publisher token file"
 
