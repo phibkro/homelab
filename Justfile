@@ -104,9 +104,9 @@ default: list
 @check:
     bash scripts/check-nix.sh fast
 
-# Run all Nix checks, including disposable VMs.
+# Run every metadata-selected Nix check, including disposable VMs.
 @check-all:
-    nix --extra-experimental-features "nix-command flakes" flake check --max-jobs 1
+    bash scripts/check-nix.sh all
 
 # Run all disposable NixOS VMs, or one exact check name.
 @check-vm name="":

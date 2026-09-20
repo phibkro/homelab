@@ -36,8 +36,9 @@ durable results before removing disposable resources.
 
 Use `just check` for fast Nix checks and `just pi::check` for Ansible checks.
 Run affected builds and relevant `just check-vm [name]` or `just pi::test` journeys.
-`just check-all` selects the full Nix suite. These groups have different evidence
-scopes; a static pass does not prove deployment or restore behavior. Choose tests
+`just check` and `just check-all` both dispatch the declared check metadata through
+`scripts/check-nix.sh`; the latter selects every group. These groups have different
+evidence scopes; a static pass does not prove deployment or restore behavior. Choose tests
 using [testing methodology](testing-methodology.md), and follow
 [deployment](deployment.md) for live effects.
 

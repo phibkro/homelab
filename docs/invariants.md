@@ -189,7 +189,12 @@ Others (the `[judgment]` ones) stay where they are — they're not staleness ris
 
 ## Code style enforcement
 
-`just check` runs the fast Nix checks, including statix, deadnix and formatting checks. `just check-all` also includes runtime VM suites. The pre-commit hook validates an isolated exact-index snapshot with fast Nix and Pi static checks, fails on missing tools, and never fixes the working tree. Run formatting or fixes explicitly. Hook and CI results cover their tested content, not subsequent edits.
+`just check` runs the fast Nix checks, including statix, deadnix and formatting checks.
+`just check-all` selects every declared check through that same metadata dispatcher,
+including runtime VM suites. The pre-commit hook validates an isolated exact-index
+snapshot with fast Nix and Pi static checks, fails on missing tools, and never fixes
+the working tree. Run formatting or fixes explicitly. Hook and CI results cover their
+tested content, not subsequent edits.
 
 ## Citation pattern
 

@@ -33,8 +33,9 @@ documentation and tests select no activation targets.
 ## Command effects
 
 `just` displays help. `just check` runs fast Nix checks; `just pi::check` checks
-Ansible. `just check-vm [name]` and `just pi::test` exercise disposable machines;
-`just check-all` includes all Nix checks. `just build` builds without activation.
+Ansible. `just check-vm [name]` and `just pi::test` exercise disposable machines.
+`just check-all` selects every check through the same metadata dispatcher as
+`just check`. `just build` builds without activation.
 `just activate-test` changes the live system for the current boot; `rebuild`,
 `boot`, `deploy`, `push`, and remote activation commands also have live effects.
 Ansible `pi::plan` uses production credentials and contacts the real appliance.

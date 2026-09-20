@@ -24,12 +24,17 @@ bash "$runner" fast
 grep -Fx '.#checks.x86_64-linux.e2e-static-contract' "$CHECK_TEST_LOG"
 grep -Fx '.#checks.x86_64-linux.lint' "$CHECK_TEST_LOG"
 if grep -q runtime-without-prefix "$CHECK_TEST_LOG"; then echo 'Fast group built a VM' >&2; exit 1; fi
+bash "$runner" all
+grep -Fx '.#checks.x86_64-linux.e2e-static-contract' "$CHECK_TEST_LOG"
+grep -Fx '.#checks.x86_64-linux.runtime-without-prefix' "$CHECK_TEST_LOG"
+grep -Fx '.#checks.x86_64-linux.lint' "$CHECK_TEST_LOG"
+grep -Fx -- --max-jobs "$CHECK_TEST_LOG"
 bash "$runner" vm runtime-without-prefix --impure
 grep -Fx '.#checks.x86_64-linux.runtime-without-prefix' "$CHECK_TEST_LOG"
 grep -Fx -- --impure "$CHECK_TEST_LOG"
 grep -Fx -- --max-jobs "$CHECK_TEST_LOG"
 bash "$runner" vm
-for args in 'vm lint' 'vm absent' 'bogus' 'fast extra'; do
+for args in 'vm lint' 'vm absent' 'bogus' 'fast extra' 'all extra'; do
   rm -f "$CHECK_TEST_LOG"
   # Intentional split: each case is a CLI argument vector.
   # shellcheck disable=SC2086
@@ -38,4 +43,4 @@ for args in 'vm lint' 'vm absent' 'bogus' 'fast extra'; do
 done
 if CHECK_TEST_EVAL_FAIL=1 bash "$runner" fast; then echo 'Hidden evaluation failure' >&2; exit 1; fi
 [[ ! -e "$CHECK_TEST_LOG" ]]
-printf 'check-nix: metadata selects groups; invalid requests and evaluation failures never build\n'
+printf 'check-nix: metadata selects fast, vm, and all checks; invalid requests and evaluation failures never build\n'

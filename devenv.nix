@@ -17,6 +17,6 @@
   '';
 
   enterTest = ''
-    bash "${config.devenv.root}/services/music-ingest/tests/runtime.sh"
+    music-ingest-runtime
   '';
 }
