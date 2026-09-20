@@ -1,5 +1,9 @@
 { config, ... }:
 
+let
+  alert = config.nori.inventory.routes.alert;
+in
+
 {
   /**
     ntfy-sh server — internal alert hub for the homelab. Lives on the
@@ -50,8 +54,8 @@
   services.ntfy-sh = {
     enable = true;
     settings = {
-      base-url = "https://alert.${config.nori.inventory.site.domain}";
-      listen-http = ":8091";
+      base-url = "https://${alert.hostname}";
+      listen-http = ":${toString alert.port}";
       auth-default-access = "deny";
       auth-file = "/var/lib/ntfy-sh/user.db";
       behind-proxy = false;
@@ -74,7 +78,7 @@
     The alert endpoint is declared by manifests/server.nix. Open the
     backend port on the tailnet so Caddy can reach it.
   */
-  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8091 ];
+  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ alert.port ];
 
   nori.backups.ntfy.skip = "Hub on appliance host (pi). Pi flash anti-write posture; auth db tiny (one publisher row), recreated from sops + manual ntfy user add if lost.";
 }

@@ -5,6 +5,10 @@
   ...
 }:
 
+let
+  vault = config.nori.inventory.routes.vault;
+  auth = config.nori.inventory.routes.auth;
+in
 {
   /*
     Vaultwarden — self-hosted Bitwarden-compatible password manager.
@@ -40,9 +44,9 @@
         runsOn ≠ proxy host. `exposeOnTailnet = true` on the route
         opens 8222 on tailscale0; LAN stays closed.
       */
-      DOMAIN = "https://vault.${config.nori.inventory.site.domain}";
+      DOMAIN = "https://${vault.hostname}";
       ROCKET_ADDRESS = "0.0.0.0";
-      ROCKET_PORT = 8222;
+      ROCKET_PORT = vault.port;
 
       /*
         SIGNUPS_ALLOWED is closed in steady state — single-user
@@ -68,8 +72,8 @@
         asymmetric case (Authelia broken, Vaultwarden fine) is real.
       */
       SSO_ENABLED = true;
-      SSO_AUTHORITY = "https://auth.${config.nori.inventory.site.domain}";
-      SSO_CLIENT_ID = "vault";
+      SSO_AUTHORITY = "https://${auth.hostname}";
+      SSO_CLIENT_ID = vault.name;
       # SSO_CLIENT_SECRET injected via EnvironmentFile (sops template);
       # see systemd.services.vaultwarden.serviceConfig below.
       SSO_PKCE = true; # PKCE S256 — Authelia enforces it; default true, explicit for the record.
@@ -87,13 +91,13 @@
 
   # Vaultwarden is a static user, so its OIDC environment file needs no shared
   # credential-reader group.
-  sops.templates."oidc-vault-env" = {
+  sops.templates."oidc-${vault.name}-env" = {
     owner = lib.mkForce "vaultwarden";
     group = lib.mkForce "vaultwarden";
     mode = lib.mkForce "0400";
   };
   systemd.services.vaultwarden.serviceConfig.EnvironmentFile =
-    config.sops.templates."oidc-vault-env".path;
+    config.sops.templates."oidc-${vault.name}-env".path;
 
   /*
     Pattern C2 — VACUUM INTO snapshot before restic. Static

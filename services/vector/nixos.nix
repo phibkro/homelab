@@ -1,5 +1,9 @@
 { config, ... }:
 
+let
+  logs = config.nori.inventory.routes.logs;
+  logsTailnetIp = config.nori.inventory.hosts.${logs.host}.tailnetIp;
+in
 {
   /**
     Vector — journald → VictoriaLogs shipper, replacing systemd-journal-
@@ -113,7 +117,7 @@
       sinks.vlogs = {
         type = "elasticsearch";
         inputs = [ "relabel" ];
-        endpoints = [ "http://${config.nori.inventory.hosts.pi.tailnetIp}:9428/insert/elasticsearch" ];
+        endpoints = [ "http://${logsTailnetIp}:${toString logs.port}/insert/elasticsearch" ];
         mode = "bulk";
         api_version = "v8";
         healthcheck.enabled = false;

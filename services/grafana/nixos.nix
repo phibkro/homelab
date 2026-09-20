@@ -4,6 +4,13 @@
   ...
 }:
 
+let
+  ops = config.nori.inventory.routes.ops;
+  logs = config.nori.inventory.routes.logs;
+  logsTailnetIp = config.nori.inventory.hosts.${logs.host}.tailnetIp;
+  tsdb = config.nori.inventory.routes.tsdb;
+  tsdbTailnetIp = config.nori.inventory.hosts.${tsdb.host}.tailnetIp;
+in
 {
   /*
     Grafana's settings file is rendered into /run from Nix at activation
@@ -50,13 +57,13 @@
     settings = {
       server = {
         http_addr = "0.0.0.0";
-        http_port = 3000;
+        http_port = ops.port;
         /*
           Caddy terminates TLS at ops.<nori.domain> and proxies here;
           tell Grafana the public URL so its self-generated links
           don't point at 127.0.0.1.
         */
-        root_url = "https://ops.${config.nori.inventory.site.domain}/";
+        root_url = "https://${ops.hostname}/";
         enforce_domain = false;
       };
 
@@ -112,7 +119,7 @@
           name = "VictoriaLogs";
           type = "victoriametrics-logs-datasource";
           access = "proxy";
-          url = "http://${config.nori.inventory.hosts.pi.tailnetIp}:9428";
+          url = "http://${logsTailnetIp}:${toString logs.port}";
           isDefault = true;
           jsonData.timeout = 60;
         }
@@ -134,7 +141,7 @@
           */
           type = "prometheus";
           access = "proxy";
-          url = "http://${config.nori.inventory.hosts.pi.tailnetIp}:8428";
+          url = "http://${tsdbTailnetIp}:${toString tsdb.port}";
           isDefault = false;
           jsonData.timeInterval = "30s"; # matches the scrape interval
         }

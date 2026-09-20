@@ -11,7 +11,7 @@ let
   stateDir = "/home/nori/.local/state/herdr-mcp/projects";
   storePath = "${stateDir}/facade.sqlite";
   localPort = 9080;
-  originPort = 9081;
+  projectsOrigin = config.nori.inventory.routes.projects-origin;
   originTailnetIp = config.nori.inventory.hosts.${config.nori.inventory.currentHost}.tailnetIp;
   herdrPackage = inputs.herdr.packages.${pkgs.stdenv.hostPlatform.system}.default;
 
@@ -23,7 +23,7 @@ let
 
     # Only the MCP endpoint crosses the tailnet. The Bun origin performs the
     # bearer comparison before parsing or dispatching any MCP input.
-    http://:${toString originPort} {
+    http://:${toString projectsOrigin.port} {
       bind 127.0.0.1 ${originTailnetIp}
       log
 

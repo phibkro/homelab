@@ -7,6 +7,7 @@
 
 let
   enabled = (import ./manifest.nix).active;
+  downloads = config.nori.inventory.routes.downloads;
   qbtConfig = "/var/lib/qBittorrent/qBittorrent/config/qBittorrent.conf";
   qbtConfigure = pkgs.writeText "qbt-configure.py" ''
     import configparser
@@ -97,7 +98,7 @@ in
   */
   services.qbittorrent = {
     enable = enabled;
-    webuiPort = 8083;
+    webuiPort = downloads.port;
     user = "qbittorrent";
     group = "qbittorrent";
     openFirewall = false;

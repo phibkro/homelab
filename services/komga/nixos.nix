@@ -1,5 +1,9 @@
 { config, ... }:
 
+let
+  comics = config.nori.inventory.routes.comics;
+in
+
 {
   /*
     Komga — comics/manga server. Scans a directory tree for CBZ/CBR/
@@ -28,7 +32,7 @@
     user = "komga";
     group = "komga";
     openFirewall = false;
-    settings.server.port = 8085;
+    settings.server.port = comics.port;
   };
 
   users.users.komga.extraGroups = [ "media" ];

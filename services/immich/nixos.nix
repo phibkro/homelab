@@ -17,6 +17,7 @@ let
       cudaSupport = true;
     };
   };
+  photos = config.nori.inventory.routes.photos;
 in
 {
   /*
@@ -50,7 +51,7 @@ in
     user = "immich";
     group = "immich";
     host = "0.0.0.0";
-    port = 2283;
+    port = photos.port;
     mediaLocation = "${config.nori.fs.photos.path}/_immich-managed";
 
     database.enable = true; # dedicated postgres + VectorChord ext

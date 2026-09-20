@@ -6,8 +6,9 @@
 }:
 let
   cachePath = config.nori.fs.cache.path;
-  cacheHost = "cache.${config.nori.inventory.site.domain}";
-  loopbackBaseUrl = "http://127.0.0.1:5000";
+  cache = config.nori.inventory.routes.cache;
+  cacheHost = cache.hostname;
+  loopbackBaseUrl = "http://127.0.0.1:${toString cache.port}";
   publicBaseUrl = "https://${cacheHost}";
   cachePublicKey = "attic.nori.lan-1:3zt/aS8K1bSEjNvZQB9ga9OeZTxcRkvbb7aYRI/vobo=";
   bootstrapScript = pkgs.writeShellScript "attic-cache-bootstrap" ''
@@ -191,7 +192,7 @@ in
     mode = "monolithic";
     environmentFile = config.sops.secrets.attic-jwt-environment.path;
     settings = {
-      listen = "0.0.0.0:5000";
+      listen = "0.0.0.0:${toString cache.port}";
       allowed-hosts = [ cacheHost ];
       api-endpoint = "${publicBaseUrl}/";
       substituter-endpoint = "${publicBaseUrl}/";

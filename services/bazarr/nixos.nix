@@ -1,5 +1,9 @@
 { config, ... }:
 
+let
+  subtitles = config.nori.inventory.routes.subtitles;
+in
+
 {
   /*
     Bazarr — subtitle automation. Reads Sonarr's + Radarr's libraries,
@@ -24,7 +28,7 @@
     user = "bazarr";
     group = "bazarr";
     openFirewall = false;
-    listenPort = 6767;
+    listenPort = subtitles.port;
   };
 
   users.users.bazarr.extraGroups = [ "media" ];

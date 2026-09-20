@@ -37,14 +37,14 @@ let
   artifact = config.nori.inventory.workloads.filmder.artifact;
   filmderRepo = artifact.source.repository;
   filmderRef = artifact.source.ref;
-  servePort = 9092;
+  filmder = config.nori.inventory.routes.filmder;
   filmderCaddyfile = pkgs.writeText "filmder-Caddyfile" ''
     {
       admin off
       auto_https off
     }
 
-    :${toString servePort} {
+    :${toString filmder.port} {
       @tmdb path /tmdb/movie/*
       handle @tmdb {
         uri replace /tmdb/ /3/

@@ -4,6 +4,7 @@
 }:
 let
   selfTailnetIp = config.nori.inventory.hosts.${config.nori.inventory.currentHost}.tailnetIp;
+  papers = config.nori.inventory.routes.papers;
 in
 {
   /*
@@ -41,7 +42,7 @@ in
     enable = true;
     user = "paperless";
     address = "0.0.0.0"; # Caddy is co-located; tailnet direct access remains available
-    port = 28981;
+    port = papers.port;
 
     database.createLocally = true;
 
@@ -59,11 +60,11 @@ in
     settings = {
       PAPERLESS_OCR_LANGUAGE = "eng"; # academic papers; add "+nor" if needed
       PAPERLESS_ADMIN_USER = "nori"; # matches the existing superuser
-      PAPERLESS_URL = "https://papers.${config.nori.inventory.site.domain}";
+      PAPERLESS_URL = "https://${papers.hostname}";
       # Accept the public Caddy route and the converged host's direct tailnet
       # endpoint for operator recovery.
-      PAPERLESS_ALLOWED_HOSTS = "papers.${config.nori.inventory.site.domain},${selfTailnetIp}";
-      PAPERLESS_CSRF_TRUSTED_ORIGINS = "https://papers.${config.nori.inventory.site.domain},http://${selfTailnetIp}:28981";
+      PAPERLESS_ALLOWED_HOSTS = "${papers.hostname},${selfTailnetIp}";
+      PAPERLESS_CSRF_TRUSTED_ORIGINS = "https://${papers.hostname},http://${selfTailnetIp}:${toString papers.port}";
     };
   };
 

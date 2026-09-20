@@ -1,4 +1,5 @@
 {
+  config,
   pkgs,
   ...
 }:
@@ -16,6 +17,7 @@ let
         endpoint in this service's manifest
   */
   enabled = (import ./manifest.nix).active;
+  ai = config.nori.inventory.routes.ai;
 in
 {
 
@@ -40,7 +42,7 @@ in
     */
     package = pkgs.ollama-cuda;
     host = "0.0.0.0";
-    port = 11434;
+    port = ai.port;
     openFirewall = false;
 
     /*

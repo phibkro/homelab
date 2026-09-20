@@ -20,6 +20,9 @@ let
     state at /var/lib/private/open-webui survives the toggle.
   */
   enabled = (import ./manifest.nix).active;
+  chat = config.nori.inventory.routes.chat;
+  auth = config.nori.inventory.routes.auth;
+  ai = config.nori.inventory.routes.ai;
 in
 {
   /*
@@ -39,18 +42,18 @@ in
   services.open-webui = {
     enable = enabled;
     host = "0.0.0.0";
-    port = 8080;
+    port = chat.port;
     openFirewall = false;
 
     environment = {
-      OLLAMA_BASE_URL = "http://127.0.0.1:11434";
+      OLLAMA_BASE_URL = "http://127.0.0.1:${toString ai.port}";
       WEBUI_AUTH = "True";
       ENABLE_SIGNUP = "False";
       DEFAULT_MODELS = "";
       # OAUTH_CLIENT_SECRET is injected through the host-local template
       # derived from this workload's manifest OIDC declaration.
-      OPENID_PROVIDER_URL = "https://auth.${config.nori.inventory.site.domain}/.well-known/openid-configuration";
-      OAUTH_CLIENT_ID = "chat";
+      OPENID_PROVIDER_URL = "https://${auth.hostname}/.well-known/openid-configuration";
+      OAUTH_CLIENT_ID = chat.name;
       OAUTH_PROVIDER_NAME = "Authelia";
       ENABLE_OAUTH_SIGNUP = "True";
       /*
@@ -98,7 +101,7 @@ in
   */
   systemd.services.open-webui.serviceConfig = lib.mkIf enabled {
     SupplementaryGroups = [ "keys" ];
-    EnvironmentFile = config.sops.templates."oidc-chat-env".path;
+    EnvironmentFile = config.sops.templates."oidc-${chat.name}-env".path;
   };
 
   /*

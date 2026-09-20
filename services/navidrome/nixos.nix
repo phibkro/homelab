@@ -7,6 +7,7 @@
 let
   musicDataset = config.nori.inventory.datasets.music;
   musicPath = "${config.nori.fs.library.path}/${musicDataset.storage.relativePath}";
+  audio = config.nori.inventory.routes.audio;
 in
 {
   /*
@@ -50,7 +51,7 @@ in
     openFirewall = false;
     settings = {
       Address = "0.0.0.0";
-      Port = 4533;
+      Port = audio.port;
       MusicFolder = musicPath;
       EnableTranscodingConfig = true;
       # Public reachability is account-gated. Disable unauthenticated

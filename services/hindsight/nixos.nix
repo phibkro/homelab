@@ -8,7 +8,7 @@
 let
   version = "0.9.0";
   apiPort = 9077;
-  originPort = 9078;
+  memoryOrigin = config.nori.inventory.routes.memory-origin;
   uiProxyPort = 9998;
   controlPlanePort = 9999;
   originTailnetIp = config.nori.inventory.hosts.${config.nori.inventory.currentHost}.tailnetIp;
@@ -62,7 +62,7 @@ let
 
     # The socket is reachable only on loopback and the workstation's tailnet
     # address. The shared cloudflared service is its sole public projection.
-    http://:${toString originPort} {
+    http://:${toString memoryOrigin.port} {
       bind 127.0.0.1 ${originTailnetIp}
       log
 

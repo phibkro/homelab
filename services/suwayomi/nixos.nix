@@ -3,6 +3,10 @@
   ...
 }:
 
+let
+  manga = config.nori.inventory.routes.manga;
+in
+
 {
   /*
     Suwayomi-Server — manga acquisition. Runs Tachiyomi/Mihon source
@@ -44,7 +48,7 @@
     openFirewall = false;
     settings.server = {
       ip = "0.0.0.0";
-      port = 8088;
+      port = manga.port;
       downloadAsCbz = true;
       downloadsPath = "${config.nori.fs.library.path}/manga";
     };

@@ -6,11 +6,12 @@
   ...
 }:
 let
+  cache = config.nori.inventory.routes.cache;
   atticClientConfig = pkgs.writeTextDir "attic/config.toml" ''
     default-server = "nori"
 
     [servers.nori]
-    endpoint = "https://cache.${config.nori.inventory.site.domain}/"
+    endpoint = "https://${cache.hostname}/"
     token-file = "${config.sops.secrets.attic-push-token.path}"
   '';
   atticPush = pkgs.writeShellApplication {

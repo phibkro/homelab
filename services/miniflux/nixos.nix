@@ -1,5 +1,10 @@
 { config, lib, ... }:
 
+let
+  news = config.nori.inventory.routes.news;
+  auth = config.nori.inventory.routes.auth;
+in
+
 {
   /*
     Miniflux — minimal RSS / feed reader (Go binary + Postgres). All
@@ -31,8 +36,8 @@
         Pi Caddy reverse-proxies `news.<nori.domain>` to this service on 8087.
         This is the next free route port between `home` and `metrics`.
       */
-      LISTEN_ADDR = "0.0.0.0:8087";
-      BASE_URL = "https://news.${config.nori.inventory.site.domain}";
+      LISTEN_ADDR = "0.0.0.0:${toString news.port}";
+      BASE_URL = "https://${news.hostname}";
 
       /*
         OIDC via Authelia. Non-secret OIDC vars live here; the secret
@@ -40,9 +45,9 @@
         below alongside the admin credentials.
       */
       OAUTH2_PROVIDER = "oidc";
-      OAUTH2_CLIENT_ID = "news";
-      OAUTH2_REDIRECT_URL = "https://news.${config.nori.inventory.site.domain}/oauth2/oidc/callback";
-      OAUTH2_OIDC_DISCOVERY_ENDPOINT = "https://auth.${config.nori.inventory.site.domain}";
+      OAUTH2_CLIENT_ID = news.name;
+      OAUTH2_REDIRECT_URL = "https://${news.hostname}${news.oidc.redirectPath}";
+      OAUTH2_OIDC_DISCOVERY_ENDPOINT = "https://${auth.hostname}";
       /*
         Auto-create miniflux user on first SSO. With this off, the
         admin would have to pre-create every family member's account
@@ -69,7 +74,7 @@
 
   users.groups.miniflux-secrets = { };
 
-  sops.templates."oidc-news-env" = {
+  sops.templates."oidc-${news.name}-env" = {
     group = lib.mkForce "miniflux-secrets";
     mode = lib.mkForce "0440";
   };
@@ -80,7 +85,7 @@
     content = ''
       ADMIN_USERNAME=admin
       ADMIN_PASSWORD=${config.sops.placeholder."miniflux-admin-password"}
-      OAUTH2_CLIENT_SECRET=${config.sops.placeholder."oidc-news-client-secret"}
+      ${news.oidc.secretEnvName}=${config.sops.placeholder."oidc-${news.name}-client-secret"}
     '';
   };
 

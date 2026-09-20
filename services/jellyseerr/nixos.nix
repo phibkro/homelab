@@ -1,4 +1,7 @@
-_:
+{ config, ... }:
+let
+  requests = config.nori.inventory.routes.requests;
+in
 
 {
   /*
@@ -31,7 +34,7 @@ _:
   services.seerr = {
     enable = true;
     openFirewall = false;
-    port = 5055;
+    port = requests.port;
   };
 
   nori.harden.seerr = { };

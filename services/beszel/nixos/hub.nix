@@ -1,5 +1,9 @@
 { config, ... }:
 
+let
+  metrics = config.nori.inventory.routes.metrics;
+in
+
 {
   /**
     beszel-hub — central PocketBase + UI that pulls metrics from
@@ -19,7 +23,7 @@
   services.beszel.hub = {
     enable = true;
     host = "0.0.0.0";
-    port = 8090;
+    port = metrics.port;
   };
 
   systemd.services.beszel-hub.environment = {
@@ -28,7 +32,7 @@
 
   nori.harden.beszel-hub = { };
 
-  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ 8090 ];
+  networking.firewall.interfaces."tailscale0".allowedTCPPorts = [ metrics.port ];
 
   /*
     Gatus alerts come independently via ntfy.sh, so a hub rebuild

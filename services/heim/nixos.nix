@@ -34,7 +34,7 @@ let
   artifact = config.nori.inventory.workloads.heim.artifact;
   heimRepo = artifact.source.repository;
   heimRef = artifact.source.ref;
-  servePort = 9094;
+  heim = config.nori.inventory.routes.heim;
 
   ldLibraryPath = lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib ];
 in
@@ -133,7 +133,7 @@ in
         "${pkgs.darkhttpd}/bin/darkhttpd"
         "/var/lib/heim/dist"
         "--addr 0.0.0.0"
-        "--port ${toString servePort}"
+        "--port ${toString heim.port}"
         "--no-listing"
       ];
       Restart = "on-failure";

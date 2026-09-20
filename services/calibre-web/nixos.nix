@@ -5,6 +5,10 @@
   ...
 }:
 
+let
+  books = config.nori.inventory.routes.books;
+in
+
 {
   /*
     calibre-web — community-maintained web UI for an ebook library.
@@ -49,7 +53,7 @@
     group = "calibre-web";
     listen = {
       ip = "0.0.0.0";
-      port = 8084;
+      port = books.port;
     };
     openFirewall = false;
     options = {
