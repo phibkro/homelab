@@ -90,6 +90,7 @@ let
     && lib.any (
       command: lib.hasSuffix "/bin/systemctl restart filmder-static.service" command
     ) adelie.systemd.services.filmder-build.serviceConfig.ExecStartPost
+    && !(lib.elem "filmder-build.service" adelie.systemd.services.filmder-static.after)
     && builtins.hasAttr "attic-cache-watch" adelie.systemd.services
     && builtins.hasAttr "attic-cache-watch" workstation.systemd.services
     && !(workstation.services.atticd.enable or false)

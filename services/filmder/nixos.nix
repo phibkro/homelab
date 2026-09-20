@@ -188,7 +188,6 @@ in
   # Caddy process only proxies bytes and the narrow TMDB API path.
   systemd.services.filmder-static = {
     description = "Serve credentialless Filmder static files";
-    after = [ "filmder-build.service" ];
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
       Type = "simple";
