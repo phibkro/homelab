@@ -47,8 +47,7 @@ let
     :${toString servePort} {
       @tmdb path /tmdb/movie/*
       handle @tmdb {
-        uri strip_prefix /tmdb
-        rewrite * /3{uri}
+        uri replace /tmdb/ /3/
         reverse_proxy https://api.themoviedb.org {
           header_up Host api.themoviedb.org
           header_up Authorization "{env.TMDB_TOKEN}"
