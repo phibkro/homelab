@@ -41,6 +41,7 @@ let
         { pkgs, ... }:
         {
           networking.hostName = "agent-engine-self-hosted-guest";
+          system.stateVersion = "26.11";
           networking.useDHCP = false;
           networking.firewall.enable = true;
           networking.interfaces = { };

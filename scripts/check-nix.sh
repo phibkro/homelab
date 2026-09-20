@@ -6,7 +6,11 @@ shift
 name=""
 if [[ "$mode" == vm && $# -gt 0 && $1 != --* ]]; then name="$1"; shift; fi
 case "$mode" in fast|vm) ;; *) echo "Unknown check group: $mode" >&2; exit 2;; esac
-nix_args=(--extra-experimental-features 'nix-command flakes')
+nix_args=(
+  --extra-experimental-features 'nix-command flakes'
+  --option abort-on-warn true
+  --option eval-cache false
+)
 eval_args=()
 if [[ ${1:-} == --impure ]]; then eval_args=(--impure); shift; fi
 [[ $# == 0 ]] || { echo 'Unexpected check arguments' >&2; exit 2; }

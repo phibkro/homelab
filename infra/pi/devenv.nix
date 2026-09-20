@@ -1,9 +1,39 @@
-{ config, pkgs, ... }:
+{
+  config,
+  pkgs,
+  ...
+}:
+let
+  # Remove when nixpkgs carries ansible-lint with upstream commit ed1e94e.
+  ansibleLint = pkgs.ansible-lint.overridePythonAttrs (old: {
+    dependencies = map (
+      dependency: if (dependency.pname or "") == "yamllint" then yamlLint else dependency
+    ) old.dependencies;
+    postPatch = (old.postPatch or "") + ''
+      substituteInPlace src/ansiblelint/utils.py \
+        --replace-fail \
+        'from ansible.module_utils._text import to_bytes' \
+        'try:
+          from ansible.module_utils.common.text.converters import to_bytes
+      except ImportError:  # pragma: no branch
+          from ansible.module_utils._text import to_bytes'
+    '';
+  });
 
+  # Upstream 9dc506b supports pathspec 1.x without deprecated gitwildmatch.
+  yamlLint = pkgs.yamllint.overridePythonAttrs (old: {
+    patches = (old.patches or [ ]) ++ [
+      (pkgs.fetchurl {
+        url = "https://github.com/adrienverge/yamllint/commit/9dc506b5a1e22a728a95321a7cdb829ba17de0e0.patch";
+        hash = "sha256-cPUDZKwHL48Mpc/pSxTP0B8exo44X5Qk7dSNJ/dZ0o8=";
+      })
+    ];
+  });
+in
 {
   packages = with pkgs; [
     ansible
-    ansible-lint
+    ansibleLint
     caddy
     cloud-utils
     curl
@@ -18,7 +48,6 @@
     shellcheck
     util-linux
     watchexec
-    yamllint
   ];
 
   env = {
