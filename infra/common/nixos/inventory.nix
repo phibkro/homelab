@@ -15,10 +15,9 @@ let
   localTailnetRoutePorts = lib.sort builtins.lessThan (
     lib.unique (
       map (route: route.port) (
-        lib.filter (
-          route:
-          route.host == config.nori.inventory.currentHost && route.exposeOnTailnet
-        ) (lib.attrValues config.nori.inventory.routes)
+        lib.filter (route: route.host == config.nori.inventory.currentHost && route.exposeOnTailnet) (
+          lib.attrValues config.nori.inventory.routes
+        )
       )
     )
   );

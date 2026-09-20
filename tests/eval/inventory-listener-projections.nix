@@ -36,21 +36,24 @@ let
   piProjection = compiled.internal.piProjection;
   inactiveGatus = compile inactiveGatusCatalog;
 
-  jobFor = name:
-    lib.findFirst (job: job.job_name == name) null piProjection.victoriametrics_scrape_jobs;
-  targetsFor = name:
+  jobFor =
+    name: lib.findFirst (job: job.job_name == name) null piProjection.victoriametrics_scrape_jobs;
+  targetsFor =
+    name:
     let
       job = jobFor name;
     in
     if job == null then [ ] else lib.concatMap (staticConfig: staticConfig.targets) job.static_configs;
-  listenerTargetsFor = workloadName: listenerName:
+  listenerTargetsFor =
+    workloadName: listenerName:
     let
       port = inventory.workloads.${workloadName}.listeners.${listenerName}.port;
     in
     map (hostName: "${inventory.hosts.${hostName}.tailnetIp}:${toString port}") (
       inventory.workloads.${workloadName}.hosts
     );
-  routeTargetFor = endpointName:
+  routeTargetFor =
+    endpointName:
     let
       route = inventory.routes.${endpointName};
       address =
@@ -60,17 +63,19 @@ let
           inventory.hosts.${route.host}.tailnetIp;
     in
     "${address}:${toString route.port}";
-  routePortsForHost = hostName:
+  routePortsForHost =
+    hostName:
     lib.sort builtins.lessThan (
       lib.unique (
         map (route: route.port) (
-          lib.filter (
-            route: route.host == hostName && route.exposeOnTailnet
-          ) (lib.attrValues inventory.routes)
+          lib.filter (route: route.host == hostName && route.exposeOnTailnet) (
+            lib.attrValues inventory.routes
+          )
         )
       )
     );
-  firewallPortsForHost = hostName:
+  firewallPortsForHost =
+    hostName:
     inputs.self.nixosConfigurations.${hostName}.config.networking.firewall.interfaces."tailscale0".allowedTCPPorts;
 
   canonicalListenerProjection =
@@ -83,10 +88,14 @@ let
   canonicalEndpointProjection =
     inventory.workloads.gatus.endpoints.uptime.hostname == "uptime.${inventory.site.domain}"
     && inventory.workloads.victoriametrics.endpoints.tsdb.hostname == "tsdb.${inventory.site.domain}"
-    && inventory.workloads."victorialogs-server".endpoints.logs.hostname == "logs.${inventory.site.domain}";
+    &&
+      inventory.workloads."victorialogs-server".endpoints.logs.hostname
+      == "logs.${inventory.site.domain}";
   scrapeProjection =
     lib.all (target: lib.elem target (targetsFor "node")) (listenerTargetsFor "node-exporter" "node")
-    && lib.all (target: lib.elem target (targetsFor "process")) (listenerTargetsFor "node-exporter" "process")
+    && lib.all (target: lib.elem target (targetsFor "process")) (
+      listenerTargetsFor "node-exporter" "process"
+    )
     && lib.all (target: lib.elem target (targetsFor "nvidia-gpu")) (
       listenerTargetsFor "nvidia-gpu-exporter" "metrics"
     )
@@ -104,8 +113,7 @@ let
     in
     lib.any (hostName: routePortsForHost hostName != [ ]) nixosHostNames
     && lib.all (
-      hostName:
-      lib.all (port: lib.elem port (firewallPortsForHost hostName)) (routePortsForHost hostName)
+      hostName: lib.all (port: lib.elem port (firewallPortsForHost hostName)) (routePortsForHost hostName)
     ) nixosHostNames;
   inactivePiWorkloadProjection =
     !inactiveGatus.public.workloads.gatus.active

@@ -34,7 +34,9 @@ let
     ollama = removeAttrs catalog.ollama [ "active" ];
   };
   nonBooleanActivationCatalog = catalog // {
-    ollama = catalog.ollama // { active = "true"; };
+    ollama = catalog.ollama // {
+      active = "true";
+    };
   };
 
   validInventory = compile catalog;
