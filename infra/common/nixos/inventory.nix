@@ -66,6 +66,336 @@ let
       instance = mkOption { type = types.str; };
     };
   };
+  forwardAuthType = types.submodule {
+    options.exemptPaths = mkOption {
+      type = types.listOf types.str;
+      default = [ ];
+    };
+  };
+
+  oidcType = types.submodule {
+    options = {
+      clientName = mkOption { type = types.str; };
+      redirectPath = mkOption { type = types.str; };
+      tokenEndpointAuthMethod = mkOption {
+        type = types.enum [
+          "client_secret_basic"
+          "client_secret_post"
+        ];
+      };
+      scopes = mkOption {
+        type = types.listOf types.str;
+        default = [
+          "openid"
+          "profile"
+          "email"
+          "groups"
+        ];
+      };
+      authorizationPolicy = mkOption {
+        type = types.str;
+        default = "one_factor";
+      };
+      secretEnvName = mkOption {
+        type = types.str;
+        default = "OAUTH_CLIENT_SECRET";
+      };
+    };
+  };
+
+  monitorType = types.submodule {
+    options = {
+      path = mkOption {
+        type = types.str;
+        default = "/";
+      };
+      interval = mkOption {
+        type = types.str;
+        default = "60s";
+      };
+      headers = mkOption {
+        type = types.attrsOf types.str;
+        default = { };
+      };
+      conditions = mkOption {
+        type = types.listOf types.str;
+        default = [ "[STATUS] == 200" ];
+      };
+      failureThreshold = mkOption {
+        type = types.ints.positive;
+        default = 3;
+      };
+      name = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+      };
+    };
+  };
+
+  dashboardType = types.submodule {
+    options = {
+      title = mkOption { type = types.str; };
+      icon = mkOption { type = types.str; };
+      group = mkOption {
+        type = types.enum [
+          "Consume"
+          "Acquire"
+          "Personal"
+          "Projects"
+          "Admin"
+        ];
+      };
+      description = mkOption { type = types.str; };
+      allowInsecure = mkOption {
+        type = types.bool;
+        default = false;
+      };
+    };
+  };
+
+  routeType = types.submodule {
+    options = {
+      name = mkOption { type = types.str; };
+      workload = mkOption { type = types.str; };
+      endpoint = mkOption { type = types.str; };
+      host = mkOption { type = types.str; };
+      hostname = mkOption { type = types.str; };
+      port = mkOption { type = types.port; };
+      scheme = mkOption {
+        type = types.enum [
+          "http"
+          "https"
+        ];
+      };
+      reachability = mkOption {
+        type = types.enum [
+          "internal"
+          "internet"
+        ];
+      };
+      audience = mkOption { type = types.enum audienceKeys; };
+      authentication = mkOption {
+        type = types.enum [
+          "oidc"
+          "forward-auth"
+          "service-native-or-exception"
+          "none"
+        ];
+      };
+      auth = mkOption {
+        type = types.enum [
+          "none"
+          "oidc"
+          "forward-auth"
+        ];
+      };
+      exposeOnTailnet = mkOption { type = types.bool; };
+      forwardAuth = mkOption {
+        type = types.nullOr forwardAuthType;
+        default = null;
+      };
+      oidc = mkOption {
+        type = types.nullOr oidcType;
+        default = null;
+      };
+      monitor = mkOption {
+        type = types.nullOr monitorType;
+        default = null;
+      };
+      dashboard = mkOption {
+        type = types.nullOr dashboardType;
+        default = null;
+      };
+      publicStatus = mkOption {
+        type = types.bool;
+        default = false;
+      };
+      upstreamHostHeader = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+      };
+      upstreamOriginHeader = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+      };
+    };
+  };
+
+
+  piRouteType = types.submodule {
+    options = {
+      name = mkOption { type = types.str; };
+      hostname = mkOption { type = types.str; };
+      upstream_address = mkOption { type = types.str; };
+      upstream_port = mkOption { type = types.port; };
+      scheme = mkOption { type = types.enum [ "http" "https" ]; };
+      reachability = mkOption { type = types.enum [ "internal" "internet" ]; };
+      audience = mkOption { type = types.enum audienceKeys; };
+      auth = mkOption { type = types.enum [ "none" "oidc" "forward-auth" ]; };
+      forward_auth_exempt_paths = mkOption {
+        type = types.listOf types.str;
+        default = [ ];
+      };
+      forward_auth_upstream = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+      };
+      oidc_redirect_path = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+      };
+      upstream_host_header = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+      };
+      upstream_origin_header = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+      };
+    };
+  };
+
+  piProbeType = types.submodule {
+    options = {
+      name = mkOption { type = types.str; };
+      url = mkOption { type = types.str; };
+      interval = mkOption { type = types.str; };
+      headers = mkOption {
+        type = types.attrsOf types.str;
+        default = { };
+      };
+      client = mkOption {
+        type = types.attrsOf types.anything;
+        default = { };
+      };
+      conditions = mkOption { type = types.listOf types.str; };
+      failure_threshold = mkOption { type = types.ints.positive; };
+      send_on_resolved = mkOption { type = types.bool; };
+    };
+  };
+
+  piBookmarkType = types.submodule {
+    options = {
+      title = mkOption { type = types.str; };
+      icon = mkOption { type = types.str; };
+      description = mkOption { type = types.str; };
+      url = mkOption { type = types.str; };
+    };
+  };
+
+  piScrapeTargetType = types.submodule {
+    options = {
+      targets = mkOption { type = types.listOf types.str; };
+      labels = mkOption {
+        type = types.attrsOf types.str;
+        default = { };
+      };
+    };
+  };
+
+  piProjectionType = types.submodule {
+    options = {
+      pi_lan_address = mkOption { type = types.str; };
+      pi_service_bind_address = mkOption { type = types.str; };
+      pihole_lan_address = mkOption { type = types.str; };
+      pihole_tailnet_address = mkOption { type = types.str; };
+      pi_domain = mkOption { type = types.str; };
+      pi_deprecated_domains = mkOption { type = types.listOf types.str; };
+      pi_routes = mkOption { type = types.listOf piRouteType; };
+      pi_tailnet_workload_ports = mkOption { type = types.listOf types.port; };
+      glance_enabled = mkOption { type = types.bool; };
+      glance_bookmark_groups = mkOption {
+        type = types.listOf (
+          types.submodule {
+            options = {
+              title = mkOption { type = types.str; };
+              links = mkOption { type = types.listOf piBookmarkType; };
+            };
+          }
+        );
+      };
+      authelia_oidc_clients = mkOption {
+        type = types.listOf (
+          types.submodule {
+            options = {
+              client_id = mkOption { type = types.str; };
+              client_name = mkOption { type = types.str; };
+              authorization_policy = mkOption { type = types.str; };
+              token_endpoint_auth_method = mkOption { type = types.str; };
+              redirect_uris = mkOption { type = types.listOf types.str; };
+              scopes = mkOption { type = types.listOf types.str; };
+            };
+          }
+        );
+      };
+      gatus_endpoints = mkOption { type = types.listOf piProbeType; };
+      victoriametrics_scrape_jobs = mkOption {
+        type = types.listOf (
+          types.submodule {
+            options = {
+              job_name = mkOption { type = types.str; };
+              static_configs = mkOption { type = types.listOf piScrapeTargetType; };
+            };
+          }
+        );
+      };
+      beszel_agent_listen_port = mkOption { type = types.port; };
+      beszel_systems = mkOption {
+        type = types.listOf (
+          types.submodule {
+            options = {
+              name = mkOption { type = types.str; };
+              host = mkOption { type = types.str; };
+              port = mkOption { type = types.port; };
+            };
+          }
+        );
+      };
+      ddns_hostnames = mkOption { type = types.listOf types.str; };
+      pihole_local_dns_records = mkOption {
+        type = types.listOf (
+          types.submodule {
+            options = {
+              address = mkOption { type = types.str; };
+              names = mkOption { type = types.listOf types.str; };
+            };
+          }
+        );
+      };
+      pi_backup_enabled = mkOption { type = types.bool; };
+      pi_backup_target_address = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+      };
+      pi_backup_target_host = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+      };
+      pi_backup_target_user = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+      };
+      pi_backup_repository_prefix = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+      };
+      pi_backup_target_known_host = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+      };
+      pi_backup_jobs = mkOption {
+        type = types.listOf (
+          types.submodule {
+            options = {
+              name = mkOption { type = types.str; };
+              paths = mkOption { type = types.listOf types.str; };
+            };
+          }
+        );
+        default = [ ];
+      };
+    };
+  };
 
   workloadType = types.submodule {
     options = {
@@ -184,7 +514,6 @@ let
           options = {
             protocol = mkOption { type = types.str; };
             transcodeOnDemand = mkOption { type = types.listOf types.str; };
-            persistentDerivative = mkOption { type = types.bool; };
           };
         };
       };
@@ -352,6 +681,18 @@ in
       type = types.attrsOf workloadType;
       readOnly = true;
       description = "Public-safe workload identity and resolved placement.";
+    };
+    routes = mkOption {
+      type = types.attrsOf routeType;
+      default = { };
+      readOnly = true;
+      description = "Compiler-owned active HTTP route projection shared by NixOS and Pi adapters.";
+    };
+    pi = mkOption {
+      type = piProjectionType;
+      default = { };
+      readOnly = true;
+      description = "Secret-free Pi Ansible projection; transport credentials remain adapter inputs.";
     };
     topology = mkOption {
       type = topologyType;

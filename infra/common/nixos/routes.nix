@@ -176,7 +176,9 @@ in
     type = types.str;
     default =
       let
-        candidates = lib.filterAttrs (_: h: h.role == "workhorse" && h.lanIp != null) config.nori.hosts;
+        candidates = lib.filterAttrs (
+          _: h: h.role == "workhorse" && h.lanIp != null
+        ) config.nori.inventory.hosts;
         names = lib.attrNames candidates;
       in
       if lib.length names == 1 then
@@ -215,463 +217,24 @@ in
     '';
   };
 
-  options.nori.lanRoutes = mkOption {
-    default = { };
-    description = ''
-      Services to expose under the canonical domain via Caddy reverse proxy +
-      Blocky DNS. Attribute name = subdomain; value declares the
-      backend.
-    '';
-    example = lib.literalExpression ''
-      {
-        jellyfin = { port = 8096; };
-        chat = { port = 8080; };
-        ai = { port = 11434; };
-      }
-    '';
-    type = types.attrsOf (
-      types.submodule {
-        options = {
-          port = mkOption {
-            type = types.port;
-            description = "Backend TCP port (validated 0-65535 at eval time).";
-          };
-          runsOn = mkOption {
-            type = types.str;
-            example = "workstation";
-            description = ''
-              Name of the homelab host that runs this route's backend
-              service (matches a `nori.hosts.<name>` registry key).
-              Generators resolve to:
-                * `127.0.0.1` when `runsOn` matches the host evaluating
-                  the route (Caddy proxies to the local loopback)
-                * `config.nori.hosts.<runsOn>.tailnetIp` otherwise
-                  (Caddy proxies cross-host over tailnet)
 
-              This is the mechanism that lets route declarations live
-              outside the `mkIf cfg.enabled` gate in each service module
-              — every host that imports the module sees the route in
-              `nori.lanRoutes`, but the backend resolves to the right
-              address per host. Encodes the pi-central entry plane
-              shape: pi's Caddy serves every route; backends live on
-              whichever host fits (workhorse vs always-on vault).
-
-              Why location-policy is coupled with route registration
-              here, not extracted: location is implicit-from-import-site
-              for host-confined services; it becomes explicit only when
-              a service crosses machines, which IS the act of declaring
-              an HTTP route. The three concerns (service / route /
-              location) degenerate at host-local and unify at
-              cross-machine. See
-              `docs/archive/reports/2026-06-17-runson-coupling-analysis.md`
-              for the full analysis + algebraic forward-extension
-              (failover / loadbalance / sequential).
-            '';
-          };
-          scheme = mkOption {
-            type = types.enum [
-              "http"
-              "https"
-            ];
-            default = "http";
-            description = "Backend scheme. Most services run plain HTTP; Caddy terminates TLS.";
-          };
-          upstreamHostHeader = mkOption {
-            type = types.nullOr types.str;
-            default = null;
-            example = "127.0.0.1:3000";
-            description = ''
-              Optional rewrite of the `Host` request header before
-              forwarding to the upstream. By default Caddy forwards
-              the original Host (the canonical `<n>.<domain>`), which
-              most backends accept. Set this when a backend validates
-              Host as a DNS-rebinding defence and only accepts the
-              address on which it is bound.
-            '';
-          };
-          upstreamOriginHeader = mkOption {
-            type = types.nullOr types.str;
-            default = null;
-            example = "http://127.0.0.1:3000";
-            description = ''
-              Optional rewrite of the `Origin` header before forwarding
-              WebSocket / fetch upgrade requests. Paired companion to
-              `upstreamHostHeader`: apps that validate `Host` against
-              their bind address as a DNS-rebinding defence may enforce
-              the same policy on WebSocket `Origin` fields.
-            '';
-          };
-          exposeOnTailnet = mkOption {
-            type = types.bool;
-            default = false;
-            description = ''
-              Open the backend port on the tailnet, bypassing Caddy.
-              Default closed — Caddy on 443 is the canonical entry
-              point. Opt in only when something needs direct port
-              access (legacy clients, programmatic tools that don't
-              handle Caddy's internal CA).
-            '';
-          };
-          reachability = mkOption {
-            type = types.enum [
-              "internal"
-              "internet"
-            ];
-            default = "internal";
-            description = ''
-              Network boundary at which Caddy accepts this route:
-
-                * internal — LAN and tailnet clients only. The generated
-                  host matcher also requires a private client range or
-                  Tailscale's 100.64.0.0/10 range, so forwarding port 443
-                  to Caddy does not expose this route through a guessed
-                  hostname or forged Host header.
-
-                * internet — accept requests from any client address.
-                  This only makes the HTTP route reachable; `audience`
-                  still declares who may use it and which identity layer
-                  protects it. Operator routes are structurally forbidden
-                  from selecting this value.
-
-              Default is internal. Public exposure is an explicit per-route
-              opt-in and must never be inferred from `audience`: reachability
-              describes the network boundary, while audience describes the
-              users and authentication posture inside that boundary.
-            '';
-          };
-          audience = mkOption {
-            type = types.enum audienceKeys;
-            default = "operator";
-            description = ''
-              Who this route is for. Documents intent + drives the
-              auth-stacking principle:
-
-                * operator — admin-only management UIs (the *arr stack,
-                  qBittorrent, Beszel admin, Syncthing). Tailnet
-                  membership IS the auth; layering Authelia on top
-                  duplicates the network-perimeter guarantee for no
-                  per-user-state value, while making Authelia uptime
-                  load-bearing for operator workflows.
-
-                * family — services with per-user state inside the app
-                  (Jellyfin watch progress, Immich photos, Jellyseerr
-                  request history, Open WebUI chat, Vaultwarden vaults,
-                  Navidrome playlists). Native OIDC propagates the
-                  user identity into the app — that's the value-add.
-                  Where native OIDC isn't clean (Komga, calibre-web),
-                  forward-auth gates browser access at Caddy.
-
-                * public — intentionally open dashboards (home/Glance)
-                  and the SSO portal itself (auth/Authelia). Tailnet
-                  trust is the only gate; auth inside these would
-                  defeat their purpose. Gatus is the operator-only
-                  diagnostic surface at uptime/; the public status/
-                  hostname is owned independently at the edge.
-
-              Enforced (eval-time assertion below): audience=family
-              requires either an `oidc` or `forwardAuth` block, or
-              an explicit `noAuthReason` string naming why neither
-              fits.
-            '';
-          };
-          noAuthReason = mkOption {
-            type = types.nullOr types.str;
-            default = null;
-            example = "CalDAV clients can't follow forward-auth redirects";
-            description = ''
-              Set to a one-line reason when audience=family but neither
-              `oidc` nor `forwardAuth` applies. Forces the operator to
-              name why; forces future readers to see it. Empty string
-              is invalid — set it or set one of the auth blocks.
-
-              Legitimate today:
-                * radicale  — CalDAV/CardDAV clients can't follow
-                              forward-auth redirects (htpasswd-only)
-                * jellyfin  — mobile/TV clients bypass cookie-based
-                              forward-auth; native SSO plugin has
-                              sharp historical edges
-            '';
-          };
-          monitor = mkOption {
-            default = null;
-            description = ''
-              If set, auto-generate a Gatus endpoint probing the route's
-              backend directly (bypasses Caddy, tests just the service).
-              Set to `{ }` to use defaults; override `path` for non-/
-              health endpoints (e.g. ollama needs /api/tags).
-            '';
-            type = types.nullOr (
-              types.submodule {
-                options = {
-                  path = mkOption {
-                    type = types.str;
-                    default = "/";
-                    description = "Path appended to the backend URL for the probe.";
-                  };
-                  interval = mkOption {
-                    type = types.str;
-                    default = "60s";
-                    description = ''
-                      How often Gatus runs the probe. systemd-style
-                      duration string (`60s`, `5m`, `1h`).
-                    '';
-                  };
-                  failureThreshold = mkOption {
-                    type = types.int;
-                    default = 3;
-                    description = ''
-                      Consecutive failed probes before Gatus fires an
-                      alert. 3 absorbs transient blips without delaying
-                      a real outage long.
-                    '';
-                  };
-                  conditions = mkOption {
-                    type = types.listOf types.str;
-                    default = [ "[STATUS] == 200" ];
-                    description = ''
-                      Gatus condition expressions (see
-                      <https://gatus.io/docs/conditions>). Each must
-                      hold for the probe to pass. Default checks HTTP
-                      status; override for richer probes (header
-                      match, body regex, response time).
-                    '';
-                  };
-                };
-              }
-            );
-          };
-          publicStatus = mkOption {
-            type = types.bool;
-            default = false;
-            description = ''
-              Explicitly publish this route as a component on the external
-              status page. This is a disclosure grant, not a network exposure
-              mechanism. Published routes must be non-operator and monitored.
-            '';
-          };
-          dashboard = mkOption {
-            default = null;
-            description = ''
-              If set, this route appears on the Glance dashboard
-              (`https://home.<domain>`) — both as an uptime-monitor dot
-              and as a grouped bookmark. The URL is derived from the
-              route name and canonical domain; only metadata
-              lives here. Glance consumes the whole nori.lanRoutes
-              attrset and renders entries with `dashboard != null`.
-
-              Routes that should NOT appear on the dashboard (e.g.
-              cross-host backend lanRoutes whose canonical entry-point
-              lives elsewhere, or services intentionally hidden from
-              the family-facing landing page) leave `dashboard = null`.
-            '';
-            type = types.nullOr (
-              types.submodule {
-                options = {
-                  title = mkOption {
-                    type = types.str;
-                    description = ''
-                      Brand / display name shown on the dashboard
-                      (e.g. "Jellyfin"). The route name is appended
-                      as a parenthetical for the monitor widget —
-                      "Jellyfin (media)".
-                    '';
-                  };
-                  icon = mkOption {
-                    type = types.str;
-                    description = ''
-                      Glance icon spec. Two prefixes:
-                        si:<slug>  Simple Icons (most brand logos)
-                        sh:<slug>  selfh.st icons (homelab brands
-                                   that Simple Icons doesn't carry —
-                                   Calibre-web, Komga, Beszel, …)
-                    '';
-                  };
-                  group = mkOption {
-                    type = types.enum [
-                      "Consume"
-                      "Acquire"
-                      "Personal"
-                      "Projects"
-                      "Admin"
-                    ];
-                    description = ''
-                      Bookmark group. Order on the dashboard follows
-                      the enum order, not declaration order — Consume
-                      first (most-clicked), Admin last.
-                    '';
-                  };
-                  description = mkOption {
-                    type = types.str;
-                    description = ''
-                      One-line blurb shown beneath the bookmark.
-                      Function-oriented ("Movies, shows, music —
-                      server-rendered"), not feature-list.
-                    '';
-                  };
-                  allowInsecure = mkOption {
-                    type = types.bool;
-                    default = false;
-                    description = ''
-                      Pass through to Glance's monitor `allow-insecure`
-                      flag. Needed for routes whose backend cert isn't
-                      trusted by Glance's HTTP client (e.g. Syncthing's
-                      WebUI redirect through Caddy's internal CA).
-                    '';
-                  };
-                };
-              }
-            );
-          };
-          forwardAuth = mkOption {
-            default = null;
-            description = ''
-              If set, gate this route via Authelia forward-auth at the
-              Caddy layer. Caddy asks Authelia's `/api/verify` whether
-              the request's session cookie is valid before forwarding;
-              if not, Authelia issues a 302 to the portal. The session
-              cookie at the canonical domain covers every forward-auth'd route —
-              log in once at `https://auth.<domain>`, navigate to any
-              gated service without re-auth.
-
-              Used for services that don't have native OIDC client
-              support (the *arr stack, qBittorrent). Trade vs `oidc`:
-                * `oidc`         — per-user identity inside the app;
-                                    requires the app to support OIDC.
-                * `forwardAuth`  — uniform Authelia gate at Caddy; the
-                                    app sees only the proxy, no per-user
-                                    identity propagated. Works for any
-                                    HTTP service.
-
-              `exemptPaths` lets app-to-app API calls (Sonarr → Prowlarr,
-              Bazarr → Sonarr) bypass the auth check — those flows use
-              the app's own API key, not the user session, and would
-              break under cookie-based forward-auth.
-
-              Authelia uptime becomes load-bearing: an Authelia outage
-              returns 502 for every forward-auth'd route. SSH-tunnel to
-              the backend port directly as the recovery escape hatch.
-              See services/authelia/nixos.nix for the upstream.
-            '';
-            type = types.nullOr (
-              types.submodule {
-                options = {
-                  exemptPaths = mkOption {
-                    type = types.listOf types.str;
-                    default = [ "/api/*" ];
-                    description = ''
-                      Path globs that bypass forward-auth. Format is
-                      Caddy path-matcher syntax (`/api/*`, `/api/v3/*`,
-                      etc.). Default `/api/*` covers the *arr stack and
-                      most other apps that namespace their API.
-                      Override per-service when the API path is
-                      non-standard.
-                    '';
-                  };
-                };
-              }
-            );
-          };
-          oidc = mkOption {
-            default = null;
-            description = ''
-              If set, this route gets:
-                * an Authelia OIDC client entry (assembled by
-                  services/authelia/nixos.nix from this declaration)
-                * a sops secret named `oidc-<name>-client-secret`
-                * a sops env-file template named `oidc-<name>-env`
-                  containing `<secretEnvName>=<raw>`, ready to wire as
-                  systemd EnvironmentFile in the consuming module.
-
-              Set to `null` (default) for routes that don't use SSO.
-              Mutually exclusive in practice with `forwardAuth` —
-              prefer `oidc` when the app supports it (per-user
-              identity), `forwardAuth` otherwise.
-            '';
-            type = types.nullOr (
-              types.submodule {
-                options = {
-                  clientName = mkOption {
-                    type = types.str;
-                    description = "Display name shown on Authelia consent screen.";
-                  };
-                  redirectPath = mkOption {
-                    type = types.str;
-                    description = ''
-                      Path appended to `https://<name>.<domain>` to form
-                      the OIDC redirect URI. Service-specific:
-                        Open WebUI:  /oauth/oidc/callback
-                        PocketBase:  /api/oauth2-redirect
-                        Vaultwarden: /identity/connect/oidc-signin
-                    '';
-                  };
-                  tokenEndpointAuthMethod = mkOption {
-                    type = types.enum [
-                      "client_secret_basic"
-                      "client_secret_post"
-                    ];
-                    description = "OAuth 2.0 token endpoint authentication method required by the client.";
-                  };
-                  scopes = mkOption {
-                    type = types.listOf types.str;
-                    default = [
-                      "openid"
-                      "profile"
-                      "email"
-                      "groups"
-                    ];
-                    description = ''
-                      OIDC scopes the client may request. Add
-                      `offline_access` for services that need refresh
-                      tokens (e.g. Vaultwarden).
-                    '';
-                  };
-                  authorizationPolicy = mkOption {
-                    type = types.str;
-                    default = "one_factor";
-                    description = "Authelia access-control policy: `one_factor`, `two_factor`, or a custom-named policy.";
-                  };
-                  secretEnvName = mkOption {
-                    type = types.str;
-                    default = "OAUTH_CLIENT_SECRET";
-                    description = ''
-                      Env-var name written to the generated env file.
-                      Defaults to OAUTH_CLIENT_SECRET (Open WebUI's
-                      convention). Override per service:
-                        Vaultwarden: SSO_CLIENT_SECRET
-                        Some others: OPENID_CLIENT_SECRET / OIDC_CLIENT_SECRET
-                    '';
-                  };
-                };
-              }
-            );
-          };
-        };
-      }
-    );
-  };
-
-  config = mkIf (config.nori.lanRoutes != { }) (
+  config = mkIf (config.nori.inventory.routes != { }) (
     let
-      routes = config.nori.lanRoutes;
+      routes = config.nori.inventory.routes;
       ports = lib.mapAttrsToList (_: r: r.port) routes;
       names = lib.attrNames routes;
       oidcRoutes = filterAttrs (_: r: r.oidc != null) routes;
       localOidcRoutes = filterAttrs (
-        _: r: r.oidc != null && r.runsOn == config.networking.hostName
+        _: r: r.oidc != null && r.host == config.nori.inventory.currentHost
       ) routes;
       forwardAuthRoutes = filterAttrs (_: r: r.forwardAuth != null) routes;
       internetIdentityRoutes = filterAttrs (
         _: r: r.reachability == "internet" && (r.oidc != null || r.forwardAuth != null)
       ) routes;
-
-      /*
-        Resolve a route's backend host. `runsOn` (the placement field)
-        wins when set: 127.0.0.1 if the route runs on the evaluating
-        host, the runsOn host's tailnet IP otherwise.
-      */
-      myHost = config.networking.hostName;
+      myHost = config.nori.inventory.currentHost;
       routeHost =
-        cfg: if cfg.runsOn == myHost then "127.0.0.1" else config.nori.hosts.${cfg.runsOn}.tailnetIp;
+        cfg:
+        if cfg.host == myHost then "127.0.0.1" else config.nori.inventory.hosts.${cfg.host}.tailnetIp;
       autheliaEnabled =
         config.services.authelia.instances != { }
         && lib.any (i: i.enable) (lib.attrValues config.services.authelia.instances);
@@ -688,139 +251,44 @@ in
       assertions = [
         {
           assertion = lib.length ports == lib.length (lib.unique ports);
-          message = ''
-            nori.lanRoutes have duplicate backend ports. Each route's
-            `port` must be unique — Caddy can't reverse-proxy two
-            services to the same backend port. Routes:
-              ${lib.concatMapStringsSep ", " (n: "${n}=${toString routes.${n}.port}") names}
-          '';
+          message = "nori.inventory.routes have duplicate backend ports.";
         }
         {
-          assertion = lib.all (n: builtins.hasAttr routes.${n}.runsOn config.nori.hosts) names;
-          message =
-            let
-              unknown = lib.filter (n: !(builtins.hasAttr routes.${n}.runsOn config.nori.hosts)) names;
-            in
-            ''
-              nori.lanRoutes.<n>.runsOn must reference a host declared
-              in nori.hosts (the placement registry). Caught at eval
-              instead of as an opaque `attribute '<typo>' missing`
-              error when caddy/dashboards walk the route at build time.
-
-              Offending routes: ${
-                lib.concatStringsSep ", " (map (n: "${n} (runsOn=${routes.${n}.runsOn})") unknown)
-              }
-              Known hosts: ${lib.concatStringsSep ", " (lib.attrNames config.nori.hosts)}
-            '';
+          assertion = lib.all (n: builtins.hasAttr routes.${n}.host config.nori.inventory.hosts) names;
+          message = "nori.inventory.routes reference an unknown backend host.";
         }
         {
           assertion = lib.all (n: builtins.match "[a-z][a-z0-9-]*" n != null) names;
-          message = ''
-            nori.lanRoutes names must be DNS-safe: lowercase, must
-            start with a letter, only [a-z0-9-] thereafter. Got: ${lib.concatStringsSep ", " names}
-          '';
+          message = "nori.inventory.routes names must be DNS-safe.";
         }
         {
           assertion = lib.all (r: lib.hasPrefix "/" r.oidc.redirectPath) (lib.attrValues oidcRoutes);
-          message = ''
-            Every nori.lanRoutes.<n>.oidc.redirectPath must start
-            with "/" — it's appended to `https://<n>.<domain>` to form
-            the OIDC redirect URI.
-          '';
+          message = "nori.inventory.routes OIDC redirect paths must begin with '/'.";
         }
         {
           assertion = !caddyEnabledHere || forwardAuthRoutes == { } || autheliaEnabled;
-          message = ''
-            nori.lanRoutes with `forwardAuth` set require Authelia to be
-            running on the same host (Caddy hits 127.0.0.1:9091 for the
-            auth check). Routes with forwardAuth: ${lib.concatStringsSep ", " (lib.attrNames forwardAuthRoutes)}.
-
-            Either drop the forwardAuth blocks, or import
-            services/authelia/nixos.nix on this host.
-          '';
+          message = "nori.inventory.routes with forwardAuth require local Authelia when Caddy is enabled.";
         }
         {
           assertion = lib.all (r: !(r.oidc != null && r.forwardAuth != null)) (lib.attrValues routes);
-          message = ''
-            nori.lanRoutes.<n> sets BOTH `oidc` and `forwardAuth`.
-            These are mutually exclusive — `oidc` lets the app handle
-            login per-user; `forwardAuth` gates the route at Caddy with
-            no app-side awareness. Pick one. Conflicting routes:
-              ${lib.concatStringsSep ", " (
-                lib.attrNames (lib.filterAttrs (_: r: r.oidc != null && r.forwardAuth != null) routes)
-              )}
-          '';
+          message = "nori.inventory.routes cannot set both oidc and forwardAuth.";
         }
         {
           assertion = lib.all (r: !r.publicStatus || (r.monitor != null && r.audience != "operator")) (
             lib.attrValues routes
           );
-          message = ''
-            nori.lanRoutes.<n> with publicStatus=true must be monitored and
-            must not use audience="operator". Public status publication is an
-            explicit disclosure boundary.
-
-            Offending routes:
-              ${lib.concatStringsSep ", " (
-                lib.attrNames (
-                  lib.filterAttrs (_: r: r.publicStatus && (r.monitor == null || r.audience == "operator")) routes
-                )
-              )}
-          '';
+          message = "Public status routes must be monitored and non-operator.";
         }
         {
           assertion = lib.all (r: r.reachability != "internet" || r.audience != "operator") (
             lib.attrValues routes
           );
-          message = ''
-            nori.lanRoutes.<n> with reachability="internet" cannot use
-            audience="operator". Internet reachability is reserved for
-            explicitly selected family/account-gated or intentionally
-            anonymous public services. Keep management UIs internal.
-
-            Offending routes:
-              ${lib.concatStringsSep ", " (
-                lib.attrNames (
-                  lib.filterAttrs (_: r: r.reachability == "internet" && r.audience == "operator") routes
-                )
-              )}
-          '';
+          message = "Internet routes cannot use the operator audience.";
         }
         {
           assertion =
             internetIdentityRoutes == { } || (routes ? auth && routes.auth.reachability == "internet");
-          message = ''
-            Internet-reachable OIDC/forward-auth routes require the auth
-            route itself to use reachability="internet"; otherwise browser
-            redirects and OIDC discovery leave the public network and fail.
-            Either expose auth deliberately or use the application's native
-            account model for the internet route.
-
-            Routes requiring public auth:
-              ${lib.concatStringsSep ", " (lib.attrNames internetIdentityRoutes)}
-          '';
-        }
-        {
-          assertion = lib.all (
-            r: r.audience != "family" || r.oidc != null || r.forwardAuth != null || r.noAuthReason != null
-          ) (lib.attrValues routes);
-          message = ''
-            nori.lanRoutes.<n> with audience="family" carries per-user
-            state and needs identity beyond tailnet membership. Set one of:
-              * oidc = { ... }        (preferred — per-user identity in-app)
-              * forwardAuth = { ... } (Caddy-gate when the app can't OIDC)
-              * noAuthReason = "..."  (legitimate exception; document why)
-            …or downgrade audience to "operator" if tailnet auth suffices.
-
-            Routes missing all three:
-              ${lib.concatStringsSep ", " (
-                lib.attrNames (
-                  lib.filterAttrs (
-                    _: r: r.audience == "family" && r.oidc == null && r.forwardAuth == null && r.noAuthReason == null
-                  ) routes
-                )
-              )}
-          '';
+          message = "Internet routes using identity require an internet-reachable auth route.";
         }
       ];
 
@@ -837,7 +305,6 @@ in
       */
       services.caddy.virtualHosts."*.${config.nori.domain}".extraConfig =
         let
-          routes = config.nori.lanRoutes;
           # Per-route handle block: `@<name>` combines the hostname with
           # the declared reachability boundary. forwardAuth is per-route,
           # so its block lives inside the handle.
@@ -855,7 +322,7 @@ in
               backend = "reverse_proxy ${cfg.scheme}://${routeHost cfg}:${toString cfg.port}${headerBlock}";
               faBlock = lib.optionalString (cfg.forwardAuth != null) ''
                 @${name}AuthNeeded {
-                  host ${name}.${config.nori.domain}
+                  host ${cfg.hostname}
                   not path ${lib.concatStringsSep " " cfg.forwardAuth.exemptPaths}
                 }
                 forward_auth @${name}AuthNeeded http://127.0.0.1:9091 {
@@ -895,8 +362,8 @@ in
       services.blocky.settings.customDNS.mapping =
         # Primary mapping — every route name under the canonical domain.
         (mapAttrs' (
-          name: _: nameValuePair "${name}.${config.nori.domain}" config.nori.lanIp
-        ) config.nori.lanRoutes)
+          _name: cfg: nameValuePair cfg.hostname config.nori.lanIp
+        ) routes)
         /*
           Transitional mapping — keep `*.nori.lan` resolving so old
           bookmarks land at Caddy's redirect vhost (in caddy.nix), which
@@ -907,7 +374,7 @@ in
         // lib.foldl' (
           aliases: domain:
           aliases
-          // mapAttrs' (name: _: nameValuePair "${name}.${domain}" config.nori.lanIp) config.nori.lanRoutes
+          // mapAttrs' (name: _: nameValuePair "${name}.${domain}" config.nori.lanIp) routes
         ) { } site.deprecatedDomains;
 
       /*
@@ -921,7 +388,7 @@ in
       */
       networking.firewall.interfaces."tailscale0".allowedTCPPorts = lib.flatten (
         lib.mapAttrsToList (_: cfg: lib.optional cfg.exposeOnTailnet cfg.port) (
-          lib.filterAttrs (_: cfg: cfg.runsOn == config.networking.hostName) config.nori.lanRoutes
+          lib.filterAttrs (_: cfg: cfg.host == config.nori.inventory.currentHost) routes
         )
       );
 
@@ -935,6 +402,7 @@ in
           inherit name;
           url = "${cfg.scheme}://${routeHost cfg}:${toString cfg.port}${cfg.monitor.path}";
           inherit (cfg.monitor) interval conditions;
+          headers = cfg.monitor.headers;
           alerts = [
             {
               type = "ntfy";
@@ -942,7 +410,7 @@ in
               send-on-resolved = true;
             }
           ];
-        }) (filterAttrs (_: cfg: cfg.monitor != null) config.nori.lanRoutes)
+        }) (filterAttrs (_: cfg: cfg.monitor != null) routes)
       );
 
       /**
