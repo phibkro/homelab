@@ -748,12 +748,10 @@
 
 # === e2e nixosTest helpers (per docs/reference/testing-methodology.md) ===
 
-# Open the nixosTest driver interactively — boot the VM ONCE, iterate
-# on testScript fragments without rebuilding. The big iteration-loop
-# win for layer 2 (nixosTest) work. Default to the reusable entry-plane
-# module contract; pass a
-# different test name to open another driver.
-@e2e-shell test="e2e-entry-plane-modules":
+# Open a named nixosTest driver interactively. Boot the VM once, then iterate
+# on testScript fragments without rebuilding. Give the registered check name
+# explicitly.
+@e2e-shell test:
     nix run .#checks.x86_64-linux.{{test}}.driverInteractive
 
 # Run all layer-1 eval tests — sub-second checks of schema +

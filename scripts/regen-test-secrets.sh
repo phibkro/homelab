@@ -99,10 +99,7 @@ RESTIC_PASS="$(openssl rand -hex 16)"
 # restic; the secret just needs to satisfy sops-install-secrets's
 # manifest check. Use a real ed25519 key to keep the shape honest.
 RESTIC_SSH_KEY="$(ssh-keygen -t ed25519 -N '' -q -f /tmp/_test_restic_key -C 'test-only' && cat /tmp/_test_restic_key && rm -f /tmp/_test_restic_key /tmp/_test_restic_key.pub)"
-# Caddy's cloudflare-acme-token — test value (cf API never dialed in
-# the VM since caddy uses local_certs there). The key MUST exist
-# because services/caddy/nixos.nix declares the sops secret
-# whenever the Caddy workload runtime is selected.
+# Cloudflare ACME test token. This test value never dials the Cloudflare API.
 CF_ACME_TOKEN="test-cloudflare-token-not-real"
 # gatus-env: sourced as a systemd EnvironmentFile by the gatus service.
 # Must parse as KEY=VALUE lines (a `#` comment line is also valid empty

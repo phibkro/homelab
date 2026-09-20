@@ -81,12 +81,9 @@ let
             repository = "sftp:stub@stub:/stub";
             description = "test";
           };
-          # Real sops, test recipient — same wiring as the nixosTest
-          # by the reusable module test at tests/e2e-pi-smoke.nix. The age key
-          # path is a literal
-          # string (not a nix-store path) because sops-nix refuses
-          # store-path keyFiles. At eval time the file doesn't need to
-          # exist — only at activation, which this layer never runs.
+          # Real sops, test recipient. The age key path is a literal string,
+          # not a Nix store path. sops-nix refuses store-path key files. The
+          # file need not exist during evaluation. It must exist at activation.
           sops.age.keyFile = "/etc/sops-test-age.txt";
           sops.age.sshKeyPaths = lib.mkForce [ ];
           sops.defaultSopsFile = ../secrets/test.yaml;

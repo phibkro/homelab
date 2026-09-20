@@ -9,7 +9,6 @@
       max = 1;
     };
   };
-  runtimeModule = ./nixos.nix;
   tags = [
     "network-appliance"
     "stateful"

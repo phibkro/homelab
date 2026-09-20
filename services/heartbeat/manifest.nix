@@ -9,6 +9,5 @@
       max = 1;
     };
   };
-  runtimeModule = ./nixos.nix;
   tags = [ "observability" ];
 }
