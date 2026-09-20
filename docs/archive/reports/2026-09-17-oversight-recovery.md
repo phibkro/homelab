@@ -63,7 +63,9 @@ The operator authorized deployment to every target and publication of the verifi
 - `just pi::plan` completed with `ok=182`, `changed=0`, `unreachable=0`, and `failed=0`. All declared Pi containers were running. The LAN Beszel and Gatus health endpoints responded.
 - Old failed notification-unit records were cleared only after the hourly backup-freshness unit showed repeated successful runs. The Pi then reported no failed units.
 - The public status HTML and JSON returned HTTP 200. A browser rendered Navidrome, Jellyfin, and Seerr. Their state remains `unknown` because no scheduled probe result exists.
-- The current Adelie closure built successfully. Adelie was not activated: its Tailscale peer remained offline, inventory declares no LAN address, and `192.168.1.140` is the workstation's local Wi-Fi address rather than Adelie.
+- Adelie was initially unreachable. After restoring its Ethernet connection and completing a clean boot, Tailscale established a direct path through `192.168.1.122`.
+- `just push adelie` activated `/nix/store/mn1kv6azsx7phbgzq7k9p7gz19il4jgr-nixos-system-adelie-26.11.20260910.8ce4ef6`.
+- Adelie reported `running` with no failed units. SSH, Tailscale, Beszel agent, Vector, and node exporter were active. The node-exporter and Vector metrics endpoints responded, and the Beszel listener accepted a Tailscale connection.
 - The source tree was clean after the deployment repairs. Publication had not yet run when this update was recorded.
 
 Cleanup removed temporary playbooks, inventory output, the bootstrap smoke container, and the upstream research clone.
@@ -75,7 +77,7 @@ Unmerged or dirty worktrees remain preserved. Compare each branch with current `
 
 | Priority | Outcome | Present state | Next action |
 |---:|---|---|---|
-| 1 | Pi recovery and observability | Pi backups are fresh. One restore path passed. Core Pi observability services are healthy. Beszel monitors Pi and workstation. Adelie is powered on, but its monitoring path is not connected. | Restore Adelie's Tailscale path before an operator-authorized activation. Treat reboot, off-LAN operation, and wider application restore tests as separate acceptance work. |
+| 1 | Pi recovery and observability | Pi backups are fresh. One restore path passed. Core Pi observability services are healthy. Workstation and Adelie monitoring agents are active and reachable. | The all-target deployment condition is satisfied. Treat reboot, off-LAN operation, and wider application restore tests as separate acceptance work. |
 | 2 | Observer and history repair | Several clean but divergent observer, revert, timer, and mixed-history worktrees remain. | Choose the desired observer behavior. Review one exact candidate before history repair or integration. |
 | 3 | Older settings and topology lines | Their reconciled outcomes are on `main`, but predecessor branches are not Git ancestors of `main`. | Compare content with current `main`. Remove a branch only when it is clean and fully superseded. |
 | 4 | Standalone fixes | Backup-list, chatlog, format-drift, and multi-host verification branches remain unmerged. | Review each branch as its own outcome. Integrate or retire it from direct evidence. |
