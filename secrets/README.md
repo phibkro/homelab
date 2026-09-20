@@ -1,166 +1,161 @@
 # Secrets
 
-This directory holds **encrypted** secrets that ship in the repo. The
-unencrypted plaintext never leaves your local sops session.
+This directory contains encrypted production values. Plaintext must stay inside
+SOPS, SecretSpec, or the final authorized process.
 
-## Files in this directory
+## Authority domains
 
-| File | What | Committed? |
+| File | Authority | Recipients |
 |---|---|---|
-| `secrets.yaml` | Homelab service secrets (Authelia, Vaultwarden, OIDC client hashes, restic password, …) | yes (encrypted on disk) |
-| `apps.yaml` | Self-deployed personal-app secrets (TMDB tokens, Payload secrets, app database passwords) — separate file so app-key rotation doesn't churn `secrets.yaml`'s blame history, and so a future co-developer could be granted decrypt access to apps without exposing homelab plumbing | yes (encrypted on disk) |
-| `README.md` | this file | yes |
+| `network.yaml` | Shared Akkar Wi-Fi credential | Mac, workstation user, workstation host, Adelie host |
+| `workstation-runtime.yaml` | Values materialized for workstation services | Mac, workstation user, workstation host |
+| `operator-tools.yaml` | Interactive infrastructure-control credentials | Mac, workstation user |
 
-`.sops.yaml` lives at the repo root and declares which age public keys
-can decrypt which files. The current `path_regex: secrets/.*\.yaml$`
-covers any new file under this directory automatically — to add a new
-secrets file, just `sops secrets/<name>.yaml` and start adding keys.
+`.sops.yaml` has one explicit creation rule for each file. There is no
+production catch-all rule. A new encrypted file requires a new explicit rule.
 
-## Per-secret file routing
-
-`infra/common/nixos/sops.nix` sets `sops.defaultSopsFile =
-../../secrets/secrets.yaml`, so secrets without an explicit
-`sopsFile` declaration read from there. To route a secret at a
-different file, override per-secret:
-
-```nix
-sops.secrets.tmdb-token = {
-  sopsFile = ../../secrets/apps.yaml;
-  owner = "filmder";
-  mode = "0400";
-};
-```
-
-Naming convention for `apps.yaml` keys: prefer **service-agnostic** names
-(`tmdb-token`, not `filmder-tmdb-token`) when multiple projects could
-plausibly consume the same secret. Use a project prefix only when the
-secret is genuinely scoped to one project (`heim-payload-secret`,
-`heim-revalidate-secret` — those mean nothing outside Payload CMS).
-
-Convention:
-- **Homelab service secrets** (used by `services/<service>/nixos.nix` to run the service itself) → `secrets.yaml` (default file, no override needed).
-- **Self-deployed app secrets** (used by personal projects: filmder, heim, drinks, finnbydel) → `apps.yaml` (override `sopsFile` per declaration).
+SOPS access applies to the complete file. A per-secret `sopsFile` declaration
+selects a source for sops-nix, but it does not restrict file decryption.
 
 ## SecretSpec
 
-`secretspec.toml` declares credentials for operator tools. It stores no secret
-values. Its `workstation` profile maps `EXA_API_KEY` to the encrypted
-`exa-api-key` root key in `secrets/secrets.yaml`.
+The root `secretspec.toml` is the operator interface for these files. It stores
+no values. Provider aliases route each name to its authoritative SOPS file.
 
-Run this command from the repository root to set or rotate the Exa key:
+Use a masked SecretSpec prompt to set or rotate a value:
 
 ```bash
-secretspec -f secretspec.toml set --profile workstation EXA_API_KEY
+secretspec set --profile workstation EXA_API_KEY
+secretspec set --profile wifi AKKAR_WPA_PSK
 ```
 
-SecretSpec asks for the value in a masked prompt. It sends the value to SOPS,
-which updates only the encrypted file.
+Do not pass the value as the final command argument. A command argument enters
+shell history and can be visible in the process list.
 
-## One-time bootstrap (do this once per editor machine)
+Cloudflare commands use SecretSpec scopes. Each scope injects only the values
+used by that Alchemy stack. `secretspec run --scope` also removes excluded
+manifest names inherited from the parent environment.
 
-On the Mac (or any machine that should be able to edit secrets):
+The Pi uses `infra/pi/secretspec.toml`. Its Keyring and environment providers
+remain separate from these SOPS files:
 
 ```bash
-# 1. Install tools (ssh-to-age isn't in homebrew core, but we don't
-#    need it locally — see "host enrollment" below.)
-brew install age sops
+cd infra/pi
+devenv shell -- secretspec check --profile production
+```
 
-# 2. Generate your personal age keypair
-mkdir -p ~/.config/sops/age && chmod 700 ~/.config/sops/age
+The Pi `deployment` scope excludes the Tailscale enrollment key. The
+`enrollment` scope includes only that key.
+
+The Pi provider is the only authority for its Caddy ACME and DDNS tokens.
+Workstation SOPS must not copy those values. If a NixOS host selects the Caddy
+or DDNS runtime adapter, its composition must supply that host's SOPS source.
+
+## NixOS routing
+
+`infra/common/nixos/sops.nix` sets `workstation-runtime.yaml` as the default
+source. A shared or host-specific value must declare its file explicitly.
+
+The Wi-Fi module uses:
+
+```nix
+sops.secrets.wifi-akkar-psk.sopsFile =
+  inputs.self + "/secrets/network.yaml";
+```
+
+After activation, sops-nix writes each selected value under `/run/secrets`.
+The consuming declaration must set the narrow owner, group, and mode.
+
+## OIDC client rotation
+
+Raw OIDC client values belong to the workstation client. PBKDF2 verifier hashes
+belong to the Pi identity provider. Do not store both in one recipient domain.
+
+For an existing client such as `news`:
+
+1. Generate a random raw value in the operator password manager.
+2. Store it through the workstation SecretSpec profile:
+
+   ```bash
+   secretspec set --profile workstation OIDC_NEWS_CLIENT_SECRET
+   ```
+
+3. Generate the verifier through Authelia's masked terminal prompt:
+
+   ```bash
+   nix shell nixpkgs#authelia --command \
+     authelia crypto hash generate pbkdf2 \
+       --variant sha512 \
+       --iterations 310000
+   ```
+
+4. Store the displayed verifier through the Pi SecretSpec profile:
+
+   ```bash
+   cd infra/pi
+   devenv shell -- secretspec set \
+     --profile production \
+     OIDC_NEWS_CLIENT_SECRET_HASH
+   ```
+
+5. Run the scoped checks and deployment plan before activation.
+
+The raw value must not enter command arguments, terminal output, temporary
+plaintext files, or Git.
+
+## Editor enrollment
+
+Create a personal age identity on an authorized administration machine:
+
+```bash
+mkdir -p ~/.config/sops/age
+chmod 700 ~/.config/sops/age
 age-keygen -o ~/.config/sops/age/keys.txt
 chmod 600 ~/.config/sops/age/keys.txt
-
-# Note the public key — the line in keys.txt that starts with
-#   # public key: age1...
 ```
 
-## One-time host enrollment (per host that needs to decrypt secrets)
+Back up the private identity in the approved password manager. Add only its
+public `age1...` recipient to the required `.sops.yaml` rules.
 
-Each host decrypts using its **SSH Ed25519 host key**, derived to age form
-by sops-nix at activation time. Read the public host key at the physical
-console or through an existing independently pinned SSH session. Record and
-compare its fingerprint out of band before enrollment.
+## Host enrollment
+
+Each NixOS host derives an age identity from its SSH Ed25519 host key. Observe
+and compare the SSH fingerprint through an independently trusted channel.
 
 ```bash
-# Run on the independently verified NixOS host.
 ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
 cat /etc/ssh/ssh_host_ed25519_key.pub \
   | nix shell nixpkgs#ssh-to-age --command ssh-to-age
 ```
 
-`ssh-keyscan` can collect a candidate public key. It does not authenticate the
-host and must not authorize SSH trust or a SOPS recipient.
+`ssh-keyscan` can collect a candidate key. It cannot establish host identity.
 
-Add the resulting `age1...` recipient only to the narrow `.sops.yaml`
-creation rule for files that the host must decrypt. Do not add a minimal host
-to the complete fleet or application secret corpus. Then update only those
-files:
+Add the verified age recipient only to files the host must decrypt. Then update
+those files:
 
 ```bash
-sops updatekeys secrets/<host-or-domain>.yaml
+sops updatekeys secrets/<domain>.yaml
 ```
 
-Inspect recipient metadata before committing. Removing a recipient from current
-ciphertext does not revoke access to historical Git ciphertext. Rotate affected
-credentials when the former recipient's private key was exposed or its access
-was not authorized.
+Removing a recipient from current ciphertext does not revoke historical Git
+access. Rotate affected credentials if prior access was unauthorized or the
+private key was compromised.
 
-## Initial setup of secrets.yaml
+## Safe ciphertext migration
 
-After the placeholders in `.sops.yaml` are filled in:
+Move one value through an anonymous pipe:
 
 ```bash
-sops secrets/secrets.yaml
-# Editor opens with a fresh empty doc.
-# Add at least one entry, e.g.:
-#   placeholder: ok
-# Save and quit. sops encrypts in place.
-git add .sops.yaml secrets/secrets.yaml
-git commit -m "feat(secrets): bootstrap sops with age-encrypted secrets.yaml"
+sops decrypt --extract '["source-key"]' secrets/source.yaml \
+  | jq -Rs 'rtrimstr("\n")' \
+  | sops set --value-stdin secrets/target.yaml '["target-key"]'
 ```
 
-## Day-to-day usage
+Verify the destination before you remove the source. Never put plaintext in a
+shell variable, command substitution, clipboard, temporary file, or transcript.
 
-```bash
-# Edit secrets (decrypts in $EDITOR, re-encrypts on save):
-sops secrets/secrets.yaml
+## Recovery
 
-# Add a new entry: just add a key under the YAML root.
-# Reference it from a NixOS module:
-#
-#   sops.secrets.restic-password = {
-#     sopsFile = ../../secrets/secrets.yaml;
-#     owner = "root";
-#     mode = "0400";
-#   };
-#
-#   services.restic.backups.foo.passwordFile =
-#     config.sops.secrets.restic-password.path;
-```
-
-After a rebuild, the secret materializes at `/run/secrets/<name>` on
-the host with the declared owner / mode.
-
-## Agent-access boundary
-
-This repo's coding agent (Claude) writes the unencrypted *wiring*:
-`infra/common/nixos/sops.nix`, `.sops.yaml`, this README, and `sops.secrets.X`
-declarations inside service modules. The agent **must not have access
-to your age private key** (`~/.config/sops/age/keys.txt`); without it,
-encrypted secrets are gibberish to anything other than you and the
-hosts listed as recipients.
-
-Practically: don't paste the key into any chat/transcript and don't
-commit it. The repo's `.gitignore` already excludes `~/.config/`-style
-paths by virtue of being repo-relative, so the only failure mode is
-accidental copy-paste.
-
-## Recovery: lost age private key
-
-If the Mac dies and you don't have the age private key backed up
-elsewhere (1Password / hardware token / second machine), you can still
-recover via any *other* enrolled recipient — e.g., decrypt on
-workstation with its SSH host key, edit, and re-encrypt to a fresh
-Mac age key. Or: re-create the secret values entirely (most are
-recoverable from the upstream service: regenerate restic password,
-re-issue tokens, etc.).
+If an editor identity is lost, recover through another enrolled recipient.
+Decrypt from that trusted machine and re-encrypt to a new verified recipient.
+If no trusted recipient remains, rotate the upstream credentials.

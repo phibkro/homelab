@@ -32,7 +32,6 @@
     enable = true;
     interface = "wlp5s0";
   };
-  sops.secrets.wifi-akkar-psk.sopsFile = inputs.self + "/secrets/adelie.yaml";
 
   # Prefer the local entry-plane DNS while DHCP still advertises the router.
   networking.nameservers = [

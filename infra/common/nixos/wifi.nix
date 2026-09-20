@@ -1,5 +1,6 @@
 {
   config,
+  inputs,
   lib,
   ...
 }:
@@ -23,7 +24,7 @@ in
       wpa_supplicant configuration carries an external reference, so the
       passphrase cannot enter a world-readable Nix store path.
     */
-    sops.secrets.wifi-akkar-psk = { };
+    sops.secrets.wifi-akkar-psk.sopsFile = inputs.self + "/secrets/network.yaml";
     sops.templates."wireless-Akkar.conf" = {
       # NixOS runs wpa_supplicant as this dedicated, sandboxed account. It is
       # the sole reader of the runtime file; root retains administrative access.

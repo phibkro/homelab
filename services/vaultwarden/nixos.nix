@@ -11,15 +11,12 @@
     fork is no longer required.
 
     === Bootstrap ===
-      1. just generate-oidc-key vault   → outputs raw + PBKDF2 hash
-      2. sops secrets/secrets.yaml → add as block-scalar:
-           oidc-vault-client-secret: '<raw>'
-           oidc-vault-client-secret-hash: '<paste-hash-from-just-oidc-key>'
-      3. just rebuild
-      4. Connect to https://vault.home.phibkro.org
-      5. Create master account (used as password-fallback if Authelia
+      1. Follow secrets/README.md "OIDC client rotation" for `vault`.
+      2. Run the deployment plan, then activate the workstation.
+      3. Connect to https://vault.home.phibkro.org.
+      4. Create master account (used as password-fallback if Authelia
          is ever down; SSO_ONLY = false leaves the door open).
-      6. Sign out, click "Continue with Authelia" — should round-trip
+      5. Sign out, click "Continue with Authelia" — should round-trip
          and auto-link to your account when emails match.
 
     === Migration from cloud Bitwarden (one-time) ===

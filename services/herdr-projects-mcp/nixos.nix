@@ -45,7 +45,7 @@ in
   ];
 
   sops.secrets.herdr-projects-mcp-bearer-token = {
-    sopsFile = inputs.self + "/secrets/apps.yaml";
+    sopsFile = inputs.self + "/secrets/workstation-runtime.yaml";
     key = "herdr_projects_mcp_bearer_token";
     owner = "nori";
     mode = "0400";

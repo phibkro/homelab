@@ -9,7 +9,7 @@
     Each host decrypts using its own SSH ed25519 host key (derived
     to age form on the fly via ssh-to-age). The host's age public key
     must be listed in .sops.yaml and the secrets file must be
-    re-encrypted (`sops updatekeys secrets/secrets.yaml`) before the
+    re-encrypted (`sops updatekeys secrets/<domain>.yaml`) before the
     host can decrypt anything.
 
     Add secrets in the consuming service module:
@@ -24,9 +24,9 @@
     age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
 
     /*
-      Default file for `sops.secrets.<name>` declarations across the
-      repo. Per-secret `sopsFile` overrides if a service needs to keep
-      its secrets in a separate file (rare).
+      Workstation-only default for `sops.secrets.<name>` declarations.
+      Shared or host-specific domains must use an explicit `sopsFile`;
+      the default must never widen a minimal host's decryption authority.
 
       Absolute via `inputs.self` (the flake outPath) rather than the
       file-relative `../../../secrets/...` form — relative paths break
@@ -37,6 +37,6 @@
       `secrets/` directory lives at repo root by convention; its
       absolute reference survives any future move of consumer files.
     */
-    defaultSopsFile = inputs.self + "/secrets/secrets.yaml";
+    defaultSopsFile = inputs.self + "/secrets/workstation-runtime.yaml";
   };
 }

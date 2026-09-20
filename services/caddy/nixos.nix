@@ -10,17 +10,22 @@ let
   site = import ../../inventory/site.nix;
 in
 {
+  options.nori.caddy.acmeTokenSopsFile = lib.mkOption {
+    type = lib.types.path;
+    description = "Encrypted SOPS file containing cloudflare_acme_token for this host.";
+  };
+
   /**
     Caddy reverse proxy — clean *.<nori.domain> subdomain per service,
     HTTPS via Let's Encrypt + Cloudflare DNS-01 (no per-device CA
     install).
 
     Domain is owned (phibkro.org); Cloudflare hosts the zone. The
-    dedicated sops secret `cloudflare_acme_token` (apps.yaml) has DNS
-    edit scope on the zone — Caddy uses it to write the TXT records LE
-    wants during the DNS-01 challenge, then removes them. WAN port 80
-    stays closed. Port 443 may be forwarded to pi, but the generated
-    route matchers accept internet clients only for routes explicitly
+    dedicated `cloudflare_acme_token` has DNS edit scope on the zone.
+    The selected host adapter supplies its encrypted SOPS source. Caddy
+    uses the token to write and remove `_acme-challenge.*` TXT records
+    during DNS-01. WAN port 80 stays closed. Port 443 can be forwarded
+    to Pi, but route matchers accept internet clients only for routes
     marked `reachability = "internet"` and reject unknown hosts.
 
     Cert lifecycle: Caddy auto-renews each per-vhost cert ~30 days
@@ -116,7 +121,7 @@ in
     `_acme-challenge.*` TXT records for ACME DNS-01.
   */
   sops.secrets.cloudflare-acme-token = {
-    sopsFile = inputs.self + "/secrets/apps.yaml";
+    sopsFile = config.nori.caddy.acmeTokenSopsFile;
     key = "cloudflare_acme_token";
     owner = "caddy";
     mode = "0400";

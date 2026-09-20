@@ -302,12 +302,10 @@ pkgs.testers.runNixOSTest {
         local_certs
       '';
 
-      # caddy.nix hardcodes sopsFile = ../../secrets/apps.yaml for the
-      # cloudflare-acme-token. Test secrets live elsewhere — point at
-      # tests/secrets/test.yaml. The token isn't actually used by the
-      # local_certs path; it just needs to decrypt cleanly so the
-      # template + secret activation steps complete.
-      sops.secrets.cloudflare-acme-token.sopsFile = lib.mkForce ./secrets/test.yaml;
+      # The host adapter owns the production Caddy token source. This fixture
+      # supplies the test authority; local_certs does not use the token, but
+      # the SOPS declaration still must activate cleanly.
+      nori.caddy.acmeTokenSopsFile = ./secrets/test.yaml;
 
       # Test framework's nixpkgs.config differs from base.nix's;
       # force ours to match the test framework to avoid the

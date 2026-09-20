@@ -173,7 +173,7 @@ let
 in
 {
   sops.secrets.attic-jwt-environment = {
-    sopsFile = inputs.self + "/secrets/apps.yaml";
+    sopsFile = inputs.self + "/secrets/workstation-runtime.yaml";
     key = "attic_jwt_environment";
     owner = "root";
     mode = "0400";
@@ -183,21 +183,21 @@ in
     ];
   };
   sops.secrets.attic-cache-keypair = {
-    sopsFile = inputs.self + "/secrets/apps.yaml";
+    sopsFile = inputs.self + "/secrets/workstation-runtime.yaml";
     key = "attic_cache_keypair";
     owner = "root";
     mode = "0400";
     restartUnits = [ "attic-cache-bootstrap.service" ];
   };
   sops.secrets.attic-admin-token = {
-    sopsFile = inputs.self + "/secrets/apps.yaml";
+    sopsFile = inputs.self + "/secrets/workstation-runtime.yaml";
     key = "attic_admin_token";
     owner = "root";
     mode = "0400";
     restartUnits = [ "attic-cache-bootstrap.service" ];
   };
   sops.secrets.attic-push-token = {
-    sopsFile = inputs.self + "/secrets/apps.yaml";
+    sopsFile = inputs.self + "/secrets/workstation-runtime.yaml";
     key = "attic_push_token";
     owner = "root";
     mode = "0400";

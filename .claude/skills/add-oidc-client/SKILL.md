@@ -1,52 +1,85 @@
 ---
 name: add-oidc-client
-description: USE WHEN bootstrapping a new Authelia OIDC client for a service that wants SSO via `auth.nori.lan` — generates raw+hash secrets, pastes into sops, declares the route's `oidc` block, wires the consuming systemd unit. Hash material lives ONLY in sops (Authelia's `template` filter reads at startup); the `lint` flake check fails the build on stray `$pbkdf2-` strings.
+description: USE WHEN bootstrapping a new Authelia OIDC client — stores the raw client secret in workstation SOPS through SecretSpec and the PBKDF2 verifier in Pi SecretSpec without printing the raw value.
 ---
 
 # Bootstrap a new Authelia OIDC client
 
-OIDC clients are auto-generated from `nori.lanRoutes.<n>.oidc`. The abstraction owns the Authelia client entry, the sops secret(s), and the env-file template; the consuming service module owns its own systemd wiring (`EnvironmentFile`, `SupplementaryGroups`) and the non-secret OIDC env vars (provider URL, client_id, etc.).
+OIDC client metadata comes from `endpoints.<name>.oidc` in the service
+manifest. The inventory projection derives `nori.lanRoutes` and the Pi
+Authelia client list from that source. The workstation client receives the raw
+value from `workstation-runtime.yaml`. Pi Authelia receives only the PBKDF2
+verifier through its production SecretSpec profile. The service module owns
+its non-secret OIDC variables and runtime wiring.
 
-**Hash material lives only in sops.** Authelia's `template` config-filter (`X_AUTHELIA_CONFIG_FILTERS=template`, set in `services/authelia/nixos.nix`) reads the PBKDF2 hash from `/run/secrets/oidc-<n>-client-secret-hash` at startup and substitutes it into the YAML config before parsing — zero hash material in committed Nix. Enforced by the `lint` flake check; a stray inline `$pbkdf2-` string fails `nix flake check`.
+The raw value and verifier must derive from the same password-manager value.
+Neither value belongs in committed Nix or an unscoped process environment.
 
 ## Steps
 
-### 1. Generate raw + hash
+### 1. Store the raw client secret
+
+Generate the raw value in the operator password manager. Store it through the
+root SecretSpec manifest and its masked prompt:
 
 ```sh
-just generate-oidc-key <name>
+secretspec set --profile workstation OIDC_<NAME>_CLIENT_SECRET
 ```
 
-Output is sensitive — lands in your terminal, not in any file or shell history. Two values to copy.
+The corresponding variable must be declared in `secretspec.toml` and routed to
+`secrets/workstation-runtime.yaml`.
 
-### 2. Paste both into sops
+### 2. Generate and store the verifier
+
+Use Authelia's terminal prompt. Do not pass the raw value through
+`--password`, because command arguments can be observed:
 
 ```sh
-sops secrets/secrets.yaml
+nix shell nixpkgs#authelia --command \
+  authelia crypto hash generate pbkdf2 \
+    --variant sha512 \
+    --iterations 310000
 ```
+
+Store the resulting verifier in the Pi provider:
+
+```sh
+cd infra/pi
+devenv shell -- secretspec set \
+  --profile production \
+  OIDC_<NAME>_CLIENT_SECRET_HASH
+```
+
+Before this command, declare the variable in `infra/pi/secretspec.toml` and add
+it to the `deployment` scope. Also map the client ID to that variable in
+`infra/pi/playbooks/group_vars/all.yml`:
 
 ```yaml
-oidc-<name>-client-secret: '<raw — opaque base64-ish blob>'
-oidc-<name>-client-secret-hash: '$pbkdf2-sha512$310000$...'
+authelia_oidc_client_secret_hashes:
+  <name>: "{{ lookup('env', 'OIDC_<NAME>_CLIENT_SECRET_HASH') }}"
 ```
 
-Single-quote the hash so YAML doesn't interpret the `$` chars. Single-quote the raw too if it happens to contain YAML-special characters — usually safe, but harmless.
+The raw client value and verifier have different recipients. Do not copy both
+into one SOPS file.
 
-### 3. Declare the route's `oidc` block
+### 3. Declare the endpoint's `oidc` block
 
-In the service's manifest (`services/<svc>/manifest.nix`) — the manifest is the single source of truth for the route and public-safe authentication policy:
+In `services/<svc>/manifest.nix`, add OIDC metadata to the endpoint. The
+manifest is the single source for routing and public-safe authentication
+policy:
 
 ```nix
-nori.lanRoutes.<name> = {
+endpoints.<name> = {
   port = N;
   monitor = { };
   oidc = {
-    clientName  = "Display Name";
+    clientName = "Display Name";
     redirectPath = "/path/the/service/uses";
-    # Optional overrides (defaults shown):
+    tokenEndpointAuthMethod = "client_secret_basic";
+    # Optional overrides:
     # scopes = [ "openid" "profile" "email" "groups" ];
     # authorizationPolicy = "one_factor";
-    # secretEnvName = "OAUTH_CLIENT_SECRET";  # → SSO_CLIENT_SECRET for Vaultwarden, etc.
+    # secretEnvName = "OAUTH_CLIENT_SECRET";
   };
 };
 ```
@@ -73,7 +106,7 @@ systemd.services.<svc>.serviceConfig = {
 Plus non-secret OIDC env vars in `services.<svc>.environment`:
 
 ```nix
-OPENID_PROVIDER_URL = "https://auth.nori.lan/.well-known/openid-configuration";
+OPENID_PROVIDER_URL = "https://auth.${config.nori.domain}/.well-known/openid-configuration";
 OAUTH_CLIENT_ID     = "<name>";
 OAUTH_PROVIDER_NAME = "Authelia";
 ENABLE_OAUTH_SIGNUP = "True";
@@ -81,41 +114,45 @@ ENABLE_OAUTH_SIGNUP = "True";
 
 Service-by-service the env-var names vary (`OAUTH_*` for Open WebUI, `OPENID_*` for some, `SSO_*` for Vaultwarden). The abstraction handles only the secret-bearing var via `secretEnvName`; the rest stay in the service module where per-service quirks live.
 
-### 5. Python services — set `SSL_CERT_FILE`
+### 5. Verify and activate both hosts
 
-Python services (`httpx` / `requests` / `urllib3`) use `certifi` by default, not the system trust store, so they reject Caddy's local CA without:
+First, verify the repository and preview the Pi change:
 
-```nix
-SSL_CERT_FILE = "/etc/ssl/certs/ca-bundle.crt";
+```sh
+devenv shell -- just check
+devenv shell -- just pi::plan
 ```
 
-See `Mnemopi recall: gotcha-python-ca-trust` for the underlying gotcha.
-
-### 6. Deploy
+After operator approval, activate the workstation raw secret and deploy the Pi
+Authelia verifier:
 
 ```sh
 just rebuild
+just pi::deploy
 ```
 
-## Web-UI-managed consumers (PocketBase / Beszel)
-
-For services that configure OAuth in their own admin UI rather than via env vars, **only steps 1–3 apply** — no `EnvironmentFile` wiring on the service side. The raw secret sits at `/run/secrets/oidc-<n>-client-secret` for paste-into-admin when configuring the consumer. The env-file template still generates and is just unused; cost is microscopic.
+For a consumer configured through its web UI, skip step 4. Complete step 5 for
+both hosts. Then configure the consumer with client ID `<name>` and the raw
+value from `/run/secrets/oidc-<name>-client-secret`. Verify the complete browser
+login after the manual consumer update.
 
 ## What stays manual and why
 
 | Manual step | Why |
 |---|---|
-| PBKDF2 hash generation | Authelia's hash uses random salt; re-running on the same raw produces a different hash. Not amenable to declarative regeneration. `just generate-oidc-key` collapses the two CLI invocations into one |
+| PBKDF2 verifier generation | Authelia uses a random salt. Generate it from the same raw value through the masked terminal prompt, then store it in the Pi SecretSpec provider. |
 | Per-service systemd unit name + env-var convention | The abstraction can't divine `chat` → `open-webui`, and OIDC env-var naming is too varied across services to abstract (`OAUTH_*`, `OPENID_*`, `SSO_*`, custom). Both stay in the service module where they're discoverable |
 
-## Verification after deploy
+## Verification after activation
+
+1. Open the service URL in a browser.
+2. Select its OIDC login action.
+3. Confirm the redirect uses `https://auth.<nori.domain>`.
+4. Sign in.
+5. Confirm the browser returns to the service as the authenticated user.
+
+For a systemd-wired consumer, also confirm that its unit is active:
 
 ```sh
-# Authelia loaded the client (hash substituted from sops):
-sudo journalctl -u authelia-* -n 50 | grep -i 'client.*<name>'
-
-# Service sees the secret:
-sudo systemctl show <svc>.service -p Environment | grep -i secret
-
-# End-to-end: open the service in a browser, click login → redirect to auth.nori.lan → log in → returned authenticated.
+systemctl is-active <svc>.service
 ```

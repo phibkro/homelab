@@ -56,17 +56,16 @@ Cloudflare API token scoped to account `phibkro` with:
 - `Access: Apps and Policies Edit`
 - account resource `phibkro` only
 
-Store it without placing the value in shell history:
+Store it through the masked SecretSpec prompt:
 
 ```sh
 cd /srv/share/projects/homelab
-sops secrets/apps.yaml
+secretspec set --profile workstation CLOUDFLARE_MCP_API_TOKEN
 ```
 
-Add it as `cloudflare_mcp_api_token`. The package scripts decrypt it directly
-into the process environment. Only the MCP server, portal, and Access-policy
-providers receive this credential; DNS and the existing R2 cache retain their
-Alchemy OAuth credentials.
+SecretSpec routes the value to `operator-tools.yaml`. Cloudflare deployment
+scopes inject it only into stacks that use the MCP and Access control API.
+DNS and the existing R2 cache retain their Alchemy OAuth credentials.
 
 Review the Alchemy plan. It should add only the Hindsight DNS, MCP, and Access
 resources; the existing R2 cache must not be replaced.
@@ -129,14 +128,18 @@ curl -i https://memory-origin.home.phibkro.org/mcp/chatlog-insights-v1/
 curl -i https://memory-origin.home.phibkro.org/
 ```
 
-Both must return 404. Test the private origin path without exposing the token in
-the process list:
+Both must return 404. Test the private origin with the Hindsight-only
+SecretSpec scope. The header moves through an anonymous pipe, not a command
+argument:
 
 ```sh
 cd infra/cloudflare
-sops exec-env ../../secrets/apps.yaml \
-  'curl -i -H "Authorization: Bearer $hindsight_mcp_bearer_token" \
-  https://memory-origin.home.phibkro.org/mcp/chatlog-insights-v1/'
+secretspec run \
+  --file ../../secretspec.toml \
+  --profile workstation \
+  --scope hindsight-origin \
+  -- bash -c 'printf "header = \"Authorization: Bearer %s\"\n" "$HINDSIGHT_MCP_BEARER_TOKEN" \
+    | curl --config - -i https://memory-origin.home.phibkro.org/mcp/chatlog-insights-v1/'
 ```
 
 An MCP response may reject a plain GET as a protocol error; it must no longer be

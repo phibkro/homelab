@@ -12,6 +12,11 @@ let
   recordComment = "Managed by homelab nori.lanRoutes reachability=internet";
 in
 {
+  options.nori.cloudflareDdns.tokenSopsFile = lib.mkOption {
+    type = lib.types.path;
+    description = "Encrypted SOPS file containing cloudflare_api_token for this host.";
+  };
+
   assertions = [
     {
       assertion = internetDomains != [ ];
@@ -51,7 +56,7 @@ in
   };
 
   sops.secrets.cloudflare-ddns-token = {
-    sopsFile = inputs.self + "/secrets/apps.yaml";
+    sopsFile = config.nori.cloudflareDdns.tokenSopsFile;
     key = "cloudflare_api_token";
   };
 

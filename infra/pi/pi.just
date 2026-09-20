@@ -12,7 +12,7 @@
 
 # Preview the production convergence without changing the Pi.
 @plan:
-    devenv shell -- secretspec run --profile production -- bash scripts/run-production.sh plan
+    devenv shell -- secretspec run --profile production --scope deployment -- bash scripts/run-production.sh plan
 
 # Read the Caddyfile mounted in the running production container through the
 # generated inventory and a caller-supplied pinned host-key file.
@@ -21,11 +21,11 @@
 
 # Converge the physical Pi after exact target confirmation.
 @deploy:
-    devenv shell -- secretspec run --profile production -- bash scripts/run-production.sh deploy
+    devenv shell -- secretspec run --profile production --scope deployment -- bash scripts/run-production.sh deploy
 
 # Enroll the physical Pi into Tailscale after exact target confirmation.
 @enroll:
-    devenv shell -- secretspec run --profile production -- bash scripts/run-production.sh enroll
+    devenv shell -- secretspec run --profile production --scope enrollment -- bash scripts/run-production.sh enroll
 
 # Check or interactively populate the production SecretSpec profile.
 @secrets:

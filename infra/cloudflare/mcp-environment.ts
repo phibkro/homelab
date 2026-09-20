@@ -12,7 +12,7 @@ export const OPERATOR_EMAIL = "philib.krogh@gmail.com";
 export const cloudflareProviders = Cloudflare.providers();
 
 export const cloudflareControlDependencies = Layer.unwrap(
-  Config.redacted("cloudflare_mcp_api_token").pipe(
+  Config.redacted("CLOUDFLARE_MCP_API_TOKEN").pipe(
     Effect.map((apiToken) =>
       Layer.merge(
         CloudflareCredentials.fromApiToken({ apiToken: Redacted.value(apiToken) }),
@@ -20,7 +20,7 @@ export const cloudflareControlDependencies = Layer.unwrap(
           type: "apiToken",
           apiToken,
           accountId: CLOUDFLARE_ACCOUNT_ID,
-          source: { type: "env", details: "cloudflare_mcp_api_token" },
+          source: { type: "env", details: "CLOUDFLARE_MCP_API_TOKEN" },
         }),
       ),
     ),

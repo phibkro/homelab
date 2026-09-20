@@ -144,7 +144,7 @@ pkgs.testers.runNixOSTest {
         local_certs
       '';
 
-      sops.secrets.cloudflare-acme-token.sopsFile = lib.mkForce ./secrets/test.yaml;
+      nori.caddy.acmeTokenSopsFile = ./secrets/test.yaml;
 
       networking.firewall.allowedTCPPorts = [
         53

@@ -23,17 +23,21 @@ keys:
   - &adelie age1dkv97zyhtmd7rwglypnqguqp48pg4cjwa9sj5zqfyvued7t5jsws9df98e
 
 creation_rules:
-  - path_regex: secrets/adelie\.yaml$
+  - path_regex: secrets/network\.yaml$
     key_groups:
       - age:
           - *mac
           - *workstation
           - *workstation-user
           - *adelie
-  - path_regex: secrets/.*\.yaml$
+  - path_regex: secrets/workstation-runtime\.yaml$
     key_groups:
       - age:
           - *mac
           - *workstation
           - *workstation-user
-          - *pi
+  - path_regex: secrets/operator-tools\.yaml$
+    key_groups:
+      - age:
+          - *mac
+          - *workstation-user

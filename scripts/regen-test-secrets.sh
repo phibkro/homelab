@@ -2,11 +2,9 @@
 # Regenerate the homelab's test age key + test sops file.
 #
 # These files are INTENTIONALLY committed in plaintext (key) and in
-# sops form (secrets). They are scoped to the nixosTest VM — the
-# production secrets in secrets/secrets.yaml are encrypted to a
-# DIFFERENT recipient set (mac/workstation/pi/aurora/pavilion) that
-# this test key is not a member of, so leaking this file leaks
-# nothing real.
+# SOPS form (secrets). They are scoped to the nixosTest VM. The test
+# recipient is absent from every production domain, so it cannot decrypt
+# workstation runtime, operator-tool, or network credentials.
 #
 # Run when:
 #   - first bootstrap

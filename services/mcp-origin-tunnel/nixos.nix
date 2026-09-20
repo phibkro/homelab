@@ -87,7 +87,7 @@ in
     could return nondeterministic 404s for either hostname.
   */
   sops.secrets.mcp-origin-cloudflared-credentials = {
-    sopsFile = inputs.self + "/secrets/apps.yaml";
+    sopsFile = inputs.self + "/secrets/workstation-runtime.yaml";
     key = "cloudflared-tunnel-credentials";
     owner = "nori";
     mode = "0400";

@@ -211,9 +211,10 @@ Email digest deferred. When it lands: Gmail SMTP with app password (sufficient f
 
 ## Self-deployed apps
 
-`secrets/apps.yaml` (separate sops file from `secrets/secrets.yaml`) holds tokens for the operator's personal apps deployed on the homelab. Per-secret `sopsFile = ../../secrets/apps.yaml` override on the consuming module.
-
-Naming convention: agnostic (`tmdb-token`, not `filmder-tmdb-token`) when multiple projects could plausibly share the same key.
+Runtime credentials for workstation-hosted applications live in
+`secrets/workstation-runtime.yaml`. The file's recipient set matches the
+workstation runtime authority. `secretspec.toml` provides the masked operator
+interface for setting and rotating its values.
 
 Live worked example: `services/filmder/manifest.nix` declares its
 endpoint and governed `legacy-host-build` artifact contract;

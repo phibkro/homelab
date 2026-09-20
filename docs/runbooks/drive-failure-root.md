@@ -77,7 +77,7 @@ The age key for sops decryption is derived from the host's SSH key. Fresh instal
 Two paths:
 
 - **You backed up the old `/etc/ssh/ssh_host_ed25519_key`** before the failure: place it at `/etc/ssh/ssh_host_ed25519_key` on the new install. Reboot. sops works again.
-- **You didn't back up the key**: re-key sops. Boot into a barely-functional system (services that need secrets will fail), generate the new pubkey via `ssh-to-age`, edit `.sops.yaml` and re-encrypt `secrets/secrets.yaml` from another host that has the existing age key.
+- **You didn't back up the key**: re-key SOPS. Boot into a minimally functional system, derive the new age recipient with `ssh-to-age`, update only the workstation recipient rules in `.sops.yaml`, and run `sops updatekeys secrets/workstation-runtime.yaml` and `sops updatekeys secrets/network.yaml` from an enrolled recovery identity.
 
 Preserve any existing recovery key securely. Re-encryption is a separate
 approved credential operation; do not assume a key backup exists.

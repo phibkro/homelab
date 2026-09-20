@@ -42,7 +42,7 @@ Strongest rung each claim has reached. `[prose: unchecked]` entries are promotio
 | Default-deny firewall — only Caddy ports open by default | `[structural]` (`infra/common/nixos/routes.nix` plus the Caddy realization) |
 | Tailnet is the auth perimeter; Authelia only for per-user identity | `[structural]` (the `audience` enum forces the choice at the type level) |
 | `disko*.nix` configs reference disks by `/dev/disk/by-id/*`, never `/dev/nvmeN` | `[law: lint.diskoUsesById]` (promoted 2026-06-16; nori.lint TOML registry) |
-| Sops-encrypted secrets stay in `secrets/secrets.yaml`; encryption itself is structural | `[structural]` (sops policy file `.sops.yaml`) |
+| Every production SOPS file has one explicit recipient-set rule; no production catch-all can widen a new file | `[structural]` (`.sops.yaml`) |
 | Never bulk-rename keys in sops-encrypted yaml (AAD-bound ciphertext breaks) | `[prose: unchecked]` — `Mnemopi recall: gotcha-sops-bulk-sed` |
 | **Topology & roles** | |
 | Pi runs only appliance-safe services; every workload placement matches a typed role declared by its manifest | `[structural]` (closed role enum + pure inventory assertion) + `[law: eval-workload-role-placement]` |

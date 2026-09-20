@@ -53,7 +53,7 @@ let
 
   secretBoundaryCorrect =
     lib.attrNames config.sops.secrets == [ "wifi-akkar-psk" ]
-    && config.sops.secrets.wifi-akkar-psk.sopsFile == inputs.self + "/secrets/adelie.yaml";
+    && config.sops.secrets.wifi-akkar-psk.sopsFile == inputs.self + "/secrets/network.yaml";
 
   networkBoundaryCorrect =
     config.networking.useDHCP

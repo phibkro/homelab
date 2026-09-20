@@ -23,8 +23,8 @@ const HINDSIGHT_PORTAL_HOSTNAME = "memory-mcp.phibkro.org";
  * remains responsible only for resources that genuinely require a public
  * edge.
  *
- * Operator: `bun alchemy deploy` (needs `alchemy login` once — Cloudflare auth
- * is operator-owned and cannot run headlessly).
+ * Operator: run `bun run login` once, then use `bun run deploy`. The package
+ * script supplies the declared SecretSpec command scope.
  */
 export default Alchemy.Stack(
   "Homelab",
@@ -33,7 +33,7 @@ export default Alchemy.Stack(
     state: State.localState(),
   },
   Effect.gen(function* () {
-    const bearerToken = yield* Config.redacted("hindsight_mcp_bearer_token").pipe(Effect.orDie);
+    const bearerToken = yield* Config.redacted("HINDSIGHT_MCP_BEARER_TOKEN").pipe(Effect.orDie);
 
     // Preserve the still-running Tunnel route while the DNS-only Pi origin is
     // being proven. Retiring it is a separate destructive migration, not a

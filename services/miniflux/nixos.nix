@@ -6,12 +6,10 @@
     state in Postgres; no on-disk per-user files.
 
     === Bootstrap ===
-      1. just generate-oidc-key news       → raw + PBKDF2 hash
-      2. sops secrets/secrets.yaml — paste three secrets:
-           oidc-news-client-secret:      '<raw from just generate-oidc-key>'
-           oidc-news-client-secret-hash: '<hash from just generate-oidc-key>'
-           miniflux-admin-password:      '<10+ chars; first-login fallback>'
-      3. just rebuild
+      1. Follow secrets/README.md "OIDC client rotation" for `news`.
+      2. Store MINIFLUX_ADMIN_PASSWORD through the root workstation
+         SecretSpec profile.
+      3. Run the deployment plan, then activate the workstation.
       4. https://news.home.phibkro.org → click "Continue with Authelia". OIDC
          auto-creates the matching miniflux account on first SSO via
          OAUTH2_USER_CREATION=1; first user in is the admin.

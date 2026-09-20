@@ -20,7 +20,7 @@ export default Alchemy.Stack(
       url: true,
       env: {
         RelaySession: Cloudflare.DurableObjectNamespace<RelaySession>("RelaySession"),
-        RELAY_TOKEN: Config.redacted("herdr_projects_mcp_bearer_token"),
+        RELAY_TOKEN: Config.redacted("HERDR_PROJECTS_MCP_BEARER_TOKEN"),
       },
       observability: {
         enabled: true,

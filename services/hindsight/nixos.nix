@@ -99,7 +99,7 @@ in
   ];
 
   sops.secrets.hindsight-mcp-bearer-token = {
-    sopsFile = inputs.self + "/secrets/apps.yaml";
+    sopsFile = inputs.self + "/secrets/workstation-runtime.yaml";
     key = "hindsight_mcp_bearer_token";
     owner = "nori";
     mode = "0400";

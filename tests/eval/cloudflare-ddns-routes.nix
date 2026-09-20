@@ -71,6 +71,7 @@ let
           sops.age.keyFile = "/etc/sops-test-age.txt";
           sops.age.sshKeyPaths = lib.mkForce [ ];
           sops.defaultSopsFile = ../secrets/test.yaml;
+          nori.cloudflareDdns.tokenSopsFile = ../secrets/test.yaml;
           sops.secrets.restic-password = { };
           system.stateVersion = "26.05";
           fileSystems."/" = {

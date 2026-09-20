@@ -16,7 +16,7 @@ if [[ "$action" == "enroll" && ( -z "${TAILSCALE_AUTH_KEY:-}" || ${#TAILSCALE_AU
   exit 1
 fi
 
-if [[ "$action" != "inspect-caddy" && ( -z "${PIHOLE_WEB_PASSWORD:-}" || ${#PIHOLE_WEB_PASSWORD} -lt 12 ) ]]; then
+if [[ ( "$action" == "plan" || "$action" == "deploy" ) && ( -z "${PIHOLE_WEB_PASSWORD:-}" || ${#PIHOLE_WEB_PASSWORD} -lt 12 ) ]]; then
   echo "PIHOLE_WEB_PASSWORD must be set to at least 12 characters" >&2
   exit 1
 fi
@@ -85,11 +85,17 @@ extra_vars="$(jq --null-input --compact-output \
   '{ansible_ssh_common_args: $common_args, tailscale_enroll: $tailscale_enroll}')"
 readonly extra_vars
 
+playbook="$repo_root/infra/pi/playbooks/pi.yml"
+if [[ "$action" == "enroll" ]]; then
+  playbook="$repo_root/infra/pi/playbooks/enroll-tailscale.yml"
+fi
+readonly playbook
+
 args=(
   --inventory "$inventory"
   --extra-vars "$extra_vars"
   --diff
-  "$repo_root/infra/pi/playbooks/pi.yml"
+  "$playbook"
 )
 if [[ "$action" == "plan" ]]; then
   args=(--check "${args[@]}")

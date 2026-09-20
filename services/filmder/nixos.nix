@@ -46,7 +46,7 @@ let
 in
 {
   sops.secrets.tmdb-token = {
-    sopsFile = inputs.self + "/secrets/apps.yaml";
+    sopsFile = inputs.self + "/secrets/workstation-runtime.yaml";
     owner = "filmder";
     mode = "0400";
   };
