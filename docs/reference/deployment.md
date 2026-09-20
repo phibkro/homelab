@@ -7,8 +7,10 @@ summary: Inventory-derived build and activation planning, change scoping, order,
 
 The repository provides a read-only deployment planner. It derives targets,
 backend-specific commands, Nix build attributes, and backend-before-entry-plane
-ordering from the same pure inventory that creates NixOS outputs and the Pi's
-Ansible inventory. It does not SSH, switch, mutate DNS, or activate a host.
+ordering from the pure inventory. It creates NixOS outputs and Pi Ansible
+plans. Pi runs Debian. Ansible provisions its Podman services. Pi has no NixOS
+configuration. The planner does not SSH, switch, mutate DNS, or activate a
+host.
 
 ## Plan a change
 
@@ -75,11 +77,14 @@ The planner intentionally stops before these steps. A future deployment wrapper
 may automate the sequence only if it preserves the explicit operator gate,
 maintenance state, acceptance checks, and per-host rollback.
 
-Backup scheduling remains disabled during the source migration. Before later
-enabling it, follow the mount, capacity, SSH identity,
-SFTP isolation, and restore gates in the
-[OneTouch cutover runbook](../runbooks/onetouch-backup-cutover.md). Workstation must
-serve the verified destination before Pi switches to it.
+The OneTouch backup policy is enabled in `inventory/backup.nix`. Pi and Adelie
+use restricted accounts on the workstation-attached destination. September 19
+evidence covers Pi transport, eight fresh snapshots, eight metadata checks, and
+a Pi-hole configuration restore. Physical reboot, off-LAN behavior,
+application/database recovery, user-data/media recovery, and full data-block
+integrity remain operator-gated. Read the
+[OneTouch cutover runbook](../runbooks/onetouch-backup-cutover.md) before an
+activation.
 
 ## Verification contract
 
@@ -91,8 +96,8 @@ exercises semantic change detection in a temporary Git repository, and runs
 ShellCheck on the planner.
 
 These are check contracts, not a record that a particular revision passed.
-Nix entry-plane adapter tests exercise the Nix implementation and shared
-contracts; they do not verify the Ansible production runtime. Run
-`just pi::check` and `just pi::test` for Ansible evidence, then verify the live
-Pi after approved activation. A disposable convergence test cannot establish
-production credentials, physical disk capacity, or backup restorability.
+Disposable Nix adapter tests exercise shared Nix modules. They do not verify
+the Pi Debian/Ansible/Podman runtime. Run `just pi::check` and `just pi::test`
+for Ansible evidence, then verify the live Pi after approved
+activation. A disposable convergence test cannot establish production
+credentials, physical disk capacity, or backup restorability.

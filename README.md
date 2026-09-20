@@ -12,10 +12,12 @@ backup destination → OneTouch (policy: inventory/backup.nix)
 ```
 
 Workstation owns the desktop, GPU workloads, and attached data disks. Adelie
-owns the SSD-local application tier. Pi owns the HTTP entry plane, DNS,
-monitoring, and network appliance services. Aurora and Pavilion are retired
-from active configuration. Historical archives and encrypted secret recipients
-are handled separately from host removal.
+owns the SSD-local application tier. Pi is a Debian appliance. Ansible
+provisions its Podman services under `infra/pi/`. It owns the HTTP entry plane,
+DNS, monitoring, and network appliance services. Ansible is the only live Pi
+deployment owner. The verified NixOS image is an offline rollback artifact.
+Aurora and Pavilion are retired. They do not provide backup, deployment, or
+topology roles.
 
 ## Start here
 
