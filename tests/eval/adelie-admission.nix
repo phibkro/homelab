@@ -5,10 +5,10 @@
 }:
 
 /**
-  Source-only Adelie admission contract.
+  Adelie minimal-host boundary contract.
 
   This proves the evaluated closure boundary. It does not prove physical disk
-  identity, installation, boot, network enrollment, or runtime behavior.
+  identity, Wi-Fi association, or runtime behavior.
 */
 let
   config = inputs.self.nixosConfigurations.adelie.config;
@@ -51,9 +51,14 @@ let
     && !(builtins.hasAttr "atticd" services)
     && !(builtins.hasAttr "restic-target-directories" services);
 
-  secretBoundaryCorrect = config.sops.secrets == { };
+  secretBoundaryCorrect =
+    lib.attrNames config.sops.secrets == [ "wifi-akkar-psk" ]
+    && config.sops.secrets.wifi-akkar-psk.sopsFile == inputs.self + "/secrets/adelie.yaml";
 
-  bootstrapNetworkCorrect = config.networking.useDHCP && !config.networking.wireless.enable;
+  networkBoundaryCorrect =
+    config.networking.useDHCP
+    && config.networking.wireless.enable
+    && config.networking.wireless.interfaces == [ "wlp5s0" ];
 
   deploymentBoundaryCorrect =
     deployment.targets.adelie == {
@@ -78,10 +83,10 @@ if
   && diskBoundaryCorrect
   && runtimeBoundaryCorrect
   && secretBoundaryCorrect
-  && bootstrapNetworkCorrect
+  && networkBoundaryCorrect
   && deploymentBoundaryCorrect
 then
-  "ok — Adelie evaluates as a minimal source-only host with no activation or portable-storage authority"
+  "ok — Adelie evaluates as a minimal host with narrow Wi-Fi authority and no portable-storage authority"
 else
   throw ''
     Adelie source admission contract failed.
@@ -89,6 +94,6 @@ else
     Disk:       ${toString diskBoundaryCorrect}
     Runtime:    ${toString runtimeBoundaryCorrect}
     Secrets:    ${toString secretBoundaryCorrect}
-    Network:    ${toString bootstrapNetworkCorrect}
+    Network:    ${toString networkBoundaryCorrect}
     Deployment: ${toString deploymentBoundaryCorrect}
   ''

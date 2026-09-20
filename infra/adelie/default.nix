@@ -25,9 +25,14 @@
     ./disko.nix
   ];
 
-  # First admission uses wired DHCP. Wi-Fi would require host-scoped secret
-  # enrollment and belongs to the later physical activation milestone.
+  # Keep Ethernet and Wi-Fi available so maintenance does not depend on moving
+  # the workstation's cable. Adelie decrypts only its narrow network secret.
   networking.useDHCP = lib.mkDefault true;
+  nori.wifi = {
+    enable = true;
+    interface = "wlp5s0";
+  };
+  sops.secrets.wifi-akkar-psk.sopsFile = inputs.self + "/secrets/adelie.yaml";
 
   # Prefer the local entry-plane DNS while DHCP still advertises the router.
   networking.nameservers = [
