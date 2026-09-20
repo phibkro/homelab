@@ -4,6 +4,10 @@ pihole_image: >-
 pihole_upstream_dns:
   - 1.1.1.1
   - 9.9.9.9
+pihole_adlists:
+  - address: https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+    comment: Homelab baseline ad and tracker blocking
+
 
 # Pi-hole publishes DNS on the compiler-owned LAN and tailnet addresses.
 pihole_dns_port: "{{ pi_dns_port }}"

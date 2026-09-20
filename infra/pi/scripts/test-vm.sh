@@ -224,6 +224,21 @@ wait_for_dns() {
   echo "Pi-hole DNS did not become reachable" >&2
   return 1
 }
+verify_dns_filtering() {
+  local allowed
+  local blocked
+
+  blocked="$(dig +short +time=2 +tries=1 @127.0.0.1 -p 8053 doubleclick.net A | head -1)"
+  allowed="$(dig +short +time=2 +tries=1 @127.0.0.1 -p 8053 example.com A | head -1)"
+  [[ "$blocked" == "0.0.0.0" ]] || {
+    echo "Expected doubleclick.net to be blocked, got '$blocked'" >&2
+    return 1
+  }
+  [[ -n "$allowed" && "$allowed" != "0.0.0.0" ]] || {
+    echo "Expected example.com to resolve normally, got '$allowed'" >&2
+    return 1
+  }
+}
 
 wait_for_https() {
   for _ in $(seq 1 60); do
@@ -347,6 +362,7 @@ fi
 GUEST_BACKUP_VERIFY
 
 wait_for_dns
+verify_dns_filtering
 wait_for_https
 verify_https_contract
 
@@ -403,6 +419,7 @@ for _ in $(seq 1 30); do
 done
 wait_for_ssh
 wait_for_dns
+verify_dns_filtering
 wait_for_https
 verify_https_contract
 

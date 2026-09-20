@@ -20,7 +20,18 @@
       Pi-hole DNS requires concrete LAN and optional tailnet addresses plus a
       valid DNS port; wildcard bindings are not allowed.
   when: pihole_enabled | bool
-
+- name: Validate the Pi-hole adlist contract
+  ansible.builtin.assert:
+    that:
+      - pihole_adlists | length > 0
+      - pihole_adlists | map(attribute='address') | unique | length == pihole_adlists | length
+      - item.address is match('^https://')
+      - item.comment | length > 0
+    fail_msg: Pi-hole adlists require unique HTTPS addresses and non-empty comments.
+  loop: "{{ pihole_adlists }}"
+  loop_control:
+    label: "{{ item.address }}"
+  when: pihole_enabled | bool
 - name: Create the Pi-hole application directory
   ansible.builtin.file:
     path: "{{ item.path }}"
@@ -143,6 +154,51 @@
   when:
     - pihole_enabled | bool
     - podman_available | bool
+
+- name: Reconcile the authoritative Pi-hole adlists
+  ansible.builtin.command:
+    argv:
+      - podman
+      - exec
+      - pihole
+      - pihole-FTL
+      - sqlite3
+      - /etc/pihole/gravity.db
+      - >-
+        BEGIN;
+        DELETE FROM adlist
+        WHERE type = 0
+          AND address NOT IN (
+          {% for adlist in pihole_adlists %}
+          '{{ adlist.address | replace("'", "''") }}'{{ ',' if not loop.last else '' }}
+          {% endfor %}
+          );
+        {% for adlist in pihole_adlists %}
+        INSERT INTO adlist (address, enabled, comment, type)
+        VALUES (
+          '{{ adlist.address | replace("'", "''") }}',
+          1,
+          '{{ adlist.comment | replace("'", "''") }}',
+          0
+        )
+        ON CONFLICT(address, type) DO UPDATE SET
+          enabled = excluded.enabled,
+          comment = excluded.comment
+        WHERE adlist.enabled != excluded.enabled
+           OR adlist.comment != excluded.comment;
+        {% endfor %}
+        COMMIT;
+        SELECT total_changes();
+  register: pihole_adlists_reconciliation
+  changed_when: pihole_adlists_reconciliation.stdout | trim | int > 0
+  notify: Update Pi-hole gravity after adlist changes
+  when:
+    - pihole_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Apply Pi-hole adlist changes before runtime verification
+  ansible.builtin.meta: flush_handlers
 
 - name: Wait for Pi-hole DNS
   ansible.builtin.wait_for:

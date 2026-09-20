@@ -124,7 +124,8 @@
 # the backend host. The Caddy inspection uses the production inventory and
 # pinned host key. DNS and HTTPS probes run from the invoking host.
 #
-# Runtime-introspection test: canonical routes → deployed Caddy + DNS + HTTPS.
+# Runtime-introspection test: canonical routes → deployed Caddy + DNS + HTTPS;
+# the declared Pi-hole adlist blocks a known ad domain.
 @test-routes:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -184,6 +185,20 @@
         echo "  ✗ $vhost unreachable (status=$status)"; fail=1
       fi
     done
+
+    echo "=== Tier 4 — Pi-hole blocks declared ad domains ==="
+    blocked=$(nix shell nixpkgs#dig -c dig +short +time=2 +tries=1 doubleclick.net @${pi_tailnet} 2>/dev/null | head -1)
+    allowed=$(nix shell nixpkgs#dig -c dig +short +time=2 +tries=1 example.com @${pi_tailnet} 2>/dev/null | head -1)
+    if [[ "$blocked" == "0.0.0.0" ]]; then
+      echo "  ✓ doubleclick.net blocked"
+    else
+      echo "  ✗ doubleclick.net resolved to '$blocked' (expected 0.0.0.0)"; fail=1
+    fi
+    if [[ -n "$allowed" && "$allowed" != "0.0.0.0" ]]; then
+      echo "  ✓ example.com allowed"
+    else
+      echo "  ✗ example.com did not resolve normally ('$allowed')"; fail=1
+    fi
 
     echo
     [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
