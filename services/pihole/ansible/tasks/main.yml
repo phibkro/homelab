@@ -155,6 +155,47 @@
     - pihole_enabled | bool
     - podman_available | bool
 
+- name: Wait for the Pi-hole gravity database
+  ansible.builtin.command:
+    argv:
+      - podman
+      - exec
+      - pihole
+      - test
+      - -s
+      - /etc/pihole/gravity.db
+  register: pihole_gravity_database
+  changed_when: false
+  retries: 60
+  delay: 2
+  until: pihole_gravity_database.rc == 0
+  when:
+    - pihole_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Wait for the Pi-hole adlist schema
+  ansible.builtin.command:
+    argv:
+      - podman
+      - exec
+      - pihole
+      - pihole-FTL
+      - sqlite3
+      - /etc/pihole/gravity.db
+      - >-
+        SELECT count(*) FROM sqlite_master
+        WHERE type = 'table' AND name = 'adlist';
+  register: pihole_adlist_schema
+  changed_when: false
+  retries: 60
+  delay: 2
+  until: pihole_adlist_schema.stdout | trim == '1'
+  when:
+    - pihole_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
 - name: Reconcile the authoritative Pi-hole adlists
   ansible.builtin.command:
     argv:

@@ -1,7 +1,8 @@
 # Pi failure
 
-Recovery target: under two hours when required state is available; no current
-backup coverage or production recovery time has been established.
+Recovery target: under two hours when required state is available. Off-host Pi
+snapshots, selected service recovery, and a disposable host reconstruction
+have current evidence. No physical replacement recovery time is established.
 Pi is a Debian appliance managed by Ansible under `infra/pi/`. NixOS rollback,
 impermanence, and `nixos-anywhere` instructions do not apply to this target.
 
@@ -11,9 +12,10 @@ Check Pi reachability from a trusted LAN or tailnet device. Use the production
 SSH user, address, and port declared by the production inventory generator;
 do not assume the workstation SSH settings apply. Inspect failed systemd units,
 container state, logs, disk usage, and network connectivity through that session.
-The September 6 observation found a host-key mismatch against existing trust;
-no remote Pi session was established. Verify the key through an independently
-trusted console before updating the pin. Do not bypass host-key checking.
+The September 19 inspection established a strict host-key-checked session
+through `pi.saola-matrix.ts.net`; the hostname, Tailscale address, and remote
+host key agreed. Reverify host identity independently during an incident. Do
+not bypass host-key checking or use the stale address-form pin.
 
 Workstation backends may remain available through explicitly exposed routes.
 Pi-hosted DNS, authentication, ingress, monitoring, and routing may be down even
@@ -47,6 +49,11 @@ application recovered.
    copy selected data into stopped services. Validate databases separately.
    If no usable copy exists, document the lost state and reconfigure the
    affected service rather than claiming it was restored.
+
+The [Pi host reconstruction drill](../archive/reports/2026-09-21-pi-host-reconstruction-drill.md)
+proves the software-side path in a clean ARM guest. It includes convergence,
+reboot, current Pi-hole state, and restored endpoints. It does not replace the
+separately reviewed physical-medium procedure or production identity recovery.
 
 The [OneTouch cutover runbook](onetouch-backup-cutover.md) describes backup transport
 identity, repository isolation, and restore checks. Destination policy lives in

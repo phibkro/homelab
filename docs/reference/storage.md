@@ -44,6 +44,9 @@ records the enabled source, mounted drive, workstation service-state restore,
 and Pi transport, freshness, metadata checks, and configuration restore. The
 [Pi-hole drill](../archive/reports/2026-09-21-pihole-recovery-drill.md) proves
 one consumer-visible appliance recovery. The
+[Pi host reconstruction drill](../archive/reports/2026-09-21-pi-host-reconstruction-drill.md)
+connects a clean, converged ARM guest and reboot to current restored Pi-hole
+state and endpoints. The
 [Vaultwarden drill](../archive/reports/2026-09-21-vaultwarden-sqlite-recovery-drill.md)
 proves the Adelie logical SQLite path. The
 [Miniflux drill](../archive/reports/2026-09-21-miniflux-postgresql-recovery-drill.md)
@@ -56,8 +59,8 @@ The [user-data drill](../archive/reports/2026-09-21-user-data-recovery-drill.md)
 proves bounded recovery from all three declared user-data roots. The
 [Jellyfin drill](../archive/reports/2026-09-21-jellyfin-metadata-recovery-drill.md)
 proves isolated application startup from restored media metadata. These
-reports do not establish full user-data or media recovery, complete host
-reconstruction, or full data-block integrity.
+reports do not establish full user-data or media recovery, physical host
+replacement, every Pi service-state restore, or full data-block integrity.
 Use the [cutover runbook](../runbooks/onetouch-backup-cutover.md) when reconnecting,
 changing transport, or collecting fresh recovery evidence.
 

@@ -14,15 +14,20 @@ RTO targets for each failure class, the runbooks that hit them, and the permanen
 The two SSDs hold hot data; IronWolf Pro holds cold data. OneTouch is the
 external workstation backup destination selected by `inventory/backup.nix`.
 The [September 19 evidence](../archive/reports/2026-09-19-backup-evidence.md)
-records a completed workstation service-state restore drill and its limits.
-Existing MP510 archives, local filesystem snapshots, and application dumps are preserved;
-none establishes current backup coverage by itself. Same-disk snapshots and
-dumps do not survive loss of that disk.
+records the enabled destination, workstation service-state restore, and Pi
+backup checks. The
+[Pi host reconstruction drill](../archive/reports/2026-09-21-pi-host-reconstruction-drill.md)
+connects clean configuration and reboot to a current Pi-hole snapshot in a
+disposable guest. It does not measure physical replacement recovery.
+Existing MP510 archives, local filesystem snapshots, and application dumps are
+preserved. None establishes current backup coverage by itself. Same-disk
+snapshots and dumps do not survive loss of that disk.
 
-Aurora reuse is conditional on renewed connectivity: the September 6 check
-found it offline (last seen August 31 at 23:50 UTC) and SSH timed out. Pi's
-observed SSH host key did not match existing trust, so remote access was not
-established. Verify host identity independently before changing trust.
+Aurora reuse is conditional on renewed connectivity. The September 6 check
+found it offline. The September 19 Pi inspection established a strict
+host-key-checked session through `pi.saola-matrix.ts.net`; the hostname,
+Tailscale address, and remote host key agreed. Reverify host identity during
+an incident. Do not use the stale address-form entry for `100.100.71.3`.
 
 ## RTO targets
 
@@ -31,7 +36,7 @@ established. Verify host identity independently before changing trust.
 | Bad config | < 15 min | NixOS rollback (atomic generations); `bad-config.md` |
 | Single file deletion | < 15 min | btrbk snapshot restore; `file-deletion.md` |
 | Service corruption | < 1 hour | Stop service, restore subvolume snapshot, restart; `service-corruption.md` |
-| Pi total failure | < 2 hours | Reinstall the supported Debian appliance and converge Ansible; restore state only from an inspected, usable archive. Verify off-host heartbeat alerting separately |
+| Pi total failure | < 2 hours | The disposable ARM reconstruction and Pi-hole restore completed in 49 minutes. Physical replacement remains unmeasured. Reinstall supported Debian, converge Ansible, and restore only inspected state; `pi-failure.md` |
 | Root drive failure (workstation) | < 1 day | Reinstall via disko + flake, inspect preserved archives for restorable state; `drive-failure-root.md` |
 | Media drive failure | < 1 day for services, days for media data | Recovery depends on verified surviving copies; no media backup coverage established; `drive-failure-media.md` |
 | Whole-machine loss | Days+ | Hardware procurement is the bottleneck |
