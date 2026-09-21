@@ -4,11 +4,14 @@
 
 ## Symptom
 
-A service's database / state got corrupted — Open WebUI won't start with "database is malformed", Jellyfin library shows wrong metadata, Authelia login broken after a config edit, etc. Service binary is fine; its state is what's wrong.
+A service's state is corrupt. For example, Vaultwarden can report a malformed
+database, Jellyfin can show incorrect metadata, or Authelia can reject login
+after a state change. The service binary is healthy, but its state is not.
 
-## Three flavors of restore
+## Four recovery patterns
 
-Pattern matches SERVICES.md § "Backup-correctness patterns". The right flavor depends on how the service stores state.
+Select the matching pattern from the
+[service reference](../reference/services.md#backup-correctness-patterns).
 
 ### Pattern A — filesystem-only (Jellyfin, Tailscale, plain Pattern-A services)
 
@@ -45,7 +48,19 @@ sudo -u postgres psql immich < /var/lib/immich/backups/dump-<latest>.sql
 sudo systemctl start immich-server.service immich-machine-learning.service
 ```
 
-### Pattern C — prepared database before Restic (Vaultwarden / SQLite)
+### Pattern C1 — PostgreSQL logical dump (Miniflux)
+
+`services.postgresqlBackup` writes
+`/var/backup/postgresql/miniflux.sql.gz`. The Miniflux Restic unit requires a
+fresh dump before it can run.
+
+Restore the selected snapshot to a disposable directory. Import the dump into
+a new PostgreSQL cluster with `ON_ERROR_STOP` enabled. Start Miniflux against
+that cluster and require `/healthcheck` to return HTTP 200 before a production
+cutover. The verified isolated sequence is recorded in
+`../archive/reports/2026-09-21-miniflux-postgresql-recovery-drill.md`.
+
+### Pattern C2 — prepared database before Restic (Vaultwarden / SQLite)
 
 `nori.backups.vaultwarden.prepareCommand` uses `VACUUM INTO` before each
 Restic run. This creates `/var/backup/vaultwarden/db.sqlite3`.

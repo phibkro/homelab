@@ -10,13 +10,14 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 ## Outstanding (actionable)
 
-- **Prove end-to-end service recovery.** Pi-hole appliance recovery and the
-  Vaultwarden logical SQLite model are complete. Evidence:
-  `docs/archive/reports/2026-09-21-pihole-recovery-drill.md` and
-  `docs/archive/reports/2026-09-21-vaultwarden-sqlite-recovery-drill.md`.
-  Continue isolated drills for files, PostgreSQL, and service-specific exports.
-  Then cover user data, media metadata, and complete host reconstruction.
-  Generate the evidence view from service manifests and backup jobs.
+- **Prove end-to-end service recovery.** Pi-hole appliance recovery,
+  Vaultwarden logical SQLite, and Miniflux PostgreSQL are complete. Evidence:
+  `docs/archive/reports/2026-09-21-pihole-recovery-drill.md`,
+  `docs/archive/reports/2026-09-21-vaultwarden-sqlite-recovery-drill.md`, and
+  `docs/archive/reports/2026-09-21-miniflux-postgresql-recovery-drill.md`.
+  Continue isolated drills for files and service-specific exports. Then cover
+  user data, media metadata, and complete host reconstruction. Generate the
+  evidence view from service manifests and backup jobs.
 
 - **Finish public status production acceptance.** The failure-independent
   `status.home.phibkro.org` Cloudflare Worker is deployed from the explicit

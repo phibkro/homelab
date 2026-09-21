@@ -55,14 +55,16 @@ service-owned placement selectors.
 
 ## Backup-correctness patterns
 
-Three flavors depending on service type. All use `services.restic.backups.<n>`; the differences are in *what they back up* and *what runs before the backup*.
+Four patterns cover files, built-in exports, PostgreSQL, and SQLite. All active
+jobs use `nori.backups.<name>`. The patterns differ in the selected data and the
+preparation that runs before Restic.
 
 | Pattern | When | Implementation | Example |
 |---|---|---|---|
-| **A: Filesystem-only** | data isn't a database | restic targets paths directly | Jellyfin lib, Samba shares, `/home`, `/srv/share` |
-| **B: Built-in dump** | service writes its own SQL dumps | restic picks up the dump dir | Immich |
-| **C1: External dump (Postgres)** | system Postgres without internal dump | `services.postgresqlBackup` + restic picks up the dump dir | shared Postgres |
-| **C2: External dump (SQLite)** | service writes SQLite without internal dump | `backupPrepareCommand = sqlite3 .backup` on the restic job | Open WebUI |
+| **A: Filesystem-only** | Data is not a database | Restic targets paths directly | Jellyfin library, Samba shares, `/home`, `/srv/share` |
+| **B: Built-in dump** | Service writes its own SQL dumps | Restic includes the dump directory | Immich |
+| **C1: External dump (PostgreSQL)** | System PostgreSQL without an internal dump | `services.postgresqlBackup` then Restic | Miniflux, Paperless |
+| **C2: External dump (SQLite)** | Service writes SQLite without an internal dump | `prepareCommand` uses `VACUUM INTO` and `flock` | Vaultwarden, Navidrome |
 
 ### Pattern A — filesystem-only
 
@@ -98,12 +100,13 @@ nori.backups.immich = {
 ```nix
 services.postgresqlBackup = {
   enable = true;
-  databases = [ "openwebui" ];
+  databases = [ "miniflux" ];
   startAt = "*-*-* 03:30:00";
   pgdumpOptions = "--no-owner";
-  location = "/var/backup/postgresql";
 };
-# Then restic backs up /var/backup/postgresql alongside other paths.
+nori.backups.miniflux.include = [
+  "/var/backup/postgresql/miniflux.sql.gz"
+];
 ```
 
 ### Pattern C2 — `prepareCommand` with VACUUM INTO + flock (SQLite)
@@ -147,9 +150,9 @@ Runtime check: `just test-backups` asserts per-target snapshot ≤25h.
 |---|---|---|
 | Jellyfin | A | Library DB is SQLite but rebuilds from media; non-critical |
 | Immich | B | Built-in dump mechanism |
-| Open WebUI | C2 | SQLite, no internal dump |
-| Vaultwarden | C2 | SQLite (diesel migrations); race fix applied |
-| Navidrome | C2 | SQLite (goose migrations); canonical impl reference |
+| Miniflux | C1 | PostgreSQL logical dump; isolated import verified |
+| Vaultwarden | C2 | SQLite with Diesel migrations; race fix applied |
+| Navidrome | C2 | SQLite with Goose migrations; canonical implementation |
 | Ollama | A | Models are re-downloadable |
 | Tailscale | A | State files |
 | `/home`, `/srv/share`, `/srv/nori` | A (via `nori.backups.user-data`) | No databases |
