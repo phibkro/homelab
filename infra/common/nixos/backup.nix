@@ -796,7 +796,7 @@ in
               ProtectKernelModules = true;
               ProtectControlGroups = true;
               PrivateDevices = true;
-              CapabilityBoundingSet = "";
+              CapabilityBoundingSet = lib.optionals (localFreshnessMounts != [ ]) [ "CAP_DAC_READ_SEARCH" ];
               LockPersonality = true;
               SystemCallFilter = "@system-service";
               TimeoutStartSec = "30min";

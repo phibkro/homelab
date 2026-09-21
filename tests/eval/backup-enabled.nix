@@ -41,6 +41,9 @@ let
     &&
       config.systemd.services.restic-snapshot-freshness.unitConfig.OnFailure
       == [ "notify@restic-snapshot-freshness.service" ]
+    &&
+      config.systemd.services.restic-snapshot-freshness.serviceConfig.CapabilityBoundingSet
+      == [ "CAP_DAC_READ_SEARCH" ]
     && (config.systemd.timers ? restic-snapshot-freshness)
     && lib.all (check: check.assertion) config.assertions
     && (config.users.users ? restic)
