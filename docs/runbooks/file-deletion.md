@@ -74,3 +74,7 @@ sudo restic -r /mnt/backup/user-data \
 ```
 
 Then move from `/tmp/restore/...` to its real path.
+
+The quarterly automated drill uses declared bounded samples because the full
+user-data snapshot is larger than the workstation root filesystem. See the
+[September 21 user-data drill](../archive/reports/2026-09-21-user-data-recovery-drill.md).

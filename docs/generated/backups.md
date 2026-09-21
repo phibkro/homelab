@@ -263,6 +263,45 @@ list of string
 
 
 
+## nori.backups.<name>.restoreSamples
+
+
+
+Stable regular files used by bounded restore drills for large
+repositories. Each sample must be inside one of this job’s
+include paths. Restic restores these files into a root-only
+disposable directory and verifies that every sample is
+readable. Leave empty for repositories that use a full restore
+drill.
+
+
+
+*Type:*
+list of string
+
+
+
+*Default:*
+
+```nix
+[ ]
+```
+
+
+
+*Example:*
+
+```nix
+[
+  "/home/example/Documents/recovery-anchor.pdf"
+]
+```
+
+*Declared by:*
+ - `infra/common/nixos/backup.nix`
+
+
+
 ## nori.backups.<name>.skip
 
 

@@ -18,12 +18,11 @@ let
     - `serviceRepos`  — active service-state repos. Cheap (~few min
                         total). Monthly drill cadence.
     - `userDataRepos` — user-data tier (irreplaceable personal state).
-                        Heavy (~99 GiB, 30+ min). Quarterly cadence.
-    - `mediaRepos`    — media-irreplaceable (hundreds of GB). NEVER
-                        in automated drill — manual only via
-                        `restore-drill-all.service`. Weekly
-                        `restic check` + monthly read-data-subset
-                        already verify pack integrity.
+                        Quarterly bounded file restore. Full snapshots are too
+                        large for the workstation root filesystem.
+    - `media-irreplaceable` is never restored automatically. Weekly
+      `restic check` and monthly read-data-subset verify pack integrity.
+      Manual recovery selects an explicit destination with enough capacity.
 
     Repos with `paths` set (skip explicit-opt-out entries).
   */
@@ -31,6 +30,9 @@ let
   userDataRepos = lib.filter (n: n == "user-data") activeRepos;
   serviceRepos = lib.filter (n: n != "user-data" && n != "media-irreplaceable") activeRepos;
   serviceRepoCount = lib.length serviceRepos;
+  userDataRepo = lib.findFirst (n: n == "user-data") null activeRepos;
+  userDataSamples =
+    if userDataRepo == null then [ ] else config.nori.backups.${userDataRepo}.restoreSamples;
 
   # Restore from the same declared target as the backup writer.
   drillRepositoryRoot = config.nori.inventory.backup.mountPoint;
@@ -116,20 +118,69 @@ let
 
     exit $fail
   '';
+
+  sampledDrillScript =
+    repo: samples:
+    let
+      includeArgs = lib.concatMapStringsSep " " (
+        sample: "--include=${lib.escapeShellArg sample}"
+      ) samples;
+      sampleWords = lib.concatMapStringsSep " " lib.escapeShellArg samples;
+    in
+    ''
+      set -euo pipefail
+      timestamp=$(date +%Y%m%d-%H%M%S)
+      logdir=/var/log/restore-drill
+      target=/var/restore-test/${repo}-$timestamp
+      log="$logdir/$timestamp.txt"
+      mkdir -p "$logdir" "$target"
+
+      {
+        echo "=== Bounded restore drill at $timestamp ==="
+        echo "Repo: ${repo}"
+        echo "Restoring ${toString (lib.length samples)} declared samples"
+
+        ${pkgs.restic}/bin/restic -r "${drillRepositoryRoot}/${repo}" restore latest \
+          --target "$target" ${includeArgs}
+
+        for sample in ${sampleWords}; do
+          restored="$target$sample"
+          if [ ! -f "$restored" ]; then
+            echo "✗ MISSING: $sample"
+            exit 1
+          fi
+          ${pkgs.coreutils}/bin/sha256sum "$restored" >/dev/null
+          echo "✓ $sample"
+        done
+
+        file_count=$(${pkgs.findutils}/bin/find "$target" -type f | ${pkgs.coreutils}/bin/wc -l)
+        total_bytes=$(${pkgs.coreutils}/bin/du -sb "$target" | ${pkgs.coreutils}/bin/cut -f1)
+        echo "=== PASS — files=$file_count bytes=$total_bytes samples=${toString (lib.length samples)} ==="
+
+        ${pkgs.findutils}/bin/find /var/restore-test -mindepth 1 -maxdepth 1 \
+          -type d -mtime +30 -print -exec ${pkgs.coreutils}/bin/rm -rf {} +
+        ${pkgs.findutils}/bin/find "$logdir" -name '*.txt' -mtime +180 -print -delete
+      } 2>&1 | ${pkgs.coreutils}/bin/tee -a "$log"
+    '';
 in
 {
   config = lib.mkIf config.nori.inventory.backup.enabled {
+    assertions = [
+      {
+        assertion = userDataRepos == [ ] || userDataSamples != [ ];
+        message = "The user-data backup requires restoreSamples for its bounded quarterly drill.";
+      }
+    ];
     /**
       Restore drills — verify backups are not just *recorded* (which
       `restic check` confirms) but actually *restorable*. Three units
       by tier; cadence matches blast-radius and runtime cost:
 
-        restore-drill-services   — active service repos. Monthly.
-                                   Cheap signal, runs often.
-        restore-drill-user-data  — user-data tier. Quarterly. ~30 min.
-                                   Irreplaceable personal state.
-        restore-drill-all        — everything incl. media. Manual only.
-                                   Multi-hour. Deep audits.
+        restore-drill-services   — full restore of active service repositories.
+                                   Monthly; cheap and broad.
+        restore-drill-user-data  — bounded user-data sample restore. Quarterly.
+                                   Exercises every declared user-data root.
+        restore-drill-all        — full service-state pass. Manual only.
 
       Output:
         /var/log/restore-drill/<timestamp>.txt   one log per run
@@ -172,14 +223,13 @@ in
     };
 
     systemd.services.restore-drill-user-data = {
-      description = "Quarterly restore drill — user-data tier (heavy)";
+      description = "Quarterly bounded restore drill — user-data tier";
       after = [ drillMountUnit ];
       requires = [ drillMountUnit ];
       unitConfig.OnFailure = [ "notify@restore-drill-user-data.service" ];
-      # user-data is ~99 GiB; allow 4h for the restore + sample verify.
-      serviceConfig = drillServiceConfig "4h";
+      serviceConfig = drillServiceConfig "1h";
       environment.RESTIC_PASSWORD_FILE = config.sops.secrets.restic-password.path;
-      script = drillScript userDataRepos;
+      script = sampledDrillScript userDataRepo userDataSamples;
     };
 
     systemd.timers.restore-drill-user-data = {
@@ -200,18 +250,18 @@ in
     };
 
     /**
-      Manual deep-audit — restores everything including
-      media-irreplaceable. Multi-hour disk I/O. Trigger with
-      `sudo systemctl start restore-drill-all.service`. No timer.
+      Manual full service-state audit. Large user-data and media repositories
+      require an explicit restore destination with enough capacity and are not
+      included in this root-filesystem unit.
     */
     systemd.services.restore-drill-all = {
-      description = "Restore drill — full pass including media-irreplaceable";
+      description = "Restore drill — full service-state pass";
       after = [ drillMountUnit ];
       requires = [ drillMountUnit ];
       unitConfig.OnFailure = [ "notify@restore-drill-all.service" ];
-      serviceConfig = drillServiceConfig "12h";
+      serviceConfig = drillServiceConfig "4h";
       environment.RESTIC_PASSWORD_FILE = config.sops.secrets.restic-password.path;
-      script = drillScript activeRepos;
+      script = drillScript serviceRepos;
     };
   };
 }

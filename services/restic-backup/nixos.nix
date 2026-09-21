@@ -275,6 +275,11 @@ in
         "/home/nori/.claude/remote"
         "/home/nori/.claude/shell-snapshots"
       ];
+      restoreSamples = [
+        "/home/nori/.ssh/config"
+        "/srv/nori/Documents/abstract_algebra.pdf"
+        "/srv/share/projects/homelab/flake.lock"
+      ];
       tier = "user";
       timer = "*-*-* 03:00:00";
     };

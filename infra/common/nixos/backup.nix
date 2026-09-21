@@ -284,6 +284,19 @@ in
                 drive. Ignored when `include` is null.
               '';
             };
+            restoreSamples = mkOption {
+              type = types.listOf types.str;
+              default = [ ];
+              example = [ "/home/example/Documents/recovery-anchor.pdf" ];
+              description = ''
+                Stable regular files used by bounded restore drills for large
+                repositories. Each sample must be inside one of this job's
+                include paths. Restic restores these files into a root-only
+                disposable directory and verifies that every sample is
+                readable. Leave empty for repositories that use a full restore
+                drill.
+              '';
+            };
             timer = mkOption {
               type = types.str;
               default = "*-*-* 03:00:00";
@@ -418,6 +431,21 @@ in
         ) config.nori.backups
       );
 
+      invalidRestoreSamples = lib.flatten (
+        lib.mapAttrsToList (
+          jobName: cfg:
+          map (sample: "${jobName} → ${sample}") (
+            lib.filter (
+              sample:
+              cfg.include == null
+              || !(lib.any (
+                includePath: sample == includePath || lib.hasPrefix "${includePath}/" sample
+              ) cfg.include)
+            ) cfg.restoreSamples
+          )
+        ) config.nori.backups
+      );
+
       /*
         Host-aware placement check — appliance and agent both reject
         path-based backups, for different reasons (anti-write storage
@@ -472,6 +500,15 @@ in
             Known DynamicUser services: ${lib.concatStringsSep ", " dynamicUserServices}
             See Mnemopi recall: gotcha-dynamicuser-statedirectory-symlink
             for the full story.
+          '';
+        }
+        {
+          assertion = invalidRestoreSamples == [ ];
+          message = ''
+            nori.backups restoreSamples entries must be inside the same job's
+            include paths.
+
+            Offending samples: ${lib.concatStringsSep ", " invalidRestoreSamples}
           '';
         }
         {

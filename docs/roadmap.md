@@ -10,18 +10,18 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 ## Outstanding (actionable)
 
-- **Prove end-to-end service recovery.** Pi-hole appliance recovery,
-  Vaultwarden logical SQLite, Miniflux PostgreSQL, Stremio files, and an Immich
-  application export are complete. Evidence:
+- **Prove end-to-end recovery.** Pi-hole appliance recovery, Vaultwarden
+  logical SQLite, Miniflux PostgreSQL, Stremio files, an Immich application
+  export, and bounded user-data recovery are complete. Evidence:
   `docs/archive/reports/2026-09-21-pihole-recovery-drill.md`,
   `docs/archive/reports/2026-09-21-vaultwarden-sqlite-recovery-drill.md`,
   `docs/archive/reports/2026-09-21-miniflux-postgresql-recovery-drill.md`,
-  `docs/archive/reports/2026-09-21-stremio-files-recovery-drill.md`, and
-  `docs/archive/reports/2026-09-21-immich-export-recovery-drill.md`. The first
-  state-model sequence is complete. Next, cover user data, media metadata, and
-  complete host reconstruction. Generate the evidence view from service
-  manifests and backup jobs. Activate Adelie before expecting the new Stremio
-  cache exclusion in deployed backup units.
+  `docs/archive/reports/2026-09-21-stremio-files-recovery-drill.md`,
+  `docs/archive/reports/2026-09-21-immich-export-recovery-drill.md`, and
+  `docs/archive/reports/2026-09-21-user-data-recovery-drill.md`. Next, cover
+  media metadata and complete host reconstruction. Generate the evidence view
+  from service manifests and backup jobs. Activate Adelie for the Stremio cache
+  exclusion. Activate the workstation for bounded user-data restore drills.
 
 - **Finish public status production acceptance.** The failure-independent
   `status.home.phibkro.org` Cloudflare Worker is deployed from the explicit
