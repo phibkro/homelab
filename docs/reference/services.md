@@ -153,6 +153,7 @@ Runtime check: `just test-backups` asserts per-target snapshot ≤25h.
 | Miniflux | C1 | PostgreSQL logical dump; isolated import verified |
 | Vaultwarden | C2 | SQLite with Diesel migrations; race fix applied |
 | Navidrome | C2 | SQLite with Goose migrations; canonical implementation |
+| Stremio | A | Pairing certificate and server settings; stream cache excluded |
 | Ollama | A | Models are re-downloadable |
 | Tailscale | A | State files |
 | `/home`, `/srv/share`, `/srv/nori` | A (via `nori.backups.user-data`) | No databases |

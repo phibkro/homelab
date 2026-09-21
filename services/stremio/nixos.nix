@@ -76,10 +76,11 @@ in
     binds = [ "/var/lib/stremio" ];
   };
 
-  # Service tier — losing the cert/identifier just forces a re-pair, but
-  # the dir is tiny so it's free to back up.
+  # Service tier — preserve the pairing certificate and server identity.
+  # Streaming cache files are re-downloadable and can grow by gigabytes.
   nori.backups.stremio = {
     include = [ "/var/lib/stremio" ];
+    exclude = [ "/var/lib/stremio/stremio-cache" ];
     tier = "service";
   };
 }

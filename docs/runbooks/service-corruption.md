@@ -100,6 +100,7 @@ After every restore, use a real endpoint. `systemctl status` can report
 |---|---|
 | Jellyfin | Log in and browse a library |
 | Vaultwarden | `/alive` returns HTTP 200; log in and open one vault item |
+| Stremio | `/settings` returns HTTP 200 with the expected server version and remote HTTPS identity |
 | Authelia | Complete an OIDC redirect from a downstream service |
 | Beszel | Open `https://metrics.home.phibkro.org` and view current agent data |
 | Immich | Open the timeline and view recent photo metadata |
