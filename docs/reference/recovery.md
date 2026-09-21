@@ -29,6 +29,10 @@ The
 [Authelia recovery drill](../archive/reports/2026-09-21-authelia-recovery-drill.md)
 records a disposable restore, SQLite integrity check, isolated startup, health
 check, and OIDC discovery result.
+The
+[ntfy recovery drill](../archive/reports/2026-09-21-ntfy-recovery-drill.md)
+records a disposable restore, integrity checks for both SQLite databases,
+isolated startup, and a health check.
 Existing MP510 archives, local filesystem snapshots, and application dumps are
 preserved. None establishes current backup coverage by itself. Same-disk
 snapshots and dumps do not survive loss of that disk.

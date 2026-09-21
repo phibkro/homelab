@@ -51,6 +51,18 @@
     ];
   };
 
+  ntfy-service = {
+    scope = "service";
+    workload = "ntfy-server";
+    report = "docs/archive/reports/2026-09-21-ntfy-recovery-drill.md";
+    gates = [
+      "restore"
+      "integrity"
+      "startup"
+      "endpoint"
+    ];
+  };
+
   pi-host = {
     scope = "host";
     host = "pi";

@@ -34,12 +34,13 @@ work, but do not block autonomous repository work.
   application/database recovery drills, user-data/media restore coverage, and
   full data-block integrity evidence. The September 19 pass established the Pi
   identity, backup transport, eight fresh snapshots, eight metadata checks, and
-  one byte-for-byte Pi-hole restore. The September 21 Authelia drill restored
-  its SQLite state and proved isolated startup, health, and OIDC discovery.
-  Physical reboot and off-LAN gates are tracked as operator IOUs above.
-  Evidence:
-  `docs/archive/reports/2026-09-19-backup-evidence.md` and
-  `docs/archive/reports/2026-09-21-authelia-recovery-drill.md`.
+  one byte-for-byte Pi-hole restore. The September 21 Authelia and ntfy drills
+  restored three SQLite databases and proved isolated application startup and
+  health. The Authelia drill also proved OIDC discovery. Physical reboot and
+  off-LAN gates are tracked as operator IOUs above. Evidence:
+  `docs/archive/reports/2026-09-19-backup-evidence.md`,
+  `docs/archive/reports/2026-09-21-authelia-recovery-drill.md`, and
+  `docs/archive/reports/2026-09-21-ntfy-recovery-drill.md`.
 
 - **Build the authenticated family onboarding portal.** Reuse the access-tiered
   route projection for capability filtering, registration guidance, Tailscale

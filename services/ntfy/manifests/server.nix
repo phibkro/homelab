@@ -17,6 +17,11 @@
     "stateful"
   ];
 
+  recovery = {
+    model = "filesystem";
+    backupJob = "ntfy";
+  };
+
   endpoints.alert = {
     port = 8091;
     monitor.path = "/v1/health";
