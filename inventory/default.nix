@@ -729,9 +729,9 @@ let
     if route.monitor == null || !(workloadRunsOnPi "gatus") then
       null
     else if route.publicStatus then
-      "external-${routeName}"
+      "edge-${routeName}"
     else if routeName == "auth" then
-      "external-auth-discovery"
+      "edge-auth-discovery"
     else if route.monitor.name == null then
       routeName
     else
@@ -1087,15 +1087,18 @@ let
   publicGatusProbes = map (name: publicGatusProbeFor publicStatusRoutes.${name}) (
     lib.attrNames publicStatusRoutes
   );
-  externalRouteProbeFor = route: {
-    name = "external-${route.name}";
+  edgeRouteProbeFor = route: {
+    name = "edge-${route.name}";
     url = "https://${route.hostname}${route.monitor.path}";
     inherit (route.monitor) interval;
+    client = {
+      "dns-resolver" = "tcp://${piLanAddress}:${toString piholeDnsPort}";
+    };
     conditions = route.monitor.conditions ++ [ "[CERTIFICATE_EXPIRATION] > 168h" ];
     failure_threshold = route.monitor.failureThreshold;
     send_on_resolved = true;
   };
-  externalRouteProbes = map (name: externalRouteProbeFor publicStatusRoutes.${name}) (
+  edgeRouteProbes = map (name: edgeRouteProbeFor publicStatusRoutes.${name}) (
     lib.attrNames publicStatusRoutes
   );
   dnsOutcomeProbe =
@@ -1120,7 +1123,7 @@ let
   authOutcomeProbe =
     if activeRoutes ? auth then
       {
-        name = "external-auth-discovery";
+        name = "edge-auth-discovery";
         url = "https://${activeRoutes.auth.hostname}/.well-known/openid-configuration";
         interval = "60s";
         client = {
@@ -1143,7 +1146,7 @@ let
       null
     else
       {
-        name = "external-auth-challenge";
+        name = "edge-auth-challenge";
         url = "https://${authBoundaryRoute.hostname}/";
         interval = "60s";
         client = {
@@ -1151,7 +1154,7 @@ let
           "ignore-redirect" = true;
         };
         conditions = [
-          "[STATUS] == 302"
+          "[STATUS] == 401"
           "[CERTIFICATE_EXPIRATION] > 168h"
         ];
         failure_threshold = 3;
@@ -1212,7 +1215,7 @@ let
       authOutcomeProbe
       authBoundaryProbe
     ]
-    ++ externalRouteProbes
+    ++ edgeRouteProbes
     ++ map explicitProbe (
       [
         {

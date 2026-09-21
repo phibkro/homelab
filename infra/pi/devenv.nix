@@ -131,12 +131,13 @@ in
          == ["metrics", "news", "photos", "vault"]
        and (.pi_appliances.hosts.pi.gatus_endpoints | length > 7)
        and (.pi_appliances.hosts.pi.gatus_endpoints | any(.name == "pihole-dns-answer"))
-       and (.pi_appliances.hosts.pi.gatus_endpoints | any(.name == "external-auth-discovery" and .alert == false))
+       and (.pi_appliances.hosts.pi.gatus_endpoints | any(.name == "edge-auth-discovery" and .alert == false))
        and (.pi_appliances.hosts.pi.gatus_endpoints
-         | any(.name == "external-auth-challenge"
+         | any(.name == "edge-auth-challenge"
                and .client["ignore-redirect"] == true
-               and (.conditions | index("[STATUS] == 302")) != null))
-       and (.pi_appliances.hosts.pi.gatus_endpoints | any(.name == "external-media"))
+               and (.conditions | index("[STATUS] == 401")) != null))
+       and (.pi_appliances.hosts.pi.gatus_endpoints
+         | any(.name == "edge-media" and .client["dns-resolver"] == "tcp://192.168.1.225:53"))
        and (.pi_appliances.hosts.pi.gatus_endpoints | all(.name != "pihole-dns"))
        and (.pi_appliances.hosts.pi.gatus_endpoints | any(.name == "media" and .alert == false))
        and ([.pi_appliances.hosts.pi.recovery_evidence[].id] | sort)

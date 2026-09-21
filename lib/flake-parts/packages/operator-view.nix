@@ -214,7 +214,7 @@
               .healthSource.maxAgeSeconds == 300 and
               ([.services[] | select(.id == "jellyfin")][0] |
                 .declared.routes[0].authentication == "service-native-or-exception" and
-                .declared.probes == ["external-media"] and
+                .declared.probes == ["edge-media"] and
                 .declared.backups[0].name == "jellyfin") and
               ([.services[] | select(.id == "pihole")][0] |
                 .declared.deploymentOwners == ["ansible"] and

@@ -226,7 +226,7 @@ flowchart TB
 | SMART status changes | systemd timer | Urgent |
 | DNS answer mismatch | Gatus | Urgent |
 | Authentication challenge failure | Gatus | Urgent |
-| External HTTPS, application response, or certificate lifetime <7 days | Gatus | Urgent |
+| LAN-side HTTPS edge, application response, or certificate lifetime <7 days | Gatus | Urgent |
 | Tailscale connectivity loss | systemd timer | Urgent |
 | restic backup stale or job failure | restic systemd unit (`OnFailure → notify@`) | Urgent |
 | Accepted recovery evidence older than its declared maximum age | systemd timer (`OnFailure → notify@`) | Urgent |
@@ -235,10 +235,12 @@ flowchart TB
 
 Alert ownership is explicit. Gatus owns DNS, authentication, HTTPS, application,
 and certificate outcomes. Direct backend probes remain available for diagnosis,
-but are alert-free where an external outcome owns notification. The public
-Gatus view consumes a separate alert-free projection, so publishing a component
-does not create a second alert path. OIDC discovery is also diagnostic; the
-forward-auth challenge is the single authentication alert owner.
+but are alert-free where a LAN-side edge outcome owns notification. These probes
+use Pi-hole split DNS because the router has no NAT loopback; the public-status
+Worker remains the off-LAN observer. The public Gatus view consumes a separate
+alert-free projection, so publishing a component does not create a second alert
+path. OIDC discovery is also diagnostic; the forward-auth challenge is the
+single authentication alert owner.
 Restic job units own execution failures; freshness monitors use lock-free
 read-only queries and suppress a job-target while that unit is failed.
 Recovery-evidence age has one fleet-wide owner on Pi.

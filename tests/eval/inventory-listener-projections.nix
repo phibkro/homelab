@@ -141,12 +141,12 @@ let
   outcomeMonitoringProjection =
     let
       dnsProbe = endpointFor "pihole-dns-answer";
-      authProbe = endpointFor "external-auth-discovery";
-      authBoundaryProbe = endpointFor "external-auth-challenge";
-      externalProbes = map endpointFor [
-        "external-audio"
-        "external-media"
-        "external-requests"
+      authProbe = endpointFor "edge-auth-discovery";
+      authBoundaryProbe = endpointFor "edge-auth-challenge";
+      edgeProbes = map endpointFor [
+        "edge-audio"
+        "edge-media"
+        "edge-requests"
       ];
       directDiagnosticProbes = map endpointFor [
         "auth"
@@ -170,12 +170,15 @@ let
     && authBoundaryProbe != null
     && authBoundaryProbe.client."ignore-redirect"
     && authBoundaryProbe.client."dns-resolver" == "tcp://${inventory.hosts.pi.lanIp}:53"
-    && lib.elem "[STATUS] == 302" authBoundaryProbe.conditions
+    && lib.elem "[STATUS] == 401" authBoundaryProbe.conditions
     && endpointFor "pihole-dns" == null
     && lib.all (endpoint: endpoint != null && endpoint.alert == false) directDiagnosticProbes
     && lib.all (
-      endpoint: endpoint != null && lib.elem "[CERTIFICATE_EXPIRATION] > 168h" endpoint.conditions
-    ) externalProbes;
+      endpoint:
+      endpoint != null
+      && endpoint.client."dns-resolver" == "tcp://${inventory.hosts.pi.lanIp}:53"
+      && lib.elem "[CERTIFICATE_EXPIRATION] > 168h" endpoint.conditions
+    ) edgeProbes;
   routeFirewallsExposeLocalRoutes =
     let
       nixosHostNames = lib.attrNames inputs.self.nixosConfigurations;
