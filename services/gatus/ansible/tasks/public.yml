@@ -1,0 +1,221 @@
+---
+- name: Validate the public Gatus runtime contract
+  ansible.builtin.assert:
+    that:
+      - gatus_public_bind_address is match('^[0-9]+(\.[0-9]+){3}$')
+      - gatus_public_bind_address not in ['0.0.0.0', '255.255.255.255']
+      - gatus_public_port | int >= 1
+      - gatus_public_port | int <= 65535
+      - gatus_public_port | int != gatus_port | int
+      - gatus_public_container_port | int >= 1024
+      - gatus_public_container_port | int <= 65535
+      - gatus_public_container_port | int != gatus_public_port | int
+      - gatus_public_network_interface | length > 0
+      - gatus_public_network_subnet | length > 0
+      - gatus_public_network_gateway is match('^[0-9]+(\.[0-9]+){3}$')
+      - gatus_public_network_address is match('^[0-9]+(\.[0-9]+){3}$')
+      - gatus_public_endpoints | length > 0
+      - gatus_public_delay_start_seconds | int >= 0
+    fail_msg: >-
+      Public Gatus requires a concrete LAN publication address, an isolated
+      network, distinct valid ports, and at least one published endpoint.
+  when: gatus_public_enabled | bool
+
+- name: Validate each public Gatus endpoint
+  ansible.builtin.assert:
+    that:
+      - item.name is string
+      - item.name | length > 0
+      - item.name is not search('[\r\n]')
+      - item.group == 'Family services'
+      - item.url is match('^https://[^ ]+$')
+      - item.interval is string
+      - item.interval | length > 0
+      - item.conditions is sequence
+      - item.conditions is not string
+      - (item.conditions | select('string') | list | length) == (item.conditions | length)
+    fail_msg: Every public Gatus endpoint needs a safe display name and canonical HTTPS probe.
+  loop: "{{ gatus_public_endpoints }}"
+  loop_control:
+    label: "{{ item.name | default('unnamed') }}"
+  when: gatus_public_enabled | bool
+
+- name: Require unique public Gatus endpoint names
+  ansible.builtin.assert:
+    that:
+      - >-
+        (gatus_public_endpoints | map(attribute='name') | list | unique | length)
+        == (gatus_public_endpoints | length)
+    fail_msg: Public Gatus endpoint names must be unique.
+  when: gatus_public_enabled | bool
+
+- name: Render the public Gatus configuration
+  ansible.builtin.template:
+    src: public-config.yaml.j2
+    dest: "{{ gatus_public_config_file }}"
+    owner: "{{ gatus_uid }}"
+    group: "{{ gatus_gid }}"
+    mode: "0440"
+  register: gatus_public_config
+  when: gatus_public_enabled | bool
+
+- name: Render the isolated public Gatus validation configuration
+  ansible.builtin.template:
+    src: public-config.yaml.j2
+    dest: "{{ gatus_public_validation_config_file }}"
+    owner: "{{ gatus_uid }}"
+    group: "{{ gatus_gid }}"
+    mode: "0440"
+  vars:
+    gatus_public_render_web_address: 127.0.0.1
+  when: gatus_public_enabled | bool
+
+- name: Validate the rendered public Gatus configuration
+  ansible.builtin.command:
+    argv:
+      - timeout
+      - 30s
+      - podman
+      - run
+      - --rm
+      - --network=none
+      - --env
+      - GATUS_CONFIG_PATH=/config
+      - --env
+      - GATUS_DELAY_START_SECONDS=0
+      - --volume={{ gatus_public_validation_config_file }}:/config/config.yaml:ro
+      - --user={{ gatus_uid }}:{{ gatus_gid }}
+      - --read-only
+      - --cap-drop=ALL
+      - --security-opt=no-new-privileges:true
+      - "{{ gatus_image }}"
+  register: gatus_public_config_validation
+  changed_when: false
+  failed_when: gatus_public_config_validation.rc not in [0, 124, 143]
+  when:
+    - gatus_public_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Create the isolated public Gatus network
+  containers.podman.podman_network:
+    name: "{{ gatus_public_network_name }}"
+    state: present
+    driver: bridge
+    interface_name: "{{ gatus_public_network_interface }}"
+    subnet: "{{ gatus_public_network_subnet }}"
+    gateway: "{{ gatus_public_network_gateway }}"
+    internal: false
+  register: gatus_public_network
+  when:
+    - gatus_public_enabled | bool
+    - podman_available | bool
+
+- name: Run the public Gatus container
+  containers.podman.podman_container:
+    name: "{{ gatus_public_container_name }}"
+    image: "{{ gatus_image }}"
+    state: started
+    restart_policy: always
+    pull: never
+    network:
+      - "{{ gatus_public_network_name }}"
+    ip: "{{ gatus_public_network_address }}"
+    publish:
+      - "{{ gatus_public_bind_address }}:{{ gatus_public_port }}:{{ gatus_public_container_port }}/tcp"
+    etc_hosts: >-
+      {{
+        dict(
+          (gatus_public_endpoints | map(attribute='hostname') | list)
+          | zip(
+              [gatus_public_network_gateway]
+              * (gatus_public_endpoints | length)
+            )
+        )
+      }}
+    user: "{{ gatus_uid }}:{{ gatus_gid }}"
+    recreate: "{{ gatus_public_config.changed or gatus_public_network.changed }}"
+    env:
+      GATUS_CONFIG_PATH: /config
+      GATUS_DELAY_START_SECONDS: "{{ gatus_public_delay_start_seconds }}"
+    volume:
+      - "{{ gatus_public_config_file }}:/config/config.yaml:ro"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      /tmp: rw,noexec,nosuid,size=16m
+  register: gatus_public_container
+  no_log: true
+  when:
+    - gatus_public_enabled | bool
+    - podman_available | bool
+
+- name: Wait for the public Gatus HTTP listener
+  ansible.builtin.wait_for:
+    host: "{{ gatus_public_bind_address }}"
+    port: "{{ gatus_public_port }}"
+    timeout: 120
+  when:
+    - gatus_public_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Verify the public Gatus health endpoint
+  ansible.builtin.uri:
+    url: "http://{{ gatus_public_bind_address }}:{{ gatus_public_port }}/health"
+    method: GET
+    status_code: 200
+    timeout: 10
+    return_content: false
+  register: gatus_public_health
+  until: gatus_public_health.status | default(0) == 200
+  retries: 30
+  delay: 2
+  changed_when: false
+  when:
+    - gatus_public_enabled | bool
+    - podman_available | bool
+    - not ansible_check_mode
+
+- name: Remove public Gatus when explicitly disabled
+  containers.podman.podman_container:
+    name: "{{ gatus_public_container_name }}"
+    state: absent
+  when:
+    - not gatus_public_enabled | bool
+    - podman_available | bool
+
+- name: Remove the disabled public Gatus network
+  containers.podman.podman_network:
+    name: "{{ gatus_public_network_name }}"
+    state: absent
+  when:
+    - not gatus_public_enabled | bool
+    - podman_available | bool
+
+- name: Remove disabled public Gatus configuration
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ gatus_public_config_file }}"
+    - "{{ gatus_public_validation_config_file }}"
+  when: not gatus_public_enabled | bool
+
+- name: Report public Gatus convergence
+  ansible.builtin.debug:
+    msg: >-
+      {% if not gatus_public_enabled | bool %}
+      Public Gatus is disabled.
+      {% elif not podman_available %}
+      Public Gatus runtime checks are deferred until Podman exists.
+      {% elif ansible_check_mode %}
+      Public Gatus would converge with {{ gatus_public_endpoints | length }} probes.
+      {% else %}
+      Public Gatus container changed={{ gatus_public_container.changed | default(false) }};
+      configuration changed={{ gatus_public_config.changed | default(false) }};
+      health endpoint verified.
+      {% endif %}

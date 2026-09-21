@@ -26,4 +26,11 @@
       description = "Service uptime + alerts";
     };
   };
+
+  endpoints.status = {
+    port = 8089;
+    reachability = "internet";
+    audience = "public";
+    noAuthReason = "The status page is intentionally public and contains only explicitly published family services.";
+  };
 }

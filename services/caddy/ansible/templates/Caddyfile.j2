@@ -17,7 +17,11 @@ http://*.{{ domain }} {
 
 {% endfor %}
 *.{{ pi_domain }} {
+{% if gatus_public_enabled | default(false) %}
+  bind {{ pi_service_bind_address }} {{ gatus_public_network_gateway }}
+{% else %}
   bind {{ pi_service_bind_address }}
+{% endif %}
 {% if caddy_tls_mode == 'internal' %}
   tls internal
 {% else %}
@@ -31,6 +35,7 @@ http://*.{{ domain }} {
     host {{ route.hostname }}
 {% if route.reachability | default('internal') == 'internal' %}
     client_ip private_ranges 100.64.0.0/10
+    not client_ip {{ gatus_public_network_subnet }}
 {% endif %}
   }
   handle @{{ route.name }} {

@@ -8,7 +8,6 @@
     git
     jq
     just
-    openssl
     shellcheck
     util-linux
   ];

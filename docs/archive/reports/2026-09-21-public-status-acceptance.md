@@ -56,3 +56,13 @@ After the ADR-0006 router cutover, wait for an `operational` scheduled result.
 Then stop and restart Navidrome once more. Record the full
 `operational → outage → operational` transition before closing external
 acceptance.
+
+## Subsequent correction
+
+Independent requests reached all three public services on September 21. The WAN
+TCP 443 rule was already active. The Worker reported `outage` because its probe
+implementation failed inside Cloudflare, not because the router blocked traffic.
+
+The custom Worker was later retired in favor of Gatus. The
+[Gatus cutover acceptance](2026-09-21-public-gatus-acceptance.md) records the
+replacement. This report remains evidence for the retired implementation only.

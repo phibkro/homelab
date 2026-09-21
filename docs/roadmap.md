@@ -10,18 +10,12 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 ## Outstanding (actionable)
 
-
 - **Finish ADR-0006 router cutover and external acceptance.** Route-derived
   DNS-only A records, Pi DDNS reconciliation, and Caddy's exact-host/source
-  boundary are ready declaratively. The public status Worker is deployed.
-  Its scheduled probes report `outage` because WAN TCP 443 is not forwarded.
-  [Production acceptance evidence](archive/reports/2026-09-21-public-status-acceptance.md)
-  records the observed boundary. Forward WAN TCP 443 to
-  `192.168.1.225:443`, never port 80. Then run ADR-0006's cellular-data checks
-  for all three family logins, known-internal hosts, and random-host 404s.
-  Confirm that the router preserves the real client source IP. Wait for an
-  `operational` scheduled status result. Finally, stop and restart Navidrome
-  and record an `operational → outage → operational` probe transition.
+  boundary are ready. The WAN TCP 443 rule is active. Run ADR-0006's
+  cellular-data checks for all three family logins, known-internal hosts, and
+  random-host 404s. Make sure that the router preserves the source IP of the
+  client.
 
 - **Finish the Pi appliance migration.** Pi owns the failure-independent
   network appliance plane: DNS, HTTPS entry, identity, Glance, monitoring,
@@ -47,8 +41,8 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 - **Build the authenticated family onboarding portal.** Reuse the access-tiered
   route projection for capability filtering, registration guidance, Tailscale
   setup, and generated walkthroughs. Keep its authentication and release
-  lifecycle separate from the public status Worker. Start after the public
-  status component contract passes production acceptance.
+  lifecycle separate from public Gatus. Start after the Gatus status cutover
+  passes production acceptance.
 
 - **Refine outcome-based monitoring.** Monitor DNS, authentication, external
   HTTPS, application health, backup freshness, restore-evidence age, disk

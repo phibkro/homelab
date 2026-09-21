@@ -22,7 +22,6 @@ profiles/                     reusable NixOS and Home Manager compositions
 users/nori/                   identity, Home Manager selection and program implementations
 roles/                        shared access-policy vocabulary
 lib/                          flake outputs, host factory and documentation helpers
-products/status/              independently built public status application
 secrets/                      encrypted values and operator procedures
 tests/                        shared evaluation and integration checks
 scripts/                      cross-project operator utilities

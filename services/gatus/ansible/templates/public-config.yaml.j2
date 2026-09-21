@@ -1,0 +1,23 @@
+metrics: false
+storage:
+  type: memory
+web:
+  address: {{ (gatus_public_render_web_address | default('0.0.0.0')) | to_json }}
+  port: {{ gatus_public_container_port | int }}
+ui:
+  title: Family service status
+  description: Availability of family-facing homelab services
+endpoints:
+{% for endpoint in gatus_public_endpoints %}
+  - name: {{ endpoint.name | to_json }}
+    group: {{ endpoint.group | to_json }}
+    url: {{ endpoint.url | to_json }}
+    interval: {{ endpoint.interval | to_json }}
+    ui:
+      hide-conditions: true
+      hide-errors: true
+      hide-hostname: true
+      hide-port: true
+      hide-url: true
+    conditions: {{ endpoint.conditions | to_json }}
+{% endfor %}

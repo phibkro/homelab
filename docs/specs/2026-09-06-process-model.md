@@ -223,18 +223,17 @@ The source also includes processes outside the workload inventory:
 
 | Process boundary | Input/output and feedback | Source |
 |---|---|---|
-| Probe public component availability | Scheduled trigger + HTTP outcomes → latest component rows in D1 | `products/status/src/worker.ts`, `products/status/alchemy.run.ts` |
-| Serve public status | GET/HEAD + catalog + retained rows → HTML/JSON; D1 failure yields unknown | `products/status/src/worker.ts`, `products/status/src/status.ts` |
+| Probe service availability | Generated endpoints → Gatus probes → memory state and ntfy alerts | `inventory/default.nix`, `services/gatus/ansible/` |
+| Serve public status | Explicit `publicStatus` grants → public-safe Gatus instance → Pi Caddy | `inventory/default.nix`, `services/gatus/ansible/`, `services/caddy/ansible/` |
 | Relay project MCP requests | Authenticated HTTP → correlated WebSocket request → response; pending correlation/timeouts retained in memory | `infra/cloudflare/workers/herdr-projects-relay.ts` |
 | Provision edge routes and access | Alchemy programs + provider responses → edge resources + retained deployment state | `infra/cloudflare/*.alchemy.run.ts`, `infra/cloudflare/alchemy.run.ts` |
 | Stream an existing desktop | Logged-in graphical session + remote input → captured/encoded audio/video | `services/sunshine/nixos.nix` |
 | Run disposable or operator VMs | VM definitions/images + input → guest behavior + retained guest state | `profiles/desktop/nixos/virt.nix`, `infra/pi/scripts/test-vm.sh`, `tests/e2e-*.nix` |
 | Fetch research papers | Operator invocation + resolver responses → files in the Paperless consumption flow | `profiles/research/nixos.nix`, `users/nori/programs/papers-fetch/` |
 
-The public status implementation is a concrete example of state as a summary:
-it upserts the latest result per component; it does not retain the complete probe
-history. Its current projection does not expire old rows by age. That is observed
-source behavior to assess during redesign, not a new guarantee added by this model.
+Gatus keeps probe history in memory. A restart removes this history. The public
+instance contains only explicitly published family services. The operator
+instance keeps the complete internal probe set.
 The relay's pending promises are not made durable merely by the platform type's
 name; distinguish those process-local correlations from retained platform state.
 

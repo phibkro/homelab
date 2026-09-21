@@ -301,3 +301,6 @@
       health and metrics endpoints verified.
       {% endif %}
   when: gatus_enabled | bool
+
+- name: Converge the public Gatus status instance
+  ansible.builtin.include_tasks: public.yml

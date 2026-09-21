@@ -94,6 +94,13 @@ gatus_ntfy_url: https://ntfy.sh
 gatus_ntfy_token_path: ""
 vector_victorialogs_endpoint: >-
   http://{{ pi_service_bind_address }}:{{ victorialogs_bind_port }}/insert/elasticsearch/
+# The public status container has one host path: Caddy HTTPS. The firewall
+# denies every new forwarded flow from this dedicated network.
+gatus_public_network_name: gatus-public
+gatus_public_network_interface: gatus-public0
+gatus_public_network_subnet: 10.89.0.0/30
+gatus_public_network_gateway: 10.89.0.1
+gatus_public_network_address: 10.89.0.2
 
 # Every job is a narrow, explicit state manifest. The backup role rejects
 # paths outside its immutable allowlist and never infers additional paths.

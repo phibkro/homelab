@@ -123,7 +123,7 @@ in
              | .name] | sort)
          == ["cache", "calendar", "filmder", "heim", "news", "ops", "stremio", "vault"]
        and .pi_appliances.hosts.pi.glance_enabled == true
-       and .pi_appliances.hosts.pi.pi_tailnet_workload_ports == [8082, 8086]
+       and .pi_appliances.hosts.pi.caddy_internet_enabled == true
        and .pi_appliances.hosts.pi.pi_container_host_tcp_ports == [8082, 45876]
        and (.pi_appliances.hosts.pi.glance_bookmark_groups | length == 5)
        and (.pi_appliances.hosts.pi.pi_routes | length > 1)
@@ -131,6 +131,16 @@ in
          == ["metrics", "news", "photos", "vault"]
        and (.pi_appliances.hosts.pi.gatus_endpoints | length > 7)
        and (.pi_appliances.hosts.pi.gatus_endpoints | any(.name == "media"))
+       and .pi_appliances.hosts.pi.gatus_public_enabled == true
+       and .pi_appliances.hosts.pi.gatus_public_port == 8089
+       and ([.pi_appliances.hosts.pi.gatus_public_endpoints[].name] | sort)
+         == ["Jellyfin", "Navidrome", "Seerr"]
+       and ([.pi_appliances.hosts.pi.gatus_public_endpoints[].url] | sort)
+         == [
+           "https://audio.home.phibkro.org/",
+           "https://media.home.phibkro.org/",
+           "https://requests.home.phibkro.org/"
+         ]
        and .pi_appliances.hosts.pi.beszel_systems == [
          {name: "adelie", host: "100.107.90.3", port: 45876},
          {name: "pi", host: "192.168.1.225", port: 45876},
@@ -141,7 +151,8 @@ in
        and .pi_appliances.hosts.pi.ddns_hostnames == [
          "audio.home.phibkro.org",
          "media.home.phibkro.org",
-         "requests.home.phibkro.org"
+         "requests.home.phibkro.org",
+         "status.home.phibkro.org"
        ]' \
       "$generated_inventory" >/dev/null
     ansible-inventory --inventory "$generated_inventory" --list \

@@ -79,6 +79,7 @@
   ],
   "pihole_enabled": true,
   "caddy_enabled": true,
+  "caddy_internet_enabled": false,
   "authelia_enabled": true,
   "ntfy_enabled": true,
   "beszel_enabled": true,
@@ -89,5 +90,8 @@
   "ntfy_port": 8091,
   "beszel_bind_port": 8090,
   "pi_backup_enabled": false,
-  "gatus_endpoints": []
+  "gatus_public_enabled": false,
+  "gatus_public_port": 8089,
+  "gatus_endpoints": [],
+  "gatus_public_endpoints": []
 }

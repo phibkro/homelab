@@ -612,14 +612,6 @@ let
     )
   ) workloadNames;
 
-  declaredRoutes = lib.foldl' (
-    routes: workloadName: routes // resolvedEndpointsFor workloadName
-  ) { } workloadNames;
-  publicEdgeHostnames = [ "status.${site.domain}" ];
-  edgeHostnameCollisions = lib.filter (
-    endpointName: lib.elem "${endpointName}.${site.domain}" publicEdgeHostnames
-  ) (lib.attrNames declaredRoutes);
-
   runtimeModulesFor =
     hostName:
     assert lib.assertMsg (
@@ -956,6 +948,17 @@ let
   routeProbes = map (name: routeProbeFor monitoredRoutes.${name}) (
     lib.remove "pihole" (lib.attrNames monitoredRoutes)
   );
+  publicStatusRoutes = lib.filterAttrs (_name: route: route.publicStatus) activeRoutes;
+  publicGatusProbeFor = route: {
+    name = if route.dashboard == null then route.name else route.dashboard.title;
+    group = "Family services";
+    url = "https://${route.hostname}${route.monitor.path}";
+    inherit (route) hostname;
+    inherit (route.monitor) interval conditions;
+  };
+  publicGatusProbes = map (name: publicGatusProbeFor publicStatusRoutes.${name}) (
+    lib.attrNames publicStatusRoutes
+  );
   probeProjectionFor =
     workloadName: probeName: probe:
     let
@@ -1160,6 +1163,7 @@ let
     authelia_port = routePortFor "auth";
     beszel_bind_port = routePortFor "metrics";
     gatus_port = routePortFor "uptime";
+    gatus_public_port = routePortFor "status";
     glance_port = routePortFor "home";
     ntfy_port = routePortFor "alert";
     vector_bind_port = activeListenerPortFor "victorialogs-server" "vector-api";
@@ -1167,6 +1171,7 @@ let
     victoriametrics_bind_port = routePortFor "tsdb";
     pihole_enabled = workloadRunsOnPi "pihole";
     caddy_enabled = workloadRunsOnPi "caddy";
+    caddy_internet_enabled = workloadRunsOnPi "caddy" && activeInternetRoutes != { };
     authelia_enabled = workloadRunsOnPi "authelia";
     glance_enabled = workloadRunsOnPi "glance";
     glance_bookmark_groups = glanceBookmarkGroups;
@@ -1178,9 +1183,11 @@ let
     beszel_enabled = workloadRunsOnPi "beszel-hub";
     beszel_agent_enabled = workloadRunsOnPi "beszel-agent";
     gatus_enabled = workloadRunsOnPi "gatus";
+    gatus_public_enabled = workloadRunsOnPi "gatus" && publicGatusProbes != [ ];
     heartbeat_enabled = workloadRunsOnPi "heartbeat";
     authelia_oidc_clients = oidcClients;
     gatus_endpoints = explicitProbes ++ routeProbes;
+    gatus_public_endpoints = if workloadRunsOnPi "gatus" then publicGatusProbes else [ ];
     victoriametrics_scrape_jobs = victoriametricsScrapeJobs;
     beszel_agent_listen_port = if workloadRunsOnPi "beszel-agent" then beszelAgentPort else null;
     beszel_systems = beszelSystems;
@@ -1209,9 +1216,7 @@ let
   dashboardEndpointNames = lib.attrNames (
     lib.filterAttrs (_name: endpoint: endpoint.dashboard != null) activeRoutes
   );
-  statusEndpointNames = lib.attrNames (
-    lib.filterAttrs (_name: endpoint: endpoint.publicStatus) activeRoutes
-  );
+  statusEndpointNames = lib.attrNames publicStatusRoutes;
   statusPresentationFor = endpointName: {
     inherit (presentationCatalog.${endpointName}) title description url;
   };
@@ -1329,12 +1334,12 @@ assert lib.assertMsg (invalidRolePlacements == [ ])
   "inventory: workload placement violates its declared hostRoles: ${lib.concatStringsSep ", " invalidRolePlacements}";
 assert lib.assertMsg (
   activeRoutes == { } || !(workloadCatalog ? caddy) || workloadRunsOnPi "caddy"
-) "inventory: active routes require an active Caddy workload on the entry-plane host";
-assert lib.assertMsg (
-  activeInternetRoutes == { } || workloadRunsOnPi "cloudflare-ddns"
-) "inventory: active internet routes require Cloudflare DDNS on the entry-plane host";
+) "inventory: active routes require Caddy to run on the Pi entry plane";
 assert lib.assertMsg (duplicateEndpoints == [ ])
   "inventory: endpoint name(s) have multiple owners: ${lib.concatStringsSep ", " duplicateEndpoints}";
+assert lib.assertMsg (
+  activeInternetRoutes == { } || workloadRunsOnPi "cloudflare-ddns"
+) "inventory: active internet routes require cloudflare-ddns on the Pi entry plane";
 assert lib.assertMsg (portCollisions == [ ])
   "inventory: resolved route/private listener port collision(s): ${lib.concatStringsSep ", " portCollisions}";
 assert lib.assertMsg (unsafeInternetOperatorRoutes == [ ])
@@ -1342,10 +1347,6 @@ assert lib.assertMsg (unsafeInternetOperatorRoutes == [ ])
 assert lib.assertMsg (
   internetIdentityRoutes == { } || internetAuthAvailable
 ) "inventory: internet routes using identity require an internet-reachable auth route";
-assert lib.assertMsg (edgeHostnameCollisions == [ ])
-  "inventory: lanRoute hostname(s) collide with edge-owned domain(s): ${
-    lib.concatStringsSep ", " (map (name: "${name}.${site.domain}") edgeHostnameCollisions)
-  }";
 assert lib.assertMsg (
   activeForwardAuthRoutes == { } || activeRoutes ? auth
 ) "inventory: active forward-auth routes require an active auth endpoint";

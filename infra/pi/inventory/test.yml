@@ -105,7 +105,9 @@ all:
           victoriametrics_enabled: true
           beszel_enabled: true
           beszel_agent_enabled: true
+          caddy_internet_enabled: false
           gatus_enabled: true
+          gatus_public_enabled: false
           heartbeat_enabled: false
           pi_backup_enabled: false
           pi_admin_port: 8081
@@ -121,6 +123,7 @@ all:
           beszel_bind_port: 8090
           beszel_agent_listen_port: 45876
           gatus_port: 8082
+          gatus_public_port: 8089
           pi_tailnet_workload_ports: []
           pi_container_host_tcp_ports: [8082, 45876]
           ddns_hostnames: []
@@ -137,6 +140,7 @@ all:
               conditions: ["[STATUS] == 200"]
               failure_threshold: 3
               send_on_resolved: true
+          gatus_public_endpoints: []
           victoriametrics_scrape_jobs:
             - job_name: victoriametrics
               static_configs:

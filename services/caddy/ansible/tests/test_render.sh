@@ -26,6 +26,7 @@ pi_domain: test.lan
 pi_deprecated_domains:
   - nori.lan
 pi_service_bind_address: 192.168.1.225
+gatus_public_enabled: true
 pi_routes:
   - name: pihole
     hostname: pihole.test.lan
@@ -101,6 +102,8 @@ ansible-playbook -i localhost, "$state_dir/playbook.yml" >/dev/null
 
 rg -q '^http://\*\.nori\.lan \{' "$state_dir/Caddyfile"
 rg -q 'redir @legacySubdomain https://\{re\.legacySubdomain\.1\}\.test\.lan\{uri\} 301' "$state_dir/Caddyfile"
+rg -q '^  bind 192\.168\.1\.225 10\.89\.0\.1$' "$state_dir/Caddyfile"
+rg -q 'not client_ip 10\.89\.0\.0/30' "$state_dir/Caddyfile"
 rg -q 'forward_auth @booksAuthNeeded http://192\.168\.1\.225:9091' "$state_dir/Caddyfile"
 rg -q 'not path /api/\*' "$state_dir/Caddyfile"
 rg -q 'uri /api/verify\?rd=https://auth\.test\.lan' "$state_dir/Caddyfile"

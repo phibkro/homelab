@@ -600,6 +600,15 @@ let
       monitored = false;
       dashboard = true;
     };
+    status = {
+      port = 8089;
+      runsOn = "pi";
+      audience = "public";
+      exposeOnTailnet = false;
+      auth = "exception";
+      monitored = false;
+      dashboard = false;
+    };
     stremio = {
       port = 11470;
       runsOn = "adelie";

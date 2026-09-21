@@ -39,6 +39,7 @@ placement and policy before NixOS and Ansible adapters consume them.
 | `pihole` | `pihole` | `pi` | `8081` | `internal` | `operator` | `none` | yes | no |
 | `projects-origin` | `herdr-projects-mcp` | `workstation` | `9081` | `internal` | `operator` | `none` | no | no |
 | `requests` | `jellyseerr` | `workstation` | `5055` | `internet` | `family` | `none` | yes | yes |
+| `status` | `gatus` | `pi` | `8089` | `internet` | `public` | `none` | no | no |
 | `stremio` | `stremio` | `adelie` | `11470` | `internal` | `operator` | `none` | yes | no |
 | `subtitles` | `bazarr` | `workstation` | `6767` | `internal` | `operator` | `none` | yes | no |
 | `sync` | `syncthing` | `workstation` | `8384` | `internal` | `operator` | `none` | yes | no |

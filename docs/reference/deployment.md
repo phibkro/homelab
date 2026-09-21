@@ -86,23 +86,21 @@ integrity remain operator-gated. Read the
 [OneTouch cutover runbook](../runbooks/onetouch-backup-cutover.md) before an
 activation.
 
-If work can interrupt a public family service, use a maintained deployment
-recipe. SecretSpec supplies the mutation token.
+Use the normal deployment recipes for changes that can interrupt a public
+family service. Gatus does not add or close maintenance events.
 
-```bash
-just rebuild-maintained        # local NixOS host
-just push-maintained adelie    # remote NixOS host
-just pi-deploy-maintained      # Ansible Pi appliance
-```
+The public Gatus instance shows current health for Jellyfin, Navidrome, and
+Seerr. It runs on Pi and uses the inventory `publicStatus` grants. Pi Caddy
+publishes the instance at `status.home.phibkro.org`. The route-derived DDNS
+record stays DNS-only.
 
-The recipe opens maintenance for all published status components. Then it runs
-the normal deployment recipe. A zero exit closes the maintenance event.
+This Gatus instance probes from Pi. Therefore, its results do not prove off-LAN
+access. Use the ADR-0006 cellular-data procedure to make sure that the public
+path works. The [September 21 Gatus acceptance report](../archive/reports/2026-09-21-public-gatus-acceptance.md)
+records the source cutover, deployed boundary, and live results.
 
-If deployment or event closure fails, the maintenance event stays open. The
-recipe prints the event ID for manual closure.
-
-The [September 21 production acceptance](../archive/reports/2026-09-21-public-status-acceptance.md)
-records the deployed D1 history, scheduled probes, and authenticated journeys.
+The earlier [Worker acceptance](../archive/reports/2026-09-21-public-status-acceptance.md)
+is historical evidence for the retired Worker and D1 implementation.
 
 ## Verification contract
 

@@ -105,6 +105,7 @@ let
     && lib.length inventory.workloads."node-exporter".hosts > 1;
   canonicalEndpointProjection =
     inventory.workloads.gatus.endpoints.uptime.hostname == "uptime.${inventory.site.domain}"
+    && inventory.workloads.gatus.endpoints.status.hostname == "status.${inventory.site.domain}"
     && inventory.workloads.victoriametrics.endpoints.tsdb.hostname == "tsdb.${inventory.site.domain}"
     &&
       inventory.workloads."victorialogs-server".endpoints.logs.hostname
@@ -125,7 +126,16 @@ let
     && piProjection.beszel_systems != [ ]
     && lib.all (
       system: system.port == inventory.workloads."beszel-agent".listeners.agent.port
-    ) piProjection.beszel_systems;
+    ) piProjection.beszel_systems
+    && piProjection.gatus_public_enabled
+    && piProjection.caddy_internet_enabled
+    && piProjection.gatus_public_port == inventory.workloads.gatus.endpoints.status.port
+    &&
+      map (endpoint: endpoint.name) piProjection.gatus_public_endpoints == [
+        "Navidrome"
+        "Jellyfin"
+        "Seerr"
+      ];
   routeFirewallsExposeLocalRoutes =
     let
       nixosHostNames = lib.attrNames inputs.self.nixosConfigurations;
@@ -137,8 +147,12 @@ let
   inactivePiWorkloadProjection =
     !inactiveGatus.public.workloads.gatus.active
     && !(inactiveGatus.public.routes ? uptime)
+    && !(inactiveGatus.public.routes ? status)
     && !inactiveGatus.internal.piProjection.gatus_enabled
     && inactiveGatus.internal.piProjection.gatus_port == null
+    && !inactiveGatus.internal.piProjection.gatus_public_enabled
+    && inactiveGatus.internal.piProjection.gatus_public_port == null
+    && inactiveGatus.internal.piProjection.gatus_public_endpoints == [ ]
     && !(lib.any (route: route.name == "uptime") inactiveGatus.internal.piProjection.pi_routes);
   hostLocalPiProjection =
     !offPiBeszelAgent.internal.piProjection.beszel_agent_enabled

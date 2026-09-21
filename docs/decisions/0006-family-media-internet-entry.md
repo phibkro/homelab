@@ -29,6 +29,7 @@ explicit family-media allowlist:
 | `media.home.phibkro.org` | Jellyfin | Native Jellyfin users |
 | `requests.home.phibkro.org` | Seerr | Imported Jellyfin users |
 | `audio.home.phibkro.org` | Navidrome | Native Navidrome users |
+| `status.home.phibkro.org` | Public Gatus | No identity; only explicitly published service health |
 
 An endpoint manifest's `reachability` is independent from its `audience`:
 
@@ -38,24 +39,26 @@ An endpoint manifest's `reachability` is independent from its `audience`:
   forbids operator-audience routes from selecting it.
 - A final Caddy handler returns 404 for unknown or network-ineligible hosts.
 
-Public DNS must use three exact DNS-only records, not a wildcard. WAN port
-80 remains closed because Caddy obtains certificates using DNS-01. Pi's
-`cloudflare-ddns` service derives those records from the same
-`reachability = "internet"` route inventory, updates their IPv4 address
-every five minutes, and explicitly disables Cloudflare proxying and IPv6.
+Public DNS must use one exact DNS-only record for each internet route, not a
+wildcard. WAN port 80 remains closed because Caddy obtains certificates with
+DNS-01. Pi's `cloudflare-ddns` service derives those records from the same
+`reachability = "internet"` route inventory. It updates their IPv4 address
+every five minutes and explicitly disables Cloudflare proxying and IPv6.
 Unauthenticated Navidrome sharing is disabled; Seerr membership is an
 explicit Jellyfin-user import with request-only permissions and operator
 approval policy.
 
 ## Deployment and acceptance
 
-1. Deploy the pi, workstation, and aurora configurations. Pi's DDNS unit
-   creates or updates exact A records for `media`, `requests`, and `audio`.
+1. Deploy the Pi and workstation configurations. Pi's DDNS unit creates or
+   updates exact A records from the internet-route inventory.
 2. Confirm those records are DNS-only and resolve to the residential WAN
    address. Confirm no wildcard or AAAA record exists.
 3. Forward WAN TCP 443 to `192.168.1.225:443` on pi. Do not forward TCP 80.
 4. From cellular data with Tailscale disabled, verify all three public
    names reach their login page.
+   Confirm that `status.home.phibkro.org` shows only the three published family
+   services.
 5. From the same connection, request a known internal-only hostname and a
    random hostname. Both must return 404, not an application or redirect.
 6. Verify a non-admin Jellyfin user can play media, sign into Seerr and
@@ -77,8 +80,8 @@ callers as LAN clients. Do not accept that state.
 - Workstation sleep still affects Jellyfin and Seerr availability;
   internet reachability does not create high availability.
 - The residential WAN address and router forwarding become operational
-  dependencies. Dynamic DNS must keep the three exact records current if
-  the ISP changes the address.
+  dependencies. Dynamic DNS must keep every exact internet-route record current
+  if the ISP changes the address.
 - The planned family portal/documentation system is intentionally deferred
   until this boundary is deployed and externally verified.
 
@@ -93,19 +96,22 @@ internal-service access path.
 
 ### Tailscale Funnel
 
-Funnel keeps router configuration closed but adds a relayed, product-limited
-path to sustained media streaming. It remains useful for small HTTP services,
-not the preferred Jellyfin transport.
+Funnel keeps the router closed. It does not preserve the existing
+`status.home.phibkro.org` hostname, and it adds a relayed product dependency.
+The direct status route adds no router rule because WAN TCP 443 is already
+required for family media.
 
 ### Cloudflare Tunnel or proxied DNS
 
 Rejected for sustained Jellyfin and Navidrome delivery. Cloudflare's
 self-serve application terms current at this decision require an eligible
-paid service for video and other large-file delivery through its CDN and
-permit limiting disproportionate audio or large-file traffic. Tunnel can
-publish ordinary HTTP applications, but it does not turn that media policy
-into a suitable transport. A future small non-media service may still use
-an exact-host tunnel with a final `http_status:404` catch-all.
+paid service for video and other large-file delivery through its CDN. They
+also permit limits on disproportionate audio or large-file traffic.
+
+A Tunnel can publish the small status page. It was not selected because the
+existing direct Caddy path already provides the required exact-host boundary.
+Adding another connector and certificate path would not remove a router rule.
+The family media routes still require direct WAN TCP 443.
 
 ### Alchemy v1/v2 for Cloudflare resources
 
@@ -114,16 +120,17 @@ first-class `Cloudflare.DNS.Record`, `Cloudflare.Tunnel.Tunnel`, and
 `Cloudflare.Tunnel.Configuration` resources. It is not selected here.
 Alchemy reconciles when its TypeScript deployment runs, while residential
 DDNS needs a small continuously running updater. Adding a second IaC state
-engine for three records would also weaken the route registry's role as the
-single source of truth. Revisit Alchemy if this repository begins managing
-a broader Cloudflare edge stack declaratively.
+engine for these records would also weaken the route registry's role as the
+single source of truth. Revisit Alchemy for edge-only resources.
 
-Sources consulted 2026-07-18: [Cloudflare application service-specific
-terms](https://www.cloudflare.com/service-specific-terms-application-services/),
+Sources consulted 2026-07-18 and 2026-09-21:
+[Cloudflare application service-specific terms](https://www.cloudflare.com/service-specific-terms-application-services/),
 [Cloudflare Tunnel routing](https://developers.cloudflare.com/tunnel/routing/),
 [Alchemy v1 Tunnel](https://alchemy.run/cloudflare/networking/tunnel/),
 [Alchemy v2 DNS Record](https://v2.alchemy.run/providers/cloudflare/dns/record/),
 and [Alchemy v2 Tunnel Configuration](https://v2.alchemy.run/providers/cloudflare/tunnel/configuration/).
+[Tailscale Funnel](https://tailscale.com/kb/1223/funnel) documents the relayed
+`ts.net` publication path.
 
 ### Publish the wildcard and rely only on missing DNS records
 

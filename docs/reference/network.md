@@ -38,16 +38,17 @@ reachability. The compiler makes that boundary explicit in every projected
 route. Only `reachability = "internet"` removes the private-address gate.
 Unknown hostnames receive a 404 response.
 
-The current internet allowlist is `media` (Jellyfin), `requests` (Seerr),
-and `audio` (Navidrome). Each uses its application's native per-user
-accounts because TV, mobile, PWA, and OpenSubsonic clients cannot reliably
-complete a proxy-cookie login flow. Operator routes are forbidden from
-selecting internet reachability by a module assertion.
+The current internet allowlist has four routes: `media` (Jellyfin), `requests`
+(Seerr), `audio` (Navidrome), and `status` (public Gatus). The three media
+applications use native per-user accounts. TV, mobile, PWA, and
+OpenSubsonic clients cannot reliably complete a proxy-cookie login flow.
+Public Gatus contains only the three explicitly published service checks.
+Operator routes cannot select internet reachability.
 
 Pi's `cloudflare-ddns` service derives its IPv4-only domain list from that
-same allowlist and reconciles the three exact records every five minutes.
-It sets `PROXIED=false`, never publishes a wildcard or AAAA record, and
-uses an anchored record-comment selector so it mutates only records it owns.
+same allowlist and reconciles each exact record every five minutes. It sets
+`PROXIED=false`, never publishes a wildcard or AAAA record, and uses an
+anchored record-comment selector. Therefore, it mutates only records it owns.
 On a graceful configuration restart, the old unit removes its owned records
 before the new allowlist is created; this makes an internet-to-internal route
 transition fail closed. Its zone-scoped API token comes from SecretSpec;

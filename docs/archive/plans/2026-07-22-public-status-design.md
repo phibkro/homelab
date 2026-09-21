@@ -1,8 +1,8 @@
 ---
 date: 2026-07-22
-status: production deployed 2026-09-21; external recovery transition follows ADR-0006
+status: retired 2026-09-21; replaced by public-safe Gatus
 owner: operator
-summary: Publish a failure-independent family service status page at the Cloudflare edge from an explicit, minimal projection of the homelab route inventory.
+summary: Historical contract for the retired Cloudflare Worker status page.
 ---
 
 # Design — public status and maintenance communication

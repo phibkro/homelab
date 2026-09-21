@@ -1,11 +1,11 @@
 # Public status and maintenance communication
 
-- Status: Superseded by `docs/specs/2026-07-22-public-status-design.md`
+- Status: Retired with the custom Worker on 2026-09-21
 - Date: 2026-07-19
 - Scope: family-facing internet services only
 
-Retained as the banked design precursor. The later spec binds implementation to
-the inventory-backed public-status projection and is the active contract.
+Retained as the design precursor for the retired Worker. Gatus now provides the
+public status page.
 
 ## Problem
 

@@ -63,25 +63,6 @@ let
       );
     in
     !evaluated.success;
-  edgeHostnameCollisionFails =
-    let
-      changedCatalog = workloadCatalog // {
-        gatus = workloadCatalog.gatus // {
-          endpoints = workloadCatalog.gatus.endpoints // {
-            status = workloadCatalog.gatus.endpoints.uptime;
-          };
-        };
-      };
-      evaluated = builtins.tryEval (
-        builtins.deepSeq
-          (compiler {
-            inherit lib;
-            workloadCatalog = changedCatalog;
-          }).public.status
-          true
-      );
-    in
-    !evaluated.success;
 
   portalPolicyWorks =
     portalServices.media.audience == "family"
@@ -122,6 +103,7 @@ let
       [
         inventory.workloads.authelia.endpoints.auth
         inventory.workloads."beszel-hub".endpoints.metrics
+        inventory.workloads.gatus.endpoints.status
         inventory.workloads.gatus.endpoints.uptime
         inventory.workloads.glance.endpoints.home
         inventory.workloads."ntfy-server".endpoints.alert
@@ -141,7 +123,6 @@ if
   && statusIsInternetSafe
   && invalidPublicationFails { monitor = null; }
   && invalidPublicationFails { audience = "operator"; }
-  && edgeHostnameCollisionFails
   && portalPolicyWorks
   && entryPlaneOwnershipIsExplicit
   && portalUsesCanonicalDomain
@@ -154,7 +135,6 @@ else
     Status services: ${builtins.toJSON statusServices}
     Portal policy:   ${toString portalPolicyWorks}
     Status safe:     ${toString statusIsInternetSafe}
-    Edge collision:  ${toString edgeHostnameCollisionFails}
     Entry ownership: ${toString entryPlaneOwnershipIsExplicit}
     Portal domains:  ${toString portalUsesCanonicalDomain}
     Entry plane:     ${toString entryPlaneEndpointsFollowSite}

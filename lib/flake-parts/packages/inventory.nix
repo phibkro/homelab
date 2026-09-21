@@ -27,9 +27,6 @@
       deploymentIndex = pkgs.writeText "homelab-deployment-index.json" (
         builtins.toJSON inputs.self.lib.noriDeployment
       );
-      statusCatalog = pkgs.writeText "homelab-status.json" ''
-        ${builtins.toJSON inputs.self.lib.noriInventory.status}
-      '';
       portalCatalog = pkgs.writeText "homelab-portal.json" (
         builtins.toJSON inputs.self.lib.noriInventory.portal
       );
@@ -45,31 +42,17 @@
           exec ${pkgs.bash}/bin/bash ${../../../scripts/deployment-plan.sh} "$@"
         '';
       };
-      statusctl = pkgs.writeShellApplication {
-        name = "statusctl";
-        runtimeInputs = [ pkgs.bun ];
-        text = ''
-          exec bun ${../../../products/status}/src/statusctl.ts "$@"
-        '';
-      };
     in
     {
       packages.inventory-json = publicInventory;
       packages.topology-intent-json = topologyIntentJson;
       packages.topology-intent-tosca = topologyIntentTosca;
-      packages.status-json = statusCatalog;
       packages.portal-json = portalCatalog;
       packages.deployment-plan = deploymentPlan;
-      packages.statusctl = statusctl;
       apps.deployment-plan = {
         type = "app";
         program = "${deploymentPlan}/bin/deployment-plan";
         meta.description = "Derive homelab build and activation plans from inventory selectors or Git changes";
-      };
-      apps.statusctl = {
-        type = "app";
-        program = "${statusctl}/bin/statusctl";
-        meta.description = "Append authenticated public status events and wrap maintained commands";
       };
       checks.topology-tosca-structure =
         pkgs.runCommandLocal "topology-tosca-structure"
@@ -138,29 +121,6 @@
             bash ${../../../tests/deployment-plan_test.sh} \
               ${../../../scripts/deployment-plan.sh} ${deploymentIndex}
 
-            touch "$out"
-          '';
-      checks.status-components-fresh =
-        pkgs.runCommandLocal "status-components-fresh"
-          {
-            nativeBuildInputs = [ pkgs.diffutils ];
-          }
-          ''
-            diff -u ${../../../products/status/generated/components.json} ${statusCatalog}
-            touch "$out"
-          '';
-      checks.statusctl-smoke =
-        pkgs.runCommandLocal "statusctl-smoke"
-          {
-            nativeBuildInputs = [ statusctl ];
-          }
-          ''
-            set +e
-            statusctl > statusctl.out 2>&1
-            code=$?
-            set -e
-            test "$code" -eq 64
-            grep -q "statusctl command is required" statusctl.out
             touch "$out"
           '';
     };

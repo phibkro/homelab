@@ -16,8 +16,7 @@ The live catalog is the pure inventory projection, not this doc. Enumerating in 
 # Complete public-safe inventory as JSON
 nix build .#inventory-json --no-link --print-out-paths
 
-# Presentation-only projections for future frontends
-nix build .#status-json --no-link --print-out-paths
+# Presentation-only projection for a future authenticated frontend
 nix build .#portal-json --no-link --print-out-paths
 
 # Workload names selected for one NixOS host

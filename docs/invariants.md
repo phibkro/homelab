@@ -50,8 +50,7 @@ Strongest rung each claim has reached. `[prose: unchecked]` entries are promotio
 | Each managed host has one entry in `inventory/hosts.nix` with one explicit backend; NixOS entries name system/home modules and Ansible entries name plan/apply/verify commands; the inventory compiler rejects incomplete or inconsistent declarations | `[structural]` (`inventory/default.nix` + `lib/machines.nix`) |
 | **Compiled workload routes** | |
 | One manifest endpoint generates its backend route, firewall exposure, Pi Caddy/DNS data, monitor, and OIDC client metadata | `[structural]` (`services/*/manifest.nix` → `inventory/default.nix`) + `[runtime-introspection: just test-routes]` |
-| Route declarations combine audience and reachability: operator routes cannot be internet-reachable; family routes must declare OIDC, forward-auth, or a documented no-auth reason; public-status routes cannot use operator audience | `[structural]` (pure compiler assertions in `inventory/default.nix`) |
-| Cloudflare edge-owned hostnames cannot also be claimed by declared workload endpoints | `[structural]` (pure inventory assertion) + `[law: eval-presentations]` |
+| Route declarations combine audience and reachability: operator routes cannot be internet-reachable; family routes must declare OIDC, forward-auth, or a documented no-auth reason; public Gatus routes cannot use the operator audience | `[structural]` (pure compiler assertions in `inventory/default.nix`) |
 | Endpoint names describe function (`uptime`, not `gatus`; `chat`, not `open-webui`) unless the brand is the identity | `[law: lint.functionNamedSubdomains]` |
 | **systemd units** | |
 | Every `Restart=on-failure` unit's `ExecStart` is smoke-tested before landing (prevents restart-loop bombs that break the next `switch-to-configuration` — incident 2026-06-03 in `Mnemopi recall: gotcha-systemd-restart-loop-bombs`) | `[prose: unchecked]` — promote? flake check resolving each `ExecStart` to a real nix-store binary path |

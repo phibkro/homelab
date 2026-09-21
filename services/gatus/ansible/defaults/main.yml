@@ -17,12 +17,18 @@ gatus_bind_address: "{{ pi_service_bind_address }}"
 gatus_config_dir: /etc/gatus
 gatus_config_file: /etc/gatus/config.yaml
 gatus_validation_config_file: /etc/gatus/validation.yaml
+gatus_public_container_name: gatus-status
+gatus_public_container_port: 8080
+gatus_public_bind_address: "{{ pi_service_bind_address }}"
+gatus_public_config_file: /etc/gatus/public.yaml
+gatus_public_validation_config_file: /etc/gatus/public-validation.yaml
 gatus_uid: 65532
 gatus_gid: 65532
 
 gatus_metrics_enabled: true
 gatus_storage_type: memory
 gatus_delay_start_seconds: 60
+gatus_public_delay_start_seconds: 60
 gatus_ntfy_url: https://ntfy.sh
 gatus_ntfy_channel: ""
 # SecretSpec integration supplies this path. It must contain only the bearer
