@@ -45,44 +45,53 @@ sudo -u postgres psql immich < /var/lib/immich/backups/dump-<latest>.sql
 sudo systemctl start immich-server.service immich-machine-learning.service
 ```
 
-### Pattern C — external dump pre-restic (Open WebUI / SQLite)
+### Pattern C — prepared database before Restic (Vaultwarden / SQLite)
 
-The `backupPrepareCommand` writes a logical dump to `/var/backup/open-webui/webui.db` before restic backs it up. Restore from that dump (or, if it's also corrupt, from a restic snapshot of it):
+`nori.backups.vaultwarden.prepareCommand` uses `VACUUM INTO` before each
+Restic run. This creates `/var/backup/vaultwarden/db.sqlite3`.
+
+Restore the selected Restic snapshot to a disposable directory first. Adelie
+uses restricted SFTP, not a local `/mnt/backup` repository. Reuse the
+repository, credential, and pinned transport from the deployed
+`restic-backups-vaultwarden-onetouch.service`. Do not replace its host check.
+
+Validate the restored logical database before production replacement:
 
 ```bash
-sudo systemctl stop open-webui.service
-sudo mv /var/lib/open-webui/webui.db /var/lib/open-webui/webui.db.broken
-# Restore the most recent good dump
-sudo cp /var/backup/open-webui/webui.db /var/lib/open-webui/webui.db
-sudo chown --reference=/var/lib/open-webui /var/lib/open-webui/webui.db
-sudo systemctl start open-webui.service
+sudo nix shell nixpkgs#sqlite.bin -c sqlite3 \
+  <restore>/var/backup/vaultwarden/db.sqlite3 \
+  'PRAGMA integrity_check;'
 ```
 
-If `/var/backup/open-webui/webui.db` is also bad, pull from restic:
+Continue only when the command returns `ok`:
 
 ```bash
-sudo restic -r /mnt/backup/open-webui \
-  --password-file /run/secrets/restic-password \
-  restore latest --target /tmp/restore \
-  --include /var/backup/open-webui/webui.db
-sudo cp /tmp/restore/var/backup/open-webui/webui.db /var/lib/open-webui/webui.db
-sudo chown --reference=/var/lib/open-webui /var/lib/open-webui/webui.db
+sudo systemctl stop vaultwarden.service
+sudo mv /var/lib/vaultwarden/db.sqlite3 \
+  /var/lib/vaultwarden/db.sqlite3.broken-$(date +%s)
+sudo install -o vaultwarden -g vaultwarden -m 0600 \
+  <restore>/var/backup/vaultwarden/db.sqlite3 \
+  /var/lib/vaultwarden/db.sqlite3
+sudo systemctl start vaultwarden.service
+curl --fail --silent --show-error http://127.0.0.1:8222/alive
 ```
 
 ## Verify
 
-After every restore: hit a real endpoint, not just `systemctl status`. Status says "active" before the service has finished its startup checks.
+After every restore, use a real endpoint. `systemctl status` can report
+`active` before startup checks finish.
 
 | Service | Verification |
 |---|---|
-| Jellyfin | log in, browse a library |
-| Open WebUI | log in via OIDC, see chat history |
-| Authelia | OIDC redirect from a downstream service succeeds |
-| Beszel | open `https://metrics.home.phibkro.org`, see live agent data |
-| Immich | open the timeline, see a recent photo's metadata |
+| Jellyfin | Log in and browse a library |
+| Vaultwarden | `/alive` returns HTTP 200; log in and open one vault item |
+| Authelia | Complete an OIDC redirect from a downstream service |
+| Beszel | Open `https://metrics.home.phibkro.org` and view current agent data |
+| Immich | Open the timeline and view recent photo metadata |
 
 ## When to escalate
 
 If the restore from snapshot also has the corruption, the corruption has been there long enough to be in every snapshot. Try restic — daily snapshots persist 7d / 4w / 12m, so older states are reachable.
 
-If restic also has it: the corruption is older than your retention. Service data is effectively lost; configure the service from scratch and recover any rebuildable content (Jellyfin re-scans media; Immich re-imports from upload dir; Open WebUI re-issues OIDC dance).
+If Restic also contains the corruption, the retained history is insufficient.
+Reconfigure the service and recover rebuildable data or an independent export.

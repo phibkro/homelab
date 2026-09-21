@@ -10,11 +10,11 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 ## Outstanding (actionable)
 
-- **Prove end-to-end service recovery.** The first representative restore is
-  complete: Pi-hole started from OneTouch snapshot `c7b2308e` and served
-  recovered DNS state. Evidence:
-  `docs/archive/reports/2026-09-21-pihole-recovery-drill.md`. Continue isolated
-  drills for files, logical SQLite, PostgreSQL, and service-specific exports.
+- **Prove end-to-end service recovery.** Pi-hole appliance recovery and the
+  Vaultwarden logical SQLite model are complete. Evidence:
+  `docs/archive/reports/2026-09-21-pihole-recovery-drill.md` and
+  `docs/archive/reports/2026-09-21-vaultwarden-sqlite-recovery-drill.md`.
+  Continue isolated drills for files, PostgreSQL, and service-specific exports.
   Then cover user data, media metadata, and complete host reconstruction.
   Generate the evidence view from service manifests and backup jobs.
 
