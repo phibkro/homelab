@@ -12,15 +12,17 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 - **Prove end-to-end recovery.** Pi-hole appliance recovery, Vaultwarden
   logical SQLite, Miniflux PostgreSQL, Stremio files, an Immich application
-  export, and bounded user-data recovery are complete. Evidence:
+  export, bounded user data, and Jellyfin media metadata are complete.
+  Evidence:
   `docs/archive/reports/2026-09-21-pihole-recovery-drill.md`,
   `docs/archive/reports/2026-09-21-vaultwarden-sqlite-recovery-drill.md`,
   `docs/archive/reports/2026-09-21-miniflux-postgresql-recovery-drill.md`,
   `docs/archive/reports/2026-09-21-stremio-files-recovery-drill.md`,
-  `docs/archive/reports/2026-09-21-immich-export-recovery-drill.md`, and
-  `docs/archive/reports/2026-09-21-user-data-recovery-drill.md`. Next, cover
-  media metadata and complete host reconstruction. Generate the evidence view
-  from service manifests and backup jobs. Activate Adelie for the Stremio cache
+  `docs/archive/reports/2026-09-21-immich-export-recovery-drill.md`,
+  `docs/archive/reports/2026-09-21-user-data-recovery-drill.md`, and
+  `docs/archive/reports/2026-09-21-jellyfin-metadata-recovery-drill.md`.
+  Next, prove complete host reconstruction. Generate the evidence view from
+  service manifests and backup jobs. Activate Adelie for the Stremio cache
   exclusion. Activate the workstation for bounded user-data restore drills.
 
 - **Finish public status production acceptance.** The failure-independent

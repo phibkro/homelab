@@ -53,8 +53,10 @@ proves files-only service identity recovery. The
 [Immich drill](../archive/reports/2026-09-21-immich-export-recovery-drill.md)
 proves selective restore and import of an application-native database export.
 The [user-data drill](../archive/reports/2026-09-21-user-data-recovery-drill.md)
-proves bounded recovery from all three declared user-data roots. These reports
-do not establish full user-data or media recovery, complete host
+proves bounded recovery from all three declared user-data roots. The
+[Jellyfin drill](../archive/reports/2026-09-21-jellyfin-metadata-recovery-drill.md)
+proves isolated application startup from restored media metadata. These
+reports do not establish full user-data or media recovery, complete host
 reconstruction, or full data-block integrity.
 Use the [cutover runbook](../runbooks/onetouch-backup-cutover.md) when reconnecting,
 changing transport, or collecting fresh recovery evidence.

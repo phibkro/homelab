@@ -112,6 +112,10 @@ After every restore, use a real endpoint. `systemctl status` can report
 | Beszel | Open `https://metrics.home.phibkro.org` and view current agent data |
 | Immich | Open the timeline and view recent photo metadata |
 
+The [Jellyfin metadata drill](../archive/reports/2026-09-21-jellyfin-metadata-recovery-drill.md)
+proves isolated startup and public API readiness. It does not replace the
+authenticated library-browsing check above.
+
 ## When to escalate
 
 If the restore from snapshot also has the corruption, the corruption has been there long enough to be in every snapshot. Try restic — daily snapshots persist 7d / 4w / 12m, so older states are reachable.
