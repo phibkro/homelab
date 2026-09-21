@@ -1,6 +1,19 @@
 # Accepted recovery observations. Workload placement and backup mechanics stay
 # derived from service manifests and evaluated backup jobs.
 {
+  authelia-service = {
+    scope = "service";
+    workload = "authelia";
+    report = "docs/archive/reports/2026-09-21-authelia-recovery-drill.md";
+    gates = [
+      "restore"
+      "integrity"
+      "startup"
+      "endpoint"
+      "oidc-discovery"
+    ];
+  };
+
   immich-export = {
     scope = "service";
     workload = "immich";

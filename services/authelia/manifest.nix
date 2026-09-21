@@ -15,6 +15,11 @@
     "stateful"
   ];
 
+  recovery = {
+    model = "filesystem";
+    backupJob = "authelia";
+  };
+
   topology.capabilities."nori.capabilities.OidcProvider" = {
     protocol = "oidc";
   };

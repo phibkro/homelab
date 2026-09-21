@@ -26,6 +26,7 @@ contract; omission is not a live coverage verdict.
 
 | Workload | Host | Model | Backup job | Targets | Include paths | Exclude paths | Related evidence |
 |---|---|---|---|---|---|---|---|
+| `authelia` | `pi` | `filesystem` | `authelia` | `onetouch` | `/etc/authelia/configuration.yml`<br>`/etc/authelia/users_database.yml`<br>`/var/lib/authelia` | — | `authelia-service` |
 | `immich` | `workstation` | `application-export` | `media-irreplaceable` | `onetouch` | `/mnt/media/archive`<br>`/mnt/media/home-videos`<br>`/mnt/media/library`<br>`/mnt/media/photos`<br>`/mnt/media/projects` | — | `immich-export` |
 | `jellyfin` | `workstation` | `filesystem` | `jellyfin` | `onetouch` | `/var/lib/jellyfin` | — | `jellyfin-metadata` |
 | `miniflux` | `adelie` | `postgresql-logical` | `miniflux` | `onetouch` | `/var/backup/postgresql/miniflux.sql.gz` | — | `miniflux-database` |
@@ -41,6 +42,7 @@ configuration conformance.
 
 | Evidence | Scope | Workload | Host | Model | Backup job | Current targets | Current include paths | Current exclude paths | Observed gates | Report |
 |---|---|---|---|---|---|---|---|---|---|---|
+| `authelia-service` | `service` | `authelia` | `pi` | `filesystem` | `authelia` | `onetouch` | `/etc/authelia/configuration.yml`<br>`/etc/authelia/users_database.yml`<br>`/var/lib/authelia` | — | `restore`<br>`integrity`<br>`startup`<br>`endpoint`<br>`oidc-discovery` | [report](../archive/reports/2026-09-21-authelia-recovery-drill.md) |
 | `immich-export` | `service` | `immich` | `workstation` | `application-export` | `media-irreplaceable` | `onetouch` | `/mnt/media/archive`<br>`/mnt/media/home-videos`<br>`/mnt/media/library`<br>`/mnt/media/photos`<br>`/mnt/media/projects` | — | `restore`<br>`hash-equality`<br>`import`<br>`row-equality` | [report](../archive/reports/2026-09-21-immich-export-recovery-drill.md) |
 | `jellyfin-metadata` | `service` | `jellyfin` | `workstation` | `filesystem` | `jellyfin` | `onetouch` | `/var/lib/jellyfin` | — | `restore`<br>`integrity`<br>`startup`<br>`endpoint` | [report](../archive/reports/2026-09-21-jellyfin-metadata-recovery-drill.md) |
 | `miniflux-database` | `service` | `miniflux` | `adelie` | `postgresql-logical` | `miniflux` | `onetouch` | `/var/backup/postgresql/miniflux.sql.gz` | — | `restore`<br>`import`<br>`migration`<br>`startup`<br>`endpoint` | [report](../archive/reports/2026-09-21-miniflux-postgresql-recovery-drill.md) |
