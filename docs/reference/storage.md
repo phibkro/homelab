@@ -61,7 +61,10 @@ proves selective restore and import of an application-native database export.
 The [user-data drill](../archive/reports/2026-09-21-user-data-recovery-drill.md)
 proves bounded recovery from all three declared user-data roots. The
 [Jellyfin drill](../archive/reports/2026-09-21-jellyfin-metadata-recovery-drill.md)
-proves isolated application startup from restored media metadata. These
+proves isolated application startup from restored media metadata.
+The [September 21 activation](../archive/reports/2026-09-21-recovery-activation.md)
+applied the cache exclusion and bounded drill configuration. It records a fresh
+8.159 KiB Stremio snapshot and a successful three-file user-data restore. These
 reports do not establish full user-data or media recovery, physical host
 replacement, every Pi service-state restore, or full data-block integrity.
 Use the [cutover runbook](../runbooks/onetouch-backup-cutover.md) when reconnecting,
