@@ -6,7 +6,14 @@ import {
   publicStatus,
   renderHtml,
   type StoredComponentStatus,
+  type StoredEvent,
+  type StoredEventUpdate,
 } from "../src/status.ts";
+import {
+  hasValidBearerToken,
+  validateCreateEvent,
+  validateEventUpdate,
+} from "../src/operator.ts";
 import { handleRequest, probeComponent } from "../src/worker.ts";
 import type { WorkerEnv } from "../alchemy.run.ts";
 
@@ -15,7 +22,7 @@ const emptyDatabase = {
     all: async () => ({ results: [] }),
   }),
 } as unknown as D1Database;
-const env = { DB: emptyDatabase } as WorkerEnv;
+const env = { DB: emptyDatabase, MUTATION_TOKEN: "test-token" } as WorkerEnv;
 
 describe("public inventory projection", () => {
   test("contains only the explicitly published components", () => {
@@ -36,6 +43,73 @@ describe("public inventory projection", () => {
     const status = publicStatus([], new Date("2026-07-22T00:00:00Z"));
     expect(status.overall).toBe("unknown");
     expect(status.services.every(({ state }) => state === "unknown")).toBeTrue();
+  });
+
+  test("active maintenance overrides probes and terminal updates preserve history", () => {
+    const events: StoredEvent[] = [
+      {
+        id: "maintenance-1",
+        kind: "maintenance",
+        title: "Media rebuild",
+        impact: null,
+        created_at: "2026-07-22T00:00:00Z",
+      },
+    ];
+    const updates: StoredEventUpdate[] = [
+      {
+        event_id: "maintenance-1",
+        sequence: 1,
+        state: "in_progress",
+        message: "Applying a new generation",
+        starts_at: "2026-07-22T00:00:00Z",
+        expected_end_at: "2026-07-22T01:00:00Z",
+        created_at: "2026-07-22T00:00:00Z",
+      },
+    ];
+    const status = publicStatus(
+      [
+        {
+          component_id: "media",
+          state: "operational",
+          checked_at: "2026-07-22T00:00:00Z",
+          latency_ms: 20,
+          status_code: 200,
+        },
+      ],
+      new Date("2026-07-22T00:05:00Z"),
+      events,
+      [{ event_id: "maintenance-1", component_id: "media" }],
+      updates,
+    );
+    expect(status.services.find(({ id }) => id === "media")?.state).toBe(
+      "maintenance",
+    );
+    expect(status.events[0]).toMatchObject({
+      id: "maintenance-1",
+      components: ["media"],
+      state: "in_progress",
+    });
+
+    updates.push({
+      event_id: "maintenance-1",
+      sequence: 2,
+      state: "completed",
+      message: "Generation active",
+      starts_at: null,
+      expected_end_at: null,
+      created_at: "2026-07-22T00:10:00Z",
+    });
+    const completed = publicStatus(
+      [],
+      new Date("2026-07-22T00:10:00Z"),
+      events,
+      [{ event_id: "maintenance-1", component_id: "media" }],
+      updates,
+    );
+    expect(completed.services.find(({ id }) => id === "media")?.state).toBe(
+      "unknown",
+    );
+    expect(completed.events).toHaveLength(1);
   });
 });
 
@@ -71,9 +145,31 @@ describe("HTML boundary", () => {
       "&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;",
     );
     const html = renderHtml({
-      version: 1,
+      version: 2,
       generatedAt: `"><script>bad()</script>`,
       overall: "unknown",
+      events: [
+        {
+          id: "event-1",
+          kind: "incident",
+          title: "<img src=x>",
+          state: "investigating",
+          impact: "degraded",
+          message: "<script>latest()</script>",
+          components: ["media"],
+          createdAt: "2026-07-22T00:00:00Z",
+          updatedAt: "2026-07-22T00:00:00Z",
+          startsAt: null,
+          expectedEndAt: null,
+          updates: [
+            {
+              state: "investigating",
+              message: "<script>update()</script>",
+              createdAt: "2026-07-22T00:00:00Z",
+            },
+          ],
+        },
+      ],
       services: [
         {
           id: "bad",
@@ -86,6 +182,7 @@ describe("HTML boundary", () => {
       ],
     });
     expect(html).not.toContain("<script>bad()");
+    expect(html).not.toContain("<script>update()");
     expect(html).not.toContain("<img src=x>");
   });
 });
@@ -104,6 +201,7 @@ describe("HTTP boundary", () => {
     );
     const body = (await response.json()) as Record<string, unknown>;
     expect(Object.keys(body).sort()).toEqual([
+      "events",
       "generatedAt",
       "overall",
       "services",
@@ -118,6 +216,14 @@ describe("HTTP boundary", () => {
       env,
     );
     expect(missing.status).toBe(404);
+    const missingMutation = await handleRequest(
+      new Request("https://status.home.phibkro.org/internal", {
+        method: "POST",
+      }),
+      env,
+    );
+    expect(missingMutation.status).toBe(404);
+
 
     const mutation = await handleRequest(
       new Request("https://status.home.phibkro.org/api/status", {
@@ -136,6 +242,127 @@ describe("HTTP boundary", () => {
     );
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("");
+  });
+
+  test("event-history failure does not erase healthy probe results", async () => {
+    const database = {
+      prepare: (sql: string) => ({
+        all: async () => {
+          if (sql.includes("component_status")) {
+            return {
+              results: [
+                {
+                  component_id: "media",
+                  state: "operational",
+                  checked_at: "2026-07-22T00:00:00Z",
+                  latency_ms: 20,
+                  status_code: 200,
+                },
+              ],
+            };
+          }
+          throw new Error("event tables temporarily unavailable");
+        },
+      }),
+    } as unknown as D1Database;
+    const response = await handleRequest(
+      new Request("https://status.home.phibkro.org/api/status"),
+      { DB: database, MUTATION_TOKEN: "test-token" } as WorkerEnv,
+    );
+    const body = (await response.json()) as {
+      services: Array<{ id: string; state: string }>;
+    };
+    expect(body.services.find(({ id }) => id === "media")?.state).toBe(
+      "operational",
+    );
+  });
+});
+
+describe("operator mutation boundary", () => {
+  test("uses bearer authentication without accepting prefixes", async () => {
+    expect(
+      await hasValidBearerToken(
+        new Request("https://status.home.phibkro.org/api/operator/events", {
+          headers: { Authorization: "Bearer test-token" },
+        }),
+        "test-token",
+      ),
+    ).toBeTrue();
+    expect(
+      await hasValidBearerToken(
+        new Request("https://status.home.phibkro.org/api/operator/events", {
+          headers: { Authorization: "Bearer test" },
+        }),
+        "test-token",
+      ),
+    ).toBeFalse();
+  });
+
+  test("rejects invalid components and cross-kind states", () => {
+    expect(
+      validateCreateEvent({
+        kind: "incident",
+        title: "Outage",
+        impact: "outage",
+        message: "Investigating",
+        components: ["internal-database"],
+      }),
+    ).toEqual({ ok: false, error: "unknown component: internal-database" });
+    expect(
+      validateEventUpdate("maintenance", {
+        state: "resolved",
+        message: "Wrong terminal state",
+      }),
+    ).toEqual({ ok: false, error: "invalid maintenance state" });
+    expect(
+      validateEventUpdate("maintenance", {
+        state: "in_progress",
+        message: "Bad effective window",
+        expectedEndAt: "2026-07-22T00:30:00Z",
+      }),
+    ).toEqual({
+      ok: false,
+      error: "maintenance updates must provide both timestamps or neither",
+    });
+    expect(
+      validateCreateEvent({
+        kind: "incident",
+        title: "Outage",
+        impact: "outage",
+        message: "Investigating",
+        components: ["media"],
+        startsAt: "2026-07-22T00:00:00Z",
+      }),
+    ).toEqual({
+      ok: false,
+      error: "incident timestamps are not allowed",
+    });
+  });
+
+  test("rejects unauthenticated mutations before touching D1", async () => {
+    const result = await handleRequest(
+      new Request("https://status.home.phibkro.org/api/operator/events", {
+        method: "POST",
+        body: "{}",
+      }),
+      env,
+    );
+    expect(result.status).toBe(401);
+    expect(result.headers.get("WWW-Authenticate")).toBe("Bearer");
+  });
+
+  test("returns 404 for unknown operator routes", async () => {
+    const unknown = await handleRequest(
+      new Request("https://status.home.phibkro.org/api/operator/typo"),
+      env,
+    );
+    expect(unknown.status).toBe(404);
+
+    const wrongMethod = await handleRequest(
+      new Request("https://status.home.phibkro.org/api/operator/events"),
+      env,
+    );
+    expect(wrongMethod.status).toBe(405);
   });
 });
 

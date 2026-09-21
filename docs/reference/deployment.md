@@ -86,6 +86,21 @@ integrity remain operator-gated. Read the
 [OneTouch cutover runbook](../runbooks/onetouch-backup-cutover.md) before an
 activation.
 
+If work can interrupt a public family service, use a maintained deployment
+recipe. SecretSpec supplies the mutation token.
+
+```bash
+just rebuild-maintained        # local NixOS host
+just push-maintained adelie    # remote NixOS host
+just pi-deploy-maintained      # Ansible Pi appliance
+```
+
+The recipe opens maintenance for all published status components. Then it runs
+the normal deployment recipe. A zero exit closes the maintenance event.
+
+If deployment or event closure fails, the maintenance event stays open. The
+recipe prints the event ID for manual closure.
+
 ## Verification contract
 
 `just check` verifies that NixOS inventory hosts—and only those hosts—have

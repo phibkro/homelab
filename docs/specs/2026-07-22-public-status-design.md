@@ -111,6 +111,21 @@ The initial release is read-only and probe-driven. The second phase adds:
 - `maintenance-start`, `maintenance-finish`, and `push-maintained` operator
   commands that fail safely and leave notices open after interrupted rebuilds.
 
+Events use an immutable identity plus ordered, append-only updates. Incident
+states are `investigating`, `identified`, `monitoring`, and `resolved`;
+maintenance states are `scheduled`, `in_progress`, and `completed`. Terminal
+events cannot be reopened or rewritten. A new recurrence receives a new event
+identity. Only component IDs from the generated public catalog are accepted.
+
+The operator API is POST-only:
+
+- `POST /api/operator/events` creates an incident or maintenance event;
+- `POST /api/operator/events/<id>/updates` appends a state/message update.
+
+Both routes require the separately provisioned `STATUS_MUTATION_TOKEN` bearer
+secret. Public HTML and schema-version-2 JSON show normalized event history;
+they never expose the token, deployment credentials, or internal topology.
+
 ## Edge ownership
 
 Alchemy v2 is selected because its current Cloudflare provider supports a
@@ -126,7 +141,8 @@ Alchemy operations remain separately confirmed.
 
 ## Security and privacy invariants
 
-- Public handlers are GET/HEAD only in phase 1; all other methods fail closed.
+- Public handlers remain GET/HEAD only; operator mutations are POST-only on the
+  authenticated namespace and all other methods fail closed.
 - Unknown paths return 404 and do not fall through to another origin.
 - HTML escapes every inventory- or database-derived string.
 - JSON responses expose a versioned allowlisted schema.
@@ -136,8 +152,8 @@ Alchemy operations remain separately confirmed.
   upstream response body, internal address, or Cloudflare diagnostic payload.
 - D1 and the Worker can observe public service availability but cannot mutate
   the homelab.
-- The future mutation credential is distinct from Cloudflare deployment tokens
-  and homelab service credentials.
+- The mutation credential is distinct from Cloudflare deployment tokens and
+  homelab service credentials.
 
 ## Delivery gates
 
@@ -164,6 +180,10 @@ Alchemy operations remain separately confirmed.
 - The Worker remains usable when all homelab hosts are offline.
 - Unknown routes and mutation attempts without the phase-2 credential fail
   closed.
+- Event creation accepts only published component IDs; update history is
+  append-only and terminal events cannot be reopened.
+- Maintained rebuild/push wrappers close maintenance only after a successful
+  command; failure or interruption leaves the event open.
 - No Cloudflare resource is created or changed before the push and deployment
   gates are explicitly approved.
 

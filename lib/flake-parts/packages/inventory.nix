@@ -45,6 +45,13 @@
           exec ${pkgs.bash}/bin/bash ${../../../scripts/deployment-plan.sh} "$@"
         '';
       };
+      statusctl = pkgs.writeShellApplication {
+        name = "statusctl";
+        runtimeInputs = [ pkgs.bun ];
+        text = ''
+          exec bun ${../../../products/status}/src/statusctl.ts "$@"
+        '';
+      };
     in
     {
       packages.inventory-json = publicInventory;
@@ -53,10 +60,16 @@
       packages.status-json = statusCatalog;
       packages.portal-json = portalCatalog;
       packages.deployment-plan = deploymentPlan;
+      packages.statusctl = statusctl;
       apps.deployment-plan = {
         type = "app";
         program = "${deploymentPlan}/bin/deployment-plan";
         meta.description = "Derive homelab build and activation plans from inventory selectors or Git changes";
+      };
+      apps.statusctl = {
+        type = "app";
+        program = "${statusctl}/bin/statusctl";
+        meta.description = "Append authenticated public status events and wrap maintained commands";
       };
       checks.topology-tosca-structure =
         pkgs.runCommandLocal "topology-tosca-structure"
@@ -134,6 +147,20 @@
           }
           ''
             diff -u ${../../../products/status/generated/components.json} ${statusCatalog}
+            touch "$out"
+          '';
+      checks.statusctl-smoke =
+        pkgs.runCommandLocal "statusctl-smoke"
+          {
+            nativeBuildInputs = [ statusctl ];
+          }
+          ''
+            set +e
+            statusctl > statusctl.out 2>&1
+            code=$?
+            set -e
+            test "$code" -eq 64
+            grep -q "statusctl command is required" statusctl.out
             touch "$out"
           '';
     };

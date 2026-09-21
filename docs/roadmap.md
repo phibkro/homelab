@@ -10,12 +10,15 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 ## Outstanding (actionable)
 
-- **Finish public status production acceptance.** The failure-independent
-  `status.home.phibkro.org` Cloudflare Worker is deployed from the explicit
-  public-safe `noriInventory.status` projection. Public HTML and JSON return
-  HTTP 200. The production API still reports `unknown` component states because
-  no scheduled probe result is present. Verify the Cloudflare cron execution,
-  then exercise the authenticated maintenance and incident mutations. Design
+- **Finish public status production acceptance.** The phase-one Worker returns
+  public HTML and JSON from `status.home.phibkro.org`. All component states
+  remain `unknown`. The Alchemy state lists the two-minute cron, but live logs
+  and D1-backed API output contain no scheduled result. The current source adds
+  immutable incident history, maintenance windows, a separate mutation token,
+  and maintained deployment recipes. Production still runs the read-only
+  Worker. Next, create the token, review the Cloudflare plan, deploy the
+  additive migration, and make sure that probes persist. Then exercise
+  authenticated maintenance, incident, and controlled-outage journeys. Design
   and gates: `docs/specs/2026-07-22-public-status-design.md`.
 
 - **Finish ADR-0006 router cutover and external acceptance.** Route-derived

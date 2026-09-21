@@ -41,6 +41,10 @@ default: list
 @rebuild *args:
     nh os switch . -H $(hostname) {{args}}
 
+# Open public maintenance, rebuild locally, and close only after success.
+@rebuild-maintained *args:
+    secretspec run --profile workstation --scope public-status -- nix run .#statusctl -- maintained --title "Rebuild $(hostname)" -- just rebuild {{args}}
+
 # Build + activate workstation from the working tree.
 @rebuild-homelab *args:
     for h in {{homelab_hosts}}; do \
@@ -60,6 +64,14 @@ default: list
       --target-host {{user}}@{{host}}.{{tailnet}} \
       --sudo \
       {{args}}
+
+# Open public maintenance, push a NixOS host, and close only after success.
+@push-maintained host *args:
+    secretspec run --profile workstation --scope public-status -- nix run .#statusctl -- maintained --title "Deploy {{host}}" -- just push {{host}} {{args}}
+
+# Open public maintenance, converge Pi, and close only after success.
+@pi-deploy-maintained:
+    secretspec run --profile workstation --scope public-status -- nix run .#statusctl -- maintained --title "Deploy pi" -- just pi::deploy
 
 # Build but don't activate.
 @build *args:

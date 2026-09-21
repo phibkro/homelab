@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "check": "bun run typecheck && bun test",
+    "statusctl": "bun run src/statusctl.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },

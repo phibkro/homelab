@@ -1,6 +1,7 @@
 import * as Alchemy from "alchemy";
 import * as Cloudflare from "alchemy/Cloudflare";
 import { retain } from "alchemy/RemovalPolicy";
+import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
 
 export const StatusDatabase = Cloudflare.D1.Database("StatusDatabase", {
@@ -18,7 +19,10 @@ export const StatusWorker = Cloudflare.Worker(
       compatibility: { date: "2026-07-22" },
       domain: production ? "status.home.phibkro.org" : undefined,
       crons: production ? ["*/2 * * * *"] : [],
-      env: { DB: StatusDatabase },
+      env: {
+        DB: StatusDatabase,
+        MUTATION_TOKEN: Config.redacted("STATUS_MUTATION_TOKEN"),
+      },
       url: !production,
       observability: {
         enabled: true,
