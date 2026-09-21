@@ -414,6 +414,30 @@ string
 
 
 
+## nori.backups.<name>.workload
+
+
+
+Inventory workload whose backup intent this job records.
+
+
+
+*Type:*
+null or string
+
+
+
+*Default:*
+
+```nix
+null
+```
+
+*Declared by:*
+ - `infra/common/nixos/backup.nix`
+
+
+
 ## Evaluated NixOS host jobs
 
 Generated from each evaluated NixOS host's `nori.backups` registry.

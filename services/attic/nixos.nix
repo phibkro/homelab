@@ -250,6 +250,12 @@ in
   nori.harden.atticd.binds = [ cachePath ];
   nori.harden.attic-cache-bootstrap = { };
 
-  nori.backups.atticd.skip = "Attic cache chunks are re-derivable from upstream and local builds; the SQLite state is not backed up.";
-  nori.backups.attic-cache-bootstrap.skip = "One-shot Attic cache reconciler has no persistent state.";
+  nori.backups.atticd = {
+    workload = "attic";
+    skip = "Attic cache chunks are re-derivable from upstream and local builds; the SQLite state is not backed up.";
+  };
+  nori.backups.attic-cache-bootstrap = {
+    workload = "attic";
+    skip = "One-shot Attic cache reconciler has no persistent state.";
+  };
 }

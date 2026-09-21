@@ -35,6 +35,7 @@ in
     jobs = [
       {
         name = "pihole";
+        workload = "pihole";
         paths = [
           "/var/lib/containers/storage/volumes/pihole-data/_data"
           "/opt/pihole/dnsmasq.d/05-homelab-local-records.conf"
@@ -42,6 +43,7 @@ in
       }
       {
         name = "caddy";
+        workload = "caddy";
         paths = [
           "/opt/caddy/data"
           "/opt/caddy/config"
@@ -49,6 +51,7 @@ in
       }
       {
         name = "authelia";
+        workload = "authelia";
         paths = [
           "/etc/authelia/configuration.yml"
           "/etc/authelia/users_database.yml"
@@ -57,6 +60,7 @@ in
       }
       {
         name = "ntfy";
+        workload = "ntfy-server";
         paths = [
           "/var/cache/ntfy"
           "/var/lib/ntfy"
@@ -64,10 +68,12 @@ in
       }
       {
         name = "beszel";
+        workload = "beszel-hub";
         paths = [ "/var/lib/beszel" ];
       }
       {
         name = "victoriametrics";
+        workload = "victoriametrics";
         paths = [
           "/var/lib/victoriametrics"
           "/etc/victoriametrics"
@@ -75,10 +81,12 @@ in
       }
       {
         name = "victorialogs";
+        workload = "victorialogs-server";
         paths = [ "/var/lib/victorialogs" ];
       }
       {
         name = "vector";
+        workload = "victorialogs-server";
         paths = [
           "/var/lib/vector"
           "/etc/vector"

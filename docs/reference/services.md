@@ -10,13 +10,30 @@ Workstation uses native NixOS modules where available. Pi services are owned by 
 
 ## Catalog
 
-The live catalog is the pure inventory projection, not this doc. Enumerating in prose drifts the moment anything moves between hosts; query the source instead:
+The live catalog is the pure inventory projection, not this document.
+Use the operator view for the current service state:
+
+```bash
+# Compact terminal view
+just overview
+
+# Complete, schema-versioned JSON
+just overview --json
+```
+
+The view keeps three fact classes separate. `declared` comes from the current
+repository. `observed` contains timestamped runtime results. `proven` links to
+accepted recovery reports.
+The [September 21 acceptance](../archive/reports/2026-09-21-operator-view.md)
+records the first live result and its evidence limits.
+
+Use the source projections for detailed configuration queries:
 
 ```bash
 # Complete public-safe inventory as JSON
 nix build .#inventory-json --no-link --print-out-paths
 
-# Presentation-only projection for a future authenticated frontend
+# Presentation-only portal projection
 nix build .#portal-json --no-link --print-out-paths
 
 # Workload names selected for one NixOS host
@@ -28,7 +45,7 @@ nix eval .#nixosConfigurations.<host>.config.nori.inventory.workloads
 # Complete route projection available to runtime adapters
 nix eval .#nixosConfigurations.<host>.config.nori.inventory.routes
 
-# Where each route's backend runs
+# Where each route backend runs
 nix eval .#lib.noriInventory.routes \
   --apply 'with builtins; mapAttrs (_: route: route.host) it'
 

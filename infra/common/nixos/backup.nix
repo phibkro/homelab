@@ -259,6 +259,11 @@ in
                 from "forgotten".
               '';
             };
+            workload = mkOption {
+              type = types.nullOr types.str;
+              default = null;
+              description = "Inventory workload whose backup intent this job records.";
+            };
             prepareCommand = mkOption {
               type = types.nullOr types.lines;
               default = null;

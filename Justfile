@@ -166,6 +166,11 @@ default: list
     echo "=== description ===" && \
     nix eval --raw .#nixosConfigurations.$(hostname).options.{{path}}.description 2>/dev/null || echo "(no description)"
 
+# Show the inventory-derived service view with current observations.
+@overview *args:
+    nix run .#operator-view -- {{args}}
+
+
 # root rather than under any one infra subtree.
 @show-status:
     echo "=== failed units ==="

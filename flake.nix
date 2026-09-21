@@ -165,6 +165,7 @@
         ./lib/flake-parts/packages/docs-fs.nix
         ./lib/flake-parts/packages/docs-replicas.nix
         ./lib/flake-parts/packages/inventory.nix
+        ./lib/flake-parts/packages/operator-view.nix
         ./lib/flake-parts/packages/docs-routes.nix
         ./lib/flake-parts/packages/docs-topology.nix
         ./lib/flake-parts/packages/docs-capabilities.nix

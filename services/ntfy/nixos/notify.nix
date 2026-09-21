@@ -139,6 +139,9 @@
       };
     };
 
-    nori.backups.notify.skip = "Stateless — ntfy-channel from sops, alerts POSTed to ntfy.sh on demand.";
+    nori.backups.notify = {
+      workload = "ntfy-notify";
+      skip = "Stateless — ntfy-channel from sops, alerts POSTed to ntfy.sh on demand.";
+    };
   };
 }

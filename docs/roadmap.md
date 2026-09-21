@@ -8,35 +8,35 @@ summary: The forward plan — single home for outstanding work, deferred items, 
 
 The forward plan: actionable outstanding work, deferred-but-tracked items, and the idea backlog. **This is the single home for "what's next."** Items leave this file when done (folded into git log) or when explicitly killed.
 
+## Operator IOUs (deferred)
+
+- **ADR-0006 cellular acceptance.** With Wi-Fi and Tailscale disabled, exercise
+  the three family logins, public Gatus, a known-internal hostname, and a random
+  hostname. The two non-public hosts must return HTTP 404 so the router's
+  source-address preservation is proven.
+- **Physical Pi acceptance.** Power-cycle the appliance, exercise HTTPS and DNS
+  from an off-LAN tailnet client, and approve any remaining Tailscale
+  control-plane changes. Do not treat VM reboot evidence as physical evidence.
+- **Sunshine/Moonlight pairing.** Pair a client through
+  `https://workstation:47990`, launch Desktop, and verify video and audio. The
+  implementation and NVENC codecs are already deployed. Follow
+  `docs/specs/2026-05-22-sunshine-remote-host-design.md`. Use the documented
+  wlroots fallback only if NVIDIA KMS capture is black.
+
+These require the operator or physical client access. They remain accepted
+work, but do not block autonomous repository work.
+
 ## Outstanding (actionable)
 
-- **Finish ADR-0006 router cutover and external acceptance.** Route-derived
-  DNS-only A records, Pi DDNS reconciliation, and Caddy's exact-host/source
-  boundary are ready. The WAN TCP 443 rule is active. Run ADR-0006's
-  cellular-data checks for all three family logins, known-internal hosts, and
-  random-host 404s. Make sure that the router preserves the source IP of the
-  client.
-
-- **Finish the Pi appliance migration.** Pi owns the failure-independent
-  network appliance plane: DNS, HTTPS entry, identity, Glance, monitoring,
-  alerting, Tailscale routing, and appliance backups. `inventory/hosts.nix`
-  remains the topology authority while `infra/pi/` provisions the
-  Debian/Ansible/Podman realization. Complete the physical reboot and off-LAN
-  gates in `docs/specs/ansible-pi-plan-b.md`. Ansible is now the sole live
-  deployment owner; the verified NixOS image remains only as an offline
-  rollback artifact. The September 19 acceptance pass established the Pi
+- **Finish autonomous Pi recovery evidence.** Pi already owns DNS, HTTPS entry,
+  identity, Glance, monitoring, alerting, Tailscale routing, and appliance
+  backups through the Debian/Ansible/Podman realization. Continue
+  application/database recovery drills, user-data/media restore coverage, and
+  full data-block integrity evidence. The September 19 pass established the Pi
   identity, backup transport, eight fresh snapshots, eight metadata checks, and
-  one byte-for-byte Pi-hole configuration restore. Remaining gates are physical
-  reboot, off-LAN behavior, application/database recovery, user-data/media
-  restore coverage, and full data-block integrity. Evidence:
-  `docs/archive/reports/2026-09-19-backup-evidence.md`. Aurora and Pavilion are
-  retired.
-
-- **Build an inventory-derived operator view.** Generate a read-only service
-  view from the inventory and runtime probes. Show each service's host, route,
-  authentication method, health, backup freshness, deployment owner, and
-  recovery reference. Do not add another service registry or add mutations to
-  the first version.
+  one byte-for-byte Pi-hole restore. Physical reboot and off-LAN gates are
+  tracked as operator IOUs above. Evidence:
+  `docs/archive/reports/2026-09-19-backup-evidence.md`.
 
 - **Build the authenticated family onboarding portal.** Reuse the access-tiered
   route projection for capability filtering, registration guidance, Tailscale
@@ -49,19 +49,6 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
   headroom, and certificate lifetime. Remove duplicate alerts for the same
   failure. Add maintenance suppression only after planned work causes proven
   alert noise.
-
-- **Sunshine remote-desktop pairing.** Deployed (`services/sunshine/nixos.nix`); NVENC builds confirmed (`h264/hevc/av1_nvenc`). Outstanding: one-time Moonlight pairing.
-
-  Pairing steps:
-
-  1. **Clear stray instance** — `sunshine` user unit binds `graphical-session.target`, only autostarts on *fresh* Hyprland login (lock/unlock won't trigger). If a manually-started copy holds the ports: `kill` it or reboot so systemd owns it
-  2. **MacBook side** — `brew install --cask moonlight`
-  3. **Pair** — browse `https://workstation:47990` over tailnet, set admin creds, PIN-pair, launch "Desktop"
-  4. **Verify** video + audio
-
-  **Fallback** if NVIDIA KMS capture black-screens: `capSysAdmin = false` (wlr capture — Hyprland is wlroots-based) + rebuild.
-
-  Design + plan: `docs/specs/2026-05-22-sunshine-remote-host-design.md`, `docs/archive/plans/2026-05-22-sunshine-remote-host.md`.
 
 - **MemoryHigh caps on heavy services** — process-exporter publishes `namedprocess_namegroup_memory_bytes{memtype="resident",groupname=…,host=…}` for the converged workstation. Wait ≥7 days after deployment, identify the slowest-growing services, and cap each via `systemd.services.<n>.serviceConfig.MemoryHigh = "…G"`. Premature to cap blindly. Sample query: `topk(10, max_over_time(namedprocess_namegroup_memory_bytes{memtype="resident"}[7d]) - min_over_time(namedprocess_namegroup_memory_bytes{memtype="resident"}[7d])) / 1024 / 1024`. Special interest: `immich-machine-learning` (PyTorch).
 

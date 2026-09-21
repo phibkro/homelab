@@ -295,6 +295,11 @@ let
         default = { };
         description = "Private listener metadata projected unchanged from the workload manifest.";
       };
+      probeNames = mkOption {
+        type = types.listOf types.str;
+        default = [ ];
+        description = "Canonical names of workload-level monitoring probes.";
+      };
       hosts = mkOption { type = types.listOf types.str; };
       realizations = mkOption { type = types.listOf realizationType; };
       artifact = mkOption {
@@ -594,6 +599,7 @@ in
                     types.submodule {
                       options = {
                         name = mkOption { type = types.strMatching "[a-z][a-z0-9-]*"; };
+                        workload = mkOption { type = types.strMatching "[a-z][a-z0-9-]*"; };
                         paths = mkOption { type = types.listOf types.str; };
                       };
                     }

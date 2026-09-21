@@ -85,6 +85,12 @@ in
   nori.harden.attic-cache-seed = { };
   nori.harden.attic-cache-watch = { };
 
-  nori.backups.attic-cache-seed.skip = "Publisher has no persistent state; the selected store closure is the source.";
-  nori.backups.attic-cache-watch.skip = "Publisher has no persistent state; the selected store closure is the source.";
+  nori.backups.attic-cache-seed = {
+    workload = "attic-publisher";
+    skip = "Publisher has no persistent state; the selected store closure is the source.";
+  };
+  nori.backups.attic-cache-watch = {
+    workload = "attic-publisher";
+    skip = "Publisher has no persistent state; the selected store closure is the source.";
+  };
 }

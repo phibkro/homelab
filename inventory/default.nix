@@ -79,6 +79,84 @@ let
   ) workloadCatalog;
   nonEmptyString = value: builtins.isString value && value != "";
   validStringList = values: builtins.isList values && lib.all nonEmptyString values;
+  piBackupJobs =
+    lib.attrByPath
+      [
+        "pi"
+        "jobs"
+      ]
+      [ ]
+      backup;
+  invalidPiBackupJobs =
+    if !builtins.isList piBackupJobs then
+      [ "<jobs>" ]
+    else
+      lib.filter (
+        rawJob:
+        let
+          job = if builtins.isAttrs rawJob then rawJob else { };
+          workloadName = job.workload or null;
+          paths = job.paths or null;
+          unexpectedKeys = lib.subtractLists [
+            "excludes"
+            "keep_daily"
+            "keep_monthly"
+            "keep_weekly"
+            "keep_yearly"
+            "name"
+            "paths"
+            "schedule"
+            "workload"
+          ] (lib.attrNames job);
+        in
+        !(
+          builtins.isAttrs rawJob
+          && unexpectedKeys == [ ]
+          && isStableName (job.name or null)
+          && isStableName workloadName
+          && builtins.hasAttr workloadName workloadCatalog
+          && workloadCatalog.${workloadName}.kind == "service"
+          && workloadCatalog.${workloadName}.active
+          && lib.elem site.entryPlaneHost (hostsForWorkload workloadName)
+          && validStringList paths
+          && paths != [ ]
+          && lib.unique paths == paths
+          && lib.all (lib.hasPrefix "/") paths
+          && (
+            !(job ? excludes)
+            || (
+              validStringList job.excludes
+              && lib.unique job.excludes == job.excludes
+              && lib.all (
+                path: lib.hasPrefix "/" path && !(lib.hasInfix "*" path || lib.hasInfix "?" path)
+              ) job.excludes
+            )
+          )
+          && (
+            !(job ? schedule)
+            || (
+              builtins.isString job.schedule
+              && job.schedule != ""
+              && !(lib.hasInfix "\n" job.schedule || lib.hasInfix "\r" job.schedule)
+            )
+          )
+          &&
+            lib.all (field: !(builtins.hasAttr field job) || (builtins.isInt job.${field} && job.${field} >= 0))
+              [
+                "keep_daily"
+                "keep_weekly"
+                "keep_monthly"
+                "keep_yearly"
+              ]
+        )
+      ) piBackupJobs;
+  duplicatePiBackupJobNames =
+    if builtins.isList piBackupJobs then
+      lib.filter (name: lib.count (job: (job.name or null) == name) piBackupJobs > 1) (
+        lib.unique (map (job: job.name or null) piBackupJobs)
+      )
+    else
+      [ ];
   supportedRecoveryModels = [
     "application-export"
     "filesystem"
@@ -658,6 +736,13 @@ let
       }) (realizationsFor name);
       endpoints = resolvedEndpointsFor name;
       listeners = listenerDeclarationsFor workload;
+      probeNames = lib.unique (
+        lib.mapAttrsToList
+          (_routeName: route: if route.monitor.name == null then route.name else route.monitor.name)
+          (lib.filterAttrs (_routeName: route: route.workload == name && route.monitor != null) activeRoutes)
+        ++ lib.attrNames (probeDeclarationsFor workload)
+        ++ lib.optional (name == "caddy" && workloadRunsOnPi "caddy") "entry-caddy"
+      );
     }
   ) workloadCatalog;
 
@@ -1135,7 +1220,7 @@ let
         pi_backup_target_user = backup.pi.user;
         pi_backup_repository_prefix = backup.pi.repositoryPrefix;
         pi_backup_target_known_host = "${backup.hostname} ${backup.pi.hostKey}";
-        pi_backup_jobs = backup.pi.jobs;
+        pi_backup_jobs = map (job: builtins.removeAttrs job [ "workload" ]) backup.pi.jobs;
       }
     else
       { pi_backup_enabled = false; };
@@ -1312,6 +1397,10 @@ assert lib.assertMsg (invalidRecoveryDeclarations == { })
   "inventory: workload recovery declarations must contain one supported model and one stable backup job: ${lib.concatStringsSep ", " (lib.attrNames invalidRecoveryDeclarations)}";
 assert lib.assertMsg (invalidRecoveryEvidence == { })
   "inventory: recovery evidence declarations must select a workload or direct host backup job and a valid report: ${lib.concatStringsSep ", " (lib.attrNames invalidRecoveryEvidence)}";
+assert lib.assertMsg (invalidPiBackupJobs == [ ])
+  "inventory: Pi backup jobs must select a Pi-hosted active service workload and unique absolute paths";
+assert lib.assertMsg (duplicatePiBackupJobNames == [ ])
+  "inventory: Pi backup job names must be unique: ${lib.concatStringsSep ", " duplicatePiBackupJobNames}";
 assert lib.assertMsg (invalidEndpointDeclarations == [ ])
   "inventory: malformed endpoint or monitor declaration(s): ${lib.concatStringsSep ", " invalidEndpointDeclarations}";
 assert lib.assertMsg (invalidListenerDeclarations == [ ])
