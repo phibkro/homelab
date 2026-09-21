@@ -1,8 +1,7 @@
 ---
 date: 2026-07-22
-status: accepted for implementation; production deployment remains operator-gated
+status: production deployed 2026-09-21; external recovery transition follows ADR-0006
 owner: operator
-implementation_branch: feat/public-status
 summary: Publish a failure-independent family service status page at the Cloudflare edge from an explicit, minimal projection of the homelab route inventory.
 ---
 
@@ -98,10 +97,10 @@ Each component has one normalized state:
 - `unknown` before the first successful probe
 
 The scheduled handler probes the canonical public HTTPS URL without
-credentials, follows redirects, validates TLS, applies a short timeout, and
-stores only status class, latency, normalized state, and timestamp. It never
-stores response bodies or headers. A login page or expected authentication
-redirect counts as reachable.
+credentials, validates TLS, applies a short timeout, and stores only status
+class, latency, normalized state, and timestamp. It does not follow redirects.
+The first redirect proves that the public edge and authentication boundary are
+reachable without coupling the status Worker to the login provider.
 
 The initial release is read-only and probe-driven. The second phase adds:
 
@@ -186,6 +185,9 @@ Alchemy operations remain separately confirmed.
   command; failure or interruption leaves the event open.
 - No Cloudflare resource is created or changed before the push and deployment
   gates are explicitly approved.
+
+Observed production evidence:
+[September 21 acceptance](../archive/reports/2026-09-21-public-status-acceptance.md).
 
 ## Rollback
 

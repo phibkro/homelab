@@ -10,24 +10,18 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 ## Outstanding (actionable)
 
-- **Finish public status production acceptance.** The phase-one Worker returns
-  public HTML and JSON from `status.home.phibkro.org`. All component states
-  remain `unknown`. The Alchemy state lists the two-minute cron, but live logs
-  and D1-backed API output contain no scheduled result. The current source adds
-  immutable incident history, maintenance windows, a separate mutation token,
-  and maintained deployment recipes. Production still runs the read-only
-  Worker. Next, create the token, review the Cloudflare plan, deploy the
-  additive migration, and make sure that probes persist. Then exercise
-  authenticated maintenance, incident, and controlled-outage journeys. Design
-  and gates: `docs/specs/2026-07-22-public-status-design.md`.
 
 - **Finish ADR-0006 router cutover and external acceptance.** Route-derived
   DNS-only A records, Pi DDNS reconciliation, and Caddy's exact-host/source
-  boundary are ready declaratively. The remaining operator-gated step is to
-  forward WAN TCP 443 to `192.168.1.225:443` (never port 80), then run
-  ADR-0006's cellular-data acceptance checks for all three family logins plus
-  known-internal and random-host 404s. Confirm the router preserves the real
-  client source IP.
+  boundary are ready declaratively. The public status Worker is deployed.
+  Its scheduled probes report `outage` because WAN TCP 443 is not forwarded.
+  [Production acceptance evidence](archive/reports/2026-09-21-public-status-acceptance.md)
+  records the observed boundary. Forward WAN TCP 443 to
+  `192.168.1.225:443`, never port 80. Then run ADR-0006's cellular-data checks
+  for all three family logins, known-internal hosts, and random-host 404s.
+  Confirm that the router preserves the real client source IP. Wait for an
+  `operational` scheduled status result. Finally, stop and restart Navidrome
+  and record an `operational → outage → operational` probe transition.
 
 - **Finish the Pi appliance migration.** Pi owns the failure-independent
   network appliance plane: DNS, HTTPS entry, identity, Glance, monitoring,

@@ -101,6 +101,9 @@ the normal deployment recipe. A zero exit closes the maintenance event.
 If deployment or event closure fails, the maintenance event stays open. The
 recipe prints the event ID for manual closure.
 
+The [September 21 production acceptance](../archive/reports/2026-09-21-public-status-acceptance.md)
+records the deployed D1 history, scheduled probes, and authenticated journeys.
+
 ## Verification contract
 
 `just check` verifies that NixOS inventory hosts—and only those hosts—have

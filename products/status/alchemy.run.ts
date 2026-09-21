@@ -16,7 +16,10 @@ export const StatusWorker = Cloudflare.Worker(
     const production = stage === "prod";
     return {
       main: "./src/worker.ts",
-      compatibility: { date: "2026-07-22" },
+      compatibility: {
+        date: "2026-07-22",
+        flags: ["global_fetch_strictly_public"],
+      },
       domain: production ? "status.home.phibkro.org" : undefined,
       crons: production ? ["*/2 * * * *"] : [],
       env: {

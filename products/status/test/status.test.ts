@@ -382,6 +382,17 @@ describe("external probes", () => {
     expect(result.statusCode).toBe(401);
   });
 
+  test("treats an authentication redirect as reachable without following it", async () => {
+    let redirect: RequestInit["redirect"];
+    const result = await probeComponent(component, async (_input, init) => {
+      redirect = init?.redirect;
+      return new Response(null, { status: 302 });
+    });
+    expect(redirect).toBe("manual");
+    expect(result.state).toBe("operational");
+    expect(result.statusCode).toBe(302);
+  });
+
   test("normalizes network exceptions to outage", async () => {
     const result = await probeComponent(component, async () => {
       throw new Error("secret internal diagnostic");

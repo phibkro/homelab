@@ -354,7 +354,7 @@ export async function probeComponent(
 
   try {
     const upstream = await fetcher(component.url, {
-      redirect: "follow",
+      redirect: "manual",
       signal: controller.signal,
       headers: { "User-Agent": "homelab-public-status/1" },
     });
