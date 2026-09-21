@@ -244,6 +244,8 @@ single authentication alert owner.
 Restic job units own execution failures; freshness monitors use lock-free
 read-only queries and suppress a job-target while that unit is failed.
 Recovery-evidence age has one fleet-wide owner on Pi.
+The [September 21 activation](../archive/reports/2026-09-21-outcome-monitoring-activation.md)
+records the first deployed outcome and freshness results.
 
 ### Alert delivery
 
