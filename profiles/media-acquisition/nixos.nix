@@ -6,16 +6,10 @@
   `currentWorkloads` projection. Disabling or moving one workload cannot start
   it through an active sibling.
 */
-_: {
-  imports = [
-    ./resources.nix
-    ../../services/bazarr/nixos.nix
-    ../../services/jellyseerr/nixos.nix
-    ../../services/lidarr/nixos.nix
-    ../../services/prowlarr/nixos.nix
-    ../../services/qbittorrent/nixos.nix
-    ../../services/radarr/nixos.nix
-    ../../services/recyclarr/nixos.nix
-    ../../services/sonarr/nixos.nix
-  ];
+_:
+let
+  members = import ./members.nix;
+in
+{
+  imports = [ ./resources.nix ] ++ map (member: member.nixosModule) members;
 }

@@ -112,6 +112,24 @@ let
     &&
       inventory.workloads."victorialogs-server".endpoints.logs.hostname
       == "logs.${inventory.site.domain}";
+  entryPlaneProjection =
+    inventory.site == {
+      domain = "home.phibkro.org";
+      deprecatedDomains = [ "nori.lan" ];
+      entryPlaneHost = "pi";
+    }
+    && inventory.hosts.${inventory.site.entryPlaneHost}.kind == "ansible"
+    && !(builtins.hasAttr inventory.site.entryPlaneHost inputs.self.nixosConfigurations)
+    && lib.all (endpoint: endpoint.runsOn == inventory.site.entryPlaneHost) [
+      inventory.workloads.authelia.endpoints.auth
+      inventory.workloads."beszel-hub".endpoints.metrics
+      inventory.workloads.gatus.endpoints.status
+      inventory.workloads.gatus.endpoints.uptime
+      inventory.workloads.glance.endpoints.home
+      inventory.workloads."ntfy-server".endpoints.alert
+      inventory.workloads.victoriametrics.endpoints.tsdb
+      inventory.workloads."victorialogs-server".endpoints.logs
+    ];
   scrapeProjection =
     lib.all (target: lib.elem target (targetsFor "node")) (listenerTargetsFor "node-exporter" "node")
     && lib.all (target: lib.elem target (targetsFor "process")) (
@@ -213,6 +231,7 @@ in
 if
   canonicalListenerProjection
   && canonicalEndpointProjection
+  && entryPlaneProjection
   && scrapeProjection
   && piProjectionUsesListeners
   && outcomeMonitoringProjection
@@ -228,6 +247,7 @@ else
     canonical listeners: ${toString canonicalListenerProjection}
     outcome monitoring projection: ${toString outcomeMonitoringProjection}
     canonical endpoints: ${toString canonicalEndpointProjection}
+    entry plane: ${toString entryPlaneProjection}
     scrape projection: ${toString scrapeProjection}
     Pi listener projection: ${toString piProjectionUsesListeners}
     route firewalls: ${toString routeFirewallsExposeLocalRoutes}

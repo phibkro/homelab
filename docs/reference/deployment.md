@@ -34,13 +34,21 @@ documentation and tests select no activation targets.
 
 ## Command effects
 
+Each deployment owner has one activation command:
+
+| Target | Activation command |
+|---|---|
+| Workstation | `just rebuild` |
+| Adelie | `just push adelie` |
+| Pi | `just pi::deploy` |
+
 `just` displays help. `just check` runs fast Nix checks; `just pi::check` checks
 Ansible. `just check-vm [name]` and `just pi::test` exercise disposable machines.
 `just check-all` selects every check through the same metadata dispatcher as
 `just check`. `just build` builds without activation.
-`just activate-test` changes the live system for the current boot; `rebuild`,
-`boot`, `deploy`, `push`, and remote activation commands also have live effects.
-Ansible `pi::plan` uses production credentials and contacts the real appliance.
+`just activate-test` changes the live system for the current boot. `rebuild`,
+`boot`, `deploy`, `push`, and `pi::deploy` have live effects. Ansible `pi::plan`
+uses production credentials and contacts the real appliance.
 
 ## Build before activation
 

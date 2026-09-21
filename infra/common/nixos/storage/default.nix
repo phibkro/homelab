@@ -1,24 +1,19 @@
 { config, lib, ... }:
 
 /**
-  Storage concern — `nori.fs` (subvol / value-tier policy) +
-  `nori.replicas` (cross-host replication registry).
+  Storage concern — `nori.fs` named filesystem locations and value-tier
+  policy.
 
-  `default.nix` carries the `nori.fs` schema + generators;
-  `replication.nix` carries the cross-host replication verifier.
+  Adapters that act on this schema live elsewhere:
 
-  Both schemas are part of "where data lives + how it's protected"
-  (the storage half of the PaaS lens). Adapters that ACT on these
-  schemas live elsewhere:
-
-   - btrfs subvol creation: disko configs per host
-   - btrbk send/receive timers: `services/btrbk/nixos.nix`
+   - btrfs subvolume creation: disko configs per host
+   - local btrbk snapshots: `services/btrbk/nixos.nix`
+   - restic backup jobs: `infra/common/nixos/backup.nix`
 */
 let
   inherit (lib) mkOption types;
 in
 {
-  imports = [ ./replication.nix ];
 
   /**
     `nori.fs` — named filesystem locations + value-tier metadata.

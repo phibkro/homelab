@@ -316,10 +316,10 @@ nix/modules/services/jellyfin/
 Manifest responsibilities:
 
 - stable workload identifier;
-- endpoint and presentation metadata;
+- endpoint and dashboard metadata;
 - audience, reachability, and authentication posture;
 - capability requirements and criticality only once enforced or consumed;
-- public-safe status/documentation metadata.
+- public-status publication intent only when consumed by monitoring.
 
 Runtime responsibilities:
 
@@ -817,8 +817,8 @@ orchestration framework or widening production exposure:
 - music owns one canonical FLAC dataset contract with on-demand Opus/MP3 and no
   persistent derivative;
 - Filmder and Heim are the only governed mutable artifact exceptions;
-- deployment, public-safe inventory, status, and portal packages derive from
-  the same control plane;
+- deployment and public-safe inventory packages derive from the same control
+  plane;
 - the canonical and deprecated service domains now have one pure source; Glance
   no longer emits deprecated bookmarks.
 
@@ -826,10 +826,10 @@ Accepted deviations and scope decisions:
 
 - **D6 — no `docs/work/active/` tree:** roadmap + one accepted spec already form
   the active-work control surface. A second tree would duplicate state.
-- **D7 — presentation contract is deliberately minimal:** status and portal JSON
-  are data products, not frontend implementations. Public hosting,
-  registration UX, maintenance announcements, and generated walkthroughs stay
-  separately operator-gated.
+- **D7 — no speculative presentation catalogs:** the unused status and portal
+  projections were retired on 2026-09-22. Public Gatus consumes the route
+  projection directly. A future portal must introduce its data contract with
+  the product that consumes it.
 - **D8 — compatibility route interface remains:** `nori.lanRoutes` is still the
   typed platform adapter input, but its values are compiled from manifests. A
   rename would add churn without changing dependency direction.

@@ -163,7 +163,6 @@
         ./lib/flake-parts/packages/docs-backups.nix
         ./lib/flake-parts/packages/docs-recovery-evidence.nix
         ./lib/flake-parts/packages/docs-fs.nix
-        ./lib/flake-parts/packages/docs-replicas.nix
         ./lib/flake-parts/packages/inventory.nix
         ./lib/flake-parts/packages/operator-view.nix
         ./lib/flake-parts/packages/docs-routes.nix

@@ -131,7 +131,6 @@ Live recipes:
 - `just test-routes` — Caddy + DNS + HTTPS reachable per declared route
 - `just test-observability` — scrape targets up, per-host series, heartbeat <90s
 - `just test-hypr` — Hyprland binds match declared bindings
-- `just test-replicas` — replication verifier oneshots
 
 ### CI gate
 
@@ -180,7 +179,7 @@ The manifest → compiler → adapter boundary uses all five rungs:
 - `disko-uses-by-id` → `[law: lint.diskoUsesById]` (2026-06-16) — was register item #1; the rule that tested the "add a rule = one TOML block" Goal motivating the nori.lint refactor.
 - `function-named-subdomains` → `[law: lint.functionNamedSubdomains]` (2026-06-16) — TOML denylist of 13 upstream brand names with clean function-name mappings (gatus→uptime, ntfy→alert, …). Audited current tree: zero real violations (operator's branded apps `filmder`/`heim` legitimately have brand-as-identity).
 - `audience-enforces-auth` → `[structural: compiler assertion]` (2026-06-21) — `audience="family"` requires `oidc`, `forwardAuth`, or explicit `noAuthReason` in `inventory/default.nix`. Legitimate native-auth exceptions remain explicit in their manifests.
-- `infra-concerns-have-tests` → `[law: infra-concerns-have-tests]` (2026-06-21) — recursively discovers every shared `options.nori.*` schema and rejects any unaccounted file. Runtime-observable effects map to a matching `test-*` recipe in `lib/flake-parts/checks/conventions.nix`, including replication→test-replicas. The hardware-bound GPU and Wi-Fi schemas and read-only host/inventory projections name their narrower evaluation/build evidence explicitly; they were outside the original `*/default.nix` runtime-test discovery.
+- `infra-concerns-have-tests` → `[law: infra-concerns-have-tests]` (2026-06-21) — recursively discovers every shared `options.nori.*` schema and rejects any unaccounted file. Runtime-observable effects map to matching `test-*` recipes in `lib/flake-parts/checks/conventions.nix`. Hardware-bound GPU and Wi-Fi schemas and read-only host/inventory projections name their narrower evaluation/build evidence explicitly.
 - `systemd-execstart-resolves` → REJECTED (2026-06-21) — vetted after audit proposed it; grep finds zero literal-path ExecStarts in `nix/`, every one is `${pkgs.foo}/bin/baz` interpolation which nix eval already validates. Real incident class (bad flags, 2026-06-03) handled by `Mnemopi recall: gotcha-systemd-restart-loop-bombs` at the prose+memory rung. See `docs/archive/plans/2026-06-21-improve-audit.md § finding #4`.
 
 Others (the `[judgment]` ones) stay where they are — they're not staleness risks.

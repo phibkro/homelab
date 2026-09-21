@@ -116,7 +116,7 @@ realization needs it; do not pre-create a Cartesian hierarchy.
 
 | Cluster | Coupling |
 |---|---|
-| `profiles/media-acquisition/` | Shared resources and import graph for the acquisition stack; each child module enables only when its workload appears in `currentWorkloads` |
+| `profiles/media-acquisition/` | `members.nix` owns the acquisition-stack membership and deployment roots; `nixos.nix` imports those members with shared resources, and each child enables only when its workload appears in `currentWorkloads` |
 | direct workload directory | `manifest.nix` is global and pure; `nixos.nix` is the deployable NixOS realization |
 
 Infrastructure-owned daemons such as Caddy, Pi-hole, exporters, and alerting

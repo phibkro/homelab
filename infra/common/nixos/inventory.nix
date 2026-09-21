@@ -506,28 +506,6 @@ let
     };
   };
 
-  presentationType = types.submodule {
-    options = {
-      title = mkOption { type = types.str; };
-      description = mkOption { type = types.str; };
-      url = mkOption { type = types.str; };
-      audience = mkOption {
-        type = types.enum audienceKeys;
-      };
-      authentication = mkOption {
-        type = types.enum [
-          "oidc"
-          "forward-auth"
-          "service-native-or-exception"
-          "none"
-        ];
-      };
-      registrationRequired = mkOption { type = types.bool; };
-      visibleTo = mkOption {
-        type = types.listOf (types.enum audienceKeys);
-      };
-    };
-  };
 in
 {
   options.nori.inventory = {
@@ -643,23 +621,6 @@ in
       };
       readOnly = true;
       description = "Canonical public service namespace and deprecated aliases.";
-    };
-    status = mkOption {
-      type = types.submodule {
-        options.services = mkOption { type = types.attrsOf presentationType; };
-      };
-      readOnly = true;
-      description = "Internet-safe monitored family/public service catalog without topology details.";
-    };
-    portal = mkOption {
-      type = types.submodule {
-        options = {
-          accessTiers = mkOption { type = types.attrsOf types.str; };
-          services = mkOption { type = types.attrsOf presentationType; };
-        };
-      };
-      readOnly = true;
-      description = "Access-tiered portal/onboarding catalog for an authenticated future frontend.";
     };
   };
 

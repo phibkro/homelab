@@ -193,7 +193,6 @@ Justfile                        runtime introspection recipes
   test-routes                    Caddy route + DNS + HTTPS
   test-observability             VM scrape + process-exporter +
                                   heartbeat + gatus probes
-  test-replicas                  per-replica verifier oneshot
   test                           composite of all of the above
 
 lint/checks/                    static lint scripts (different concern)

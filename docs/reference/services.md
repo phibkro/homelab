@@ -33,8 +33,6 @@ Use the source projections for detailed configuration queries:
 # Complete public-safe inventory as JSON
 nix build .#inventory-json --no-link --print-out-paths
 
-# Presentation-only portal projection
-nix build .#portal-json --no-link --print-out-paths
 
 # Workload names selected for one NixOS host
 nix eval .#nixosConfigurations.<host>.config.nori.inventory.currentWorkloads
@@ -58,7 +56,7 @@ Cross-host services use the split-module pattern (`docs/reference/topology.md` Â
 
 Every independently placed workload has a pure `manifest.nix` and a concrete
 realization such as `nixos.nix`. The manifest owns catalog, endpoint, listener,
-audience, and presentation metadata. Runtime adapters consume the resolved
+audience, and dashboard metadata. Runtime adapters consume the resolved
 `nori.inventory` projection; they do not repeat route names, hostnames, or
 ports. The adapter owns units, hardening, and implementation-internal ports.
 NixOS adapters declare their backup intent; Pi backup intent is centralized in

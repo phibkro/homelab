@@ -4,6 +4,9 @@
   Platform realization and deployment commands are compiler-private. `identity`,
   profile selection, and placement tags form the public-safe control-plane input.
 */
+let
+  mediaAcquisitionMembers = import ../profiles/media-acquisition/members.nix;
+in
 {
   adelie = {
     kind = "nixos";
@@ -57,16 +60,7 @@
   workstation = {
     kind = "nixos";
     managementRoot = "infra/workstation";
-    additionalSourceRoots = [
-      "services/bazarr"
-      "services/jellyseerr"
-      "services/lidarr"
-      "services/prowlarr"
-      "services/qbittorrent"
-      "services/radarr"
-      "services/recyclarr"
-      "services/sonarr"
-    ];
+    additionalSourceRoots = map (member: member.sourceRoot) mediaAcquisitionMembers;
     systemModule = ../infra/workstation;
     homeModule = ../users/nori/home.nix;
     profiles = [

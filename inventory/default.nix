@@ -1409,43 +1409,6 @@ let
   }
   // backupProjection;
 
-  presentationFor =
-    endpointName: endpoint:
-    let
-      dashboard = endpoint.dashboard or null;
-      audience = endpoint.audience or "operator";
-    in
-    {
-      title = if dashboard == null then endpointName else dashboard.title;
-      description = if dashboard == null then "" else dashboard.description;
-      url = "https://${endpointName}.${site.domain}";
-      inherit audience;
-      inherit (endpoint) authentication;
-      registrationRequired = audiences.registrationRequired audience;
-      visibleTo = audiences.visibleToFor audience;
-    };
-
-  presentationCatalog = lib.mapAttrs presentationFor activeRoutes;
-  dashboardEndpointNames = lib.attrNames (
-    lib.filterAttrs (_name: endpoint: endpoint.dashboard != null) activeRoutes
-  );
-  statusEndpointNames = lib.attrNames publicStatusRoutes;
-  statusPresentationFor = endpointName: {
-    inherit (presentationCatalog.${endpointName}) title description url;
-  };
-
-  status = {
-    services = lib.genAttrs statusEndpointNames statusPresentationFor;
-  };
-  portal = {
-    accessTiers = {
-      public = "Visible without a homelab account";
-      family = "Visible to registered family members and operators";
-      operator = "Visible only to homelab operators";
-    };
-    services = lib.getAttrs dashboardEndpointNames presentationCatalog;
-  };
-
   repoRoot = toString ../.;
   relativePathFor = path: lib.removePrefix "${repoRoot}/" (toString path);
   runtimeRootFor = workload: builtins.dirOf (relativePathFor workload.runtimeModule);
@@ -1495,7 +1458,7 @@ let
     inherit topology;
     inherit datasets disks backup;
     deployment = publicDeployment;
-    inherit site status portal;
+    inherit site;
   };
 
   forHost =

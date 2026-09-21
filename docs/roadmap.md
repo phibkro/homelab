@@ -28,11 +28,10 @@ work, but do not block autonomous repository work.
 
 ## Outstanding (actionable)
 
-- **Build the authenticated family onboarding portal.** Reuse the access-tiered
-  route projection for capability filtering, registration guidance, Tailscale
-  setup, and generated walkthroughs. Keep its authentication and release
-  lifecycle separate from public Gatus. Start after the Gatus status cutover
-  passes production acceptance.
+- **Build the authenticated family onboarding portal.** Derive its capability
+  filtering and registration guidance from the route and audience contracts
+  when the product is built. Do not preserve a speculative portal catalog.
+  Keep its authentication and release lifecycle separate from public Gatus.
 
 - **Refine outcome-based monitoring.** Monitor DNS, authentication, external
   HTTPS, application health, backup freshness, restore-evidence age, disk

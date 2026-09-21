@@ -59,7 +59,7 @@ Generated-document helpers have one implementation. Service convention checks de
 ## Safety boundaries
 
 - Keep Pi on Debian and Ansible. This change does not migrate the appliance to NixOS.
-- Keep the normalized topology graph, ordered placement, `hostRoles` admission checks, and restricted TOSCA export.
+- Keep the normalized topology graph, its canonical JSON projection, ordered placement, and `hostRoles` admission checks.
 - Keep inactive workload declarations for later reactivation.
 - Keep secret values out of public and Pi projections.
 - Preserve route names, hostnames, ports, auth policy, monitor behavior, DNS answers, and generated Pi role order during the cutover.

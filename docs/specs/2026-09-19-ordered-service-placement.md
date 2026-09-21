@@ -179,7 +179,7 @@ The implementation is complete when:
 5. The normalized graph contains deterministic realization nodes and realization relationships.
 6. A tag selector, an exact-host selector, and a role selector resolve in positive fixtures.
 7. Unknown selector fields, unknown names, ambiguous `first-unique`, invalid cardinality, and role violations fail for their intended reasons.
-8. TOSCA accepts and projects the revised graph without becoming an authoring source.
+8. The canonical JSON projection contains the revised graph without becoming an authoring source.
 9. Deployment selector and changed-path behavior remains unchanged.
 10. Fast repository checks and both NixOS host builds pass from committed source.
 

@@ -19,7 +19,7 @@ in an ADR; operational recovery belongs in a runbook.
 | [reference/deployment.md](reference/deployment.md) | Planning, building, reviewing, or activating a change |
 | [reference/topology.md](reference/topology.md) | Placing a workload or reasoning about host roles and failure domains |
 | [reference/network.md](reference/network.md) | Changing routes, DNS, Caddy, Tailscale, audiences, or authentication |
-| [reference/storage.md](reference/storage.md) | Changing filesystems, datasets, snapshots, replication, or backups |
+| [reference/storage.md](reference/storage.md) | Changing filesystems, datasets, snapshots, or backups |
 | [reference/agentic-workflow.md](reference/agentic-workflow.md) | Changing agent tooling, hooks, delegation, or safety policy |
 | [reference/runtime-tests.md](reference/runtime-tests.md) | Adding an operator-triggered integration or runtime test |
 | [reference/recovery.md](reference/recovery.md) | Diagnosing an outage or selecting a recovery runbook |

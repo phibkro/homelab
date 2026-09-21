@@ -11,11 +11,9 @@
     Later we move auth itself to services.tailscale.authKeyFile via
     sops-nix; until then `up` is hand-rolled at install time.
 
-    Tailscale-SSH (`--ssh`) is intentionally NOT enabled here. The
-    check-mode reauth cycle (browser visit every ~12h per ACL) wedges
-    cross-host automation — `just remote pi rebuild` fails at the
-    rsync stage when the cookie expires, with no remedy other than
-    the operator visiting the auth URL by hand. Tailscale ACLs+keys
+    Tailscale-SSH (`--ssh`) is intentionally NOT enabled here. Its
+    check-mode reauthentication cycle requires periodic browser approval
+    and wedges unattended SSH-based activation. Tailscale ACLs and keys
     already gate WHO can reach the node (tailnet membership = auth
     perimeter); OpenSSH with the per-user pubkey lists in
     users.users.<n>.openssh.authorizedKeys.keys handles the SSH

@@ -2,14 +2,8 @@
 
 default_host := "workstation"
 user         := "nori"
-remote_path  := "/tmp/nix-migration"
 tailnet      := "saola-matrix.ts.net"
 
-# Used by `rebuild-homelab` to keep the one-host flow explicit.
-homelab_hosts := "workstation"
-
-# some GNU flags like --info=stats2 fail silently). See docs/gotchas.md.
-rsync_args := "-aH --no-owner --no-group --partial --delete --exclude='.git' --exclude='.worktrees' --exclude='.devenv' --exclude='node_modules' --exclude='result' --exclude='inventory-*'"
 
 # ── Imports (co-located concern fragments) ─────────────────────────
 import 'tests/tests.just'
@@ -27,11 +21,6 @@ default: list
     just --list --justfile {{justfile()}}
 
 
-# Usage: just remote <host> <recipe> [<args>...]
-@remote host +recipe:
-    rsync {{rsync_args}} ./ {{user}}@{{host}}.{{tailnet}}:{{remote_path}}/
-    ssh -t {{user}}@{{host}}.{{tailnet}} 'cd {{remote_path}} && just {{recipe}}'
-
 
 # Derive affected build targets from inventory and changes since a Git ref.
 @plan-deploy base="origin/main":
@@ -42,17 +31,6 @@ default: list
     nh os switch . -H $(hostname) {{args}}
 
 
-# Build + activate workstation from the working tree.
-@rebuild-homelab *args:
-    for h in {{homelab_hosts}}; do \
-      if [ "$h" = "$(hostname)" ]; then \
-        echo "=== local ($h) ==="; \
-        just rebuild {{args}}; \
-      else \
-        echo "=== remote $h ==="; \
-        just remote $h rebuild {{args}}; \
-      fi; \
-    done
 
 # Usage: just push <host> [extra nixos-rebuild args]
 @push host *args:

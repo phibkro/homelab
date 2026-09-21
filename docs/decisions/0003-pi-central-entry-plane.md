@@ -1,8 +1,8 @@
 # ADR-0003: Pi-central HTTP entry plane (supersedes ADR-0002's aurora-entry-plane choice)
 
-- Status: Accepted
+- Status: Superseded by `docs/specs/2026-09-06-complete-reorganization.md`
 - Date: 2026-06-11
-- Supersedes: ADR-0002 in part — the *family vault* + *workstation-as-compute* pieces remain; only the *entry plane* role moves from aurora to pi.
+- Superseded ADR-0002 in part while this topology was active.
 
 ## Context
 

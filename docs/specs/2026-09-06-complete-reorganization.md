@@ -181,21 +181,17 @@ under `infra/workstation`.
 | Old | New |
 |---|---|
 | `inventory/roles.nix` | `inventory/host-roles.nix` (the `workhorse/appliance/agent/client` placement vocabulary is not access policy) |
-| `inventory/default.nix` audience projection (`visibleToFor`, registration rule) | `roles/audiences.nix`, imported by the inventory compiler |
+| endpoint audience literals | `roles/audiences.nix`, imported by the inventory compiler |
 | `inventory/{hosts,workloads,datasets,backup,site}.nix` | unchanged paths; imports and path-valued fields are repaired |
 
-`roles/audiences.nix` contains only the already-observed access relation:
-`public -> [public family operator]`, `family -> [family operator]`, and
-`operator -> [operator]`, plus the existing `registrationRequired = audience !=
-"public"` policy. It does not invent user groups or grants. The route schema
-derives its allowed audiences from these keys so the access vocabulary has one
-authority.
+`roles/audiences.nix` owns the allowed `public`, `family`, and `operator`
+vocabulary. The route schema derives its allowed audiences from these keys so
+the access vocabulary has one authority.
 
-This audience relation is presentation and registration policy, not an
-authorization-enforcement engine. Enforcement remains in the existing route,
-Authelia/OIDC, service-native account, firewall, and network configurations.
-Moving the visibility relation under `roles/` must not make a portal projection
-or a `visibleTo` value sufficient to grant runtime access.
+Audience labels are policy inputs, not an authorization-enforcement engine.
+Enforcement remains in route, Authelia/OIDC, service-native account, firewall,
+and network configurations. A future portal must derive guidance from those
+contracts when it is built; a presentation value cannot grant runtime access.
 
 In `inventory/hosts.nix`, change only path-bearing fields:
 

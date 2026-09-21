@@ -191,20 +191,6 @@
           '';
 
         /**
-          Future status and onboarding catalogs expose the minimum
-          presentation policy and no internal topology.
-        */
-        eval-presentations =
-          let
-            result = import ../../../tests/eval/presentations.nix {
-              inherit pkgs lib inputs;
-            };
-          in
-          pkgs.runCommandLocal "eval-presentations" { } ''
-            echo ${lib.escapeShellArg result} > $out
-          '';
-
-        /**
           System adapters must be selected only by explicit profiles.
         */
         eval-system-profile-adapters =
@@ -494,16 +480,13 @@
               check "docs-fs" \
                 ${../../../docs/generated/fs.md} \
                 ${inputs.self.packages.${system}.docs-fs}
-              check "docs-replicas" \
-                ${../../../docs/generated/replicas.md} \
-                ${inputs.self.packages.${system}.docs-replicas}
 
               if [ $fail -eq 0 ]; then
                 touch $out
               else
                 echo
                 echo "Generated docs drifted. Regenerate + commit any failures:"
-                for name in routes topology capabilities backups recovery-evidence fs replicas; do
+                for name in routes topology capabilities backups recovery-evidence fs; do
                   echo "  nix build .#docs-$name -o /tmp/r && cp /tmp/r docs/generated/$name.md && chmod +w docs/generated/$name.md"
                 done
                 exit 1

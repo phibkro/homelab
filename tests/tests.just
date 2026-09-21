@@ -8,8 +8,8 @@
 #
 # Layer mix:
 #   * Runtime-introspection (layer 3): test-{harden,fs,routes,backups,
-#     replicas,authelia,observability,hypr} — query live state against
-#     declared intent on this host.
+#     authelia,observability,hypr} — query live state against declared
+#     intent on this host.
 #   * Eval (layer 1): test-eval runs every eval-* flake check (sub-sec).
 #   * Unit (bats, no live compositor): test-hypr-session.
 #   * Composite (test): runs all of the above in one signal (~3 min).
@@ -126,7 +126,6 @@
     just test-backups
     just test-routes
     just test-observability
-    just test-replicas
     just test-authelia
     just test-harden
     just test-fs
@@ -382,52 +381,6 @@
     echo
     [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
 
-# Each `nori.replicas.<X>` declares a cross-host dataset replica with
-# a freshness budget. The verifier (nix/effects/replication.nix)
-# emits a per-replica oneshot on the target host; this test reads the
-# registry, finds entries targeting THIS host, and asserts each
-# verifier unit completed cleanly within the freshness budget.
-#
-# Smoke gate: zero replicas declared (current state until P15 lands the
-# btrfs send/receive timer) exits 0 with "no replicas declared". When
-# P15 wires aurora → workstation MP510, this lever starts catching
-# stalled receives without waiting for the next ntfy alert.
-#
-# Runtime-introspection test: `nori.replicas.<X>` → fresh snapshot on the target host.
-@test-replicas:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    fail=0
-
-    host=$(hostname)
-    declared=$(nix eval --json ".#nixosConfigurations.${host}.config.nori.replicas" \
-                 --apply 'r: builtins.attrNames (builtins.intersectAttrs r r)' 2>/dev/null \
-               | nix shell nixpkgs#jq -c jq -r '.[]' 2>/dev/null || true)
-
-    if [[ -z "$declared" ]]; then
-      echo "=== test-replicas: no replicas declared (skipped) ==="
-      exit 0
-    fi
-
-    echo "=== Replica freshness — entries targeting $host ==="
-    for name in $declared; do
-      target_host=$(nix eval --raw ".#nixosConfigurations.${host}.config.nori.replicas.${name}.target.host" 2>/dev/null)
-      if [[ "$target_host" != "$host" ]]; then
-        continue
-      fi
-      unit="replication-verifier-${name}.service"
-      result=$(systemctl show -p Result --value "$unit" 2>/dev/null || echo "absent")
-      if [[ "$result" == "success" ]]; then
-        echo "  ✓ $name: verifier OK"
-      elif [[ "$result" == "absent" ]]; then
-        echo "  ✗ $name: verifier unit missing"; fail=1
-      else
-        echo "  ✗ $name: verifier Result=$result"; fail=1
-      fi
-    done
-
-    echo
-    [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
 
 # Every `nori.harden.<unit>` declares a filesystem-namespace hardening
 # profile (binds, readOnlyBinds, protectHome). The flake check

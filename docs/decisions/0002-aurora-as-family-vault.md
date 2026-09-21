@@ -1,6 +1,6 @@
 # ADR-0002: Aurora as family vault; workstation as sleep-friendly compute
 
-- Status: Accepted
+- Status: Superseded by `docs/specs/2026-09-06-complete-reorganization.md`
 - Date: 2026-06-11
 
 ## Context

@@ -263,14 +263,11 @@ Q7   Migration path: replace or extend in-place?
      byte-equal verification catches semantic drift. The
      overlapping-period of (β) is more complex than the rename.
 
-Q8   Replication.nix in this scope?
-     
-     Currently nix/modules/system/storage/replication.nix declares
-     nori.replicas.<X>.{source, target}.host references. Those
-     hosts would become machine references under the new schema.
-     
-     Lean: in scope. The replication registry IS placement-
-     adjacent (it's "where does this data live across hosts").
+Q8   Replication registry in this scope?
+
+     Retired. The proposed registry never gained a transport or live
+     declarations. Reintroduce it only with a concrete sender,
+     receiver, and freshness-verification journey.
 ```
 
 ## Migration phases (proposed; not in execution)

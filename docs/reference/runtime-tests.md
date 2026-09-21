@@ -42,7 +42,6 @@ One lever maxed = nice-to-have. Two = ship it. Three+ = required.
 | `just test-backups` | `nori.backups.<n>` → restic units exist + per-target snapshots ≤25h | `infra/common/nixos/backup.nix` |
 | `just test-routes` | `lib.noriInventory.routes` → deployed Pi Caddy route + DNS + HTTPS | `inventory/default.nix` + Pi Ansible roles |
 | `just test-observability` | VM scrape targets up + process-exporter publishing + Pi heartbeat <90s + zero failing Gatus probes | compiler Pi projection + `services/{gatus,victoriametrics}/ansible/` |
-| `just test-replicas` | `nori.replicas.<n>` → per-replica verifier oneshot succeeded within freshness budget on the target host (smoke-passes on empty registry) | `infra/common/nixos/storage/replication.nix` |
 | `just test-authelia` | projected OIDC clients → Pi Authelia active, healthy, correct issuer, and non-empty hashed secret files | `inventory/default.nix` + `services/authelia/ansible/` |
 | `just test-music-ingest` | Disposable real-filesystem journey for claim, recovery, publication, conflict, and rejection behavior | `services/music-ingest/tests/runtime.sh` |
 | `just test` | All non-destructive recipes above; the opt-in Ghostty geometry and headless launcher journeys are intentionally excluded | composite |
@@ -59,7 +58,6 @@ runtime checks.
 |---|---|---|:-:|
 | `infra/common/nixos/backup.nix` | NixOS restic units | `test-backups` | ★★★★★ |
 | `inventory/default.nix` + workload manifests | Pi Caddy, Pi-hole, Gatus, Authelia | `test-routes`, `test-authelia`, `test-observability` | ★★★★★ |
-| `infra/common/nixos/storage/replication.nix` | NixOS replica units | `test-replicas` | ★★★★ |
 | `infra/common/nixos/service-hardening.nix` | ✓ `nori.harden` | — | ★★ (flake check is primary defence) |
 | `infra/common/nixos/storage/default.nix` | ✓ `nori.fs` | — | ★★ |
 | `infra/common/nixos/inventory.nix` | ✓ Read-only compiler projection | — | ★ (covered by inventory eval checks) |

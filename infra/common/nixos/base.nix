@@ -122,9 +122,9 @@
   };
 
   /**
-    nh wraps `nixos-rebuild` with internal sudo elevation (don't prefix
-    `nh` with sudo) and `--target-host` for SSH-based remote deployment.
-    The Justfile + `just remote` wrap the common invocations.
+    nh wraps `nixos-rebuild` with internal sudo elevation (do not prefix
+    `nh` with sudo). Local workstation activation uses `just rebuild`;
+    remote NixOS activation uses `just push <host>`.
   */
   programs.nh.enable = true;
 
