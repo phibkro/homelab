@@ -144,21 +144,22 @@ nori.backups.navidrome = {
 
 Runtime check: `just test-backups` asserts per-target snapshot ≤25h.
 
-### Pattern selection cheat sheet
+### Recovery contracts
 
-| Service | Pattern | Rationale |
-|---|---|---|
-| Jellyfin | A | Rebuildable library DB and isolated restored-state startup |
-| Immich | B | Built-in dump mechanism; isolated import verified |
-| Miniflux | C1 | PostgreSQL logical dump; isolated import verified |
-| Vaultwarden | C2 | SQLite with Diesel migrations; race fix applied |
-| Navidrome | C2 | SQLite with Goose migrations; canonical implementation |
-| Stremio | A | Pairing certificate and server settings; stream cache excluded |
-| Ollama | A | Models are re-downloadable |
-| Tailscale | A | State files |
-| `/home`, `/srv/share`, `/srv/nori` | A (via `nori.backups.user-data`) | No databases |
+Do not maintain a second per-service pattern table here. Workload manifests
+declare their recovery model and backup-job edge. The
+[generated recovery view](../generated/recovery-evidence.md) joins those
+contracts with evaluated backup paths, targets, exclusions, and recorded
+evidence reports.
 
-New services pick a pattern at onboarding (`/add-service`). Pattern C2 services MUST use the flock-wrapped canonical impl — concurrent dump callers must not corrupt the staging file.
+Cross-cutting host data, such as user-data roots, enters that view through the
+evidence registry because it has no workload manifest. Services with an
+intentional backup skip, such as re-downloadable Ollama models, do not declare a
+backup recovery contract.
+
+New services pick a pattern at onboarding (`/add-service`). Pattern C2 services
+MUST use the flock-wrapped canonical implementation. Concurrent dump callers
+must not corrupt the staging file.
 
 ## Observability and alerting
 

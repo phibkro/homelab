@@ -16,6 +16,10 @@
     "media-reader"
     "stateful"
   ];
+  recovery = {
+    model = "application-export";
+    backupJob = "media-irreplaceable";
+  };
 
   endpoints.photos = {
     port = 2283;

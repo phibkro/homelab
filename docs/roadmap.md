@@ -24,9 +24,11 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
   `docs/archive/reports/2026-09-21-pi-host-reconstruction-drill.md`.
   The Pi proof covers clean configuration, reboot, a current Pi-hole snapshot,
   and restored endpoints. It does not claim physical replacement acceptance.
-  Next, generate the evidence view from service manifests and backup jobs.
-  Activate Adelie for the Stremio cache exclusion. Activate the workstation
-  for bounded user-data restore drills.
+  The generated
+  [`recovery-evidence.md`](generated/recovery-evidence.md) view now joins
+  service manifests, evaluated backup jobs, and recorded reports. Next,
+  activate Adelie for the Stremio cache exclusion. Activate the workstation for
+  bounded user-data restore drills.
 
 - **Finish public status production acceptance.** The failure-independent
   `status.home.phibkro.org` Cloudflare Worker is deployed from the explicit

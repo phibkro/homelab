@@ -15,6 +15,10 @@
     "family-tier"
     "stateful"
   ];
+  recovery = {
+    model = "postgresql-logical";
+    backupJob = "miniflux";
+  };
 
   endpoints.news = {
     port = 8087;

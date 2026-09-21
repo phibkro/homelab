@@ -19,6 +19,9 @@ backup checks. The
 [Pi host reconstruction drill](../archive/reports/2026-09-21-pi-host-reconstruction-drill.md)
 connects clean configuration and reboot to a current Pi-hole snapshot in a
 disposable guest. It does not measure physical replacement recovery.
+The [generated recovery view](../generated/recovery-evidence.md) keeps the
+declarative contracts and accepted report index derived from their sources. It
+does not present those dated observations as live status.
 Existing MP510 archives, local filesystem snapshots, and application dumps are
 preserved. None establishes current backup coverage by itself. Same-disk
 snapshots and dumps do not survive loss of that disk.

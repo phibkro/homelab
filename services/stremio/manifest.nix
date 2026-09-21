@@ -12,6 +12,10 @@
   };
   runtimeModule = ./nixos.nix;
   tags = [ "media-server" ];
+  recovery = {
+    model = "filesystem";
+    backupJob = "stremio";
+  };
 
   endpoints.stremio = {
     port = 11470;

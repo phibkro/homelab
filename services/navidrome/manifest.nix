@@ -16,6 +16,10 @@
     "media-reader"
     "stateful"
   ];
+  recovery = {
+    model = "sqlite-logical";
+    backupJob = "navidrome";
+  };
 
   endpoints.audio = {
     port = 4533;

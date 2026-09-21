@@ -15,6 +15,10 @@
     "family-tier"
     "stateful"
   ];
+  recovery = {
+    model = "sqlite-logical";
+    backupJob = "vaultwarden";
+  };
 
   topology.requires = {
     compute = {

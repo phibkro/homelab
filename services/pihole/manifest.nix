@@ -12,6 +12,11 @@
     };
   };
   tags = [ "network-appliance" ];
+  recovery = {
+    model = "filesystem";
+    backupJob = "pihole";
+  };
+
   listeners.dns.port = 53;
   endpoints.pihole = {
     port = 8081;

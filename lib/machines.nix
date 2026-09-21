@@ -35,7 +35,10 @@
 */
 
 let
-  inventory = import ../inventory { inherit lib; };
+  inventory = import ../inventory {
+    inherit lib;
+    recoveryEvidence = import ../inventory/recovery-evidence.nix;
+  };
   hosts = inventory.internal.hosts;
   nixosHosts = lib.filterAttrs (_: host: host.kind == "nixos") hosts;
 

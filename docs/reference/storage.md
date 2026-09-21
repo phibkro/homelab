@@ -36,7 +36,10 @@ that HDD, while active service state and working trees remain on SSD storage.
 and its enable switch. Workstation writes directly to its attached OneTouch.
 Pi and Adelie use separate restricted workstation SFTP accounts and namespaces
 backed by that disk. The [generated backup reference](../generated/backups.md)
-and [service patterns](services.md) describe the declared jobs and preparation.
+lists every evaluated job. The
+[generated recovery view](../generated/recovery-evidence.md) joins declared
+workload recovery models, evaluated backup mechanics, and recorded evidence
+reports. [Service patterns](services.md) explain the model choices.
 
 Configuration, mounted storage, successful backups, and usable restores are
 separate evidence. The [September 19 inspection](../archive/reports/2026-09-19-backup-evidence.md)

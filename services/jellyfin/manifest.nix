@@ -24,6 +24,10 @@
     "gpu-bound"
     "stateful"
   ];
+  recovery = {
+    model = "filesystem";
+    backupJob = "jellyfin";
+  };
 
   endpoints.media = {
     port = 8096;

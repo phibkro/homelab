@@ -488,6 +488,9 @@
               check "docs-backups" \
                 ${../../../docs/generated/backups.md} \
                 ${inputs.self.packages.${system}.docs-backups}
+              check "docs-recovery-evidence" \
+                ${../../../docs/generated/recovery-evidence.md} \
+                ${inputs.self.packages.${system}.docs-recovery-evidence}
               check "docs-fs" \
                 ${../../../docs/generated/fs.md} \
                 ${inputs.self.packages.${system}.docs-fs}
@@ -500,7 +503,7 @@
               else
                 echo
                 echo "Generated docs drifted. Regenerate + commit any failures:"
-                for name in lan-route topology capabilities backups fs replicas; do
+                for name in routes topology capabilities backups recovery-evidence fs replicas; do
                   echo "  nix build .#docs-$name -o /tmp/r && cp /tmp/r docs/generated/$name.md && chmod +w docs/generated/$name.md"
                 done
                 exit 1

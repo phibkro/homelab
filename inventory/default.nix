@@ -7,6 +7,7 @@
   disks ? import ./disks.nix,
   site ? import ./site.nix,
   backup ? import ./backup.nix { inherit disks; },
+  recoveryEvidence ? { },
   hostRoles ? import ./host-roles.nix,
   audiences ? import ../roles/audiences.nix,
 }:
@@ -78,6 +79,78 @@ let
   ) workloadCatalog;
   nonEmptyString = value: builtins.isString value && value != "";
   validStringList = values: builtins.isList values && lib.all nonEmptyString values;
+  supportedRecoveryModels = [
+    "application-export"
+    "filesystem"
+    "postgresql-logical"
+    "sqlite-logical"
+  ];
+  supportedRecoveryEvidenceScopes = [
+    "data"
+    "host"
+    "service"
+  ];
+  recoveryDeclarations = lib.filterAttrs (_: workload: workload ? recovery) workloadCatalog;
+  invalidRecoveryDeclarations = lib.filterAttrs (
+    _name: workload:
+    let
+      recovery = if builtins.isAttrs workload.recovery then workload.recovery else { };
+      unexpectedKeys = lib.subtractLists [
+        "backupJob"
+        "model"
+      ] (lib.attrNames recovery);
+    in
+    !(
+      builtins.isAttrs workload.recovery
+      && unexpectedKeys == [ ]
+      && lib.elem (recovery.model or null) supportedRecoveryModels
+      && isStableName (recovery.backupJob or null)
+    )
+  ) recoveryDeclarations;
+  invalidRecoveryEvidence = lib.filterAttrs (
+    name: rawEvidence:
+    let
+      evidence = if builtins.isAttrs rawEvidence then rawEvidence else { };
+      hasWorkload = evidence ? workload;
+      unexpectedKeys = lib.subtractLists [
+        "backupJob"
+        "gates"
+        "host"
+        "model"
+        "report"
+        "scope"
+        "workload"
+      ] (lib.attrNames evidence);
+      workloadShape =
+        hasWorkload
+        && isStableName evidence.workload
+        && builtins.hasAttr evidence.workload workloadCatalog
+        && workloadCatalog.${evidence.workload} ? recovery
+        && !(evidence ? host)
+        && !(evidence ? backupJob)
+        && !(evidence ? model);
+      directBackupShape =
+        !hasWorkload
+        && isStableName (evidence.host or null)
+        && builtins.hasAttr evidence.host hosts
+        && isStableName (evidence.backupJob or null)
+        && lib.elem (evidence.model or null) supportedRecoveryModels;
+    in
+    !(
+      isStableName name
+      && builtins.isAttrs rawEvidence
+      && unexpectedKeys == [ ]
+      && lib.elem (evidence.scope or null) supportedRecoveryEvidenceScopes
+      && nonEmptyString (evidence.report or "")
+      && lib.hasPrefix "docs/archive/reports/" evidence.report
+      && !lib.hasInfix ".." evidence.report
+      && validStringList (evidence.gates or null)
+      && lib.all isStableName evidence.gates
+      && evidence.gates != [ ]
+      && lib.unique evidence.gates == evidence.gates
+      && (workloadShape || directBackupShape)
+    )
+  ) recoveryEvidence;
   validHeaderName =
     value: nonEmptyString value && !lib.hasInfix "\n" value && !lib.hasInfix "\r" value;
   validHeaders =
@@ -1230,6 +1303,10 @@ assert lib.assertMsg (invalidPlacementDeclarations == { })
   "inventory: workloads must declare valid ordered placement selectors and cardinality: ${lib.concatStringsSep ", " (lib.attrNames invalidPlacementDeclarations)}";
 assert lib.assertMsg (invalidWorkloadActivation == { })
   "inventory: workload active must be an explicit boolean: ${lib.concatStringsSep ", " (lib.attrNames invalidWorkloadActivation)}";
+assert lib.assertMsg (invalidRecoveryDeclarations == { })
+  "inventory: workload recovery declarations must contain one supported model and one stable backup job: ${lib.concatStringsSep ", " (lib.attrNames invalidRecoveryDeclarations)}";
+assert lib.assertMsg (invalidRecoveryEvidence == { })
+  "inventory: recovery evidence declarations must select a workload or direct host backup job and a valid report: ${lib.concatStringsSep ", " (lib.attrNames invalidRecoveryEvidence)}";
 assert lib.assertMsg (invalidEndpointDeclarations == [ ])
   "inventory: malformed endpoint or monitor declaration(s): ${lib.concatStringsSep ", " invalidEndpointDeclarations}";
 assert lib.assertMsg (invalidListenerDeclarations == [ ])
@@ -1295,6 +1372,7 @@ builtins.deepSeq topology {
       datasets
       disks
       backup
+      recoveryEvidence
       site
       workloadCatalog
       realizationsFor
