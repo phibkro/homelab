@@ -36,6 +36,12 @@ let
     && lib.elem "x-systemd.idle-timeout=15min" config.fileSystems."/mnt/backup".options
     && (config.nori.backupTargets ? onetouch)
     && config.nori.backupDelivery.enable
+    && config.nori.backupFreshness.maxAgeHours == 36
+    && (config.systemd.services ? restic-snapshot-freshness)
+    &&
+      config.systemd.services.restic-snapshot-freshness.unitConfig.OnFailure
+      == [ "notify@restic-snapshot-freshness.service" ]
+    && (config.systemd.timers ? restic-snapshot-freshness)
     && lib.all (check: check.assertion) config.assertions
     && (config.users.users ? restic)
     && (config.sops.secrets ? restic-password)

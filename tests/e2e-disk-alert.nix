@@ -181,5 +181,10 @@ pkgs.testers.runNixOSTest {
         assert "storage-full.md" in captured, (
             f"body missing runbook reference: {captured!r}"
         )
+
+    with subtest("disk-alert fails closed when notification delivery fails"):
+        pi.succeed("systemctl stop test-ntfy-receiver.service")
+        pi.fail("systemctl start disk-alert.service")
+        assert pi.succeed("systemctl is-failed disk-alert.service").strip() == "failed"
   '';
 }

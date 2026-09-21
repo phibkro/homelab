@@ -235,6 +235,11 @@ let
         type = types.nullOr monitorType;
         default = null;
       };
+      monitorProbeName = mkOption {
+        type = types.nullOr types.str;
+        default = null;
+        description = "Canonical Gatus series key selected as this route's health outcome.";
+      };
       dashboard = mkOption {
         type = types.nullOr dashboardType;
         default = null;

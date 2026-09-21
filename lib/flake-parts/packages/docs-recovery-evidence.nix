@@ -109,7 +109,13 @@
           "recovery evidence: '${evidenceId}' report does not exist: ${evidence.report}";
         {
           inherit evidenceId hostName job;
-          inherit (evidence) scope report gates;
+          inherit (evidence)
+            scope
+            report
+            gates
+            observedAt
+            maxAgeDays
+            ;
           workloadName = if workload == null then null else evidence.workload;
           inherit (recovery) model backupJob;
         };
@@ -119,7 +125,7 @@
         let
           reportLink = "../${lib.removePrefix "docs/" evidence.report}";
         in
-        "| `${evidence.evidenceId}` | `${evidence.scope}` | ${renderOptional evidence.workloadName} | `${evidence.hostName}` | `${evidence.model}` | `${evidence.backupJob}` | ${renderList evidence.job.targets} | ${renderList evidence.job.include} | ${renderList evidence.job.exclude} | ${renderList evidence.gates} | [report](${reportLink}) |";
+        "| `${evidence.evidenceId}` | `${evidence.scope}` | ${renderOptional evidence.workloadName} | `${evidence.hostName}` | `${evidence.model}` | `${evidence.backupJob}` | `${evidence.observedAt}` | `${toString evidence.maxAgeDays}` | ${renderList evidence.job.targets} | ${renderList evidence.job.include} | ${renderList evidence.job.exclude} | ${renderList evidence.gates} | [report](${reportLink}) |";
       evidenceRows = lib.concatStringsSep "\n" (lib.mapAttrsToList evidenceRow resolvedEvidence);
     in
     {
@@ -160,10 +166,12 @@
           ## Recorded recovery evidence
 
           Gates are historical report checkpoints, not live status or current
-          configuration conformance.
+          configuration conformance. `Observed` and `max age` are the
+          authoritative freshness inputs used by the runtime evidence-age
+          monitor.
 
-          | Evidence | Scope | Workload | Host | Model | Backup job | Current targets | Current include paths | Current exclude paths | Observed gates | Report |
-          |---|---|---|---|---|---|---|---|---|---|---|
+          | Evidence | Scope | Workload | Host | Model | Backup job | Observed | Max age (days) | Current targets | Current include paths | Current exclude paths | Observed gates | Report |
+          |---|---|---|---|---|---|---|---|---|---|---|---|---|
           ${evidenceRows}
         '';
     };

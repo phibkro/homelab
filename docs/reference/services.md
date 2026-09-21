@@ -60,8 +60,9 @@ Every independently placed workload has a pure `manifest.nix` and a concrete
 realization such as `nixos.nix`. The manifest owns catalog, endpoint, listener,
 audience, and presentation metadata. Runtime adapters consume the resolved
 `nori.inventory` projection; they do not repeat route names, hostnames, or
-ports. The adapter owns units, hardening, backup intent, and implementation-
-internal ports. Physical paths and filesystem identities live in
+ports. The adapter owns units, hardening, and implementation-internal ports.
+NixOS adapters declare their backup intent; Pi backup intent is centralized in
+`inventory/backup.nix`. Physical paths and filesystem identities live in
 `infra/<machine>/`. The compiler imports only runtimes selected by
 service-owned placement selectors.
 
@@ -71,9 +72,10 @@ service-owned placement selectors.
 
 ## Backup-correctness patterns
 
-Four patterns cover files, built-in exports, PostgreSQL, and SQLite. All active
-jobs use `nori.backups.<name>`. The patterns differ in the selected data and the
-preparation that runs before Restic.
+Four patterns cover files, built-in exports, PostgreSQL, and SQLite. Active
+NixOS jobs use `nori.backups.<name>`; Pi jobs declare equivalent paths,
+exclusions, and retention in `inventory/backup.nix`. The patterns differ in the
+selected data and the preparation that runs before Restic.
 
 | Pattern | When | Implementation | Example |
 |---|---|---|---|
@@ -192,11 +194,12 @@ flowchart TB
   end
   WS -- node-exporter:9100<br/>process-exporter:9256 --> VM
   WS -- journald via vector --> VL
-  GA -- mutual probe --> WS
+  GA -- DNS answer + HTTPS + auth<br/>outcome probes --> Internet[public outcomes]
+  Internet --> WS
   WS -. Grafana queries .-> VM
   WS -. Grafana queries .-> VL
   Pi[heartbeat] --> HC[healthchecks.io]
-  GA -- alert --> Public[ntfy.sh public]
+  GA -- failure + resolved alert --> Public[ntfy.sh public]
   notify[notify@ template<br/>per-host] --> Public
 ```
 
@@ -206,9 +209,10 @@ flowchart TB
 | **Metrics (TSDB)** | VictoriaMetrics | pi | Scrapes gatus + node-exporter + process-exporter; 14d retention |
 | **Logs (TSDB)** | VictoriaLogs | pi | Aggregates journald via vector shipper; 14d retention. `just query-logs <LogsQL>` |
 | **Per-process RSS** | process-exporter | workstation | Leak hunter; pi VM scrapes. See [[workstation-leak-hunting]] |
-| **Synthetic checks** | Gatus | pi | Mutual probes; declarative attrset → YAML. Replaced Uptime Kuma |
-| **Dashboards** | Grafana | workstation | VM + VL as datasources; per-host system + gatus dashboards |
-| **Alert delivery** | ntfy.sh **public** | every host | `notify@<unit>.service` POSTs directly; channel-secret in sops. Pi-local authenticated ntfy serves the agent alert route |
+| **Synthetic outcomes** | Gatus | pi | DNS answer, OIDC discovery, external HTTPS, application response and certificate lifetime; each alerting outcome has one private Gatus probe |
+| **Recovery-evidence age** | systemd timer | pi | Daily check generated from accepted evidence dates and maximum ages |
+| **Dashboards** | Grafana | workstation | VM + VL as datasources; per-host system + Gatus dashboards |
+| **Alert delivery** | ntfy.sh **public** | every host | Gatus and `notify@<unit>.service` POST directly; channel secret in SOPS. Pi-local authenticated ntfy serves the agent alert route |
 | **Dead-man-switch** | healthchecks.io | pi → external | 60s ping; alerts off-host if pi dies. SPOF mitigation |
 | **Runtime test** | `just test-observability` | operator-triggered | Asserts VM targets up + per-host series + heartbeat <90s + zero failing probes. See `docs/reference/runtime-tests.md` |
 
@@ -218,12 +222,26 @@ flowchart TB
 |---|---|---|
 | Filesystem >80% full | Beszel | Warn |
 | Filesystem >90% full | Beszel | Urgent |
+| Workstation filesystem ≥95% or declared mount unavailable | `disk-alert` systemd timer | Urgent |
 | SMART status changes | systemd timer | Urgent |
-| Service down (HTTP / TCP probe) | Gatus | Urgent |
+| DNS answer mismatch | Gatus | Urgent |
+| Authentication challenge failure | Gatus | Urgent |
+| External HTTPS, application response, or certificate lifetime <7 days | Gatus | Urgent |
 | Tailscale connectivity loss | systemd timer | Urgent |
-| restic backup job failure | restic systemd unit (`OnFailure → notify@`) | Urgent |
+| restic backup stale or job failure | restic systemd unit (`OnFailure → notify@`) | Urgent |
+| Accepted recovery evidence older than its declared maximum age | systemd timer (`OnFailure → notify@`) | Urgent |
 | btrbk snapshot job failure | btrbk systemd unit | Warn |
 | Sustained high CPU/memory | Beszel | Warn |
+
+Alert ownership is explicit. Gatus owns DNS, authentication, HTTPS, application,
+and certificate outcomes. Direct backend probes remain available for diagnosis,
+but are alert-free where an external outcome owns notification. The public
+Gatus view consumes a separate alert-free projection, so publishing a component
+does not create a second alert path. OIDC discovery is also diagnostic; the
+forward-auth challenge is the single authentication alert owner.
+Restic job units own execution failures; freshness monitors use lock-free
+read-only queries and suppress a job-target while that unit is failed.
+Recovery-evidence age has one fleet-wide owner on Pi.
 
 ### Alert delivery
 

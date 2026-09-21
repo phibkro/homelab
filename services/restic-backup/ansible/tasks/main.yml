@@ -248,6 +248,7 @@
   loop:
     - { src: freshness.sh.j2, dest: /usr/local/libexec/pi-restic-freshness }
     - { src: restore-disposable.sh.j2, dest: /usr/local/libexec/pi-restic-restore-disposable }
+    - { src: evidence-freshness.sh.j2, dest: /usr/local/libexec/pi-restic-evidence-freshness }
   notify:
     - Reload systemd after Pi backup changes
     - Restart Pi backup freshness timer
@@ -263,6 +264,8 @@
   loop:
     - { src: freshness.service.j2, dest: /etc/systemd/system/pi-restic-freshness.service }
     - { src: freshness.timer.j2, dest: /etc/systemd/system/pi-restic-freshness.timer }
+    - { src: evidence-freshness.service.j2, dest: /etc/systemd/system/pi-restic-evidence-freshness.service }
+    - { src: evidence-freshness.timer.j2, dest: /etc/systemd/system/pi-restic-evidence-freshness.timer }
   notify: Reload systemd after Pi backup changes
   when: pi_backup_enabled | bool
 
@@ -273,6 +276,9 @@
       - /usr/local/libexec/pi-restic-restore-disposable
       - /etc/systemd/system/pi-restic-freshness.service
       - /etc/systemd/system/pi-restic-freshness.timer
+      - /usr/local/libexec/pi-restic-evidence-freshness
+      - /etc/systemd/system/pi-restic-evidence-freshness.service
+      - /etc/systemd/system/pi-restic-evidence-freshness.timer
   changed_when: false
   when: pi_backup_enabled | bool
 
@@ -376,6 +382,16 @@
 - name: Enable Pi backup freshness timer
   ansible.builtin.systemd_service:
     name: pi-restic-freshness.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when:
+    - pi_backup_enabled | bool
+    - not ansible_check_mode
+
+- name: Enable recovery evidence freshness timer
+  ansible.builtin.systemd_service:
+    name: pi-restic-evidence-freshness.timer
     enabled: true
     state: started
     daemon_reload: true

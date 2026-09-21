@@ -79,6 +79,17 @@ in
     '';
   };
 
+  options.nori.backupFreshness.maxAgeHours = mkOption {
+    type = types.ints.positive;
+    default = 36;
+    description = ''
+      Maximum age of the newest snapshot for every active job/target pair.
+      The host freshness timer alerts on missing or older snapshots. A pair
+      whose backup unit is already failed is suppressed because that unit owns
+      the active failure notification.
+    '';
+  };
+
   options.nori.backupTargets = mkOption {
     default = { };
     description = ''
@@ -412,6 +423,82 @@ in
         ) activeJobs
       );
 
+      localFreshnessMounts = lib.unique (
+        lib.concatMap (
+          { target, ... }:
+          let
+            repository = config.nori.backupTargets.${target}.repository;
+          in
+          lib.optional (lib.hasPrefix "/" repository) repository
+        ) activePairs
+      );
+      freshnessNeedsTailnet = lib.any (
+        { target, ... }: config.nori.backupTargets.${target}.tailnetPeer != null
+      ) activePairs;
+
+      freshnessCheckFor =
+        {
+          jobName,
+          target,
+          ...
+        }:
+        let
+          tgt = config.nori.backupTargets.${target};
+          unit = "restic-backups-${jobName}-${target}.service";
+          repository = "${tgt.repository}/${jobName}";
+          resticOpts = lib.concatStringsSep " " (map (option: "-o ${option}") tgt.extraOptions);
+          environmentSetup = lib.optionalString (tgt.environmentFile != null) ''
+            set -a
+            source ${lib.escapeShellArg (toString tgt.environmentFile)}
+            set +a
+          '';
+        in
+        ''
+          unit_state=$(${pkgs.systemd}/bin/systemctl show --property=ActiveState --value ${lib.escapeShellArg unit} 2>/dev/null || true)
+          if [ "$unit_state" = "failed" ]; then
+            printf 'snapshot freshness suppressed for already-failed unit: %s\n' ${lib.escapeShellArg unit}
+          elif ! (
+            ${environmentSetup}
+            export RESTIC_PASSWORD_FILE=${lib.escapeShellArg config.sops.secrets.restic-password.path}
+            if ! snapshots=$(${pkgs.restic}/bin/restic ${resticOpts} -r ${lib.escapeShellArg repository} --no-lock snapshots --latest 1 --json); then
+              printf 'snapshot freshness query failed: %s\n' ${lib.escapeShellArg "${jobName}:${target}"} >&2
+              exit 1
+            fi
+            timestamp=$(printf '%s' "$snapshots" | ${pkgs.jq}/bin/jq -r 'sort_by(.time) | .[-1].time // empty')
+            if [ -z "$timestamp" ]; then
+              printf 'snapshot freshness missing snapshot: %s\n' ${lib.escapeShellArg "${jobName}:${target}"} >&2
+              exit 1
+            fi
+            if ! snapshot_epoch=$(${pkgs.coreutils}/bin/date -u -d "$timestamp" +%s); then
+              printf 'snapshot freshness invalid timestamp: %s timestamp=%s\n' \
+                ${lib.escapeShellArg "${jobName}:${target}"} "$timestamp" >&2
+              exit 1
+            fi
+            now=$(${pkgs.coreutils}/bin/date -u +%s)
+            if (( snapshot_epoch > now )); then
+              printf 'snapshot freshness future timestamp: %s timestamp=%s\n' \
+                ${lib.escapeShellArg "${jobName}:${target}"} "$timestamp" >&2
+              exit 1
+            fi
+            age_seconds=$(( now - snapshot_epoch ))
+            age_hours=$(( age_seconds / 3600 ))
+            if (( age_seconds > ${toString (config.nori.backupFreshness.maxAgeHours * 3600)} )); then
+              printf 'snapshot freshness stale: %s age_hours=%s max_age_hours=%s\n' \
+                ${lib.escapeShellArg "${jobName}:${target}"} "$age_hours" \
+                ${toString config.nori.backupFreshness.maxAgeHours} >&2
+              exit 1
+            fi
+          ); then
+            status=1
+          fi
+        '';
+      freshnessScript = pkgs.writeShellScript "restic-snapshot-freshness" ''
+        set -Eeuo pipefail
+        status=0
+        ${lib.concatMapStrings freshnessCheckFor activePairs}
+        exit "$status"
+      '';
+
       /*
         Services that use systemd DynamicUser=yes plus StateDirectory,
         where /var/lib/<n> is a SYMLINK to /var/lib/private/<n>. restic
@@ -684,46 +771,91 @@ in
         for the recovery procedure if this isn't enough; upstream
         nixpkgs fix tracked separately.
       */
-      systemd.services = lib.listToAttrs (
-        map (
-          { jobName, target, ... }:
-          let
-            tgt = config.nori.backupTargets.${target};
-            peer = if tgt.tailnetPeer == null then "" else tgt.tailnetPeer;
-            # RAW, not escapeShellArg'd: the sftp.command value carries
-            # shell-quotes meant to be stripped (see restic.nix mkCheckScript).
-            # Escaping preserved them literally, so this pre-unlock silently
-            # no-op'd for SFTP targets (masked by `2>/dev/null || true`) —
-            # leaving exactly the stale locks it exists to clear.
-            resticOpts = lib.concatStringsSep " " (map (o: "-o ${o}") tgt.extraOptions);
-            preUnlockScript = pkgs.writeShellScript "restic-${jobName}-${target}-pre-unlock" ''
-              ${pkgs.restic}/bin/restic ${resticOpts} unlock 2>/dev/null || true
-            '';
-            peerPreflightScript = pkgs.writeShellScript "restic-${jobName}-${target}-peer-preflight" ''
-              for attempt in $(${pkgs.coreutils}/bin/seq 1 60); do
-                if ${pkgs.tailscale}/bin/tailscale ping --timeout=2s -c 1 ${lib.escapeShellArg peer} >/dev/null 2>&1 \
-                  && ${pkgs.getent}/bin/getent ahostsv4 ${lib.escapeShellArg peer} >/dev/null; then
-                  exit 0
-                fi
-                ${pkgs.coreutils}/bin/sleep 5
-              done
-              echo "backup target peer unavailable after 5 minutes: ${peer}" >&2
-              exit 1
-            '';
-          in
-          lib.nameValuePair "restic-backups-${jobName}-${target}" {
-            unitConfig.OnFailure = [ "notify@restic-backups-${jobName}-${target}.service" ];
-            unitConfig.RequiresMountsFor = lib.mkIf (lib.hasPrefix "/" tgt.repository) [
-              tgt.repository
-            ];
-            wants = lib.optionals (tgt.tailnetPeer != null) [ "tailscaled.service" ];
-            after = lib.optionals (tgt.tailnetPeer != null) [ "tailscaled.service" ];
-            serviceConfig.ExecStartPre = lib.mkBefore (
-              lib.optionals (tgt.tailnetPeer != null) [ "${peerPreflightScript}" ] ++ [ "${preUnlockScript}" ]
-            );
-          }
-        ) activePairs
-      );
+      systemd.services = lib.mkMerge [
+        {
+          restic-snapshot-freshness = {
+            description = "Check freshness of every active Restic snapshot";
+            unitConfig = {
+              OnFailure = [ "notify@restic-snapshot-freshness.service" ];
+              RequiresMountsFor = localFreshnessMounts;
+            };
+            wants = lib.optionals freshnessNeedsTailnet [ "tailscaled.service" ];
+            after = lib.optionals freshnessNeedsTailnet [ "tailscaled.service" ];
+            path = [ pkgs.openssh ];
+            serviceConfig = {
+              Type = "oneshot";
+              User = "root";
+              ExecStart = "${freshnessScript}";
+              CacheDirectory = "restic-freshness";
+              Environment = "RESTIC_CACHE_DIR=/var/cache/restic-freshness";
+              NoNewPrivileges = true;
+              PrivateTmp = true;
+              ProtectSystem = "strict";
+              ProtectHome = true;
+              ProtectKernelTunables = true;
+              ProtectKernelModules = true;
+              ProtectControlGroups = true;
+              PrivateDevices = true;
+              CapabilityBoundingSet = "";
+              LockPersonality = true;
+              SystemCallFilter = "@system-service";
+              TimeoutStartSec = "30min";
+            };
+          };
+        }
+        (lib.listToAttrs (
+          map (
+            { jobName, target, ... }:
+            let
+              tgt = config.nori.backupTargets.${target};
+              peer = if tgt.tailnetPeer == null then "" else tgt.tailnetPeer;
+              # RAW, not escapeShellArg'd: the sftp.command value carries
+              # shell-quotes meant to be stripped (see restic.nix mkCheckScript).
+              # Escaping preserved them literally, so this pre-unlock silently
+              # no-op'd for SFTP targets (masked by `2>/dev/null || true`) —
+              # leaving exactly the stale locks it exists to clear.
+              resticOpts = lib.concatStringsSep " " (map (o: "-o ${o}") tgt.extraOptions);
+              preUnlockScript = pkgs.writeShellScript "restic-${jobName}-${target}-pre-unlock" ''
+                ${pkgs.restic}/bin/restic ${resticOpts} unlock 2>/dev/null || true
+              '';
+              peerPreflightScript = pkgs.writeShellScript "restic-${jobName}-${target}-peer-preflight" ''
+                for attempt in $(${pkgs.coreutils}/bin/seq 1 60); do
+                  if ${pkgs.tailscale}/bin/tailscale ping --timeout=2s -c 1 ${lib.escapeShellArg peer} >/dev/null 2>&1 \
+                    && ${pkgs.getent}/bin/getent ahostsv4 ${lib.escapeShellArg peer} >/dev/null; then
+                    exit 0
+                  fi
+                  ${pkgs.coreutils}/bin/sleep 5
+                done
+                echo "backup target peer unavailable after 5 minutes: ${peer}" >&2
+                exit 1
+              '';
+            in
+            lib.nameValuePair "restic-backups-${jobName}-${target}" {
+              unitConfig.OnFailure = [ "notify@restic-backups-${jobName}-${target}.service" ];
+              unitConfig.RequiresMountsFor = lib.mkIf (lib.hasPrefix "/" tgt.repository) [
+                tgt.repository
+              ];
+              wants = lib.optionals (tgt.tailnetPeer != null) [ "tailscaled.service" ];
+              after = lib.optionals (tgt.tailnetPeer != null) [ "tailscaled.service" ];
+              serviceConfig.ExecStartPre = lib.mkBefore (
+                lib.optionals (tgt.tailnetPeer != null) [ "${peerPreflightScript}" ] ++ [ "${preUnlockScript}" ]
+              );
+            }
+          ) activePairs
+        ))
+      ];
+
+      systemd.timers.restic-snapshot-freshness = {
+        description = "Hourly Restic snapshot freshness check";
+        wantedBy = [ "timers.target" ];
+        timerConfig = {
+          OnBootSec = "20min";
+          OnUnitActiveSec = "1h";
+          AccuracySec = "5min";
+        };
+      };
+
+      nori.harden.restic-snapshot-freshness.readOnlyBinds = localFreshnessMounts;
     }
   );
 }

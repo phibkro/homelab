@@ -61,6 +61,8 @@ let
       job = jobFor name;
     in
     if job == null then [ ] else lib.concatMap (staticConfig: staticConfig.targets) job.static_configs;
+  endpointFor =
+    name: lib.findFirst (endpoint: endpoint.name == name) null piProjection.gatus_endpoints;
   listenerTargetsFor =
     workloadName: listenerName:
     let
@@ -136,6 +138,44 @@ let
         "Jellyfin"
         "Seerr"
       ];
+  outcomeMonitoringProjection =
+    let
+      dnsProbe = endpointFor "pihole-dns-answer";
+      authProbe = endpointFor "external-auth-discovery";
+      authBoundaryProbe = endpointFor "external-auth-challenge";
+      externalProbes = map endpointFor [
+        "external-audio"
+        "external-media"
+        "external-requests"
+      ];
+      directDiagnosticProbes = map endpointFor [
+        "auth"
+        "audio"
+        "media"
+        "requests"
+        "pihole-admin"
+      ];
+    in
+    dnsProbe != null
+    && dnsProbe.dns."query-name" == "media.${inventory.site.domain}"
+    &&
+      dnsProbe.conditions == [
+        "[DNS_RCODE] == NOERROR"
+        "[BODY] == ${inventory.hosts.pi.lanIp}"
+      ]
+    && authProbe != null
+    && authProbe.client."dns-resolver" == "tcp://${inventory.hosts.pi.lanIp}:53"
+    && authProbe.alert == false
+    && lib.elem "[CERTIFICATE_EXPIRATION] > 168h" authProbe.conditions
+    && authBoundaryProbe != null
+    && authBoundaryProbe.client."ignore-redirect"
+    && authBoundaryProbe.client."dns-resolver" == "tcp://${inventory.hosts.pi.lanIp}:53"
+    && lib.elem "[STATUS] == 302" authBoundaryProbe.conditions
+    && endpointFor "pihole-dns" == null
+    && lib.all (endpoint: endpoint != null && endpoint.alert == false) directDiagnosticProbes
+    && lib.all (
+      endpoint: endpoint != null && lib.elem "[CERTIFICATE_EXPIRATION] > 168h" endpoint.conditions
+    ) externalProbes;
   routeFirewallsExposeLocalRoutes =
     let
       nixosHostNames = lib.attrNames inputs.self.nixosConfigurations;
@@ -172,6 +212,7 @@ if
   && canonicalEndpointProjection
   && scrapeProjection
   && piProjectionUsesListeners
+  && outcomeMonitoringProjection
   && routeFirewallsExposeLocalRoutes
   && inactivePiWorkloadProjection
   && hostLocalPiProjection
@@ -182,6 +223,7 @@ else
   throw ''
     Listener projection contract failed.
     canonical listeners: ${toString canonicalListenerProjection}
+    outcome monitoring projection: ${toString outcomeMonitoringProjection}
     canonical endpoints: ${toString canonicalEndpointProjection}
     scrape projection: ${toString scrapeProjection}
     Pi listener projection: ${toString piProjectionUsesListeners}

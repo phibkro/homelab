@@ -92,6 +92,7 @@ let
     post_${name}() {
       if [ ! -r ${lib.escapeShellArg ch.topicSecret} ]; then
         echo "nori-alert: channel ${name} secret unreadable; skipping" >&2
+        [ "$require_delivery" -eq 0 ] || return 1
         return 0
       fi
       local topic
@@ -99,12 +100,13 @@ let
       ${lib.optionalString (ch.authTokenSecret != null) ''
         if [ ! -r ${lib.escapeShellArg ch.authTokenSecret} ]; then
           echo "nori-alert: channel ${name} auth token unreadable; skipping" >&2
+          [ "$require_delivery" -eq 0 ] || return 1
           return 0
         fi
         local auth_token
         auth_token="$(cat ${lib.escapeShellArg ch.authTokenSecret})"
       ''}
-      printf '%s' "$body" | curl -fsS \
+      if ! printf '%s' "$body" | curl -fsS \
         --config <(
           printf 'url = "%s/%s"\n' ${lib.escapeShellArg ch.baseUrl} "$topic"
           ${lib.optionalString (ch.authTokenSecret != null) ''
@@ -114,7 +116,9 @@ let
         -H "Title: $title" \
         -H "Priority: $prio" \
         -H "Tags: $tags" \
-        --data-binary @- >/dev/null || true
+        --data-binary @- >/dev/null; then
+        [ "$require_delivery" -eq 0 ] || return 1
+      fi
     }
   '';
 
@@ -130,10 +134,11 @@ let
     ];
     text = ''
       # nori-alert --audience <a> --severity <info|warning|urgent> \
-      #            [--category <c>] --title <t> [--body <b>] [--tags <a,b>]
+      #            [--category <c>] --title <t> [--body <b>] [--tags <a,b>] \
+      #            [--require-delivery]
       # Body may also arrive on stdin. A producer names an AUDIENCE, never a
       # channel; routing (nori.alerts.routes) fans out to channels.
-      audience="" severity="info" category="" title="" body="" extra_tags=""
+      audience="" severity="info" category="" title="" body="" extra_tags="" require_delivery=0
       while [ $# -gt 0 ]; do
         case "$1" in
           --audience) audience="$2"; shift 2 ;;
@@ -142,6 +147,7 @@ let
           --title)    title="$2";    shift 2 ;;
           --body)     body="$2";     shift 2 ;;
           --tags)     extra_tags="$2"; shift 2 ;;
+          --require-delivery) require_delivery=1; shift ;;
           *) echo "nori-alert: unknown argument: $1" >&2; exit 2 ;;
         esac
       done

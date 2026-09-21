@@ -150,13 +150,14 @@ let
               ]
         )
       ) piBackupJobs;
-  duplicatePiBackupJobNames =
+  piBackupJobNames =
     if builtins.isList piBackupJobs then
-      lib.filter (name: lib.count (job: (job.name or null) == name) piBackupJobs > 1) (
-        lib.unique (map (job: job.name or null) piBackupJobs)
-      )
+      lib.filter nonEmptyString (map (job: job.name or null) (lib.filter builtins.isAttrs piBackupJobs))
     else
       [ ];
+  duplicatePiBackupJobNames = lib.filter (
+    name: lib.count (candidate: candidate == name) piBackupJobNames > 1
+  ) (lib.unique piBackupJobNames);
   supportedRecoveryModels = [
     "application-export"
     "filesystem"
@@ -194,7 +195,9 @@ let
         "backupJob"
         "gates"
         "host"
+        "maxAgeDays"
         "model"
+        "observedAt"
         "report"
         "scope"
         "workload"
@@ -220,6 +223,10 @@ let
       && unexpectedKeys == [ ]
       && lib.elem (evidence.scope or null) supportedRecoveryEvidenceScopes
       && nonEmptyString (evidence.report or "")
+      && builtins.isString (evidence.observedAt or null)
+      && builtins.match "[0-9]{4}-[0-9]{2}-[0-9]{2}" evidence.observedAt != null
+      && builtins.isInt (evidence.maxAgeDays or null)
+      && evidence.maxAgeDays > 0
       && lib.hasPrefix "docs/archive/reports/" evidence.report
       && !lib.hasInfix ".." evidence.report
       && validStringList (evidence.gates or null)
@@ -717,6 +724,34 @@ let
     }
   ) hosts;
 
+  monitorProbeNameForRoute =
+    routeName: route:
+    if route.monitor == null || !(workloadRunsOnPi "gatus") then
+      null
+    else if route.publicStatus then
+      "external-${routeName}"
+    else if routeName == "auth" then
+      "external-auth-discovery"
+    else if route.monitor.name == null then
+      routeName
+    else
+      route.monitor.name;
+  monitorProbeNameForWorkload =
+    probeName:
+    if !(workloadRunsOnPi "gatus") then
+      null
+    else if probeName == "pihole-dns" then
+      if activeRoutes ? media then "pihole-dns-answer" else null
+    else
+      probeName;
+  publicRoutes = lib.mapAttrs (
+    routeName: route:
+    route
+    // {
+      monitorProbeName = monitorProbeNameForRoute routeName route;
+    }
+  ) activeRoutes;
+
   publicWorkloads = lib.mapAttrs (
     name: workload:
     removeAttrs workload [
@@ -737,11 +772,13 @@ let
       endpoints = resolvedEndpointsFor name;
       listeners = listenerDeclarationsFor workload;
       probeNames = lib.unique (
-        lib.mapAttrsToList
-          (_routeName: route: if route.monitor.name == null then route.name else route.monitor.name)
-          (lib.filterAttrs (_routeName: route: route.workload == name && route.monitor != null) activeRoutes)
-        ++ lib.attrNames (probeDeclarationsFor workload)
-        ++ lib.optional (name == "caddy" && workloadRunsOnPi "caddy") "entry-caddy"
+        lib.filter (probeName: probeName != null) (
+          lib.mapAttrsToList monitorProbeNameForRoute (
+            lib.filterAttrs (_routeName: route: route.workload == name) activeRoutes
+          )
+          ++ map monitorProbeNameForWorkload (lib.attrNames (probeDeclarationsFor workload))
+          ++ lib.optional (name == "caddy" && workloadRunsOnPi "caddy") "entry-caddy"
+        )
       );
     }
   ) workloadCatalog;
@@ -1026,14 +1063,20 @@ let
       inherit (monitor) interval conditions;
       failure_threshold = monitor.failureThreshold;
       send_on_resolved = true;
+      alert = !(lib.elem route.name authoritativeOutcomeRouteNames);
     }
     // lib.optionalAttrs (monitor.headers != { }) { inherit (monitor) headers; };
   monitoredRoutes = lib.filterAttrs (_: route: route.monitor != null) activeRoutes;
+  publicStatusRoutes = lib.filterAttrs (_name: route: route.publicStatus) activeRoutes;
+  authoritativeOutcomeRouteNames = [
+    "auth"
+    "pihole"
+  ]
+  ++ lib.attrNames publicStatusRoutes;
   piholeAdminProbes = lib.optional (monitoredRoutes ? pihole) (routeProbeFor monitoredRoutes.pihole);
   routeProbes = map (name: routeProbeFor monitoredRoutes.${name}) (
     lib.remove "pihole" (lib.attrNames monitoredRoutes)
   );
-  publicStatusRoutes = lib.filterAttrs (_name: route: route.publicStatus) activeRoutes;
   publicGatusProbeFor = route: {
     name = if route.dashboard == null then route.name else route.dashboard.title;
     group = "Family services";
@@ -1044,6 +1087,76 @@ let
   publicGatusProbes = map (name: publicGatusProbeFor publicStatusRoutes.${name}) (
     lib.attrNames publicStatusRoutes
   );
+  externalRouteProbeFor = route: {
+    name = "external-${route.name}";
+    url = "https://${route.hostname}${route.monitor.path}";
+    inherit (route.monitor) interval;
+    conditions = route.monitor.conditions ++ [ "[CERTIFICATE_EXPIRATION] > 168h" ];
+    failure_threshold = route.monitor.failureThreshold;
+    send_on_resolved = true;
+  };
+  externalRouteProbes = map (name: externalRouteProbeFor publicStatusRoutes.${name}) (
+    lib.attrNames publicStatusRoutes
+  );
+  dnsOutcomeProbe =
+    if activeRoutes ? media then
+      {
+        name = "pihole-dns-answer";
+        url = piLanAddress;
+        interval = "60s";
+        dns = {
+          "query-name" = activeRoutes.media.hostname;
+          "query-type" = "A";
+        };
+        conditions = [
+          "[DNS_RCODE] == NOERROR"
+          "[BODY] == ${piLanAddress}"
+        ];
+        failure_threshold = 3;
+        send_on_resolved = true;
+      }
+    else
+      null;
+  authOutcomeProbe =
+    if activeRoutes ? auth then
+      {
+        name = "external-auth-discovery";
+        url = "https://${activeRoutes.auth.hostname}/.well-known/openid-configuration";
+        interval = "60s";
+        client = {
+          "dns-resolver" = "tcp://${piLanAddress}:${toString piholeDnsPort}";
+        };
+        conditions = [
+          "[STATUS] == 200"
+          "[BODY].issuer == https://${activeRoutes.auth.hostname}"
+          "[CERTIFICATE_EXPIRATION] > 168h"
+        ];
+        failure_threshold = 3;
+        send_on_resolved = true;
+        alert = false;
+      }
+    else
+      null;
+  authBoundaryRoute = activeForwardAuthRoutes.downloads or null;
+  authBoundaryProbe =
+    if authBoundaryRoute == null then
+      null
+    else
+      {
+        name = "external-auth-challenge";
+        url = "https://${authBoundaryRoute.hostname}/";
+        interval = "60s";
+        client = {
+          "dns-resolver" = "tcp://${piLanAddress}:${toString piholeDnsPort}";
+          "ignore-redirect" = true;
+        };
+        conditions = [
+          "[STATUS] == 302"
+          "[CERTIFICATE_EXPIRATION] > 168h"
+        ];
+        failure_threshold = 3;
+        send_on_resolved = true;
+      };
   probeProjectionFor =
     workloadName: probeName: probe:
     let
@@ -1078,6 +1191,7 @@ let
     else
       [ ]
   ) workloadNames;
+  nonOutcomeWorkloadProbes = lib.filter (probe: probe.name != "pihole-dns") workloadProbes;
   workloadRunsOnPi =
     workloadName:
     builtins.hasAttr workloadName workloadCatalog
@@ -1091,8 +1205,14 @@ let
       send_on_resolved = true;
     };
   explicitProbes =
-    workloadProbes
+    nonOutcomeWorkloadProbes
     ++ piholeAdminProbes
+    ++ lib.filter (probe: probe != null) [
+      dnsOutcomeProbe
+      authOutcomeProbe
+      authBoundaryProbe
+    ]
+    ++ externalRouteProbes
     ++ map explicitProbe (
       [
         {
@@ -1277,6 +1397,11 @@ let
     beszel_agent_listen_port = if workloadRunsOnPi "beszel-agent" then beszelAgentPort else null;
     beszel_systems = beszelSystems;
     ddns_hostnames = map (route: route.hostname) (lib.attrValues activeInternetRoutes);
+    recovery_evidence = lib.mapAttrsToList (id: evidence: {
+      inherit id;
+      observed_at = evidence.observedAt;
+      max_age_days = evidence.maxAgeDays;
+    }) recoveryEvidence;
     pihole_local_dns_records = piDnsRecords;
   }
   // backupProjection;
@@ -1363,7 +1488,7 @@ let
     hosts = publicHosts;
     profiles = publicProfiles;
     workloads = publicWorkloads;
-    routes = activeRoutes;
+    routes = publicRoutes;
     inherit topology;
     inherit datasets disks backup;
     deployment = publicDeployment;
@@ -1377,7 +1502,7 @@ let
     // {
       currentHost = hostName;
       currentWorkloads = activeWorkloadsFor hostName;
-      routes = activeRoutes;
+      routes = publicRoutes;
     };
 in
 assert lib.assertMsg (

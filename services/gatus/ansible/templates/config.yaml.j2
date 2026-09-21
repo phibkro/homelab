@@ -22,6 +22,9 @@ endpoints:
 {% if endpoint.headers is defined and endpoint.headers | length > 0 %}
     headers: {{ endpoint.headers | to_json }}
 {% endif %}
+{% if endpoint.dns is defined %}
+    dns: {{ endpoint.dns | to_json }}
+{% endif %}
 {% if endpoint.client is defined and endpoint.client | length > 0 %}
     client: {{ endpoint.client | to_json }}
 {% endif %}
@@ -33,9 +36,11 @@ endpoints:
 {% else %}
     conditions: ["[STATUS] == 200"]
 {% endif %}
+{% if endpoint.alert | default(true) | bool %}
     alerts:
       - type: ntfy
         failure-threshold: {{ endpoint.failure_threshold | default(3, true) | int }}
         send-on-resolved: {{ endpoint.send_on_resolved | default(true, true) | bool | to_json }}
+{% endif %}
 {% endfor %}
 {% endif %}

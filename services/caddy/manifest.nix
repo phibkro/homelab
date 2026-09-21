@@ -14,6 +14,11 @@
     "network-appliance"
     "stateful"
   ];
+
+  recovery = {
+    model = "filesystem";
+    backupJob = "caddy";
+  };
   listeners = {
     http.port = 80;
     https.port = 443;

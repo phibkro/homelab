@@ -28,6 +28,8 @@ pi_backup_cache_dir: /var/cache/pi-restic # noqa: var-naming[no-role-prefix]
 pi_backup_restore_dir: /var/lib/pi-restic-restore # noqa: var-naming[no-role-prefix]
 pi_backup_max_age_hours: 36 # noqa: var-naming[no-role-prefix]
 pi_backup_randomized_delay: 15m # noqa: var-naming[no-role-prefix]
+# Custom and disabled inventory fixtures may omit accepted evidence.
+recovery_evidence: [] # noqa: var-naming[no-role-prefix]
 
 pi_backup_default_schedule: "*-*-* 03:15:00" # noqa: var-naming[no-role-prefix]
 pi_backup_default_keep_daily: 7 # noqa: var-naming[no-role-prefix]

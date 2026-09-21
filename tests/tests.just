@@ -75,7 +75,8 @@
         echo "  ✗ heartbeat last fired ${age_s}s ago (>90s)"; fail=1
       fi
     else
-      echo "  · heartbeat state unreadable (last=$last uptime=$uptime_us)"
+      echo "  ✗ heartbeat state unreadable (last=$last uptime=$uptime_us)"
+      fail=1
     fi
 
     echo "=== Tier 4 — Gatus has probes and reports zero failures ==="
@@ -92,6 +93,21 @@
     else
       echo "  ✗ $failing of $total gatus probes currently failing"; fail=1
     fi
+
+    echo "=== Tier 5 — backup and recovery-evidence freshness timers active ==="
+    if systemctl is-active --quiet restic-snapshot-freshness.timer; then
+      echo "  ✓ workstation snapshot freshness timer active"
+    else
+      echo "  ✗ workstation snapshot freshness timer inactive"; fail=1
+    fi
+    for timer in pi-restic-freshness.timer pi-restic-evidence-freshness.timer; do
+      if ssh -o BatchMode=yes -o ConnectTimeout=3 "nori@${pi_tailnet}" \
+        "systemctl is-active --quiet '$timer'"; then
+        echo "  ✓ Pi $timer active"
+      else
+        echo "  ✗ Pi $timer inactive"; fail=1
+      fi
+    done
 
     echo
     [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }
@@ -292,7 +308,7 @@
     #!/usr/bin/env bash
     set -euo pipefail
     fail=0
-    pass=0
+    checked=0
 
     # Names that have actual restic backups (runtime side of the
     # nori.backups registry — equivalent to filtering nix-side for
@@ -300,13 +316,22 @@
     repos=$(systemctl list-units 'restic-backups-*.service' --all --no-pager 2>&1 \
             | grep -oE 'restic-backups-[a-z-]+\.service' \
             | sed 's/restic-backups-//; s/-onetouch.service//; s/-mp510.service//' \
-            | sort -u)
+            | sort -u || true)
+    if [[ -z "$repos" ]]; then
+      echo "  ✗ no generated restic backup services found"
+      fail=1
+    fi
 
     echo "=== Tier 1 — restic units exist in the registry ==="
     units=$(systemctl list-unit-files 'restic-backups-*.service' --no-pager 2>&1 \
-            | grep -oE 'restic-backups-[a-z-]+\.service' | sort -u)
-    n_units=$(echo "$units" | wc -l)
-    echo "  ✓ $n_units restic-target units in registry"
+            | grep -oE 'restic-backups-[a-z-]+\.service' | sort -u || true)
+    if [[ -z "$units" ]]; then
+      echo "  ✗ no restic backup unit files found"
+      fail=1
+    else
+      n_units=$(grep -c . <<<"$units")
+      echo "  ✓ $n_units restic-target units in registry"
+    fi
 
     echo "=== Tier 2 — fresh snapshot per repo per target (25h window) ==="
     # ExecMainStatus=0 is a misleading proxy — it doesn't reflect
@@ -332,11 +357,14 @@
     for repo in $repos; do
       for target in onetouch mp510; do
         echo "$units" | grep -q "restic-backups-${repo}-${target}.service" || continue
+        checked=$((checked + 1))
         mount="/mnt/backup"
         [[ "$target" == "mp510" ]] && mount="/mnt/backup-local"
         latest=$(snapshot_age "$repo" "$mount")
         if [[ -z "$latest" ]]; then
-          echo "  · $repo/$target: no snapshots yet"; continue
+          echo "  ✗ $repo/$target: no snapshot found"
+          fail=1
+          continue
         fi
         age_h=$(( ($(date +%s) - $(date -d "$latest" +%s 2>/dev/null || echo 0)) / 3600 ))
         if [[ "$age_h" -le 25 ]]; then
@@ -346,6 +374,10 @@
         fi
       done
     done
+    if [[ "$checked" -eq 0 ]]; then
+      echo "  ✗ no declared repository/target pairs checked"
+      fail=1
+    fi
 
     echo
     [[ "$fail" -eq 0 ]] && echo "=== ALL PASS ===" || { echo "=== FAIL ==="; exit 1; }

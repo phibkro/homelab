@@ -46,7 +46,17 @@
         and (item.conditions | select('string') | list | length) == (item.conditions | length))
       - item.headers is not defined or item.headers is mapping
       - item.client is not defined or item.client is mapping
+      - >-
+        item.dns is not defined
+        or (item.dns is mapping
+        and item.dns['query-name'] is defined
+        and item.dns['query-name'] is string
+        and item.dns['query-name'] | length > 0
+        and item.dns['query-name'] is not search('[\r\n]')
+        and item.dns['query-type'] is defined
+        and item.dns['query-type'] in ['A', 'AAAA', 'CNAME', 'MX', 'NS', 'PTR', 'SOA', 'SRV', 'TXT'])
       - item.failure_threshold is not defined or item.failure_threshold | int > 0
+      - item.alert is not defined or item.alert is boolean
     fail_msg: Every Gatus endpoint needs a non-empty name and URL plus valid optional probe settings.
   loop: "{{ gatus_endpoints }}"
   loop_control:

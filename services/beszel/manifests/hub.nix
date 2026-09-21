@@ -16,6 +16,11 @@
     "stateful"
   ];
 
+  recovery = {
+    model = "filesystem";
+    backupJob = "beszel";
+  };
+
   endpoints.metrics = {
     port = 8090;
     monitor.path = "/api/health";

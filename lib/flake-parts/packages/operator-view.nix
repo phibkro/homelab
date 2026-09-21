@@ -94,13 +94,7 @@
             reachability
             ;
           url = "https://${route.hostname}";
-          probe =
-            if route.monitor == null then
-              null
-            else if route.monitor.name == null then
-              routeName
-            else
-              route.monitor.name;
+          probe = route.monitorProbeName;
         }) (lib.filterAttrs (_: route: route.workload == workloadName) inventory.routes);
 
       evidenceFor =
@@ -220,11 +214,11 @@
               .healthSource.maxAgeSeconds == 300 and
               ([.services[] | select(.id == "jellyfin")][0] |
                 .declared.routes[0].authentication == "service-native-or-exception" and
-                .declared.probes == ["media"] and
+                .declared.probes == ["external-media"] and
                 .declared.backups[0].name == "jellyfin") and
               ([.services[] | select(.id == "pihole")][0] |
                 .declared.deploymentOwners == ["ansible"] and
-                .declared.probes == ["pihole-admin", "pihole-dns"] and
+                .declared.probes == ["pihole-admin", "pihole-dns-answer"] and
                 .declared.backups[0].observationSource == "repository-freshness-check" and
                 .proven.recoveryEvidence[0].report != null) and
               ([.services[] | select(.id == "caddy")][0] |

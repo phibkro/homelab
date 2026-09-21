@@ -7,16 +7,17 @@
 
 {
   /*
-    Defaults match the prod workstation shape; tests override to point
-    at a stub receiver + a path that's controllable from the testScript.
-    Other hosts that import this module can drop the mountpoint that
-    only workstation has (`/mnt/media/library`).
+    Defaults match the production workstation storage shape; tests override these
+    with a stub receiver and a controllable path. Other hosts can replace the
+    list when they do not mount the workstation destinations.
   */
   options.nori.observability.diskAlert = {
     mountpoints = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [
         "/"
+        "/mnt/backup"
+        "/mnt/backup-local"
         "/mnt/media/library"
       ];
       description = ''
@@ -73,7 +74,7 @@
       unitConfig.OnFailure = [ "notify@disk-alert.service" ];
       path = [ pkgs.coreutils ];
       script = ''
-        set -eu
+        set -euo pipefail
 
         df --output=target,pcent ${lib.concatStringsSep " " config.nori.observability.diskAlert.mountpoints} \
           | tail -n +2 \
@@ -86,8 +87,9 @@
                 --audience operator \
                 --severity urgent \
                 --category disk \
+                --require-delivery \
                 --title "${config.networking.hostName}: disk critical ($mount $pct%)" \
-                --body "Filesystem $mount on ${config.networking.hostName} is $pct% used. See docs/runbooks/storage-full.md." || true
+                --body "Filesystem $mount on ${config.networking.hostName} is $pct% used. See docs/runbooks/storage-full.md."
             done
       '';
     };

@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# homelab-pi-backup-role: managed
+set -Eeuo pipefail
+
+now=$(date -u +%s)
+status=0
+
+{% for evidence in recovery_evidence %}
+observed_epoch=$(date -u -d {{ (evidence.observed_at ~ 'T00:00:00Z') | quote }} +%s)
+deadline=$((observed_epoch + {{ evidence.max_age_days | int }} * 86400))
+if (( observed_epoch > now )); then
+  printf 'recovery evidence has future observation: %s observed=%s\n' \
+    {{ evidence.id | quote }} \
+    {{ evidence.observed_at | quote }} >&2
+  status=1
+elif (( now >= deadline )); then
+  printf 'recovery evidence stale: %s observed=%s max_age_days=%s\n' \
+    {{ evidence.id | quote }} \
+    {{ evidence.observed_at | quote }} \
+    {{ evidence.max_age_days | int }} >&2
+  status=1
+fi
+{% endfor %}
+
+exit "$status"

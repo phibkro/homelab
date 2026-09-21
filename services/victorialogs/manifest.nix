@@ -15,6 +15,11 @@
     "observability"
     "stateful"
   ];
+
+  recovery = {
+    model = "filesystem";
+    backupJob = "victorialogs";
+  };
   listeners.vector-api.port = 8686;
 
   endpoints.logs = {

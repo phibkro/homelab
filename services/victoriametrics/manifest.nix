@@ -15,6 +15,11 @@
     "stateful"
   ];
 
+  recovery = {
+    model = "filesystem";
+    backupJob = "victoriametrics";
+  };
+
   endpoints.tsdb = {
     port = 8428;
     monitor.path = "/health";

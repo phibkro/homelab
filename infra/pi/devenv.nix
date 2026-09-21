@@ -130,7 +130,17 @@ in
        and ([.pi_appliances.hosts.pi.authelia_oidc_clients[].client_id] | sort)
          == ["metrics", "news", "photos", "vault"]
        and (.pi_appliances.hosts.pi.gatus_endpoints | length > 7)
-       and (.pi_appliances.hosts.pi.gatus_endpoints | any(.name == "media"))
+       and (.pi_appliances.hosts.pi.gatus_endpoints | any(.name == "pihole-dns-answer"))
+       and (.pi_appliances.hosts.pi.gatus_endpoints | any(.name == "external-auth-discovery" and .alert == false))
+       and (.pi_appliances.hosts.pi.gatus_endpoints
+         | any(.name == "external-auth-challenge"
+               and .client["ignore-redirect"] == true
+               and (.conditions | index("[STATUS] == 302")) != null))
+       and (.pi_appliances.hosts.pi.gatus_endpoints | any(.name == "external-media"))
+       and (.pi_appliances.hosts.pi.gatus_endpoints | all(.name != "pihole-dns"))
+       and (.pi_appliances.hosts.pi.gatus_endpoints | any(.name == "media" and .alert == false))
+       and ([.pi_appliances.hosts.pi.recovery_evidence[].id] | sort)
+         == ["authelia-service", "beszel-service", "caddy-service", "immich-export", "jellyfin-metadata", "miniflux-database", "ntfy-service", "pi-host", "pihole-service", "stremio-identity", "user-data", "vaultwarden-database", "vector-pipeline", "victorialogs-service", "victoriametrics-service"]
        and .pi_appliances.hosts.pi.gatus_public_enabled == true
        and .pi_appliances.hosts.pi.gatus_public_port == 8089
        and ([.pi_appliances.hosts.pi.gatus_public_endpoints[].name] | sort)
