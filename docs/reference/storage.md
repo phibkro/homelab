@@ -40,10 +40,12 @@ and [service patterns](services.md) describe the declared jobs and preparation.
 
 Configuration, mounted storage, successful backups, and usable restores are
 separate evidence. The [September 19 inspection](../archive/reports/2026-09-19-backup-evidence.md)
-records the enabled source, mounted drive, completed workstation service-state
-restore drill and metadata check, with their limits. It does not establish Pi
-or Adelie coverage, user-data/media restore coverage, or application database
-recovery.
+records the enabled source, mounted drive, workstation service-state restore,
+and Pi transport, freshness, metadata checks, and configuration restore. The
+[September 21 drill](../archive/reports/2026-09-21-pihole-recovery-drill.md)
+proves one consumer-visible Pi-hole recovery. Neither report establishes
+Adelie application recovery, user-data or media recovery, complete host
+reconstruction, or every-file data-block integrity.
 Use the [cutover runbook](../runbooks/onetouch-backup-cutover.md) when reconnecting,
 changing transport, or collecting fresh recovery evidence.
 

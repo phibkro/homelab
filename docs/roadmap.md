@@ -10,12 +10,13 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 
 ## Outstanding (actionable)
 
-- **Prove end-to-end service recovery.** Run isolated restore drills for each
-  state model: files, SQLite, PostgreSQL, and service-specific exports. Restore
-  one representative service first. Then cover application state, user data,
-  media metadata, and complete host reconstruction. Generate the evidence view
-  from service manifests and backup jobs. Record the latest snapshot, required
-  preparation, restore result, and verification date.
+- **Prove end-to-end service recovery.** The first representative restore is
+  complete: Pi-hole started from OneTouch snapshot `c7b2308e` and served
+  recovered DNS state. Evidence:
+  `docs/archive/reports/2026-09-21-pihole-recovery-drill.md`. Continue isolated
+  drills for files, logical SQLite, PostgreSQL, and service-specific exports.
+  Then cover user data, media metadata, and complete host reconstruction.
+  Generate the evidence view from service manifests and backup jobs.
 
 - **Finish public status production acceptance.** The failure-independent
   `status.home.phibkro.org` Cloudflare Worker is deployed from the explicit
