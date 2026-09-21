@@ -11,13 +11,14 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 ## Outstanding (actionable)
 
 - **Prove end-to-end service recovery.** Pi-hole appliance recovery,
-  Vaultwarden logical SQLite, Miniflux PostgreSQL, and Stremio files are
-  complete. Evidence:
+  Vaultwarden logical SQLite, Miniflux PostgreSQL, Stremio files, and an Immich
+  application export are complete. Evidence:
   `docs/archive/reports/2026-09-21-pihole-recovery-drill.md`,
   `docs/archive/reports/2026-09-21-vaultwarden-sqlite-recovery-drill.md`,
-  `docs/archive/reports/2026-09-21-miniflux-postgresql-recovery-drill.md`, and
-  `docs/archive/reports/2026-09-21-stremio-files-recovery-drill.md`. Continue
-  with a service-specific export. Then cover user data, media metadata, and
+  `docs/archive/reports/2026-09-21-miniflux-postgresql-recovery-drill.md`,
+  `docs/archive/reports/2026-09-21-stremio-files-recovery-drill.md`, and
+  `docs/archive/reports/2026-09-21-immich-export-recovery-drill.md`. The first
+  state-model sequence is complete. Next, cover user data, media metadata, and
   complete host reconstruction. Generate the evidence view from service
   manifests and backup jobs. Activate Adelie before expecting the new Stremio
   cache exclusion in deployed backup units.

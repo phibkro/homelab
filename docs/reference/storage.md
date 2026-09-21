@@ -49,9 +49,11 @@ proves the Adelie logical SQLite path. The
 [Miniflux drill](../archive/reports/2026-09-21-miniflux-postgresql-recovery-drill.md)
 proves the Adelie PostgreSQL path. The
 [Stremio drill](../archive/reports/2026-09-21-stremio-files-recovery-drill.md)
-proves files-only service identity recovery. These reports do not establish
-user-data or media recovery, complete host reconstruction, or full data-block
-integrity.
+proves files-only service identity recovery. The
+[Immich drill](../archive/reports/2026-09-21-immich-export-recovery-drill.md)
+proves selective restore and import of an application-native database export.
+These reports do not establish user-data or media recovery, complete host
+reconstruction, or full data-block integrity.
 Use the [cutover runbook](../runbooks/onetouch-backup-cutover.md) when reconnecting,
 changing transport, or collecting fresh recovery evidence.
 

@@ -149,7 +149,7 @@ Runtime check: `just test-backups` asserts per-target snapshot ≤25h.
 | Service | Pattern | Rationale |
 |---|---|---|
 | Jellyfin | A | Library DB is SQLite but rebuilds from media; non-critical |
-| Immich | B | Built-in dump mechanism |
+| Immich | B | Built-in dump mechanism; isolated import verified |
 | Miniflux | C1 | PostgreSQL logical dump; isolated import verified |
 | Vaultwarden | C2 | SQLite with Diesel migrations; race fix applied |
 | Navidrome | C2 | SQLite with Goose migrations; canonical implementation |

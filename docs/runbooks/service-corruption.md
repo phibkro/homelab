@@ -35,18 +35,25 @@ curl https://media.home.phibkro.org/health
 
 ### Pattern B — service with built-in dump (Immich)
 
-Immich writes its own SQL dumps to `/var/lib/immich/backups/`. Restore by replaying the most recent dump on a fresh DB:
+Immich writes compressed SQL exports to
+`/mnt/media/photos/_immich-managed/backups/`. The
+`media-irreplaceable` repository protects this directory. Preserve the broken
+database, create a replacement, and stop if the SQL client reports an error:
 
 ```bash
-sudo systemctl stop immich-server.service immich-machine-learning.service
-# Drop + recreate the database (Immich's docs walk through this)
-sudo -u postgres psql -c "DROP DATABASE immich;"
-sudo -u postgres psql -c "CREATE DATABASE immich;"
-# Replay the latest dump
-sudo -u postgres psql immich < /var/lib/immich/backups/dump-<latest>.sql
-# Restart
-sudo systemctl start immich-server.service immich-machine-learning.service
+sudo systemctl stop immich-server.service
+broken="immich_broken_$(date +%s)"
+sudo -u postgres psql -X -v ON_ERROR_STOP=1 postgres \
+  -c "ALTER DATABASE immich RENAME TO ${broken};"
+sudo -u postgres createdb -O immich immich
+gzip -dc /mnt/media/photos/_immich-managed/backups/immich-db-backup-<latest>.sql.gz \
+  | sudo -u postgres psql -X -v ON_ERROR_STOP=1 immich
+sudo systemctl start immich-server.service
 ```
+
+Verify the database import before removing the renamed database. The
+[Immich drill](../archive/reports/2026-09-21-immich-export-recovery-drill.md)
+records an isolated import of the deployed export format and extension set.
 
 ### Pattern C1 — PostgreSQL logical dump (Miniflux)
 
