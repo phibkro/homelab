@@ -1,9 +1,23 @@
-{ inputs, pkgs, ... }:
+{
+  config,
+  inputs,
+  lib,
+  pkgs,
+  ...
+}:
 
 /**
-  Wayland session clients and command-line integration used by Hyprland.
+  Shared Wayland session clients and command-line integration.
 */
 {
+  # qtct still selects Kvantum for widget applications. The global override
+  # also makes Plasma load Kvantum as a Qt Quick Controls module, which leaves
+  # the shell without its wallpaper and other QML surfaces.
+  home.sessionVariables.QT_STYLE_OVERRIDE = lib.mkForce "";
+  # Plasma rewrites this Stylix-owned file during a session. Replace that
+  # derived copy on activation instead of accumulating colliding backups.
+  home.file."${config.gtk.gtk2.configLocation}".force = lib.mkForce true;
+
   home.packages = [
     pkgs.fuzzel
     pkgs.moonlight-qt

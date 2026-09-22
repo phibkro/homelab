@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 {
   /*
     Sunshine — game-stream host for remote desktop over the tailnet.
@@ -39,6 +39,7 @@
 
     # Ports scoped to tailscale0 below, not opened on all interfaces.
     openFirewall = false;
+    settings.csrf_allowed_origins = "https://${config.networking.hostName}.saola-matrix.ts.net:47990";
   };
 
   # Moonlight peers are added explicitly by tailnet name; publish no LAN mDNS.

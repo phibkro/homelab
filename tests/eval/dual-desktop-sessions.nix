@@ -33,7 +33,10 @@ let
   desktopContract = host: {
     hyprland = host.programs.hyprland.enable;
     plasma = host.services.desktopManager.plasma6.enable;
-    bigscreen = hasSystemPackage host "plasma-bigscreen";
+    bigscreen =
+      hasSystemPackage host "plasma-bigscreen"
+      && hasSystemPackage host "plasma-nm"
+      && hasSystemPackage host "kdeconnect-kde";
     greetd = host.services.greetd.enable && host.services.greetd.useTextGreeter;
     competingManagers =
       host.services.displayManager.sddm.enable
@@ -68,6 +71,9 @@ let
     && host.services.sunshine.autoStart
     && host.services.sunshine.capSysAdmin
     && !host.services.sunshine.openFirewall
+    &&
+      host.services.sunshine.settings.csrf_allowed_origins
+      == "https://${host.networking.hostName}.saola-matrix.ts.net:47990"
     && !host.services.avahi.enable
     && !(host.services.rustdesk-server.enable or false)
     && host.systemd.user.services.sunshine.wantedBy == [ "graphical-session.target" ]
@@ -152,6 +158,10 @@ assert lib.assertMsg (lib.all lifecycleContract (
 assert lib.assertMsg (lib.all remoteDesktopContract (
   lib.attrValues graphicalHosts
 )) "both graphical hosts must provide tailnet-only RustDesk, Sunshine, and Moonlight peer access";
+assert lib.assertMsg (
+  (home workstation).home.sessionVariables.QT_STYLE_OVERRIDE == ""
+  && (home adelie).home.sessionVariables.QT_STYLE_OVERRIDE == ""
+) "both graphical homes must keep the invalid Plasma-wide Kvantum override disabled";
 assert lib.assertMsg (
   workstationIsolation && adelieIsolation
 ) "Adelie must not inherit workstation gaming, virtualization, or application bundles";
