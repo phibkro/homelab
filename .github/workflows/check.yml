@@ -30,6 +30,10 @@ jobs:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
             experimental-features = nix-command flakes
+            # Match the deployed hosts' CUDA cache; source-building OpenCV
+            # exhausts a GitHub runner's disk before the closure can finish.
+            extra-substituters = https://cache.nixos-cuda.org
+            extra-trusted-public-keys = cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M=
 
       - name: fast Nix checks
         # HOMELAB_CI=1 + --impure activate the CI-only davinci-resolve stub
@@ -79,6 +83,10 @@ jobs:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
             experimental-features = nix-command flakes
+            # Match the deployed hosts' CUDA cache; source-building OpenCV
+            # exhausts a GitHub runner's disk before the closure can finish.
+            extra-substituters = https://cache.nixos-cuda.org
+            extra-trusted-public-keys = cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M=
 
       - name: build workstation system closure
         id: closure

@@ -8,6 +8,12 @@
 let
   backup = config.nori.inventory.backup;
   remoteBackup = config.networking.hostName == "adelie";
+  userDataPaths = lib.mapAttrsToList (_: f: f.path) (
+    lib.filterAttrs (_: f: f.tier == "user") config.nori.fs
+  );
+  irreplaceablePaths = lib.mapAttrsToList (_: f: f.path) (
+    lib.filterAttrs (_: f: f.tier == "irreplaceable") config.nori.fs
+  );
   remote = backup.adelie;
   remoteKnownHosts = pkgs.writeText "adelie-backup-known-hosts" ''
     ${backup.hostname} ${remote.hostKey}
@@ -248,10 +254,8 @@ in
       `user` → user-data.include.
     */
 
-    nori.backups.user-data = lib.mkIf (!remoteBackup) {
-      include = lib.mapAttrsToList (_: f: f.path) (
-        lib.filterAttrs (_: f: f.tier == "user") config.nori.fs
-      );
+    nori.backups.user-data = lib.mkIf (!remoteBackup && userDataPaths != [ ]) {
+      include = userDataPaths;
       # Preserve harness history, sessions, plans, databases, and credentials,
       # but do not pin large reproducible caches into retained snapshots. OMP is
       # intentionally absent until its on-disk cache layout is observed after
@@ -293,10 +297,8 @@ in
       The enabled destination receives this repository. Verify available capacity
       and source readability before the first full run.
     */
-    nori.backups.media-irreplaceable = lib.mkIf (!remoteBackup) {
-      include = lib.mapAttrsToList (_: f: f.path) (
-        lib.filterAttrs (_: f: f.tier == "irreplaceable") config.nori.fs
-      );
+    nori.backups.media-irreplaceable = lib.mkIf (!remoteBackup && irreplaceablePaths != [ ]) {
+      include = irreplaceablePaths;
       tier = "irreplaceable";
       /*
         Cold canonical media changes slowly. Keep a week's daily recovery,
