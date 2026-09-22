@@ -72,8 +72,8 @@ in
   systemd.services.vektorprogrammet-development-database-ready = {
     description = "Provision the Vektorprogrammet development database credential";
     wantedBy = [ "multi-user.target" ];
-    after = [ "postgresql.service" ];
-    requires = [ "postgresql.service" ];
+    after = [ "postgresql-setup.service" ];
+    requires = [ "postgresql-setup.service" ];
     serviceConfig = {
       Type = "oneshot";
       User = "postgres";
