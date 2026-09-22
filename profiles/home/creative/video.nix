@@ -1,4 +1,4 @@
-{ inputs, pkgs, ... }:
+{ pkgs, ... }:
 
 let
   resolve-remux = pkgs.writeShellApplication {
@@ -14,7 +14,7 @@ in
 {
   home.packages = [
     pkgs.davinci-resolve
-    inputs.nixpkgs-stable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.handbrake
+    pkgs.handbrake
     pkgs.vlc
     pkgs.mpv
     resolve-remux

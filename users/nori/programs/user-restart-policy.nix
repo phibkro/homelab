@@ -46,11 +46,9 @@ let
   cfg = config.nori.userRestartPolicy;
 
   /*
-    nori-alert is a *system* binary. Resolving it at runtime rather than
-    through osConfig keeps this module working on standalone home-manager
-    (macbook, no NixOS), matching users/nori/programs/agent-notify.
-    Absent → exit quietly; an alerting path must never itself become the
-    thing that fails.
+    Resolve nori-alert at runtime because it is a system binary, not a Home
+    Manager package. Absent → exit quietly; an alerting path must never itself
+    become the thing that fails.
   */
   user-notify = pkgs.writeShellApplication {
     name = "user-notify";
@@ -99,14 +97,8 @@ let
 in
 {
   options.nori.userRestartPolicy = {
-    /*
-      Linux-only by construction: `systemd.user.services` is a no-op on
-      darwin, and pkgs.systemd does not build there — so the macbook's
-      standalone home evaluates this module to nothing rather than failing on
-      an unbuildable runtime input.
-    */
     enable = lib.mkEnableOption "backoff + give-up + ntfy alerting for user units" // {
-      default = pkgs.stdenv.hostPlatform.isLinux;
+      default = true;
     };
 
     recoveryWindowSeconds = lib.mkOption {
@@ -116,15 +108,12 @@ in
         Seconds to wait after OnFailure fires before alerting, so a unit that
         recovers during the restart backoff stays quiet.
 
-        Deliberately a separate knob from the system-side
         `nori.observability.ntfyNotify.recoveryWindowSeconds` rather than a
-        reference to it: home-manager and NixOS are separate module trees and
-        this module avoids `osConfig` so standalone (macbook) evaluation keeps
-        working. The number is therefore hand-synced — the weakest rung of the
-        derivation ladder. It is tolerable only because the value is inert
-        policy, not a correctness invariant; if these ever need to agree by
-        construction, the fix is to thread `osConfig` for NixOS hosts and make
-        the standalone case explicit.
+        reference to it: Home Manager and NixOS are separate module trees. The
+        number is therefore hand-synced — the weakest rung of the derivation
+        ladder. It is tolerable only because the value is inert policy, not a
+        correctness invariant; if these ever need to agree by construction,
+        thread the value through the NixOS Home Manager integration.
       '';
     };
   };

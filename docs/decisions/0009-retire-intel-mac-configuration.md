@@ -32,18 +32,14 @@ default.nix`, the `standaloneHomes` projection, and the `home-manager-darwin`
 / `tilth-darwin` / `pagu-darwin` inputs with their `x86_64-darwin` branches in
 `nix/home/claude-code/`.
 
-Retained deliberately:
+The inventory's `kind` discriminator remains: re-adding a standalone home
+stays an inventory entry rather than a schema change. Its `home-manager`
+branch is consequently unexercised; `tests/eval/deployment.nix` says so at
+the point where the assertion used to be.
 
-- **`nixpkgs-stable`** — still the source for HandBrake
-  (`profiles/home/creative/video.nix`), the exception ADR-0006
-  anticipated. Its URL still names the 26.05 *darwin* branch, which is now
-  cosmetically misleading; that branch carries every platform, so the pin is
-  wrong in name only. Repointing it re-resolves HandBrake and is therefore a
-  deliberate bump, not a rider on this change.
-- **The inventory's `kind` discriminator** — re-adding a standalone home
-  stays an inventory entry rather than a schema change. Its `home-manager`
-  branch is consequently unexercised; `tests/eval/deployment.nix` says so at
-  the point where the assertion used to be.
+Follow-up on 2026-09-22: remove the separate `nixpkgs-stable` input and source
+HandBrake from the primary locked `nixos-unstable` package set. The last
+26.05/Darwin-named pin therefore leaves the active flake.
 
 ## Consequences
 

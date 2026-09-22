@@ -3,15 +3,6 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    /*
-      A stable pin kept only for packages that need one — currently just
-      handbrake (profiles/home/creative/video.nix). Still on the
-      26.05 *darwin* branch, a leftover of the retired Intel Mac
-      (ADR-0006, superseded); the branch carries every platform, so this is
-      cosmetically wrong rather than broken. Repointing it re-resolves
-      handbrake, so that is a deliberate bump, not a cleanup rider.
-    */
-    nixpkgs-stable.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
 
     /*
