@@ -73,6 +73,7 @@ let
     && host.services.sunshine.capSysAdmin
     && lib.elem "uinput" host.users.users.nori.extraGroups
     && !host.services.sunshine.openFirewall
+    && !host.services.sunshine.settings.system_tray
     &&
       host.services.sunshine.settings.csrf_allowed_origins
       == "https://${host.networking.hostName}.saola-matrix.ts.net:47990"

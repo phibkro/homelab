@@ -51,7 +51,12 @@ in
 
     # Ports scoped to tailscale0 below, not opened on all interfaces.
     openFirewall = false;
-    settings.csrf_allowed_origins = "https://${config.networking.hostName}.saola-matrix.ts.net:47990";
+    settings = {
+      csrf_allowed_origins = "https://${config.networking.hostName}.saola-matrix.ts.net:47990";
+      # Sunshine's Qt tray can deadlock session teardown after an initial ping
+      # timeout on Plasma Wayland. The service is managed by systemd instead.
+      system_tray = false;
+    };
   };
 
   # Virtual pointer and keyboard injection uses /dev/uinput.
