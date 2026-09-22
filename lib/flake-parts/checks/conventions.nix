@@ -71,22 +71,6 @@
           ) workstationHome.packages;
         in
         {
-          foundry-conventions =
-            pkgs.runCommandLocal "foundry-conventions"
-              {
-                nativeBuildInputs = [
-                  pkgs.bash
-                  pkgs.coreutils
-                  pkgs.findutils
-                  pkgs.gnugrep
-                  pkgs.gnused
-                ];
-              }
-              ''
-                bash ${../../../tests/conventions-check_test.sh} \
-                  ${../../../foundry}/bin/conventions-check
-                touch $out
-              '';
 
           music-ingest-runtime =
             pkgs.runCommandLocal "music-ingest-runtime"

@@ -1,4 +1,3 @@
-<!-- generated-by: foundry@v1 -->
 # State
 
 Lifecycle: build
