@@ -37,12 +37,6 @@ work, but do not block autonomous repository work.
   when the product is built. Do not preserve a speculative portal catalog.
   Keep its authentication and release lifecycle separate from public Gatus.
 
-- **Refine outcome-based monitoring.** Monitor DNS, authentication, external
-  HTTPS, application health, backup freshness, restore-evidence age, disk
-  headroom, and certificate lifetime. Remove duplicate alerts for the same
-  failure. Add maintenance suppression only after planned work causes proven
-  alert noise.
-
 - **MemoryHigh caps on heavy services** — process-exporter publishes `namedprocess_namegroup_memory_bytes{memtype="resident",groupname=…,host=…}` for the converged workstation. Wait ≥7 days after deployment, identify the slowest-growing services, and cap each via `systemd.services.<n>.serviceConfig.MemoryHigh = "…G"`. Premature to cap blindly. Sample query: `topk(10, max_over_time(namedprocess_namegroup_memory_bytes{memtype="resident"}[7d]) - min_over_time(namedprocess_namegroup_memory_bytes{memtype="resident"}[7d])) / 1024 / 1024`. Special interest: `immich-machine-learning` (PyTorch).
 
 - **Media acquisition — papers + manga built, undeployed.** Both now evaluate on workstation and remain operator-gated behind `just rebuild`.

@@ -65,6 +65,31 @@ The host state was `running`. A direct run of `restic-snapshot-freshness.service
 - The workstation snapshot-freshness timer was active.
 - Both Pi freshness timers were active.
 
+## Production notification acceptance - September 22, 2026
+
+The operator approved one controlled Gatus failure and recovery journey.
+
+An ephemeral `synthetic-alert-acceptance` probe targeted closed port 18080 on
+the Pi. The probe used a five-second interval and a failure threshold of one.
+
+At `2026-09-22T02:15:14Z`, the ntfy feed returned the Gatus failure alert. Its
+message reported one failed probe and status code 0.
+
+A temporary loopback HTTP server then made the same probe pass. At
+`2026-09-22T02:21:49Z`, the ntfy feed returned the resolved notification after
+two successful probes.
+
+The temporary server and probe were removed. The restored monitoring topology
+then passed `just test-observability`:
+
+- All 7 VictoriaMetrics scrape targets were healthy.
+- Workstation exposed 281 process series.
+- The Pi heartbeat age was 0 seconds.
+- All 37 permanent Gatus probes were healthy.
+- The workstation snapshot-freshness timer was active.
+- Both Pi freshness timers were active.
+
 ## Boundaries
 
-This report proves the deployed state at the observation time. It does not prove reboot persistence or future notification delivery.
+This report proves the deployed state at each observation time. It does not
+prove reboot persistence or notification delivery to a specific mobile device.
