@@ -1,14 +1,17 @@
 /**
-  Minimal operator environment for the headless Adelie bring-up.
+  Minimal graphical operator environment for Adelie.
 
-  Do not reuse `home.nix`: it intentionally composes a graphical desktop,
-  workstation-only symlinks and fleet tooling sized for Emperor's 64 GiB. This
-  host needs the common operator recovery tools without turning its first boot
-  into a desktop or agent-workstation deployment.
+  It reuses shared core tools and the Hyprland session without importing the
+  workstation profile or workstation-only application groups.
 */
 {
-  imports = [ ../../profiles/home/core.nix ];
-
+  imports = [
+    ../../profiles/home/core.nix
+    ../../profiles/home/desktop/hyprland-session.nix
+  ];
   home.stateVersion = "26.05";
+
+  # Stylix supplies the cursor values; Home Manager requires explicit generation.
+  home.pointerCursor.enable = true;
   programs.home-manager.enable = true;
 }

@@ -1,7 +1,7 @@
 _: {
   /**
-    Private implementation modules for the Wayland/Hyprland session.
-    The public composition boundary is profiles/home/desktop/default.nix.
+    Private implementation modules for the reusable Hyprland session.
+    The public composition boundary is profiles/home/desktop/hyprland-session.nix.
   */
   imports = [
     ./action-model.nix

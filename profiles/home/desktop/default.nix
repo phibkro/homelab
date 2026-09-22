@@ -1,11 +1,10 @@
 /**
-  Complete operator desktop profile. The session implementation is private;
-  app groups are independently selectable capabilities for future roles.
+  Full workstation desktop profile. The reusable Hyprland session is combined
+  with the workstation application groups below.
 */
 {
   imports = [
-    ../../../users/nori/programs/desktop
-    ./wayland-session.nix
+    ./hyprland-session.nix
     ./productivity.nix
     ./communication.nix
     ./research.nix

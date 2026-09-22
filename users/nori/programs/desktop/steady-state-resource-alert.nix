@@ -280,6 +280,8 @@ in
     systemd.user.services.steady-state-resource-alert = {
       Unit = {
         Description = "Detect sustained resource expansion in steady-state desktop services";
+        PartOf = [ config.wayland.systemd.target ];
+        After = [ config.wayland.systemd.target ];
         OnFailure = [ "user-notify@steady-state-resource-alert.service" ];
       };
       Service = {
@@ -297,13 +299,17 @@ in
     };
 
     systemd.user.timers.steady-state-resource-alert = {
-      Unit.Description = "Periodically sample steady-state desktop resource efficiency";
+      Unit = {
+        Description = "Periodically sample steady-state desktop resource efficiency";
+        PartOf = [ config.wayland.systemd.target ];
+        After = [ config.wayland.systemd.target ];
+      };
       Timer = {
         OnBootSec = cfg.interval;
         OnUnitActiveSec = cfg.interval;
         Unit = "steady-state-resource-alert.service";
       };
-      Install.WantedBy = [ "timers.target" ];
+      Install.WantedBy = [ config.wayland.systemd.target ];
     };
   };
 }
