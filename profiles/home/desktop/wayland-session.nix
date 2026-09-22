@@ -6,6 +6,7 @@
 {
   home.packages = [
     pkgs.fuzzel
+    pkgs.moonlight-qt
     pkgs.rustdesk
     pkgs.tailscale-systray
     pkgs.yazi

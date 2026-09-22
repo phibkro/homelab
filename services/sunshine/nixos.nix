@@ -2,15 +2,12 @@
 {
   /*
     Sunshine — game-stream host for remote desktop over the tailnet.
-    Moonlight (MacBook) connects to drive the workstation's live
-    Hyprland session, primarily for remote DaVinci Resolve editing; the
-    GPU does all encode/render work, the client is thin.
+    Moonlight connects to drive either graphical host's live Wayland session.
+    The host GPU does all encode/render work; the client is thin.
 
-    Workstation-only by construction: imported via
-    profiles/desktop/nixos/default.nix, which no other host imports.
-    The Moonlight client is any tailnet device — it is not flake-managed,
-    so retiring the Mac's home-manager config did not change this service.
-    Design + rationale: docs/specs/2026-05-22-sunshine-remote-host-design.md.
+    Shared by construction through the graphical-desktop profile. Runtime
+    pairing and credentials remain per-user mutable state.
+    Contract: docs/specs/2026-09-22-peer-remote-desktops.md.
   */
   services.sunshine = {
     enable = true;
@@ -34,15 +31,18 @@
     capSysAdmin = true;
 
     /*
-      systemd user unit started with graphical-session.target. Needs a
-      logged-in Hyprland session — the greetd prompt is not a session it
-      can attach to (scenario "a": log in once per boot).
+      systemd user unit started with graphical-session.target. Needs a logged-in
+      graphical session — the greetd prompt is not a session it can attach to.
+      A second simultaneous user instance would contend for ports.
     */
     autoStart = true;
 
     # Ports scoped to tailscale0 below, not opened on all interfaces.
     openFirewall = false;
   };
+
+  # Moonlight peers are added explicitly by tailnet name; publish no LAN mDNS.
+  services.avahi.enable = false;
 
   /*
     Tailnet-only exposure — mirrors the beszel/ntfy/samba pattern;

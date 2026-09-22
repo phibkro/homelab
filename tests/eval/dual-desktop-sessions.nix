@@ -5,8 +5,8 @@
 }:
 
 /**
-  The two graphical hosts expose the same local session choices while keeping
-  workstation-only authority and Hyprland-only services isolated.
+  The two graphical hosts expose the same local and remote desktop choices
+  while keeping workstation-only gaming and virtualization isolated.
 */
 let
   hosts = inputs.self.nixosConfigurations;
@@ -26,10 +26,14 @@ let
     )).host;
   hasHomePackage =
     host: packageName: lib.any (package: lib.getName package == packageName) (home host).home.packages;
+  hasSystemPackage =
+    host: packageName:
+    lib.any (package: lib.getName package == packageName) host.environment.systemPackages;
 
   desktopContract = host: {
     hyprland = host.programs.hyprland.enable;
     plasma = host.services.desktopManager.plasma6.enable;
+    bigscreen = hasSystemPackage host "plasma-bigscreen";
     greetd = host.services.greetd.enable && host.services.greetd.useTextGreeter;
     competingManagers =
       host.services.displayManager.sddm.enable
@@ -40,6 +44,39 @@ let
       && host.security.pam.services.greetd.kwallet.forceRun;
   };
   desktopContracts = lib.mapAttrs (_: desktopContract) graphicalHosts;
+  remoteTcpPorts = [
+    21118
+    47984
+    47989
+    47990
+    48010
+  ];
+  remoteUdpPorts = [
+    47998
+    47999
+    48000
+    48002
+    48010
+  ];
+  remoteDesktopContract =
+    host:
+    let
+      firewall = host.networking.firewall;
+      tailnetFirewall = firewall.interfaces."tailscale0";
+    in
+    host.services.sunshine.enable
+    && host.services.sunshine.autoStart
+    && host.services.sunshine.capSysAdmin
+    && !host.services.sunshine.openFirewall
+    && !host.services.avahi.enable
+    && !(host.services.rustdesk-server.enable or false)
+    && host.systemd.user.services.sunshine.wantedBy == [ "graphical-session.target" ]
+    && hasHomePackage host "moonlight-qt"
+    && hasHomePackage host "rustdesk"
+    && lib.all (port: lib.elem port tailnetFirewall.allowedTCPPorts) remoteTcpPorts
+    && lib.all (port: lib.elem port tailnetFirewall.allowedUDPPorts) remoteUdpPorts
+    && lib.all (port: !lib.elem port firewall.allowedTCPPorts) remoteTcpPorts
+    && lib.all (port: !lib.elem port firewall.allowedUDPPorts) remoteUdpPorts;
 
   lifecycleContract =
     host:
@@ -57,12 +94,9 @@ let
     && timer.Install.WantedBy == [ target ];
 
   workstationIsolation =
-    workstation.programs.steam.enable
-    && workstation.services.sunshine.enable
-    && workstation.virtualisation.libvirtd.enable;
+    workstation.programs.steam.enable && workstation.virtualisation.libvirtd.enable;
   adelieIsolation =
     !(adelie.programs.steam.enable or false)
-    && !(adelie.services.sunshine.enable or false)
     && !(adelie.virtualisation.libvirtd.enable or false)
     && lib.all (packageName: !hasHomePackage adelie packageName) [
       "audacity"
@@ -101,20 +135,24 @@ assert lib.assertMsg
     contract:
     contract.hyprland
     && contract.plasma
+    && contract.bigscreen
     && contract.greetd
     && !contract.competingManagers
     && contract.keyrings
   ) (lib.attrValues desktopContracts))
-  "both graphical hosts must expose Plasma and UWSM Hyprland through greetd with PAM keyring unlock";
+  "both graphical hosts must expose Plasma, Bigscreen, and UWSM Hyprland through greetd with PAM keyring unlock";
 assert lib.assertMsg (
   (home workstation).nori.hyprRice.enable && (home adelie).nori.hyprRice.enable
 ) "both graphical homes must enable the shared Hyprland rice";
 assert lib.assertMsg (lib.all lifecycleContract (
   lib.attrValues graphicalHosts
 )) "Hyprland resource monitoring must start and stop with hyprland-session.target";
+assert lib.assertMsg (lib.all remoteDesktopContract (
+  lib.attrValues graphicalHosts
+)) "both graphical hosts must provide tailnet-only RustDesk, Sunshine, and Moonlight peer access";
 assert lib.assertMsg (
   workstationIsolation && adelieIsolation
-) "Adelie must not inherit workstation gaming, remote-play, virtualization, or application bundles";
+) "Adelie must not inherit workstation gaming, virtualization, or application bundles";
 assert lib.assertMsg inventoryComposition
   "both graphical hosts must select the shared profile explicitly";
 assert lib.assertMsg sourceMarkers
@@ -133,13 +171,14 @@ pkgs.runCommandLocal "eval-dual-desktop-sessions"
   }
   ''
     set -eu
-    printf '%s\n' hyprland-uwsm.desktop plasma.desktop > expected
+    printf '%s\n' hyprland-uwsm.desktop plasma-bigscreen-wayland.desktop plasma.desktop > expected
     for session in ${chooserDirectory}/*.desktop; do
       basename "$session"
     done | sort > actual
     diff -u expected actual
     test -e ${chooserDirectory}/hyprland-uwsm.desktop
     test -e ${chooserDirectory}/plasma.desktop
+    test -e ${chooserDirectory}/plasma-bigscreen-wayland.desktop
     test -z "$(find ${xSessionDirectory} -mindepth 1 -print -quit)"
     touch "$out"
   ''

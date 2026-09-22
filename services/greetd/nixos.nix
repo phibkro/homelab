@@ -9,6 +9,10 @@ let
       name = "hyprland-uwsm.desktop";
       path = "${config.programs.hyprland.package}/share/wayland-sessions/hyprland-uwsm.desktop";
     }
+    {
+      name = "plasma-bigscreen-wayland.desktop";
+      path = "${pkgs.kdePackages.plasma-bigscreen}/share/wayland-sessions/plasma-bigscreen-wayland.desktop";
+    }
   ];
   emptyXSessionDirectory = pkgs.runCommand "nori-greetd-empty-xsessions" { } ''
     mkdir -p "$out"
@@ -17,8 +21,8 @@ in
 {
   /*
     Greetd is the only login manager. Tuigreet scans the generated chooser,
-    which exposes only Plasma Wayland and UWSM-managed Hyprland; the empty
-    X11 directory keeps raw X11 desktop files out of its session menu.
+    which exposes only Plasma, Plasma Bigscreen, and UWSM-managed Hyprland;
+    the empty X11 directory keeps raw X11 desktop files out of its menu.
   */
   services.greetd = {
     enable = true;

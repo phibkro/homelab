@@ -325,8 +325,8 @@ shared profile.
 | Scope | Where | Audience | Examples |
 |---|---|---|---|
 | **System floor** | `infra/common/nixos/base.nix` `environment.systemPackages` | NixOS hosts; root, sshd, system services | `bat curl dig fd git htop just ripgrep tmux tree vim wget` |
-| **Shared graphical system** | `profiles/desktop/nixos/graphical-desktop.nix` | Hosts that offer local graphical login | Plasma, Hyprland, greetd, portals, PipeWire, fonts, Stylix |
-| **Workstation graphical extras** | `profiles/desktop/nixos/default.nix` | Workstation only | gaming, virtualization, Sunshine, workstation audio policy |
+| **Shared graphical system** | `profiles/desktop/nixos/graphical-desktop.nix` | Hosts that offer local graphical login | Plasma, Bigscreen, Hyprland, greetd, Sunshine, portals, PipeWire, fonts, Stylix |
+| **Workstation graphical extras** | `profiles/desktop/nixos/default.nix` | Workstation only | gaming, virtualization, workstation audio policy |
 | **User core** | `profiles/home/core.nix` | Every interactive machine where nori is the operator | starship, Git, direnv, common CLI baseline |
 | **User session** | `profiles/home/desktop/hyprland-session.nix` | Homes that offer the shared Hyprland rice | Hyprland config, Waybar, Persona, Vicinae, session services |
 | **User capability** | `profiles/home/{desktop,creative,development}/` | Homes selecting a coherent reusable capability | communication, research, video, audio, development and agent tools |

@@ -21,9 +21,9 @@ greetd + tuigreet
 Keep greetd as the only login manager. Keep Hyprland as the initial fallback.
 Tuigreet remembers the session that each user selects.
 
-Create a shared `graphical-desktop` system profile for login and session
-concerns. Keep gaming, virtualization, Sunshine, and workstation applications
-in the existing workstation `desktop` profile.
+Create a shared `graphical-desktop` system profile for login, session, and
+shared remote-desktop concerns. Keep gaming, virtualization, workstation audio,
+and workstation applications in the existing workstation `desktop` profile.
 
 Create a reusable Hyprland Home Manager profile. Adelie uses this profile
 without the workstation development and creative application profiles.
@@ -42,8 +42,8 @@ Existing server workloads continue to start independently of graphical login.
 - Hyprland always starts through UWSM.
 - The Hyprland rice remains unchanged on workstation.
 - Hyprland-only services stop when the Hyprland session stops.
-- Adelie does not receive Steam, gamescope, virtualization, Sunshine, or the
-  workstation application bundles.
+- Adelie does not receive Steam, gamescope, virtualization, or the workstation
+  application bundles.
 - Adelie receives the complete desktop-settings authority because the existing
   rice depends on it.
 - The desktop-settings authority derives the active host name. It does not
@@ -52,7 +52,7 @@ Existing server workloads continue to start independently of graphical login.
   policy.
 - Greetd unlocks GNOME Keyring and KWallet through PAM.
 - NVIDIA DRM modesetting supplies local Wayland rendering on both hosts.
-- Remote desktop is not part of this change.
+- Remote desktop is governed by [Peer remote desktops](2026-09-22-peer-remote-desktops.md).
 - Deployment must not change DNS, routes, secrets, or public services.
 
 ## System composition
@@ -62,8 +62,9 @@ The profile graph has two levels:
 ```text
 graphical-desktop
 ├── Hyprland + UWSM
-├── Plasma
+├── Plasma and Plasma Bigscreen
 ├── greetd session chooser
+├── Sunshine remote host
 ├── portals and keyrings
 ├── common audio
 ├── common desktop applications
@@ -73,13 +74,13 @@ graphical-desktop
 workstation desktop
 after graphical-desktop
 ├── gaming
-├── virtualization
-└── Sunshine
+└── virtualization
 ```
 
 The shared login chooser exposes only these desktop files:
 
 - `plasma.desktop`
+- `plasma-bigscreen-wayland.desktop`
 - `hyprland-uwsm.desktop`
 
 This filtered list makes the unsupported sessions unavailable. The raw
@@ -115,8 +116,8 @@ The repository change is complete when all gates pass:
 
 1. Both host evaluations enable `programs.hyprland` and Plasma 6.
 2. Greetd is enabled on both hosts. SDDM and Plasma Login Manager are disabled.
-3. The login chooser contains only Plasma and UWSM Hyprland.
-4. Adelie does not enable Steam, Sunshine, or libvirtd.
+3. The login chooser contains Plasma, Plasma Bigscreen, and UWSM Hyprland.
+4. Adelie does not enable Steam or libvirtd.
 5. Both Home Manager evaluations enable the Hyprland rice.
 6. Hyprland services and the resource monitor use `hyprland-session.target`.
 7. The desktop-settings source marker names the evaluated host.

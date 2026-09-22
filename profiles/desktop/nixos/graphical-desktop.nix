@@ -1,8 +1,8 @@
 _: {
   /*
     Reusable local graphical desktop composition. The workstation `desktop`
-    profile extends this with its gaming, virtualization, Sunshine, and
-    host-specific audio policy.
+    profile extends this with its gaming, virtualization, and host-specific
+    audio policy.
   */
   imports = [
     ./hyprland.nix
@@ -13,6 +13,7 @@ _: {
     ./fonts.nix
     ./stylix.nix
     ./wayland.nix
+    ./remote-desktop.nix
     ./desktop-settings-activation.nix
   ];
 }

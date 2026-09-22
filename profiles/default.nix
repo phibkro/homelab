@@ -11,12 +11,12 @@
   };
 
   desktop = {
-    description = "Workstation-only gaming, virtualization, remote play, and audio policy";
+    description = "Workstation-only gaming, virtualization, and audio policy";
     systemModules = [ ../profiles/desktop/nixos/default.nix ];
   };
 
   graphical-desktop = {
-    description = "Reusable local Plasma and UWSM Hyprland session";
+    description = "Reusable local Plasma, Bigscreen, UWSM Hyprland, and remote desktop";
     systemModules = [ ../profiles/desktop/nixos/graphical-desktop.nix ];
   };
 

@@ -7,6 +7,5 @@ _: {
     ./gaming.nix
     ./virt.nix
     ./workstation-audio.nix
-    ../../../services/sunshine/nixos.nix
   ];
 }
