@@ -29,7 +29,6 @@
     extraPortals = [ pkgs.xdg-desktop-portal-gtk ];
   };
 
-
   /*
     Polkit agent autostart — needed for any app that prompts for elevation
     (network manager applet, mount helpers). Hyprland doesn't ship one;
