@@ -37,6 +37,7 @@ contract; omission is not a live coverage verdict.
 | `pihole` | `pi` | `filesystem` | `pihole` | `onetouch` | `/var/lib/containers/storage/volumes/pihole-data/_data`<br>`/opt/pihole/dnsmasq.d/05-homelab-local-records.conf` | — | `pihole-service` |
 | `stremio` | `adelie` | `filesystem` | `stremio` | `onetouch` | `/var/lib/stremio` | `/var/lib/stremio/stremio-cache` | `stremio-identity` |
 | `vaultwarden` | `adelie` | `sqlite-logical` | `vaultwarden` | `onetouch` | `/var/lib/vaultwarden`<br>`/var/backup/vaultwarden` | — | `vaultwarden-database` |
+| `vektorprogrammet-development` | `workstation` | `postgresql-logical` | `vektorprogrammet-development` | `onetouch` | `/var/backup/postgresql/vektorprogrammet_development.sql.gz`<br>`/var/lib/postgresql/17/vektorprogrammet-development/database-password` | — | — |
 | `victorialogs-server` | `pi` | `filesystem` | `victorialogs` | `onetouch` | `/var/lib/victorialogs` | — | `victorialogs-service` |
 | `victoriametrics` | `pi` | `filesystem` | `victoriametrics` | `onetouch` | `/var/lib/victoriametrics`<br>`/etc/victoriametrics` | — | `victoriametrics-service` |
 

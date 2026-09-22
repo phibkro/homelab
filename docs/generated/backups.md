@@ -464,3 +464,4 @@ Counts, membership, and placement therefore change with configuration.
 | `workstation` | `sonarr` | `service` | `onetouch` | `/var/lib/sonarr` |
 | `workstation` | `suwayomi` | `service` | `onetouch` | `/var/lib/suwayomi-server` |
 | `workstation` | `user-data` | `user` | `onetouch` | `/home`<br>`/srv/nori`<br>`/srv/share` |
+| `workstation` | `vektorprogrammet-development` | `service` | `onetouch` | `/var/backup/postgresql/vektorprogrammet_development.sql.gz`<br>`/var/lib/postgresql/17/vektorprogrammet-development/database-password` |

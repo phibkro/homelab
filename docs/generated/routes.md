@@ -19,6 +19,7 @@ placement and policy before NixOS and Ansible adapters consume them.
 | `books` | `calibre-web` | `workstation` | `8084` | `internal` | `family` | `forward-auth` | yes | no |
 | `cache` | `attic` | `adelie` | `5000` | `internal` | `operator` | `none` | yes | no |
 | `calendar` | `radicale` | `adelie` | `5232` | `internal` | `family` | `none` | yes | no |
+| `chatlog` | `chatlog` | `workstation` | `4790` | `internal` | `operator` | `none` | yes | no |
 | `comics` | `komga` | `workstation` | `8085` | `internal` | `family` | `forward-auth` | yes | no |
 | `downloads` | `qbittorrent` | `workstation` | `8083` | `internal` | `operator` | `forward-auth` | yes | no |
 | `home` | `glance` | `pi` | `8086` | `internal` | `public` | `none` | yes | no |
