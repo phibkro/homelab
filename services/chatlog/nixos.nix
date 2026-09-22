@@ -5,7 +5,7 @@
 }:
 
 let
-  tailnetIp = config.nori.hosts.${config.networking.hostName}.tailnetIp;
+  tailnetIp = config.nori.inventory.hosts.${config.nori.inventory.currentHost}.tailnetIp;
 in
 {
   /*
