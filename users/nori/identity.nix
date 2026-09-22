@@ -1,12 +1,23 @@
 {
+  config,
+  inputs,
   pkgs,
   ...
 }:
 
 {
+  sops.secrets.nori-console-password-hash = {
+    sopsFile = inputs.self + "/secrets/shared-runtime.yaml";
+    neededForUsers = true;
+  };
+
+  # Both hosts derive the console credential from the same encrypted hash.
+  users.mutableUsers = false;
+
   # --- users -------------------------------------------------------------
 
   users.users.nori = {
+    hashedPasswordFile = config.sops.secrets.nori-console-password-hash.path;
     isNormalUser = true;
     uid = 1000;
     description = "nori";

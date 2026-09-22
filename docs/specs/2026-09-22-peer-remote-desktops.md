@@ -26,6 +26,7 @@ Make each host a peer that can initiate or receive an interactive remote-desktop
 - Sunshine is enabled on both hosts with NVIDIA hardware encoding and existing-session capture.
 - Plasma Bigscreen joins the existing filtered greetd chooser; greetd remains the only display manager.
 - Pairing credentials, permanent access passwords, and first-use portal grants remain operator-owned runtime state.
+- Both hosts derive the `nori` console password from one shared SOPS secret.
 - The implementation does not claim headless login, virtual displays, independent concurrent Wayland seats, or access to the greeter.
 - Existing local Plasma and Hyprland sessions remain available.
 
@@ -37,9 +38,10 @@ Make each host a peer that can initiate or receive an interactive remote-desktop
 4. The filtered greetd chooser exposes exactly Plasma, UWSM Hyprland, and Plasma Bigscreen Wayland.
 5. Both host firewalls admit RustDesk's default direct-IP TCP port 21118 only
    on `tailscale0`; neither host opens RustDesk or Sunshine ports globally.
-6. Both exact host closures build.
-7. After activation and a graphical login, each host can reach the other host's Sunshine listener through its tailnet hostname.
-8. Operator pairing proves one real streamed desktop and input path in each direction; Bigscreen appearance, audio, capture, and TV-client behavior remain physical acceptance evidence.
+6. Both hosts derive the `nori` console password from one encrypted SOPS hash.
+7. Both exact host closures build.
+8. After activation and a graphical login, each host can reach the other host's Sunshine listener through its tailnet hostname.
+9. Operator pairing proves one real streamed desktop and input path in each direction; Bigscreen appearance, audio, capture, and TV-client behavior remain physical acceptance evidence.
 
 ## Security model
 
