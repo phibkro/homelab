@@ -23,7 +23,6 @@
     ./disko.nix
     ./disko-media.nix
     ./disko-mp510.nix
-    ./desktop-settings-activation.nix
     ./firecracker-environment.nix
   ];
   nori.selfHostedFirecracker.enable = true;

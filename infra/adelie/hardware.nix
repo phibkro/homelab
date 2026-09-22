@@ -28,4 +28,17 @@
 
   hardware.enableRedistributableFirmware = true;
   hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
+
+  /*
+    Adelie's RTX 2060 Super renders its local Wayland sessions through the
+    production NVIDIA driver. Display support does not grant any service GPU
+    device nodes; nori.gpu.nvidiaDevices remains at its shared empty default.
+  */
+  services.xserver.videoDrivers = [ "nvidia" ];
+  hardware.graphics.enable = true;
+  hardware.nvidia = {
+    open = true;
+    modesetting.enable = true;
+    package = config.boot.kernelPackages.nvidiaPackages.production;
+  };
 }

@@ -16,6 +16,7 @@ in
     homeModule = ../users/nori/adelie.nix;
     profiles = [
       "base"
+      "graphical-desktop"
       "log-forwarder"
       "remote-backup-source"
       "observability-agent"

@@ -15,7 +15,7 @@ let
     inputs.self.outPath;
   sourceMarker = builtins.toJSON {
     source = toString approvedSource;
-    host = "workstation";
+    host = config.networking.hostName;
   };
   settingsServicePackage = config.home-manager.users.nori.nori.desktop.settingsService.package;
   settingsIngress = config.home-manager.users.nori.nori.desktop.settingsService.ingress;

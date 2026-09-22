@@ -15,6 +15,11 @@
     systemModules = [ ../profiles/desktop/nixos/default.nix ];
   };
 
+  graphical-desktop = {
+    description = "Reusable local Plasma and UWSM Hyprland session";
+    systemModules = [ ../profiles/desktop/nixos/graphical-desktop.nix ];
+  };
+
   log-forwarder = {
     description = "Per-host journald shipping to the central log index";
     systemModules = [ ../services/vector/nixos.nix ];
