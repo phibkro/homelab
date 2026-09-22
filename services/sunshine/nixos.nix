@@ -1,4 +1,16 @@
 { config, pkgs, ... }:
+let
+  # Nixpkgs PR #533497: maintainer-approved Sunshine update. Stable 2026.516
+  # stalls Linux RTSP ANNOUNCE, so Moonlight never receives the session reply.
+  sunshineNixpkgs = builtins.fetchTree {
+    type = "github";
+    owner = "NixOS";
+    repo = "nixpkgs";
+    rev = "306e7f543163b37249a7c546ccd4551a4eb8f4df";
+    narHash = "sha256-Fa1BtrZoi6rUUK+bMkUFDCQIudIppVgupMy3Je6SWQ8=";
+  };
+  sunshine = pkgs.callPackage "${sunshineNixpkgs}/pkgs/by-name/su/sunshine/package.nix" { };
+in
 {
   /*
     Sunshine — game-stream host for remote desktop over the tailnet.
@@ -17,7 +29,7 @@
       (large closure; unfree, already permitted for davinci-resolve).
       Without it Sunshine falls back to CPU x264 — high latency + load.
     */
-    package = pkgs.sunshine.override { cudaSupport = true; };
+    package = sunshine.override { cudaSupport = true; };
 
     /*
       CAP_SYS_ADMIN for DRM/KMS screen capture — the reliable path on

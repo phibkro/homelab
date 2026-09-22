@@ -68,6 +68,7 @@ let
       tailnetFirewall = firewall.interfaces."tailscale0";
     in
     host.services.sunshine.enable
+    && host.services.sunshine.package.version == "2026.914.233613"
     && host.services.sunshine.autoStart
     && host.services.sunshine.capSysAdmin
     && lib.elem "uinput" host.users.users.nori.extraGroups
