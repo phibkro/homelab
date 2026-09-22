@@ -318,23 +318,29 @@ Adding a new OIDC client → `/add-oidc-client` (procedure skill — bootstrap, 
 
 ## Packages: where things live by scope
 
-Packages and config live at one of four scopes. Pick the **lowest** scope that gets the tool to its actual audience — drift goes the other way (a tool only the operator uses ends up at system scope and has to be moved later).
+Packages and config live at the narrowest scope that reaches their actual
+audience. A package that only one host or one session needs must not enter a
+shared profile.
 
 | Scope | Where | Audience | Examples |
 |---|---|---|---|
 | **System floor** | `infra/common/nixos/base.nix` `environment.systemPackages` | NixOS hosts; root, sshd, system services | `bat curl dig fd git htop just ripgrep tmux tree vim wget` |
-| **System desktop** | `profiles/desktop/nixos/` | System/session integration, display manager, drivers, audio, fonts | Hyprland, greetd, PipeWire, Stylix, Sunshine |
+| **Shared graphical system** | `profiles/desktop/nixos/graphical-desktop.nix` | Hosts that offer local graphical login | Plasma, Hyprland, greetd, portals, PipeWire, fonts, Stylix |
+| **Workstation graphical extras** | `profiles/desktop/nixos/default.nix` | Workstation only | gaming, virtualization, Sunshine, workstation audio policy |
 | **User core** | `profiles/home/core.nix` | Every interactive machine where nori is the operator | starship, Git, direnv, common CLI baseline |
-| **User capability** | `profiles/home/{desktop,creative,development}/` | Homes selecting a coherent reusable capability | communication, research, video, audio, global development, agentic tools |
-| **Per-machine user** | `users/nori/workstation.nix` `home.packages` | One specific machine | workstation: `nvtop` (NVIDIA), `compsize` (btrfs), Hyprland binds |
+| **User session** | `profiles/home/desktop/hyprland-session.nix` | Homes that offer the shared Hyprland rice | Hyprland config, Waybar, Persona, Vicinae, session services |
+| **User capability** | `profiles/home/{desktop,creative,development}/` | Homes selecting a coherent reusable capability | communication, research, video, audio, development and agent tools |
+| **Per-machine user** | `users/nori/{adelie,workstation}.nix` | One specific machine | host-specific package and Home Manager composition |
 
 Decision rules:
 
-- Needed by NixOS root / system services? → **system floor**; Pi packages belong in Ansible roles.
-- Required to create the Linux graphical system/session? → **system desktop**
-- Interactive operator tool, every machine? → **user core**
-- Reusable user-facing function with its own security or product concern? → **user capability**
-- Machine-specific? → **per-machine user**
+- Needed by NixOS root or system services? → **system floor**.
+- Required for every local graphical login? → **shared graphical system**.
+- Required only by the workstation? → **workstation graphical extras**.
+- Interactive operator tool on every machine? → **user core**.
+- Required by the Hyprland session? → **user session**.
+- Reusable user-facing function with its own concern? → **user capability**.
+- Machine-specific? → **per-machine user**.
 
 Acceptable cross-scope overlap: `git` lives in both `base.nix` (for root + Nix's flake operations) and `core.nix` `programs.git` (for the operator's per-user config). Both load-bearing.
 

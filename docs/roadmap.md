@@ -26,6 +26,12 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
   production DSNs for the Cloudflare-hosted applications. Drinks and Filmder
   already contain dormant SDK initialization. This work requires account
   access and an approved production credential change.
+- **Dual desktop physical acceptance.** Plasma and UWSM Hyprland are deployed
+  on workstation and Adelie. At each local greetd screen, log in to Plasma and
+  then Hyprland. Check the portal file chooser and one-password KWallet and
+  GNOME Keyring unlock. Adelie already runs the NVIDIA open kernel module after
+  its reboot. See
+  `docs/archive/reports/2026-09-22-dual-desktop-activation.md`.
 
 These require the operator or physical client access. They remain accepted
 work, but do not block autonomous repository work.
