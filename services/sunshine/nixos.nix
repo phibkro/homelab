@@ -42,6 +42,9 @@
     settings.csrf_allowed_origins = "https://${config.networking.hostName}.saola-matrix.ts.net:47990";
   };
 
+  # Virtual pointer and keyboard injection uses /dev/uinput.
+  users.users.nori.extraGroups = [ "uinput" ];
+
   # Moonlight peers are added explicitly by tailnet name; publish no LAN mDNS.
   services.avahi.enable = false;
 

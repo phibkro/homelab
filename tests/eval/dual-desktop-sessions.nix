@@ -70,6 +70,7 @@ let
     host.services.sunshine.enable
     && host.services.sunshine.autoStart
     && host.services.sunshine.capSysAdmin
+    && lib.elem "uinput" host.users.users.nori.extraGroups
     && !host.services.sunshine.openFirewall
     &&
       host.services.sunshine.settings.csrf_allowed_origins
