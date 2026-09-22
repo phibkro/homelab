@@ -48,11 +48,22 @@ work, but do not block autonomous repository work.
   - **Books → Readarr** remains an unstarted \*arr addition.
   - ⚠ **Process note:** the two build ICs were dispatched with `isolation: "worktree"` but landed on `main` sharing one tree (isolation didn't take) — caught before commit, untangled by hand. Verify worktree isolation actually engaged before parallel same-repo dispatches.
 
+- **Complete the personal-application Cloudflare cutovers.** The Drinks,
+  Filmder, Finnbydel, and Heim repositories now own their Alchemy v2
+  deployment programs, release checks, and rollback procedures. Their local
+  edge stacks, including local API routes, were smoke-tested on 2026-09-22.
+  Production plans and deployments were not run: the first plan can bootstrap or upgrade
+  the shared `alchemy-state-store` Worker, and the Cloudflare OAuth profile
+  requires an operator-approved refresh. Next, approve that state mutation,
+  inspect each `production` plan, perform the documented Pages or Tunnel
+  hostname handoff, and verify the public journey. Remove the local Heim and
+  Filmder runtimes only after production acceptance. Add Sentry after the
+  final topology is live.
+
 ## Deferred (tracked, not currently worked)
 
 - **~~Mac is on x86_64-darwin EOL clock.~~ RESOLVED 2026-07-26 — retired.** nixpkgs 26.11 dropped `x86_64-darwin` before a decision was made, which took `nix flake check` red on main. The Mac had already fallen out of use, so the configuration was removed rather than migrated or pinned. See ADR-0009 (supersedes ADR-0006). If a Mac returns it will be Apple Silicon and a fresh inventory entry.
 
-- **Remaining stabilisation (personal apps).** Phases 1-3 + 6-prep landed 2026-05-08 (CI + Renovate on all 4 app repos; zod validation on drinks-api; finnbydel → Astro + Hono; stateful apps → Drizzle + bun:sqlite; @sentry SDKs wired, no-op without DSN). Remaining: phase 4 (static sites → Cloudflare Pages, removes 3 attack surfaces from workstation), phase 5 (microvm.nix for drinks + finnbydel, kernel-level isolation for stateful apps that stay on workstation). Sentry activation when operator provisions projects: add 6 sops secrets `sentry-dsn-{heim,drinks-app,drinks-server,filmder,finnbydel-app,finnbydel-server}` to `secrets/apps.yaml`; update each module's environment block.
 
 - **Remaining SSO candidates.** Second batch landed (Immich + Beszel native OIDC, Komga + calibre-web forward-auth). Still on the table:
   - **Native OIDC:** Komga could move from forward-auth to per-user OIDC if family members start wanting separate read-history; Spring Security OAuth2 config is verbose but doable.
