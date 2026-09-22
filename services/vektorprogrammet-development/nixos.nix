@@ -37,8 +37,8 @@ in
       # Hyperdrive reaches this role through the local Cloudflare Tunnel only.
       hostssl ${databaseName} ${databaseUser} 127.0.0.1/32 scram-sha-256
       hostssl ${databaseName} ${databaseUser} ::1/128 scram-sha-256
-      hostnossl ${databaseName} ${databaseUser} 127.0.0.1/32 reject
-      hostnossl ${databaseName} ${databaseUser} ::1/128 reject
+      host all ${databaseUser} 127.0.0.1/32 reject
+      host all ${databaseUser} ::1/128 reject
     '';
   };
 
