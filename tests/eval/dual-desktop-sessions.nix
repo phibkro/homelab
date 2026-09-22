@@ -85,10 +85,16 @@ let
     && adelie.hardware.nvidia.modesetting.enable
     && adelie.nori.gpu.nvidiaDevices == [ ];
 
-  chooserMatch = builtins.match ".*--sessions ([^ ]+) --xsessions ([^ ]+) --cmd 'uwsm start hyprland-uwsm.desktop'" workstation.services.greetd.settings.default_session.command;
-  adelieChooserMatch = builtins.match ".*--sessions ([^ ]+) --xsessions ([^ ]+) --cmd 'uwsm start hyprland-uwsm.desktop'" adelie.services.greetd.settings.default_session.command;
-  chooserDirectory = builtins.elemAt chooserMatch 0;
-  xSessionDirectory = builtins.elemAt chooserMatch 1;
+  chooserDirectory = workstation.environment.etc."greetd/sessions".source;
+  xSessionDirectory = workstation.environment.etc."greetd/xsessions".source;
+  chooserContract =
+    workstation.services.greetd.settings.default_session.command
+    == adelie.services.greetd.settings.default_session.command
+    &&
+      workstation.services.greetd.settings.default_session.command
+      == "${pkgs.tuigreet}/bin/tuigreet --time --remember --remember-user-session --asterisks --sessions /etc/greetd/sessions --xsessions /etc/greetd/xsessions --cmd 'uwsm start hyprland-uwsm.desktop'"
+    && adelie.environment.etc."greetd/sessions".source == chooserDirectory
+    && adelie.environment.etc."greetd/xsessions".source == xSessionDirectory;
 in
 assert lib.assertMsg
   (lib.all (
@@ -115,9 +121,8 @@ assert lib.assertMsg sourceMarkers
   "desktop-settings authority markers must name their evaluated host";
 assert lib.assertMsg nvidiaDisplay
   "Adelie must use the production NVIDIA display stack without granting service devices";
-assert lib.assertMsg (
-  chooserMatch != null && adelieChooserMatch == chooserMatch
-) "both greetd instances must use the same filtered chooser and Hyprland fallback";
+assert lib.assertMsg chooserContract
+  "both greetd instances must use the same filtered chooser and Hyprland fallback";
 pkgs.runCommandLocal "eval-dual-desktop-sessions"
   {
     nativeBuildInputs = [

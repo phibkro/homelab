@@ -25,11 +25,14 @@ in
     useTextGreeter = true;
     settings = {
       default_session = {
-        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --remember-user-session --asterisks --sessions ${sessionChooser} --xsessions ${emptyXSessionDirectory} --cmd 'uwsm start hyprland-uwsm.desktop'";
+        command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --remember-user-session --asterisks --sessions /etc/greetd/sessions --xsessions /etc/greetd/xsessions --cmd 'uwsm start hyprland-uwsm.desktop'";
         user = "greeter";
       };
     };
   };
+
+  environment.etc."greetd/sessions".source = sessionChooser;
+  environment.etc."greetd/xsessions".source = emptyXSessionDirectory;
 
   /*
     Gnome Keyring serves Secret Service consumers. Greetd's PAM password is
