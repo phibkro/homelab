@@ -17,21 +17,18 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 - **Physical Pi acceptance.** Power-cycle the appliance, exercise HTTPS and DNS
   from an off-LAN tailnet client, and approve any remaining Tailscale
   control-plane changes. Do not treat VM reboot evidence as physical evidence.
-- **Sunshine/Moonlight pairing.** Pair a client through
-  `https://workstation:47990`, launch Desktop, and verify video and audio. The
-  implementation and NVENC codecs are already deployed. Follow
-  `docs/specs/2026-05-22-sunshine-remote-host-design.md`. Use the documented
-  wlroots fallback only if NVIDIA KMS capture is black.
+- **Peer remote desktop physical acceptance.** At each local greetd screen, log
+  in to Plasma, Plasma Bigscreen, and Hyprland. Verify portals and one-password
+  keyring unlock. In each RustDesk session, enable Direct IP access on TCP
+  21118 and set credentials. Connect to the peer tailnet name in both
+  directions. Pair Moonlight in both directions. Verify video, audio, and input.
+  On a Moonlight-capable television device, launch Bigscreen and verify remote
+  input. Follow `docs/specs/2026-09-22-peer-remote-desktops.md`. Evidence:
+  `docs/archive/reports/2026-09-22-peer-remote-desktop-activation.md`.
 - **Personal-application Sentry provisioning.** Create the Sentry projects and
   production DSNs for the Cloudflare-hosted applications. Drinks and Filmder
   already contain dormant SDK initialization. This work requires account
   access and an approved production credential change.
-- **Dual desktop physical acceptance.** Plasma and UWSM Hyprland are deployed
-  on workstation and Adelie. At each local greetd screen, log in to Plasma and
-  then Hyprland. Check the portal file chooser and one-password KWallet and
-  GNOME Keyring unlock. Adelie already runs the NVIDIA open kernel module after
-  its reboot. See
-  `docs/archive/reports/2026-09-22-dual-desktop-activation.md`.
 
 These require the operator or physical client access. They remain accepted
 work, but do not block autonomous repository work.
