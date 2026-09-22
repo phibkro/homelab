@@ -1,6 +1,7 @@
 { inputs, lib, ... }:
 let
   compiler = import ../../inventory/topology.nix { inherit lib; };
+  projectTosca = import ../../lib/topology/tosca.nix;
   validFixture = {
     hosts.workstation = {
       kind = "nixos";
@@ -78,6 +79,10 @@ let
   production = builtins.tryEval (builtins.deepSeq inputs.self.lib.noriInventory.topology true);
   validBaseline = evaluate validFixture;
   graph = compiler validFixture;
+  productionTosca = builtins.tryEval (
+    builtins.deepSeq (projectTosca inputs.self.lib.noriInventory.topology) true
+  );
+  toscaProjection = projectTosca graph;
   realizationNode = lib.findFirst (node: node.id == "realization.ollama.primary") null graph.nodes;
   acceleratorRequirement = lib.findFirst (
     requirement: requirement.name == "accelerator"
@@ -188,7 +193,13 @@ let
   );
 in
 assert production.success;
+assert productionTosca.success;
 assert validBaseline.success;
+assert toscaProjection.tosca_definitions_version == "tosca_2_0";
+assert toscaProjection.service_template.metadata."nori.schema-version" == "2";
+assert toscaProjection.node_types ? "nori.nodes.Realization";
+assert toscaProjection.relationship_types ? "nori.relationships.Realizes";
+assert toscaProjection.relationship_types ? "nori.relationships.BoundTo";
 assert graph.schemaVersion == 2;
 assert
   realizationNode.properties == {
@@ -213,4 +224,4 @@ assert !mistypedConstraintValue.success;
 assert !unknownTopologyField.success;
 assert !reservedCapability.success;
 assert !unsupportedEndpointRequirement.success;
-"ok — topology compiler accepts the production graph and rejects malformed targets, capabilities, constraints, and declaration fields"
+"ok — topology compiler and TOSCA projection accept the production graph and reject malformed targets, capabilities, constraints, and declaration fields"

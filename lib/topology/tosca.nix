@@ -136,50 +136,15 @@ let
     else
       [ ];
 
-  capabilityPropertySchemas = {
-    "nori.capabilities.Compute" = {
-      architecture = "string";
-      cores = "integer";
-      memoryBytes = "integer";
-    };
-    "nori.capabilities.GpuCompute" = {
-      backend = "string";
-      vendor = "string";
-      vramBytes = "integer";
-    };
-    "nori.capabilities.PersistentStorage" = {
-      class = "string";
-    };
-    "nori.capabilities.OidcProvider" = {
-      protocol = "string";
-    };
-    "nori.capabilities.TopologyTarget" = { };
-  };
-
-  relationshipTypeNames = [
-    "nori.relationships.HostedOn"
-    "nori.relationships.ProvidedBy"
-    "nori.relationships.AttachedTo"
-    "nori.relationships.Writes"
-    "nori.relationships.Reads"
-    "nori.relationships.Uses"
-    "nori.relationships.AuthenticatedBy"
-  ];
-
-  relationshipTypeSegments = {
-    "nori.relationships.HostedOn" = "hosted-on";
-    "nori.relationships.ProvidedBy" = "provided-by";
-    "nori.relationships.AttachedTo" = "attached-to";
-    "nori.relationships.Writes" = "writes";
-    "nori.relationships.Reads" = "reads";
-    "nori.relationships.Uses" = "uses";
-    "nori.relationships.AuthenticatedBy" = "authenticated-by";
-  };
+  schema = import ./schema.nix;
+  inherit (schema) capabilityPropertySchemas relationshipTypeSegments;
+  relationshipTypeNames = attrNames relationshipTypeSegments;
 
   nodeKindTypes = {
     machine = "nori.nodes.Machine";
     device = "nori.nodes.Device";
     workload = "nori.nodes.Workload";
+    realization = "nori.nodes.Realization";
     endpoint = "nori.nodes.Endpoint";
     dataset = "nori.nodes.Dataset";
   };
@@ -187,8 +152,8 @@ let
   topologyCheck =
     if !isAttrs topology then
       fail "the input is not an attribute set"
-    else if !(topology ? schemaVersion) || topology.schemaVersion != 1 then
-      fail "schemaVersion must be 1"
+    else if !(topology ? schemaVersion) || topology.schemaVersion != 2 then
+      fail "schemaVersion must be 2"
     else if !(topology ? nodes) || !isList topology.nodes then
       fail "nodes must be a list"
     else if !(topology ? requirements) || !isList topology.requirements then
@@ -588,6 +553,7 @@ let
     "nori.nodes.Machine" = { };
     "nori.nodes.Device" = { };
     "nori.nodes.Workload" = { };
+    "nori.nodes.Realization" = { };
     "nori.nodes.Endpoint" = { };
     "nori.nodes.Dataset" = { };
   };
@@ -738,7 +704,7 @@ let
     node_types = baseNodeTypes // perNodeTypes;
     service_template = {
       metadata = {
-        "nori.schema-version" = "1";
+        "nori.schema-version" = "2";
       };
       node_templates = nodeTemplates;
       relationship_templates = relationshipTemplates;
