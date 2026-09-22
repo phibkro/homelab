@@ -204,6 +204,14 @@
           '';
 
         /**
+          Both graphical hosts expose only the supported local sessions while
+          workstation-only capabilities and Hyprland services remain isolated.
+        */
+        eval-dual-desktop-sessions = import ../../../tests/eval/dual-desktop-sessions.nix {
+          inherit inputs lib pkgs;
+        };
+
+        /**
           Desktop setting contracts and the Waybar realization must derive
           from the same profile option.
         */
