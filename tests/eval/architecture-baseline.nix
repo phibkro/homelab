@@ -100,6 +100,7 @@ let
       "sonarr"
       "suwayomi"
       "syncthing"
+      "vektorprogrammet-development"
     ];
   };
 
@@ -170,6 +171,7 @@ let
     suwayomi = [ "workstation" ];
     syncthing = [ "workstation" ];
     vaultwarden = [ "adelie" ];
+    vektorprogrammet-development = [ "workstation" ];
     victorialogs-server = [ "pi" ];
     victoriametrics = [ "pi" ];
   };
