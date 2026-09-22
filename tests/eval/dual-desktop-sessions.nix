@@ -102,6 +102,19 @@ let
     && timer.Unit.After == [ target ]
     && timer.Install.WantedBy == [ target ];
 
+  sharedConsoleCredential =
+    let
+      adelieSecret = adelie.sops.secrets.nori-console-password-hash;
+      workstationSecret = workstation.sops.secrets.nori-console-password-hash;
+      sharedSecretFile = inputs.self + "/secrets/shared-runtime.yaml";
+    in
+    adelieSecret.sopsFile == sharedSecretFile
+    && workstationSecret.sopsFile == sharedSecretFile
+    && adelieSecret.neededForUsers
+    && workstationSecret.neededForUsers
+    && adelie.users.users.nori.hashedPasswordFile == adelieSecret.path
+    && workstation.users.users.nori.hashedPasswordFile == workstationSecret.path;
+
   workstationIsolation =
     workstation.programs.steam.enable && workstation.virtualisation.libvirtd.enable;
   adelieIsolation =
@@ -161,6 +174,8 @@ assert lib.assertMsg (lib.all lifecycleContract (
 assert lib.assertMsg (lib.all remoteDesktopContract (
   lib.attrValues graphicalHosts
 )) "both graphical hosts must provide tailnet-only RustDesk, Sunshine, and Moonlight peer access";
+assert lib.assertMsg sharedConsoleCredential
+  "both graphical hosts must derive the nori console password from the shared encrypted hash";
 assert lib.assertMsg (
   (home workstation).home.sessionVariables.QT_STYLE_OVERRIDE == ""
   && (home adelie).home.sessionVariables.QT_STYLE_OVERRIDE == ""

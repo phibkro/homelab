@@ -29,6 +29,7 @@ let
     "attic-push-token"
     "grafana-secret-key"
     "miniflux-admin-password"
+    "nori-console-password-hash"
     "ntfy-channel"
     "oidc-news-client-secret"
     "oidc-vault-client-secret"
@@ -38,6 +39,7 @@ let
   ];
   sharedAdelieSecrets = [
     "attic-push-token"
+    "nori-console-password-hash"
     "ntfy-channel"
   ];
   statefulBackupNames = [
