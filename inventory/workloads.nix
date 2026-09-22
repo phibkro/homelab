@@ -55,6 +55,7 @@ in
   suwayomi = manifest ../services/suwayomi/manifest.nix;
   syncthing = manifest ../services/syncthing/manifest.nix;
   vaultwarden = manifest ../services/vaultwarden/manifest.nix;
+  vektorprogrammet-development = manifest ../services/vektorprogrammet-development/manifest.nix;
   victorialogs-server = manifest ../services/victorialogs/manifest.nix;
   victoriametrics = manifest ../services/victoriametrics/manifest.nix;
 }

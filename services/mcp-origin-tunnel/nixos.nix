@@ -10,6 +10,7 @@ let
   inherit (devShareRoute) tunnelId;
   hindsightHostname = "hindsight-origin.phibkro.org";
   projectsHostname = "projects-origin.phibkro.org";
+  vektorDatabaseHostname = "vektor-db-origin.phibkro.org";
   hindsightOriginPort = config.nori.inventory.routes.memory-origin.port;
   projectsOriginPort = config.nori.inventory.routes.projects-origin.port;
 
@@ -24,6 +25,8 @@ let
         service: http://127.0.0.1:${toString hindsightOriginPort}
       - hostname: ${projectsHostname}
         service: http://127.0.0.1:${toString projectsOriginPort}
+      - hostname: ${vektorDatabaseHostname}
+        service: tcp://127.0.0.1:5432
       - hostname: ${devShareRoute.hostname}
         service: http://${devShareRoute.originHost}:${toString devShareRoute.originPort}
       - service: http_status:404
@@ -97,7 +100,7 @@ in
   environment.systemPackages = [ devShare ];
 
   systemd.services.mcp-origin-cloudflared = {
-    description = "Shared Cloudflare Tunnel for authenticated MCP origins";
+    description = "Shared Cloudflare Tunnel for authenticated workstation origins";
     wantedBy = [ "multi-user.target" ];
     wants = [ "network-online.target" ];
     after = [
