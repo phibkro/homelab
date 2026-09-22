@@ -7,9 +7,9 @@
 let
   ops = config.nori.inventory.routes.ops;
   logs = config.nori.inventory.routes.logs;
-  logsTailnetIp = config.nori.inventory.hosts.${logs.host}.tailnetIp;
+  logsLanIp = config.nori.inventory.hosts.${logs.host}.lanIp;
   tsdb = config.nori.inventory.routes.tsdb;
-  tsdbTailnetIp = config.nori.inventory.hosts.${tsdb.host}.tailnetIp;
+  tsdbLanIp = config.nori.inventory.hosts.${tsdb.host}.lanIp;
 in
 {
   /*
@@ -31,10 +31,9 @@ in
     `ops.home.phibkro.org`. Distinct from Glance
     (`home.home.phibkro.org`, family-facing landing) and Beszel
     (`metrics.home.phibkro.org`, single-source telemetry
-    native UI). Grafana's role here is the join — VictoriaLogs LogsQL
-    + (future) VictoriaMetrics time-series in one queryable view, with
-    operator-owned dashboards committed alongside the rest of the
-    flake config.
+    native UI). Grafana joins VictoriaLogs LogsQL and VictoriaMetrics
+    time-series in one queryable view. Operator-owned dashboards are
+    committed with the flake configuration.
 
     Provisioned declaratively from this module — datasources via
     services.grafana.provision.datasources, dashboards from
@@ -119,7 +118,7 @@ in
           name = "VictoriaLogs";
           type = "victoriametrics-logs-datasource";
           access = "proxy";
-          url = "http://${logsTailnetIp}:${toString logs.port}";
+          url = "http://${logsLanIp}:${toString logs.port}";
           isDefault = true;
           jsonData.timeout = 60;
         }
@@ -141,7 +140,7 @@ in
           */
           type = "prometheus";
           access = "proxy";
-          url = "http://${tsdbTailnetIp}:${toString tsdb.port}";
+          url = "http://${tsdbLanIp}:${toString tsdb.port}";
           isDefault = false;
           jsonData.timeInterval = "30s"; # matches the scrape interval
         }

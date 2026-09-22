@@ -2,7 +2,7 @@
 
 let
   logs = config.nori.inventory.routes.logs;
-  logsTailnetIp = config.nori.inventory.hosts.${logs.host}.tailnetIp;
+  logsLanIp = config.nori.inventory.hosts.${logs.host}.lanIp;
 in
 {
   /**
@@ -17,15 +17,13 @@ in
     recommended integration path and is what the manual jsonline
     control-test (count(*) > 0) confirmed working end-to-end.
 
-    Same fate-independence rationale as everything else that ships to
-    pi: workstation is the producer, pi is the durable observer.
-    Direct tailnet HTTP to pi:9428, NOT via Caddy — write-path
-    shouldn't traverse Caddy (would make Caddy a SPoF for ingest;
-    human-facing UI at https://logs.home.phibkro.org stays via Caddy).
+    Same fate-independence rationale as every log producer: the NixOS host is
+    the producer, and Pi is the durable observer. The sink uses Pi's
+    inventory-declared LAN address because the VictoriaLogs container binds
+    that address. Tailnet-only hosts reach it through Pi's advertised subnet
+    route. This avoids making Caddy part of the ingest path.
 
-    Pi ships its own journald too. Pi-to-pi over loopback-via-tailnet
-    works fine and is the easiest way to keep pi's own service
-    transitions visible in the central index.
+    Pi ships its own journal to the same LAN listener.
   */
 
   services.vector = {
@@ -70,10 +68,10 @@ in
           # i.e. the event's actual journal time, not ingest time. Pass
           # it through unmodified so `_time:1h`-style LogsQL queries are
           # truthful. Trade-off: on first ingest, entries older than
-          # the retention window (currently 14d, set on pi at
-          # services/victorialogs/nixos.nix) get silently dropped
-          # by VictoriaLogs as `too_small_timestamp`. Widen retention if
-          # we want deeper backfill queryable.
+          # the retention window (currently 14d in
+          # services/victorialogs/ansible/defaults/main.yml) get silently
+          # dropped by VictoriaLogs as `too_small_timestamp`. Widen retention
+          # if deeper backfill is required.
 
           # ── Inner-message parsing ────────────────────────────────── # multi-line: ok
           # Many NixOS services emit logfmt or JSON inside the journald
@@ -117,7 +115,7 @@ in
       sinks.vlogs = {
         type = "elasticsearch";
         inputs = [ "relabel" ];
-        endpoints = [ "http://${logsTailnetIp}:${toString logs.port}/insert/elasticsearch" ];
+        endpoints = [ "http://${logsLanIp}:${toString logs.port}/insert/elasticsearch" ];
         mode = "bulk";
         api_version = "v8";
         healthcheck.enabled = false;

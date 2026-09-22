@@ -49,6 +49,11 @@ let
   activeAdelieBackups = lib.attrNames (
     lib.filterAttrs (_: backup: backup.include != null) adelie.nori.backups
   );
+  expectedLogsEndpoint = "http://${inventory.hosts.pi.lanIp}:${toString inventory.routes.logs.port}/insert/elasticsearch";
+  expectedMetricsEndpoint = "http://${inventory.hosts.pi.lanIp}:${toString inventory.routes.tsdb.port}";
+  grafanaDatasources = adelie.services.grafana.provision.datasources.settings.datasources;
+  grafanaDatasourceUrl =
+    name: (lib.findFirst (datasource: datasource.name == name) { url = null; } grafanaDatasources).url;
 
   placementCorrect =
     inventory.workloads.glance.hosts == [ "pi" ]
@@ -90,7 +95,13 @@ let
     && !(workstation.services.grafana.enable or false)
     && !(workstation.services.miniflux.enable or false)
     && !(workstation.services.radicale.enable or false)
-    && !(workstation.services.vaultwarden.enable or false);
+    && !(workstation.services.vaultwarden.enable or false)
+    && adelie.services.vector.settings.sinks.vlogs.endpoints == [ expectedLogsEndpoint ]
+    && workstation.services.vector.settings.sinks.vlogs.endpoints == [ expectedLogsEndpoint ]
+    &&
+      grafanaDatasourceUrl "VictoriaLogs"
+      == "http://${inventory.hosts.pi.lanIp}:${toString inventory.routes.logs.port}"
+    && grafanaDatasourceUrl "VictoriaMetrics" == expectedMetricsEndpoint;
 
   secretBoundaryCorrect =
     lib.attrNames adelie.sops.secrets == expectedAdelieSecrets
