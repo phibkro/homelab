@@ -7,4 +7,8 @@
     ../../../users/nori/programs/desktop
     ./wayland-session.nix
   ];
+
+  # Vicinae owns application launching. Avoid Stylix's unused Rofi target,
+  # which still writes Home Manager's deprecated `programs.rofi.font` option.
+  stylix.targets.rofi.enable = false;
 }

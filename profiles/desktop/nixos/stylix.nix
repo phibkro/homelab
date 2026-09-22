@@ -1,5 +1,6 @@
 {
   inputs,
+  lib,
   pkgs,
   ...
 }:
@@ -86,6 +87,11 @@
     # This machine uses tuigreet, not ReGreet; do not generate an unused
     # greeter theme or let that target inspect the custom tuigreet command.
     targets.regreet.enable = false;
+
+    # Both Plasma and Hyprland consume the same Qt applications. Stylix's
+    # Plasma-only auto-detection selects its unsupported `kde` path, so keep
+    # the supported qtct/Kvantum integration shared across both sessions.
+    targets.qt.platform = lib.mkForce "qtct";
 
     /*
       Fonts — Material-aligned sans (Roboto) + JetBrainsMono Nerd for
