@@ -1,10 +1,9 @@
 _: {
   /**
-    Workstation graphical desktop superset. Shared local-session concerns live
-    in graphical-desktop.nix; this profile adds only workstation capabilities.
+    Workstation-only graphical capabilities. The inventory composes this after
+    the reusable graphical-desktop profile.
   */
   imports = [
-    ./graphical-desktop.nix
     ./gaming.nix
     ./virt.nix
     ./workstation-audio.nix

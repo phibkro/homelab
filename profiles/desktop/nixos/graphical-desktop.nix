@@ -13,7 +13,6 @@ _: {
     ./fonts.nix
     ./stylix.nix
     ./wayland.nix
-    ./nvidia.nix
     ./desktop-settings-activation.nix
   ];
 }

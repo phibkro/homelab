@@ -49,6 +49,7 @@
       in — add when the tuning becomes a measured win.
     */
     inputs.nixos-hardware.nixosModules.common-cpu-amd
+    ../common/nixos/nvidia-wayland.nix
     inputs.nixos-hardware.nixosModules.common-pc-ssd
   ];
 

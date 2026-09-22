@@ -11,7 +11,7 @@
   };
 
   desktop = {
-    description = "Operator-attached graphical workstation";
+    description = "Workstation-only gaming, virtualization, remote play, and audio policy";
     systemModules = [ ../profiles/desktop/nixos/default.nix ];
   };
 

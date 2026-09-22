@@ -67,6 +67,7 @@ in
     profiles = [
       "base"
       "backup-source"
+      "graphical-desktop"
       "desktop"
       "family-vault"
       "log-forwarder"

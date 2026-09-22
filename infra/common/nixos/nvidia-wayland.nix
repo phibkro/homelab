@@ -1,6 +1,6 @@
 _: {
   /*
-    NVIDIA-specific client variables apply to both supported Wayland sessions.
+    NVIDIA-specific client variables shared by NVIDIA graphical hosts.
     Driver selection and hardware workarounds remain host-owned.
   */
   environment.sessionVariables = {

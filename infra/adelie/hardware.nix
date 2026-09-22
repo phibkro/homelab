@@ -10,6 +10,7 @@
 
   imports = [
     inputs.nixos-hardware.nixosModules.common-cpu-amd
+    ../common/nixos/nvidia-wayland.nix
     inputs.nixos-hardware.nixosModules.common-pc-ssd
   ];
 
