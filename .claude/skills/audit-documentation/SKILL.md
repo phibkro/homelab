@@ -218,15 +218,16 @@ The per-file workflow that worked across 40+ files:
    incident-anchored comments verbatim (date + symptom + fix). Keep
    cross-references to specs / skills / runbooks. Cut paraphrases.
 
-5. **Format and verify clean build.**
+5. **Format and verify the affected surface.**
 
    ```bash
-   nix fmt        # project nixfmt (the flake's formatter attr)
-   just rebuild   # for the homelab; build must stay clean
+   nix fmt
+   just check
    ```
 
-   The pre-commit hook in `.githooks/pre-commit` runs `nix flake check`
-   on staged `.nix` changes — let it fire; fix what it surfaces.
+   Use the deployment planner and a relevant build or disposable runtime check
+   when prose changes expose source drift. `just rebuild` is live activation,
+   not documentation verification, and still requires operator authority.
 
 6. **Show the diff stat** (`git diff --stat -- <file>`) so the
    operator sees the net delta.

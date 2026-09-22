@@ -131,10 +131,10 @@ nori.backups.miniflux.include = [
 
 ⚠ Two traps caught in production:
 
-| Trap | Fix | Memory entry |
+| Trap | Fix | Durable source |
 |---|---|---|
-| sqlite3 CLI's `.backup` ignores `busy_timeout` (hard-coded ~2.5s retry) → "database is locked" on the first concurrent writer | Use `VACUUM INTO` + `PRAGMA busy_timeout` (regular SQL, honours the pragma) | [[sqlite-backup-vacuum-into]] |
-| Historical dual-target restic units fired in the same minute → both run `prepareCommand` → race on `.tmp` → "table … already exists" | Wrap rm/sqlite/mv in `flock` (file-descriptor form, subshell-scoped) | [[pattern-c2-sqlite-race-flock]] |
+| sqlite3 CLI's `.backup` ignores `busy_timeout` (hard-coded ~2.5s retry) → "database is locked" on the first concurrent writer | Use `VACUUM INTO` + `PRAGMA busy_timeout` (regular SQL, honours the pragma) | [Canonical implementation](../../services/navidrome/nixos.nix) |
+| Historical dual-target Restic units fired in the same minute → both run `prepareCommand` → race on `.tmp` → "table … already exists" | Wrap rm/sqlite/mv in `flock` (file-descriptor form, subshell-scoped) | [Canonical implementation](../../services/navidrome/nixos.nix) |
 
 Canonical implementation: `services/navidrome/nixos.nix`.
 
@@ -185,6 +185,7 @@ must not corrupt the staging file.
 flowchart TB
   subgraph workhorse[workhorse hosts]
     WS[workstation]
+    AD[Adelie]
   end
   subgraph appliance[pi - appliance tier]
     VM[VictoriaMetrics<br/>:8428]
@@ -193,7 +194,9 @@ flowchart TB
     BES[Beszel hub]
   end
   WS -- node-exporter:9100<br/>process-exporter:9256 --> VM
+  AD -- node-exporter:9100<br/>process-exporter:9256 --> VM
   WS -- journald via vector --> VL
+  AD -- journald via vector --> VL
   GA -- DNS answer + HTTPS + auth<br/>outcome probes --> Internet[public outcomes]
   Internet --> WS
   WS -. Grafana queries .-> VM
@@ -208,7 +211,7 @@ flowchart TB
 | **Metrics (system)** | Beszel hub + agent | pi (hub); workhorse hosts (agent) | Forensics: when workstation hangs, Pi's hub keeps recording up to last poll |
 | **Metrics (TSDB)** | VictoriaMetrics | pi | Scrapes gatus + node-exporter + process-exporter; 14d retention |
 | **Logs (TSDB)** | VictoriaLogs | pi | Aggregates journald via vector shipper; 14d retention. `just query-logs <LogsQL>` |
-| **Per-process RSS** | process-exporter | workstation | Leak hunter; pi VM scrapes. See [[workstation-leak-hunting]] |
+| **Per-process RSS** | process-exporter | workstation; Adelie | Leak hunter; Pi scrapes both hosts. The [roadmap](../roadmap.md) owns the workstation MemoryHigh follow-up and sample query. |
 | **Synthetic outcomes** | Gatus | pi | DNS answer, OIDC discovery, external HTTPS, application response and certificate lifetime; each alerting outcome has one private Gatus probe |
 | **Recovery-evidence age** | systemd timer | pi | Daily check generated from accepted evidence dates and maximum ages |
 | **Dashboards** | Grafana | workstation | VM + VL as datasources; per-host system + Gatus dashboards |
@@ -236,16 +239,18 @@ flowchart TB
 Alert ownership is explicit. Gatus owns DNS, authentication, HTTPS, application,
 and certificate outcomes. Direct backend probes remain available for diagnosis,
 but are alert-free where a LAN-side edge outcome owns notification. These probes
-use Pi-hole split DNS because the router has no NAT loopback; the public-status
-Worker remains the off-LAN observer. The public Gatus view consumes a separate
-alert-free projection, so publishing a component does not create a second alert
-path. OIDC discovery is also diagnostic; the forward-auth challenge is the
-single authentication alert owner.
+use Pi-hole split DNS because the router has no NAT loopback. The public Gatus
+view consumes a separate alert-free projection, so publishing a component does
+not create a second alert path. Because both projections probe from Pi, neither
+establishes off-LAN reachability. Use the ADR-0006 cellular acceptance journey
+for that boundary. OIDC discovery is also diagnostic; the forward-auth challenge
+is the single authentication alert owner.
 Restic job units own execution failures; freshness monitors use lock-free
 read-only queries and suppress a job-target while that unit is failed.
 Recovery-evidence age has one fleet-wide owner on Pi.
-The [September 21 activation](../archive/reports/2026-09-21-outcome-monitoring-activation.md)
-records the first deployed outcome and freshness results.
+The [outcome-monitoring activation report](../archive/reports/2026-09-21-outcome-monitoring-activation.md)
+records deployment plus the September 22 controlled failure and resolved
+notification acceptance.
 
 ### Alert delivery
 

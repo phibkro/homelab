@@ -33,23 +33,16 @@ in
     `/v1/health` stays unauthenticated by upstream design, so Gatus's
     monitor probe on the alert.${nori.domain} route keeps working.
 
-    Publisher provisioning is currently MANUAL one-time:
+    Publisher provisioning is a manual one-time operation:
       sudo NTFY_AUTH_FILE=/var/lib/ntfy-sh/user.db \
         ntfy user add --role=admin publisher
       # → prompts for password; paste the value from sops at key
       #   `ntfy-publisher-token` (operator generated 2026-06-14).
-    Declarative bootstrap deferred until the CLI's non-interactive
-    password shape is verified — runbook's example doesn't match
-    upstream's documented syntax. Tracked as a small follow-up.
 
-    deny also blocks anonymous SUBSCRIBE — unlike ntfy.sh, where a
-    topic's obscure name alone gates read access, the phone app can't
-    just subscribe to the agents topic here without credentials. Until
-    a scoped grant is added (`ntfy access '*' <agents-topic> read-only`,
-    run once on pi — same "no declarative users API yet" constraint as
-    the publisher above), the operator's app has to log into this
-    server AS the publisher user to read the agents topic. Tracked
-    alongside the publisher bootstrap follow-up.
+    deny also blocks anonymous SUBSCRIBE. Unlike public ntfy.sh, where an
+    obscure topic name gates read access, the phone app must authenticate to
+    subscribe to the local agents topic. The current account is the publisher
+    user. No declarative users API is configured.
   */
   services.ntfy-sh = {
     enable = true;
@@ -63,10 +56,9 @@ in
   };
 
   /*
-    Token lives in sops so a future declarative bootstrap can read it
-    without operator intervention. Mode 0440 (root + ntfy group); ntfy-
-    sh.service is DynamicUser=true so file access happens via group
-    membership rather than uid match.
+    The SOPS token is the source for manual publisher enrollment. Mode 0440
+    grants access to root and the ntfy group. ntfy-sh.service is DynamicUser,
+    so file access uses group membership instead of a stable uid.
   */
   sops.secrets.ntfy-publisher-token = {
     mode = "0440";

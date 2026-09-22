@@ -60,11 +60,10 @@
       failure (restic backups, btrbk snapshots, …). Imported by every host
       so each host's own units can wire `OnFailure = "notify@%n.service"`.
 
-      Posts directly to ntfy.sh (public) — that's where the user's mobile
-      app is already subscribed; the alert path through ntfy.sh stays
-      alive even when the local ntfy on Pi is down. The local server in
-      ./server.nix is for future internal-only alerts (services that
-      shouldn't traverse public internet), not used by this template.
+      Posts directly to public ntfy.sh, where the operator's mobile app is
+      subscribed. This route remains available when the Pi-local ntfy server
+      is down. The local server in ./server.nix carries authenticated agent
+      traffic; this failure template does not use it.
 
       Test from any tailnet host (after the secret is in place):
         curl -H "Title: test" -d "hello" \

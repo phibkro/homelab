@@ -33,9 +33,8 @@ in
   nori.harden.beszel-hub = { };
 
   /*
-    Gatus alerts come independently via ntfy.sh, so a hub rebuild
-    loses only recent metrics history. Revisit when Pi gains the
-    planned local fast-restore SSD repo (see services/restic-backup/nixos.nix L28).
+    Gatus alerts remain independent through public ntfy.sh. The Pi appliance
+    has no declared backup target, and recent metrics are non-load-bearing.
   */
-  nori.backups.beszel.skip = "Hub on appliance host. Pi flash anti-write posture + non-load-bearing metrics; defer until Pi local-fast-restore repo lands.";
+  nori.backups.beszel.skip = "Hub on appliance host. Pi flash anti-write posture; recent metrics are non-load-bearing.";
 }

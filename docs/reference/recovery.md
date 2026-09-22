@@ -11,8 +11,9 @@ RTO targets for each failure class, the runbooks that hit them, and the permanen
 
 ## Current recovery posture
 
-The two SSDs hold hot data; IronWolf Pro holds cold data. OneTouch is the
-external workstation backup destination selected by `inventory/backup.nix`.
+Workstation's SN750 holds its root and hot state. Adelie's NVMe holds its
+service state. IronWolf Pro holds cold data, and OneTouch is the independent
+workstation-attached backup destination selected by `inventory/backup.nix`.
 The [September 19 evidence](../archive/reports/2026-09-19-backup-evidence.md)
 records the enabled destination, workstation service-state restore, and Pi
 backup checks. The
@@ -37,11 +38,11 @@ Existing MP510 archives, local filesystem snapshots, and application dumps are
 preserved. None establishes current backup coverage by itself. Same-disk
 snapshots and dumps do not survive loss of that disk.
 
-Aurora reuse is conditional on renewed connectivity. The September 6 check
-found it offline. The September 19 Pi inspection established a strict
-host-key-checked session through `pi.saola-matrix.ts.net`; the hostname,
-Tailscale address, and remote host key agreed. Reverify host identity during
-an incident. Do not use the stale address-form entry for `100.100.71.3`.
+The September 19 Pi inspection established a strict host-key-checked session
+through `pi.saola-matrix.ts.net`; the hostname, Tailscale address, and remote
+host key agreed. Reverify host identity during an incident. Do not use the
+stale address-form entry for `100.100.71.3`. Aurora is retired and has no
+recovery role.
 
 ## RTO targets
 
@@ -57,7 +58,7 @@ an incident. Do not use the stale address-form entry for `100.100.71.3`.
 
 ## Runbooks (`docs/runbooks/`)
 
-Each runbook is the step-by-step for one failure class. Initial outlines:
+Each runbook defines the procedure for one failure class:
 
 | Runbook | Trigger | Path |
 |---|---|---|
@@ -67,9 +68,9 @@ Each runbook is the step-by-step for one failure class. Initial outlines:
 | `drive-failure-root.md` | SN750 dies | Replace drive → boot installer → clone flake → run disko → `nixos-install` → inspect existing archives before attempting state restore; preserve all surviving disks |
 | `drive-failure-media.md` | IronWolf dies | Assess surviving copies → provision only an approved replacement disk → restore verified content or re-acquire available sources |
 | `pi-failure.md` | Pi unreachable / hardware dead | Reinstall supported Debian → converge `infra/pi/` Ansible → restore selected state → verify DNS, routes, authentication and monitoring |
-| `storage-full.md` | Disk pressure | Find what filled up; library is reflinked (not duplicated) — see `Mnemopi recall: gotcha-arr-reflinks-not-hardlinks` |
+| `storage-full.md` | Disk pressure | Stop writers → identify the full filesystem → remove only approved re-derivable data → restart services in order |
 | `tailscale-acl.md` | Tailscale admin UI ACL recovery | Live ACL lives only in admin UI; this snapshots `tailscale-acl.json` for editor-regression + account-loss recovery |
-| `agent-fix-on-failure.md` | An armed backup/check unit fails (`nori.agentFix`) | Recovery window survives → boxed agent diagnoses + opens a PR (draft if unfixed). Find the run at `journalctl -u agent-fix@<unit>` and resume its conversation via `claude --resume` (handle in the PR body) to steer + merge |
+| `agent-fix-on-failure.md` | Review the dormant `nori.agentFix` mechanism | The module is implemented but disarmed after a resource-exhaustion incident. Re-arm requires explicit operator approval and deployment. |
 
 For migration-specific mount, identity, capacity, backup, and restore gates, use
 the [OneTouch cutover runbook](../runbooks/onetouch-backup-cutover.md).
@@ -89,18 +90,18 @@ These are **inviolable** — every recovery action must respect them or the reco
 |---|---|
 | **Preserve existing data and verify disk identity before recovery** | MP510 is an SSD with preserved historical archives, distinct from the OneTouch backup destination. Its historical Windows label in older plans is not authority to format it. Formatting or repartitioning requires a separate reviewed recovery procedure and explicit operator approval. |
 | **Disko configs MUST target `/dev/disk/by-id/...`** | by-id paths follow the hardware; `/dev` paths follow PCIe scan order |
-| **Disambiguate disks by model + by-id, never `/dev/nvmeN`** | Same reason as above; codified in `Mnemopi recall: gotcha-nvme-enumeration` |
-| **Don't schedule destructive system changes during weeks with Aker demo pressure** | The lab is the operator's daily-driver; outage during high-load weeks isn't acceptable |
+| **Disambiguate disks by model, serial, and by-id path** | Device names such as `/dev/nvme0n1` can change after a reboot |
+| **Do not schedule destructive changes during high-load operator work** | The workstation is the operator's daily driver. An outage during this work is not acceptable. |
 | **Backup verification is part of the system, not optional** | Require fresh snapshots and disposable restore evidence for the affected data; an enabled policy, green CI, or retained same-disk snapshots do not establish coverage |
 
 ## Capacity baseline
 
-Recorded in `docs/reference/capacity-baseline.md` at Phase 4 completion. Values to capture:
+Recorded in `docs/reference/capacity-baseline.md` at review time. Values to capture:
 
-- Free space per subvolume on workstation and pi
-- Used space per subvolume on IronWolf
-- RAM at idle (no Ollama loaded)
-- RAM with one Ollama model loaded (32B Q4 baseline)
+- Free space for workstation and Adelie filesystems, plus Pi root storage
+- Used space on IronWolf
+- RAM at idle with no Ollama model loaded
+- RAM with one 32B Q4 Ollama model loaded
 - Average sustained CPU during evening peak
 - MP510 repository size and retained OneTouch archive inventory
 

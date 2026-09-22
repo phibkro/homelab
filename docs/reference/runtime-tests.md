@@ -150,10 +150,9 @@ That asymmetry is the case for keeping these recipes load-bearing.
 
 ## References
 
-- Hyprland test approach: [[just-remote-tailnet-hostnames]] (cross-host
-  execution + [[hyprland-lua-mode-dispatcher-syntax]] for the trap
-  that motivated `test-hypr`)
-- Pattern C2 race: `[[pattern-c2-sqlite-race-flock]]` documents the
-  navidrome-class bug `test-backups` catches
-- `[[iteration-trio-workflow]]` for the `just show-option / set / activate-test /
-  rebuild` companion CLI
+- Hyprland checks: the test inventory above and
+  `users/nori/programs/desktop/hypr-rice/`.
+- SQLite backup race: [Pattern C2](services.md#pattern-c2--preparecommand-with-vacuum-into--flock-sqlite)
+  and the canonical `services/navidrome/nixos.nix` implementation.
+- Evaluation and activation sequence:
+  [module authoring](module-authoring.md#dev-workflow).

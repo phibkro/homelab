@@ -13,15 +13,15 @@ lib.mkIf ((config.nori.fs ? downloads) && (config.nori.fs ? library)) {
     without these datasets do not get tmpfiles for absent paths.
     Workstation declares both via disko-media.nix.
 
-    Why a dedicated `media` group: qBittorrent → *arr import is a
-    hardlink (saves disk + atomic move), and btrfs hardlinks don't
-    cross subvolumes — so all *arr libraries + the qBittorrent complete
-    dir share @downloads, and every consumer joins `media` via its own
-    module. Setgid (02775) on the dirs propagates the group to new
-    files without per-service umask config.
+    Why a dedicated `media` group: each service keeps its own UID, but
+    shared group access lets the acquisition services read and write the
+    same trees. Sonarr and Radarr import into @downloads, so they can
+    hardlink qBittorrent completions. Lidarr imports into @library/music;
+    Btrfs cannot hardlink across that subvolume boundary. Setgid (02775)
+    propagates the media group without per-service ownership rewrites.
 
-    qBittorrent's INCOMPLETE dir is deliberately off-subvol — NVMe IO
-    isolation; see qbittorrent.nix.
+    qBittorrent's INCOMPLETE dir is deliberately off-subvolume for NVMe
+    IO isolation; see qbittorrent.nix.
   */
 
   users.groups.media = { };

@@ -74,10 +74,10 @@ in
     the *download* of an already-OA-licensed PDF past blunt publisher
     filters, not credentialed access.
 
-    Not a service: no daemon, no port, no state. Just a CLI on PATH (P2's
-    search front-end + P3's reading-list sync are deferred per the spec).
+    Not a service: no daemon, no port, no state. The current product is a CLI
+    on PATH; it does not include a search UI or reading-list synchronization.
     The Paperless sink (services/paperless/nixos.nix) owns everything
-    downstream of the consume dir.
+    downstream of the consume directory.
 
     Usage (on the host where Paperless runs, or any host sharing the
     consume dir):

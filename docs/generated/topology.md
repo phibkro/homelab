@@ -28,8 +28,8 @@ and future artifact handles never enter the projection.
 
 Desktop, media, GPU, and attached storage host:
 
- - **WD SN750 1 TB NVMe** — root + service state (`@`, `@home`,
-   `@nix`, `@var-lib`, `@var-log`). disko at `./disko.nix`.
+ - **WD SN750 1 TB NVMe** — root + service and user state (`@`, `@home`,
+   `@nix`, `@var-lib`, `@srv-share`, `@srv-nori`, `@snapshots`). disko at `./disko.nix`.
  - **Corsair MP510 960 GB NVMe** — cache and preserved archives at
    `/mnt/backup-local`. disko at `./disko-mp510.nix`.
  - **Seagate IronWolf Pro 4 TB (SATA)** — downloads plus canonical family
@@ -39,9 +39,8 @@ Desktop, media, GPU, and attached storage host:
 
 `nvme0n1` was NixOS root at install time; post-reboot the drives
 swapped. Disko configs target `/dev/disk/by-id/...` paths because of
-this. **Never touch `nvme0n1` without verifying the model string via
-`/dev/disk/by-id/`** — full constraint in AGENTS.md. See
-`Mnemopi recall: gotcha-nvme-enumeration`.
+this. **Never touch `nvme0n1` without verifying the model and serial against
+`/dev/disk/by-id/`.**
 
 ## Service posture
 

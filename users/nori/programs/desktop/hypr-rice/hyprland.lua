@@ -66,15 +66,11 @@ hl.config({
 hl.on("hyprland.start", function()
     -- Refresh dbus activation env + bounce hyprland-session.target so
     -- Persona/hypridle pick up DISPLAY/WAYLAND_DISPLAY etc.
-    -- NOTE: using the bare command name relies on PATH; pinning the
-    -- dbus executable to its nix-store path remains deferred.
+    -- This command resolves through the declarative session PATH.
     hl.exec_cmd("dbus-update-activation-environment --systemd DISPLAY HYPRLAND_INSTANCE_SIGNATURE WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE && systemctl --user stop hyprland-session.target && systemctl --user start hyprland-session.target")
     hl.exec_cmd("systemctl --user start hyprpolkitagent")
-    -- These two were `exec-once=[workspace 1 silent] zeditor` in hyprlang.
-    -- Workspace-1-silent placement isn't expressed inline here; if it
-    -- matters, add a window_rule with `workspace = "1 silent"` matching
-    -- the zed / zen-beta class. Skipping for now since they tend to
-    -- land on ws 1 anyway via dwindle.
+    -- These programs start without a workspace target and follow the active
+    -- dwindle layout.
     hl.exec_cmd("zeditor")
     hl.exec_cmd("zen-beta")
     -- snappy-switcher daemon — pre-fetches window list + thumbnails so

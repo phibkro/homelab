@@ -40,7 +40,7 @@ Each deployment owner has one activation command:
 |---|---|
 | Workstation | `just rebuild` |
 | Adelie | `just push adelie` |
-| Pi | `just pi::deploy` |
+| Pi | `PI_DEPLOY_CONFIRM="pi@$pi_target" just pi::deploy` |
 
 `just` displays help. `just check` runs fast Nix checks; `just pi::check` checks
 Ansible. `just check-vm [name]` and `just pi::test` exercise disposable machines.
@@ -49,6 +49,17 @@ Ansible. `just check-vm [name]` and `just pi::test` exercise disposable machines
 `just activate-test` changes the live system for the current boot. `rebuild`,
 `boot`, `deploy`, `push`, and `pi::deploy` have live effects. Ansible `pi::plan`
 uses production credentials and contacts the real appliance.
+
+For Pi activation, derive the reviewed target from the same inventory source
+used by the production runner:
+
+```bash
+pi_target="$(nix eval --raw .#lib.noriInventory.hosts.pi.lanIp)"
+PI_DEPLOY_CONFIRM="pi@$pi_target" just pi::deploy
+```
+
+The runner independently derives the target and rejects a different
+confirmation value.
 
 ## Build before activation
 
@@ -77,13 +88,12 @@ multi-host change:
 1. announce or enter maintenance when user-facing availability may change;
 2. build all selected Nix closures and run selected Ansible plan commands;
 3. activate selected NixOS backend hosts in the plan's order;
-4. run `just pi::deploy` last when entry-plane configuration is selected;
+4. deploy Pi last with the inventory-derived `PI_DEPLOY_CONFIRM` value when entry-plane configuration is selected;
 5. run internal route/runtime checks and an off-LAN acceptance check;
 6. clear maintenance or roll back the affected host generation.
 
-The planner intentionally stops before these steps. A future deployment wrapper
-may automate the sequence only if it preserves the explicit operator gate,
-maintenance state, acceptance checks, and per-host rollback.
+The planner intentionally stops before activation. This keeps the operator
+gate, maintenance state, acceptance checks, and per-host rollback explicit.
 
 The OneTouch backup policy is enabled in `inventory/backup.nix`. Pi and Adelie
 use restricted accounts on the workstation-attached destination. September 19

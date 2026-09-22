@@ -81,10 +81,9 @@ _: {
         receive streams land as child subvols inside each mountpoint.
 
     All subvols use compress=zstd:3,noatime — same shape as the
-    IronWolf (disko-media.nix). Disk identity is pinned by-id so a
-    future kernel/BIOS reordering can't accidentally aim disko at
-    the SN750 root drive (same NVMe-enumeration trap that bit the
-    initial workstation install — see CLAUDE.md hard rule).
+    IronWolf (disko-media.nix). Disk identity is pinned by-id so kernel or BIOS
+    reordering cannot aim Disko at the SN750 root drive. See the
+    disko-uses-by-id rule in docs/invariants.md.
   */
 
   disko.devices = {

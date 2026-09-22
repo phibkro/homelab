@@ -89,11 +89,11 @@ lib.mkIf (lib.elem "qbittorrent" config.nori.inventory.currentWorkloads) {
          qBittorrent WebUI password (printed once in journalctl on
          first start) only gates non-localhost access — defense-in-depth
          for SSH-tunnel-to-backend recovery scenarios.
-      4. Each *arr's download client config sets a category for its
-         grabs (tv-sonarr, movies-radarr, music-lidarr) — qBittorrent
-         tags each download with the category, the *arr scans
-         .downloads/complete on import, hardlinks finished items into
-         its library subdir.
+      4. Each *arr download client sets a category for its grabs:
+         tv-sonarr, movies-radarr, or music-lidarr. Each *arr service scans
+         .downloads/complete during import. Sonarr and Radarr can hardlink
+         into @downloads. Lidarr imports across the @downloads to @library
+         subvolume boundary and cannot hardlink.
   */
   services.qbittorrent = {
     enable = true;
@@ -117,9 +117,9 @@ lib.mkIf (lib.elem "qbittorrent" config.nori.inventory.currentWorkloads) {
 
     [BitTorrent] splits COMPLETE vs INCOMPLETE by IO pattern:
 
-      COMPLETE → @downloads (same subvol as the *arr libraries; btrfs
-        hardlinks don't cross subvols and the cross-subvol copy+delete
-        fallback breaks seeding).
+      COMPLETE → @downloads. Sonarr and Radarr libraries share this
+        subvolume, so their hardlinks preserve the seeding files. Lidarr's
+        @library target is a separate subvolume and uses a copy-style import.
 
       INCOMPLETE → SN750 NVMe under the qbittorrent-owned Qt profile
         dir (/var/lib/qBittorrent/qBittorrent/incomplete). The outer
@@ -140,17 +140,14 @@ lib.mkIf (lib.elem "qbittorrent" config.nori.inventory.currentWorkloads) {
   */
 
   /*
-    Process umask = 0002 so finished files land mode 0664 (group-writable)
-    instead of the default 0644. Required for the *arr → library
-    hardlink-on-import: with `fs.protected_hardlinks=1` (kernel default),
-    link(2) only succeeds if the caller owns the source file OR has
-    read+write on it. *arr users share the `media` group with qBittorrent
-    but not the UID, so group-writable files satisfy the kernel check
-    and the library entry becomes a hardlink to the seeding copy instead
-    of a second full copy on disk. Caught 2026-05-15: Battle Royale had
-    two distinct inodes (uid=qbittorrent for the seeding copy, uid=radarr
-    for the library file), proving link() had silently fallen back to
-    copy — every torrent in @downloads stored twice (~2.9T doubled).
+    Process umask = 0002 so finished files use mode 0664. This mode gives
+    the `media` group write access. Sonarr and Radarr need that access for
+    hardlink imports under `fs.protected_hardlinks=1`. Lidarr also needs
+    shared access, but its separate @library subvolume prevents hardlinks.
+
+    This corrected a 2026-05-15 failure. The Radarr seeding and library files
+    had different inodes and consumed duplicate space because the hardlink
+    operation fell back to a copy.
   */
 
   systemd.services.qbittorrent = {

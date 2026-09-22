@@ -155,8 +155,8 @@ If our `docs/` tree complies (or can comply at low cost):
 2. **Reserved filenames?** OKF specifies "a small number of reserved
    filenames." Do any of ours collide?
 3. **Cross-linking conventions?** OKF specifies cross-linking rules.
-   Do our `[[memory-name]]` and `docs/reference/<name>.md` references
-   fit the spec, or need adapting?
+   Do repository-relative Markdown links fit the spec, or do they need
+   adaptation?
 4. **Semantic search opportunity?** OKF's standard frontmatter unlocks
    embedding-based search across the doc tree. Worth pursuing if (a)
    compliance is cheap and (b) we have a use case (a fresh agent

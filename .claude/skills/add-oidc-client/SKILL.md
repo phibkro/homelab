@@ -1,6 +1,6 @@
 ---
 name: add-oidc-client
-description: USE WHEN bootstrapping a new Authelia OIDC client — stores the raw client secret in workstation SOPS through SecretSpec and the PBKDF2 verifier in Pi SecretSpec without printing the raw value.
+description: USE WHEN bootstrapping a new Authelia OIDC client — stores a NixOS consumer's raw secret in its host SecretSpec domain, keeps a Pi web-UI consumer's raw value in the password manager, and stores only the PBKDF2 verifier in Pi SecretSpec.
 ---
 
 # Bootstrap a new Authelia OIDC client
@@ -17,17 +17,29 @@ Neither value belongs in committed Nix or an unscoped process environment.
 
 ## Steps
 
-### 1. Store the raw client secret
+### 1. Classify the consumer and store the raw value
 
-Generate the raw value in the operator password manager. Store it through the
-root SecretSpec manifest and its masked prompt:
+Resolve the endpoint's selected host and host kind:
 
 ```sh
-secretspec set --profile workstation OIDC_<NAME>_CLIENT_SECRET
+host="$(nix eval --raw .#lib.noriInventory.routes.<endpoint>.host)"
+nix eval --raw ".#lib.noriInventory.hosts.${host}.kind"
 ```
 
-The corresponding variable must be declared in `secretspec.toml` and routed to
-`secrets/workstation-runtime.yaml`.
+Generate the raw value in the operator password manager.
+
+For a NixOS consumer, declare its variable under `[profiles.<host>]` in
+`secretspec.toml`. Route it to the matching
+`secrets/<host>-runtime.yaml` provider, then use the masked prompt:
+
+```sh
+secretspec set --profile <host> OIDC_<NAME>_CLIENT_SECRET
+```
+
+For a Pi-hosted application configured through its web UI, keep the raw value
+in the password manager. Do not add it to Pi SecretSpec. Pi Authelia receives
+only the verifier from step 2; the application stores the raw value in its own
+state after the manual UI update.
 
 ### 2. Generate and store the verifier
 
@@ -111,27 +123,36 @@ ENABLE_OAUTH_SIGNUP = "True";
 
 Service-by-service the env-var names vary (`OAUTH_*` for Open WebUI, `OPENID_*` for some, `SSO_*` for Vaultwarden). The abstraction handles only the secret-bearing var via `secretEnvName`; the rest stay in the service module where per-service quirks live.
 
-### 5. Verify and activate both hosts
+### 5. Verify and activate the selected hosts
 
-First, verify the repository and preview the Pi change:
+Verify the repository, derive the affected hosts, and preview the Pi change:
 
 ```sh
 devenv shell -- just check
+devenv shell -- nix run .#deployment-plan -- --workload <service>
 devenv shell -- just pi::plan
 ```
 
-After operator approval, activate the workstation raw secret and deploy the Pi
-Authelia verifier:
+Build every NixOS closure named by the plan. After operator approval, activate
+the selected NixOS host in plan order, then deploy the Pi verifier. Use
+`just rebuild` only when the consumer runs on the current workstation. Use
+`just push <host>` for a remote NixOS consumer. Deploy Pi last:
 
 ```sh
-just rebuild
-just pi::deploy
+# NixOS consumer only: run the applicable command, not both.
+just rebuild       # current workstation
+just push <host>   # remote NixOS host
+pi_target="$(nix eval --raw .#lib.noriInventory.hosts.pi.lanIp)"
+PI_DEPLOY_CONFIRM="pi@$pi_target" just pi::deploy
 ```
 
-For a consumer configured through its web UI, skip step 4. Complete step 5 for
-both hosts. Then configure the consumer with client ID `<name>` and the raw
-value from `/run/secrets/oidc-<name>-client-secret`. Verify the complete browser
-login after the manual consumer update.
+For a consumer configured through its web UI, skip step 4. Complete the
+applicable consumer-host activation and the Pi deployment. For a NixOS
+consumer, read the raw value from
+`/run/secrets/oidc-<name>-client-secret`. For a Pi-hosted consumer such as
+Beszel, use the password-manager value directly; there is intentionally no raw
+OIDC client secret in Pi SecretSpec. Configure client ID `<name>`, then verify
+the complete browser login.
 
 ## What stays manual and why
 

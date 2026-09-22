@@ -1,9 +1,9 @@
 # ADR-0005: Agile-for-agents ceremonies — per-PR prologue / execution / epilogue
 
-> Current execution policy: [AGENTS.md](../../AGENTS.md) and
-> [agentic workflow](../reference/agentic-workflow.md) supersede this decision's
-> approval-before-tools and session-lifetime requirements. Existing user
-> authorization governs effects; read-only investigation proceeds directly.
+> Historical rationale. Current `AGENTS.md` and the
+> [agentic workflow](../reference/agentic-workflow.md) supersede this ADR's
+> approval, branching, concurrency, PR, and session-lifetime instructions.
+> The design-spec → implementation → verification framing remains accepted.
 
 - Status: Accepted
 - Date: 2026-06-16
@@ -17,7 +17,7 @@ ADR-0001 named the filter: *a software-team practice transfers iff it externaliz
 What ADR-0001 didn't decide: WITHIN the surviving set, what shape does each practice take in an agentic context? The 2026-06-16 docs deep-sweep + retro forced the question. The operator's framing (`docs/specs/2026-06-16-agentic-development-workflow.md`) sketched six observations:
 
 1. *"I become the product manager"* — operator role is persistent
-2. *"A session becomes a sprint with a PR per"* — corrected by `[[session-economics]]` memory: session and PR decoupled
+2. *"A session becomes a sprint with a PR per"* — corrected because sessions are context-budget-bounded while deliverables are scope-bounded
 3. *"Per PR deserves its own preamble + execution + reporting + reflection"* — the ceremony shape (refined this session to **prologue / execution / epilogue** — three phases matching the *define / solve / look-back* arc, with the Prologue picking up an explicit Goal / Constraints / Values problem-definition step + solution research + viability gate)
 4. *"Per session is also a new amnesiac software development team"* — the wrinkle
 5. *"CI/CD is still useful but the local/remote ratio inverts"* — heavy local, light remote backstop
@@ -29,9 +29,9 @@ The 2026-06-16 retro itself surfaced concrete misses (no Prologue confirmation, 
 
 ## Decision
 
-**The unit of agentic-dev work is the PR** (one feature or in-depth improvement, not a fix). Sessions and PRs are decoupled — see [[session-economics]] memory.
+**The unit of agentic development is one accepted outcome**, not one agent session. Sessions and deliverables are decoupled.
 
-**Per-PR ceremony (three phases):**
+**Per-outcome ceremony (three phases):**
 
 ```
 Prologue   →   Execution   →   Epilogue
@@ -51,18 +51,18 @@ Detailed shape: `docs/reference/agentic-workflow.md`. The reference doc is the w
 | Sprint planning | ADOPT | Prologue (Phase 1) |
 | Daily standup | SKIP (implicit via topology) | Subagent reports + agent self-tracking |
 | Sprint review | ADOPT | Epilogue § Reporting (Phase 3) |
-| Retrospective | ADOPT (per-PR, not per-session) | Epilogue § Retrospective (Phase 3) |
+| Retrospective | ADOPT (per-outcome, not per-session) | Epilogue § Retrospective (Phase 3) |
 | Backlog refinement | ALREADY EXISTS | `docs/roadmap.md` |
-| Story sizing / estimation | SKIP | No meaningful velocity; session-economics handles "fits in budget" |
+| Story sizing / estimation | SKIP | Scope is bounded by the accepted outcome, not session duration |
 | Mid-sprint course correction | ADOPT (always-available) | Operator can redirect any turn |
 
 **Operator-role hats** (informational, not enforced): PM (scope), Tech lead (architecture), Scrum master (ensures ceremony), Reviewer (push gate). Same person, four hats.
 
-**Branching:** commits-on-`main` stays the default; worktrees reserved for non-routine refactors (unchanged from ADR-0001 + existing CLAUDE.md). GitHub-style PRs not used — the PR-as-Reporting ceremony happens in-session before push.
+**Branching:** follow `AGENTS.md`. Small routine changes can remain on `main`; multi-phase or high-blast-radius work uses an isolated worktree.
 
 **CI/CD inversion** (recording the rationale, no change to current state): heavy local (`nix flake check` + pre-commit), light remote (GitHub Actions as backstop).
 
-**Hard-constraint vs soft-constraint split:** static checks are reserved for invariants that must hold every turn (commit subject grammar, type system, schema validation). Soft constraints (commit body quality, prose tone, comment depth) are caught in PR review (Phase 3 above) + prompting — false positives + brittleness dominate any static check on prose. Same principle as `docs/invariants.md` § "When to add a rule" applied to commit hygiene.
+**Hard-constraint vs soft-constraint split:** static checks are reserved for invariants that must hold every turn (commit subject grammar, type system, schema validation). Soft constraints (commit body quality, prose tone, comment depth) are caught in final review and prompting. False positives and brittleness dominate static prose checks. This applies the rule-selection principle from `docs/invariants.md`.
 
 One concrete addition landing with this ADR: **`.githooks/commit-msg` enforces Conventional Commits v1.0.0** on the subject line. Hand-rolled bash (not commitlint) per ADR-0001 dep-preference (a reliable dep already in the tree beats hand-rolling — bash is in the closure; Node + Husky aren't). Pinned to spec v1.0.0; escalation path is `nix shell nixpkgs#commitlint-rs` if the regex outgrows itself. Allowed types: standard conventional set + homelab-specific `plan`, `spec`, `skill`. Scope chars match existing repo idioms including `+` for multi-scope. Bypass via `git commit --no-verify`.
 
@@ -74,7 +74,7 @@ The originally-proposed `Co-Authored-By:` trailer check is dropped — it's data
 
 - **Prologue becomes mandatory.** Agent surfaces Goal / Constraints / Values + solution research + viability gate + DoD before substantial implementation. Operator direction and existing authorization govern whether further confirmation is needed. Skipping was the most-cited miss in the 2026-06-16 retro.
 - **Execution adopts keyframes-not-full-specs.** Spec the end goal + critical waypoints with verifiable DoDs; agent draws the inbetweens. TDD where behavior is verifiable — tests encode keyframe DoDs executably. Avoids the over-constraint failure mode where full-spec mode loses project-fit.
-- **Epilogue becomes mandatory at PR-end** (not session-end). Three activities: Reporting (per-commit grade + cross-cutting), Verification (Prologue's Goal/Constraints/Values satisfied?), Retrospective (four-question form: keeps / DoD-grade / changes / amnesiac-handoff). Operator-driven; agent answers honestly.
+- **Epilogue becomes mandatory when an outcome completes**, not when a session ends. It covers reporting, verification against the accepted contract, and retrospective findings. Durable handoff state remains in the repository.
 - **Plan files are maintained mid-sprint**, not at end. Progress-log entries land per sub-phase as a self-imposed standup-equivalent.
 - **Debt named in tree wherever a fresh agent will find it**: plan files' "known debt" sections, `docs/roadmap.md` "architectural debt", or tagged TODOs. Not just in conversation.
 
@@ -96,14 +96,13 @@ The originally-proposed `Co-Authored-By:` trailer check is dropped — it's data
 
 - **Codify ceremonies as skills now.** Rejected: N=1, SOUL.md "iterate-to-stable, then codify". The 2026-06-16 retro is the only data point; codifying prematurely bakes in this sprint's specific shape.
 - **Meta-ADR + per-ceremony sub-ADRs.** Rejected: over-engineering. ADR-0001 already bundles practices into one ADR with consequences; following the precedent. If a specific ceremony decision needs revisiting later, that's a new ADR superseding the relevant section.
-- **Per-session ceremonies instead of per-PR.** Rejected: per [[session-economics]] memory, sessions are context-budget-bounded not deliverable-bounded. PR is the better unit — it's the deliverable, and one PR can span multiple sessions or share a session with others.
-- **Adopt BMAD framework's 21-agent + 50-workflow model.** Rejected: BMAD presumes team-of-agents shape (multiple specialized agents coordinating); the homelab has one agent + one operator. The scaffolding doesn't fit.
-- **Adopt full Spec-Driven Development (SDD) framing** (machine-readable formal specs as primary artifact). Partial-adopt: SDD's phase-boundary review IS the preamble pattern. We don't adopt the full machine-readable-spec framing because most PRs are too small to justify it; the `docs/specs/` folder is for design-grade specs only.
+- **Per-session ceremonies instead of per-outcome.** Rejected: sessions are context-budget-bounded, not deliverable-bounded. One outcome can span multiple sessions, and one session can contain multiple small outcomes.
+- **Adopt BMAD framework's 21-agent + 50-workflow model.** Rejected: fixed specialist roles and workflows add ceremony without improving the repository's contract-driven delegation.
+- **Adopt full Spec-Driven Development (SDD) framing** (machine-readable formal specs as primary artifact). Partial-adopt: phase-boundary review fits the current workflow. Full machine-readable specs are not justified for small outcomes; `docs/specs/` remains the home for design-grade contracts.
 
 ## Related
 
 - ADR-0001 — agentic homelab practices (the filter); this ADR refines it for within-the-filter ceremony shape
 - `docs/reference/agentic-workflow.md` — the working reference doc; deep impl of every decision here
 - `docs/specs/2026-06-16-agentic-development-workflow.md` — research seed with worked-example appendix; the 2026-06-16 sprint retro is the N=1 data point
-- [[session-economics]] — the context-budget rule that decouples session from PR
 - `docs/archive/plans/2026-06-16-docs-deep-sweep.md` — the sprint that produced the worked example

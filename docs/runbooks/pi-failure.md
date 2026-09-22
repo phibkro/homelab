@@ -28,8 +28,11 @@ application recovered.
 2. Prepare its reviewed correction or revert in the repository.
 3. Run `just pi::check`, the disposable convergence test `just pi::test`, and
    `just pi::plan`. Check production target identity and the proposed changes.
-4. After operator approval, run `just pi::deploy` and inspect live services and
-   routes. Ansible convergence is not an atomic NixOS generation rollback.
+4. After operator approval, derive the target from inventory and deploy:
+   `pi_target="$(nix eval --raw .#lib.noriInventory.hosts.pi.lanIp)"`,
+   then `PI_DEPLOY_CONFIRM="pi@$pi_target" just pi::deploy`.
+5. Inspect live services and routes. Ansible convergence is not an atomic NixOS
+   generation rollback.
 
 ## Hardware or root filesystem failure
 

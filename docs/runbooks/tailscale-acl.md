@@ -49,7 +49,7 @@ curl -s -u "${API_KEY}:" \
 
 Cross-reference against the JSON to make sure these intents are still encoded:
 
-- **SSH ACL: `action: accept`** for all tag:operator → tag:operator paths (eliminates per-session reauth dance; see [[just-remote-tailnet-hostnames]]).
+- **SSH ACL: `action: accept`** for all tag:operator → tag:operator paths. This removes per-session reauthentication for cross-host SSH automation.
 - **`tag:agent` quarantine** — historical laptop policy retained in the ACL snapshot. Pavilion is retired; inspect the live ACL and current tag members before applying it. Any future agent-tagged device must not gain privileged-host SSH through this policy.
 - **`tag:family` member tags** — phones + tablets join with this tag; their access scope is the family-tier subset of routes.
 - **Per-host subnet/exit-node approvals** — pi is the subnet router + exit node; these need re-approval in admin UI on every key rotation.

@@ -254,7 +254,7 @@
   ansible.builtin.debug:
     msg: >-
       {% if not podman_available %}
-      Pi-hole runtime checks deferred until the planned Podman package exists;
+      Pi-hole runtime checks skipped because Podman is unavailable;
       local records changed={{ pihole_local_records.changed }}.
       {% elif ansible_check_mode %}
       Pi-hole runtime would converge in deployment;

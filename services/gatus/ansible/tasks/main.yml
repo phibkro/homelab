@@ -301,7 +301,7 @@
   ansible.builtin.debug:
     msg: >-
       {% if not podman_available %}
-      Gatus runtime checks deferred until the planned Podman package exists;
+      Gatus runtime checks skipped because Podman is unavailable;
       configuration changed={{ gatus_config.changed | default(false) }}.
       {% elif ansible_check_mode %}
       Gatus runtime would converge with {{ gatus_endpoints | length }} probes.

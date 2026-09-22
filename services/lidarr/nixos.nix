@@ -5,13 +5,13 @@ let
 in
 lib.mkIf (lib.elem "lidarr" config.nori.inventory.currentWorkloads) {
   /*
-    Lidarr — music management. Same role as Sonarr/Radarr but for music:
-    watches Prowlarr for releases, hands grabs to qBittorrent, hardlinks
-    finished tracks into the music library. Library lives under
-    @library (curated tier — irreplaceable), specifically
-    `${nori.fs.library.path}/music`. Sibling tiers under library:
-    books (calibre-web), comics (komga). Navidrome and Jellyfin on
-    workstation read the same local music library.
+    Lidarr — music management. It watches Prowlarr for releases, sends grabs
+    to qBittorrent, and imports finished tracks into the music library.
+    The library is under @library while qBittorrent completions are under
+    @downloads. Btrfs cannot hardlink across this boundary; do not assume
+    the import preserves the seeding inode. The music path is
+    `${nori.fs.library.path}/music`. Navidrome and Jellyfin read the same
+    local library.
 
     First-run setup:
       1. Visit https://music.${nori.domain}

@@ -30,7 +30,7 @@ not ALTER, so the migration runner sees an empty `schema_version`
 state, tries to `CREATE TABLE schema_version`, hits the existing one,
 exits 1. Systemd restart-loops it.
 
-Full background: `[[postgres-ownership-after-dump-restore]]` memory.
+The failure mechanism above is the complete rationale for this procedure.
 
 ## Run it
 
@@ -86,9 +86,8 @@ runnable directly if needed.
 
 ## References
 
-- `[[postgres-ownership-after-dump-restore]]` — full rationale of the
-  trap and why the `--no-owner` default in `services.postgresqlBackup`
-  produces it
+- The trap description above explains why the `--no-owner` default in
+  `services.postgresqlBackup` requires an ownership repair after restore.
 - `docs/archive/plans/immich-cutover.md` — the runbook that calls this
   skill during the historical Aurora migration; this is historical context, not current placement
 - `ba4e49f` — the miniflux cutover commit where the trap was first

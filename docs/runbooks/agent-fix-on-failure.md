@@ -1,14 +1,18 @@
 # Fix-agent on failure (`nori.agentFix`)
 
-**What**: an allowlisted unit fails → after the recovery window, a coding agent
-is dispatched to diagnose + propose a fix as a **PR**. The PR opens **whether or
-not the fix succeeds** — it's the durable indicator that a system is failing and
-a started thread to fix it. PR-only: the agent never deploys.
+`nori.agentFix` implements an allowlisted `OnFailure=` path that can dispatch a
+coding agent to diagnose a failed unit and propose a PR. The agent never
+deploys.
 
-**Armed on** (`infra/workstation/default.nix`):
-`restic-check-weekly` · `restic-check-monthly` · `btrbk-root` · `btrbk-media`.
+**Current state:** implemented but disarmed.
+`infra/workstation/default.nix` sets `nori.agentFix.enable = false`; no
+`agent-fix@…` services or failure edges are deployed. It was disabled after
+simultaneous backup failures exhausted workstation memory on 2026-08-30.
 
-## Flow
+The remaining sections describe the dormant mechanism so it can be reviewed
+before any operator-approved re-arm.
+
+## Flow when enabled
 
 ```
 unit fails ─OnFailure→ ├─ notify@       (ntfy: a service is down)
@@ -60,18 +64,30 @@ Resuming runs as you (un-boxed), so you can correct it, ask why it made a
 choice, and push the fix further. When satisfied, mark the PR ready + merge —
 that's the only path to deploy.
 
-## Manual dry run (no real failure needed)
+## Verify the disarmed state
+
+Use read-only checks:
 
 ```bash
-systemctl start agent-fix@restic-check-weekly.service
-journalctl -u agent-fix@restic-check-weekly.service -f
+nix eval --json .#nixosConfigurations.workstation.config.nori.agentFix.enable
+systemctl list-unit-files 'agent-fix@*'
 ```
 
-## Arm / disarm
+The evaluated value must be `false`.
+The running host must list no deployed template.
+Do not start `agent-fix@…` as a dry run while the feature is disabled.
 
-`nori.agentFix.units = [ … ];` in `infra/workstation/default.nix`
-(empty list = template deployed but nothing auto-triggers). `provider` defaults
-to `claude`; `cooldownSeconds` defaults to 6h.
+## Re-arm / disarm
+
+`nori.agentFix.enable` is the activation gate.
+`nori.agentFix.units` selects the allowlisted units only when that gate is true.
+The current declaration derives the Btrbk units, but the false gate keeps the
+mechanism absent.
+
+Re-arming changes live failure automation and grants the deterministic relay
+GitHub publication authority. It requires explicit operator approval, source
+review, focused resource/concurrency verification, and a normal workstation
+deployment. `provider` defaults to `claude`; `cooldownSeconds` defaults to 6h.
 
 ## Gotchas
 

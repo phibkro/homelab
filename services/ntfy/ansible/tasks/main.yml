@@ -239,7 +239,7 @@
   ansible.builtin.debug:
     msg: >-
       {% if not podman_available %}
-      ntfy runtime checks deferred until the planned Podman package exists.
+      ntfy runtime checks skipped because Podman is unavailable.
       {% elif ansible_check_mode %}
       ntfy runtime would converge on host port {{ ntfy_port }}.
       {% else %}

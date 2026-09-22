@@ -64,9 +64,8 @@ in
       * Pattern C2 (external dump)    → include + prepareCommand
 
     DynamicUser services: point `include` at /var/lib/private/<n>,
-    not /var/lib/<n> (which is a symlink restic would store as a
-    symlink → 0-byte snapshot). Enforced by the `badPaths` assertion
-    below; see Mnemopi recall: gotcha-dynamicuser-statedirectory-symlink
+    not /var/lib/<n>. The latter is a symlink that Restic stores as a
+    0-byte state snapshot. The `badPaths` assertion below enforces this.
   */
 
   options.nori.backupDelivery.enable = mkOption {
@@ -539,11 +538,10 @@ in
       );
 
       /*
-        Host-aware placement check — appliance and agent both reject
-        path-based backups, for different reasons (anti-write storage
-        vs intentional impermanence; see the typed inventory host role). The
-        structural fix for appliance is the planned local SSD — see
-        services/restic-backup/nixos.nix L28.
+        Host-aware placement check. Appliance and agent hosts both reject
+        path-based backups for different reasons: anti-write storage and
+        intentional impermanence. The typed inventory host role makes that
+        placement rule explicit.
       */
       myRole = config.nori.inventory.hosts.${config.nori.inventory.currentHost}.role or null;
       backupPaths = lib.filter (cfg: cfg.include != null) (lib.attrValues config.nori.backups);
@@ -590,8 +588,6 @@ in
             Offending paths: ${lib.concatStringsSep ", " badPaths}
 
             Known DynamicUser services: ${lib.concatStringsSep ", " dynamicUserServices}
-            See Mnemopi recall: gotcha-dynamicuser-statedirectory-symlink
-            for the full story.
           '';
         }
         {

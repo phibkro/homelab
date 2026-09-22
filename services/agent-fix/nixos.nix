@@ -284,7 +284,7 @@ in
         "codex"
       ];
       default = "claude";
-      description = "Which harness the fix-agent runs (v1: fixed; usage-based routing is deferred — see the spec).";
+      description = "Harness used for every fix-agent dispatch.";
     };
 
     cooldownSeconds = lib.mkOption {

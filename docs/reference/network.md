@@ -24,6 +24,7 @@ client hashes.
 | Host | Tailscale role | Advertises |
 |---|---|---|
 | pi | router | `--advertise-routes=192.168.1.0/24` (subnet) + `--advertise-exit-node` (opt-in) |
+| adelie | regular node | — |
 | workstation | regular node | — |
 
 Subnet route + exit node require one-time approval in the Tailscale
@@ -65,10 +66,10 @@ Jellyfin/Navidrome media through a Cloudflare self-serve proxy.
 
 See ADR-0006 for the decision and fallback constraints.
 
-**SSH ACL: `action: accept`** (since 2026-06-07). Eliminates the periodic
-browser reauth dance for cross-host SSH automation. Tailnet membership
-IS the gate. Edited in admin UI JSON, not in this repo. See
-[[just-remote-tailnet-hostnames]].
+**SSH ACL: `action: accept`** (since 2026-06-07). This removes periodic
+browser reauthentication for cross-host SSH automation. Tailnet membership
+is the gate. The live policy is edited in the Tailscale admin UI.
+Use the [ACL recovery runbook](../runbooks/tailscale-acl.md) to export and verify it.
 
 **SPOF mitigation for pi:** heartbeat to healthchecks.io every 60s via
 `services/heartbeat/ansible/`. Pi dies → hc.io alerts

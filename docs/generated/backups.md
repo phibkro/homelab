@@ -67,9 +67,8 @@ patterns" fit this schema:
   * Pattern C2 (external dump)    → include + prepareCommand
 
 DynamicUser services: point `include` at /var/lib/private/<n>,
-not /var/lib/<n> (which is a symlink restic would store as a
-symlink → 0-byte snapshot). Enforced by the `badPaths` assertion
-below; see Mnemopi recall: gotcha-dynamicuser-statedirectory-symlink
+not /var/lib/<n>. The latter is a symlink that Restic stores as a
+0-byte state snapshot. The `badPaths` assertion below enforces this.
 
 
 

@@ -211,7 +211,7 @@
       {% if not gatus_public_enabled | bool %}
       Public Gatus is disabled.
       {% elif not podman_available %}
-      Public Gatus runtime checks are deferred until Podman exists.
+      Public Gatus runtime checks skipped because Podman is unavailable.
       {% elif ansible_check_mode %}
       Public Gatus would converge with {{ gatus_public_endpoints | length }} probes.
       {% else %}

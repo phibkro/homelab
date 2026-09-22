@@ -19,8 +19,9 @@ flagged as drift by `conventions-check`; record real divergences in
 - **Lifecycle gates:** idea → spec → spec-frozen → build → park → archive, one
   executable gate per transition (defined in the conventions contract).
   spec-frozen additionally requires `Frozen: yes` in STATE.md.
-- **Checks:** `just check` = lint + format (+ typecheck/tests per toolchain);
-  `just conventions-check` = conventions drift gate. Both green before merge.
+- **Checks:** `just check` is the repository's declared verification gate.
+  `just conventions-check` detects convention drift. The project-specific section
+  names the exact tools. Both gates must pass before merge.
 
 ## PROJECT-SPECIFIC (replace this section)
 

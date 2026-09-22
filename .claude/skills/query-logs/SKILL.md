@@ -1,11 +1,14 @@
 ---
 name: query-logs
-description: USE WHEN searching journald/service logs across the homelab — diagnosing a failed unit, looking for errors over a time range, correlating an event between services, finding when something last happened. Wraps VictoriaLogs's LogsQL HTTP API on pi:9428; agents don't need to remember the curl shape. Common patterns: errors by service, tail-like real-time follow, structured-field filter (level, unit, host), full-text grep over _msg.
+description: USE WHEN searching journald/service logs across the homelab — diagnosing a failed unit, looking for errors over a time range, correlating an event between services, finding when something last happened. Wraps VictoriaLogs's LogsQL API through the published logs route; agents don't need to remember the curl shape. Common patterns: errors by service, tail-like real-time follow, structured-field filter (level, unit, host), full-text grep over _msg.
 ---
 
 # Query the homelab logs
 
-VictoriaLogs aggregates every host's journald centrally on `pi`, shipped via Vector. Reachable from any tailnet device at `http://100.100.71.3:9428` (or `https://logs.nori.lan` for the web UI). The query API is `LogsQL` — terse, grep-flavored, supports stats aggregates.
+VictoriaLogs aggregates every host's journald centrally on `pi`, shipped by
+Vector. Its published API is `https://logs.home.phibkro.org`; the container
+listener binds the Pi LAN address and is not a tailnet listener. The query API
+is LogsQL.
 
 ## Quickest path: the Just recipe
 
@@ -21,8 +24,8 @@ The recipe handles URL-encoding, points at pi automatically, and pretty-prints t
 ## Direct curl (if you need raw control)
 
 ```sh
-PI=100.100.71.3
-curl -sG "http://$PI:9428/select/logsql/query" \
+LOGS_HOST="$(nix eval --raw .#lib.noriInventory.routes.logs.hostname)"
+curl -sG "https://$LOGS_HOST/select/logsql/query" \
   --data-urlencode 'query=unit:ollama.service | head 20' | jq .
 ```
 
@@ -43,7 +46,7 @@ Every record is JSON with these conventional fields:
 |---|---|---|
 | `_msg` | journald message text | `time=... level=WARN msg="bad manifest"...` |
 | `_time` | journal event time (`__REALTIME_TIMESTAMP`) | `2026-05-09T03:11:01.992444Z` |
-| `host` | source host (stream id) | `workstation` / `pi` |
+| `host` | source host (stream id) | `workstation` / `adelie` / `pi` |
 | `unit` | systemd unit (stream id) | `ollama.service` |
 | `priority` | journald priority 0–7 | `3` = err, `6` = info |
 | `level`, `source`, `error` | parsed from `_msg` if logfmt/JSON | `error`, `manifest.go:209`, `"failed: …"` |
@@ -103,7 +106,8 @@ just query-logs 'priority:<=3 OR "fail" | _time:24h | stats by (unit) count()'
 
 **"Tail caddy access log live"**
 ```sh
-curl -sN "http://100.100.71.3:9428/select/logsql/tail" \
+LOGS_HOST="$(nix eval --raw .#lib.noriInventory.routes.logs.hostname)"
+curl -sN "https://$LOGS_HOST/select/logsql/tail" \
   --data-urlencode 'query=unit:caddy.service'
 ```
 
@@ -121,7 +125,8 @@ just query-logs 'unit:restic-backups-* "snapshot " | tail 5'
 
 ## Where things live
 
-- Pi daemon module: `services/victorialogs/nixos.nix`
-- Workstation/pi shipper: `services/vector/nixos.nix`
-- Caddy route + Gatus monitor + Glance entry: `services/victorialogs/manifest.nix`
+- Pi daemon role: `services/victorialogs/ansible/`
+- NixOS shippers: `services/vector/nixos.nix`
+- Pi shipper: `services/vector/ansible/`
+- Caddy route, Gatus monitor, and Glance entry: `services/victorialogs/manifest.nix`
 - Grafana datasource: `services/grafana/nixos.nix` (`ops.home.phibkro.org` → "VictoriaLogs")

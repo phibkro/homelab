@@ -16,13 +16,15 @@ docs/PROJECTS.md, "Project conventions contract", 2026-08-24).
 | `.envrc`               | `.envrc`                   | `use flake`                                        |
 | `.conventions-exceptions` | `.conventions-exceptions` | Declared divergences                              |
 
-Generation: `reef init` overlay from this profile (new + converging repos).
+Adoption: copy the required artifacts from this directory, preserve their
+stamps, and fill only the documented project-specific fields. Reef does not
+materialize this profile.
 Checking: `../bin/conventions-check <repo>` or `--all <root>`.
 
 Stamped files promise byte-parity with this profile. Remove the stamp only by
 declaring the divergence in `.conventions-exceptions`. Unstamped files are
 hand-owned (e.g. a project's real flake.nix) and are not diffed.
 
-Informational keys — parsed, not yet enforced: ci, linter, package-manager,
-language-toolchain. In a package.json repo, missing .oxlintrc.json/.oxfmtrc.json
-is drift unless declared (e.g. `key: linter`).
+Exception keys declare deliberate divergence. In a `package.json` repository,
+missing `.oxlintrc.json` or `.oxfmtrc.json` is drift unless the repository
+declares `key: linter`.

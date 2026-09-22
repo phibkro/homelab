@@ -225,7 +225,7 @@
   ansible.builtin.debug:
     msg: >-
       {% if not podman_available %}
-      Caddy runtime checks deferred until the planned Podman package exists.
+      Caddy runtime checks skipped because Podman is unavailable.
       {% elif ansible_check_mode %}
       Caddy runtime would converge in deployment.
       {% else %}

@@ -59,12 +59,11 @@ in
       Repeat pulls of a present model are no-ops, so adding the tag here
       after a successful manual pull is safe (and survives reinstalls).
 
-      The 0.24-era restart-loop hazard
-      (Mnemopi recall: gotcha-systemd-restart-loop-bombs) was: setting
-      loadModels to a tag the daemon rejects → systemd respawns every
-      10s → cascade. The Ollama 0.30 bump (see `package` above) clears
-      the mxfp8 / nvfp4 rejection class. Still verify any new tag via
-      manual pull before listing it here.
+      The 0.24-era restart-loop hazard was a rejected model tag in loadModels:
+      systemd respawned the failed loader every 10 seconds and caused a cascade.
+      The Ollama 0.30 bump (see `package` above) clears the mxfp8 / nvfp4
+      rejection class. Still verify any new tag with a manual pull before
+      listing it here.
 
       Candidates (gemma4 family): gemma4:12b (general, ~12GB mxfp8 in
       16GB VRAM), gemma4:12b-nvfp4 (Blackwell FP4, ~6-7GB), gemma3:12b

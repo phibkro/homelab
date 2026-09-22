@@ -1,8 +1,8 @@
 # Auto-dispatch a fix-agent on homelab failures
 
 **Date:** 2026-07-18
-**Status:** Approved design, build deferred until the notification work
-(`nori.agentNotify`, branch `feat/agent-notify`) lands.
+**Status:** Implemented, then disarmed on 2026-08-30 after concurrent backup
+failures exhausted workstation memory. Current state is `nori.agentFix.enable = false`.
 
 Companion to `nori.agentNotify` (phone-push when a harness halts). That
 feature answers *"an agent needs me"*; this one answers *"the homelab

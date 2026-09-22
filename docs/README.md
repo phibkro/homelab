@@ -2,10 +2,12 @@
 
 Start with [the shared agent guide](../AGENTS.md) for source ownership and effect boundaries.
 
-The documentation has one lifecycle per kind of knowledge. Current behavior
-belongs in reference or generated docs; future outcomes belong in the roadmap;
-an accepted change contract belongs in a spec; hard-to-reverse rationale belongs
-in an ADR; operational recovery belongs in a runbook.
+The documentation has one lifecycle for each type of knowledge.
+Current behavior belongs in reference or generated documents.
+Future outcomes belong in the roadmap.
+An accepted change contract belongs in a spec.
+Hard-to-reverse rationale belongs in an ADR.
+Operational recovery belongs in a runbook.
 
 ## Start here
 
@@ -41,9 +43,11 @@ enforcement requirement.
 
 The [complete reorganization spec](specs/2026-09-06-complete-reorganization.md)
 records the accepted old-to-new path mapping and its cleanup contract. The
-[two-host migration spec](specs/2026-09-06-two-host-migration.md) records the
-current two-host organization. Use the [OneTouch cutover runbook](runbooks/onetouch-backup-cutover.md)
-for the backup transition; its gates require live evidence before retirement.
+[three-host migration spec](specs/2026-09-20-three-host-service-migration.md)
+records the current homelab organization; the earlier
+[two-host spec](specs/2026-09-06-two-host-migration.md) is retained history.
+Use the [OneTouch runbook](runbooks/onetouch-backup-cutover.md) when
+reconnecting the disk, changing transport, or collecting new recovery evidence.
 
 ## Document lifecycle
 

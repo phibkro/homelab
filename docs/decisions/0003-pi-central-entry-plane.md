@@ -124,7 +124,7 @@ The constraints called out in the prior addendum were addressed and the entry-pl
 - Every family-tier service moved to aurora during P11 (vaultwarden, glance, heim, radicale, miniflux, filmder, grafana, calibre-web, komga, navidrome, immich) with `0.0.0.0` binds + tailnet firewall opens.
 - Every workstation-resident route (the arr stack, jellyfin, ollama, syncthing, stremio, gatus, hermes) marked `exposeOnTailnet = true`, opening the tailnet firewall hole so pi's Caddy can reverse-proxy them too.
 - Hermes refused non-loopback binds; landed via `--insecure` (operator-tier; tailnet ACL is the actual gate). Caddy still rewrites Host/Origin to `127.0.0.1:9119` so the GHSA-ppp5-vxwm-4cf7 mitigation against browser-DNS-rebinding stays in effect.
-- syncthing UI re-bound via `services.syncthing.guiAddress` (the XML `settings.gui.address` path doesn't propagate — the systemd ExecStart hardcodes `--gui-address` and overrides it; saved as `[[syncthing-gui-address-cli-override]]` memory).
+- Syncthing UI re-bound via `services.syncthing.guiAddress`. The NixOS unit's `--gui-address` argument overrides `settings.gui.address`; the durable explanation lives beside the setting in `services/syncthing/nixos.nix`.
 - `nori.lanIp` derives from pi in `infra/common/nixos/default.nix`; `authelia.runsOn` flips to pi.
 - Workstation `caddy.enable = false` + `authelia.enable = false`; closure shrinks ~96 MB.
 - Tailscale admin UI DNS push order swapped (`home.phibkro.org` row: workstation 100.81.5.122 → pi 100.100.71.3).
@@ -138,4 +138,4 @@ End-to-end verified from every tailnet host. The reverted state from the earlier
 - `inventory/default.nix` + `services/*/manifest.nix` — current route and workload-placement compiler
 - `inventory/hosts.nix` — current host identities and capabilities
 - `infra/common/nixos/storage/default.nix` § `samba` (P4)
-- `docs/reference/topology.md` — needs update to reflect pi-central post-migration role
+- `docs/reference/topology.md` — current host roles and placement model.

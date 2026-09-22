@@ -400,7 +400,8 @@ the per-project doc, not here.
 `STATE.md` is the mission-state file (Lifecycle: idea→spec→spec-frozen→build
 →park→archive, one gate per transition). `AGENTS.md` is the one agent doc;
 CLAUDE.md is a symlink to it. Specs live in `docs/specs/`. Profile source =
-homelab/foundry/ — generate via reef, check drift via
-`homelab/foundry/bin/conventions-check`. Converge-on-contact: cold repos
+`homelab/foundry/profile-v1/`. Adopt files from that source, then check drift
+with `homelab/foundry/bin/conventions-check`. Reef does not materialize this
+profile. Converge-on-contact: cold repos
 converge whenever an agent next touches them. Real divergence gets declared in
 the repo's `.conventions-exceptions`; undeclared divergence fails the checker.

@@ -53,10 +53,9 @@ in
       */
       OAUTH_MERGE_ACCOUNTS_BY_EMAIL = "True";
       /*
-        Python's httpx/requests/urllib3 use certifi's bundled trust
-        store; LE roots ship with Mozilla's bundle so certifi trusts
-        `*.home.phibkro.org` natively. Pointing at the system bundle
-        is harmless and survives any future internal-CA reintroduction.
+        Python clients normally use certifi's bundled trust store. The service
+        instead follows the NixOS system trust policy used by the rest of the
+        host. The current Let's Encrypt chain is trusted by both stores.
       */
       SSL_CERT_FILE = "/etc/ssl/certs/ca-bundle.crt";
       REQUESTS_CA_BUNDLE = "/etc/ssl/certs/ca-bundle.crt";

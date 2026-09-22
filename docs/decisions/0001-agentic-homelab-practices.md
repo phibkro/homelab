@@ -3,13 +3,17 @@
 - Status: Accepted
 - Date: 2026-06-03
 
+> Historical rationale. Current operational rules live in `AGENTS.md` and
+> `docs/reference/agentic-workflow.md`. They supersede this ADR's branching,
+> concurrency, review, and effect-authorization details.
+
 ## Context
 
-This homelab is built primarily by LLM agents working one session at a time, with a single human operator (Philip). The useful mental model is **not "solo dev with tools" but an amnesiac team**: every session is a fresh teammate who must be onboarded from zero, does excellent work, then leaves — taking all tacit context with it.
+This homelab is built primarily by LLM agents that can work concurrently but do not retain reliable tacit context between assignments. The useful mental model is **not "solo dev with tools" but a rotating team**: each agent must recover context from durable sources and leave verified artifacts for its successor.
 
 Three asymmetries vs. a human team decide which software-team practices are worth adopting:
 
-1. **Extreme bus factor — everyone quits at end of session.** Documentation isn't insurance against lost knowledge; it's the *primary transmission medium*. The onboarding artifact (`CLAUDE.md` → `docs/`) is the highest-leverage thing in the repo.
+1. **Extreme bus factor — agents rotate.** Documentation is not insurance against lost knowledge; it is the primary transmission medium. The onboarding path (`AGENTS.md` → `docs/`) is the highest-leverage surface in the repository.
 
 2. **Context is the scarce resource, not time.** Ceremony costs an agent almost nothing to *write*, but every doc is paid for again at *read* time, in context budget, every session. The cost model inverts: heavy write-time enforcement is cheap, but read-navigability must be optimized ruthlessly.
 
@@ -18,8 +22,7 @@ Three asymmetries vs. a human team decide which software-team practices are wort
 Homelab-specific constraints amplify these:
 
 - NixOS rebuilds are operator-activated (a build error fails at compile, but a runtime error happens after `switch`). "Tests pass" is far from "service comes up."
-- The blast radius spans irreplaceable state (workstation backups, Immich photos, Vaultwarden secrets) — wrong actions can't be Ctrl-Z'd.
-- Multiple hosts (workstation, Pi, Mac) have different roles; cross-host invariants are not visible from a single file.
+- The blast radius spans multiple machines and irreplaceable state. Cross-host invariants are not visible from one file.
 
 ## Decision
 
@@ -33,16 +36,16 @@ This filter explains and justifies the existing shape of the homelab. It also gi
 
 **Practices that transfer (kept and codified):**
 
-- **Heavy docs as code-equivalent.** Topic-triggered references under `docs/reference/`, the mandatory docs root (`docs/glossary.md`, `docs/invariants.md`, `docs/roadmap.md`), and per-decision ADRs under `docs/decisions/` each have one home with no overlap. Tactical landmines are retained separately as `Mnemopi recall: gotcha-*`; they are retrieved semantically rather than injected as skills.
-- **Conventional commits + structured messages.** Commits encode the *why* for future-you; the conventional-commit type makes intent grep-able. This ADR layer carries the heavier decisions commit messages can't fit.
-- **Skills for procedures, prose for facts.** Cross-provider procedures live under `users/nori/programs/agent-skills/`; project-specific procedures live under `.claude/skills/` until the neutral `.agents/` surface supports them. They load on demand when their trigger fires. Prose facts stay in `CLAUDE.md` and `docs/`; tactical landmines stay in Mnemopi.
-- **Flake checks as binding contracts.** `every-service-has-fs-hardening`, `every-service-has-backup-intent`, `forbidden-patterns` derivations bind doc claims to CI evidence. A claim with a check is self-defending; a claim without is staleness-prone — `docs/invariants.md` is the catalog of which is which.
+- **Heavy docs as code-equivalent.** Topic-triggered references under `docs/reference/`, the mandatory docs root (`docs/glossary.md`, `docs/invariants.md`, `docs/roadmap.md`), and per-decision ADRs under `docs/decisions/` each have one home with no overlap. Correctness-critical landmines live beside the source or in durable topic documents.
+- **Conventional commits + structured messages.** Commits encode the *why* for future-you; the conventional-commit type makes intent grep-able. This ADR layer carries the heavier decisions commit messages cannot fit.
+- **Skills for procedures, prose for facts.** Cross-provider procedures live in the shared agent-skill source. Project-specific procedures live under `.claude/skills/` until the neutral `.agents/` surface supports them. Prose facts stay in `AGENTS.md` and `docs/`. Memory can aid discovery but is not an authority.
+- **Flake checks as binding contracts.** `every-service-has-fs-hardening`, `every-service-has-backup-intent`, and the lint derivations bind document claims to CI evidence. A claim with a check is self-defending; a claim without one is staleness-prone. `docs/invariants.md` catalogs the enforcement tier.
 - **Pure inventory compiler.** Host and workload declarations are each written once. `inventory/default.nix` validates their complete graph and generates NixOS, Ansible, deployment, public, and documentation projections. This externalizes cross-cutting knowledge without a second registry.
 
 **Practices that do NOT transfer (deliberately skipped):**
 
-- **Feature branches / GitFlow.** Solo-with-agents. Branches don't coordinate non-existent multiple humans. Commit directly to `main`.
-- **Code review as gate.** A fresh agent reviewing a fresh agent's diff is theater — neither has lived context to spot subtle drift. Replaced by structural enforcement (flake checks, types) where possible; operator review where structural is infeasible.
+- **Long-lived process branches / GitFlow.** Branch ceremony does not replace artifact verification. Use the worktree and branching rules in `AGENTS.md` for current isolation requirements.
+- **Review without evidence as a gate.** Independent review can find defects, but it does not prove correctness. Structural checks, runtime evidence, and operator review remain the acceptance gates.
 - **Onboarding meetings / pairing.** No persistent humans to onboard. The docs *are* the meeting.
 - **Backlog grooming as recurring meeting.** `docs/roadmap.md` is the single home, edited in place.
 

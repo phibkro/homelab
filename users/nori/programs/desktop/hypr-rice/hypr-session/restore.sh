@@ -12,9 +12,9 @@
 #   --diff   print what WOULD be dispatched; dispatch nothing
 #   --json   print the restore report as JSON (default: human-readable)
 #
-# All hyprctl dispatch calls use the lua builder form (this homelab moved
-# off hyprlang — see Mnemopi recall: gotcha-hyprland-lua-migration). Two
-# idioms are LIVE-VERIFIED (2026-07-20, Hyprland 0.55):
+# All hyprctl dispatch calls use the Lua builder form. See
+# docs/specs/2026-07-20-hypr-session-persistence-design.md. Two idioms were
+# verified on 2026-07-20 with Hyprland 0.55:
 #   spawn into a workspace:  hl.dsp.exec_cmd("CMD", { workspace = "W" })
 #   move by address:         hl.dsp.window.move({ workspace = "W",
 #                               silent = true, window = "address:0x.." })

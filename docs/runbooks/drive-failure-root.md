@@ -1,7 +1,7 @@
 # Root drive failure
 
-**Recovery target**: <1 day for rebuild; state recovery depends on surviving,
-verified archives. Backups are currently disabled.
+**Recovery target**: <1 day for rebuild. OneTouch backup policy is enabled, but
+state recovery depends on the disk surviving and on verified usable snapshots.
 
 ## Symptom
 
@@ -110,9 +110,10 @@ List snapshots and inspect their contents before selecting a restore:
 | `media-irreplaceable` | Observed directory was only approximately 40 KiB; no usable media snapshots verified |
 | `vaultwarden`, `immich`, etc. | Inspect for actual service state and consistent dumps |
 
-If MP510 is unavailable, inspect preserved historical archives and their
-credentials. There is no independent active backup target in the two-host
-configuration. Do not assume `restic recover` repairs unreadable data: it
+If MP510 is unavailable, inspect the independent OneTouch repositories after
+verifying the disk identity, credentials, and snapshots. If OneTouch is also
+unavailable, only preserved historical archives remain; there is no off-site
+backup target. Do not assume `restic recover` repairs unreadable data: it
 recovers unreferenced snapshots, not damaged disk blocks.
 
 ### 8. Re-import IronWolf media

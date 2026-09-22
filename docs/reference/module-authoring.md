@@ -246,15 +246,17 @@ Common shapes:
 
 ## Shared-file access: the `media` group
 
-Services that read/write the same files on `@downloads` / `@library` join a single shared `media` group. Each service runs as its own uid (`sonarr`, `radarr`, `qbittorrent`, `jellyfin`, `immich`, `komga`, `calibre-web`) but all are members of gid `media`. Library dirs are `root:media 02775` (setgid + group rwx), so new files inherit `media` automatically.
+Services that share media files join the `media` group while each service keeps
+its own user ID. The group and setgid directories provide shared read and write
+access.
 
-```nix
-users.users.<svc>.extraGroups = [ "media" ];
-```
+Sonarr and Radarr import into directories on `@downloads`. They can hardlink
+completed files from qBittorrent because the source and target share a
+subvolume. Lidarr imports into `@library/music`, which is a different subvolume.
+Do not claim that Lidarr uses hardlinks across that boundary.
 
-This is what makes the qBittorrent → *arr hardlink-on-import flow work — distinct uids, shared gid, group-writable files (set via qBittorrent's `UMask=0002`). Without it the kernel's `fs.protected_hardlinks=1` makes `link()` fail with EPERM and *arr silently falls back to reflink/copy. See `Mnemopi recall: gotcha-arr-reflinks-not-hardlinks`.
-
-Canonical doc: `profiles/media-acquisition/resources.nix` header comment.
+The authoritative paths and permissions are in
+`profiles/media-acquisition/resources.nix` and each service module.
 
 ## Secrets: sops-nix patterns
 
@@ -310,7 +312,7 @@ NixOS services using `DynamicUser=yes` (open-webui, ollama, ntfy-sh, beszel-hub,
 |---|---|
 | Can't `chown <name>:<name>` — users don't exist statically | `chown --reference=<existing-file>` to copy ownership from a sibling |
 | `/run/secrets/*` is `0440 root:keys` | `SupplementaryGroups = [ "keys" ]` to grant access |
-| `StateDirectory` is `/var/lib/private/<name>` symlinked to `/var/lib/<name>` | Target the real path: `nori.backups.<n>.include = [ "/var/lib/private/<name>" ];`. Restic stores symlinks AS symlinks → pointing at `/var/lib/<name>` produces a 0-byte snapshot. A self-maintaining assertion in `infra/common/nixos/backup.nix` (derived from `config.systemd.services` introspection) catches this at eval time. Deep dive: `Mnemopi recall: gotcha-dynamicuser-statedirectory-symlink` |
+| `StateDirectory` is `/var/lib/private/<name>` symlinked to `/var/lib/<name>` | Target the real path: `nori.backups.<n>.include = [ "/var/lib/private/<name>" ];`. Restic stores the symlink when a job targets `/var/lib/<name>`, which produces a 0-byte state snapshot. `infra/common/nixos/backup.nix` derives an assertion from the evaluated systemd services and rejects this path. |
 
 Adding a new OIDC client → `/add-oidc-client` (procedure skill — bootstrap, sops paste, route declaration, systemd wiring).
 
@@ -356,38 +358,45 @@ just show-status                   # failed units + disk + restic/btrbk timer su
 just show-logs <unit>              # last 50 journal lines
 just check                    # nix flake check
 just plan-deploy <comparison-base> # read-only plan; choose main, upstream, or the deployed commit
-just deploy                   # git push + nh os switch from origin (no rsync)
+just deploy                   # switch the current host from github:phibkro/homelab; does not push
 just rollback                 # previous generation
 just backup <repo>            # immediately run restic-backups-<repo>
 just list-snapshots <repo>         # list restic snapshots
 just --list                   # all recipes
 ```
 
-`nh os switch` is the rebuild engine — replaces `nixos-rebuild`. Internal sudo (don't prefix); shows ADDED/REMOVED/CHANGED diff before activating.
+`nh os switch` activates local or GitHub-sourced workstation generations. It invokes sudo internally, so do not prefix it. The remote `push <host>` recipe uses `nixos-rebuild --target-host` instead.
 
-NixOS commands target workstation. Pi has its own `pi::` commands; do not pass
-Pi to a NixOS rebuild recipe. Inspect `just --list` for each recipe’s arguments.
+Local `rebuild` targets the current NixOS host. Use `push <host>` for an
+explicit remote NixOS target. Pi has its own `pi::` commands; do not pass Pi to
+a NixOS rebuild recipe. Inspect `just --list` for each recipe's arguments.
 
 ### Pi is an Ansible target
 
-Use `just pi::check`, `just pi::test`, and `just pi::plan` before approved
-`just pi::deploy`. There is no production `nixosConfigurations.pi` and no Pi
-NixOS closure to cross-build. Existing Nix entry-plane adapter tests remain
-useful for their own implementation and shared contracts; they do not test
-production Ansible behavior.
+Use `just pi::check`, `just pi::test`, and `just pi::plan` before an approved,
+target-confirmed `just pi::deploy`. The
+[deployment reference](deployment.md) defines the required confirmation value.
+Pi has no production `nixosConfigurations.pi` and no NixOS closure to
+cross-build. Nix entry-plane adapter tests cover shared contracts; they do not
+test production Ansible behavior.
 
 ### Disko at install
 
-Disk layouts in `infra/<host>/disko*.nix` from day zero. First install:
+Disk layouts live in `infra/<host>/disko*.nix` from day zero. A workstation
+install must:
 
-1. Boot NixOS minimal installer USB
-2. SSH into installer or work locally
-3. Clone the flake to `/tmp/homelab`
-4. `nix --experimental-features 'nix-command flakes' run github:nix-community/disko/latest -- --mode disko /tmp/homelab/infra/workstation/disko.nix`
-5. `nixos-install --flake /tmp/homelab#workstation`
-6. Reboot, set password on first login, push generated flake.lock
+1. boot a NixOS minimal installer;
+2. obtain the intended repository revision and existing `flake.lock`;
+3. identify every attached disk by model, serial, and `/dev/disk/by-id/`;
+4. confirm that the evaluated disko scope contains only the approved target;
+5. apply `infra/workstation/disko.nix`;
+6. run `nixos-install --flake /tmp/homelab#workstation`;
+7. restore or re-enroll host identity before activating secret-dependent units.
 
-Detailed step-by-step in `docs/installs/baremetal.md`. `nixos-anywhere` is the fully-remote alternative.
+Formatting a disk, changing SOPS recipients, and enrolling Tailscale are
+separate operator-authorized effects. The current procedure and preservation
+constraints are in `docs/installs/baremetal.md` and
+`docs/runbooks/drive-failure-root.md`.
 
 ## Commit + code style
 

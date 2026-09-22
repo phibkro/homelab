@@ -6,9 +6,9 @@
 # records every `dispatch` call verbatim (one lua expression per line) to
 # $dispatch_log and serves a canned post-restore `clients -j` list from
 # tests/fixtures/<scenario>/clients-after.json. Assertions on dispatch
-# syntax read $dispatch_log directly — this is what keeps the tests
-# honest against the lua-builder-form gotcha (see
-# Mnemopi recall: gotcha-hyprland-lua-migration).
+# syntax read $dispatch_log directly. This keeps the tests honest against the
+# Lua builder form documented in
+# docs/specs/2026-07-20-hypr-session-persistence-design.md.
 
 setup() {
   script_dir="$(cd "$(dirname "$BATS_TEST_FILENAME")" && pwd)"

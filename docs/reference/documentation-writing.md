@@ -160,12 +160,10 @@ infra/common/nixos/gpu.nix /** */ carries    the GPU access
                                                      host driver split
 
 infra/<host>/hardware.nix /** */ carries  the per-host posture
-                                                     (anti-write Pi, NVMe
-                                                     enumeration warning,
-                                                     impermanence on
-                                                     pavilion, Maxwell vs
-                                                     Blackwell driver
-                                                     branches)
+                                                     (disk identity,
+                                                     GPU and sleep
+                                                     constraints,
+                                                     physical roles)
 
 docs/reference/network.md keeps                      Authelia OIDC overview
                                                      (cross-module), the

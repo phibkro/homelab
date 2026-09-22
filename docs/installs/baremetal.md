@@ -1,230 +1,174 @@
 ---
-summary: Phase 4 step-by-step — disko-applied bare-metal NixOS install on workstation,
-  from installer USB through nixos-install to first boot.
+summary: Current destructive workstation installation procedure, disk-identity gates, and recovery handoff.
 ---
 
-# Phase 4: NixOS install on workstation (disko-based)
+# Workstation bare-metal install
 
-Bare-metal install. The flake's `infra/workstation/disko.nix` declares
-the partition layout; disko applies it; `nixos-install` writes the
-system. No manual `parted` or `mkfs` — the layout is in version control.
+Use this procedure for a new workstation install or a replacement root disk.
+For recovery after a root-disk failure, also follow the
+[root-drive runbook](../runbooks/drive-failure-root.md).
 
-Read this whole document before starting. As-of-Phase-5+ note: this
-doc was written for the original April 2026 install. OneTouch is a
-prepared but disabled restic destination pending a verified connection;
-it is not current backup coverage. Keep it disconnected during install
-and don't use the same drive for both rollback insurance and an in-use
-restic repository.
-Use a different external drive for the partclone-rollback backup if
-you're re-running this on an existing workstation.
+This procedure destroys the selected disk. It requires explicit operator
+approval after the disk identity and source revision are reviewed.
 
-## 1. Prepare the USB installer
+## Preconditions
 
-On your Mac:
+Before booting the installer:
+
+1. Choose the exact repository revision and keep its existing `flake.lock`.
+2. Review `infra/workstation/disko.nix` and its `/dev/disk/by-id/` target.
+3. Record the model and serial for every attached disk.
+4. Verify recent OneTouch snapshots and the restore evidence needed for this
+   install.
+5. Preserve the MP510, IronWolf Pro, OneTouch, and every other non-target disk.
+6. Keep a trusted path for restoring or replacing the workstation SSH host key.
+
+Do not assume that a device such as `/dev/nvme0n1` identifies the same physical
+disk after a reboot. The current disk declaration uses a stable by-id path.
+A replacement disk has a different path. Update and review the declaration
+before running Disko.
+
+## Install
+
+### 1. Boot the installer
+
+Boot a current NixOS minimal installer in UEFI mode. Enable the network, then
+enter a root shell.
 
 ```bash
-diskutil list
-# Find your USB stick — typically /dev/diskN where N >= 2.
-# Verify by SIZE; do NOT pick the Mac's internal disk.
-
-diskutil unmountDisk /dev/diskN
-
-# Use the raw device (rdiskN) for ~5x faster writes.
-sudo dd if=~/Downloads/nixos-minimal-25.11.<...>.iso \
-        of=/dev/rdiskN \
-        bs=1m \
-        status=progress
-
-sudo diskutil eject /dev/diskN
-```
-
-Pull the USB out.
-
-## 2. Stage physically
-
-- Plug USB into workstation.
-- Connect keyboard + monitor.
-- **Disconnect One Touch** (we don't want it on the USB bus during
-  install — reduces accidents).
-
-## 3. Boot from USB
-
-Power on. Spam **F12** at the Gigabyte splash to enter the boot menu.
-Pick the **UEFI** entry for the USB (not the legacy/BIOS entry).
-
-NixOS boot menu appears → press Enter on the default. Land at a TTY
-prompt. (Minimal ISO has no GUI; that's fine.)
-
-```
 sudo -i
-```
-
-You're root in the installer.
-
-## 4. Verify network and identify disks
-
-```
 ping -c 2 cache.nixos.org
-lsblk -o NAME,SIZE,MODEL,TYPE
 ```
 
-Confirm:
-- `nvme0n1` is `WDS100T3X0C-00SJG0` (WD Black SN750, 931.5 GB) — install
-  target.
-- `nvme1n1` is `Force MP510` (Corsair, 894 GB) — Windows. **Do not
-  touch.**
-- `sda` is the IronWolf Pro (3.6 TB) — leave it alone for Phase 4; Phase
-  2 reformats it later.
+### 2. Obtain the intended source
 
-If any disk is missing or the model strings don't match, **stop** and
-investigate. The disko config is hardcoded for `/dev/nvme0n1`.
+Place the intended homelab checkout at `/tmp/homelab`. A remote clone is valid
+only when the required revision was published. Otherwise, copy the reviewed
+checkout through a trusted local or SSH path.
 
-## 5. Run disko
-
-The installer ships with `nix` and flake support. Apply the partition
-layout from the flake:
-
-```
-nix-shell -p git
-git clone https://github.com/phibkro/homelab.git /tmp/homelab
+```bash
 cd /tmp/homelab
-
-nix --experimental-features 'nix-command flakes' \
-    run github:nix-community/disko/latest -- \
-    --mode disko --flake /tmp/homelab#workstation
+git rev-parse HEAD
 ```
 
-What this does:
-- Wipes and re-partitions `/dev/nvme0n1` per `infra/workstation/disko.nix`.
-- Creates the ESP (vfat, label `BOOT`) and btrfs filesystem (label
-  `nixos`) with six subvolumes.
-- Mounts everything under `/mnt/` ready for `nixos-install`.
+Compare the result with the approved revision. Do not update `flake.lock` during
+recovery or installation unless that separate source change was approved.
 
-Disko prompts before destructive operations. **It will not touch
-`nvme1n1`** — the disko config names `nvme0n1` explicitly.
+### 3. Verify disk identity
 
-When it finishes, sanity-check the result:
-
+```bash
+lsblk -o NAME,SIZE,MODEL,SERIAL,FSTYPE,MOUNTPOINTS
+ls -l /dev/disk/by-id/
 ```
+
+Match the approved target by model, serial, and by-id path. Confirm that
+`infra/workstation/disko.nix` selects only that disk. Stop if any identity is
+missing or different.
+
+Disconnect removable non-target disks when practical. Disko scope and disk
+identity remain the required safeguards for internal disks.
+
+### 4. Apply the reviewed layout
+
+```bash
+disko_rev="$(
+  nix eval --impure --raw --expr \
+    '(builtins.fromJSON (builtins.readFile /tmp/homelab/flake.lock)).nodes.disko.locked.rev'
+)"
+nix --extra-experimental-features 'nix-command flakes' \
+  run "github:nix-community/disko/${disko_rev}" -- \
+  --mode disko /tmp/homelab/infra/workstation/disko.nix
+```
+
+This command is destructive. It creates the current Btrfs and EFI layout from
+the reviewed source. Do not re-run Disko against IronWolf, MP510, OneTouch, or a
+disk that may still contain recoverable data.
+
+Inspect the result before installation:
+
+```bash
 findmnt -R /mnt
 ```
 
-Expect six btrfs mounts (`/`, `/home`, `/nix`, `/var/lib`, `/srv/share`,
-`/.snapshots`) and one vfat mount (`/boot`), all under `/mnt`.
+### 5. Recreate disk swap and refresh resume identity
 
-## 6. Install
+The root filesystem stores `/swapfile` outside Disko. Formatting the root
+filesystem changes its UUID and invalidates the recorded hibernation offset.
+Create the file on the mounted target:
 
+```bash
+btrfs filesystem mkswapfile --size 32g /mnt/swapfile
+findmnt -no UUID /mnt
+btrfs inspect-internal map-swapfile -r /mnt/swapfile
 ```
+
+Update `boot.resumeDevice` and the `resume_offset` kernel parameter in
+`infra/workstation/hardware.nix` with these observed values. Review and commit
+that source change before installation. Do not reuse values from the old
+filesystem.
+
+### 6. Install NixOS
+
+```bash
 nixos-install --flake /tmp/homelab#workstation --no-root-password
 ```
 
-Expected runtime: 5–15 min. You'll see `copying path '/nix/store/...'`
-streams, then activation. At the end: `installation finished!`
-
-The `nori` user is created **without a password**. SSH will work via the
-Mac's key; `sudo` doesn't need a password (`wheelNeedsPassword = false`).
-
-### If install errors
-
-Most likely culprits:
-- **Driver build failure**: as of April 2026 `nvidiaPackages.production`
-  is 595.x and kernel 6.18 LTS; the historical 580.119/6.19 build break
-  is resolved. If a regression returns, fall back via the ladder
-  documented in `docs/reference/topology.md` § GPU access pattern (`production` →
-  `beta` → `latest` → explicit `mkDriver`).
-- **`nixos-hardware.nixosModules.common-pc-ssd` missing**: drop the
-  import.
-
-For any error: paste the message, edit the flake on the laptop, push,
-`git pull` in the installer, retry.
-
-## 7. Capture the lock file
-
-Disko + nixos-install just generated `/tmp/homelab/flake.lock` as a
-side effect. Pull it back to the canonical repo so future installs are
-reproducible.
-
-From a second Mac terminal (with the installer still running on
-workstation, on the LAN — find its IP via `ip -br addr` in the
-installer):
+Before reboot, restore the verified old SSH host key under `/mnt/etc/ssh/` if
+that recovery path is approved. Otherwise, create the new key explicitly;
+NixOS normally generates a missing host key during first boot, which is too
+late for an independent fingerprint:
 
 ```bash
-scp nixos@<installer-ip>:/tmp/homelab/flake.lock \
-    /Users/nori/Documents/nix-migration/flake.lock
-
-cd /Users/nori/Documents/nix-migration
-git add flake.lock
-git commit -m "chore: pin flake.lock from first workstation install"
-git push
-```
-
-(The installer's `nixos` user has password `nixos`.)
-
-If you forget this step before reboot, no big deal — we can pull the
-lock from workstation via SSH after first boot.
-
-## 8. Reboot
-
-```
+install -d -m 0755 /mnt/etc/ssh
+test -e /mnt/etc/ssh/ssh_host_ed25519_key || \
+  ssh-keygen -q -t ed25519 -N '' -f /mnt/etc/ssh/ssh_host_ed25519_key
+ssh-keygen -lf /mnt/etc/ssh/ssh_host_ed25519_key.pub
+ip -br address
 reboot
 ```
 
-Pull the USB out as the machine restarts. UEFI's first boot entry is
-"Linux Boot Manager" (created by `bootctl` during install); the system
-should boot straight into NixOS, landing at a TTY login prompt:
-
-```
-workstation login:
-```
-
-Login as `nori` (no password). You're in.
-
-## 9. Validate from the Mac
-
-Find the LAN IP. Either check your router's DHCP leases or, on
-workstation console, `ip -br addr`.
+Remove the installer media during restart. The `nori` account accepts only its
+declared SSH keys; password login and root login are disabled. From a trusted
+machine with this repository, derive the reserved LAN address and compare the
+presented key fingerprint with the value recorded before reboot:
 
 ```bash
-ssh nori@192.168.1.<NEW>          # SSH key, no password
-sudo whoami                        # → root, no password
-sudo tailscale up --ssh            # browser auth, joins tailnet
-tailscale status                   # confirm joined
+host="$(nix eval --raw .#lib.noriInventory.hosts.workstation.lanIp)"
+ssh-keyscan -t ed25519 "$host" 2>/dev/null | ssh-keygen -lf -
+ssh "nori@$host"
+sudo whoami
 ```
 
-Phase 4 is done when all four work.
+If the address does not answer, inspect the router's DHCP leases using the
+wired address recorded before reboot. Replace a stale `known_hosts` entry only
+after the new fingerprint matches the recorded value. Do not depend on
+Tailscale for first-boot access.
 
-## What this install does NOT do (deferred)
+## Restore identity and state
 
-- **`flake.lock` capture and commit** — see step 7. Easy to miss.
-- **Service activation.** Tailscale comes up through
-  `services/tailscale/nixos.nix`. Hosted services
-  (Samba, Ollama, Jellyfin, Immich, the *arr stack, Glance,
-  Radicale, Syncthing, etc.) come up via `services/` —
-  the host imports the whole "server concern" via
-  `infra/workstation/default.nix`.
-- **Tailscale identity restore.** Fresh `tailscale up` registers a *new*
-  node. The old `workstation` from Ubuntu lingers as expired in the
-  admin console. Either delete it now or restore `/var/lib/tailscale/`
-  from the rsync backup before starting tailscaled (Phase 5).
-- **IronWolf Pro reformat.** Phase 2. Separate operation; runs when
-  you have a free evening.
-- **OneTouch as restic target.** Phase 5+ — see
-  `nix/hosts/workstation/disko-onetouch.nix`. <!-- path-coherence: skip — historical install doc; file moved to machines/aurora/ when OneTouch relocated 2026-06-11 --> Don't run that disko
-  config until the OneTouch's existing data has been migrated off
-  (any Phase-1 backups it held are now on @archive on IronWolf;
-  the migration is in `git log` around the OneTouch transition).
+If the old SSH host key was not restored, enroll the new age identity and
+update only the required SOPS recipients. SOPS re-encryption is a separate
+credential change and requires authorization.
 
-## What to do if it goes catastrophically wrong
+Tailscale enrollment and any control-plane approval are also separate external
+effects. Do not treat a successful NixOS boot as proof that either is complete.
 
-If this is a fresh install replacing existing Ubuntu, you ideally
-have a partclone image from the original Phase 1 migration. The
-scripts that produced it lived at `scripts/legacy/` until 2026-04-30;
-recover from git history if needed:
-`git log --all --diff-filter=D -- 'scripts/legacy/*'`. Worst case:
-30–60 min of restore. For NixOS-replacing-NixOS recovery, the
-canonical path is disko + `nixos-install` + restic restore — see
-`docs/runbooks/drive-failure-root.md`.
+Inspect Restic snapshots in a disposable restore directory before copying state
+into the new system. Follow the root-drive runbook for service and user-data
+recovery. Do not overwrite a running database with files from a snapshot.
 
-For everything else (post-install issues), the runbooks at
-`docs/runbooks/` cover bad-config, file-deletion, service-corruption,
-and drive-failure scenarios.
+## Acceptance
+
+The installation is complete only after all applicable checks pass:
+
+- the running system uses the approved revision;
+- mounted filesystems match the reviewed source and physical disks;
+- no preserved disk was formatted or mounted under the wrong role;
+- SOPS-backed units can read only their declared secrets;
+- operator SSH and local recovery access work;
+- selected restored files and databases pass their own integrity checks;
+- OneTouch backup and restore paths are re-established;
+- `systemctl --failed` reports no unexpected failed units.
+
+Record the installed revision, disk identities, restored snapshot IDs, checks,
+and any boundary that remains unverified.

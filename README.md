@@ -47,8 +47,9 @@ devenv shell -- just pi::plan
 ```
 
 Activation is a separate operator step: `just rebuild` for workstation,
-`just push adelie` for Adelie, and `just pi::deploy` for Pi. Follow the
-deployment reference and backup cutover runbook before migration activation.
+`just push adelie` for Adelie, and confirmed `just pi::deploy` for Pi. The
+[deployment reference](docs/reference/deployment.md) defines the Pi target
+confirmation and activation order.
 
 Shared facts live in `inventory/`; generated catalogs live in
 [docs/generated](docs/generated). Nix implementation lives under the paths in
