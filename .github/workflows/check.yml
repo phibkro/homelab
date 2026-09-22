@@ -1,6 +1,7 @@
 name: flake check
 
-# Static checks and closure builds run without deployment credentials.
+# Static checks run without deployment credentials. Physical host deployments
+# provide the runtime and closure evidence.
 
 on:
   push:
@@ -30,10 +31,6 @@ jobs:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
             experimental-features = nix-command flakes
-            # Match the deployed hosts' binary caches. CUDA avoids rebuilding
-            # OpenCV; Numtide supplies the pinned llm-agents packages.
-            extra-substituters = https://cache.nixos-cuda.org https://cache.numtide.com
-            extra-trusted-public-keys = cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
 
       - name: fast Nix checks
         # HOMELAB_CI=1 + --impure activate the CI-only davinci-resolve stub
@@ -42,24 +39,6 @@ jobs:
         # and it SIGTERM'd a run at the runner's disk/time limit on 2026-07-18).
         # Local `just rebuild` / `nix flake check` stay pure → real package.
         run: HOMELAB_CI=1 nix develop --impure --command bash scripts/check-nix.sh fast --impure
-
-  nix-vms:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: cachix/install-nix-action@v27
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-            experimental-features = nix-command flakes
-            max-jobs = 1
-            cores = 2
-            # The agent-engine VM consumes the same llm-agents.nix package pin
-            # as the workstation.
-            extra-substituters = https://cache.numtide.com
-            extra-trusted-public-keys = niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
-      - name: disposable NixOS runtime checks
-        run: HOMELAB_CI=1 nix develop --impure --command bash scripts/check-nix.sh vm --impure
 
   pi-static:
     runs-on: ubuntu-latest
@@ -73,35 +52,3 @@ jobs:
       - name: Pi lint, contracts, inventory, and Ansible syntax
         # Root flake.lock pins devenv; infra/pi/devenv.lock pins the appliance tools.
         run: nix develop --command just pi::check
-
-  # Build the converged workstation closure on the standard x86 runner. This
-  # job only proves the closure: it receives no deployment credentials and
-  # never activates a host.
-  workstation-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: cachix/install-nix-action@v27
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-            experimental-features = nix-command flakes
-            # Match the deployed hosts' binary caches. CUDA avoids rebuilding
-            # OpenCV; Numtide supplies the pinned llm-agents packages.
-            extra-substituters = https://cache.nixos-cuda.org https://cache.numtide.com
-            extra-trusted-public-keys = cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
-
-      - name: build workstation system closure
-        id: closure
-        run: |
-          path="$(
-            HOMELAB_CI=1 nix build --impure \
-              .#nixosConfigurations.workstation.config.system.build.toplevel \
-              --no-link \
-              --print-out-paths \
-              --print-build-logs \
-              --option max-jobs 1 \
-              --option cores 2
-          )"
-          echo "path=${path}" >> "${GITHUB_OUTPUT}"
