@@ -17,13 +17,13 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
 - **Physical Pi acceptance.** Power-cycle the appliance, exercise HTTPS and DNS
   from an off-LAN tailnet client, and approve any remaining Tailscale
   control-plane changes. Do not treat VM reboot evidence as physical evidence.
-- **Peer remote desktop physical acceptance.** At each local greetd screen, log
-  in to Plasma, Plasma Bigscreen, and Hyprland. Verify portals and one-password
-  keyring unlock. In each RustDesk session, enable Direct IP access on TCP
-  21118 and set credentials. Connect to the peer tailnet name in both
-  directions. Pair Moonlight in both directions. Verify video, audio, and input.
-  On a Moonlight-capable television device, launch Bigscreen and verify remote
-  input. Follow `docs/specs/2026-09-22-peer-remote-desktops.md`. Evidence:
+- **Peer remote desktop remaining physical acceptance.** Moonlight video and remote input passed in both directions between desktop clients.
+  Adelie also displayed the workstation through RustDesk direct-IP mode. Verify audible Moonlight audio on the physical outputs.
+  Connect workstation to Adelie's RustDesk listener. Verify RustDesk video and remote input in both directions.
+  At each local greetd screen, log in to Plasma, Plasma Bigscreen, and Hyprland.
+  Verify the portal and one-password keyring path in each Plasma and Hyprland session.
+  On a Moonlight television client, start Bigscreen and verify remote input. Follow
+  `docs/specs/2026-09-22-peer-remote-desktops.md`. Evidence:
   `docs/archive/reports/2026-09-22-peer-remote-desktop-activation.md`.
 - **Personal-application Sentry provisioning.** Create the Sentry projects and
   production DSNs for the Cloudflare-hosted applications. Drinks and Filmder

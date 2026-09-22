@@ -2,7 +2,7 @@
 
 ## Scope
 
-This activation applied the peer remote desktop contract to Adelie and workstation. The deployed source revision was `4f82f3a0d228ba0038f148c99c50654ca89eeefd`.
+The initial activation used source revision `4f82f3a0d228ba0038f148c99c50654ca89eeefd`. Follow-up corrections ended with code revision `8961c9b`.
 
 The configuration adds these functions to both hosts:
 
@@ -49,19 +49,50 @@ Adelie did not reach the same interface through the workstation LAN address. The
 
 Tailscale ping worked in both directions. Adelie did not have an active Sunshine listener because Adelie had no active graphical login.
 
-## Open physical acceptance
+## Interactive peer acceptance
 
-RustDesk direct-IP mode remains disabled runtime state. Workstation has no `direct-server` option, and Adelie has no RustDesk configuration file.
+### Sunshine and Moonlight
 
-Neither host had a TCP 21118 listener. The operator must enable direct-IP mode and set credentials in each RustDesk session.
+Sunshine 2026.804.1201 crashed on Adelie after the RTSP `ANNOUNCE` request. Revision `62cf5e4` selected beta 2026.914.233613.
 
-The following evidence still requires an active local session on Adelie:
+The beta package completed the same request. Revision `6c02121` also gave `nori` access to `/dev/uinput`.
 
-1. Start Sunshine through a graphical login.
-2. Pair Moonlight in each direction.
-3. Prove video, audio, and remote input.
-4. Connect RustDesk directly in each direction through the tailnet.
-5. Open Plasma Bigscreen and prove the television input path.
-6. Prove the Plasma and Hyprland portal and keyring paths.
+Revision `b4e7e97` disabled the unsupported Sunshine tray. The tray blocked the end of a graphical session.
+
+Moonlight paired in both directions with host-specific client certificates. Each client displayed the live peer desktop.
+
+Remote key input changed the peer session in both directions. The client logs also showed Opus initialization.
+
+This evidence does not prove audible output on physical speakers.
+
+### RustDesk
+
+The first Wayland share failed after portal selection. RustDesk could not create the GStreamer element `pipewiresrc`.
+
+Revision `8961c9b` added PipeWire's GStreamer plugin directory to the RustDesk wrapper on both hosts.
+
+The deployment planner selected Adelie before workstation for this correction.
+
+| Host | Activation time | System closure |
+|---|---|---|
+| Adelie | 2026-09-22 21:22:56 UTC | `/nix/store/d75ic4g6dmr4jdzxzw923nzygcymid7r-nixos-system-adelie-26.11.20260920.44a9189` |
+| workstation | 2026-09-22 21:26:12 UTC | `/nix/store/vsm0zn2abnghs484mhn3pvb4ink5b16a-nixos-system-workstation-26.11.20260920.44a9189` |
+
+Both hosts reported `running` and zero failed units after activation. Both deployed RustDesk wrappers referenced the PipeWire plugin.
+
+Adelie connected to workstation at `100.81.5.122:21118`. The session used a one-time credential, local acceptance, and portal selection.
+
+Adelie displayed the live workstation desktop. The deployed wrapper provided `pipewiresrc` without a manual environment change.
+
+Cleanup stopped the transient RustDesk processes. Neither host retained a TCP 21118 listener.
+
+## Remaining physical acceptance
+
+1. Connect from workstation to Adelie's direct-IP listener. Verify RustDesk video and remote input.
+2. Verify RustDesk remote input from Adelie to workstation.
+3. Verify audible Moonlight audio on the physical outputs.
+4. At each greetd screen, log in to Plasma, Plasma Bigscreen, and Hyprland.
+5. Verify the portal and one-password keyring path in each Plasma and Hyprland session.
+6. Use a Moonlight television client to start Bigscreen and verify remote input.
 
 This report does not prove reboot persistence, login-screen access, independent concurrent seats, or television compatibility.
