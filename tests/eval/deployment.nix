@@ -94,6 +94,7 @@ let
       kind = "nixos";
       profiles = [
         "base"
+        "graphical-desktop"
         "log-forwarder"
         "remote-backup-source"
         "observability-agent"
