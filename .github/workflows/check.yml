@@ -30,10 +30,10 @@ jobs:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
             experimental-features = nix-command flakes
-            # Match the deployed hosts' CUDA cache; source-building OpenCV
-            # exhausts a GitHub runner's disk before the closure can finish.
-            extra-substituters = https://cache.nixos-cuda.org
-            extra-trusted-public-keys = cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M=
+            # Match the deployed hosts' binary caches. CUDA avoids rebuilding
+            # OpenCV; Numtide supplies the pinned llm-agents packages.
+            extra-substituters = https://cache.nixos-cuda.org https://cache.numtide.com
+            extra-trusted-public-keys = cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
 
       - name: fast Nix checks
         # HOMELAB_CI=1 + --impure activate the CI-only davinci-resolve stub
@@ -54,6 +54,10 @@ jobs:
             experimental-features = nix-command flakes
             max-jobs = 1
             cores = 2
+            # The agent-engine VM consumes the same llm-agents.nix package pin
+            # as the workstation.
+            extra-substituters = https://cache.numtide.com
+            extra-trusted-public-keys = niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
       - name: disposable NixOS runtime checks
         run: HOMELAB_CI=1 nix develop --impure --command bash scripts/check-nix.sh vm --impure
 
@@ -83,10 +87,10 @@ jobs:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
             experimental-features = nix-command flakes
-            # Match the deployed hosts' CUDA cache; source-building OpenCV
-            # exhausts a GitHub runner's disk before the closure can finish.
-            extra-substituters = https://cache.nixos-cuda.org
-            extra-trusted-public-keys = cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M=
+            # Match the deployed hosts' binary caches. CUDA avoids rebuilding
+            # OpenCV; Numtide supplies the pinned llm-agents packages.
+            extra-substituters = https://cache.nixos-cuda.org https://cache.numtide.com
+            extra-trusted-public-keys = cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M= niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
 
       - name: build workstation system closure
         id: closure

@@ -35,12 +35,40 @@
           );
           mkCasePattern = patterns: lib.concatStringsSep "|" patterns;
 
-          workstationHome = inputs.self.nixosConfigurations.workstation.config.home-manager.users.nori.home;
+          workstationUser = inputs.self.nixosConfigurations.workstation.config.home-manager.users.nori;
+          workstationHome = workstationUser.home;
           homePackageNamed =
             name:
             builtins.head (builtins.filter (package: lib.getName package == name) workstationHome.packages);
           agentNotifyPackage = homePackageNamed "agent-notify";
           riceCommandPackage = homePackageNamed "rice-command";
+          riceActionFiles = lib.filterAttrs (
+            name: _: lib.hasPrefix "vicinae/scripts/rice/nori-rice-" name
+          ) workstationUser.xdg.dataFile;
+          riceActionScripts = pkgs.linkFarm "nori-rice-action-scripts" (
+            lib.mapAttrsToList (name: file: {
+              name = lib.removePrefix "vicinae/scripts/rice/" name;
+              path = file.source;
+            }) riceActionFiles
+          );
+          riceActionCatalog = workstationUser.xdg.dataFile."nori-desktop/actions.json".source;
+          generatedHyprlandLua = workstationUser.xdg.configFile."hypr/hyprland.lua".source;
+          privateRiceDesktopFiles = builtins.filter (
+            name: builtins.match ".*nori-rice-.*[.]desktop" name != null
+          ) (builtins.attrNames workstationUser.home.file);
+          privateRiceDesktopEntries = builtins.filter (name: lib.hasPrefix "nori-rice-" name) (
+            builtins.attrNames workstationUser.xdg.desktopEntries
+          );
+          privateRiceDataFiles = builtins.filter (
+            name: builtins.match "applications/nori-rice-.*[.]desktop" name != null
+          ) (builtins.attrNames workstationUser.xdg.dataFile);
+          privateRicePackages = builtins.filter (
+            package:
+            let
+              name = lib.getName package;
+            in
+            lib.hasPrefix "nori-rice-" name || name == "rice-private-applications"
+          ) workstationHome.packages;
         in
         {
           foundry-conventions =
@@ -196,6 +224,12 @@
               '';
 
           hypr-rice-launcher-projection =
+            assert lib.assertMsg (
+              privateRiceDesktopFiles == [ ]
+              && privateRiceDesktopEntries == [ ]
+              && privateRiceDataFiles == [ ]
+              && privateRicePackages == [ ]
+            ) "private rice desktop entries leaked into a Home Manager projection";
             pkgs.runCommandLocal "hypr-rice-launcher-projection"
               {
                 nativeBuildInputs = [
@@ -206,9 +240,8 @@
               }
               ''
                 dispatcher=${riceCommandPackage}/bin/rice-command
-                data_root=${workstationHome.activationPackage}/home-files/.local/share
-                scripts="$data_root/vicinae/scripts/rice"
-                manifest="$data_root/nori-desktop/actions.json"
+                scripts=${riceActionScripts}
+                manifest=${riceActionCatalog}
 
                 test -f "$manifest"
                 test -d "$scripts"
@@ -236,17 +269,11 @@
                   )
                 ' "$manifest" >/dev/null
 
-                generated_lua=${workstationHome.activationPackage}/home-files/.config/hypr/hyprland.lua
+                generated_lua=${generatedHyprlandLua}
                 jq -r 'to_entries[] | select(.value.directBinding != null) | .key' "$manifest" \
                   | while IFS= read -r id; do
                       grep -Fq "rice-command $id" "$generated_lua"
                     done
-
-                if find ${workstationHome.activationPackage}/home-path/share/applications \
-                  -maxdepth 1 -name 'nori-rice-*.desktop' -print -quit | grep -q ./.; then
-                  echo 'private rice desktop entries leaked into the activated profile' >&2
-                  exit 1
-                fi
 
                 set +e
                 "$dispatcher" >/dev/null 2>&1
