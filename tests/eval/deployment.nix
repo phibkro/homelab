@@ -56,7 +56,7 @@ let
     && deployment.sourceRoots."services/music-ingest" == [ "workstation" ]
     && deployment.sourceRoots."services/jellyfin" == [ "workstation" ]
     && deployment.sourceRoots."profiles/media-acquisition" == [ "workstation" ]
-    && deployment.sourceRoots."services/filmder" == [ "adelie" ]
+    && deployment.sourceRoots."services/grafana" == [ "adelie" ]
     && deployment.sourceRoots."services/restic-target" == [ "workstation" ]
     && deployment.sourceRoots."services/caddy/manifest.nix" == [ "pi" ]
     &&

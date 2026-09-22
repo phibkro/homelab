@@ -26,6 +26,8 @@ repository. `observed` contains timestamped runtime results. `proven` links to
 accepted recovery reports.
 The [September 21 acceptance](../archive/reports/2026-09-21-operator-view.md)
 records the first live result and its evidence limits.
+The [September 22 personal-application cutover](../archive/reports/2026-09-22-personal-app-cloudflare-cutover.md)
+records the Cloudflare production checks and the local runtime retirement.
 
 Use the source projections for detailed configuration queries:
 
@@ -257,17 +259,14 @@ Email digest deferred. When it lands: Gmail SMTP with app password (sufficient f
 
 ## Self-deployed apps
 
-Runtime credentials for workstation-hosted applications live in
+Personal application repositories own their Cloudflare source, build,
+deployment state, public routes, and rollback procedures. Homelab inventory
+does not rebuild or serve those applications.
+
+Runtime credentials for applications that still run on workstation live in
 `secrets/workstation-runtime.yaml`. The file's recipient set matches the
 workstation runtime authority. `secretspec.toml` provides the masked operator
 interface for setting and rotating its values.
-
-Live worked example: `services/filmder/manifest.nix` declares its
-endpoint and governed `legacy-host-build` artifact contract;
-`services/filmder/nixos.nix` consumes that contract for the systemd
-build and serving realization. Filmder and Heim are the only mutable-source
-exceptions. Their manifests name an owner, reason, removal trigger, and test;
-new product deployments should consume immutable artifacts instead.
 
 ## Desktop settings service
 

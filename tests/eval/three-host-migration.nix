@@ -16,9 +16,7 @@ let
   workstation = inputs.self.nixosConfigurations.workstation.config;
   movedServices = [
     "attic"
-    "filmder"
     "grafana"
-    "heim"
     "miniflux"
     "radicale"
     "stremio"
@@ -36,7 +34,6 @@ let
     "oidc-vault-client-secret"
     "restic-password"
     "restic-ssh-key"
-    "tmdb-token"
     "wifi-akkar-psk"
   ];
   sharedAdelieSecrets = [
@@ -79,18 +76,11 @@ let
       adelie.systemd.services.${name}.unitConfig.ConditionPathExists
       == "/var/lib/nori/migration/${name}-ready"
     ) statefulBackupNames
-    && builtins.hasAttr "filmder-serve" adelie.systemd.services
-    && builtins.hasAttr "filmder-static" adelie.systemd.services
-    && builtins.hasAttr "heim-serve" adelie.systemd.services
-    && builtins.hasAttr "stremio" adelie.systemd.services
-    && adelie.systemd.services.filmder-build.serviceConfig.User == "filmder-builder"
-    && adelie.systemd.services.filmder-static.serviceConfig.User == "filmder-static"
-    && adelie.systemd.services.filmder-serve.serviceConfig.User == "filmder-proxy"
-    && lib.elem "d /var/lib/filmder/dist 0750 filmder-builder filmder-static -" adelie.systemd.tmpfiles.rules
-    && lib.any (
-      command: lib.hasSuffix "/bin/systemctl restart filmder-static.service" command
-    ) adelie.systemd.services.filmder-build.serviceConfig.ExecStartPost
-    && !(lib.elem "filmder-build.service" adelie.systemd.services.filmder-static.after)
+    && !(builtins.hasAttr "filmder-build" adelie.systemd.services)
+    && !(builtins.hasAttr "filmder-static" adelie.systemd.services)
+    && !(builtins.hasAttr "filmder-serve" adelie.systemd.services)
+    && !(builtins.hasAttr "heim-build" adelie.systemd.services)
+    && !(builtins.hasAttr "heim-serve" adelie.systemd.services)
     && builtins.hasAttr "attic-cache-watch" adelie.systemd.services
     && builtins.hasAttr "attic-cache-watch" workstation.systemd.services
     && !(workstation.services.atticd.enable or false)
@@ -117,10 +107,6 @@ let
     &&
       workstation.sops.secrets.attic-push-token.sopsFile == inputs.self + "/secrets/shared-runtime.yaml"
     && adelie.sops.secrets.ntfy-channel.mode == "0400"
-    && adelie.sops.secrets.tmdb-token.owner == "filmder-proxy"
-    && adelie.sops.templates.filmder-env.owner == "filmder-proxy"
-    && adelie.sops.secrets.ntfy-channel.owner == "nori"
-    && adelie.sops.templates.filmder-env.mode == "0400"
     && adelie.sops.templates.miniflux-env.group == "miniflux-secrets"
     && adelie.sops.templates."oidc-news-env".group == "miniflux-secrets"
     && adelie.systemd.services.miniflux.serviceConfig.SupplementaryGroups == [ "miniflux-secrets" ]

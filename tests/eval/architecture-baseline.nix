@@ -46,9 +46,7 @@ let
       "attic"
       "attic-publisher"
       "beszel-agent"
-      "filmder"
       "grafana"
-      "heim"
       "miniflux"
       "node-exporter"
       "ntfy-notify"
@@ -136,12 +134,10 @@ let
     caddy = [ "pi" ];
     calibre-web = [ "workstation" ];
     disk-alert = [ "workstation" ];
-    filmder = [ "adelie" ];
     glance = [ "pi" ];
     grafana = [ "adelie" ];
     gatus = [ "pi" ];
     heartbeat = [ "pi" ];
-    heim = [ "adelie" ];
     immich = [ "workstation" ];
     jellyfin = [ "workstation" ];
     jellyseerr = [ "workstation" ];
@@ -207,11 +203,9 @@ let
     beszel-hub.metrics = "pi";
     ntfy-server.alert = "pi";
     calibre-web.books = "workstation";
-    filmder.filmder = "adelie";
     glance.home = "pi";
     grafana.ops = "adelie";
     gatus.uptime = "pi";
-    heim.heim = "adelie";
     immich.photos = "workstation";
     jellyfin.media = "workstation";
     jellyseerr.requests = "workstation";
@@ -425,24 +419,6 @@ let
       audience = "operator";
       exposeOnTailnet = true;
       auth = "forward-auth";
-      monitored = true;
-      dashboard = true;
-    };
-    filmder = {
-      port = 9092;
-      runsOn = "adelie";
-      audience = "family";
-      exposeOnTailnet = true;
-      auth = "forward-auth";
-      monitored = true;
-      dashboard = true;
-    };
-    heim = {
-      port = 9094;
-      runsOn = "adelie";
-      audience = "public";
-      exposeOnTailnet = true;
-      auth = "none";
       monitored = true;
       dashboard = true;
     };

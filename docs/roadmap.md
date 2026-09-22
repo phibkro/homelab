@@ -22,6 +22,10 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
   implementation and NVENC codecs are already deployed. Follow
   `docs/specs/2026-05-22-sunshine-remote-host-design.md`. Use the documented
   wlroots fallback only if NVIDIA KMS capture is black.
+- **Personal-application Sentry provisioning.** Create the Sentry projects and
+  production DSNs for the Cloudflare-hosted applications. Drinks and Filmder
+  already contain dormant SDK initialization. This work requires account
+  access and an approved production credential change.
 
 These require the operator or physical client access. They remain accepted
 work, but do not block autonomous repository work.
@@ -47,18 +51,6 @@ work, but do not block autonomous repository work.
   - **Comics (Mylar3)** remains deferred because it would be the repository's first OCI-container service; the former cross-host storage blocker no longer applies.
   - **Books → Readarr** remains an unstarted \*arr addition.
   - ⚠ **Process note:** the two build ICs were dispatched with `isolation: "worktree"` but landed on `main` sharing one tree (isolation didn't take) — caught before commit, untangled by hand. Verify worktree isolation actually engaged before parallel same-repo dispatches.
-
-- **Complete the personal-application Cloudflare cutovers.** The Drinks,
-  Filmder, Finnbydel, and Heim repositories now own their Alchemy v2
-  deployment programs, release checks, and rollback procedures. Their local
-  edge stacks, including local API routes, were smoke-tested on 2026-09-22.
-  Production plans and deployments were not run: the first plan can bootstrap or upgrade
-  the shared `alchemy-state-store` Worker, and the Cloudflare OAuth profile
-  requires an operator-approved refresh. Next, approve that state mutation,
-  inspect each `production` plan, perform the documented Pages or Tunnel
-  hostname handoff, and verify the public journey. Remove the local Heim and
-  Filmder runtimes only after production acceptance. Add Sentry after the
-  final topology is live.
 
 ## Deferred (tracked, not currently worked)
 

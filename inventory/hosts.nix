@@ -34,8 +34,8 @@ in
       codename = "adelie";
       hardware = "Node 304 · Ryzen 5 5600X · 16 GB DDR4 · RTX 2060 Super · Samsung 990 Pro 1 TB NVMe";
       primaryJob = ''
-        SSD-local application backends: Attic, Filmder, Grafana, Heim,
-        Miniflux, Radicale, Stremio, and Vaultwarden. Each stateful service
+        SSD-local application backends: Attic, Grafana, Miniflux, Radicale,
+        Stremio, and Vaultwarden. Each stateful service
         backs up to its own restricted repository on the workstation-attached
         OneTouch disk. Media and portable disks remain on workstation.
       '';

@@ -121,11 +121,11 @@ in
        and ([.pi_appliances.hosts.pi.pi_routes[]
              | select(.upstream_address == "100.107.90.3")
              | .name] | sort)
-         == ["cache", "calendar", "filmder", "heim", "news", "ops", "stremio", "vault"]
+         == ["cache", "calendar", "news", "ops", "stremio", "vault"]
        and .pi_appliances.hosts.pi.glance_enabled == true
        and .pi_appliances.hosts.pi.caddy_internet_enabled == true
        and .pi_appliances.hosts.pi.pi_container_host_tcp_ports == [8082, 45876]
-       and (.pi_appliances.hosts.pi.glance_bookmark_groups | length == 5)
+       and (.pi_appliances.hosts.pi.glance_bookmark_groups | length == 4)
        and (.pi_appliances.hosts.pi.pi_routes | length > 1)
        and ([.pi_appliances.hosts.pi.authelia_oidc_clients[].client_id] | sort)
          == ["metrics", "news", "photos", "vault"]

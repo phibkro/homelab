@@ -21,8 +21,6 @@ placement and policy before NixOS and Ansible adapters consume them.
 | `calendar` | `radicale` | `adelie` | `5232` | `internal` | `family` | `none` | yes | no |
 | `comics` | `komga` | `workstation` | `8085` | `internal` | `family` | `forward-auth` | yes | no |
 | `downloads` | `qbittorrent` | `workstation` | `8083` | `internal` | `operator` | `forward-auth` | yes | no |
-| `filmder` | `filmder` | `adelie` | `9092` | `internal` | `family` | `forward-auth` | yes | no |
-| `heim` | `heim` | `adelie` | `9094` | `internal` | `public` | `none` | yes | no |
 | `home` | `glance` | `pi` | `8086` | `internal` | `public` | `none` | yes | no |
 | `indexers` | `prowlarr` | `workstation` | `9696` | `internal` | `operator` | `none` | yes | no |
 | `logs` | `victorialogs-server` | `pi` | `9428` | `internal` | `operator` | `none` | yes | no |

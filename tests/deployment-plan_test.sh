@@ -17,12 +17,12 @@ mkdir -p \
   infra/common/ansible/roles/base/tasks \
   services/bazarr \
   services/caddy/ansible \
-  services/filmder \
+  services/grafana \
   services/recyclarr/implementation \
   services/ntfy/manifests
 printf baseline > infra/common/ansible/roles/base/tasks/main.yml
 printf baseline > services/bazarr/manifest.nix
-printf baseline > services/filmder/nixos.nix
+printf baseline > services/grafana/nixos.nix
 printf baseline > services/caddy/ansible/tasks.yml
 printf baseline > services/recyclarr/implementation/radarr.yml
 printf baseline > services/ntfy/manifests/notify.nix
@@ -59,9 +59,9 @@ printf '{' >"$scratch/bad.json"
 
 plan --changed-since HEAD
 assert_plan '.hosts == [] and .untrackedFiles == []'
-printf changed >> services/filmder/nixos.nix
+printf changed >> services/grafana/nixos.nix
 # A malformed ownership value must propagate the downstream jq failure too.
-jq '.sourceRoots["services/filmder"] = "invalid-host-array"' "$index" >"$scratch/bad.json"
+jq '.sourceRoots["services/grafana"] = "invalid-host-array"' "$index" >"$scratch/bad.json"
 (HOMELAB_DEPLOYMENT_INDEX="$scratch/bad.json"; reject --changed-since HEAD)
 plan --changed-since HEAD
 assert_plan '.hosts == ["adelie"] and .activationOrder == ["adelie"]'
@@ -111,7 +111,7 @@ assert_plan '.hosts == ["pi"] and .untrackedFiles == []'
 git commit --quiet -m pi
 
 # Moves must invalidate both old and new owners even when Git detects a rename.
-git mv services/filmder/nixos.nix services/caddy/ansible/moved.nix
+git mv services/grafana/nixos.nix services/caddy/ansible/moved.nix
 plan --changed-since HEAD
 assert_plan '.hosts == ["adelie", "pi"]'
 git commit --quiet -m rename

@@ -5,52 +5,20 @@
 }:
 
 /**
-  Personal-product artifact consumer contract.
+  Personal-product artifact boundary.
 
-  Mutable host-side builds are allowed only as named, owner-governed legacy
-  exceptions. The runtime unit and operator deploy command both consume this
-  inventory metadata instead of deriving names from directory layout.
+  Application repositories own their Cloudflare builds and deployments.
+  Homelab hosts must not rebuild mutable application source at activation or
+  through operator-triggered systemd units.
 */
 let
   inventory = inputs.self.lib.noriInventory;
   artifactWorkloads = lib.filterAttrs (_: workload: workload ? artifact) inventory.workloads;
-
-  legacyIsGoverned = lib.all (
-    workload:
-    let
-      inherit (workload) artifact;
-      exception = artifact.legacyException;
-    in
-    artifact.consumer.kind == "legacy-host-build"
-    && !artifact.immutable
-    && exception.owner != ""
-    && exception.reason != ""
-    && exception.removalTrigger != ""
-    && exception.verification == "tests/eval/product-artifacts.nix"
-  ) (lib.attrValues artifactWorkloads);
-
-  consumerExists = lib.all (
-    workload:
-    let
-      hostName = lib.head workload.hosts;
-      unitName = workload.artifact.consumer.unit;
-    in
-    builtins.hasAttr unitName inputs.self.nixosConfigurations.${hostName}.config.systemd.services
-  ) (lib.attrValues artifactWorkloads);
 in
-if
-  lib.attrNames artifactWorkloads == [
-    "filmder"
-    "heim"
-  ]
-  && legacyIsGoverned
-  && consumerExists
-then
-  "ok — personal product artifact consumers are explicit and legacy builds are governed"
+if artifactWorkloads == { } then
+  "ok — personal products have no homelab-side artifact consumers"
 else
   throw ''
-    Product artifact contract mismatch.
-    Artifact workloads: ${builtins.toJSON (lib.attrNames artifactWorkloads)}
-    Legacy governance: ${toString legacyIsGoverned}
-    Consumers exist:   ${toString consumerExists}
+    Homelab-side product artifact consumers remain:
+    ${builtins.toJSON (lib.attrNames artifactWorkloads)}
   ''

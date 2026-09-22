@@ -21,12 +21,10 @@ in
   calibre-web = manifest ../services/calibre-web/manifest.nix;
   cloudflare-ddns = manifest ../services/cloudflare-ddns/manifest.nix;
   disk-alert = manifest ../services/disk-alert/manifest.nix;
-  filmder = manifest ../services/filmder/manifest.nix;
   gatus = manifest ../services/gatus/manifest.nix;
   glance = manifest ../services/glance/manifest.nix;
   grafana = manifest ../services/grafana/manifest.nix;
   heartbeat = manifest ../services/heartbeat/manifest.nix;
-  heim = manifest ../services/heim/manifest.nix;
   herdr-projects-mcp = manifest ../services/herdr-projects-mcp/manifest.nix;
   hindsight = manifest ../services/hindsight/manifest.nix;
   immich = manifest ../services/immich/manifest.nix;

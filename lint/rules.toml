@@ -67,9 +67,7 @@ hashes live in sops as oidc-<n>-client-secret-hash.'''
 # function-name alternative.
 #
 # Brand-IS-identity exceptions stay function-named in the actual
-# tree: auth (Authelia), samba (SMB). Operator's own apps (filmder,
-# heim) are branded BY the operator — the brand IS the
-# identity, not the upstream's choice.
+# tree: auth (Authelia) and samba (SMB).
 #
 # Promoted from prose 2026-06-16 — see docs/invariants.md §
 # "Promotion register" + audit on the current tree (no real
@@ -88,8 +86,7 @@ workload manifest:
   vaultwarden → vault          radicale   → calendar
   miniflux    → news
 Brand names earn their place ONLY when the brand IS the identity
-(auth for Authelia, samba for SMB, or operator-shipped apps like
-filmder/heim).'''
+(auth for Authelia or samba for SMB).'''
 
 # ── Compiled route single source of truth ───────────────────────
 
