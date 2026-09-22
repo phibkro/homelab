@@ -117,6 +117,8 @@ let
     && adelie.hardware.graphics.enable
     && adelie.hardware.nvidia.open
     && adelie.hardware.nvidia.modesetting.enable
+    && adelie.hardware.nvidia.videoAcceleration
+    && adelie.hardware.nvidia.package == adelie.boot.kernelPackages.nvidiaPackages.production
     && adelie.nori.gpu.nvidiaDevices == [ ];
 
   chooserDirectory = workstation.environment.etc."greetd/sessions".source;

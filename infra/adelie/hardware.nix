@@ -40,6 +40,8 @@
   hardware.nvidia = {
     open = true;
     modesetting.enable = true;
+    # Bigscreen and browser clients use NVIDIA's VA-API translation driver.
+    videoAcceleration = true;
     package = config.boot.kernelPackages.nvidiaPackages.production;
   };
 }
