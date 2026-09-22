@@ -9,31 +9,25 @@ modelRoles:
 modelProviderOrder:
   - openai-codex
   - anthropic
-
 providers:
   webSearchOrder:
     - exa
-
+  openai-codex:
+    codeMode: "on"
 cycleOrder:
   - smol
   - default
   - slow
-
 theme:
   dark: dark-catppuccin
   light: light-catppuccin
-
 defaultThinkingLevel: auto
-
 retry:
-  fallbackChains: {}
-
+  fallbackChains:
+    {}
 interruptMode: wait
-
 advisor:
   enabled: false
-  subagents: false
-
 task:
   eager: preferred
   batch: true
@@ -42,39 +36,61 @@ task:
   maxRecursionDepth: 2
   maxEffort: max
   isolation:
-    mode: auto
     apply: false
-
+    enabled: true
+  agentAdvisor:
+    task: "off"
 bash:
   autoBackground:
     enabled: true
     thresholdMs: 60000
-
 ask:
-  notify: on
-
+  notify: "on"
 eval:
   py: false
   js: true
-
 debug:
   enabled: true
-
 compaction:
   enabled: true
-  strategy: snapcompact
   midTurnEnabled: true
   autoContinue: true
-
+  methodOrder:
+    - snapcompact
+    - remote
+    - soft
 memory:
   backend: mnemopi
-
 secrets:
   enabled: true
-
 startup:
   setupWizard: false
   showSplash: false
-
 dev:
   autoqaConsent: granted
+isolation:
+  backend: auto
+images:
+  urls:
+    enabled: false
+astGrep:
+  enabled: true
+generate_image:
+  enabled: true
+github:
+  enabled: true
+lsp:
+  formatOnWrite: true
+  diagnosticsOnEdit: true
+mnemopi:
+  scoping: per-project-tagged
+  proactiveLinking: true
+  enhancedRecall: true
+  polyphonicRecall: true
+ttsr:
+  contextMode: discard
+  repeatMode: once
+error:
+  notify: "on"
+display:
+  cacheMissMarker: true
