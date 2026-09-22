@@ -16,7 +16,6 @@ let
   agentBrowserSkill = ./agent-browser;
   simpleEnglishSkill = ./simple-english;
   writingPythonSkill = ./writing-python;
-  effectV4Skill = ./effect-v4-engineer;
   devenvSkill = ./devenv;
 
   /*
@@ -26,6 +25,12 @@ let
   */
   foldkitSkills = "${inputs.foldkit-src}/skills";
   effectSkills = "${inputs.effect-skills}/skills";
+  effectTsSkill = pkgs.runCommandLocal "effect-ts-agent-skill" { } ''
+    mkdir -p "$out"
+    cp -R ${effectSkills}/effect-ts/. "$out/"
+    chmod u+w "$out/SKILL.md"
+    cat ${./effect-ts-lsp.md} >>"$out/SKILL.md"
+  '';
 
   /*
     One source, every surface. Two copies of a procedure is a representable
@@ -83,21 +88,6 @@ in
     */
     (bothSurfaces "writing-python" writingPythonSkill)
 
-    /*
-      Effect v4 as the default application language: schema boundaries,
-      services and Layers, and the module-role classification that stops an
-      agent reaching for ambient plain TypeScript. Canonical here; previously
-      an undeclared checkout in ~/.codex/skills only, so Claude could not read
-      it at all while Codex could — the same one-surface drift the herdr and
-      simple-english entries above record.
-
-      It matters more than most: v4 is in beta, its ecosystem still publishes
-      v3 under `latest`, and an agent working from remembered v3 APIs writes
-      code that type-checks against documentation and fails against the
-      installed package.
-    */
-    (bothSurfaces "effect-v4-engineer" effectV4Skill)
-
     (bothSurfaces "devenv" devenvSkill)
 
     /*
@@ -112,13 +102,13 @@ in
     (bothSurfaces "audit-program" "${foldkitSkills}/audit-program")
 
     /*
-      Effect v4 AI tooling, upstream half: mikearnaldi's Effect-TS/skills —
-      effect-ts points agents at the installed package's own AGENTS.md (the
-      authoritative v4 API reference), effect-v3-to-v4 drives migrations from
-      the generated migration reference. Complements effect-v4-engineer,
-      which stays homelab-owned policy rather than duplicated upstream prose.
+      Official Effect-TS skills from the pinned upstream source. `effect-ts`
+      delegates version-specific guidance to the installed Effect package's
+      own AGENTS.md. The local appendix adds only project-local Effect language
+      tooling setup and OMP verification after the untouched official skill.
+      `effect-v3-to-v4` owns the migration workflow.
     */
-    (bothSurfaces "effect-ts" "${effectSkills}/effect-ts")
+    (bothSurfaces "effect-ts" effectTsSkill)
     (bothSurfaces "effect-v3-to-v4" "${effectSkills}/effect-v3-to-v4")
 
     /*
