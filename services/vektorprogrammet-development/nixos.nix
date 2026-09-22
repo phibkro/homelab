@@ -95,7 +95,7 @@ in
         --set=ON_ERROR_STOP=1 <<'SQL'
       SELECT format(
         'ALTER ROLE ${databaseUser} PASSWORD %L',
-        rtrim(pg_read_file('${passwordFile}'))
+        rtrim(pg_read_file('${passwordFile}'), E'\r\n')
       ) \gexec
       SQL
     '';
