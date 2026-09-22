@@ -102,29 +102,6 @@
         "type": "github"
       }
     },
-    "chatlog": {
-      "inputs": {
-        "home-manager": [
-          "home-manager"
-        ],
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1784926303,
-        "narHash": "sha256-EeuvD+c4E0YnSQkvyxVmvf1W6hKTwAaiBvGaj644Vsc=",
-        "owner": "phibkro",
-        "repo": "chatlog",
-        "rev": "09857c1e10f0e855a341ffa27b823a81865168e2",
-        "type": "github"
-      },
-      "original": {
-        "owner": "phibkro",
-        "repo": "chatlog",
-        "type": "github"
-      }
-    },
     "clan-core-src": {
       "flake": false,
       "locked": {
@@ -615,7 +592,6 @@
     },
     "root": {
       "inputs": {
-        "chatlog": "chatlog",
         "clan-core-src": "clan-core-src",
         "claudex": "claudex",
         "disko": "disko",

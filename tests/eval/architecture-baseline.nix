@@ -46,7 +46,6 @@ let
       "attic"
       "attic-publisher"
       "beszel-agent"
-
       "grafana"
       "miniflux"
       "node-exporter"
@@ -75,7 +74,6 @@ let
       "bazarr"
       "beszel-agent"
       "calibre-web"
-      "chatlog"
       "disk-alert"
       "herdr-projects-mcp"
       "hindsight"
@@ -136,7 +134,6 @@ let
     pihole = [ "pi" ];
     caddy = [ "pi" ];
     calibre-web = [ "workstation" ];
-    chatlog = [ "workstation" ];
     disk-alert = [ "workstation" ];
     glance = [ "pi" ];
     grafana = [ "adelie" ];
@@ -208,7 +205,6 @@ let
     beszel-hub.metrics = "pi";
     ntfy-server.alert = "pi";
     calibre-web.books = "workstation";
-    chatlog.chatlog = "workstation";
     glance.home = "pi";
     grafana.ops = "adelie";
     gatus.uptime = "pi";
@@ -409,15 +405,6 @@ let
       auth = "exception";
       monitored = true;
       dashboard = true;
-    };
-    chatlog = {
-      port = 4790;
-      runsOn = "workstation";
-      audience = "operator";
-      exposeOnTailnet = true;
-      auth = "none";
-      monitored = true;
-      dashboard = false;
     };
     comics = {
       port = 8085;

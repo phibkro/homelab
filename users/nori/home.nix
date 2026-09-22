@@ -11,7 +11,6 @@
     ../../profiles/home/pc.nix
     ../../profiles/home/desktop
     ../../profiles/home/development/agentic-workstation.nix
-    ../../profiles/home/development/chatlog.nix
     ./workstation.nix
   ];
 

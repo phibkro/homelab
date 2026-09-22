@@ -12,7 +12,6 @@ let
   herdrPaneMemorySwapMax = 2 * gib;
 in
 {
-
   home.packages = [
     agentPackages.chatgpt # OpenAI's official Linux app, pinned by llm-agents.nix
     pkgs.chromium # wrapped Chromium for browser automation and ChatGPT Work agents
