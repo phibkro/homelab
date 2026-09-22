@@ -32,6 +32,13 @@ work, but do not block autonomous repository work.
 
 ## Outstanding (actionable)
 
+- **Activate the reviewed host corrections.** Plan and build the current
+  workstation and Adelie closures, then activate Adelie before workstation.
+  Confirm that both NixOS Vector instances ingest through Pi's LAN listener,
+  both Adelie Grafana datasources query that listener, and
+  `hypr-session restore` reopens a captured special workspace. Source is ready;
+  live activation remains operator-gated.
+
 - **Build the authenticated family onboarding portal.** Derive its capability
   filtering and registration guidance from the route and audience contracts
   when the product is built. Do not preserve a speculative portal catalog.

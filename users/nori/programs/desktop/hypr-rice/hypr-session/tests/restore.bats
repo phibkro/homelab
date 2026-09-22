@@ -120,11 +120,12 @@ use_current() {
   ! grep -q 'killactive\|window.close\|window.kill' "$dispatch_log"
 }
 
-@test "toggle_special uses the positional-string form, never the broken table form" {
+@test "toggle_special strips the captured prefix and uses positional form" {
   use_current restore-focus-special
   run bash "$restore"
   [ "$status" -eq 0 ]
-  grep -qF 'hl.dsp.workspace.toggle_special("special:browser")' "$dispatch_log"
+  grep -qF 'hl.dsp.workspace.toggle_special("browser")' "$dispatch_log"
+  ! grep -q 'toggle_special("special:' "$dispatch_log"
   ! grep -q 'toggle_special({' "$dispatch_log"
 }
 

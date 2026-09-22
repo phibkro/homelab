@@ -152,10 +152,11 @@ dispatch_reapply_size() {
   dispatch "hl.dsp.window.resize({ window = $(lua_str "address:$address"), x = $width, y = $height })"
 }
 
-# Positional-string form only — the `{ name = "X" }` table form is a
-# known no-op (gotcha-hyprland-lua-migration).
+# Positional-string form only. Capture stores `special:<name>`, while
+# toggle_special accepts the short name.
 dispatch_toggle_special() {
-  dispatch "hl.dsp.workspace.toggle_special($(lua_str "$1"))"
+  local name=${1#special:}
+  dispatch "hl.dsp.workspace.toggle_special($(lua_str "$name"))"
 }
 
 dispatch_focus_window() {
