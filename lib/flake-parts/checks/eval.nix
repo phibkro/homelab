@@ -14,7 +14,8 @@
           let
             flakeLock = builtins.fromJSON (builtins.readFile ../../../flake.lock);
             devenvLock = builtins.fromJSON (builtins.readFile ../../../devenv.lock);
-            flakeRevision = flakeLock.nodes.nixpkgs.locked.rev;
+            flakeNixpkgsNode = flakeLock.nodes.root.inputs.nixpkgs;
+            flakeRevision = flakeLock.nodes.${flakeNixpkgsNode}.locked.rev;
             devenvRevision = devenvLock.nodes.nixpkgs.locked.rev;
           in
           assert lib.assertMsg (devenvRevision == flakeRevision) ''
