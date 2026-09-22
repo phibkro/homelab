@@ -7,8 +7,8 @@
 let
   nativeLayout = "dwindle";
   gapsOut = 8;
-  layoutCore = ./layout.lua;
-  riceAdapter = ./rice.lua;
+  layoutCore = pkgs.writeText "layout.lua" (builtins.readFile ./layout.lua);
+  riceAdapter = pkgs.writeText "rice.lua" (builtins.readFile ./rice.lua);
 
   /*
     ---------------------------------------------------------------------
