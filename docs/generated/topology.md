@@ -7,13 +7,13 @@ regenerate: nix build .#docs-topology
 # Topology — generated reference
 
 Auto-derived from the `nori.inventory.hosts` schema + values in
-`inventory/hosts.nix`. Do not hand-edit; the hand-curated overview
+`src/inventory/hosts.nix`. Do not hand-edit; the hand-curated overview
 lives at `docs/reference/topology.md` (kept parallel for the
 generated-vs-handwritten coverage experiment).
 
 Typed, read-only projection of the pure pre-evaluation inventory.
 
-Values are injected by `lib/machines.nix`; modules consume this
+Values are injected by `src/lib/machines.nix`; modules consume this
 interface but cannot use it to select imports. Compiler-private module paths
 and future artifact handles never enter the projection.
 
@@ -24,7 +24,7 @@ and future artifact handles never enter the projection.
 
 ## Per-host hardware posture
 
-## workstation — hardware inventory: `inventory/hosts.nix`
+## workstation — hardware inventory: `src/inventory/hosts.nix`
 
 Desktop, media, GPU, and attached storage host:
 
@@ -68,8 +68,8 @@ prevents idle-sleep during ambient sound. Full debt note in
 
 ## Registry schema (`nori.inventory.hosts.<name>.*`)
 
-What an `inventory/hosts.nix` identity entry must declare to
-satisfy the schema. Schema lives in `infra/common/nixos/inventory.nix`.
+What an `src/inventory/hosts.nix` identity entry must declare to
+satisfy the schema. Schema lives in `src/infra/common/nixos/inventory.nix`.
 
 ## nori.inventory.hosts
 
@@ -81,7 +81,7 @@ Public-safe host identity, profile, and resolved workload inventory.
 attribute set of (submodule) *(read only)*
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
+ - [<nixpkgs/src/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//src/infra/common/nixos/inventory.nix)
 
 
 
@@ -97,7 +97,7 @@ Human-readable host codename.
 string
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
+ - [<nixpkgs/src/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//src/infra/common/nixos/inventory.nix)
 
 
 
@@ -113,7 +113,7 @@ Human-readable hardware summary.
 string
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
+ - [<nixpkgs/src/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//src/infra/common/nixos/inventory.nix)
 
 
 
@@ -129,7 +129,7 @@ Deployment backend selected for the host.
 one of “ansible”, “nixos”
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
+ - [<nixpkgs/src/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//src/infra/common/nixos/inventory.nix)
 
 
 
@@ -153,7 +153,7 @@ null
 ```
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
+ - [<nixpkgs/src/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//src/infra/common/nixos/inventory.nix)
 
 
 
@@ -169,7 +169,7 @@ Primary responsibility of the host.
 string
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
+ - [<nixpkgs/src/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//src/infra/common/nixos/inventory.nix)
 
 
 
@@ -193,7 +193,7 @@ list of string
 ```
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
+ - [<nixpkgs/src/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//src/infra/common/nixos/inventory.nix)
 
 
 
@@ -209,7 +209,7 @@ Host role used by workload placement constraints.
 one of “workhorse”, “appliance”, “agent”, “client”
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
+ - [<nixpkgs/src/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//src/infra/common/nixos/inventory.nix)
 
 
 
@@ -225,7 +225,7 @@ Short operator-facing summary of the host role.
 string
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
+ - [<nixpkgs/src/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//src/infra/common/nixos/inventory.nix)
 
 
 
@@ -249,7 +249,7 @@ list of string
 ```
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
+ - [<nixpkgs/src/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//src/infra/common/nixos/inventory.nix)
 
 
 
@@ -273,7 +273,7 @@ null
 ```
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
+ - [<nixpkgs/src/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//src/infra/common/nixos/inventory.nix)
 
 
 
@@ -297,6 +297,6 @@ list of string
 ```
 
 *Declared by:*
- - [<nixpkgs/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//infra/common/nixos/inventory.nix)
+ - [<nixpkgs/src/infra/common/nixos/inventory.nix>](https://github.com/NixOS/nixpkgs/blob//src/infra/common/nixos/inventory.nix)
 
 

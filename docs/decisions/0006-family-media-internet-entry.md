@@ -124,7 +124,7 @@ engine for these records would also weaken the route registry's role as the
 single source of truth. Revisit Alchemy for edge-only resources.
 
 Sources consulted 2026-07-18 and 2026-09-21:
-[Cloudflare application service-specific terms](https://www.cloudflare.com/service-specific-terms-application-services/),
+[Cloudflare application service-specific terms](https://www.cloudflare.com/service-specific-terms-application-src/services/),
 [Cloudflare Tunnel routing](https://developers.cloudflare.com/tunnel/routing/),
 [Alchemy v1 Tunnel](https://alchemy.run/cloudflare/networking/tunnel/),
 [Alchemy v2 DNS Record](https://v2.alchemy.run/providers/cloudflare/dns/record/),

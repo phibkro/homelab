@@ -39,11 +39,11 @@ Cloudflare commands use SecretSpec scopes. Each scope injects only the values
 used by that Alchemy stack. `secretspec run --scope` also removes excluded
 manifest names inherited from the parent environment.
 
-The Pi uses `infra/pi/secretspec.toml`. Its Keyring and environment providers
+The Pi uses `src/infra/pi/secretspec.toml`. Its Keyring and environment providers
 remain separate from these SOPS files:
 
 ```bash
-cd infra/pi
+cd src/infra/pi
 devenv shell -- secretspec check --profile production
 ```
 
@@ -56,7 +56,7 @@ or DDNS runtime adapter, its composition must supply that host's SOPS source.
 
 ## NixOS routing
 
-`infra/common/nixos/sops.nix` sets `workstation-runtime.yaml` as the shared
+`src/infra/common/nixos/sops.nix` sets `workstation-runtime.yaml` as the shared
 default. Adelie overrides the default with `adelie-runtime.yaml`. A shared or
 host-specific value must declare its file explicitly.
 
@@ -97,7 +97,7 @@ For an existing client such as `news`:
 4. Store the displayed verifier through the Pi SecretSpec profile:
 
    ```bash
-   cd infra/pi
+   cd src/infra/pi
    devenv shell -- secretspec set \
      --profile production \
      OIDC_NEWS_CLIENT_SECRET_HASH

@@ -8,8 +8,8 @@ current session take precedence over repository procedures.
 1. Run `git status --short` and identify the checkout and existing edits. Preserve
    operator work; isolate substantial refactors when the checkout is already dirty.
 2. Read [README.md](README.md) for boundaries, then the applicable scoped guide:
-   [infrastructure](infra/AGENTS.md), [services](services/AGENTS.md), or
-   [users](users/AGENTS.md).
+   [infrastructure](src/infra/AGENTS.md), [services](src/services/AGENTS.md), or
+   [users](src/users/AGENTS.md).
 3. Follow [the documentation map](docs/README.md) for the current task. Historical
    plans and reports under `docs/archive/` are evidence, not current instructions.
 
@@ -17,13 +17,13 @@ Facts have one authoritative home:
 
 | Question | Source |
 |---|---|
-| Hosts, backends, placement, endpoints, backup policy | `inventory/` → `nix eval --json .#lib.noriInventory` |
-| Workstation realization and shared Nix modules | `infra/workstation/`, `infra/common/nixos/` |
-| Pi realization and production connection contract | `infra/pi/`, `infra/common/ansible/` |
-| Service manifests and concrete implementations | `services/` |
-| User identity, home composition, and programs | `users/` |
+| Hosts, backends, placement, endpoints, backup policy | `src/inventory/` → `nix eval --json .#lib.noriInventory` |
+| Workstation realization and shared Nix modules | `src/infra/workstation/`, `src/infra/common/nixos/` |
+| Pi realization and production connection contract | `src/infra/pi/`, `src/infra/common/ansible/` |
+| Service manifests and concrete implementations | `src/services/` |
+| User identity, home composition, and programs | `src/users/` |
 | Generated documentation | `docs/generated/`; change its source and regenerate |
-| Global harness instructions | `users/nori/programs/agent-soul/SOUL.md` and adjacent harness modules |
+| Global harness instructions | `src/users/nori/programs/agent-soul/SOUL.md` and adjacent harness modules |
 
 Do not infer a live deployment from source configuration. Verify runtime state
 separately when the task depends on it.

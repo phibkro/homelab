@@ -28,7 +28,7 @@ nix run .#deployment-plan -- --all
 The JSON result contains `hosts`, the reasons they were selected, exact Nix
 `builds`, Ansible `plans`/`applies`/`verifies`, and `activationOrder`. Known
 inventory, workload, profile, and management roots narrow the plan. In
-particular, `infra/pi/**` selects the Pi's Ansible commands and cannot produce a Nix
+particular, `src/infra/pi/**` selects the Pi's Ansible commands and cannot produce a Nix
 build. An unknown configuration path conservatively selects all hosts;
 documentation and tests select no activation targets.
 
@@ -95,7 +95,7 @@ multi-host change:
 The planner intentionally stops before activation. This keeps the operator
 gate, maintenance state, acceptance checks, and per-host rollback explicit.
 
-The OneTouch backup policy is enabled in `inventory/backup.nix`. Pi and Adelie
+The OneTouch backup policy is enabled in `src/inventory/backup.nix`. Pi and Adelie
 use restricted accounts on the workstation-attached destination. September 19
 evidence covers Pi transport, eight fresh snapshots, eight metadata checks, and
 a Pi-hole configuration restore. Physical reboot, off-LAN behavior,

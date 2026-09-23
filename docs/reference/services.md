@@ -62,8 +62,8 @@ audience, and dashboard metadata. Runtime adapters consume the resolved
 `nori.inventory` projection; they do not repeat route names, hostnames, or
 ports. The adapter owns units, hardening, and implementation-internal ports.
 NixOS adapters declare their backup intent; Pi backup intent is centralized in
-`inventory/backup.nix`. Physical paths and filesystem identities live in
-`infra/<machine>/`. The compiler imports only runtimes selected by
+`src/inventory/backup.nix`. Physical paths and filesystem identities live in
+`src/infra/<machine>/`. The compiler imports only runtimes selected by
 service-owned placement selectors.
 
 ### About Immich's Postgres
@@ -74,7 +74,7 @@ service-owned placement selectors.
 
 Four patterns cover files, built-in exports, PostgreSQL, and SQLite. Active
 NixOS jobs use `nori.backups.<name>`; Pi jobs declare equivalent paths,
-exclusions, and retention in `inventory/backup.nix`. The patterns differ in the
+exclusions, and retention in `src/inventory/backup.nix`. The patterns differ in the
 selected data and the preparation that runs before Restic.
 
 | Pattern | When | Implementation | Example |
@@ -133,10 +133,10 @@ nori.backups.miniflux.include = [
 
 | Trap | Fix | Durable source |
 |---|---|---|
-| sqlite3 CLI's `.backup` ignores `busy_timeout` (hard-coded ~2.5s retry) → "database is locked" on the first concurrent writer | Use `VACUUM INTO` + `PRAGMA busy_timeout` (regular SQL, honours the pragma) | [Canonical implementation](../../services/navidrome/nixos.nix) |
-| Historical dual-target Restic units fired in the same minute → both run `prepareCommand` → race on `.tmp` → "table … already exists" | Wrap rm/sqlite/mv in `flock` (file-descriptor form, subshell-scoped) | [Canonical implementation](../../services/navidrome/nixos.nix) |
+| sqlite3 CLI's `.backup` ignores `busy_timeout` (hard-coded ~2.5s retry) → "database is locked" on the first concurrent writer | Use `VACUUM INTO` + `PRAGMA busy_timeout` (regular SQL, honours the pragma) | [Canonical implementation](../../src/services/navidrome/nixos.nix) |
+| Historical dual-target Restic units fired in the same minute → both run `prepareCommand` → race on `.tmp` → "table … already exists" | Wrap rm/sqlite/mv in `flock` (file-descriptor form, subshell-scoped) | [Canonical implementation](../../src/services/navidrome/nixos.nix) |
 
-Canonical implementation: `services/navidrome/nixos.nix`.
+Canonical implementation: `src/services/navidrome/nixos.nix`.
 
 ```nix
 nori.backups.navidrome = {
@@ -158,7 +158,7 @@ nori.backups.navidrome = {
 };
 ```
 
-`prepareCommand` runs as `ExecStartPre` on each configured target unit. Destination selection comes from `inventory/backup.nix`; retain flock to serialize any concurrent dump callers. `VACUUM INTO` requires destination absent — that's why `rm -f` precedes it.
+`prepareCommand` runs as `ExecStartPre` on each configured target unit. Destination selection comes from `src/inventory/backup.nix`; retain flock to serialize any concurrent dump callers. `VACUUM INTO` requires destination absent — that's why `rm -f` precedes it.
 
 Runtime check: `just test-backups` asserts per-target snapshot ≤25h.
 

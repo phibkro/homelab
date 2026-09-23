@@ -10,7 +10,7 @@ import 'tests/tests.just'
 import 'tests/backup.just'
 import 'tests/observability.just'
 import 'tests/networking.just'
-mod pi 'infra/pi/pi.just'
+mod pi 'src/infra/pi/pi.just'
 
 # Default recipe is read-only help.
 default: list

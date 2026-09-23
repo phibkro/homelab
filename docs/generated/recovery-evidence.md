@@ -1,6 +1,6 @@
 ---
 generated: true
-source: lib/flake-parts/packages/docs-recovery-evidence.nix
+source: src/lib/flake-parts/packages/docs-recovery-evidence.nix
 regenerate: nix build .#docs-recovery-evidence
 ---
 
@@ -11,7 +11,7 @@ same claim:
 
 - workload manifests own service identity, placement, and recovery model;
 - evaluated backup jobs own targets, included paths, and exclusions;
-- `inventory/recovery-evidence.nix` indexes recorded dated reports.
+- `src/inventory/recovery-evidence.nix` indexes recorded dated reports.
 
 A configured backup is not recovery evidence. An evidence link joins
 the same subject; it does not claim that the report exercised the

@@ -3,7 +3,7 @@
 Recovery target: under two hours when required state is available. Off-host Pi
 snapshots, selected service recovery, and a disposable host reconstruction
 have current evidence. No physical replacement recovery time is established.
-Pi is a Debian appliance managed by Ansible under `infra/pi/`. NixOS rollback,
+Pi is a Debian appliance managed by Ansible under `src/infra/pi/`. NixOS rollback,
 impermanence, and `nixos-anywhere` instructions do not apply to this target.
 
 ## Triage
@@ -42,7 +42,7 @@ application recovered.
 2. Establish the expected management connection and public host identity.
    Restore production SecretSpec inputs through their protected provider; the
    repository contains configuration, not the secret values.
-3. Review and converge `infra/pi/` through its production plan/deploy commands.
+3. Review and converge `src/infra/pi/` through its production plan/deploy commands.
 4. Re-enroll Tailscale through `just pi::enroll` if needed, with operator
    approval. Do not run two nodes concurrently with a copied node identity.
 5. Inspect any surviving historical archives and their protected recovery
@@ -60,7 +60,7 @@ separately reviewed physical-medium procedure or production identity recovery.
 
 The [OneTouch cutover runbook](onetouch-backup-cutover.md) describes backup transport
 identity, repository isolation, and restore checks. Destination policy lives in
-`inventory/backup.nix`; workstation restore evidence does not establish Pi coverage.
+`src/inventory/backup.nix`; workstation restore evidence does not establish Pi coverage.
 
 ## Temporary failover
 

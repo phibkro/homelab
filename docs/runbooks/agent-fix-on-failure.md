@@ -5,7 +5,7 @@ coding agent to diagnose a failed unit and propose a PR. The agent never
 deploys.
 
 **Current state:** implemented but disarmed.
-`infra/workstation/default.nix` sets `nori.agentFix.enable = false`; no
+`src/infra/workstation/default.nix` sets `nori.agentFix.enable = false`; no
 `agent-fix@…` services or failure edges are deployed. It was disabled after
 simultaneous backup failures exhausted workstation memory on 2026-08-30.
 

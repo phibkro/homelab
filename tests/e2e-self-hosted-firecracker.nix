@@ -11,7 +11,7 @@ pkgs.testers.runNixOSTest {
   name = "e2e-self-hosted-firecracker";
   node.specialArgs = { inherit inputs; };
   nodes.workstation = { ... }: {
-    imports = [ ../infra/workstation/firecracker-environment.nix ];
+    imports = [ ../src/infra/workstation/firecracker-environment.nix ];
     users.groups.nori.gid = 1000;
     users.users.nori = {
       uid = 1000;

@@ -1,6 +1,6 @@
 ---
 generated: true
-source: lib/flake-parts/packages/docs-backups.nix
+source: src/lib/flake-parts/packages/docs-backups.nix
 regenerate: nix build .#docs-backups
 ---
 
@@ -131,7 +131,7 @@ attribute set of (submodule)
 ```
 
 *Declared by:*
- - `infra/common/nixos/backup.nix`
+ - `src/infra/common/nixos/backup.nix`
 
 
 
@@ -170,7 +170,7 @@ list of string
 ```
 
 *Declared by:*
- - `infra/common/nixos/backup.nix`
+ - `src/infra/common/nixos/backup.nix`
 
 
 
@@ -201,7 +201,7 @@ null
 ```
 
 *Declared by:*
- - `infra/common/nixos/backup.nix`
+ - `src/infra/common/nixos/backup.nix`
 
 
 
@@ -230,7 +230,7 @@ null
 ```
 
 *Declared by:*
- - `infra/common/nixos/backup.nix`
+ - `src/infra/common/nixos/backup.nix`
 
 
 
@@ -258,7 +258,7 @@ list of string
 ````
 
 *Declared by:*
- - `infra/common/nixos/backup.nix`
+ - `src/infra/common/nixos/backup.nix`
 
 
 
@@ -297,7 +297,7 @@ list of string
 ```
 
 *Declared by:*
- - `infra/common/nixos/backup.nix`
+ - `src/infra/common/nixos/backup.nix`
 
 
 
@@ -324,7 +324,7 @@ null
 ```
 
 *Declared by:*
- - `infra/common/nixos/backup.nix`
+ - `src/infra/common/nixos/backup.nix`
 
 
 
@@ -353,7 +353,7 @@ lib.attrNames config.nori.backupTargets
 ```
 
 *Declared by:*
- - `infra/common/nixos/backup.nix`
+ - `src/infra/common/nixos/backup.nix`
 
 
 
@@ -382,7 +382,7 @@ one of “service”, “user”, “irreplaceable”
 ```
 
 *Declared by:*
- - `infra/common/nixos/backup.nix`
+ - `src/infra/common/nixos/backup.nix`
 
 
 
@@ -409,7 +409,7 @@ string
 ```
 
 *Declared by:*
- - `infra/common/nixos/backup.nix`
+ - `src/infra/common/nixos/backup.nix`
 
 
 
@@ -433,7 +433,7 @@ null
 ```
 
 *Declared by:*
- - `infra/common/nixos/backup.nix`
+ - `src/infra/common/nixos/backup.nix`
 
 
 

@@ -7,8 +7,8 @@
 */
 
 let
-  catalog = import ../../inventory/workloads.nix { inherit lib; };
-  compile = workloadCatalog: import ../../inventory/default.nix { inherit lib workloadCatalog; };
+  catalog = import ../../src/inventory/workloads.nix { inherit lib; };
+  compile = workloadCatalog: import ../../src/inventory/default.nix { inherit lib workloadCatalog; };
   evaluate =
     workloadCatalog: builtins.tryEval (builtins.deepSeq (compile workloadCatalog).public true);
 

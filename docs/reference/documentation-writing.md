@@ -36,7 +36,7 @@ Nix carries two distinct documentation surfaces. Both extract to markdown automa
 
 | Surface | Applies to | Extracted by | Canonical example |
 |---|---|---|---|
-| `mkOption { description = ''...''; }` | NixOS module **options** (every `nori.<X>` schema field) | [`nixosOptionsDoc`](https://github.com/NixOS/nixpkgs/blob/master/nixos/lib/make-options-doc/default.nix) | `infra/common/nixos/inventory.nix` → `nori.inventory.routes` |
+| `mkOption { description = ''...''; }` | NixOS module **options** (every `nori.<X>` schema field) | [`nixosOptionsDoc`](https://github.com/NixOS/nixpkgs/blob/master/nixos/lib/make-options-doc/default.nix) | `src/infra/common/nixos/inventory.nix` → `nori.inventory.routes` |
 | `/** ... */` doc-comments ([RFC 145](https://github.com/NixOS/rfcs/blob/master/rfcs/0145-doc-strings.md)) | **Non-option** code: lib functions, let bindings, attrset entries, lambda formals | [`nixdoc`](https://github.com/nix-community/nixdoc) | [`nixpkgs/lib/attrsets.nix`](https://github.com/NixOS/nixpkgs/blob/master/lib/attrsets.nix) → `lib.attrByPath` |
 
 ### mkOption description shape
@@ -105,7 +105,7 @@ Format precedence (lifted from RFC 145):
 | Context | Mechanism |
 |---|---|
 | `mkOption { ... }` declaration | `description = ''...''` |
-| Lib function in `lib/`, `flake.nix`, or `lint/default.nix` | `/** ... */` |
+| Lib function in `src/lib/`, `flake.nix`, or `lint/default.nix` | `/** ... */` |
 | Let-binding with non-obvious purpose (e.g. our `lintLib`, `lintRules`, `baseNonServicePatterns`) | `/** ... */` |
 | Attribute set entry that acts as a function or registry, such as a public contract in a workload `manifest.nix` | `/** ... */` |
 | **Module overview** — file-level docstring at the top of a `default.nix` carrying mental models, architecture diagrams, and rationale for the concern as a whole (mermaid diagrams, three-zone tables, registry shape rationale) | `/** ... */` (file-level, above the `let`/`{}` body) |
@@ -147,19 +147,19 @@ extraction site, and pretending otherwise distorts the content.
 Concrete examples from the homelab:
 
 ```
-inventory/default.nix /** */ carries              the workload compiler
+src/inventory/default.nix /** */ carries              the workload compiler
                                                      invariants, placement,
                                                      and projection boundaries
 
-lib/machines.nix /** */ carries          the topology mermaid,
+src/lib/machines.nix /** */ carries          the topology mermaid,
                                                      the tier principle,
                                                      failure-domain claim
 
-infra/common/nixos/gpu.nix /** */ carries    the GPU access
+src/infra/common/nixos/gpu.nix /** */ carries    the GPU access
                                                      pattern table + per-
                                                      host driver split
 
-infra/<host>/hardware.nix /** */ carries  the per-host posture
+src/infra/<host>/hardware.nix /** */ carries  the per-host posture
                                                      (disk identity,
                                                      GPU and sleep
                                                      constraints,
@@ -221,7 +221,7 @@ These shrink dramatically as doctrine moves into co-located doc-strings:
 
 ```
 docs/reference/topology.md             routing + cross-host patterns;
-                                       per-host details from inventory/hosts.nix
+                                       per-host details from src/inventory/hosts.nix
 docs/reference/storage.md              value-tier framing + routing;
                                        subvol details from disko
 docs/reference/network.md              routing + DNS arch + audience model;
@@ -237,7 +237,7 @@ docs/reference/services.md             backup pattern doctrine + routing;
 |---|---|
 | **1. Convention codified** | ✓ this section |
 | **2. Pressure test** — densest doc (`topology.md`) | ✓ Stage 2 |
-| **2.5. Modules-as-root restructure** — PaaS lens; infra/<concern>/ + services/ split | ✓ Phases 0-3f landed; spec at `docs/specs/2026-06-17-modules-as-root-restructure.md` |
+| **2.5. Modules-as-root restructure** — PaaS lens; src/infra/<concern>/ + src/services/ split | ✓ Phases 0-3f landed; spec at `docs/specs/2026-06-17-modules-as-root-restructure.md` |
 | **3. Generator extended** to extract RFC 145 doc-strings via nixdoc | □ |
 | **4. Content migration** — doctrine from `docs/reference/*.md` into co-located doc-strings | □ multi-sprint |
 | **5. `docs-fresh` flake check** — committed-generated vs on-the-fly | □ closes drift surface by construction |
@@ -265,8 +265,8 @@ question.
 Stage 2 deliverables:
 
 ```
-K2  [historical] infra/common/nixos/hosts.nix — schema prototype;
-    now inventory/hosts.nix + typed projection
+K2  [historical] src/infra/common/nixos/hosts.nix — schema prototype;
+    now src/inventory/hosts.nix + typed projection
 K3  flake.nix                      — packages.docs-topology
     docs/reference/topology-       — generated artifact
     generated.md
@@ -406,11 +406,11 @@ without examples drift; examples without rules don't generalise.
 - [nixpkgs/lib/attrsets.nix](https://github.com/NixOS/nixpkgs/blob/master/lib/attrsets.nix)
   — canonical reference for how nixpkgs uses RFC 145 (also at
   `/srv/share/projects/nixpkgs/lib/`).
-- `lib/flake-parts/packages/docs-routes.nix` — generates the active route table
+- `src/lib/flake-parts/packages/docs-routes.nix` — generates the active route table
   directly from `lib.noriInventory.routes`.
 - `docs/specs/2026-06-16-generated-docs-and-okf.md` — Sprint 6 research
   seed; combines generated-docs + Open Knowledge Format (OKF v0.1)
   compliance.
 - `git log --grep "chore(comments):"` — the audit-sweep commits;
-  current worked examples are under `infra/`, `profiles/`, `services/`,
-  and `users/`; older paths in archive/specs remain historical.
+  current worked examples are under `src/infra/`, `src/profiles/`, `src/services/`,
+  and `src/users/`; older paths in archive/specs remain historical.

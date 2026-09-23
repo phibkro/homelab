@@ -1,5 +1,5 @@
 # Runtime observer for the generated operator-view declaration.
-# This file is embedded by lib/flake-parts/packages/operator-view.nix.
+# This file is embedded by src/lib/flake-parts/packages/operator-view.nix.
 
 output_format="table"
 if (( $# > 1 )); then

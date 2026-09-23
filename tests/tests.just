@@ -161,7 +161,7 @@
     # misleading route misses.
     caddy_config=$(just pi::inspect-caddy)
     caddy_hosts=$(printf '%s\n' "$caddy_config" \
-                  | infra/pi/scripts/caddy-hosts.sh \
+                  | src/infra/pi/scripts/caddy-hosts.sh \
                   | sort -u)
     [[ -n "$caddy_hosts" ]] || {
       echo "Caddy inspection returned no deployed host matchers" >&2
@@ -719,7 +719,7 @@
 # Unit test: hypr-session capture/logd/cli/restore bats suites.
 @test-hypr-session:
     nix shell nixpkgs#bats nixpkgs#jq nixpkgs#socat -c \
-      bats users/nori/programs/desktop/hypr-rice/hypr-session/tests/*.bats
+      bats src/users/nori/programs/desktop/hypr-rice/hypr-session/tests/*.bats
 
 # VM-tier e2e (layer 2 nixosTest) for hypr-session: boots a real
 # Hyprland on virtio-gpu/llvmpipe inside QEMU — structurally isolated

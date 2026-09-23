@@ -93,8 +93,8 @@ work, but do not block autonomous repository work.
   egress through Blocky and block public-resolver fall-throughs" is a real
   router (OPNsense/OpenWRT/pfSense) behind a bridge-mode modem. Today the
   Genexis ISP modem does not bridge and a real router is not budgeted, so the
-  policy lives one layer lower in `infra/pi/ansible/roles/firewall` and
-  `services/tailscale/ansible`. It only catches devices routing through Pi, cannot help
+  policy lives one layer lower in `src/infra/pi/ansible/roles/firewall` and
+  `src/services/tailscale/ansible`. It only catches devices routing through Pi, cannot help
   LAN-only hardcoded-DNS devices, and cannot block unlisted DoH endpoints.
   **Trigger to revisit:** ISP allowing Genexis bridge mode *or* a competent
   router (~$200) enters the budget.

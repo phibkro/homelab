@@ -16,7 +16,7 @@ approval after the disk identity and source revision are reviewed.
 Before booting the installer:
 
 1. Choose the exact repository revision and keep its existing `flake.lock`.
-2. Review `infra/workstation/disko.nix` and its `/dev/disk/by-id/` target.
+2. Review `src/infra/workstation/disko.nix` and its `/dev/disk/by-id/` target.
 3. Record the model and serial for every attached disk.
 4. Verify recent OneTouch snapshots and the restore evidence needed for this
    install.
@@ -62,7 +62,7 @@ ls -l /dev/disk/by-id/
 ```
 
 Match the approved target by model, serial, and by-id path. Confirm that
-`infra/workstation/disko.nix` selects only that disk. Stop if any identity is
+`src/infra/workstation/disko.nix` selects only that disk. Stop if any identity is
 missing or different.
 
 Disconnect removable non-target disks when practical. Disko scope and disk
@@ -103,7 +103,7 @@ btrfs inspect-internal map-swapfile -r /mnt/swapfile
 ```
 
 Update `boot.resumeDevice` and the `resume_offset` kernel parameter in
-`infra/workstation/hardware.nix` with these observed values. Review and commit
+`src/infra/workstation/hardware.nix` with these observed values. Review and commit
 that source change before installation. Do not reuse values from the old
 filesystem.
 

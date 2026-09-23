@@ -3,17 +3,17 @@
 Three deployment targets share one inventory:
 
 ```text
-inventory/ ──→ infra/workstation: NixOS + Home Manager
-           ├─→ infra/adelie: NixOS application host
-           └─→ infra/pi: Ansible appliance
+src/inventory/ ──→ src/infra/workstation: NixOS + Home Manager
+           ├─→ src/infra/adelie: NixOS application host
+           └─→ src/infra/pi: Ansible appliance
 
 hot data → SSDs       cold data → IronWolf Pro
-backup destination → OneTouch (policy: inventory/backup.nix)
+backup destination → OneTouch (policy: src/inventory/backup.nix)
 ```
 
 Workstation owns the desktop, GPU workloads, and attached data disks. Adelie
 owns the SSD-local application tier. Pi is a Debian appliance. Ansible
-provisions its Podman services under `infra/pi/`. It owns the HTTP entry plane,
+provisions its Podman services under `src/infra/pi/`. It owns the HTTP entry plane,
 DNS, monitoring, and network appliance services. Ansible is the only live Pi
 deployment owner. The verified NixOS image is an offline rollback artifact.
 Aurora and Pavilion are retired. They do not provide backup, deployment, or
@@ -51,7 +51,7 @@ Activation is a separate operator step: `just rebuild` for workstation,
 [deployment reference](docs/reference/deployment.md) defines the Pi target
 confirmation and activation order.
 
-Shared facts live in `inventory/`; generated catalogs live in
+Shared facts live in `src/inventory/`; generated catalogs live in
 [docs/generated](docs/generated). Nix implementation lives under the paths in
 [module authoring](docs/reference/module-authoring.md); Pi implementation lives
-in [infra/pi](infra/pi). Keep catalogs derived from inventory rather than copied here.
+in [src/infra/pi](src/infra/pi). Keep catalogs derived from inventory rather than copied here.

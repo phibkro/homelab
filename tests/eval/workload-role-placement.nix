@@ -1,8 +1,8 @@
 { lib, ... }:
 
 let
-  compiler = import ../../inventory;
-  workloadCatalog = import ../../inventory/workloads.nix { inherit lib; };
+  compiler = import ../../src/inventory;
+  workloadCatalog = import ../../src/inventory/workloads.nix { inherit lib; };
 
   evaluate =
     overrides:

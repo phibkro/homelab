@@ -18,7 +18,7 @@
 
 let
   inventory = inputs.self.lib.noriInventory;
-  compiledInventory = import ../../inventory { inherit lib; };
+  compiledInventory = import ../../src/inventory { inherit lib; };
   hosts = inputs.self.nixosConfigurations;
   homes = {
     workstation = hosts.workstation.config.home-manager.users.nori;
@@ -30,7 +30,7 @@ let
     homeName: packageName:
     lib.any (package: lib.getName package == packageName) homes.${homeName}.home.packages;
 
-  agentSoulPath = ../../users/nori/programs/agent-soul/SOUL.md;
+  agentSoulPath = ../../src/users/nori/programs/agent-soul/SOUL.md;
   agentSoul = builtins.readFile agentSoulPath;
   agentHarnessesShareSoul =
     homes.workstation.home.file.".claude/CLAUDE.md".source == agentSoulPath

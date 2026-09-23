@@ -29,7 +29,7 @@ just check-vm
 can consume substantial memory and build time. Run only one heavy job for this
 project at a time.
 
-The current VM check registry lives in `lib/flake-parts/checks/e2e.nix`.
+The current VM check registry lives in `src/lib/flake-parts/checks/e2e.nix`.
 `just check-vm <name>` rejects names outside that registry.
 
 ## Pi checks

@@ -14,7 +14,7 @@ The IronWolf Pro 4TB (`/mnt/media`) fails. Symptoms:
 ## Establish what survives
 
 IronWolf Pro is the cold-data HDD; the two SSDs hold hot data. Inspect the
-OneTouch destination selected by `inventory/backup.nix` and preserved MP510
+OneTouch destination selected by `src/inventory/backup.nix` and preserved MP510
 archives. The [September 19 inspection](../archive/reports/2026-09-19-backup-evidence.md)
 established service-state restore evidence, not a media restore. The earlier
 preflight found an approximately 40 KiB MP510 `media-irreplaceable` directory;
@@ -37,7 +37,7 @@ Power down. Swap in a new ≥4 TB drive. Boot.
 ls /dev/disk/by-id/
 ```
 
-Find the new drive (by model + serial). Update `infra/workstation/disko-media.nix` if the by-id changed.
+Find the new drive (by model + serial). Update `src/infra/workstation/disko-media.nix` if the by-id changed.
 
 ### 3. Provision only the verified replacement drive
 
@@ -49,7 +49,7 @@ or the workstation root disk in its scope.
 cd /tmp/nix-migration   # or wherever the flake is
 sudo nix --extra-experimental-features 'nix-command flakes' \
   run github:nix-community/disko/latest -- \
-  --mode disko infra/workstation/disko-media.nix
+  --mode disko src/infra/workstation/disko-media.nix
 ```
 
 Wipes + creates the btrfs filesystem with the subvolumes declared in the reviewed disk configuration.

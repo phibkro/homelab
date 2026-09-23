@@ -61,7 +61,7 @@ When file A's comment refers to file B's behavior, apply this test:
 > Just restates B → CUT (downstream-of-canonical-home paraphrase).
 
 Worked examples (from `git show fb1edfc`, the auth-perimeter run):
-* **KEEP**: `inventory/default.nix` comments that explain why a projected route
+* **KEEP**: `src/inventory/default.nix` comments that explain why a projected route
   uses the entry-plane address instead of its backend address.
 * **KEEP**: service manifest comments that record a non-obvious authentication
   or placement constraint.
@@ -137,7 +137,7 @@ Naming convention by tree:
 | `.claude/skills/<name>/SKILL.md`  | lower-kebab-case; verb-object                                                |
 | Mnemopi gotcha memory             | `gotcha-<technology>-<symptom>`                                              |
 | `scripts/*.sh`                    | lower-kebab-case; verb-object or noun-prefix-procedural                   |
-| `services/<svc>/`                 | lower-kebab-case; `manifest.nix` + concrete realization files             |
+| `src/services/<svc>/`                 | lower-kebab-case; `manifest.nix` + concrete realization files             |
 
 ### 3. Recipe / skill names
 
@@ -272,7 +272,7 @@ What to grep for specifically:
   unclear, ask before applying.
 
 * **Don't drift across the stated boundary.** If asked to audit
-  `services/recyclarr/`, stop at the directory boundary. Audit the
+  `src/services/recyclarr/`, stop at the directory boundary. Audit the
   `default.nix` import shape but don't reach into sibling dirs to
   "complete the picture" unless asked.
 
@@ -312,7 +312,7 @@ including:
   verbose, it earns rent.
 
 * **Does not exceed the user's stated scope.** If asked to audit
-  `services/recyclarr/`, stop at the boundary — don't drift into
+  `src/services/recyclarr/`, stop at the boundary — don't drift into
   adjacent dirs unless asked.
 
 * **Does not lean aggressive on borderline cuts.** When the

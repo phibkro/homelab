@@ -62,7 +62,7 @@ Agents launch directly inside pagu.
   than copied into each repository.
 - `agent-dispatch` is **removed**, not merely deprecated. Its package, its two
   shell files, its flake check, and its architecture-baseline assertion are
-  gone; its one non-agent caller (`services/agent-fix/nixos.nix`) now runs
+  gone; its one non-agent caller (`src/services/agent-fix/nixos.nix`) now runs
   `pagu-box --profile=strict --<provider> -- <provider> …` — the exact executable
   agent-dispatch invoked, so the caller changed without the enforcement
   changing. It moves to `pagu box` when the flake input is bumped past that

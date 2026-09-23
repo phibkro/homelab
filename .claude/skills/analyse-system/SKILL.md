@@ -77,8 +77,8 @@ Don't open with labeling — that produces performative abstraction (the agent l
 For a typical project:
 
 - Entry point — `main.*`, `index.*`, `flake.nix`, `Cargo.toml`, `package.json`, etc. Whatever defines the project's surface
-- Core abstractions — `lib/`, `inventory/`, `core/`, `nix/lib/`, or domain-model directories. For this homelab, inspect `lib/` and `inventory/` first
-- Module boundaries — `infra/`, `services/`, `profiles/`, `users/`, `packages/`, `src/<components>/`, or `nix/`. Sample 5-7 representative ones, don't read everything
+- Core abstractions — `src/lib/`, `src/inventory/`, `core/`, `nix/lib/`, or domain-model directories. For this homelab, inspect `src/lib/` and `src/inventory/` first
+- Module boundaries — `src/infra/`, `src/services/`, `src/profiles/`, `src/users/`, `packages/`, `src/<components>/`, or `nix/`. Sample 5-7 representative ones, don't read everything
 - Workflow definitions — `Justfile`, `Makefile`, `.github/workflows/`, scripts directories
 - Documentation — for *why*, but trust code over doc when they conflict
 - Recent commit history — `git log --oneline -20` for narrative
@@ -117,10 +117,10 @@ The critique surface emerges automatically from leverage gaps: "this issue is at
 ## Homelab reading order
 
 1. `flake.nix` — entry point, host configurations, and checks
-2. `inventory/` and `infra/common/nixos/` — declared identities plus the `nori.<X>` effect interfaces
-3. `infra/common/nixos/` — common host realization
-4. Five to seven representative `services/` entries — sample shapes, do not read every service
-5. `infra/<host>/` — per-host realization
+2. `src/inventory/` and `src/infra/common/nixos/` — declared identities plus the `nori.<X>` effect interfaces
+3. `src/infra/common/nixos/` — common host realization
+4. Five to seven representative `src/services/` entries — sample shapes, do not read every service
+5. `src/infra/<host>/` — per-host realization
 6. `Justfile` — operator workflows
 7. `docs/` — rationale; trust code when they conflict
 8. `git log --oneline -20` — recent narrative

@@ -3,14 +3,14 @@ name: add-service
 description: USE WHEN adding or relocating a homelab service — preserves inventory-owned placement, routes, backup intent, and the selected NixOS or Ansible runtime boundary.
 ---
 
-Read `docs/reference/module-authoring.md`, `inventory/workloads.nix` and one
+Read `docs/reference/module-authoring.md`, `src/inventory/workloads.nix` and one
 existing service with similar storage/authentication needs before writing.
 
 For a NixOS-hosted service, keep pure metadata in
-`services/<service>/manifest.nix` and its implementation in `nixos.nix`. Reuse
+`src/services/<service>/manifest.nix` and its implementation in `nixos.nix`. Reuse
 an existing coupled cluster when the new workload shares its lifecycle. For Pi,
 implement it under the service's `ansible/` directory and select it in
-`infra/pi/playbooks/pi.yml`.
+`src/infra/pi/playbooks/pi.yml`.
 
 Inventory owns placement and shared endpoint facts. Derive Pi routes through
 the existing generator. Declare service data, backup intent, filesystem access

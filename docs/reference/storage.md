@@ -11,20 +11,20 @@ The intended placement separates access needs from protection:
 | Workstation NVMe SSDs | Desktop, GPU, media-service, and working data |
 | Adelie NVMe SSD | SSD-local application state and re-derivable Attic chunks |
 | IronWolf Pro HDD | Cold media, libraries and archives |
-| OneTouch HDD | Independent backup disk; destination policy in `inventory/backup.nix` |
+| OneTouch HDD | Independent backup disk; destination policy in `src/inventory/backup.nix` |
 
 Existing MP510 backup archives remain where they are until a reviewed move or
 retention decision. This source cleanup does not relocate or delete disk data.
 
 ## Authoritative declarations
 
-`inventory/disks.nix` owns the portable external-disk identities, filesystem
+`src/inventory/disks.nix` owns the portable external-disk identities, filesystem
 contracts, roles and declared attachment host for IronWolf Pro and OneTouch.
 It intentionally excludes NVMe boot disks, whose layout belongs to each host's
 own disko module. Workstation's media and backup consumers derive their device
 paths from that registry. `nori.fs` entries pair paths with value tiers; the
 [generated filesystem documentation](../generated/fs.md) comes from those
-declarations. `inventory/datasets.nix` owns shared dataset contracts.
+declarations. `src/inventory/datasets.nix` owns shared dataset contracts.
 
 Hot/cold placement describes access patterns. Value tiers describe the cost of
 losing data; they are separate decisions. Media already on IronWolf remains on
@@ -32,7 +32,7 @@ that HDD, while active service state and working trees remain on SSD storage.
 
 ## Backup policy and observed recovery
 
-[`inventory/backup.nix`](../../inventory/backup.nix) owns destination selection
+[`src/inventory/backup.nix`](../../src/inventory/backup.nix) owns destination selection
 and its enable switch. Workstation writes directly to its attached OneTouch.
 Pi and Adelie use separate restricted workstation SFTP accounts and namespaces
 backed by that disk. The [generated backup reference](../generated/backups.md)
@@ -76,7 +76,7 @@ Btrbk keeps local rollback snapshots on the same source disks. These can help
 with accidental edits; they cannot recover data after that disk fails.
 
 IronWolf's mostly-cold canonical media has separate local rollback and
-independent Restic retention policies in `inventory/backup.nix` under
+independent Restic retention policies in `src/inventory/backup.nix` under
 `retention.coldMedia`. Local retention limits how long deleted data consumes
 the primary disk. Restic deduplicates unchanged chunks; retention controls
 deletion history and restore choice, not a full additional copy per snapshot.
@@ -89,6 +89,6 @@ daily dumps during preflight, but their database restore validity was not
 checked. For other services, use the declared logical-dump preparation rather
 than assuming a copy of a running database is consistent.
 
-Pi filesystem and service behavior belongs to Ansible under `infra/pi/`, not the
+Pi filesystem and service behavior belongs to Ansible under `src/infra/pi/`, not the
 retained Nix entry-plane test adapters. Recovery procedures are indexed in the
 [recovery reference](recovery.md).

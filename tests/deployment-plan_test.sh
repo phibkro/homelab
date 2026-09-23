@@ -14,18 +14,18 @@ git config user.name test
 git config user.email test@example.invalid
 mkdir -p \
   docs \
-  infra/common/ansible/roles/base/tasks \
-  services/bazarr \
-  services/caddy/ansible \
-  services/grafana \
-  services/recyclarr/implementation \
-  services/ntfy/manifests
-printf baseline > infra/common/ansible/roles/base/tasks/main.yml
-printf baseline > services/bazarr/manifest.nix
-printf baseline > services/grafana/nixos.nix
-printf baseline > services/caddy/ansible/tasks.yml
-printf baseline > services/recyclarr/implementation/radarr.yml
-printf baseline > services/ntfy/manifests/notify.nix
+  src/infra/common/ansible/roles/base/tasks \
+  src/services/bazarr \
+  src/services/caddy/ansible \
+  src/services/grafana \
+  src/services/recyclarr/implementation \
+  src/services/ntfy/manifests
+printf baseline > src/infra/common/ansible/roles/base/tasks/main.yml
+printf baseline > src/services/bazarr/manifest.nix
+printf baseline > src/services/grafana/nixos.nix
+printf baseline > src/services/caddy/ansible/tasks.yml
+printf baseline > src/services/recyclarr/implementation/radarr.yml
+printf baseline > src/services/ntfy/manifests/notify.nix
 printf ignored > .gitignore
 printf baseline > docs/old.md
 git add .
@@ -59,9 +59,9 @@ printf '{' >"$scratch/bad.json"
 
 plan --changed-since HEAD
 assert_plan '.hosts == [] and .untrackedFiles == []'
-printf changed >> services/grafana/nixos.nix
+printf changed >> src/services/grafana/nixos.nix
 # A malformed ownership value must propagate the downstream jq failure too.
-jq '.sourceRoots["services/grafana"] = "invalid-host-array"' "$index" >"$scratch/bad.json"
+jq '.sourceRoots["src/services/grafana"] = "invalid-host-array"' "$index" >"$scratch/bad.json"
 (HOMELAB_DEPLOYMENT_INDEX="$scratch/bad.json"; reject --changed-since HEAD)
 plan --changed-since HEAD
 assert_plan '.hosts == ["adelie"] and .activationOrder == ["adelie"]'
@@ -71,36 +71,36 @@ assert_plan '.hosts == ["adelie"]'
 git commit --quiet -m adelie
 plan --changed-since "$base"
 assert_plan '.hosts == ["adelie"]'
-printf changed >> services/caddy/ansible/tasks.yml
+printf changed >> src/services/caddy/ansible/tasks.yml
 plan --changed-since HEAD
 assert_plan '.hosts == ["pi"] and .builds == [] and .plans == ["just pi::plan"] and .applies == ["just pi::deploy"] and .verifies == ["just pi::check"] and .activationOrder == ["pi"]'
-git restore services/caddy/ansible/tasks.yml
+git restore src/services/caddy/ansible/tasks.yml
 
 # Coupled acquisition ownership covers manifests and implementation assets,
 # while common Ansible mechanisms belong only to the Pi deployment backend.
-printf changed >> services/bazarr/manifest.nix
+printf changed >> src/services/bazarr/manifest.nix
 plan --changed-since HEAD
 assert_plan '.hosts == ["workstation"]'
-git restore services/bazarr/manifest.nix
-printf changed >> services/ntfy/manifests/notify.nix
+git restore src/services/bazarr/manifest.nix
+printf changed >> src/services/ntfy/manifests/notify.nix
 plan --changed-since HEAD
 assert_plan '.hosts == ["adelie", "pi", "workstation"]'
-git restore services/ntfy/manifests/notify.nix
-printf changed >> services/recyclarr/implementation/radarr.yml
+git restore src/services/ntfy/manifests/notify.nix
+printf changed >> src/services/recyclarr/implementation/radarr.yml
 plan --changed-since HEAD
 assert_plan '.hosts == ["workstation"]'
-git restore services/recyclarr/implementation/radarr.yml
-printf changed >> infra/common/ansible/roles/base/tasks/main.yml
+git restore src/services/recyclarr/implementation/radarr.yml
+printf changed >> src/infra/common/ansible/roles/base/tasks/main.yml
 plan --changed-since HEAD
 assert_plan '.hosts == ["pi"]'
-git restore infra/common/ansible/roles/base/tasks/main.yml
+git restore src/infra/common/ansible/roles/base/tasks/main.yml
 
 # Git-backed flakes exclude untracked sources. Plan their owners but expose the
 # paths verbatim and warn before the emitted build commands can be mistaken for coverage.
-odd=$'services/caddy/ansible/new file\nwith newline.yml'
+odd=$'src/services/caddy/ansible/new file\nwith newline.yml'
 printf new >"$odd"
 printf ignored >ignored
-(cd services/caddy/ansible; plan --changed-since HEAD)
+(cd src/services/caddy/ansible; plan --changed-since HEAD)
 # jq variable, not shell interpolation.
 # shellcheck disable=SC2016
 assert_plan --arg odd "$odd" '.hosts == ["pi"] and .untrackedFiles == [$odd] and (.reasons | index("changed:" + $odd) != null)'
@@ -111,16 +111,16 @@ assert_plan '.hosts == ["pi"] and .untrackedFiles == []'
 git commit --quiet -m pi
 
 # Moves must invalidate both old and new owners even when Git detects a rename.
-git mv services/grafana/nixos.nix services/caddy/ansible/moved.nix
+git mv src/services/grafana/nixos.nix src/services/caddy/ansible/moved.nix
 plan --changed-since HEAD
 assert_plan '.hosts == ["adelie", "pi"]'
 git commit --quiet -m rename
 plan --changed-since HEAD~1
 assert_plan '.hosts == ["adelie", "pi"]'
-rm services/caddy/ansible/moved.nix
+rm src/services/caddy/ansible/moved.nix
 plan --changed-since HEAD
 assert_plan '.hosts == ["pi"]'
-git restore services/caddy/ansible/moved.nix
+git restore src/services/caddy/ansible/moved.nix
 printf docs >> docs/old.md
 plan --changed-since HEAD
 assert_plan '.hosts == [] and .reasons == ["docs-or-tests:docs/old.md"]'

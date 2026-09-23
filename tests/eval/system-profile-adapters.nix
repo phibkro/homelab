@@ -9,7 +9,7 @@
 */
 
 let
-  inventory = import ../../inventory { inherit lib; };
+  inventory = import ../../src/inventory { inherit lib; };
   # Ansible profiles still express logical workload placement, but they must
   # never be projected into NixOS system modules.
   hostNames = inventory.internal.nixosHostNames;
@@ -59,7 +59,7 @@ let
             nori.inventory.currentWorkloads = [ "sonarr" ];
           };
         }
-        ../../profiles/media-acquisition/nixos.nix
+        ../../src/profiles/media-acquisition/nixos.nix
       ];
     }).config;
   mediaActivationIsIsolated =
@@ -69,11 +69,11 @@ let
     && !(mediaConfig.systemd.services ? recyclarr-sync);
 
   actual = {
-    vector = hostsSelecting ../../services/vector/nixos.nix;
-    btrbk = hostsSelecting ../../services/btrbk/nixos.nix;
-    restic = hostsSelecting ../../services/restic-backup/nixos.nix;
-    restore-drill = hostsSelecting ../../services/restore-drill/nixos.nix;
-    research = hostsSelecting ../../profiles/research/nixos.nix;
+    vector = hostsSelecting ../../src/services/vector/nixos.nix;
+    btrbk = hostsSelecting ../../src/services/btrbk/nixos.nix;
+    restic = hostsSelecting ../../src/services/restic-backup/nixos.nix;
+    restore-drill = hostsSelecting ../../src/services/restore-drill/nixos.nix;
+    research = hostsSelecting ../../src/profiles/research/nixos.nix;
   };
 
   expected = {

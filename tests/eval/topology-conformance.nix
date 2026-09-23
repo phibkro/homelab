@@ -1,7 +1,7 @@
 { inputs, lib, ... }:
 let
-  compiler = import ../../inventory/topology.nix { inherit lib; };
-  projectTosca = import ../../lib/topology/tosca.nix;
+  compiler = import ../../src/inventory/topology.nix { inherit lib; };
+  projectTosca = import ../../src/lib/topology/tosca.nix;
   validFixture = {
     hosts.workstation = {
       kind = "nixos";

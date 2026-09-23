@@ -50,5 +50,5 @@ jobs:
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
             experimental-features = nix-command flakes
       - name: Pi lint, contracts, inventory, and Ansible syntax
-        # Root flake.lock pins devenv; infra/pi/devenv.lock pins the appliance tools.
+        # Root flake.lock pins devenv; src/infra/pi/devenv.lock pins the appliance tools.
         run: nix develop --command just pi::check

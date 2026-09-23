@@ -89,7 +89,7 @@ regex_rel='(\.\.?/)+[a-zA-Z0-9/<>_.-]+\.nix'
 mapfile -t files < <(
   find . -name '*.nix' -not -path './result*' -not -path './.git/*' -not -path '*/.devenv/*' -not -path '*/.direnv/*' -not -path '*/node_modules/*' -not -path './.worktrees/*' 2>/dev/null
   find docs/reference docs/decisions docs/installs docs/runbooks -name '*.md' 2>/dev/null
-  for f in docs/glossary.md docs/invariants.md docs/README.md docs/roadmap.md README.md secrets/README.md AGENTS.md CLAUDE.md infra/AGENTS.md infra/pi/AGENTS.md services/AGENTS.md users/AGENTS.md; do
+  for f in docs/glossary.md docs/invariants.md docs/README.md docs/roadmap.md README.md secrets/README.md AGENTS.md CLAUDE.md src/infra/AGENTS.md src/infra/pi/AGENTS.md src/services/AGENTS.md src/users/AGENTS.md; do
     [ -f "$f" ] && echo "$f"
   done
   find .claude/skills -name 'SKILL.md' 2>/dev/null

@@ -1,6 +1,6 @@
 { lib, ... }:
 let
-  compiler = import ../../inventory;
+  compiler = import ../../src/inventory;
 
   profiles = {
     base = {
@@ -25,10 +25,10 @@ let
 
   nixHost = name: tags: {
     kind = "nixos";
-    managementRoot = "infra/${name}";
+    managementRoot = "src/infra/${name}";
     additionalSourceRoots = [ ];
-    systemModule = ../../infra/workstation;
-    homeModule = ../../users/nori/home.nix;
+    systemModule = ../../src/infra/workstation;
+    homeModule = ../../src/users/nori/home.nix;
     profiles = [ "base" ];
     inherit tags;
     identity = identity "workhorse" name;
@@ -46,7 +46,7 @@ let
     ];
     edge = {
       kind = "ansible";
-      managementRoot = "infra/edge";
+      managementRoot = "src/infra/edge";
       additionalSourceRoots = [ ];
       profiles = [ "entry-plane" ];
       tags = [ "entry-plane" ];

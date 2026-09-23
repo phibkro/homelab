@@ -1,6 +1,6 @@
 ---
 generated: true
-source: lib/flake-parts/packages/docs-fs.nix
+source: src/lib/flake-parts/packages/docs-fs.nix
 regenerate: nix build .#docs-fs
 ---
 
@@ -19,8 +19,8 @@ policy.
 Adapters that act on this schema live elsewhere:
 
  - btrfs subvolume creation: disko configs per host
- - local btrbk snapshots: `services/btrbk/nixos.nix`
- - restic backup jobs: `infra/common/nixos/backup.nix`
+ - local btrbk snapshots: `src/services/btrbk/nixos.nix`
+ - restic backup jobs: `src/infra/common/nixos/backup.nix`
 
 # fs concern — overview {#sec-functions-library-fs}
 
@@ -33,7 +33,7 @@ Collapses subvolume paths that used to be magic strings across
 arr binds, jellyfin/immich/komga consumers, and the
 restic+btrbk generators. Reader-shaped effect: hosts declare
 (alongside disko), services consume by name; backup generators
-in `infra/common/nixos/backup.nix` filter by tier (the Writer-shaped
+in `src/infra/common/nixos/backup.nix` filter by tier (the Writer-shaped
 consequence).
 
 Optional `samba` block — when set, the share follows the drive:
@@ -49,7 +49,7 @@ Writer half of `nori.fs`: hosts that declare any
 `nori.fs.<X>.samba` entries emit the corresponding share +
 ownership tmpfiles. The samba globals (workgroup, hosts allow,
 vfs objects, the firewall rule) live in
-`services/samba/nixos.nix` on the host that imports it.
+`src/services/samba/nixos.nix` on the host that imports it.
 
 
 
@@ -90,7 +90,7 @@ attribute set of (submodule)
 ```
 
 *Declared by:*
- - `infra/common/nixos/storage`
+ - `src/infra/common/nixos/storage`
 
 
 
@@ -108,7 +108,7 @@ rather than hardcoding the literal.
 absolute path
 
 *Declared by:*
- - `infra/common/nixos/storage`
+ - `src/infra/common/nixos/storage`
 
 
 
@@ -122,7 +122,7 @@ share follows the drive across hosts because the
 declaration lives next to the disko entry. The share’s
 global hardening (tailnet-only firewall, hosts allow
 CIDRs, vfs objects for macOS interop) lives in
-services/samba/nixos.nix; per-share fields here.
+src/services/samba/nixos.nix; per-share fields here.
 
 Defaults are picked for the homelab’s single-user
 operator + family case: writable, valid user ` nori `,
@@ -142,7 +142,7 @@ null
 ```
 
 *Declared by:*
- - `infra/common/nixos/storage`
+ - `src/infra/common/nixos/storage`
 
 
 
@@ -166,7 +166,7 @@ string
 ```
 
 *Declared by:*
- - `infra/common/nixos/storage`
+ - `src/infra/common/nixos/storage`
 
 
 
@@ -194,7 +194,7 @@ false
 ```
 
 *Declared by:*
- - `infra/common/nixos/storage`
+ - `src/infra/common/nixos/storage`
 
 
 
@@ -218,7 +218,7 @@ string
 ```
 
 *Declared by:*
- - `infra/common/nixos/storage`
+ - `src/infra/common/nixos/storage`
 
 
 
@@ -242,7 +242,7 @@ string
 ```
 
 *Declared by:*
- - `infra/common/nixos/storage`
+ - `src/infra/common/nixos/storage`
 
 
 
@@ -266,7 +266,7 @@ string
 ```
 
 *Declared by:*
- - `infra/common/nixos/storage`
+ - `src/infra/common/nixos/storage`
 
 
 
@@ -297,7 +297,7 @@ true
 ```
 
 *Declared by:*
- - `infra/common/nixos/storage`
+ - `src/infra/common/nixos/storage`
 
 
 
@@ -321,7 +321,7 @@ false
 ```
 
 *Declared by:*
- - `infra/common/nixos/storage`
+ - `src/infra/common/nixos/storage`
 
 
 
@@ -349,7 +349,7 @@ string
 ```
 
 *Declared by:*
- - `infra/common/nixos/storage`
+ - `src/infra/common/nixos/storage`
 
 
 
@@ -375,7 +375,7 @@ list of string
 ```
 
 *Declared by:*
- - `infra/common/nixos/storage`
+ - `src/infra/common/nixos/storage`
 
 
 
@@ -416,7 +416,7 @@ null
 ```
 
 *Declared by:*
- - `infra/common/nixos/storage`
+ - `src/infra/common/nixos/storage`
 
 
 
@@ -428,7 +428,7 @@ Value tier per docs/reference/storage.md “Value tiers”.
 Drives which restic repo (if any) the path lands in
 and the snapshot retention class. Adding a tier:
 extend the enum, document the contract, update the
-filter generators in infra/common/nixos/backup.nix.
+filter generators in src/infra/common/nixos/backup.nix.
 
 
 
@@ -436,6 +436,6 @@ filter generators in infra/common/nixos/backup.nix.
 one of “re-derivable”, “user”, “irreplaceable”
 
 *Declared by:*
- - `infra/common/nixos/storage`
+ - `src/infra/common/nixos/storage`
 
 

@@ -208,6 +208,6 @@ Discussed under "Decision" above. The residual risk profile (total apartment los
 - `docs/reference/storage.md` § value tiers — vocabulary used here
 - `docs/reference/topology.md` § service placement — the fate-sharing test this ADR honours
 - ADR-0001 § "Code is the single source of truth" — the practice that makes the per-host opt-in registry the authoritative answer to "where does X run?"
-- `infra/common/nixos/backup.nix` — `nori.backupTargets` (remote-URL support already landed)
-- `infra/common/nixos/storage/default.nix` — `nori.fs` (the `samba` block extension is part of P4)
-- `inventory/default.nix` — current route and workload-placement compiler; it supersedes the planned host-local route extension.
+- `src/infra/common/nixos/backup.nix` — `nori.backupTargets` (remote-URL support already landed)
+- `src/infra/common/nixos/storage/default.nix` — `nori.fs` (the `samba` block extension is part of P4)
+- `src/inventory/default.nix` — current route and workload-placement compiler; it supersedes the planned host-local route extension.

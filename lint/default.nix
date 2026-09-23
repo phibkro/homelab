@@ -1,7 +1,7 @@
 /**
   nori.lint — declarative grep-rule registry + lowering to a single
   `nix flake check` derivation. Shares the Reader+Writer data shape
-  with the `nori.<X>` effect family in infra/common/nixos/, but lives
+  with the `nori.<X>` effect family in src/infra/common/nixos/, but lives
   outside that folder because lint is dev-time tooling — affects
   `nix flake check`, not running system state.
 
@@ -55,8 +55,8 @@ let
                         value is the literal regex: `pattern = '\$pbkdf2-'`.
                         With Nix-declared rules, double-escape: `"\\$pbkdf2-"`.
       scope           — required list of strings. Paths under sourceRoot
-                        that grep walks (e.g. `[ "services/" ]` or
-                        `[ "infra/workstation/" ]`).
+                        that grep walks (e.g. `[ "src/services/" ]` or
+                        `[ "src/infra/workstation/" ]`).
       message         — required string. Operator-facing explanation
                         when the rule fires. Should name the right thing
                         to do, not just identify the violation.
@@ -132,7 +132,7 @@ let
     nix/ lint scope, so keep that boundary explicit while scanning every
     other service asset recursively.
   */
-  selfExcludeChain = " | grep -vE '^(lint/|services/[^/]+/ansible/)'";
+  selfExcludeChain = " | grep -vE '^(lint/|src/services/[^/]+/ansible/)'";
 
   lowerRule =
     name: rule:

@@ -56,13 +56,13 @@ nix shell nixpkgs#authelia --command \
 Store the resulting verifier in the Pi provider:
 
 ```sh
-cd infra/pi
+cd src/infra/pi
 devenv shell -- secretspec set \
   --profile production \
   OIDC_<NAME>_CLIENT_SECRET_HASH
 ```
 
-Before this command, declare the variable in `infra/pi/secretspec.toml` and add
+Before this command, declare the variable in `src/infra/pi/secretspec.toml` and add
 it to the `deployment` scope. Set the same environment-variable name as
 `secretHashEnvName` in the manifest OIDC block. The Pi adapter resolves it at
 deployment time.
@@ -72,7 +72,7 @@ into one SOPS file.
 
 ### 3. Declare the endpoint's `oidc` block
 
-In `services/<svc>/manifest.nix`, add OIDC metadata to the endpoint. The
+In `src/services/<svc>/manifest.nix`, add OIDC metadata to the endpoint. The
 manifest is the single source for routing and public-safe authentication
 policy:
 

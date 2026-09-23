@@ -57,10 +57,10 @@ cd /tmp/homelab
 ```bash
 sudo nix --extra-experimental-features 'nix-command flakes' \
   run github:nix-community/disko/latest -- \
-  --mode disko infra/workstation/disko.nix
+  --mode disko src/infra/workstation/disko.nix
 ```
 
-This wipes the new root drive (by-id pinned to whatever the new SN750's serial is — **edit `infra/workstation/disko.nix` first if the serial changed**) and creates the six-subvolume btrfs layout.
+This wipes the new root drive (by-id pinned to whatever the new SN750's serial is — **edit `src/infra/workstation/disko.nix` first if the serial changed**) and creates the six-subvolume btrfs layout.
 
 ### 5. Install
 
@@ -86,7 +86,7 @@ approved credential operation; do not assume a key backup exists.
 
 The new install has empty service and user state. Verify the existing MP510
 mount at `/mnt/backup-local` and inspect repository snapshots before restoring.
-Inspect the OneTouch destination declared in `inventory/backup.nix` as well;
+Inspect the OneTouch destination declared in `src/inventory/backup.nix` as well;
 verify its identity and usable snapshots before selecting a repository.
 Do not assume a new install has materialized backup credentials. Use a
 protected recovery credential file obtained through its authorized provider.

@@ -36,16 +36,16 @@ One lever maxed = nice-to-have. Two = ship it. Three+ = required.
 
 | Recipe | Effect under test | Module |
 |---|---|---|
-| `just test-hypr` | Hyprland config, key/modifier registration, dispatcher smoke checks, and rejected `hypr-layout` inputs with unchanged workspace state | `users/nori/programs/desktop/hypr-rice/` |
-| `HYPR_RICE_LIVE_TEST=1 just test-hypr-layout-live` | Explicit controlled-window journey: stable-ID visual ordering, real spacer target, drift/reinsertion/replacement, special-workspace targeting, and absolute focused ratios | `users/nori/programs/desktop/hypr-rice/hypr-layout-live-test.sh` |
-| `VICINAE_LAUNCHER_LIVE_TEST=1 just test-vicinae-launcher-live` | Private headless-Sway journey: desktop application and generated action indexing, extension loading, real launcher display, and command execution | `users/nori/programs/desktop/vicinae/vicinae-launcher-live-test.sh` |
-| `just test-backups` | `nori.backups.<n>` → restic units exist + per-target snapshots ≤25h | `infra/common/nixos/backup.nix` |
-| `just test-routes` | `lib.noriInventory.routes` → deployed Pi Caddy route + DNS + HTTPS | `inventory/default.nix` + Pi Ansible roles |
-| `just test-observability` | VM scrape targets up + process-exporter publishing + Pi heartbeat <90s + zero failing Gatus probes | compiler Pi projection + `services/{gatus,victoriametrics}/ansible/` |
-| `just test-authelia` | projected OIDC clients → Pi Authelia active, healthy, correct issuer, and non-empty hashed secret files | `inventory/default.nix` + `services/authelia/ansible/` |
-| `just test-music-ingest` | Disposable real-filesystem journey for claim, recovery, publication, conflict, and rejection behavior | `services/music-ingest/tests/runtime.sh` |
+| `just test-hypr` | Hyprland config, key/modifier registration, dispatcher smoke checks, and rejected `hypr-layout` inputs with unchanged workspace state | `src/users/nori/programs/desktop/hypr-rice/` |
+| `HYPR_RICE_LIVE_TEST=1 just test-hypr-layout-live` | Explicit controlled-window journey: stable-ID visual ordering, real spacer target, drift/reinsertion/replacement, special-workspace targeting, and absolute focused ratios | `src/users/nori/programs/desktop/hypr-rice/hypr-layout-live-test.sh` |
+| `VICINAE_LAUNCHER_LIVE_TEST=1 just test-vicinae-launcher-live` | Private headless-Sway journey: desktop application and generated action indexing, extension loading, real launcher display, and command execution | `src/users/nori/programs/desktop/vicinae/vicinae-launcher-live-test.sh` |
+| `just test-backups` | `nori.backups.<n>` → restic units exist + per-target snapshots ≤25h | `src/infra/common/nixos/backup.nix` |
+| `just test-routes` | `lib.noriInventory.routes` → deployed Pi Caddy route + DNS + HTTPS | `src/inventory/default.nix` + Pi Ansible roles |
+| `just test-observability` | VM scrape targets up + process-exporter publishing + Pi heartbeat <90s + zero failing Gatus probes | compiler Pi projection + `src/services/{gatus,victoriametrics}/ansible/` |
+| `just test-authelia` | projected OIDC clients → Pi Authelia active, healthy, correct issuer, and non-empty hashed secret files | `src/inventory/default.nix` + `src/services/authelia/ansible/` |
+| `just test-music-ingest` | Disposable real-filesystem journey for claim, recovery, publication, conflict, and rejection behavior | `src/services/music-ingest/tests/runtime.sh` |
 | `just test` | All non-destructive recipes above; the opt-in Ghostty geometry and headless launcher journeys are intentionally excluded | composite |
-| `just test-self-hosted-firecracker` | Disposable transient KVM journey for a net-off Firecracker Environment. It checks exact create replay, guest isolation, drain rejection, stopped recovery, lease release, and cleanup. | `infra/workstation/firecracker-environment.nix` |
+| `just test-self-hosted-firecracker` | Disposable transient KVM journey for a net-off Firecracker Environment. It checks exact create replay, guest isolation, drain rejection, stopped recovery, lease release, and cleanup. | `src/infra/workstation/firecracker-environment.nix` |
 
 ## The architectural correlation worth knowing
 
@@ -56,16 +56,16 @@ runtime checks.
 
 | Authoritative source | Runtime adapter | Test | Test value |
 |---|---|---|:-:|
-| `infra/common/nixos/backup.nix` | NixOS restic units | `test-backups` | ★★★★★ |
-| `inventory/default.nix` + workload manifests | Pi Caddy, Pi-hole, Gatus, Authelia | `test-routes`, `test-authelia`, `test-observability` | ★★★★★ |
-| `infra/common/nixos/service-hardening.nix` | ✓ `nori.harden` | — | ★★ (flake check is primary defence) |
-| `infra/common/nixos/storage/default.nix` | ✓ `nori.fs` | — | ★★ |
-| `infra/common/nixos/inventory.nix` | ✓ Read-only compiler projection | — | ★ (covered by inventory eval checks) |
-| `infra/common/nixos/restart-policy.nix` | ✓ sweeps systemd | — | ★★ |
-| `infra/common/nixos/motd.nix` | — config wrapper | — | n/a |
-| `infra/common/nixos/gpu.nix` | — config wrapper | — | n/a |
+| `src/infra/common/nixos/backup.nix` | NixOS restic units | `test-backups` | ★★★★★ |
+| `src/inventory/default.nix` + workload manifests | Pi Caddy, Pi-hole, Gatus, Authelia | `test-routes`, `test-authelia`, `test-observability` | ★★★★★ |
+| `src/infra/common/nixos/service-hardening.nix` | ✓ `nori.harden` | — | ★★ (flake check is primary defence) |
+| `src/infra/common/nixos/storage/default.nix` | ✓ `nori.fs` | — | ★★ |
+| `src/infra/common/nixos/inventory.nix` | ✓ Read-only compiler projection | — | ★ (covered by inventory eval checks) |
+| `src/infra/common/nixos/restart-policy.nix` | ✓ sweeps systemd | — | ★★ |
+| `src/infra/common/nixos/motd.nix` | — config wrapper | — | n/a |
+| `src/infra/common/nixos/gpu.nix` | — config wrapper | — | n/a |
 
-Corollary: **adding a Reader+Writer mechanism to `infra/common/nixos/` commits to a runtime introspection test for it.** A plain host wrapper without that shape needs evaluation coverage, while a service or desktop realization belongs with its service or profile.
+Corollary: **adding a Reader+Writer mechanism to `src/infra/common/nixos/` commits to a runtime introspection test for it.** A plain host wrapper without that shape needs evaluation coverage, while a service or desktop realization belongs with its service or profile.
 
 ## Next potential test targets
 
@@ -73,8 +73,8 @@ These are the unshipped recipes the four-lever evaluation flagged as worth-doing
 
 | Recipe | What it would assert | Effect under test | Lever score | Trigger to ship |
 |---|---|---|---|---|
-| `test-harden` | For each `nori.harden.<n>`: declared `ProtectSystem/PrivateTmp/binds` actually applied to the systemd unit (`systemctl show` matches the option declaration) | `infra/common/nixos/service-hardening.nix` | leverage 3 · volatility 2 · opacity 3 · blast 3 | A hardening-bypass incident, or after the `every-service-has-fs-hardening` flake check is removed |
-| `test-fs` | For each `nori.fs.<n>`: path exists, owner/mode/subvolume matches, AND entry exists in `nori.backups` or has an explicit excluded flag | `infra/common/nixos/storage/default.nix` | leverage 3 · volatility 1 · opacity 3 · blast 4 | The "I added a folder but forgot to wire backup" class — likely if user-data shape changes |
+| `test-harden` | For each `nori.harden.<n>`: declared `ProtectSystem/PrivateTmp/binds` actually applied to the systemd unit (`systemctl show` matches the option declaration) | `src/infra/common/nixos/service-hardening.nix` | leverage 3 · volatility 2 · opacity 3 · blast 3 | A hardening-bypass incident, or after the `every-service-has-fs-hardening` flake check is removed |
+| `test-fs` | For each `nori.fs.<n>`: path exists, owner/mode/subvolume matches, AND entry exists in `nori.backups` or has an explicit excluded flag | `src/infra/common/nixos/storage/default.nix` | leverage 3 · volatility 1 · opacity 3 · blast 4 | The "I added a folder but forgot to wire backup" class — likely if user-data shape changes |
 | `test-secrets` | For each `sops.secrets.<n>`: rendered file exists at expected path, mode/owner/group matches declaration, sops can decrypt with current key | sops integration | leverage 2 · volatility 1 · opacity 3 · blast 4 | Next sops key rotation, or any "service can't read secret" deploy break |
 | `test-firewall` | Projected tailnet-only ports are subnet-bound and no unrelated ports are open | compiler Pi projection + firewall role | leverage 3 · volatility 1 · opacity 4 · blast 4 | After any change that adds a new exposed port |
 | `test-network` | Pi-hole resolves every active route, MagicDNS resolves hosts, and subnet routes are advertised | inventory route projection + Tailscale | leverage 3 · volatility 1 · opacity 2 · blast 3 | After a subnet-route or DNS incident |
@@ -151,8 +151,8 @@ That asymmetry is the case for keeping these recipes load-bearing.
 ## References
 
 - Hyprland checks: the test inventory above and
-  `users/nori/programs/desktop/hypr-rice/`.
+  `src/users/nori/programs/desktop/hypr-rice/`.
 - SQLite backup race: [Pattern C2](services.md#pattern-c2--preparecommand-with-vacuum-into--flock-sqlite)
-  and the canonical `services/navidrome/nixos.nix` implementation.
+  and the canonical `src/services/navidrome/nixos.nix` implementation.
 - Evaluation and activation sequence:
   [module authoring](module-authoring.md#dev-workflow).

@@ -3,11 +3,11 @@ name: add-host
 description: Add a physical or virtual homelab host with an explicit NixOS or Ansible deployment owner.
 ---
 
-Read `docs/reference/module-authoring.md` and `inventory/hosts.nix` before editing.
+Read `docs/reference/module-authoring.md` and `src/inventory/hosts.nix` before editing.
 Host enumeration comes exclusively from inventory keys; directories do not activate hosts.
 
 Declare exactly one backend. NixOS hosts provide system/home module paths and
-hardware configuration under `infra/<host>/`; Ansible hosts provide a management
+hardware configuration under `src/infra/<host>/`; Ansible hosts provide a management
 root and explicit plan/apply/check commands. The existing Pi remains Ansible-owned.
 Add placement tags and profiles to the host. Workload manifests remain the only placement authority.
 

@@ -20,7 +20,7 @@
       whose nixos-unstable channel cut lags far behind upstream. Don't
       mass-overlay from this; resolve specific lags one package at a
       time. Currently consumed by:
-        profiles/desktop/nixos/apps.nix → zed-editor (nixos-unstable shipping
+        src/profiles/desktop/nixos/apps.nix → zed-editor (nixos-unstable shipping
           v0.232.3 as of 2026-05-07, master shipping v1.1.6; months of
           Linux/Wayland/file-watcher fixes in the gap)
     */
@@ -54,7 +54,7 @@
     /*
       snappy-switcher — Hyprland alt-tab overlay. Not in nixpkgs;
       upstream ships a flake. Bindings + daemon autostart live in
-      users/nori/programs/desktop/hypr-rice/hyprland.lua (ALT+Tab MRU global, SUPER+Tab
+      src/users/nori/programs/desktop/hypr-rice/hyprland.lua (ALT+Tab MRU global, SUPER+Tab
       workspace-local).
     */
     snappy-switcher.url = "github:OpalAayan/snappy-switcher";
@@ -74,7 +74,7 @@
       Stylix — single-input system-wide theming. Same
       Reader+collected-Writer shape as the lab's `nori.<X>` effect
       family — fits cleanly. Workstation imports the NixOS module
-      via profiles/desktop/nixos/stylix.nix.
+      via src/profiles/desktop/nixos/stylix.nix.
     */
     stylix.url = "github:danth/stylix";
     stylix.inputs.nixpkgs.follows = "nixpkgs";
@@ -148,21 +148,21 @@
       # perSystem or flake fragment. Adding a new output = new file +
       # one line here (or auto-discovery via haumea if the tree grows).
       imports = [
-        ./lib/flake-parts/formatter.nix
-        ./lib/flake-parts/devshell.nix
-        ./lib/flake-parts/machines.nix
-        ./lib/flake-parts/packages/docs-backups.nix
-        ./lib/flake-parts/packages/docs-recovery-evidence.nix
-        ./lib/flake-parts/packages/docs-fs.nix
-        ./lib/flake-parts/packages/inventory.nix
-        ./lib/flake-parts/packages/operator-view.nix
-        ./lib/flake-parts/packages/docs-routes.nix
-        ./lib/flake-parts/packages/docs-topology.nix
-        ./lib/flake-parts/packages/docs-capabilities.nix
-        ./lib/flake-parts/checks/conventions.nix
-        ./lib/flake-parts/checks/lint.nix
-        ./lib/flake-parts/checks/e2e.nix
-        ./lib/flake-parts/checks/eval.nix
+        ./src/lib/flake-parts/formatter.nix
+        ./src/lib/flake-parts/devshell.nix
+        ./src/lib/flake-parts/machines.nix
+        ./src/lib/flake-parts/packages/docs-backups.nix
+        ./src/lib/flake-parts/packages/docs-recovery-evidence.nix
+        ./src/lib/flake-parts/packages/docs-fs.nix
+        ./src/lib/flake-parts/packages/inventory.nix
+        ./src/lib/flake-parts/packages/operator-view.nix
+        ./src/lib/flake-parts/packages/docs-routes.nix
+        ./src/lib/flake-parts/packages/docs-topology.nix
+        ./src/lib/flake-parts/packages/docs-capabilities.nix
+        ./src/lib/flake-parts/checks/conventions.nix
+        ./src/lib/flake-parts/checks/lint.nix
+        ./src/lib/flake-parts/checks/e2e.nix
+        ./src/lib/flake-parts/checks/eval.nix
       ];
 
     };

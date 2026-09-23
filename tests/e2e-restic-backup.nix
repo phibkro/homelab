@@ -11,7 +11,7 @@
   Scenario:
    - One workstation-shaped node (role=workhorse so it can legally
      have a LOCAL target — appliance hosts can't, per the placement
-     assertion in infra/common/nixos/backup.nix).
+     assertion in src/infra/common/nixos/backup.nix).
    - A local restic target at /var/lib/test-restic-repo.
    - A real `nori.backups.testjob.include = [ "/var/lib/test-source" ]`
      declaration.
@@ -46,12 +46,12 @@ pkgs.testers.runNixOSTest {
     {
       imports = [
         inputs.sops-nix.nixosModules.sops
-        ../infra/common/nixos/inventory.nix
-        ../infra/common/nixos/service-hardening.nix
-        ../infra/common/nixos/storage
-        ../infra/common/nixos/backup.nix
-        ../services/restic-backup/nixos.nix
-        ../services/restic-target/nixos.nix
+        ../src/infra/common/nixos/inventory.nix
+        ../src/infra/common/nixos/service-hardening.nix
+        ../src/infra/common/nixos/storage
+        ../src/infra/common/nixos/backup.nix
+        ../src/services/restic-backup/nixos.nix
+        ../src/services/restic-target/nixos.nix
       ];
 
       environment.etc."sops-test-age.txt".source = ./keys/test-age.txt;
@@ -97,7 +97,7 @@ pkgs.testers.runNixOSTest {
       # A real mounted filesystem exercises the production mount guard.
       nori.inventory.backup =
         let
-          backup = import ../inventory/backup.nix { };
+          backup = import ../src/inventory/backup.nix { };
         in
         backup
         // {
@@ -185,7 +185,7 @@ pkgs.testers.runNixOSTest {
         # take to verify a restore. Exercises the password file +
         # repo location at the same time.
         # Each (job, target) lands in <target.repository>/<jobName>
-        # — the fanout shape from infra/common/nixos/backup.nix.
+        # — the fanout shape from src/infra/common/nixos/backup.nix.
         env = (
             "RESTIC_PASSWORD_FILE=/run/secrets/restic-password "
             "RESTIC_REPOSITORY=/var/lib/test-restic-repo/testjob "

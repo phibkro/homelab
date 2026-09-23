@@ -4,7 +4,7 @@ set -euo pipefail
 cd "${1:?usage: routing-coherence.sh <source-root> [inventory-json]}"
 fail=0
 
-for guide in AGENTS.md CLAUDE.md infra/AGENTS.md infra/pi/AGENTS.md services/AGENTS.md users/AGENTS.md docs/README.md; do
+for guide in AGENTS.md CLAUDE.md src/infra/AGENTS.md src/infra/pi/AGENTS.md src/services/AGENTS.md src/users/AGENTS.md docs/README.md; do
   if [[ ! -f "$guide" ]]; then
     echo "Missing agent route: $guide" >&2
     fail=1
@@ -21,7 +21,7 @@ for guide in AGENTS.md CLAUDE.md infra/AGENTS.md infra/pi/AGENTS.md services/AGE
   done < <(grep -oE '\]\([^ )]+\)' "$guide" | sed -E 's/^\]\(//; s/\)$//' || true)
 done
 
-for route in 'AGENTS.md' 'docs/README.md' 'infra/AGENTS.md' 'services/AGENTS.md' 'users/AGENTS.md'; do
+for route in 'AGENTS.md' 'docs/README.md' 'src/infra/AGENTS.md' 'src/services/AGENTS.md' 'src/users/AGENTS.md'; do
   owner=AGENTS.md
   [[ "$route" == AGENTS.md ]] && owner=CLAUDE.md
   if ! grep -qF "($route)" "$owner"; then

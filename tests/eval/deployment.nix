@@ -19,13 +19,13 @@ let
   nixosInventoryHosts = lib.attrNames (
     lib.filterAttrs (_: host: host.kind == "nixos") inventory.hosts
   );
-  rawHosts = import ../../inventory/hosts.nix;
-  compiler = import ../../inventory;
+  rawHosts = import ../../src/inventory/hosts.nix;
+  compiler = import ../../src/inventory;
   ansibleHostCannotCarryNixModules =
     let
       invalidHosts = rawHosts // {
         pi = rawHosts.pi // {
-          systemModule = ../../infra/workstation;
+          systemModule = ../../src/infra/workstation;
         };
       };
       evaluated = builtins.tryEval (
@@ -47,47 +47,47 @@ let
     !evaluated.success;
 
   rootsCorrect =
-    deployment.sourceRoots."services/attic" == [ "adelie" ]
+    deployment.sourceRoots."src/services/attic" == [ "adelie" ]
     &&
-      deployment.sourceRoots."services/attic-publisher" == [
+      deployment.sourceRoots."src/services/attic-publisher" == [
         "adelie"
         "workstation"
       ]
-    && deployment.sourceRoots."services/music-ingest" == [ "workstation" ]
-    && deployment.sourceRoots."services/jellyfin" == [ "workstation" ]
-    && deployment.sourceRoots."profiles/media-acquisition" == [ "workstation" ]
-    && deployment.sourceRoots."services/grafana" == [ "adelie" ]
-    && deployment.sourceRoots."services/restic-target" == [ "workstation" ]
-    && deployment.sourceRoots."services/caddy/manifest.nix" == [ "pi" ]
+    && deployment.sourceRoots."src/services/music-ingest" == [ "workstation" ]
+    && deployment.sourceRoots."src/services/jellyfin" == [ "workstation" ]
+    && deployment.sourceRoots."src/profiles/media-acquisition" == [ "workstation" ]
+    && deployment.sourceRoots."src/services/grafana" == [ "adelie" ]
+    && deployment.sourceRoots."src/services/restic-target" == [ "workstation" ]
+    && deployment.sourceRoots."src/services/caddy/manifest.nix" == [ "pi" ]
     &&
-      deployment.sourceRoots."services/beszel/manifests/agent.nix" == [
-        "adelie"
-        "pi"
-        "workstation"
-      ]
-    &&
-      deployment.sourceRoots."services/ntfy/manifests/notify.nix" == [
+      deployment.sourceRoots."src/services/beszel/manifests/agent.nix" == [
         "adelie"
         "pi"
         "workstation"
       ]
-    && deployment.machineRoots."services/caddy/ansible" == [ "pi" ]
-    && deployment.machineRoots."services/glance/ansible" == [ "pi" ]
-    && deployment.machineRoots."services/beszel/ansible/agent" == [ "pi" ]
-    && deployment.machineRoots."services/beszel/ansible/hub" == [ "pi" ]
-    && deployment.machineRoots."services/ntfy/ansible" == [ "pi" ]
-    && deployment.machineRoots."services/bazarr" == [ "workstation" ]
-    && deployment.machineRoots."services/jellyseerr" == [ "workstation" ]
-    && deployment.machineRoots."services/lidarr" == [ "workstation" ]
-    && deployment.machineRoots."services/prowlarr" == [ "workstation" ]
-    && deployment.machineRoots."services/qbittorrent" == [ "workstation" ]
-    && deployment.machineRoots."services/radarr" == [ "workstation" ]
-    && deployment.machineRoots."services/recyclarr" == [ "workstation" ]
-    && deployment.machineRoots."services/sonarr" == [ "workstation" ]
-    && deployment.machineRoots."infra/common/ansible" == [ "pi" ]
-    && deployment.machineRoots."infra/adelie" == [ "adelie" ]
-    && deployment.machineRoots."infra/pi" == [ "pi" ]
-    && deployment.machineRoots."infra/workstation" == [ "workstation" ];
+    &&
+      deployment.sourceRoots."src/services/ntfy/manifests/notify.nix" == [
+        "adelie"
+        "pi"
+        "workstation"
+      ]
+    && deployment.machineRoots."src/services/caddy/ansible" == [ "pi" ]
+    && deployment.machineRoots."src/services/glance/ansible" == [ "pi" ]
+    && deployment.machineRoots."src/services/beszel/ansible/agent" == [ "pi" ]
+    && deployment.machineRoots."src/services/beszel/ansible/hub" == [ "pi" ]
+    && deployment.machineRoots."src/services/ntfy/ansible" == [ "pi" ]
+    && deployment.machineRoots."src/services/bazarr" == [ "workstation" ]
+    && deployment.machineRoots."src/services/jellyseerr" == [ "workstation" ]
+    && deployment.machineRoots."src/services/lidarr" == [ "workstation" ]
+    && deployment.machineRoots."src/services/prowlarr" == [ "workstation" ]
+    && deployment.machineRoots."src/services/qbittorrent" == [ "workstation" ]
+    && deployment.machineRoots."src/services/radarr" == [ "workstation" ]
+    && deployment.machineRoots."src/services/recyclarr" == [ "workstation" ]
+    && deployment.machineRoots."src/services/sonarr" == [ "workstation" ]
+    && deployment.machineRoots."src/infra/common/ansible" == [ "pi" ]
+    && deployment.machineRoots."src/infra/adelie" == [ "adelie" ]
+    && deployment.machineRoots."src/infra/pi" == [ "pi" ]
+    && deployment.machineRoots."src/infra/workstation" == [ "workstation" ];
 
   targetsCorrect =
     deployment.targets.adelie == {

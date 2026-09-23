@@ -1,7 +1,7 @@
 # Verify or reconnect OneTouch backups
 
 Use this procedure when reconnecting the existing OneTouch HDD, changing its
-transport, or verifying recovery. [`inventory/backup.nix`](../../inventory/backup.nix)
+transport, or verifying recovery. [`src/inventory/backup.nix`](../../src/inventory/backup.nix)
 owns the current enable switch; this runbook is not a declaration that backups
 are disabled. The [September 19 inspection](../archive/reports/2026-09-19-backup-evidence.md)
 records the enabled policy and observed workstation backup/restore evidence.
@@ -37,7 +37,7 @@ current owner. Do not disconnect a drive whose write activity is unknown.
 
 On workstation, inspect `lsblk -o NAME,MODEL,SERIAL,SIZE,FSTYPE,MOUNTPOINTS`
 and `/dev/disk/by-id/`. Compare the actual device and filesystem against
-`inventory/disks.nix`. Correct the registry from direct evidence if necessary.
+`src/inventory/disks.nix`. Correct the registry from direct evidence if necessary.
 
 The host's `backup-storage.nix` mounts an existing filesystem; it contains no
 partitioning or formatting operation. Do not run disko to reconnect this drive.

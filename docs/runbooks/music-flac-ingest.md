@@ -38,9 +38,9 @@ folder rather than relying on a pause toggle.
 | Item | Value |
 |---|---|
 | Option | `nori.services.music-ingest` |
-| Manifest | `services/music-ingest/manifest.nix` |
-| Runtime | `services/music-ingest/nixos.nix` |
-| Workstation binding | `infra/workstation/music-ingest.nix` |
+| Manifest | `src/services/music-ingest/manifest.nix` |
+| Runtime | `src/services/music-ingest/nixos.nix` |
+| Workstation binding | `src/infra/workstation/music-ingest.nix` |
 | Timer | `music-ingest.timer` |
 | Staging | `/mnt/media/staging/music-flac` |
 | Inflight claims | `/mnt/media/staging/.music-ingest-inflight` |

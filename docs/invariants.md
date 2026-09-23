@@ -39,24 +39,24 @@ Strongest rung each claim has reached. `[prose: unchecked]` entries are promotio
 | **Security & isolation** | |
 | Every service module declares `nori.harden.<unit>` (or names an exclusion) | `[law: every-service-has-fs-hardening]` |
 | Every service has backup intent (`nori.backups.<svc>.paths` or `.skip = <reason>`) | `[law: every-service-has-backup-intent]` + `[runtime-introspection: just test-backups]` (fresh snapshot per target ≤25h) |
-| Default-deny firewall — only compiler-selected route/listener ports open on their declared interfaces | `[structural]` (`inventory/default.nix`, `infra/common/nixos/inventory.nix`, and the Pi firewall template) |
+| Default-deny firewall — only compiler-selected route/listener ports open on their declared interfaces | `[structural]` (`src/inventory/default.nix`, `src/infra/common/nixos/inventory.nix`, and the Pi firewall template) |
 | Tailnet is the auth perimeter; Authelia only for per-user identity | `[structural]` (the `audience` enum forces the choice at the type level) |
 | `disko*.nix` configs reference disks by `/dev/disk/by-id/*`, never `/dev/nvmeN` | `[law: lint.diskoUsesById]` (promoted 2026-06-16; nori.lint TOML registry) |
 | Every production SOPS file has one explicit recipient-set rule; no production catch-all can widen a new file | `[structural]` (`.sops.yaml`) |
 | Never bulk-rename keys in SOPS-encrypted YAML because key names are authenticated data | `[prose: unchecked]` — edit through `sops` and re-encrypt with the intended recipient policy |
 | **Topology & roles** | |
 | Pi runs only appliance-safe services; every workload placement matches a typed role declared by its manifest | `[structural]` (closed role enum + pure inventory assertion) + `[law: eval-workload-role-placement]` |
-| Cross-host references consume the compiler's typed host and route projections; adapters do not reconstruct addresses or hostnames | `[structural]` (`inventory/default.nix` → `config.nori.inventory` and the generated Pi inventory) |
-| Each managed host has one entry in `inventory/hosts.nix` with one explicit backend; NixOS entries name system/home modules and Ansible entries name plan/apply/verify commands; the inventory compiler rejects incomplete or inconsistent declarations | `[structural]` (`inventory/default.nix` + `lib/machines.nix`) |
+| Cross-host references consume the compiler's typed host and route projections; adapters do not reconstruct addresses or hostnames | `[structural]` (`src/inventory/default.nix` → `config.nori.inventory` and the generated Pi inventory) |
+| Each managed host has one entry in `src/inventory/hosts.nix` with one explicit backend; NixOS entries name system/home modules and Ansible entries name plan/apply/verify commands; the inventory compiler rejects incomplete or inconsistent declarations | `[structural]` (`src/inventory/default.nix` + `src/lib/machines.nix`) |
 | **Compiled workload routes** | |
-| One manifest endpoint generates its backend route, firewall exposure, Pi Caddy/DNS data, monitor, and OIDC client metadata | `[structural]` (`services/*/manifest.nix` → `inventory/default.nix`) + `[runtime-introspection: just test-routes]` |
-| Route declarations combine audience and reachability: operator routes cannot be internet-reachable; family routes must declare OIDC, forward-auth, or a documented no-auth reason; public Gatus routes cannot use the operator audience | `[structural]` (pure compiler assertions in `inventory/default.nix`) |
+| One manifest endpoint generates its backend route, firewall exposure, Pi Caddy/DNS data, monitor, and OIDC client metadata | `[structural]` (`src/services/*/manifest.nix` → `src/inventory/default.nix`) + `[runtime-introspection: just test-routes]` |
+| Route declarations combine audience and reachability: operator routes cannot be internet-reachable; family routes must declare OIDC, forward-auth, or a documented no-auth reason; public Gatus routes cannot use the operator audience | `[structural]` (pure compiler assertions in `src/inventory/default.nix`) |
 | Endpoint names describe function (`uptime`, not `gatus`; `chat`, not `open-webui`) unless the brand is the identity | `[law: lint.functionNamedSubdomains]` |
 | **systemd units** | |
 | Every `Restart=on-failure` unit's `ExecStart` is smoke-tested before landing | `[prose: unchecked]` — the 2026-06-03 bad-flag restart-loop incident is recorded in `docs/archive/plans/2026-06-21-improve-audit.md` finding 4 |
 | **Convention shapes** | |
 | `nori.<X>` effects are one input → multiple generators (Reader + collected-Writer interface) | `[structural]` (the abstraction shape itself; documented in `docs/glossary.md` § effect-interface deep-dive) |
-| Adding a Reader+Writer concern under `infra/common/nixos/` ships with a `just test-<X>` runtime introspection recipe | `[prose: unchecked]` — promote? meta-check that every Reader+Writer-shaped effect file has a matching test recipe in `Justfile`. See `docs/reference/runtime-tests.md` § "Next potential test targets" |
+| Adding a Reader+Writer concern under `src/infra/common/nixos/` ships with a `just test-<X>` runtime introspection recipe | `[prose: unchecked]` — promote? meta-check that every Reader+Writer-shaped effect file has a matching test recipe in `Justfile`. See `docs/reference/runtime-tests.md` § "Next potential test targets" |
 | A workload manifest owns identity, activation, placement, endpoints, and listeners; its runtime adapter owns backend-specific realization | `[structural]` (compiler imports only the selected active runtime modules) |
 | Rule of three before extracting an abstraction | `[judgment]` |
 | Iterate-to-stable, then codify | `[judgment]` |
@@ -88,7 +88,7 @@ assert lib.assertMsg (portCollisions == [ ])
 ```
 
 Current route, placement, activation, role, and port-collision assertions live
-in `inventory/default.nix`.
+in `src/inventory/default.nix`.
 
 ### Custom flake checks
 
@@ -99,7 +99,7 @@ For grep-shaped rules, the canonical home is `nori.lint` — a Reader (rule regi
 ```toml
 [rules.<name>]
 pattern = '<extended-regex>'        # literal string: backslashes verbatim
-scope = ["infra/"]             # paths grep walks
+scope = ["src/infra/"]             # paths grep walks
 excludeFiles = ["allowlist.nix"]    # optional per-rule file exemptions
 excludePatterns = ['known-ok']      # optional per-rule substring exemptions
 tags = ["security", "topology"]     # optional, for future filtering
@@ -110,7 +110,7 @@ Operator-facing explanation when the rule fires.'''
 
 Dispatcher lives at `lint/default.nix`; wired in `flake.nix` via `lintLib.makeLintCheck { rules = builtins.fromTOML (builtins.readFile ./lint/rules.toml).rules; ... }`. Adding a rule = one TOML block.
 
-Live examples in the `lint` check include `pbkdf2` (no inline OIDC hashes), `caddyVirtualHosts` (manifest-owned endpoint exposure), `tailnetIp` (no host `100.x.y.z` literals outside `inventory/hosts.nix`), `noriLan` (deprecated alias containment), `migrationPhase` (no decaying phase tokens), and `diskoUsesById` (NVMe safety). Standalone derivations cover non-grep rules such as `every-service-has-fs-hardening`, `every-service-has-backup-intent`, and `routing-coherence`.
+Live examples in the `lint` check include `pbkdf2` (no inline OIDC hashes), `caddyVirtualHosts` (manifest-owned endpoint exposure), `tailnetIp` (no host `100.x.y.z` literals outside `src/inventory/hosts.nix`), `noriLan` (deprecated alias containment), `migrationPhase` (no decaying phase tokens), and `diskoUsesById` (NVMe safety). Standalone derivations cover non-grep rules such as `every-service-has-fs-hardening`, `every-service-has-backup-intent`, and `routing-coherence`.
 
 `just check-migration` checks source-path coherence during restructures. The
 migration-only consecutive-comment scanner was retired in the two-host cleanup:
@@ -164,8 +164,8 @@ The manifest → compiler → adapter boundary uses all five rungs:
 
 | Rung | Example |
 |---|---|
-| Type | Typed route and listener projections in `infra/common/nixos/inventory.nix` |
-| Assertion | Explicit activation, placement validity, per-host port uniqueness, and route authentication in `inventory/default.nix` |
+| Type | Typed route and listener projections in `src/infra/common/nixos/inventory.nix` |
+| Assertion | Explicit activation, placement validity, per-host port uniqueness, and route authentication in `src/inventory/default.nix` |
 | Flake check | Inventory eval checks, backup/hardening intent checks, and the TOML lint registry |
 | **Runtime introspection** | `just test-backups`, `just test-routes`, and `just test-observability` compare declarations with running services |
 | CI gate | Declared Nix checks and Pi static checks run via `.github/workflows/check.yml`; live introspection remains operator-run |
@@ -178,8 +178,8 @@ The manifest → compiler → adapter boundary uses all five rungs:
 - `workhorse-vs-appliance-placement` → `[law: eval-workload-role-placement]` (2026-07-22) — workload manifests declare a non-empty set from the shared typed host-role vocabulary; the pure inventory compiler rejects every resolved placement whose host role is outside that set before NixOS module evaluation.
 - `disko-uses-by-id` → `[law: lint.diskoUsesById]` (2026-06-16) — was register item #1; the rule that tested the "add a rule = one TOML block" Goal motivating the nori.lint refactor.
 - `function-named-subdomains` → `[law: lint.functionNamedSubdomains]` (2026-06-16) — TOML denylist of 13 upstream brand names with clean function-name mappings (gatus→uptime, ntfy→alert, …). Audited current tree: zero real violations; the remaining brand identities are explicit exceptions such as `auth` for Authelia and `samba` for SMB.
-- `audience-enforces-auth` → `[structural: compiler assertion]` (2026-06-21) — `audience="family"` requires `oidc`, `forwardAuth`, or explicit `noAuthReason` in `inventory/default.nix`. Legitimate native-auth exceptions remain explicit in their manifests.
-- `infra-concerns-have-tests` → `[law: infra-concerns-have-tests]` (2026-06-21) — recursively discovers every shared `options.nori.*` schema and rejects any unaccounted file. Runtime-observable effects map to matching `test-*` recipes in `lib/flake-parts/checks/conventions.nix`. Hardware-bound GPU and Wi-Fi schemas and read-only host/inventory projections name their narrower evaluation/build evidence explicitly.
+- `audience-enforces-auth` → `[structural: compiler assertion]` (2026-06-21) — `audience="family"` requires `oidc`, `forwardAuth`, or explicit `noAuthReason` in `src/inventory/default.nix`. Legitimate native-auth exceptions remain explicit in their manifests.
+- `infra-concerns-have-tests` → `[law: infra-concerns-have-tests]` (2026-06-21) — recursively discovers every shared `options.nori.*` schema and rejects any unaccounted file. Runtime-observable effects map to matching `test-*` recipes in `src/lib/flake-parts/checks/conventions.nix`. Hardware-bound GPU and Wi-Fi schemas and read-only host/inventory projections name their narrower evaluation/build evidence explicitly.
 - `systemd-execstart-resolves` → REJECTED (2026-06-21) — vetted after audit proposed it; the source tree had no literal-path `ExecStart` values. Nix evaluation already validates every `${pkgs.foo}/bin/baz` interpolation. The 2026-06-03 failure came from valid binaries with bad flags, which a first-token check cannot catch. See `docs/archive/plans/2026-06-21-improve-audit.md` finding 4.
 
 Others (the `[judgment]` ones) stay where they are — they're not staleness risks.

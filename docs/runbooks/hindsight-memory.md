@@ -44,7 +44,7 @@ Run from the repository root:
 git status --short
 nix build --option substituters https://cache.nixos.org \
   .#nixosConfigurations.workstation.config.system.build.toplevel
-(cd infra/cloudflare && bun run typecheck && bun run plan)
+(cd src/infra/cloudflare && bun run typecheck && bun run plan)
 tailscale serve status
 ```
 
@@ -104,7 +104,7 @@ The UI is then available from a tailnet device at
 Once all local services are healthy, create the edge resources:
 
 ```sh
-cd infra/cloudflare
+cd src/infra/cloudflare
 bun run plan
 bun run deploy
 ```
@@ -133,7 +133,7 @@ SecretSpec scope. The header moves through an anonymous pipe, not a command
 argument:
 
 ```sh
-cd infra/cloudflare
+cd src/infra/cloudflare
 secretspec run \
   --file ../../secretspec.toml \
   --profile workstation \
@@ -178,7 +178,7 @@ Stop the new local surface by reverting the workload assignment and rebuilding
 owns port 9077.
 
 Cloudflare removal is a separate external-state action. Review
-`(cd infra/cloudflare && bun run plan)` after reverting the Hindsight Alchemy
+`(cd src/infra/cloudflare && bun run plan)` after reverting the Hindsight Alchemy
 resources, then deploy that reviewed change. Do not run `bun run destroy`: the
 stack also owns the production Nix binary cache.
 

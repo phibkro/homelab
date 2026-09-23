@@ -28,7 +28,7 @@
 
 [rules.pbkdf2]
 pattern = '\$pbkdf2-'
-scope = ["infra/common/nixos/", "infra/workstation/", "lib/flake-parts/", "lib/machines.nix", "lib/nixdoc.nix", "lib/nixos/", "profiles/", "roles/", "services/", "tests/backup.just", "tests/networking.just", "tests/observability.just", "users/"]
+scope = ["src/infra/common/nixos/", "src/infra/workstation/", "src/lib/flake-parts/", "src/lib/machines.nix", "src/lib/nixdoc.nix", "src/lib/nixos/", "src/profiles/", "src/roles/", "src/services/", "tests/backup.just", "tests/networking.just", "tests/observability.just", "src/users/"]
 tags = ["security"]
 docLink = ".claude/skills/add-oidc-client/"
 message = '''
@@ -42,7 +42,7 @@ template config-filter (see services/authelia/nixos.nix).'''
 # Removed when the template-filter migration landed; any
 # reference today is stale.
 pattern = 'clientSecretHash'
-scope = ["infra/common/nixos/", "infra/workstation/", "lib/flake-parts/", "lib/machines.nix", "lib/nixdoc.nix", "lib/nixos/", "profiles/", "roles/", "services/", "tests/backup.just", "tests/networking.just", "tests/observability.just", "users/"]
+scope = ["src/infra/common/nixos/", "src/infra/workstation/", "src/lib/flake-parts/", "src/lib/machines.nix", "src/lib/nixdoc.nix", "src/lib/nixos/", "src/profiles/", "src/roles/", "src/services/", "tests/backup.just", "tests/networking.just", "tests/observability.just", "src/users/"]
 tags = ["stale-field"]
 message = '''
 clientSecretHash field references found. The field was removed;
@@ -73,7 +73,7 @@ hashes live in sops as oidc-<n>-client-secret-hash.'''
 # "Promotion register" + audit on the current tree (no real
 # violations; rule guards against future drift).
 pattern = '\bendpoints\.(gatus|ntfy|jellyfin|immich|ollama|open-webui|beszel|navidrome|calibre-web|komga|vaultwarden|radicale|miniflux)\b'
-scope = ["services/"]
+scope = ["src/services/"]
 tags = ["naming", "route"]
 message = '''
 Branded endpoint name found above. Use a function-named endpoint in the
@@ -95,8 +95,8 @@ Brand names earn their place ONLY when the brand IS the identity
 # to the NixOS and Pi adapters. caddy.nix is exempt because it carries only the
 # transitional *.nori.lan redirect from ADR-0004.
 pattern = 'services\.caddy\.virtualHosts'
-scope = ["infra/common/nixos/", "infra/workstation/", "lib/flake-parts/", "lib/machines.nix", "lib/nixdoc.nix", "lib/nixos/", "profiles/", "roles/", "services/", "tests/backup.just", "tests/networking.just", "tests/observability.just", "users/"]
-excludeFiles = ["services/caddy/nixos.nix"]
+scope = ["src/infra/common/nixos/", "src/infra/workstation/", "src/lib/flake-parts/", "src/lib/machines.nix", "src/lib/nixdoc.nix", "src/lib/nixos/", "src/profiles/", "src/roles/", "src/services/", "tests/backup.just", "tests/networking.just", "tests/observability.just", "src/users/"]
+excludeFiles = ["src/services/caddy/nixos.nix"]
 tags = ["architecture", "route"]
 message = '''
 Direct services.caddy.virtualHosts found above. Declare the HTTP endpoint as
@@ -110,7 +110,7 @@ compiled route.'''
 # NOT via acmeCA = "internal" — Caddy will literally try to dial
 # `internal` as an ACME directory URL and fail.
 pattern = 'acmeCA = "internal"'
-scope = ["infra/common/nixos/", "infra/workstation/", "lib/flake-parts/", "lib/machines.nix", "lib/nixdoc.nix", "lib/nixos/", "profiles/", "roles/", "services/", "tests/backup.just", "tests/networking.just", "tests/observability.just", "users/"]
+scope = ["src/infra/common/nixos/", "src/infra/workstation/", "src/lib/flake-parts/", "src/lib/machines.nix", "src/lib/nixdoc.nix", "src/lib/nixos/", "src/profiles/", "src/roles/", "src/services/", "tests/backup.just", "tests/networking.just", "tests/observability.just", "src/users/"]
 tags = ["gotcha"]
 docLink = "docs/decisions/0004-letsencrypt-on-home-phibkro-org.md"
 message = '''
@@ -124,9 +124,9 @@ ACME directory URL. Use:
 # disables alerting (logs "Ignoring provider=ntfy due to
 # error=topic not set" once at startup, then nothing).
 pattern = 'url = "https://ntfy.sh/'
-scope = ["infra/common/nixos/", "infra/workstation/", "lib/flake-parts/", "lib/machines.nix", "lib/nixdoc.nix", "lib/nixos/", "profiles/", "roles/", "services/", "tests/backup.just", "tests/networking.just", "tests/observability.just", "users/"]
+scope = ["src/infra/common/nixos/", "src/infra/workstation/", "src/lib/flake-parts/", "src/lib/machines.nix", "src/lib/nixdoc.nix", "src/lib/nixos/", "src/profiles/", "src/roles/", "src/services/", "tests/backup.just", "tests/networking.just", "tests/observability.just", "src/users/"]
 tags = ["gotcha"]
-docLink = "services/gatus/ansible/templates/config.yaml.j2"
+docLink = "src/services/gatus/ansible/templates/config.yaml.j2"
 message = '''
 Gatus ntfy URL with embedded topic found above. Split into separate
 fields:
@@ -147,9 +147,9 @@ fields:
 # Other canonical-site declarations use the line-level
 # `# lint: skip tailnetIp — <reason>` annotation.
 pattern = '\b100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.[0-9]+\.[0-9]+\b'
-scope = ["infra/common/nixos/", "infra/workstation/", "inventory/", "lib/flake-parts/", "lib/machines.nix", "lib/nixdoc.nix", "lib/nixos/", "profiles/", "roles/", "services/", "tests/backup.just", "tests/networking.just", "tests/observability.just", "users/"]
+scope = ["src/infra/common/nixos/", "src/infra/workstation/", "src/inventory/", "src/lib/flake-parts/", "src/lib/machines.nix", "src/lib/nixdoc.nix", "src/lib/nixos/", "src/profiles/", "src/roles/", "src/services/", "tests/backup.just", "tests/networking.just", "tests/observability.just", "src/users/"]
 excludeFiles = [
-  "inventory/hosts.nix",
+  "src/inventory/hosts.nix",
   # observability.just is operator tooling that needs a static endpoint URL;
   # evaluating inventory on each query adds avoidable latency.
   "tests/observability.just",
@@ -181,8 +181,8 @@ Schema: infra/common/nixos/inventory.nix; values: inventory/hosts.nix.'''
 # character class silently missed the latter, which let Glance generate an
 # entirely deprecated bookmark catalog while the gate stayed green.
 pattern = '"https?://[^"\n]*\.nori\.lan'
-scope = ["infra/common/nixos/", "infra/workstation/", "lib/flake-parts/", "lib/machines.nix", "lib/nixdoc.nix", "lib/nixos/", "profiles/", "roles/", "services/", "tests/backup.just", "tests/networking.just", "tests/observability.just", "users/"]
-excludeFiles = ["services/caddy/nixos.nix"]
+scope = ["src/infra/common/nixos/", "src/infra/workstation/", "src/lib/flake-parts/", "src/lib/machines.nix", "src/lib/nixdoc.nix", "src/lib/nixos/", "src/profiles/", "src/roles/", "src/services/", "tests/backup.just", "tests/networking.just", "tests/observability.just", "src/users/"]
+excludeFiles = ["src/services/caddy/nixos.nix"]
 tags = ["migration", "adr-0004"]
 message = '''
 Hard-coded https://*.nori.lan URI found above. Use
@@ -209,7 +209,7 @@ redirect_uris or service root URLs.'''
 # Promoted from prose 2026-06-16 — see docs/invariants.md §
 # "Promotion register".
 pattern = '=\s*"/dev/(nvme[0-9]|sd[a-z][0-9]?|vd[a-z][0-9]?)'
-scope = ["infra/workstation/"]
+scope = ["src/infra/workstation/"]
 tags = ["safety", "disko"]
 docLink = "docs/installs/baremetal.md"
 message = '''
@@ -229,7 +229,7 @@ and use the matching by-id path in disko config.'''
 # Plans + reports + ADRs under docs/ are the right home for phase
 # narration; flag anywhere else.
 pattern = '\bP[0-9]+ (prep|cutover|landing|migration)\b'
-scope = ["infra/common/nixos/", "infra/workstation/", "lib/flake-parts/", "lib/machines.nix", "lib/nixdoc.nix", "lib/nixos/", "profiles/", "roles/", "services/", "tests/backup.just", "tests/networking.just", "tests/observability.just", "users/"]
+scope = ["src/infra/common/nixos/", "src/infra/workstation/", "src/lib/flake-parts/", "src/lib/machines.nix", "src/lib/nixdoc.nix", "src/lib/nixos/", "src/profiles/", "src/roles/", "src/services/", "tests/backup.just", "tests/networking.just", "tests/observability.just", "src/users/"]
 tags = ["doc-hygiene"]
 message = '''
 Migration-phase token found above. Phase tokens (P12 prep, P15

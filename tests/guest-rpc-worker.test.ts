@@ -3,7 +3,7 @@ import { mkdtemp, chmod, writeFile, rm, access } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-const guest = join(import.meta.dir, "../infra/workstation/firecracker-environment-guest.ts");
+const guest = join(import.meta.dir, "../src/infra/workstation/firecracker-environment-guest.ts");
 const request = (generation = "shg_demo", requestId = "req-1", ordinal = 1) =>
   `${JSON.stringify({
     _tag: "SelfHostedGuestRpcRequest",

@@ -32,7 +32,7 @@ Update only the authoritative artifact for each fact:
 | Current architecture and procedures | `docs/reference/` and `docs/runbooks/` |
 | Accepted contract | `docs/specs/` |
 | Dated runtime evidence | `docs/archive/reports/` |
-| Host, workload, route, and backup declarations | `inventory/` and generated projections |
+| Host, workload, route, and backup declarations | `src/inventory/` and generated projections |
 
 Remove completed items from the roadmap. Keep historical reports and frozen
 contract bodies intact. Add a status or supersession note when later work changes

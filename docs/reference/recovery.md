@@ -13,7 +13,7 @@ RTO targets for each failure class, the runbooks that hit them, and the permanen
 
 Workstation's SN750 holds its root and hot state. Adelie's NVMe holds its
 service state. IronWolf Pro holds cold data, and OneTouch is the independent
-workstation-attached backup destination selected by `inventory/backup.nix`.
+workstation-attached backup destination selected by `src/inventory/backup.nix`.
 The [September 19 evidence](../archive/reports/2026-09-19-backup-evidence.md)
 records the enabled destination, workstation service-state restore, and Pi
 backup checks. The
@@ -67,7 +67,7 @@ Each runbook defines the procedure for one failure class:
 | `service-corruption.md` | Service refuses to start; data layer suspected | Stop service → restore subvolume snapshot to scratch → copy back → restart → verify. For databases: restore from latest restic snapshot of the dump dir, then `pg_restore` / SQLite import |
 | `drive-failure-root.md` | SN750 dies | Replace drive → boot installer → clone flake → run disko → `nixos-install` → inspect existing archives before attempting state restore; preserve all surviving disks |
 | `drive-failure-media.md` | IronWolf dies | Assess surviving copies → provision only an approved replacement disk → restore verified content or re-acquire available sources |
-| `pi-failure.md` | Pi unreachable / hardware dead | Reinstall supported Debian → converge `infra/pi/` Ansible → restore selected state → verify DNS, routes, authentication and monitoring |
+| `pi-failure.md` | Pi unreachable / hardware dead | Reinstall supported Debian → converge `src/infra/pi/` Ansible → restore selected state → verify DNS, routes, authentication and monitoring |
 | `storage-full.md` | Disk pressure | Stop writers → identify the full filesystem → remove only approved re-derivable data → restart services in order |
 | `tailscale-acl.md` | Tailscale admin UI ACL recovery | Live ACL lives only in admin UI; this snapshots `tailscale-acl.json` for editor-regression + account-loss recovery |
 | `agent-fix-on-failure.md` | Review the dormant `nori.agentFix` mechanism | The module is implemented but disarmed after a resource-exhaustion incident. Re-arm requires explicit operator approval and deployment. |
@@ -113,7 +113,7 @@ These wait for a real signal before being worked:
 
 | Trigger | What gets done |
 |---|---|
-| Genexis ISP modem allows bridge mode, OR ~$200 router enters budget | Stand up real LAN router (OPNsense/OpenWRT); migrate DNS/egress policy from `infra/pi/ansible/roles/firewall` and `services/tailscale/ansible` to the router. Then retire that effect; the same inventory can drive a router-side generator. See `docs/roadmap.md § "Architectural debt"` for the rationale. |
+| Genexis ISP modem allows bridge mode, OR ~$200 router enters budget | Stand up real LAN router (OPNsense/OpenWRT); migrate DNS/egress policy from `src/infra/pi/ansible/roles/firewall` and `src/services/tailscale/ansible` to the router. Then retire that effect; the same inventory can drive a router-side generator. See `docs/roadmap.md § "Architectural debt"` for the rationale. |
 | ntfy alone proves noisy enough that summarization helps | Email digest reports |
 | IronWolf > 80% full *or* RAID1 redundancy becomes desired | Second media drive on workstation |
 | "Deployed broken config, lost remote access" incident | `deploy-rs` adoption |

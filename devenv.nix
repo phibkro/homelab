@@ -13,7 +13,7 @@
   ];
 
   scripts.music-ingest-runtime.exec = ''
-    exec bash "${config.devenv.root}/services/music-ingest/tests/runtime.sh"
+    exec bash "${config.devenv.root}/src/services/music-ingest/tests/runtime.sh"
   '';
 
   enterTest = ''

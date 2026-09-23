@@ -10,7 +10,7 @@ Module overviews + per-option schema for `nori.harden` and
 `nori.gpu`. Hand-curated cross-module synthesis (which
 services consume which capability, per-host driver
 choices) lives in the file-level doc-comments at
-`infra/common/nixos/{service-hardening,gpu}.nix`.
+`src/infra/common/nixos/{service-hardening,gpu}.nix`.
 
 Capabilities concern — what services can DO on the machine.
 
@@ -25,7 +25,7 @@ FS-namespace adapter. `gpu.nix` carries `nori.gpu.nvidiaDevices`
 registry (the device-path SoT services read from).
 
 Shared `media` group declarations live in
-`profiles/media-acquisition/resources.nix`; workstation selects that cluster.
+`src/profiles/media-acquisition/resources.nix`; workstation selects that cluster.
 
 # Capabilities concern — overview {#sec-functions-library-capabilities}
 
@@ -132,7 +132,7 @@ list of string
 ```
 
 *Declared by:*
- - `infra/common/nixos/gpu.nix`
+ - `src/infra/common/nixos/gpu.nix`
 
 
 
@@ -171,7 +171,7 @@ attribute set of (submodule)
 ```
 
 *Declared by:*
- - `infra/common/nixos/service-hardening.nix`
+ - `src/infra/common/nixos/service-hardening.nix`
 
 
 
@@ -198,7 +198,7 @@ list of string
 ```
 
 *Declared by:*
- - `infra/common/nixos/service-hardening.nix`
+ - `src/infra/common/nixos/service-hardening.nix`
 
 
 
@@ -227,7 +227,7 @@ true
 ```
 
 *Declared by:*
- - `infra/common/nixos/service-hardening.nix`
+ - `src/infra/common/nixos/service-hardening.nix`
 
 
 
@@ -254,6 +254,6 @@ list of string
 ```
 
 *Declared by:*
- - `infra/common/nixos/service-hardening.nix`
+ - `src/infra/common/nixos/service-hardening.nix`
 
 

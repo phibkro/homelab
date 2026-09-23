@@ -40,7 +40,7 @@ This filter explains and justifies the existing shape of the homelab. It also gi
 - **Conventional commits + structured messages.** Commits encode the *why* for future-you; the conventional-commit type makes intent grep-able. This ADR layer carries the heavier decisions commit messages cannot fit.
 - **Skills for procedures, prose for facts.** Cross-provider procedures live in the shared agent-skill source. Project-specific procedures live under `.claude/skills/` until the neutral `.agents/` surface supports them. Prose facts stay in `AGENTS.md` and `docs/`. Memory can aid discovery but is not an authority.
 - **Flake checks as binding contracts.** `every-service-has-fs-hardening`, `every-service-has-backup-intent`, and the lint derivations bind document claims to CI evidence. A claim with a check is self-defending; a claim without one is staleness-prone. `docs/invariants.md` catalogs the enforcement tier.
-- **Pure inventory compiler.** Host and workload declarations are each written once. `inventory/default.nix` validates their complete graph and generates NixOS, Ansible, deployment, public, and documentation projections. This externalizes cross-cutting knowledge without a second registry.
+- **Pure inventory compiler.** Host and workload declarations are each written once. `src/inventory/default.nix` validates their complete graph and generates NixOS, Ansible, deployment, public, and documentation projections. This externalizes cross-cutting knowledge without a second registry.
 
 **Practices that do NOT transfer (deliberately skipped):**
 
@@ -69,4 +69,4 @@ When a prose rule survives, ask "what's its enforcement tier?" (`docs/invariants
 
 - `docs/invariants.md` — catalog of load-bearing claims with current enforcement tier (some are `[prose: unchecked]` — explicit promotion candidates).
 - `docs/invariants.md` — the prose on the enforcement ladder; this ADR is the *why*.
-- `users/nori/programs/agent-soul/SOUL.md` — provider-neutral global rules across all projects; many are downstream of this ADR's filter.
+- `src/users/nori/programs/agent-soul/SOUL.md` — provider-neutral global rules across all projects; many are downstream of this ADR's filter.

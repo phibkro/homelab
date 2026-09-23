@@ -4,7 +4,7 @@ summary: Cross-module network concerns: compiler-owned routes, Authelia OIDC, Ta
 
 # Network — cross-module synthesis
 
-Workload manifests own endpoint declarations. `inventory/default.nix` validates
+Workload manifests own endpoint declarations. `src/inventory/default.nix` validates
 them, resolves host placement, and publishes `lib.noriInventory.routes`.
 [`docs/generated/routes.md`](../generated/routes.md) is the generated active
 route table. The Pi Ansible projection derives Caddy, Pi-hole, Gatus, and
@@ -53,7 +53,7 @@ anchored record-comment selector. Therefore, it mutates only records it owns.
 On a graceful configuration restart, the old unit removes its owned records
 before the new allowlist is created; this makes an internet-to-internal route
 transition fail closed. Its zone-scoped API token comes from SecretSpec;
-`services/cloudflare-ddns/ansible/` applies the desired state derived from the route inventory.
+`src/services/cloudflare-ddns/ansible/` applies the desired state derived from the route inventory.
 
 The remaining external step is to forward WAN TCP 443 to pi at
 `192.168.1.225:443`. Do not forward port 80; certificate issuance already
@@ -72,15 +72,15 @@ is the gate. The live policy is edited in the Tailscale admin UI.
 Use the [ACL recovery runbook](../runbooks/tailscale-acl.md) to export and verify it.
 
 **SPOF mitigation for pi:** heartbeat to healthchecks.io every 60s via
-`services/heartbeat/ansible/`. Pi dies → hc.io alerts
+`src/services/heartbeat/ansible/`. Pi dies → hc.io alerts
 off-host. Pre-fix, pi outage would have taken its own alert delivery
 (ntfy server) with it.
 
 ## Access and storage
 
 Workstation SSH, Samba exports, and snapshot policy are declared in
-`infra/common/nixos/ssh.nix`, `services/samba/`, and
-`infra/workstation/`. Consult the [storage reference](storage.md) and
+`src/infra/common/nixos/ssh.nix`, `src/services/samba/`, and
+`src/infra/workstation/`. Consult the [storage reference](storage.md) and
 [generated backup inventory](../generated/backups.md) for data protection.
 
 Family members use per-service accounts. Tailscale invitations are needed

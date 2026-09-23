@@ -68,10 +68,10 @@ hosts, placement or backup policy change.
 | Questions | Acceptance source |
 |---|---|
 | 1–3 | Evaluated public inventory above; runtime modules and live evidence where claimed |
-| 4–5 | `inventory/default.nix`, [module authoring](../reference/module-authoring.md), relevant manifest and generator/consumer |
-| 6–7 | `Justfile`, `infra/pi/pi.just`, [testing methodology](../reference/testing-methodology.md), dry-run output |
+| 4–5 | `src/inventory/default.nix`, [module authoring](../reference/module-authoring.md), relevant manifest and generator/consumer |
+| 6–7 | `Justfile`, `src/infra/pi/pi.just`, [testing methodology](../reference/testing-methodology.md), dry-run output |
 | 8 | Root `AGENTS.md`, production SSH runner, [recovery constraints](../reference/recovery.md) |
-| 9 | Root/scoped `AGENTS.md`, `users/nori/programs/agent-soul/SOUL.md`, relevant procedure |
+| 9 | Root/scoped `AGENTS.md`, `src/users/nori/programs/agent-soul/SOUL.md`, relevant procedure |
 | 10 | Observed Git state, test logs and [deployment gates](../reference/deployment.md) |
 
 Pass each answer only if it is supported, reachable through the guides, and
