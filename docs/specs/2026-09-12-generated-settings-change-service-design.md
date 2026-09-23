@@ -316,16 +316,16 @@ Activation can have partial live effects. Report the actual generation and unit 
 
 If a newer desired revision exists after an older apply, report both identities. Never label the older active baseline as current desired state.
 
-## Clean build source
+## Immutable build source
 
 Each preview and build uses an immutable tuple:
 
-- Approved committed homelab source.
+- Exact Git-backed homelab source captured by the operator-approved NixOS activation.
 - Its locked inputs.
 - Target system.
 - Exact profile revision and content hash.
 
-Never evaluate the operator's dirty checkout from the GUI.
+An operator can approve a dirty Git snapshot with `just rebuild`. The GUI, service preview, and privileged activation evaluate only the immutable `/nix/store` source. These components do not evaluate the mutable checkout.
 
 The active system exposes an immutable store source as the approved base. The profile is decoded as JSON data and passed to a fixed Nix entrypoint.
 
@@ -546,7 +546,7 @@ In a disposable NixOS fixture:
 - Confirm the private `0600` backend socket rejects the `nori` client. Confirm
   the client-traversable `0666` public socket accepts only a peer whose
   `SO_PEERCRED` UID is `nori`.
-- Build the exact workstation projection from a clean committed tree.
+- Build the exact workstation projection from the Git-backed flake snapshot selected by the operator.
 
 ## Non-goals
 

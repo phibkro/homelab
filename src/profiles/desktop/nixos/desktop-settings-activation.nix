@@ -6,12 +6,11 @@
   ...
 }:
 let
+  sourceIdentity = inputs.self.rev or (inputs.self.dirtyRev or null);
   approvedSource =
     assert lib.assertMsg (
-      (inputs.self.rev or null) != null
-      && (inputs.self.rev or "") != ""
-      && (inputs.self.dirtyRev or null) == null
-    ) "nori-desktop-settings activation requires a clean committed flake source";
+      sourceIdentity != null && sourceIdentity != ""
+    ) "nori-desktop-settings activation requires a Git-backed flake source";
     inputs.self.outPath;
   sourceMarker = builtins.toJSON {
     source = toString approvedSource;

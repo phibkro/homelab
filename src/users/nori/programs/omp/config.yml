@@ -1,17 +1,13 @@
 modelRoles:
-  default: openai-codex/gpt-5.6-sol:high
-  smol: openai-codex/gpt-5.6-luna:high
-  slow: openai-codex/gpt-5.6-terra:high
-  tiny: openai-codex/gpt-5.6-luna:high
-  task: openai-codex/gpt-5.6-terra:high
-  advisor: openai-codex/gpt-6-astra:high
+  default: openai-codex/gpt-6-sol:high
+  smol: openai-codex/gpt-6-luna:high
+  slow: openai-codex/gpt-6-sol:high
   plan: openai-codex/gpt-6-astra:high
+  web: web/exa
 modelProviderOrder:
   - openai-codex
   - anthropic
 providers:
-  webSearchOrder:
-    - exa
   openai-codex:
     codeMode: "on"
 cycleOrder:
@@ -24,7 +20,34 @@ theme:
 defaultThinkingLevel: auto
 retry:
   fallbackChains:
-    {}
+    web:
+      - web/parallel
+      - web/perplexity
+      - google/gemini-2.5-flash
+      - google-antigravity/gemini-2.5-flash
+      - anthropic/claude-haiku-4-5
+      - openai-codex/gpt-5.6-luna
+      - openai-codex/gpt-5.6
+      - openai-codex/gpt-5.5
+      - xai/grok-4.5
+      - xai-oauth/grok-4.5
+      - web/zai
+      - web/tinyfish
+      - web/jina
+      - web/kagi
+      - web/tavily
+      - web/firecrawl
+      - web/brave
+      - web/kimi
+      - web/synthetic
+      - web/ollama
+      - web/searxng
+      - web/startpage
+      - web/duckduckgo
+      - web/ecosia
+      - web/google
+      - web/mojeek
+      - web/public
 interruptMode: wait
 advisor:
   enabled: false
