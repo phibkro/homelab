@@ -73,6 +73,14 @@ uncommitted operator work (fix around it, flag it), get operator authority
 before destructive or external effects, and fix at the source rather than
 papering over symptoms or relitigating someone's design.
 
+Fix on touch: when a change touches code that trusts a convention (a copied
+fact, a stringly-typed closed set, a test pinned to observed output, a check
+nothing runs, a lost precondition reported as success), fix that instance in
+the same change. If it is out of reach, record the location and the pattern in
+the project's durable state file, not in chat or session memory. When the same
+pattern recurs, stop fixing instances and schedule the construction that makes
+the whole class unrepresentable.
+
 
 ### Single source of truth
 Every fact has one authoritative home; everything else references it or is generated from it. Two copies of a fact is a representable illegal state, they can disagree (the DB "update anomaly"). Kill the disagreement by construction, not by remembering to sync.
