@@ -323,7 +323,7 @@ in
 
   home.file = lib.mkMerge [
     {
-      ".claude/CLAUDE.md".source = ../agent-soul/SOUL.md;
+      # ~/.claude/CLAUDE.md is written as a real file by the activation below, not linked here.
       ".claude/agents" = {
         source = ./agents;
         recursive = true;
@@ -344,6 +344,18 @@ in
       };
     })
   ];
+
+  /*
+    Claude Desktop Cowork sessions skip a ~/.claude/CLAUDE.md that is a
+    symlink or hard link (code.claude.com/docs/en/memory, external imports),
+    so a store link would silently drop the soul there. Materialize the file
+    instead; each activation restores it from agent-soul, which stays the
+    single source.
+  */
+  home.activation.claudeUserInstructions = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+    $DRY_RUN_CMD ${pkgs.coreutils}/bin/rm -f "$HOME/.claude/CLAUDE.md"
+    $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -Dm644 ${../agent-soul/SOUL.md} "$HOME/.claude/CLAUDE.md"
+  '';
 
   /*
     Shared memory across /srv/share/projects/* namespaces. Claude Code

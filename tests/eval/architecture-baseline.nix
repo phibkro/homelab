@@ -32,8 +32,12 @@ let
 
   agentSoulPath = ../../src/users/nori/programs/agent-soul/SOUL.md;
   agentSoul = builtins.readFile agentSoulPath;
+  # Claude's copy is a real file (Cowork skips a symlinked ~/.claude/CLAUDE.md), installed by an
+  # activation step from the same source; no home.file may link it back into the store.
+  claudeSoulActivation = builtins.unsafeDiscardStringContext homes.workstation.home.activation.claudeUserInstructions.data;
   agentHarnessesShareSoul =
-    homes.workstation.home.file.".claude/CLAUDE.md".source == agentSoulPath
+    !(homes.workstation.home.file ? ".claude/CLAUDE.md")
+    && lib.hasInfix (builtins.unsafeDiscardStringContext "install -Dm644 ${agentSoulPath} \"$HOME/.claude/CLAUDE.md\"") claudeSoulActivation
     && lib.all (path: lib.hasPrefix agentSoul homes.workstation.home.file.${path}.text) [
       ".codex/AGENTS.md"
       ".omp/agent/AGENTS.md"

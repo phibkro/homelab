@@ -432,5 +432,5 @@ the per-project doc, not here.
 
 `STATE.md` is the mission-state file (Lifecycle: idea→spec→spec-frozen→build
 →park→archive, one gate per transition). `AGENTS.md` is the one agent doc;
-CLAUDE.md is a symlink to it. Specs are readable at `docs/specs/`; where a repo generates
+CLAUDE.md holds only `@AGENTS.md`, which imports it (a file, not a symlink: portable to clones without symlinks). Specs are readable at `docs/specs/`; where a repo generates
 `docs/`, its `AGENTS.md` names the source path.
