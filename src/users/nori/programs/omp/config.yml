@@ -55,7 +55,7 @@ task:
   eager: preferred
   batch: true
   enableEffort: true
-  maxConcurrency: 3
+  maxConcurrency: 16
   maxRecursionDepth: 2
   maxEffort: max
   isolation:
