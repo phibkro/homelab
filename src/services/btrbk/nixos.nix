@@ -49,7 +49,8 @@ in
   Selected only by the Workstation `backup-source` system profile. btrbk
   snapshots the workstation's root, optional non-re-derivable media
   subvolumes, and the family vault; the activation script also enables
-  the btrfs quota on /mnt/media/downloads.
+  the btrfs quota on /mnt/media/downloads and keeps it off the root
+  filesystem.
 */
 {
   /**
@@ -216,15 +217,35 @@ in
     quotas there — wrong FS, expensive. Use /mnt/media/downloads, the
     real IronWolf mountpoint and the subvolume being capped. The family
     namespace is separate at /mnt/family and is not part of this quota.
+
+    Quotas on the root filesystem are never wanted: none of its qgroups
+    carry a limit, and qgroup accounting turns every btrbk retention
+    delete into minutes of btrfs-cleaner work whose commits stall any
+    writer on /, /home and /srv/share (2026-09-27: 36 snapshot deletes
+    left commits taking up to 55 s for over half an hour). An earlier
+    version of this script left them enabled there, so activation now
+    turns them off on the root filesystem and refuses to enable them
+    unless the downloads mount is a different filesystem.
   */
   system.activationScripts.btrfs-quota-media.text = ''
+    root_uuid=$(${pkgs.util-linux}/bin/findmnt -no UUID /)
+    if [ -n "$root_uuid" ] && [ -d "/sys/fs/btrfs/$root_uuid/qgroups" ]; then
+      echo "Disabling btrfs quotas on the root filesystem"
+      ${pkgs.btrfs-progs}/bin/btrfs quota disable / \
+        || echo "WARNING: failed to disable btrfs quotas on the root filesystem"
+    fi
     if ${pkgs.util-linux}/bin/mountpoint -q /mnt/media/downloads; then
-      ${pkgs.btrfs-progs}/bin/btrfs quota enable /mnt/media/downloads >/dev/null 2>&1 || true
-      downloads_id=$(${pkgs.btrfs-progs}/bin/btrfs subvolume list /mnt/media/downloads \
-        | ${pkgs.gawk}/bin/awk '$NF == "@downloads" { print $2 }')
-      if [ -n "$downloads_id" ]; then
-        ${pkgs.btrfs-progs}/bin/btrfs qgroup limit 2540G "0/$downloads_id" /mnt/media/downloads \
-          || echo "WARNING: failed to set @downloads quota (rescan in progress?)"
+      downloads_uuid=$(${pkgs.util-linux}/bin/findmnt -no UUID /mnt/media/downloads)
+      if [ "$downloads_uuid" = "$root_uuid" ]; then
+        echo "WARNING: /mnt/media/downloads is on the root filesystem; skipping IronWolf quota setup"
+      else
+        ${pkgs.btrfs-progs}/bin/btrfs quota enable /mnt/media/downloads >/dev/null 2>&1 || true
+        downloads_id=$(${pkgs.btrfs-progs}/bin/btrfs subvolume list /mnt/media/downloads \
+          | ${pkgs.gawk}/bin/awk '$NF == "@downloads" { print $2 }')
+        if [ -n "$downloads_id" ]; then
+          ${pkgs.btrfs-progs}/bin/btrfs qgroup limit 2540G "0/$downloads_id" /mnt/media/downloads \
+            || echo "WARNING: failed to set @downloads quota (rescan in progress?)"
+        fi
       fi
     else
       echo "WARNING: /mnt/media/downloads is not mounted; skipping IronWolf quota setup"
