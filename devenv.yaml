@@ -3,6 +3,6 @@ inputs:
   # This exact revision is checked against flake.lock by the ordinary Nix
   # checks, so the runtime shell cannot silently acquire a second package set.
   nixpkgs:
-    url: github:NixOS/nixpkgs/6774f7bc253789b113a4f39285dc0fa100abeacc
+    url: github:NixOS/nixpkgs/e94cb152ed51bd6e24eb4a41f1460252beb52cd2
 secretspec:
   enable: false
