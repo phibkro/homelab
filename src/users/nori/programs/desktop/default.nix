@@ -20,12 +20,10 @@ _: {
   ];
 
   /*
-    This desktop is Hyprland-only, so Wayland daemons belong to the
-    compositor's session target rather than the generic graphical target.
-    The user manager persists across logouts; graphical-session.target can
-    therefore remain active at the greeter and leave failed services inert on
-    the next login. hyprland-session.target is bounced after Hyprland imports
-    its fresh display environment, giving every dependent one lifecycle root.
+    Plasma shares graphical-session.target, so Hyprland-only Wayland daemons
+    belong to hyprland-session.target. UWSM's Hyprland session starts and
+    stops that target (hypr-rice/runtime.nix), giving every dependent one
+    lifecycle root that ends at logout.
   */
   wayland.systemd.target = "hyprland-session.target";
 

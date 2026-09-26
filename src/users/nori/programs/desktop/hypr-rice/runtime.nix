@@ -9,6 +9,10 @@ let
   gapsOut = 8;
   layoutCore = pkgs.writeText "layout.lua" (builtins.readFile ./layout.lua);
   riceAdapter = pkgs.writeText "rice.lua" (builtins.readFile ./rice.lua);
+  uwsmHyprlandSessions = [
+    "wayland-session@hyprland-uwsm.desktop.target"
+    "wayland-session@hyprland.desktop.target"
+  ];
 
   /*
     ---------------------------------------------------------------------
@@ -1141,6 +1145,31 @@ in
         hyprland.conf.
       */
       configType = "lua";
+
+      /*
+        UWSM owns the compositor lifecycle and graphical-session.target.
+        Home Manager's integration restarts hyprland-session.target from
+        inside Hyprland, and that stop propagates to graphical-session.target
+        while UWSM is still starting it.
+      */
+      systemd.enable = false;
+    };
+
+    /*
+      Hyprland-only daemons start with UWSM's Hyprland session and stop with
+      it. Binding to these instances keeps them out of Plasma sessions. UWSM
+      reaches the instance only after Hyprland exports WAYLAND_DISPLAY and
+      HYPRLAND_INSTANCE_SIGNATURE. Greetd's fallback command starts
+      hyprland-uwsm.desktop; the chooser entry starts hyprland.desktop.
+    */
+    systemd.user.targets.hyprland-session = {
+      Unit = {
+        Description = "Hyprland compositor session";
+        Documentation = [ "man:uwsm(1)" ];
+        PartOf = uwsmHyprlandSessions;
+        After = uwsmHyprlandSessions;
+      };
+      Install.WantedBy = uwsmHyprlandSessions;
     };
 
     /*

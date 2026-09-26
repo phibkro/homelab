@@ -64,10 +64,9 @@ hl.config({
 ---- AUTOSTART ----
 -------------------
 hl.on("hyprland.start", function()
-    -- Refresh dbus activation env + bounce hyprland-session.target so
-    -- Persona/hypridle pick up DISPLAY/WAYLAND_DISPLAY etc.
-    -- This command resolves through the declarative session PATH.
-    hl.exec_cmd("dbus-update-activation-environment --systemd DISPLAY HYPRLAND_INSTANCE_SIGNATURE WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE && systemctl --user stop hyprland-session.target && systemctl --user start hyprland-session.target")
+    -- UWSM exports the display environment and starts hyprland-session.target
+    -- (hypr-rice/runtime.nix); restarting that target here would stop
+    -- graphical-session.target and end the login.
     hl.exec_cmd("systemctl --user start hyprpolkitagent")
     -- These programs start without a workspace target and follow the active
     -- dwindle layout.

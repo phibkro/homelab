@@ -87,6 +87,10 @@ let
     && lib.all (port: !lib.elem port firewall.allowedTCPPorts) remoteTcpPorts
     && lib.all (port: !lib.elem port firewall.allowedUDPPorts) remoteUdpPorts;
 
+  uwsmHyprlandSessions = [
+    "wayland-session@hyprland-uwsm.desktop.target"
+    "wayland-session@hyprland.desktop.target"
+  ];
   lifecycleContract =
     host:
     let
@@ -96,6 +100,13 @@ let
       timer = sessionHome.systemd.user.timers.steady-state-resource-alert;
     in
     target == "hyprland-session.target"
+    && !sessionHome.wayland.windowManager.hyprland.systemd.enable
+    && sessionHome.systemd.user.targets.hyprland-session.Install.WantedBy == uwsmHyprlandSessions
+    && sessionHome.systemd.user.targets.hyprland-session.Unit.PartOf == uwsmHyprlandSessions
+    && !(sessionHome.systemd.user.targets.hyprland-session.Unit ? BindsTo)
+    && !lib.hasInfix "stop hyprland-session.target" (
+      builtins.readFile (inputs.self + "/src/users/nori/programs/desktop/hypr-rice/hyprland.lua")
+    )
     && service.Unit.PartOf == [ target ]
     && service.Unit.After == [ target ]
     && timer.Unit.PartOf == [ target ]
@@ -168,9 +179,8 @@ assert lib.assertMsg
 assert lib.assertMsg (
   (home workstation).nori.hyprRice.enable && (home adelie).nori.hyprRice.enable
 ) "both graphical homes must enable the shared Hyprland rice";
-assert lib.assertMsg (lib.all lifecycleContract (
-  lib.attrValues graphicalHosts
-)) "Hyprland resource monitoring must start and stop with hyprland-session.target";
+assert lib.assertMsg (lib.all lifecycleContract (lib.attrValues graphicalHosts))
+  "UWSM must own hyprland-session.target; Hyprland must not restart it, and resource monitoring must follow it";
 assert lib.assertMsg (lib.all remoteDesktopContract (
   lib.attrValues graphicalHosts
 )) "both graphical hosts must provide tailnet-only RustDesk, Sunshine, and Moonlight peer access";
