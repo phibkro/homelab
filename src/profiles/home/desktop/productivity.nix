@@ -7,7 +7,7 @@
   home.packages = [
     inputs.zen-browser.packages.${pkgs.stdenv.hostPlatform.system}.default
     pkgs.bitwarden-desktop
-    inputs.nixpkgs-master.legacyPackages.${pkgs.stdenv.hostPlatform.system}.zed-editor
+    pkgs.zed-editor
     pkgs.vscode
   ];
 }

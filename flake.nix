@@ -20,9 +20,10 @@
       whose nixos-unstable channel cut lags far behind upstream. Don't
       mass-overlay from this; resolve specific lags one package at a
       time. Currently consumed by:
-        src/profiles/desktop/nixos/apps.nix → zed-editor (nixos-unstable shipping
-          v0.232.3 as of 2026-05-07, master shipping v1.1.6; months of
-          Linux/Wayland/file-watcher fixes in the gap)
+        src/users/nori/programs/omp-lsp → bun, ruff, rust-analyzer, ty,
+          typescript-language-server, uv (language-server tooling)
+      zed-editor moved back to nixos-unstable on 2026-09-26: both branches
+      ship 1.21.0, and only the unstable build is on cache.nixos.org.
     */
     nixpkgs-master.url = "github:NixOS/nixpkgs/master";
 
