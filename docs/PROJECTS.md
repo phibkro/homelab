@@ -183,14 +183,16 @@ inspects/merges the stack in batch when they have time; a lane sitting idle
 The **1:1 is generative**: if a spec needs two PRs, it was two specs — so it
 self-enforces right-sized problem specs (one felt journey each).
 
-Live design-specs live in **`docs/specs/`** per repo — a DISTINCT directory,
-kept separate from existing `docs/decisions/`, `docs/specs/`, etc. so it doesn't
-overlap. Trivial mechanical changes skip the loop — it's for **units of intent**.
+Live design-specs are readable at **`docs/specs/`** per repo. That is a distinct directory,
+kept separate from `docs/decisions/` and similar folders so the two don't overlap. A repo whose
+docs site generates `docs/` (such as a Fumadocs app that renders MDX into Markdown)
+keeps the spec *source* where its `AGENTS.md` says and serves `docs/specs/` as a generated read path.
+Edit the source, never the generated copy. Trivial mechanical changes skip the loop: it's for **units of intent**.
 
 **Workers are BOUND to their active design-spec** (2026-07-22 — learned from an
 engineer that free-lanced a 2421-line off-spec mega-commit after losing its spec
 to compaction). A worker builds ONLY against its bound spec, re-reads it, and
-**reloads it from the `docs/specs/` file after any compaction** — the spec is a
+**reloads it from the spec file after any compaction**. The spec is a
 durable file precisely so compaction can't sever the binding. Drift symptoms
 (free-lancing, bundling multiple specs into one commit, jumping a HOLD) mean the
 worker came off its spec — the lead resets it to the spec (bank the work, redo as
@@ -430,4 +432,5 @@ the per-project doc, not here.
 
 `STATE.md` is the mission-state file (Lifecycle: idea→spec→spec-frozen→build
 →park→archive, one gate per transition). `AGENTS.md` is the one agent doc;
-CLAUDE.md is a symlink to it. Specs live in `docs/specs/`.
+CLAUDE.md is a symlink to it. Specs are readable at `docs/specs/`; where a repo generates
+`docs/`, its `AGENTS.md` names the source path.
