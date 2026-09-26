@@ -30,6 +30,13 @@
 - Use Claude Opus 5 only at medium effort. Prefer it for independent cross-provider review when Fable capacity is constrained.
 - Match concurrent workers to observed machine capacity. Reduce concurrency when the desktop becomes sluggish or memory pressure rises.
 
+## OMP harness practices
+
+- Run a command that can exceed the bash tool's 300-second limit as a supervised `hub start` process, and wait on it with `hub wait`. Do not background it with `nohup`, `setsid`, or `&`: the harness loses custody and cannot report its exit.
+- Subagents never push. A subagent commits on a branch in its own worktree and reports the branch and commits; the lead verifies and lands it.
+- A subagent that runs out of budget hands off with WIP commits on its branch and the remaining steps in the repository's `docs/specs/`. Never hand off through session-scoped `local://` files; the next session cannot read them.
+- Before implementing a large slice, send the design to the lead or operator and wait for approval.
+
 ## Preferred default technology
 
 - Start applicable new projects with TypeScript 7, Bun, Effect v4, Oxfmt, Oxlint, the Oxlint Effect plugin, and Alchemy v2 for infrastructure.
