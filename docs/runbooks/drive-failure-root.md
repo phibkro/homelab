@@ -116,6 +116,14 @@ unavailable, only preserved historical archives remain; there is no off-site
 backup target. Do not assume `restic recover` repairs unreadable data: it
 recovers unreferenced snapshots, not damaged disk blocks.
 
+The IronWolf also holds received read-only snapshots of `/home`, `/srv/share`,
+`/srv/nori` and `/var/lib` in `/mnt/media/.snapshots/workstation-root`. The
+newest is at most one daily btrbk run old. They are inside the same host, so
+they are a restore lead for an isolated NVMe failure, not a substitute for the
+OneTouch history. Mount the IronWolf read-only first (step 8), inspect the
+newest snapshot per subvolume, and copy selected state with `cp -a` while the
+affected services are stopped.
+
 ### 8. Re-import IronWolf media
 
 IronWolf is a separate cold-data drive and may survive an isolated SN750 failure; inspect its health and contents. After install, the disko config in `disko-media.nix` recognizes the existing filesystem; `nixos-rebuild switch` mounts it without reformatting. **Do NOT re-run disko on the IronWolf** — that wipes it.

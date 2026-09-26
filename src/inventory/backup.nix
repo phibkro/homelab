@@ -26,6 +26,14 @@ in
       "--keep-yearly 3"
     ];
   };
+  retention.workstationRoot = {
+    # Same-disk rollback on the system NVMe. Kept short: every day of
+    # history pins deleted and rewritten blocks on the fullest disk.
+    localSnapshotPreserve = "7d";
+    # Btrbk send history on the attached IronWolf. Off the system disk,
+    # but inside the workstation: not independent of the OneTouch history.
+    ironwolfTargetPreserve = "4w 6m";
+  };
   pi = {
     user = "restic";
     directory = "pi";

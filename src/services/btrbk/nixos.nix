@@ -30,6 +30,20 @@ let
   familySubvols = lib.mapAttrs' (
     _: f: lib.nameValuePair (lib.removePrefix "/mnt/family/" f.path) { }
   ) (lib.filterAttrs (n: f: onFamily n f && f.tier == "irreplaceable") fs);
+
+  /*
+    Root snapshot history leaves the system NVMe: the IronWolf's
+    @snapshots subvolume (mounted beside the media snapshots) receives
+    it with btrbk send/receive. The target is a directory, not a
+    nori.fs entry, because nori.fs tiers select what the snapshot and
+    restic generators protect; this directory is their output. Mode
+    0700 keeps received /home and /var/lib copies out of the Samba
+    `media` share and Jellyfin's read-only /mnt/media view.
+  */
+  rootRetention = config.nori.inventory.backup.retention.workstationRoot;
+  ironwolf = config.nori.inventory.disks."ironwolf-pro";
+  ironwolfSnapshots = "${ironwolf.mountPoint}/.snapshots";
+  rootTarget = "${ironwolfSnapshots}/workstation-root";
 in
 /*
   Selected only by the Workstation `backup-source` system profile. btrbk
@@ -45,7 +59,8 @@ in
     to restore an accidentally-deleted file).
 
     Instances are split by physical btrfs namespace:
-      root (SN750):       /home, /srv/share, /var/lib → /.snapshots
+      root (SN750):       /home, /srv/share, /srv/nori, /var/lib → /.snapshots
+                          sent to /mnt/media/.snapshots/workstation-root
       media (IronWolf):   non-re-derivable /mnt/media/* → /mnt/media/.snapshots
       family (Toshiba):   irreplaceable /mnt/family/* → /mnt/family/.snapshots
 
@@ -59,11 +74,17 @@ in
       @nix    (re-derivable from the flake)
       @downloads (re-derivable — filtered out)
 
-    Root and family retain their existing recovery windows. Cold media has a
-    shorter window: it is mostly append-only archives, and local snapshots
-    are an accidental-deletion tool rather than an independent backup. Keeping
-    years of deleted media on the already-near-capacity IronWolf defeats that
-    distinction.
+    Root keeps one week on the system NVMe, where retained history
+    competes with live data. Its weekly and monthly history lives on the
+    IronWolf as received snapshots: off the system disk, still inside
+    the workstation, so restic to the OneTouch remains the independent
+    backup. Retention values live in `src/inventory/backup.nix`.
+
+    Family keeps its existing window. Cold media has a shorter window: it
+    is mostly append-only archives, and local snapshots are an
+    accidental-deletion tool rather than an independent backup. Keeping
+    years of deleted media on the already-near-capacity IronWolf defeats
+    that distinction.
   */
   services.btrbk = {
     instances = {
@@ -71,10 +92,19 @@ in
         onCalendar = "daily";
         settings = {
           snapshot_preserve_min = "2d";
-          snapshot_preserve = "7d 4w 6m";
+          snapshot_preserve = rootRetention.localSnapshotPreserve;
           snapshot_dir = ".snapshots";
           timestamp_format = "long";
           volume."/" = {
+            /*
+              `latest` sends every daily snapshot, so the IronWolf copy is
+              at most one run old; older dailies there are pruned to the
+              weekly/monthly schedule.
+            */
+            target.${rootTarget} = {
+              target_preserve_min = "latest";
+              target_preserve = rootRetention.ironwolfTargetPreserve;
+            };
             /*
               rootSubvols has `home` + `srv/share` from nori.fs (user
               tier). var/lib is a btrfs subvolume but not in nori.fs
@@ -114,8 +144,27 @@ in
     };
   };
 
+  /*
+    /mnt/media is a directory on the root filesystem, which is btrfs as
+    well: without the IronWolf mount btrbk would receive the history onto
+    the NVMe it is meant to relieve. RequiresMountsFor mounts the
+    IronWolf snapshot subvolume first, or fails the unit.
+  */
+  assertions = [
+    {
+      assertion =
+        ironwolf.attachedHost == config.networking.hostName
+        && (config.fileSystems.${ironwolfSnapshots}.fsType or null) == "btrfs";
+      message = "btrbk root target ${rootTarget} needs the attached IronWolf btrfs mounted at ${ironwolfSnapshots}.";
+    }
+  ];
+  systemd.tmpfiles.rules = [ "d ${rootTarget} 0700 root root - -" ];
+
   # Alert via ntfy template in src/services/ntfy/nixos/notify.nix.
-  systemd.services.btrbk-root.unitConfig.OnFailure = [ "notify@btrbk-root.service" ];
+  systemd.services.btrbk-root.unitConfig = {
+    OnFailure = [ "notify@btrbk-root.service" ];
+    RequiresMountsFor = [ rootTarget ];
+  };
   systemd.services.btrbk-family = lib.mkIf (familySubvols != { }) {
     unitConfig.OnFailure = [ "notify@btrbk-family.service" ];
     unitConfig.RequiresMountsFor = [ "/mnt/family" ];

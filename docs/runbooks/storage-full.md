@@ -10,7 +10,7 @@ Jellyseerr / Jellyfin / *arr stack misbehaving, downloads not completing, syncth
 
 `/mnt/media` (IronWolf, @downloads subvol) fills up with completed media → qBittorrent can't finalize-move new downloads off the NVMe → partials pile up in `/var/lib/qBittorrent/qBittorrent/incomplete/` on the SN750 → root NVMe also fills → everything that needs to write breaks at once.
 
-btrbk retention (`7d 4w 6m` on root, `7d 4w 3m` on cold media) works in the steady state, but **at 100% full btrbk can't even prune** — subvolume delete needs metadata reserve. So snapshot backlog accumulates as a secondary symptom; it's not the root cause.
+btrbk retention (`7d` on root with `4w 6m` sent to the IronWolf, `7d 4w 3m` on cold media) works in the steady state, but **at 100% full btrbk can't even prune** — subvolume delete needs metadata reserve. So snapshot backlog accumulates as a secondary symptom; it's not the root cause.
 
 Pre-2026-05-14 prevention gaps that let this happen:
 
@@ -37,6 +37,7 @@ Box-specific names worth remembering:
 - qBittorrent state dir: `/var/lib/qBittorrent/qBittorrent/` (config, data, incomplete, downloads, cache). The 100s-of-GB consumer when wedged is `incomplete/`.
 - Root snapshots: `/.snapshots/{home,lib,share}.<YYYYMMDD>T<HHMM>`.
 - Media snapshots: `/mnt/media/.snapshots/{archive,home-videos,library,photos,projects}.<...>`. `@downloads` is **not** snapshotted (re-derivable tier per `src/infra/common/nixos/storage/default.nix`) — deleting from `/mnt/media/downloads/` frees space immediately.
+- Received workstation root history: `/mnt/media/.snapshots/workstation-root/{home,share,nori,lib}.<...>` (btrbk-root target, `4w 6m`).
 
 ## Stage 1 — stop the writers
 
@@ -76,6 +77,18 @@ Same pattern, same `btrbk-media.service` shortcut if you want to force it. Manua
 ls -1 /mnt/media/.snapshots/ | awk -F. '{print $1}' | sort -u | while read prefix; do
   ls -1 /mnt/media/.snapshots/ | grep "^${prefix}\." | sort | head -n -3 \
     | while read s; do sudo btrfs subvolume delete "/mnt/media/.snapshots/$s"; done
+done
+```
+
+Received root history in `/mnt/media/.snapshots/workstation-root/` is the
+next candidate. Keep at least the newest snapshot per prefix: it is the
+incremental parent for the next send. Deleting it forces a full send.
+
+```bash
+d=/mnt/media/.snapshots/workstation-root
+sudo ls -1 "$d" | awk -F. '{print $1}' | sort -u | while read prefix; do
+  sudo ls -1 "$d" | grep "^${prefix}\." | sort | head -n -3 \
+    | while read s; do sudo btrfs subvolume delete "$d/$s"; done
 done
 ```
 

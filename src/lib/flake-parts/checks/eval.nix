@@ -44,6 +44,14 @@
             echo ${lib.escapeShellArg result} > $out
           '';
 
+        eval-btrbk-root-offload =
+          let
+            result = import ../../../../tests/eval/btrbk-root-offload.nix { inherit inputs lib; };
+          in
+          pkgs.runCommandLocal "eval-btrbk-root-offload" { } ''
+            echo ${lib.escapeShellArg result} > $out
+          '';
+
         /**
           Phase-0 architecture migration baseline. Pins the resolved
           workload placement per host and the entry-plane route policy

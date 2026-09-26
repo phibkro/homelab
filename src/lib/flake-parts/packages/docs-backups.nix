@@ -34,6 +34,37 @@
             "| `${hostName}` | `${name}` | `${cfg.tier}` | ${renderList targets} | ${renderList cfg.include} |";
         in
         lib.concatStringsSep "\n" (lib.mapAttrsToList renderJob activeJobs);
+      renderHostSnapshots =
+        hostName:
+        let
+          renderInstance =
+            name: instance:
+            let
+              s = instance.settings;
+              renderVolume =
+                path: volume:
+                let
+                  renderTarget =
+                    targetPath: t:
+                    "`${targetPath}`: `${t.target_preserve or s.target_preserve or "no"}`, min `${
+                      t.target_preserve_min or s.target_preserve_min or "all"
+                    }`";
+                  targets = volume.target or { };
+                  targetCell =
+                    if targets == { } then
+                      "none"
+                    else
+                      lib.concatStringsSep "<br>" (lib.mapAttrsToList renderTarget targets);
+                in
+                "| `${hostName}` | `${name}` | `${path}` | ${renderList (lib.attrNames (volume.subvolume or { }))} | `${
+                  s.snapshot_preserve or "no"
+                }`, min `${s.snapshot_preserve_min or "all"}` | ${targetCell} |";
+            in
+            lib.mapAttrsToList renderVolume (s.volume or { });
+        in
+        lib.concatLists (
+          lib.mapAttrsToList renderInstance hostEvals.${hostName}.config.services.btrbk.instances
+        );
       activeJobsAppendix = ''
 
         ## Evaluated NixOS host jobs
@@ -44,6 +75,17 @@
         | Host | Job | Tier | Effective targets | Include paths |
         |---|---|---|---|---|
         ${lib.concatMapStringsSep "\n" renderHostJobs (lib.attrNames hostEvals)}
+
+        ## Evaluated btrbk snapshot instances
+
+        Generated from each evaluated NixOS host's `services.btrbk.instances`.
+        Snapshots stay on the source filesystem; targets receive them with
+        btrfs send/receive. Both are rollback history on disks inside the host,
+        not the independent Restic backup above.
+
+        | Host | Instance | Volume | Subvolumes | Snapshot retention | Targets and retention |
+        |---|---|---|---|---|---|
+        ${lib.concatStringsSep "\n" (lib.concatMap renderHostSnapshots (lib.attrNames hostEvals))}
       '';
     in
     {

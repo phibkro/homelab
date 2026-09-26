@@ -8,22 +8,24 @@ A file or directory got deleted (or overwritten with garbage) and you want it ba
 
 ## Find the snapshot
 
-Snapshots live next to the data on the same btrfs filesystem.
+Snapshots live next to the data on the same btrfs filesystem. Workstation root
+snapshots keep one week locally; weekly and monthly copies up to six months old
+are on the IronWolf. Both are read-only subvolumes with the same layout.
 
-| Subvolume | Snapshot dir |
-|---|---|
-| `/` (root NVMe) | `/.snapshots/` |
-| `/home` | `/.snapshots/home.<timestamp>/` |
-| `/srv/share` | `/.snapshots/srv/share.<timestamp>/` |
-| `/var/lib` | `/.snapshots/var/lib.<timestamp>/` |
-| `/mnt/media/photos` | `/mnt/media/.snapshots/photos.<timestamp>/` |
-| `/mnt/media/home-videos` | `/mnt/media/.snapshots/home-videos.<timestamp>/` |
-| `/mnt/media/projects` | `/mnt/media/.snapshots/projects.<timestamp>/` |
-| `/mnt/media/archive` | `/mnt/media/.snapshots/archive.<timestamp>/` |
+| Subvolume | Last 7 days | Weekly/monthly (IronWolf) |
+|---|---|---|
+| `/home` | `/.snapshots/home.<timestamp>/` | `/mnt/media/.snapshots/workstation-root/home.<timestamp>/` |
+| `/srv/share` | `/.snapshots/share.<timestamp>/` | `/mnt/media/.snapshots/workstation-root/share.<timestamp>/` |
+| `/srv/nori` | `/.snapshots/nori.<timestamp>/` | `/mnt/media/.snapshots/workstation-root/nori.<timestamp>/` |
+| `/var/lib` | `/.snapshots/lib.<timestamp>/` | `/mnt/media/.snapshots/workstation-root/lib.<timestamp>/` |
+| `/mnt/media/photos` | `/mnt/media/.snapshots/photos.<timestamp>/` | — |
+| `/mnt/media/home-videos` | `/mnt/media/.snapshots/home-videos.<timestamp>/` | — |
+| `/mnt/media/projects` | `/mnt/media/.snapshots/projects.<timestamp>/` | — |
+| `/mnt/media/archive` | `/mnt/media/.snapshots/archive.<timestamp>/` | — |
 
 ```bash
 # List snapshots covering, e.g. /home
-sudo ls -1d /.snapshots/home.*
+sudo ls -1d /.snapshots/home.* /mnt/media/.snapshots/workstation-root/home.*
 ```
 
 Pick the most recent snapshot whose timestamp is **before** the deletion.
@@ -51,13 +53,15 @@ sudo chown -R <user>:<group> /home/<user>/<path>
 
 ## If the snapshot doesn't have it either
 
-The file was deleted before the most recent snapshot. Walk back through older snapshots:
+The file was deleted before the most recent snapshot. Walk back through older
+snapshots, then the IronWolf history:
 
 ```bash
-sudo ls -1d /.snapshots/home.* | sort  # oldest → newest
+sudo ls -1d /.snapshots/home.* | sort  # oldest → newest, last 7 days
+sudo ls -1d /mnt/media/.snapshots/workstation-root/home.* | sort  # weekly/monthly
 ```
 
-If nothing on local snapshots covers it, the next layer is restic (whichever backup ran most recently before the deletion).
+If no snapshot covers it, the next layer is restic (whichever backup ran most recently before the deletion).
 
 ## Restoring from restic instead
 

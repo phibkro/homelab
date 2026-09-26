@@ -571,6 +571,14 @@ in
                   };
                 };
               };
+              options.workstationRoot = mkOption {
+                type = types.submodule {
+                  options = {
+                    localSnapshotPreserve = mkOption { type = types.str; };
+                    ironwolfTargetPreserve = mkOption { type = types.str; };
+                  };
+                };
+              };
             };
           };
           pi = mkOption {
