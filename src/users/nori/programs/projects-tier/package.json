@@ -1,0 +1,9 @@
+{
+  "name": "projects-tier",
+  "private": true,
+  "type": "module",
+  "description": "OMP extension package for /srv/share/projects: the Effect skill tier, its profiles, and the repository instruction-chain hook.",
+  "omp": {
+    "extensions": ["./index.ts"]
+  }
+}
