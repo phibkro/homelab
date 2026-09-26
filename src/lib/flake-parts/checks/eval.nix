@@ -454,6 +454,32 @@
           };
 
         /**
+          The projects-tier OMP package (src/users/nori/programs/projects-tier):
+          every tier skill follows the Agent Skills format and the tier's
+          authoring contract, every profile autoloads only tier skills plus the
+          `effect-house` overlay name, and the repository instruction-chain
+          hook's unit tests pass. The validator's negative controls prove each
+          of its rules can fail; the hook tests include a real git worktree.
+        */
+        projects-tier =
+          pkgs.runCommandLocal "projects-tier"
+            {
+              nativeBuildInputs = [
+                pkgs.bun
+                pkgs.git
+              ];
+            }
+            ''
+              export HOME="$TMPDIR"
+              cp -R --no-preserve=mode ${../../../users/nori/programs/projects-tier} package
+              cp ${../../../../tests/eval/projects-tier.ts} projects-tier.ts
+              cp ${../../../../tests/eval/projects-tier.test.ts} projects-tier.test.ts
+              bun test ./package/repo-context.test.ts ./projects-tier.test.ts
+              bun ./projects-tier.ts ./package
+              touch "$out"
+            '';
+
+        /**
           Docs-fresh — committed generated artifacts must match
           what the generators would produce right now. Catches the
           drift class where a schema change lands but the docs/
