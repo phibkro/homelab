@@ -61,6 +61,37 @@ motto, not a preference:
   sitting outside it. A total local calculation remains a direct function; do not
   invent a Service when there is no dependency or authority to abstract.
 
+## Effect-first (operator, 2026-09-26)
+
+Every agent that writes TypeScript here writes native Effect. Guidance teaches
+it; `@effect/tsgo` diagnostics, lint rules, and tests enforce it.
+
+- **Lookup order, before writing:** (1) the repository — `<repo>/AGENTS.md`
+  and, when present, the house overlay `<repo>/.agents/skills/effect-house/SKILL.md`
+  (constructs, composition roots, lint configuration, exception registry);
+  (2) the installed Effect guidance — `node_modules/effect/AGENTS.md`, the
+  `ai-docs/src` examples it links, then `node_modules/effect/src`, never another
+  copy or memory; (3) the house constructs the overlay names; (4) only then
+  compose. Ready means every Effect API used has installed guidance, or the
+  search established that none exists.
+- **Decision ladder:** native construct → composition of native constructs →
+  small domain abstraction built from Effect → boundary adapter → registered
+  exception. Not finding an API is not a capability gap.
+- **Pure stays pure:** a total deterministic transformation stays a plain
+  function; no service, error channel, or effect wrapper for uniformity.
+- **Exceptions have a lifecycle:** every suppression or non-native substitute
+  names a registered exception (scope, missing capability, native alternatives
+  examined, verification, owner, versions examined, retirement trigger). A
+  matching upgrade reopens it; the native capability retires it.
+- **Where it lives:** the homelab OMP package
+  `homelab/src/users/nori/programs/projects-tier` ships the skills (`effect-first`
+  routes to eleven primitives) and the task profiles `effect-engineering`,
+  `effect-backend-engineering`, `effect-ui-development`, and
+  `effect-library-development`. Its hook injects a repository's instruction
+  chain on a session's first touch (subagents get no `AGENTS.md` otherwise) and
+  holds the first TypeScript edit in an `effect-house` repository until that
+  context is delivered.
+
 ## Context engineering tools
 
 The context window is RAM, not disk: fast, expensive, finite. Load what's
