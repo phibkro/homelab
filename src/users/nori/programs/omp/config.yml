@@ -63,6 +63,10 @@ task:
     enabled: true
   agentAdvisor:
     task: "off"
+  # No per-subagent request budget: long slices run to completion instead of stopping mid-step
+  # and needing a successor (operator decision, 2026-09-26).
+  softRequestBudget: 0
+  softRequestBudgetNotice: false
 bash:
   autoBackground:
     enabled: true
