@@ -175,3 +175,12 @@ custody from the pane, and a RAM cap without a matching swap cap can turn a
 runaway into prolonged reclaim thrash instead of containing it.
 Read the `herdr` skill for lifecycle procedure and treat installed help as the
 authority rather than reconstructing commands from memory.
+
+### Credentials and the operator's sessions
+Inspect a credential file by its key names and value lengths only (for example
+`jq 'map_values(length)'`); never print, echo, or log a value, even partially.
+A transcript is a log: on 2026-09-26 a Cloudflare OAuth token was echoed into
+one. The operator's logged-in browser sessions (relay or headed tabs) are
+read-only: navigate and read, never submit, change settings, or act as the
+operator. Anonymise findings from them (names, emails, account and object IDs,
+tokens) before they reach a repository, report, or commit.
