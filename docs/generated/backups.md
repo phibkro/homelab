@@ -465,3 +465,15 @@ Counts, membership, and placement therefore change with configuration.
 | `workstation` | `suwayomi` | `service` | `onetouch` | `/var/lib/suwayomi-server` |
 | `workstation` | `user-data` | `user` | `onetouch` | `/home`<br>`/srv/nori`<br>`/srv/share` |
 | `workstation` | `vektorprogrammet-development` | `service` | `onetouch` | `/var/backup/postgresql/vektorprogrammet_development.sql.gz`<br>`/var/lib/postgresql/17/vektorprogrammet-development/database-password` |
+
+## Evaluated btrbk snapshot instances
+
+Generated from each evaluated NixOS host's `services.btrbk.instances`.
+Snapshots stay on the source filesystem; targets receive them with
+btrfs send/receive. Both are rollback history on disks inside the host,
+not the independent Restic backup above.
+
+| Host | Instance | Volume | Subvolumes | Snapshot retention | Targets and retention |
+|---|---|---|---|---|---|
+| `workstation` | `media` | `/mnt/media` | `archive`<br>`home-videos`<br>`library`<br>`photos`<br>`projects` | `7d 4w 3m`, min `2d` | none |
+| `workstation` | `root` | `/` | `home`<br>`srv/nori`<br>`srv/share`<br>`var/lib` | `7d`, min `2d` | `/mnt/media/.snapshots/workstation-root`: `4w 6m`, min `latest` |

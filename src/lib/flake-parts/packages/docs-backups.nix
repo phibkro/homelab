@@ -56,9 +56,9 @@
                     else
                       lib.concatStringsSep "<br>" (lib.mapAttrsToList renderTarget targets);
                 in
-                "| `${hostName}` | `${name}` | `${path}` | ${renderList (lib.attrNames (volume.subvolume or { }))} | `${
-                  s.snapshot_preserve or "no"
-                }`, min `${s.snapshot_preserve_min or "all"}` | ${targetCell} |";
+                "| `${hostName}` | `${name}` | `${path}` | ${
+                  renderList (lib.attrNames (volume.subvolume or { }))
+                } | `${s.snapshot_preserve or "no"}`, min `${s.snapshot_preserve_min or "all"}` | ${targetCell} |";
             in
             lib.mapAttrsToList renderVolume (s.volume or { });
         in
