@@ -51,6 +51,21 @@
         "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
         "attic.nori.lan-1:3zt/aS8K1bSEjNvZQB9ga9OeZTxcRkvbb7aYRI/vobo="
       ];
+
+      /*
+        A dead cache must not fail builds. The homelab Attic cache lives
+        on one host behind the Pi entry plane; when that host is down,
+        Caddy answers 502 and Nix aborts on the first uncached narinfo
+        ("unable to download … HTTP error 502"), even though another
+        substituter or a local build would succeed. With `fallback` Nix
+        logs the error, disables that cache for 60 s, and continues with
+        the next substituter or builds locally. The cost: a substitute
+        that fails mid-download is rebuilt locally instead of failing.
+        `connect-timeout` bounds the wait when a cache host is unreachable
+        rather than returning an error.
+      */
+      fallback = true;
+      connect-timeout = 5;
     };
     gc = {
       automatic = true;
