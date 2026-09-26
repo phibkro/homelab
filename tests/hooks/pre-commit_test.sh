@@ -16,6 +16,9 @@ set -euo pipefail
 [[ ! -e untracked.txt ]]
 [[ ! -e removed.txt ]]
 [[ "$(cat ignored-but-tracked.txt)" == retained ]]
+# Nix sees a clean Git source with a revision, holding exactly the staged content.
+[[ "$(git show HEAD:partly-staged.nix)" == staged ]]
+[[ -z "$(git status --porcelain --untracked-files=all)" ]]
 printf '%s\n' "$*" >> "$HOOK_TEST_LOG"
 exit "${HOOK_TEST_FAILURE:-0}"
 STUB

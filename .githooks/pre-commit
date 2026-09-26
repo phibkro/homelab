@@ -13,6 +13,12 @@ unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_COMMON_DIR GIT_OBJECT_DIRECTORY G
 cd "$snapshot"
 git init --quiet
 git add --all --force
+# Commit the snapshot so the flake is a clean Git source with a revision:
+# evaluation reads inputs.self.rev (desktop-settings activation requires it),
+# which an uncommitted index does not provide. No hook runs inside the fixture.
+git -c core.hooksPath=/dev/null -c commit.gpgsign=false \
+  -c user.name=pre-commit -c user.email=pre-commit@localhost \
+  commit --quiet --allow-empty --message 'pre-commit snapshot'
 printf '[pre-commit] checking exact staged snapshot (Nix + Pi static checks)…\n' >&2
 nix develop --command bash scripts/check-nix.sh fast
 nix develop --command just pi::check
