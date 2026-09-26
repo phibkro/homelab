@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Enable with: git config core.hooksPath .githooks
+# Enable with: just install-hooks
 # Validate the index in isolation; never format or stage operator files.
 set -euo pipefail
 root="$(git rev-parse --show-toplevel)"

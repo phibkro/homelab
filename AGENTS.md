@@ -39,6 +39,9 @@ source → focused edit → fast checks → relevant build/runtime test → evid
   `.agents/skills/`; load only the relevant skill.
 - `just` lists commands. `just check` runs fast Nix checks; `just pi::check`
   checks Ansible. `just build` builds the local NixOS configuration.
+  `just install-hooks` enables the versioned Git hooks once per clone:
+  commit-msg checks the subject, pre-commit runs those two checks on the exact
+  staged snapshot.
 - `just check-vm [name]` runs disposable NixOS tests; `just pi::test` runs a
   disposable Pi. `just check-all` includes the full Nix check suite. Coordinate
   heavy jobs so one project lead runs at most one at a time.

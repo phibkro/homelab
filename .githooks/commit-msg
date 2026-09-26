@@ -34,7 +34,7 @@
 # hook is a habit shaper, not a wall.
 #
 # Enabling this hook (one-time, per clone):
-#   git config core.hooksPath .githooks
+#   just install-hooks   (git config core.hooksPath .githooks)
 
 set -e
 

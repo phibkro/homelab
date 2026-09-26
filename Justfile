@@ -79,6 +79,10 @@ default: list
     git log -p --reverse origin/main..HEAD | delta --paging=always
 
 
+# Point Git at the versioned hooks in .githooks: commit-msg and the staged-snapshot pre-commit check. Once per clone; every worktree resolves the relative path against its own checkout.
+@install-hooks:
+    git config core.hooksPath .githooks
+
 # Run non-VM Nix checks; no host activation.
 @check:
     bash scripts/check-nix.sh fast
