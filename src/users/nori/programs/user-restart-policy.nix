@@ -162,8 +162,8 @@ in
               section [Service]" and the give-up cap silently never applies —
               the exact bug caught on restic-backups-*-mp510, 2026-06-06.
             */
-            Unit.StartLimitIntervalSec = lib.mkDefault "1h";
-            Unit.StartLimitBurst = lib.mkDefault 15;
+            Unit.StartLimitIntervalSec = lib.mkIf restartEnabled (lib.mkDefault "1h");
+            Unit.StartLimitBurst = lib.mkIf restartEnabled (lib.mkDefault 15);
             /*
               Literal `${name}.service` rather than systemd's %n, which already
               carries the .service suffix and would render user-notify@waybar
