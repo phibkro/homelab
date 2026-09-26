@@ -9,6 +9,28 @@
 let
   cfg = config.nori.omp;
   soul = builtins.readFile ../agent-soul/SOUL.md;
+
+  /*
+    projects-tier: the /srv/share/projects OMP extension package — the Effect
+    skill tier (skills/), its profiles (agents/), and the repository
+    instruction-chain hook (index.ts). OMP discovers skills/ and agents/ from
+    the `extensions:` entry below and runs index.ts in every session and task
+    subagent, whatever its working directory.
+  */
+  projectsTier = builtins.path {
+    path = ../projects-tier;
+    name = "omp-projects-tier";
+  };
+  configBaseline = builtins.readFile ./config.yml;
+  # Join on exactly one newline whether or not config.yml ends with one.
+  ompConfig = pkgs.writeText "omp-config.yml" (
+    lib.removeSuffix "\n" configBaseline
+    + "\n"
+    + ''
+      extensions:
+        - ${projectsTier}
+    ''
+  );
   ompUnwrapped = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.omp;
   omp =
     if cfg.exaApiKeyFile == null then
@@ -45,6 +67,15 @@ in
   };
 
   config = {
+    # This module appends the one `extensions:` key; a second one in
+    # config.yml would be a duplicate YAML key that silently drops the tier.
+    assertions = [
+      {
+        assertion = !lib.any (lib.hasPrefix "extensions:") (lib.splitString "\n" configBaseline);
+        message = "src/users/nori/programs/omp/config.yml must not declare `extensions:`; default.nix owns that key.";
+      }
+    ];
+
     home.packages = [
       omp
       pkgs.vscode-js-debug
@@ -61,7 +92,7 @@ in
     # promoted back into this module.
     home.activation.ompConfig = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
       $DRY_RUN_CMD ${pkgs.coreutils}/bin/rm -f ${config.home.homeDirectory}/.omp/agent/config.yml
-      $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -Dm644 ${./config.yml} ${config.home.homeDirectory}/.omp/agent/config.yml
+      $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -Dm644 ${ompConfig} ${config.home.homeDirectory}/.omp/agent/config.yml
     '';
 
     home.file = {
