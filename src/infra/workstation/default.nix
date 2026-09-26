@@ -124,6 +124,18 @@
   services.tailscale.extraSetFlags = [ "--accept-dns=true" ];
 
   /*
+    /tmp is a btrfs subvolume inside @ on the system NVMe, not a tmpfs, so
+    agent evidence and scratch worktrees there persist across reboots.
+    systemd's tmp.conf already ages it at 10d; agent work on 2026-09-26 left
+    ~21 GB younger than that. This line wins over tmp.conf because
+    00-nixos.conf sorts first. Aging judges each file by its newest of
+    atime/mtime/ctime (atime is frozen by noatime), deletes old files inside
+    trees that are still in use, and skips only trees a process holds a BSD
+    flock on. Work that must outlive a week belongs outside /tmp.
+  */
+  systemd.tmpfiles.rules = [ "q /tmp 1777 root root 7d" ];
+
+  /*
     Blackmagic replaced the bytes served for the Resolve 21.1 Linux download
     without changing the version/API selector. Keep nixpkgs' package
     implementation, but correct its fixed-output hash until the nixpkgs pin
