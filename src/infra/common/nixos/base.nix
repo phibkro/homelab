@@ -44,8 +44,14 @@
           The homelab Attic cache is populated by successful builds on every
           host. Its signing key is declarative, so a cache response is accepted
           only when it matches this trust root.
+
+          Nix queries substituters by ascending priority, not list order.
+          priority=60 sorts it after numtide (30), cache.nixos.org (40) and
+          nixos-cuda (50), so an Attic outage only affects paths that no
+          public cache has. The URL parameter overrides Attic's advertised
+          nix-cache-info priority.
         */
-        "https://cache.${config.nori.inventory.site.domain}/nori"
+        "https://cache.${config.nori.inventory.site.domain}/nori?priority=60"
       ];
       extra-trusted-public-keys = [
         "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="

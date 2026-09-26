@@ -306,7 +306,7 @@ let
 
   cacheContractCorrect =
     let
-      cacheUrl = "https://cache.${hosts.workstation.config.nori.inventory.site.domain}/nori";
+      cacheUrl = "https://cache.${hosts.workstation.config.nori.inventory.site.domain}/nori?priority=60";
       cacheKey = "attic.nori.lan-1:3zt/aS8K1bSEjNvZQB9ga9OeZTxcRkvbb7aYRI/vobo=";
       everyHostSubscribes = lib.all (
         host:
