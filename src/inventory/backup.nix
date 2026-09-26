@@ -30,9 +30,26 @@ in
     # Same-disk rollback on the system NVMe. Kept short: every day of
     # history pins deleted and rewritten blocks on the fullest disk.
     localSnapshotPreserve = "7d";
-    # Btrbk send history on the attached IronWolf. Off the system disk,
-    # but inside the workstation: not independent of the OneTouch history.
-    ironwolfTargetPreserve = "4w 6m";
+    /*
+      Btrbk send target on the attached IronWolf. Off the system disk, but
+      inside the workstation: not independent of the OneTouch history.
+
+      Phase 1 (now): "no" keeps only the latest received snapshot. Btrbk
+      sends every local snapshot its target policy selects and has no
+      "not before" option, so a history policy set now would backfill the
+      pre-cleanup snapshots (about 561 GiB instead of about 326 GiB).
+
+      Phase 2: on or after `ironwolfTargetPreservePlanned.notBefore`, when
+      `ls /.snapshots` shows no 2026-09-20..25 dailies, the operator (or an
+      agent in a reviewed commit) sets `ironwolfTargetPreserve` to the
+      planned value, updates tests/eval/btrbk-root-offload.nix, and
+      re-checks the IronWolf budget (docs/roadmap.md).
+    */
+    ironwolfTargetPreserve = "no";
+    ironwolfTargetPreservePlanned = {
+      preserve = "4w 6m";
+      notBefore = "2026-10-04";
+    };
   };
   pi = {
     user = "restic";

@@ -32,13 +32,13 @@ let
   ) (lib.filterAttrs (n: f: onFamily n f && f.tier == "irreplaceable") fs);
 
   /*
-    Root snapshot history leaves the system NVMe: the IronWolf's
-    @snapshots subvolume (mounted beside the media snapshots) receives
-    it with btrbk send/receive. The target is a directory, not a
-    nori.fs entry, because nori.fs tiers select what the snapshot and
-    restic generators protect; this directory is their output. Mode
-    0700 keeps received /home and /var/lib copies out of the Samba
-    `media` share and Jellyfin's read-only /mnt/media view.
+    Root snapshots also leave the system NVMe: the IronWolf's @snapshots
+    subvolume (mounted beside the media snapshots) receives them with
+    btrbk send/receive. The target is a directory, not a nori.fs entry,
+    because nori.fs tiers select what the snapshot and restic generators
+    protect; this directory is their output. Mode 0700 keeps received
+    /home and /var/lib copies out of the Samba `media` share and
+    Jellyfin's read-only /mnt/media view.
   */
   rootRetention = config.nori.inventory.backup.retention.workstationRoot;
   ironwolf = config.nori.inventory.disks."ironwolf-pro";
@@ -75,10 +75,12 @@ in
       @downloads (re-derivable — filtered out)
 
     Root keeps one week on the system NVMe, where retained history
-    competes with live data. Its weekly and monthly history lives on the
-    IronWolf as received snapshots: off the system disk, still inside
-    the workstation, so restic to the OneTouch remains the independent
-    backup. Retention values live in `src/inventory/backup.nix`.
+    competes with live data. The IronWolf receives every run as a
+    read-only snapshot: off the system disk, still inside the workstation,
+    so restic to the OneTouch remains the independent backup. The target
+    starts with the latest snapshot only and moves to weekly/monthly
+    history in a dated second phase; both values and the switch rule live
+    in `retention.workstationRoot` in `src/inventory/backup.nix`.
 
     Family keeps its existing window. Cold media has a shorter window: it
     is mostly append-only archives, and local snapshots are an
@@ -98,8 +100,8 @@ in
           volume."/" = {
             /*
               `latest` sends every daily snapshot, so the IronWolf copy is
-              at most one run old; older dailies there are pruned to the
-              weekly/monthly schedule.
+              at most one run old. `target_preserve` selects which older
+              received snapshots stay there ("no" in phase 1).
             */
             target.${rootTarget} = {
               target_preserve_min = "latest";

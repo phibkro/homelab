@@ -86,14 +86,17 @@ to an independent destination.
 Workstation root snapshots (`/home`, `/srv/share`, `/srv/nori` and `/var/lib`)
 keep one week on the system NVMe, as `retention.workstationRoot` in
 `src/inventory/backup.nix` declares. The same btrbk run sends them to
-`/mnt/media/.snapshots/workstation-root` on the IronWolf and keeps weekly and
-monthly history there. The target is a root-only directory in the IronWolf
-`@snapshots` subvolume, not a `nori.fs` entry: `nori.fs` tiers select what
-the snapshot and Restic generators protect, and this directory is their
-output. The IronWolf copy survives loss of the system NVMe, but not loss of
-the workstation; Restic to the OneTouch remains the independent backup. The
-[generated backup reference](../generated/backups.md) lists each evaluated
-btrbk instance, its retention and its targets.
+`/mnt/media/.snapshots/workstation-root` on the IronWolf. Phase 1 keeps only
+the latest received snapshot there, so the first send does not copy the
+pre-cleanup history. The planned weekly and monthly history starts in a
+reviewed commit on or after the date the inventory records; the
+[roadmap](../roadmap.md) lists the preconditions. The target is a root-only
+directory in the IronWolf `@snapshots` subvolume, not a `nori.fs` entry:
+`nori.fs` tiers select what the snapshot and Restic generators protect, and
+this directory is their output. The IronWolf copy survives loss of the system
+NVMe, but not loss of the workstation; Restic to the OneTouch remains the
+independent backup. The [generated backup reference](../generated/backups.md)
+lists each evaluated btrbk instance, its retention and its targets.
 
 Immich's dump location derives from `services.immich.mediaLocation`; its
 `backups` directory is already beneath the photos tree. Live metadata showed

@@ -1,9 +1,12 @@
 /*
   Workstation root snapshots keep one week on the system NVMe and send
-  weekly/monthly history to the IronWolf. Checked on the btrbk settings
-  the root.conf is rendered from and on the filesystem that owns the
-  target path: /mnt/media itself is a directory on the root btrfs, so a
-  target that is not below the IronWolf mount would land on the NVMe.
+  every run to the IronWolf. Phase 1 keeps only the latest received
+  snapshot there; the dated phase-2 history policy is inventory data
+  until a reviewed commit switches it (see retention.workstationRoot in
+  src/inventory/backup.nix). Checked on the btrbk settings root.conf is
+  rendered from and on the filesystem that owns the target path:
+  /mnt/media itself is a directory on the root btrfs, so a target that
+  is not below the IronWolf mount would land on the NVMe.
 */
 { inputs, lib, ... }:
 let
@@ -20,6 +23,9 @@ let
     );
   targetMount = config.fileSystems.${mountFor target};
 
+  planned =
+    inputs.self.lib.noriInventory.backup.retention.workstationRoot.ironwolfTargetPreservePlanned;
+
   retention =
     settings.snapshot_preserve == "7d"
     && settings.snapshot_preserve_min == "2d"
@@ -28,9 +34,14 @@ let
     &&
       settings.volume."/".target == {
         ${target} = {
-          target_preserve = "4w 6m";
+          target_preserve = "no";
           target_preserve_min = "latest";
         };
+      }
+    &&
+      planned == {
+        preserve = "4w 6m";
+        notBefore = "2026-10-04";
       };
 
   onIronwolf =
@@ -43,11 +54,11 @@ let
   rootOnly = lib.elem "d ${target} 0700 root root - -" config.systemd.tmpfiles.rules;
 in
 if retention && onIronwolf && mountRequired && rootOnly then
-  "ok — root snapshots keep 7d locally; 4w 6m history is sent to the IronWolf"
+  "ok — root snapshots keep 7d locally; the IronWolf keeps the latest (4w 6m planned from 2026-10-04)"
 else
   throw ''
     btrbk root offload mismatch:
-      local 7d, IronWolf target 4w 6m: ${lib.boolToString retention}
+      local 7d, IronWolf latest only, 4w 6m planned: ${lib.boolToString retention}
       target on IronWolf @snapshots (${mountFor target}): ${lib.boolToString onIronwolf}
       unit requires target mount: ${lib.boolToString mountRequired}
       target directory root-only: ${lib.boolToString rootOnly}

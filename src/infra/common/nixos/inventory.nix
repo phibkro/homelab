@@ -576,6 +576,14 @@ in
                   options = {
                     localSnapshotPreserve = mkOption { type = types.str; };
                     ironwolfTargetPreserve = mkOption { type = types.str; };
+                    ironwolfTargetPreservePlanned = mkOption {
+                      type = types.submodule {
+                        options = {
+                          preserve = mkOption { type = types.str; };
+                          notBefore = mkOption { type = types.strMatching "[0-9]{4}-[0-9]{2}-[0-9]{2}"; };
+                        };
+                      };
+                    };
                   };
                 };
               };

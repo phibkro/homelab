@@ -9,10 +9,12 @@ A file or directory got deleted (or overwritten with garbage) and you want it ba
 ## Find the snapshot
 
 Snapshots live next to the data on the same btrfs filesystem. Workstation root
-snapshots keep one week locally; weekly and monthly copies up to six months old
-are on the IronWolf. Both are read-only subvolumes with the same layout.
+snapshots keep one week locally, and the IronWolf holds received copies: the
+latest only until the phase-2 history policy lands (`retention.workstationRoot`
+in `src/inventory/backup.nix`), then weekly and monthly copies up to six months
+old. Both are read-only subvolumes with the same layout.
 
-| Subvolume | Last 7 days | Weekly/monthly (IronWolf) |
+| Subvolume | Last 7 days | Received copies (IronWolf) |
 |---|---|---|
 | `/home` | `/.snapshots/home.<timestamp>/` | `/mnt/media/.snapshots/workstation-root/home.<timestamp>/` |
 | `/srv/share` | `/.snapshots/share.<timestamp>/` | `/mnt/media/.snapshots/workstation-root/share.<timestamp>/` |
@@ -58,7 +60,7 @@ snapshots, then the IronWolf history:
 
 ```bash
 sudo ls -1d /.snapshots/home.* | sort  # oldest → newest, last 7 days
-sudo ls -1d /mnt/media/.snapshots/workstation-root/home.* | sort  # weekly/monthly
+sudo ls -1d /mnt/media/.snapshots/workstation-root/home.* | sort  # received copies
 ```
 
 If no snapshot covers it, the next layer is restic (whichever backup ran most recently before the deletion).

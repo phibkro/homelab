@@ -135,8 +135,8 @@
                     there. Cross-filesystem snapshots aren't a thing in
                     btrfs — root snapshots go to /.snapshots, IronWolf
                     snapshots have to live on the IronWolf btrfs. The
-                    root instance also receives its weekly/monthly
-                    history into workstation-root/ here
+                    root instance also receives its snapshots
+                    into workstation-root/ here
                     (src/services/btrbk/nixos.nix).
                   */
                   mountpoint = "/mnt/media/.snapshots";

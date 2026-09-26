@@ -29,6 +29,19 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
   production DSNs for the Cloudflare-hosted applications. Drinks and Filmder
   already contain dormant SDK initialization. This work requires account
   access and an approved production credential change.
+- **Workstation root history on the IronWolf, phase 2 (on or after 2026-10-04).**
+  Phase 1 keeps only the latest received root snapshot in
+  `/mnt/media/.snapshots/workstation-root`, so the first send skips the
+  pre-cleanup history. On or after the date: confirm `sudo ls /.snapshots`
+  has no `*.2026092[0-5]T*` dailies (btrbk sends every local snapshot the
+  target policy selects, and the 2026-09-20 Sunday would otherwise be kept as
+  history). Re-measure `btrfs filesystem usage /mnt/media/.snapshots`; history
+  adds an estimated 110-160 GiB, so lower the `@downloads` cap in
+  `src/services/btrbk/nixos.nix` by that amount or choose `4w 3m`. Then set
+  `retention.workstationRoot.ironwolfTargetPreserve` to its planned value in
+  `src/inventory/backup.nix` and update `tests/eval/btrbk-root-offload.nix`
+  in one reviewed commit. The operator deploys it with `just rebuild`; an agent
+  may prepare the commit.
 
 These require the operator or physical client access. They remain accepted
 work, but do not block autonomous repository work.
