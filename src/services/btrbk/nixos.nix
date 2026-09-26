@@ -177,7 +177,7 @@ in
 
   /*
     ── btrfs qgroup quota on @downloads ────────────────────────────
-    Cap @downloads at 3.3 TiB on the IronWolf (3.64 TiB total) to
+    Cap @downloads at 2540 GiB on the IronWolf (3726 GiB btrfs) to
     prevent the 100%-full metadata-exhaustion wedge pattern (see
     docs/runbooks/storage-full.md). At 100% btrfs can't even reclaim
     via subvolume delete because metadata writes need reserve — that's
@@ -188,13 +188,17 @@ in
     stays open (delete from @downloads to free; quota doesn't apply
     to the system pool's metadata budget).
 
-    Headroom math (snapshot 2026-05-16): @downloads = 3.2 TiB on the
-    IronWolf, with legacy family copies retained on that filesystem
-    but no longer mounted. The 3.3 TiB cap leaves recovery headroom
-    for btrfs metadata and the active downloads workload.
+    Headroom math (2026-09-26): 3053 GiB used, @downloads 2406 GiB
+    referenced. The first btrbk-root send adds about 350 GiB (326 GiB
+    data plus metadata), leaving about 998 GiB of non-download data.
+    Disk-alert fires at 95% (3540 GiB), so a full @downloads may use
+    3540 - 998 ≈ 2540 GiB: about 134 GiB above today's downloads. The
+    previous 3300G cap no longer fit: it allowed ~890 GiB more
+    downloads with only 670 GiB free.
 
-    Tune via the 3300G literal below. Adjust upward if the other
-    subvols grow such that the budget for @downloads needs to shrink.
+    Tune via the 2540G literal below. Shrink it when other IronWolf
+    data grows: the phase-2 root history (`retention.workstationRoot`)
+    adds an estimated 110-160 GiB over six months.
 
     btrfs qgroup overhead: ~5% on metadata-heavy ops (modifying CoW
     ref counts on every write). Acceptable cost for the wedge guard
@@ -219,7 +223,7 @@ in
       downloads_id=$(${pkgs.btrfs-progs}/bin/btrfs subvolume list /mnt/media/downloads \
         | ${pkgs.gawk}/bin/awk '$NF == "@downloads" { print $2 }')
       if [ -n "$downloads_id" ]; then
-        ${pkgs.btrfs-progs}/bin/btrfs qgroup limit 3300G "0/$downloads_id" /mnt/media/downloads \
+        ${pkgs.btrfs-progs}/bin/btrfs qgroup limit 2540G "0/$downloads_id" /mnt/media/downloads \
           || echo "WARNING: failed to set @downloads quota (rescan in progress?)"
       fi
     else

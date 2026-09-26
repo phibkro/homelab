@@ -476,4 +476,4 @@ not the independent Restic backup above.
 | Host | Instance | Volume | Subvolumes | Snapshot retention | Targets and retention |
 |---|---|---|---|---|---|
 | `workstation` | `media` | `/mnt/media` | `archive`<br>`home-videos`<br>`library`<br>`photos`<br>`projects` | `7d 4w 3m`, min `2d` | none |
-| `workstation` | `root` | `/` | `home`<br>`srv/nori`<br>`srv/share`<br>`var/lib` | `7d`, min `2d` | `/mnt/media/.snapshots/workstation-root`: `4w 6m`, min `latest` |
+| `workstation` | `root` | `/` | `home`<br>`srv/nori`<br>`srv/share`<br>`var/lib` | `7d`, min `2d` | `/mnt/media/.snapshots/workstation-root`: `no`, min `latest` |

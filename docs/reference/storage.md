@@ -98,6 +98,11 @@ NVMe, but not loss of the workstation; Restic to the OneTouch remains the
 independent backup. The [generated backup reference](../generated/backups.md)
 lists each evaluated btrbk instance, its retention and its targets.
 
+The `@downloads` qgroup cap keeps the IronWolf below the 95% disk-alert
+threshold. It is the IronWolf budget less all other data, so it shrinks when
+snapshots or media grow. The derivation is next to the literal in
+`src/services/btrbk/nixos.nix`.
+
 Immich's dump location derives from `services.immich.mediaLocation`; its
 `backups` directory is already beneath the photos tree. Live metadata showed
 daily dumps during preflight, but their database restore validity was not
