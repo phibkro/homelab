@@ -1,9 +1,9 @@
 modelRoles:
   default: openai-codex/gpt-6-sol:high
-  smol: openai-codex/gpt-6-luna:high
+  smol: openai-codex/gpt-6-luna:max
   slow: openai-codex/gpt-6-sol:high
-  plan: openai-codex/gpt-6-astra:high
-  web: web/exa
+  image: openai-codex/gpt-image-1:auto
+  web: web/exa:auto
 modelProviderOrder:
   - openai-codex
   - anthropic
@@ -48,6 +48,18 @@ retry:
       - web/google
       - web/mojeek
       - web/public
+    openai-codex/gpt-6-sol:
+      - anthropic/claude-opus-5-5
+    anthropic/claude-opus-5-5:
+      - openai-codex/gpt-6-sol
+    openai-codex/gpt-6-luna:
+      - anthropic/claude-sonnet-5
+    anthropic/claude-sonnet-5:
+      - openai-codex/gpt-6-luna
+    openai-codex/gpt-6-astra:
+      - anthropic/claude-fable-5-1
+    anthropic/claude-fable-5-1:
+      - openai-codex/gpt-6-astra
 interruptMode: wait
 advisor:
   enabled: false
@@ -59,8 +71,10 @@ task:
   maxRecursionDepth: 2
   maxEffort: max
   isolation:
-    apply: false
+    apply: true
     enabled: true
+    merge: branch
+    commits: ai
   agentAdvisor:
     task: "off"
   # No per-subagent request budget: long slices run to completion instead of stopping mid-step
@@ -74,8 +88,10 @@ bash:
 ask:
   notify: "on"
 eval:
-  py: false
+  py: true
   js: true
+  autoBackground:
+    enabled: true
 debug:
   enabled: true
 compaction:
@@ -121,3 +137,11 @@ error:
   notify: "on"
 display:
   cacheMissMarker: true
+extendedContext: true
+composer:
+  tokenRate: true
+  shape: box
+tui:
+  codexResetFireworks: true
+security:
+  enabled: true
