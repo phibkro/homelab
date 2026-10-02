@@ -1,21 +1,12 @@
 _: {
   /*
-    MP510 retains historical workstation restic repositories and hosts
-    SSD cache storage. No new backup jobs target it. Existing family-replica
+    MP510 retains historical workstation restic repositories. No new backup
+    jobs target it. Existing family-replica
     subvolumes remain mounted to preserve historical backup data. They are
     not evidence of a currently running cross-host replication service.
     Do not repartition or delete these subvolumes during this migration.
   */
   nori.fs = {
-    /*
-      Re-derivable fleet cache. Attic moved here when Aurora was reduced to
-      the captive OneTouch restic target; cache availability must not depend
-      on retired hardware.
-    */
-    cache = {
-      path = "/mnt/backup-local/attic";
-      tier = "re-derivable";
-    };
     /*
       Workstation-side restic-local target — `nori.backupTargets.mp510`.
       Holds the ~57 GiB of workstation restic snapshots that used to

@@ -446,7 +446,6 @@ Counts, membership, and placement therefore change with configuration.
 |---|---|---|---|---|
 | `adelie` | `miniflux` | `service` | `onetouch` | `/var/backup/postgresql/miniflux.sql.gz` |
 | `adelie` | `radicale` | `service` | `onetouch` | `/var/lib/radicale` |
-| `adelie` | `stremio` | `service` | `onetouch` | `/var/lib/stremio` |
 | `adelie` | `vaultwarden` | `service` | `onetouch` | `/var/lib/vaultwarden`<br>`/var/backup/vaultwarden` |
 | `workstation` | `bazarr` | `service` | `onetouch` | `/var/lib/bazarr` |
 | `workstation` | `calibre-web` | `service` | `onetouch` | `/var/lib/calibre-web` |
@@ -462,6 +461,7 @@ Counts, membership, and placement therefore change with configuration.
 | `workstation` | `qbittorrent` | `service` | `onetouch` | `/var/lib/qBittorrent` |
 | `workstation` | `radarr` | `service` | `onetouch` | `/var/lib/radarr` |
 | `workstation` | `sonarr` | `service` | `onetouch` | `/var/lib/sonarr` |
+| `workstation` | `stremio` | `service` | `onetouch` | `/var/lib/stremio` |
 | `workstation` | `suwayomi` | `service` | `onetouch` | `/var/lib/suwayomi-server` |
 | `workstation` | `user-data` | `user` | `onetouch` | `/home`<br>`/srv/nori`<br>`/srv/share` |
 | `workstation` | `vektorprogrammet-development` | `service` | `onetouch` | `/var/backup/postgresql/vektorprogrammet_development.sql.gz`<br>`/var/lib/postgresql/17/vektorprogrammet-development/database-password` |

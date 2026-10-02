@@ -7,6 +7,10 @@ owner: operator
 
 # Three-host service migration
 
+This records the accepted 2026-09-20 cutover. Attic server, publishers, and
+route were retired afterward; the current workload and route inventory is the
+authority for present placement.
+
 ## Goal
 
 The homelab uses three active machines with explicit duties:

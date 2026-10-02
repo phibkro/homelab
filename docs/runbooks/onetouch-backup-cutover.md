@@ -88,14 +88,14 @@ Do not create `/var/lib/nori/migration/backups-ready` on Adelie until both
 transport checks pass.
 
 Generate inventory and run `just pi::plan`. Review it, then deploy Pi after
-approval. Trigger the four Adelie jobs for `miniflux`, `radicale`, `stremio`,
-and `vaultwarden`. Run an integrity check after all four jobs complete.
+approval. Trigger the three Adelie jobs for `miniflux`, `radicale`, and
+`vaultwarden`. Stremio now runs on workstation and uses its local OneTouch
+backup job. Run an integrity check after the three Adelie jobs complete.
 
 On workstation, inspect these repositories:
 
 - `/mnt/backup/adelie/repos/miniflux`
 - `/mnt/backup/adelie/repos/radicale`
-- `/mnt/backup/adelie/repos/stremio`
 - `/mnt/backup/adelie/repos/vaultwarden`
 
 Record snapshot IDs. Restore each repository into a disposable directory.

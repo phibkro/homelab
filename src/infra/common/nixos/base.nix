@@ -40,33 +40,14 @@
           cuda-maintainers.cachix.org to cache.nixos-cuda.org Nov 2025.
         */
         "https://cache.nixos-cuda.org"
-        /*
-          The homelab Attic cache is populated by successful builds on every
-          host. Its signing key is declarative, so a cache response is accepted
-          only when it matches this trust root.
-
-          Nix queries substituters by ascending priority, not list order.
-          priority=60 sorts it after numtide (30), cache.nixos.org (40) and
-          nixos-cuda (50), so an Attic outage only affects paths that no
-          public cache has. The URL parameter overrides Attic's advertised
-          nix-cache-info priority.
-        */
-        "https://cache.${config.nori.inventory.site.domain}/nori?priority=60"
       ];
       extra-trusted-public-keys = [
         "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
-        "attic.nori.lan-1:3zt/aS8K1bSEjNvZQB9ga9OeZTxcRkvbb7aYRI/vobo="
       ];
 
       /*
-        A dead cache must not fail builds. The homelab Attic cache lives
-        on one host behind the Pi entry plane; when that host is down,
-        Caddy answers 502 and Nix aborts on the first uncached narinfo
-        ("unable to download … HTTP error 502"), even though another
-        substituter or a local build would succeed. With `fallback` Nix
-        logs the error, disables that cache for 60 s, and continues with
-        the next substituter or builds locally. The cost: a substitute
-        that fails mid-download is rebuilt locally instead of failing.
+        A failed public substituter must not prevent local builds. With
+        `fallback` Nix continues with the next substituter or builds locally.
         `connect-timeout` bounds the wait when a cache host is unreachable
         rather than returning an error.
       */

@@ -15,18 +15,12 @@ let
   adelie = inputs.self.nixosConfigurations.adelie.config;
   workstation = inputs.self.nixosConfigurations.workstation.config;
   movedServices = [
-    "attic"
     "grafana"
     "miniflux"
     "radicale"
-    "stremio"
     "vaultwarden"
   ];
   expectedAdelieSecrets = [
-    "attic-admin-token"
-    "attic-cache-keypair"
-    "attic-jwt-environment"
-    "attic-push-token"
     "grafana-secret-key"
     "miniflux-admin-password"
     "nori-console-password-hash"
@@ -38,14 +32,12 @@ let
     "wifi-akkar-psk"
   ];
   sharedAdelieSecrets = [
-    "attic-push-token"
     "nori-console-password-hash"
     "ntfy-channel"
   ];
   statefulBackupNames = [
     "miniflux"
     "radicale"
-    "stremio"
     "vaultwarden"
   ];
   activeAdelieBackups = lib.attrNames (
@@ -60,11 +52,10 @@ let
   placementCorrect =
     inventory.workloads.glance.hosts == [ "pi" ]
     && lib.all (name: inventory.workloads.${name}.hosts == [ "adelie" ]) movedServices
-    &&
-      inventory.workloads."attic-publisher".hosts == [
-        "adelie"
-        "workstation"
-      ]
+    && inventory.workloads.stremio.hosts == [ "workstation" ]
+    && !(builtins.hasAttr "attic" inventory.workloads)
+    && !(builtins.hasAttr "attic-publisher" inventory.workloads)
+    && !(builtins.hasAttr "cache" inventory.routes)
     &&
       inventory.workloads."ntfy-notify".hosts == [
         "adelie"
@@ -73,7 +64,7 @@ let
       ];
 
   runtimeCorrect =
-    adelie.services.atticd.enable
+    !(adelie.services.atticd.enable or false)
     && adelie.services.grafana.enable
     && adelie.services.miniflux.enable
     && adelie.services.radicale.enable
@@ -88,12 +79,13 @@ let
     && !(builtins.hasAttr "filmder-serve" adelie.systemd.services)
     && !(builtins.hasAttr "heim-build" adelie.systemd.services)
     && !(builtins.hasAttr "heim-serve" adelie.systemd.services)
-    && builtins.hasAttr "attic-cache-watch" adelie.systemd.services
-    && builtins.hasAttr "attic-cache-watch" workstation.systemd.services
+    && !(builtins.hasAttr "attic-cache-watch" adelie.systemd.services)
+    && !(builtins.hasAttr "attic-cache-watch" workstation.systemd.services)
     && !(workstation.services.atticd.enable or false)
     && !(builtins.hasAttr "filmder-serve" workstation.systemd.services)
     && !(builtins.hasAttr "heim-serve" workstation.systemd.services)
-    && !(builtins.hasAttr "stremio" workstation.systemd.services)
+    && !(builtins.hasAttr "stremio" adelie.systemd.services)
+    && builtins.hasAttr "stremio" workstation.systemd.services
     && !(workstation.services.grafana.enable or false)
     && !(workstation.services.miniflux.enable or false)
     && !(workstation.services.radicale.enable or false)
@@ -117,8 +109,6 @@ let
         adelie.sops.secrets.${name}.sopsFile == inputs.self + "/secrets/adelie-runtime.yaml"
     ) expectedAdelieSecrets
     && workstation.sops.secrets.ntfy-channel.sopsFile == inputs.self + "/secrets/shared-runtime.yaml"
-    &&
-      workstation.sops.secrets.attic-push-token.sopsFile == inputs.self + "/secrets/shared-runtime.yaml"
     && adelie.sops.secrets.ntfy-channel.mode == "0400"
     && adelie.sops.templates.miniflux-env.group == "miniflux-secrets"
     && adelie.sops.templates."oidc-news-env".group == "miniflux-secrets"
@@ -126,24 +116,20 @@ let
     && adelie.sops.templates."oidc-vault-env".owner == "vaultwarden"
     && adelie.sops.templates."oidc-vault-env".mode == "0400"
     && (adelie.systemd.services.vaultwarden.serviceConfig.SupplementaryGroups or [ ]) == [ ]
-    && lib.all (secret: secret.restartUnits == [ ]) (lib.attrValues adelie.sops.secrets)
-    && lib.elem adelie.sops.secrets.attic-jwt-environment.sopsFile adelie.systemd.services.atticd.restartTriggers
-    && lib.elem adelie.sops.secrets.attic-cache-keypair.sopsFile adelie.systemd.services.attic-cache-bootstrap.restartTriggers
-    && lib.elem adelie.sops.secrets.attic-push-token.sopsFile adelie.systemd.services.attic-cache-watch.restartTriggers
-    && lib.elem workstation.sops.secrets.attic-push-token.sopsFile workstation.systemd.services.attic-cache-watch.restartTriggers;
+    && lib.all (secret: secret.restartUnits == [ ]) (lib.attrValues adelie.sops.secrets);
 
   storageBoundaryCorrect =
     lib.attrNames adelie.disko.devices.disk == [ "main" ]
     &&
       adelie.disko.devices.disk.main.device
       == "/dev/disk/by-id/nvme-Samsung_SSD_990_PRO_1TB_S7HDNU0L409926V"
-    && lib.attrNames adelie.nori.fs == [ "cache" ]
-    && adelie.nori.fs.cache.path == "/var/lib/attic/chunks"
+    && adelie.nori.fs == { }
     && !(builtins.hasAttr "/mnt/media" adelie.fileSystems)
     && !(builtins.hasAttr "/mnt/backup" adelie.fileSystems);
 
   backupBoundaryCorrect =
     activeAdelieBackups == statefulBackupNames
+    && workstation.nori.backups.stremio.include == [ "/var/lib/stremio" ]
     &&
       adelie.nori.backupTargets.onetouch.repository
       == "sftp:restic-adelie@workstation.saola-matrix.ts.net:/repos"

@@ -17,7 +17,6 @@ placement and policy before NixOS and Ansible adapters consume them.
 | `audio` | `navidrome` | `workstation` | `4533` | `internet` | `family` | `none` | yes | yes |
 | `auth` | `authelia` | `pi` | `9091` | `internal` | `public` | `none` | yes | no |
 | `books` | `calibre-web` | `workstation` | `8084` | `internal` | `family` | `forward-auth` | yes | no |
-| `cache` | `attic` | `adelie` | `5000` | `internal` | `operator` | `none` | yes | no |
 | `calendar` | `radicale` | `adelie` | `5232` | `internal` | `family` | `none` | yes | no |
 | `comics` | `komga` | `workstation` | `8085` | `internal` | `family` | `forward-auth` | yes | no |
 | `downloads` | `qbittorrent` | `workstation` | `8083` | `internal` | `operator` | `forward-auth` | yes | no |
@@ -38,7 +37,7 @@ placement and policy before NixOS and Ansible adapters consume them.
 | `projects-origin` | `herdr-projects-mcp` | `workstation` | `9081` | `internal` | `operator` | `none` | no | no |
 | `requests` | `jellyseerr` | `workstation` | `5055` | `internet` | `family` | `none` | yes | yes |
 | `status` | `gatus` | `pi` | `8089` | `internet` | `public` | `none` | no | no |
-| `stremio` | `stremio` | `adelie` | `11470` | `internal` | `operator` | `none` | yes | no |
+| `stremio` | `stremio` | `workstation` | `11470` | `internal` | `operator` | `none` | yes | no |
 | `subtitles` | `bazarr` | `workstation` | `6767` | `internal` | `operator` | `none` | yes | no |
 | `sync` | `syncthing` | `workstation` | `8384` | `internal` | `operator` | `none` | yes | no |
 | `tsdb` | `victoriametrics` | `pi` | `8428` | `internal` | `operator` | `none` | yes | no |

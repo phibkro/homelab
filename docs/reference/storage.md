@@ -9,7 +9,7 @@ The intended placement separates access needs from protection:
 | Storage | Role |
 |---|---|
 | Workstation NVMe SSDs | Desktop, GPU, media-service, and working data |
-| Adelie NVMe SSD | SSD-local application state and re-derivable Attic chunks |
+| Adelie NVMe SSD | SSD-local application state |
 | IronWolf Pro HDD | Cold media, libraries and archives |
 | OneTouch HDD | Independent backup disk; destination policy in `src/inventory/backup.nix` |
 
@@ -55,7 +55,8 @@ proves the Adelie logical SQLite path. The
 [Miniflux drill](../archive/reports/2026-09-21-miniflux-postgresql-recovery-drill.md)
 proves the Adelie PostgreSQL path. The
 [Stremio drill](../archive/reports/2026-09-21-stremio-files-recovery-drill.md)
-proves files-only service identity recovery. The
+proves files-only service identity recovery on Adelie at the time of that
+drill; it does not establish recovery for the current workstation placement. The
 [Immich drill](../archive/reports/2026-09-21-immich-export-recovery-drill.md)
 proves selective restore and import of an application-native database export.
 The [user-data drill](../archive/reports/2026-09-21-user-data-recovery-drill.md)

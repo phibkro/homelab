@@ -9,7 +9,7 @@
   adelie — SSD-local application host
 
   IronWolf Pro and OneTouch remain attached to workstation. Adelie owns only
-  its Samsung system disk, SSD-local applications, and the cache directory.
+  its Samsung system disk and SSD-local applications.
 
   The base profile supplies shared Nix, SOPS, SSH, Tailscale, and Norwegian
   console-keymap policy. Workload placement supplies application modules.
@@ -37,12 +37,6 @@
   # The workstation host identity is not a recipient for this file.
   sops.defaultSopsFile = lib.mkForce (inputs.self + "/secrets/adelie-runtime.yaml");
 
-  # Attic cache chunks are re-derivable and stay on Adelie's local NVMe.
-  nori.fs.cache = {
-    path = "/var/lib/attic/chunks";
-    tier = "re-derivable";
-  };
-
   # Prefer the local entry-plane DNS while DHCP still advertises the router.
   networking.nameservers = [
     config.nori.inventory.hosts.pi.lanIp
@@ -58,7 +52,6 @@
       [
         "miniflux"
         "radicale"
-        "stremio"
         "vaultwarden"
       ]
       (service: {
@@ -69,7 +62,6 @@
       [
         "restic-backups-miniflux-onetouch"
         "restic-backups-radicale-onetouch"
-        "restic-backups-stremio-onetouch"
         "restic-backups-vaultwarden-onetouch"
         "restic-check-monthly"
         "restic-check-weekly"

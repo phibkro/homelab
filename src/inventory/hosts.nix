@@ -33,10 +33,10 @@ in
       role = "workhorse";
       roleOneLiner = "SSD-local application host";
       codename = "adelie";
-      hardware = "Node 304 · Ryzen 5 5600X · 16 GB DDR4 · RTX 2060 Super · Samsung 990 Pro 1 TB NVMe";
+      hardware = "Node 304 · Ryzen 5 5600X · 32 GB DDR4 · RTX 2060 Super · Samsung 990 Pro 1 TB NVMe";
       primaryJob = ''
-        SSD-local application backends: Attic, Grafana, Miniflux, Radicale,
-        Stremio, and Vaultwarden. Each stateful service
+        SSD-local application backends: Grafana, Miniflux, Radicale,
+        and Vaultwarden. Each stateful service
         backs up to its own restricted repository on the workstation-attached
         OneTouch disk. Media and portable disks remain on workstation.
       '';
@@ -45,7 +45,7 @@ in
       "nori.capabilities.Compute" = {
         architecture = "x86_64";
         cores = 6;
-        memoryBytes = 17179869184;
+        memoryBytes = 34359738368;
       };
       "nori.capabilities.GpuCompute" = {
         backend = "cuda";
@@ -89,9 +89,8 @@ in
       codename = "emperor";
       hardware = "Ryzen 9 5950X · 64 GB DDR4 · RTX 5060 Ti 16 GB (Blackwell) · WD SN750 1 TB NVMe + Corsair MP510 960 GB NVMe + Seagate IronWolf Pro 4 TB SATA";
       primaryJob = ''
-        Graphical workstation, GPU services, media acquisition and playback,
-        and Samba shares on the attached IronWolf disk. It publishes
-        re-derivable Nix paths to Adelie's Attic cache. OneTouch receives
+        Graphical workstation, GPU services, Stremio, media acquisition and playback,
+        and Samba shares on the attached IronWolf disk. OneTouch receives
         independent Restic history from both workhorses; same-disk snapshots
         provide local rollback for workstation datasets.
       '';

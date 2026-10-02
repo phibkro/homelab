@@ -13,7 +13,7 @@
 
    - **WD SN750 1 TB NVMe** — root + service and user state (`@`, `@home`,
      `@nix`, `@var-lib`, `@srv-share`, `@srv-nori`, `@snapshots`). disko at `./disko.nix`.
-   - **Corsair MP510 960 GB NVMe** — cache and preserved archives at
+   - **Corsair MP510 960 GB NVMe** — preserved archives at
      `/mnt/backup-local`. disko at `./disko-mp510.nix`.
    - **Seagate IronWolf Pro 4 TB (SATA)** — downloads plus canonical family
      datasets under `/mnt/media/*`. disko at `./disko-media.nix`.
@@ -73,6 +73,17 @@
     enable = true;
     interface = "wlo1";
   };
+
+  # Prefer the wired uplink whenever both interfaces have a DHCP lease.
+  # dhcpcd selects the route with the lowest metric; explicit values avoid
+  # depending on interface enumeration order for its generated defaults.
+  networking.dhcpcd.extraConfig = ''
+    interface enp42s0
+    metric 100
+
+    interface wlo1
+    metric 300
+  '';
 
   # Device firmware and CPU microcode updates.
   hardware.enableRedistributableFirmware = true;

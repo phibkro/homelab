@@ -18,10 +18,8 @@ const HINDSIGHT_PORTAL_HOSTNAME = "memory-mcp.phibkro.org";
 /**
  * Cloudflare infrastructure for the homelab.
  *
- * The Nix binary cache is intentionally absent: it is owned by Attic on the
- * workstation and reached privately through the Pi entry plane. Cloudflare
- * remains responsible only for resources that genuinely require a public
- * edge.
+ * Cloudflare owns only resources that require a public edge. Nix builds use
+ * public binary substituters directly.
  *
  * Operator: run `bun run login` once, then use `bun run deploy`. The package
  * script supplies the declared SecretSpec command scope.

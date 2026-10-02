@@ -102,10 +102,7 @@ in
          == ["authelia", "beszel", "caddy", "ntfy", "pihole", "vector", "victorialogs", "victoriametrics"]
        and (.pi_appliances.hosts.pi.pi_routes | any(.name == "pihole"))
        and (.pi_appliances.hosts.pi.pi_routes | any(.name == "auth"))
-       and (.pi_appliances.hosts.pi.pi_routes
-         | any(.name == "cache"
-               and .upstream_address == "100.107.90.3"
-               and .upstream_port == 5000))
+       and (.pi_appliances.hosts.pi.pi_routes | all(.name != "cache"))
        and (.pi_appliances.hosts.pi.pi_routes
          | any(.name == "home"
                and .upstream_address == "192.168.1.225"
@@ -118,10 +115,14 @@ in
          | any(.name == "vault"
                and .upstream_address == "100.107.90.3"
                and .upstream_port == 8222))
+       and (.pi_appliances.hosts.pi.pi_routes
+         | any(.name == "stremio"
+               and .upstream_address == "100.81.5.122"
+               and .upstream_port == 11470))
        and ([.pi_appliances.hosts.pi.pi_routes[]
              | select(.upstream_address == "100.107.90.3")
              | .name] | sort)
-         == ["cache", "calendar", "news", "ops", "stremio", "vault"]
+         == ["calendar", "news", "ops", "vault"]
        and .pi_appliances.hosts.pi.glance_enabled == true
        and .pi_appliances.hosts.pi.caddy_internet_enabled == true
        and .pi_appliances.hosts.pi.pi_container_host_tcp_ports == [8082, 45876]
@@ -141,7 +142,7 @@ in
        and (.pi_appliances.hosts.pi.gatus_endpoints | all(.name != "pihole-dns"))
        and (.pi_appliances.hosts.pi.gatus_endpoints | any(.name == "media" and .alert == false))
        and ([.pi_appliances.hosts.pi.recovery_evidence[].id] | sort)
-         == ["authelia-service", "beszel-service", "caddy-service", "immich-export", "jellyfin-metadata", "miniflux-database", "ntfy-service", "pi-host", "pihole-service", "stremio-identity", "user-data", "vaultwarden-database", "vector-pipeline", "victorialogs-service", "victoriametrics-service"]
+         == ["authelia-service", "beszel-service", "caddy-service", "immich-export", "jellyfin-metadata", "miniflux-database", "ntfy-service", "pi-host", "pihole-service", "user-data", "vaultwarden-database", "vector-pipeline", "victorialogs-service", "victoriametrics-service"]
        and .pi_appliances.hosts.pi.gatus_public_enabled == true
        and .pi_appliances.hosts.pi.gatus_public_port == 8089
        and ([.pi_appliances.hosts.pi.gatus_public_endpoints[].name] | sort)

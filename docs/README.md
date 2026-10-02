@@ -44,7 +44,7 @@ enforcement requirement.
 The [complete reorganization spec](specs/2026-09-06-complete-reorganization.md)
 records the accepted old-to-new path mapping and its cleanup contract. The
 [three-host migration spec](specs/2026-09-20-three-host-service-migration.md)
-records the current homelab organization; the earlier
+records the accepted 2026-09-20 cutover; current placement comes from inventory. The earlier
 [two-host spec](specs/2026-09-06-two-host-migration.md) is retained history.
 Use the [OneTouch runbook](runbooks/onetouch-backup-cutover.md) when
 reconnecting the disk, changing transport, or collecting new recovery evidence.

@@ -47,15 +47,12 @@ let
 
   expectedWorkloads = {
     adelie = [
-      "attic"
-      "attic-publisher"
       "beszel-agent"
       "grafana"
       "miniflux"
       "node-exporter"
       "ntfy-notify"
       "radicale"
-      "stremio"
       "vaultwarden"
     ];
     pi = [
@@ -74,7 +71,6 @@ let
       "victoriametrics"
     ];
     workstation = [
-      "attic-publisher"
       "bazarr"
       "beszel-agent"
       "calibre-web"
@@ -102,6 +98,7 @@ let
       "restic-target"
       "samba"
       "sonarr"
+      "stremio"
       "suwayomi"
       "syncthing"
       "vektorprogrammet-development"
@@ -122,11 +119,6 @@ let
   actualRoutes = lib.mapAttrs (_: routeFingerprint) compiledInventory.internal.activeRoutes;
 
   migratedRuntimePlacements = {
-    attic = [ "adelie" ];
-    attic-publisher = [
-      "adelie"
-      "workstation"
-    ];
     authelia = [ "pi" ];
     bazarr = [ "workstation" ];
     beszel-agent = [
@@ -171,7 +163,7 @@ let
     recyclarr = [ "workstation" ];
     samba = [ "workstation" ];
     sonarr = [ "workstation" ];
-    stremio = [ "adelie" ];
+    stremio = [ "workstation" ];
     suwayomi = [ "workstation" ];
     syncthing = [ "workstation" ];
     vaultwarden = [ "adelie" ];
@@ -181,8 +173,6 @@ let
   };
 
   runtimeEvidenceNames = {
-    attic = "atticd";
-    attic-publisher = "attic-cache-seed";
     beszel-hub = "beszel";
     ntfy-notify = "notify";
     ntfy-server = "ntfy";
@@ -226,7 +216,7 @@ let
     radarr.movies = "workstation";
     radicale.calendar = "adelie";
     sonarr.tv = "workstation";
-    stremio.stremio = "adelie";
+    stremio.stremio = "workstation";
     suwayomi.manga = "workstation";
     syncthing.sync = "workstation";
     victorialogs-server.logs = "pi";
@@ -308,42 +298,22 @@ let
     hosts.workstation.config.home-manager.users.nori.nori.hyprRice.enable
     && hosts.workstation.config.home-manager.users.nori.wayland.windowManager.hyprland.enable;
 
-  cacheContractCorrect =
-    let
-      cacheUrl = "https://cache.${hosts.workstation.config.nori.inventory.site.domain}/nori?priority=60";
-      cacheKey = "attic.nori.lan-1:3zt/aS8K1bSEjNvZQB9ga9OeZTxcRkvbb7aYRI/vobo=";
-      everyHostSubscribes = lib.all (
-        host:
-        lib.elem cacheUrl host.config.nix.settings.extra-substituters
-        && lib.elem cacheKey host.config.nix.settings.extra-trusted-public-keys
-      ) (lib.attrValues hosts);
-      workstation = hosts.workstation.config;
-      adelie = hosts.adelie.config;
-      publishes =
-        host:
-        host.systemd.timers.attic-cache-watch.wantedBy == [ "timers.target" ]
-        && host.systemd.timers.attic-cache-seed.wantedBy == [ "timers.target" ]
-        && host.systemd.services.attic-cache-watch.serviceConfig.Type == "exec"
-        && host.systemd.services.attic-cache-seed.serviceConfig.Type == "exec"
-        && host.systemd.services.attic-cache-watch.serviceConfig.RestartMode == "direct"
-        && host.systemd.services.attic-cache-seed.serviceConfig.RestartMode == "direct";
-      waitsForLocalCache =
-        service:
-        lib.elem "attic-cache-bootstrap.service" service.after
-        && lib.elem "attic-cache-bootstrap.service" service.requires;
-    in
-    everyHostSubscribes
-    && publishes workstation
-    && publishes adelie
-    && waitsForLocalCache adelie.systemd.services.attic-cache-watch
-    && waitsForLocalCache adelie.systemd.services.attic-cache-seed
-    && !(lib.elem "attic-cache-bootstrap.service" workstation.systemd.services.attic-cache-watch.after)
-    && !(lib.elem "attic-cache-bootstrap.service" workstation.systemd.services.attic-cache-seed.after)
-    && !(workstation.services.atticd.enable or false)
-    && adelie.services.atticd.enable
-    && adelie.services.atticd.settings.storage.path == "/var/lib/attic/chunks"
-    && adelie.services.atticd.settings.garbage-collection.default-retention-period == "30 days"
-    && adelie.systemd.services.attic-cache-bootstrap.wantedBy == [ "multi-user.target" ];
+  cacheRetiredCorrect =
+    !(builtins.hasAttr "attic" inventory.workloads)
+    && !(builtins.hasAttr "attic-publisher" inventory.workloads)
+    && !(builtins.hasAttr "cache" inventory.routes)
+    && lib.all (
+      host:
+      let
+        inherit (host) config;
+        cacheUrl = "https://cache.${config.nori.inventory.site.domain}/nori";
+      in
+      !(lib.any (lib.hasPrefix cacheUrl) config.nix.settings.extra-substituters)
+      && !(config.services.atticd.enable or false)
+      && !(builtins.hasAttr "attic-cache-watch" config.systemd.services)
+      && !(builtins.hasAttr "attic-cache-seed" config.systemd.services)
+      && !(lib.any (lib.hasPrefix "attic") (lib.attrNames config.sops.secrets))
+    ) (lib.attrValues hosts);
 
   expectedRoutes = {
     ai = {
@@ -391,15 +361,6 @@ let
       auth = "forward-auth";
       monitored = true;
       dashboard = true;
-    };
-    cache = {
-      port = 5000;
-      runsOn = "adelie";
-      audience = "operator";
-      exposeOnTailnet = true;
-      auth = "exception";
-      monitored = true;
-      dashboard = false;
     };
     calendar = {
       port = 5232;
@@ -593,7 +554,7 @@ let
     };
     stremio = {
       port = 11470;
-      runsOn = "adelie";
+      runsOn = "workstation";
       audience = "operator";
       exposeOnTailnet = true;
       auth = "none";
@@ -663,7 +624,7 @@ if
   && agentHarnessesShareSoul
   && desktopCapabilityProfilesCorrect
   && riceInterfaceCorrect
-  && cacheContractCorrect
+  && cacheRetiredCorrect
 then
   "ok — architecture workload placement + route behavior baseline unchanged"
 else
@@ -682,7 +643,7 @@ else
     Agent harnesses share SOUL:  ${toString agentHarnessesShareSoul}
     Desktop capabilities:       ${toString desktopCapabilityProfilesCorrect}
     Rice interface realization: ${toString riceInterfaceCorrect}
-    Cache server + clients:       ${toString cacheContractCorrect}
+    Cache retired:                ${toString cacheRetiredCorrect}
 
     Expected workloads: ${builtins.toJSON expectedWorkloads}
     Inventory workloads: ${builtins.toJSON actualWorkloads}

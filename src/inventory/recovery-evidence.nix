@@ -133,19 +133,6 @@
     ];
   };
 
-  stremio-identity = {
-    scope = "service";
-    workload = "stremio";
-    report = "docs/archive/reports/2026-09-21-stremio-files-recovery-drill.md";
-    observedAt = "2026-09-21";
-    maxAgeDays = 120;
-    gates = [
-      "restore"
-      "startup"
-      "endpoint"
-    ];
-  };
-
   user-data = {
     scope = "data";
     host = "workstation";

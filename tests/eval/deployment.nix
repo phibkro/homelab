@@ -47,12 +47,8 @@ let
     !evaluated.success;
 
   rootsCorrect =
-    deployment.sourceRoots."src/services/attic" == [ "adelie" ]
-    &&
-      deployment.sourceRoots."src/services/attic-publisher" == [
-        "adelie"
-        "workstation"
-      ]
+    !(builtins.hasAttr "src/services/attic" deployment.sourceRoots)
+    && !(builtins.hasAttr "src/services/attic-publisher" deployment.sourceRoots)
     && deployment.sourceRoots."src/services/music-ingest" == [ "workstation" ]
     && deployment.sourceRoots."src/services/jellyfin" == [ "workstation" ]
     && deployment.sourceRoots."src/profiles/media-acquisition" == [ "workstation" ]
