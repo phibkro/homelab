@@ -120,9 +120,24 @@ default: list
 @fmt:
     nix fmt
 
-# Update flake.lock (re-pin inputs). Re-pinning unstable should be deliberate.
+# Pin devenv's nixpkgs to the revision locked in flake.lock (the root; devenv files derive from it).
+@sync-devenv:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    rev="$(jq -er '.nodes[.nodes.root.inputs.nixpkgs].locked.rev' flake.lock)"
+    sed -i -E "s|(github:NixOS/nixpkgs/)[0-9a-f]{40}|\1${rev}|" devenv.yaml
+    devenv update nixpkgs
+    test "$(jq -er '.nodes.nixpkgs.locked.rev' devenv.lock)" = "$rev"
+
+# Update flake.lock (re-pin inputs) and keep devenv on the same nixpkgs. Re-pinning unstable should be deliberate.
 @update-flake:
     nix --extra-experimental-features "nix-command flakes" flake update
+    just --justfile {{justfile()}} sync-devenv
+
+# Update every flake input, then build and activate the result on this host.
+@update *args:
+    just --justfile {{justfile()}} update-flake
+    just --justfile {{justfile()}} rebuild {{args}}
 
 
 # AST-splice a scalar into a `.nix` file, then run the project formatter. Complex exprs: edit by hand.
