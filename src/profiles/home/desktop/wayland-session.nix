@@ -9,17 +9,26 @@
   Shared Wayland session clients and command-line integration.
 */
 let
+  # nixpkgs c59305b pins rustdesk 1.5.0 with a source hash that no longer
+  # matches the tag's fetched tree (specified sha256-xuIUWx…, got
+  # sha256-1xa7X+…, observed 2026-10-02). Correct the fixed-output hash here
+  # and retire this override when nixpkgs refreshes it.
+  rustdeskUpstream = pkgs.rustdesk.overrideAttrs (old: {
+    src = old.src.overrideAttrs {
+      outputHash = "sha256-1xa7X+swBIb8Lz3c6m8SeNZAiJWNCUpw+UbdSsMkeSk=";
+    };
+  });
   # RustDesk's Wayland capturer creates the GStreamer pipewiresrc element at
   # runtime. The upstream Nix wrapper omits PipeWire's plugin directory.
   rustdesk = pkgs.symlinkJoin {
-    name = "${pkgs.rustdesk.pname}-${pkgs.rustdesk.version}";
-    paths = [ pkgs.rustdesk ];
+    name = "${rustdeskUpstream.pname}-${rustdeskUpstream.version}";
+    paths = [ rustdeskUpstream ];
     nativeBuildInputs = [ pkgs.makeWrapper ];
     postBuild = ''
       wrapProgram "$out/bin/rustdesk" \
         --prefix GST_PLUGIN_SYSTEM_PATH_1_0 : "${pkgs.pipewire}/lib/gstreamer-1.0"
     '';
-    meta = pkgs.rustdesk.meta;
+    inherit (rustdeskUpstream) meta;
   };
 in
 {

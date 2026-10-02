@@ -38,6 +38,34 @@ in
       4. On phone: install the Paperless mobile app, point at
          https://papers.${config.nori.inventory.site.domain} over the tailnet, log in.
   */
+
+  /*
+    The NixOS module rebuilds paperless-ngx with an eng-only tesseract, so the
+    package is never substituted and its test suite runs here. testNormalOperation
+    compares `document.created.day` (UTC) with the America/Chicago local day, so it
+    fails between 00:00 and 05:00 UTC (observed 2026-10-02 01:54 UTC: "2 != 1").
+    Skip only that test; the rest of the suite still gates the build.
+    overridePythonAttrs drops `.override`, which the module calls to swap
+    tesseract5, so re-expose it with the same attribute override applied.
+  */
+  nixpkgs.overlays = [
+    (
+      _final: prev:
+      let
+        skipClockTest =
+          pkg:
+          pkg.overridePythonAttrs (old: {
+            disabledTests = (old.disabledTests or [ ]) ++ [ "testNormalOperation" ];
+          });
+      in
+      {
+        paperless-ngx = prev.lib.makeOverridable (
+          args: skipClockTest (prev.paperless-ngx.override args)
+        ) { };
+      }
+    )
+  ];
+
   services.paperless = {
     enable = true;
     user = "paperless";

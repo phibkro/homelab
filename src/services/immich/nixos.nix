@@ -1,22 +1,9 @@
 {
   config,
-  inputs,
-  pkgs,
   ...
 }:
 
 let
-  /*
-    Build ONNX Runtime from the same globally CUDA-enabled package set used by
-    the nixos-cuda Hydra jobset. Overriding only onnxruntime's argument changes
-    its dependency graph and therefore misses the public binary cache.
-  */
-  cudaPkgs = import inputs.nixpkgs {
-    inherit (pkgs.stdenv.hostPlatform) system;
-    config = config.nixpkgs.config // {
-      cudaSupport = true;
-    };
-  };
   photos = config.nori.inventory.routes.photos;
 in
 {
@@ -40,12 +27,6 @@ in
       5. (optional) Import existing photos through the web UI
          (Settings → External Library) or `immich-cli upload`
   */
-  nixpkgs.overlays = [
-    (_: _: {
-      inherit (cudaPkgs) onnxruntime;
-    })
-  ];
-
   services.immich = {
     enable = true;
     user = "immich";

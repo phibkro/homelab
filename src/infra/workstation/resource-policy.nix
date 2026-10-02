@@ -20,12 +20,14 @@ _:
   systemd.oomd.enableUserSlices = true;
 
   # Builder demand must be contained at the allocator, independently of user
-  # pressure. Keep swap bounded alongside RAM to avoid prolonged reclaim.
+  # pressure. On the 64 GiB workstation, 24 GiB lets a CUDA build keep its
+  # compiler working set resident while leaving room for the desktop. Keep
+  # swap bounded alongside RAM to avoid prolonged reclaim.
   # docs/archive/reports/2026-07-30-nix-build-memory-saturation.md.
   systemd.services.nix-daemon.serviceConfig = {
-    MemoryHigh = "4G";
+    MemoryHigh = "24G";
     MemorySwapMax = "8G";
-    MemoryMax = "12G";
+    MemoryMax = "32G";
   };
   nix.settings = {
     max-jobs = 4;

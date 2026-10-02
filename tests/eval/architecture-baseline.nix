@@ -291,7 +291,7 @@ let
     "davinci-resolve"
     "audacity"
     "discord"
-    "zotero"
+    # "zotero" returns here with pkgs.zotero in src/profiles/home/desktop/research.nix.
   ];
 
   riceInterfaceCorrect =
