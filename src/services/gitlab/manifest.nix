@@ -4,21 +4,26 @@
   hostRoles = [ "workhorse" ];
 
   /*
-    Placement. GitLab is an SSD-local application with a database, repository
-    storage and long-lived background workers: the `application-service-host`
-    duty. Adelie holds it (NVMe system disk, 6 cores, 32 GB) beside the other
-    PostgreSQL-backed applications and the restic-over-SFTP delivery to the
-    OneTouch disk, so a restore never depends on the machine that holds the
-    live data. The workstation is the other workhorse, but it carries the
-    desktop, media, GPU and agent-fleet load whose swap pressure and oomd kill
-    are recorded in docs/archive/reports/2026-07-20-oomd-agent-fleet-kill.md;
-    the Pi is an appliance with SD storage and no local restic target. Adelie
-    also carries the graphical-desktop profile for remote sessions, so its
-    memory is shared; see the resource reasoning in nixos.nix.
+    Placement. GitLab is an application with a database, repository storage
+    and long-lived background workers.
+
+    FALLBACK: it runs on the `primary-service-host` (workstation). Its intended
+    home is the `application-service-host` (adelie): a host without a desktop
+    session, GPU job or agent fleet, beside the other PostgreSQL-backed
+    applications, where a restore never depends on the machine that holds the
+    live data. Adelie is offline, and the operator authorized this placement on
+    2026-10-04. Workstation carries the load whose swap pressure and oomd kill
+    are recorded in docs/archive/reports/2026-07-20-oomd-agent-fleet-kill.md,
+    so GitLab shares memory with the desktop and the agent fleet there.
+
+    Move it back with the steps in docs/runbooks/gitlab-authority.md § Moving
+    GitLab to another host. The first step is this selector: use the tag
+    `application-service-host`. The Pi is not an option: it is an appliance
+    with SD storage and no local restic target.
   */
   placement = {
     strategy = "first-unique";
-    selectors = [ { tags = [ "application-service-host" ]; } ];
+    selectors = [ { tags = [ "primary-service-host" ]; } ];
     cardinality = {
       min = 1;
       max = 1;

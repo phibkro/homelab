@@ -444,12 +444,12 @@ Counts, membership, and placement therefore change with configuration.
 
 | Host | Job | Tier | Effective targets | Include paths |
 |---|---|---|---|---|
-| `adelie` | `gitlab` | `irreplaceable` | `onetouch` | `/var/lib/gitlab/backup` |
 | `adelie` | `miniflux` | `service` | `onetouch` | `/var/backup/postgresql/miniflux.sql.gz` |
 | `adelie` | `radicale` | `service` | `onetouch` | `/var/lib/radicale` |
 | `adelie` | `vaultwarden` | `service` | `onetouch` | `/var/lib/vaultwarden`<br>`/var/backup/vaultwarden` |
 | `workstation` | `bazarr` | `service` | `onetouch` | `/var/lib/bazarr` |
 | `workstation` | `calibre-web` | `service` | `onetouch` | `/var/lib/calibre-web` |
+| `workstation` | `gitlab` | `irreplaceable` | `onetouch` | `/var/lib/gitlab/backup` |
 | `workstation` | `herdr-projects-mcp` | `service` | `onetouch` | `/home/nori/.local/state/herdr-mcp/projects` |
 | `workstation` | `jellyfin` | `service` | `onetouch` | `/var/lib/jellyfin` |
 | `workstation` | `jellyseerr` | `service` | `onetouch` | `/var/lib/private/jellyseerr` |

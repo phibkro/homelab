@@ -105,14 +105,14 @@ in
   /*
     Resource reasoning. GitLab's requirements page (19.3) names 8 vCPU and
     16 GB as the single-node baseline and 8 GB as the floor for a
-    memory-constrained node, and says not to rely on swap. Adelie has 6 cores
-    and 32 GB, and its other tenants (Grafana, Miniflux, Radicale, Vaultwarden)
-    are small. It also carries the graphical-desktop profile, so a remote
-    Plasma or Hyprland session can take memory from GitLab. This instance
-    serves two identities and a few pushes a day: Puma (2 workers) and Sidekiq
-    keep the module defaults. Read per-process RSS from process-exporter
-    before capping system-gitlab.slice (the MemoryHigh item of docs/roadmap.md
-    describes the method).
+    memory-constrained node, and says not to rely on swap. Both candidate hosts
+    exceed that: adelie has 6 cores and 32 GB, workstation has 16 cores and
+    64 GB. Both share memory with a graphical-desktop profile, and workstation
+    also runs the agent fleet and the media services. This instance serves two
+    identities and a few pushes a day: Puma (2 workers) and Sidekiq keep the
+    module defaults. Read per-process RSS from process-exporter before capping
+    system-gitlab.slice (the MemoryHigh item of docs/roadmap.md describes the
+    method).
   */
 
   /*

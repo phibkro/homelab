@@ -21,14 +21,6 @@ let
     "vaultwarden"
   ];
   expectedAdelieSecrets = [
-    "gitlab-active-record-encryption-deterministic-key"
-    "gitlab-active-record-encryption-key-derivation-salt"
-    "gitlab-active-record-encryption-primary-key"
-    "gitlab-db-key-base"
-    "gitlab-initial-root-password"
-    "gitlab-openid-connect-signing-key"
-    "gitlab-otp-key-base"
-    "gitlab-secret-key-base"
     "grafana-secret-key"
     "miniflux-admin-password"
     "nori-console-password-hash"
@@ -48,9 +40,6 @@ let
     "radicale"
     "vaultwarden"
   ];
-  # GitLab is a new application on Adelie, not a migrated source, so it has no
-  # cutover gate: its state is created here and nothing needs to arrive first.
-  authorityBackupNames = [ "gitlab" ];
   activeAdelieBackups = lib.attrNames (
     lib.filterAttrs (_: backup: backup.include != null) adelie.nori.backups
   );
@@ -139,7 +128,7 @@ let
     && !(builtins.hasAttr "/mnt/backup" adelie.fileSystems);
 
   backupBoundaryCorrect =
-    activeAdelieBackups == lib.sort builtins.lessThan (authorityBackupNames ++ statefulBackupNames)
+    activeAdelieBackups == statefulBackupNames
     && workstation.nori.backups.stremio.include == [ "/var/lib/stremio" ]
     &&
       adelie.nori.backupTargets.onetouch.repository

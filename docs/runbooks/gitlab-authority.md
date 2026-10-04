@@ -16,11 +16,12 @@ here.
 
 | Fact | Value |
 | --- | --- |
-| Host | `adelie` |
-| Listener | `100.107.90.3:8929` |
-| Secrets file | `secrets/adelie-runtime.yaml` |
-| Activation | `just push adelie` (run on the workstation) |
-| Backup transport | SFTP to the OneTouch disk on `workstation`: account `restic-adelie`, repository `repos/gitlab` |
+| Host | `workstation` |
+| Listener | `100.81.5.122:8929` |
+| Secrets file | `secrets/workstation-runtime.yaml` |
+| Activation | `just rebuild` (run on the workstation) |
+| Backup transport | Local Restic repository `/mnt/backup/gitlab` on the OneTouch disk, which is attached to the same host |
+| Intended home | `adelie`. See [Fallback on workstation](#fallback-on-workstation) |
 
 The manifest `src/services/gitlab/manifest.nix` owns the placement. The check
 `eval-gitlab-authority` fails when the Host, Listener or Secrets file row differs
@@ -29,11 +30,35 @@ from the manifest, the tailnet address of that host, or the secrets file.
 In the commands below, set `HOST` to the Host row:
 
 ```bash
-HOST=adelie
+HOST=workstation
 ```
 
 Run the commands that name `systemctl`, `journalctl`, `sudo` or `127.0.0.1` on
 that host (`ssh nori@$HOST.saola-matrix.ts.net` from another machine).
+
+### Fallback on workstation
+
+GitLab runs on `workstation` because `adelie` is offline, and the operator
+authorized that placement on 2026-10-04. Adelie stays the intended home: it has
+no agent fleet and no media load, and the OneTouch disk is attached to another
+machine, so the backup survives the loss of the GitLab host. The fallback
+differs in these ways:
+
+- **Memory.** GitLab shares 64 GB with the desktop session, the media services
+  and the agent fleet. The incident in
+  [the 2026-07-20 oomd report](../archive/reports/2026-07-20-oomd-agent-fleet-kill.md)
+  came from that load. Nothing caps `system-gitlab.slice`. Read per-process RSS
+  from process-exporter after a week, then decide on a `MemoryHigh` value.
+- **Backup domain.** The live data, the daily btrbk snapshots of `/var/lib`, the
+  IronWolf copy of those snapshots and the OneTouch Restic repository are all
+  attached to one machine. The OneTouch repository survives the failure or the
+  corruption of one disk, and an accidental deletion. It does not survive the
+  loss of the workstation itself. No off-site copy of GitLab exists. The Kwyne
+  sealer replicates `main` to the Cloudflare baseline, but not the seal tags.
+- **PostgreSQL.** GitLab uses the shared instance of the workstation. The first
+  activation sets `max_locks_per_transaction`, so PostgreSQL restarts once. That
+  interrupts Immich and Paperless for a few seconds.
+- **Secrets.** The GitLab keys live in `secrets/workstation-runtime.yaml`.
 
 ## Exposure
 
@@ -503,12 +528,13 @@ When the check fails:
 
 ### Moving GitLab to another host
 
-The manifest owns the placement. To move GitLab:
+The manifest owns the placement. The same steps move GitLab from `workstation`
+back to `adelie`, its intended home, and in any other direction:
 
 1. Take a backup and keep the Restic snapshot.
-2. In `src/services/gitlab/manifest.nix`, change the placement selector to the tag of the new host.
-3. Move the eight `gitlab-*` keys from the old to the new Secrets file. Move the same values: a restore needs them. The age key of the new host must be a recipient of that file (`.sops.yaml`). Move the `secretspec.toml` entries to the profile of the new host.
-4. Update the placement table above (Host, Listener, Secrets file, Activation and Backup transport), the host descriptions in `src/inventory/hosts.nix`, and the lists that name GitLab in `tests/eval/architecture-baseline.nix` and `tests/eval/three-host-migration.nix` (the secrets and backup lists of Adelie). Regenerate the generated docs.
+2. In `src/services/gitlab/manifest.nix`, change the placement selector to the tag of the new host: `application-service-host` selects `adelie`, `primary-service-host` selects `workstation`.
+3. Move the eight `gitlab-*` keys from the old to the new Secrets file (`sops decrypt` into `sops set --value-stdin`, without printing). Move the same values: a restore needs them. The age key of the new host must be a recipient of that file (`.sops.yaml`). Move the `secretspec.toml` entries to the profile of the new host.
+4. Update the placement table above (Host, Listener, Secrets file, Activation, Backup transport and Intended home), `tests/eval/architecture-baseline.nix`, and `tests/eval/three-host-migration.nix`. That test pins the exact secrets and backup jobs of Adelie, so it names GitLab while GitLab runs there. Regenerate the generated docs.
 5. Run `just check` and `just check-vm e2e-gitlab`, activate the new host, and restore the backup there ([Restore](#restore)).
 6. Activate the old host to remove the service, and delete its state after the restore is verified.
 
