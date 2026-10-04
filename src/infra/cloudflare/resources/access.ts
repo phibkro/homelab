@@ -56,6 +56,7 @@ const decodePolicy = Schema.decodeUnknownEffect(Policy);
 const decodePolicies = Schema.decodeUnknownEffect(Schema.Array(Policy));
 export const ServiceTokenId = Schema.String.check(Schema.isUUID());
 const decodeServiceTokenId = Schema.decodeEffect(ServiceTokenId);
+const hasApplicationLocator = Schema.is(Schema.Struct({ hostname: Schema.NonEmptyString, name: Schema.NonEmptyString }));
 
 export class AccessRequestError extends Schema.TaggedError<AccessRequestError>()("AccessRequestError", {
   path: Schema.String,
@@ -64,6 +65,10 @@ export class AccessRequestError extends Schema.TaggedError<AccessRequestError>()
 export class UnexpectedAccessPolicies extends Schema.TaggedError<UnexpectedAccessPolicies>()("UnexpectedAccessPolicies", {
   applicationId: Schema.String,
   policyIds: Schema.Array(Schema.String),
+}) {}
+export class AmbiguousAccessIdentity extends Schema.TaggedError<AmbiguousAccessIdentity>()("AmbiguousAccessIdentity", {
+  kind: Schema.Literals(["application", "policy"]),
+  ids: Schema.Array(Schema.String),
 }) {}
 
 const decodeListEnvelope = Schema.decodeUnknownEffect(Schema.Struct({
@@ -112,7 +117,7 @@ const matchesServicePolicy = (policy: typeof Policy.Type, props: SelfHostedAppli
     (policy.exclude?.length ?? 0) === 0 && (policy.require?.length ?? 0) === 0;
 };
 
-const SelfHostedApplicationProvider = () => Provider.effect(
+export const SelfHostedApplicationProvider = () => Provider.effect(
   SelfHostedApplication,
   Effect.gen(function* () {
     const { accountId } = yield* (yield* CloudflareEnvironment);
@@ -142,7 +147,14 @@ const SelfHostedApplicationProvider = () => Provider.effect(
     });
     const findApplication = Effect.fn("Access.findApplication")(function*(id: string | undefined, hostname: string) {
       const applications = yield* listApplications();
-      return applications.find((app) => app.type === "self_hosted" && (app.id === id || app.domain === hostname));
+      const identified = id === undefined ? [] : applications.filter((app) => app.type === "self_hosted" && app.id === id);
+      const matches = identified.length === 0
+        ? applications.filter((app) => app.type === "self_hosted" && app.domain === hostname)
+        : identified;
+      if (matches.length > 1) {
+        return yield* new AmbiguousAccessIdentity({ kind: "application", ids: matches.map((app) => app.id) });
+      }
+      return matches[0];
     });
     const listPolicies = Effect.fn("Access.listPolicies")(function*(id: string) {
       return yield* decodePolicies(yield* request(`/access/apps/${id}/policies`, "GET", undefined, true));
@@ -151,7 +163,14 @@ const SelfHostedApplicationProvider = () => Provider.effect(
       applicationId: string, props: SelfHostedApplicationProps, id?: string,
     ) {
       const policies = yield* listPolicies(applicationId);
-      const selected = policies.find((policy) => id ? policy.id === id : policy.name === policyName(props));
+      const identified = id === undefined ? [] : policies.filter((policy) => policy.id === id);
+      const matches = identified.length === 0
+        ? policies.filter((policy) => policy.name === policyName(props) && policy.decision === desiredPolicy(props).decision)
+        : identified;
+      if (matches.length > 1) {
+        return yield* new AmbiguousAccessIdentity({ kind: "policy", ids: matches.map((policy) => policy.id) });
+      }
+      const selected = matches[0];
       if (props.mode === "service-auth" && policies.some((policy) => policy.id !== selected?.id)) {
         return yield* new UnexpectedAccessPolicies({ applicationId, policyIds: policies.map((policy) => policy.id) });
       }
@@ -165,10 +184,10 @@ const SelfHostedApplicationProvider = () => Provider.effect(
     return {
       stables: ["applicationId", "policyId"],
       read: Effect.fn(function*({ olds, output }) {
-        if (!output?.applicationId || !output.policyId) return undefined;
-        const app = yield* findApplication(output.applicationId, olds.hostname);
-        if (!app || app.id !== output.applicationId) return undefined;
-        const policy = yield* selectPolicy(app.id, olds, output.policyId);
+        if (!output && !hasApplicationLocator(olds)) return undefined;
+        const app = yield* findApplication(output?.applicationId, olds.hostname);
+        if (!app) return undefined;
+        const policy = yield* selectPolicy(app.id, olds, output?.policyId);
         if (policy && olds.mode === "service-auth" && !matchesServicePolicy(policy, olds)) return undefined;
         return policy ? { applicationId: app.id, policyId: policy.id, hostname: app.domain } : undefined;
       }),
@@ -206,6 +225,6 @@ const SelfHostedApplicationProvider = () => Provider.effect(
       }),
     };
   }),
-).pipe(Layer.provide(FetchHttpClient.layer));
+);
 
-export const providers = () => SelfHostedApplicationProvider();
+export const providers = () => SelfHostedApplicationProvider().pipe(Layer.provide(FetchHttpClient.layer));

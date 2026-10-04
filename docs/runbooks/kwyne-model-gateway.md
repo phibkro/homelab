@@ -13,7 +13,7 @@ the Kwyne Worker → Cloudflare Access → shared tunnel → gateway → broker 
 | --- | --- | --- |
 | OMP broker | `127.0.0.1:8765` | `kwyne-auth-broker`; `/var/lib/kwyne-auth-broker` |
 | OMP gateway | `127.0.0.1:4000` | `kwyne-auth-gateway`; `/var/lib/kwyne-auth-gateway` |
-| Public edge | `https://kwyne-model-gateway.phibkro.org` | Homelab Alchemy stack; existing shared tunnel |
+| Public edge | `https://kwyne-model-gateway.phibkro.org` | Isolated `KwyneGateway` Alchemy stack; existing shared tunnel |
 
 The route file `src/infra/cloudflare/routes/kwyne-model-gateway.json` owns the
 hostname and listener ports. The manifest owns placement. Both listeners bind
@@ -50,12 +50,12 @@ values. Nix consumes only the bearers. Systemd LoadCredential reads root-owned
 SOPS changes restart the affected units. Do not use OMP's token regeneration:
 it changes a derived file rather than the canonical encrypted source.
 
-The lead owns the Access service token through the API. The Homelab Alchemy
-stack owns DNS, the self-hosted application, and its sole policy. The policy
-uses Service Auth (`non_identity`) and one `service_token.token_id` rule.
-No email allow, bypass, or second policy is permitted. Apply refuses extra
-policies; it does not delete operator resources. DNS creation depends on the
-policy. Alchemy receives only the UUID, not the client secret.
+The lead owns the Access service token through the API. The isolated
+`KwyneGateway` Alchemy stack owns DNS, the self-hosted application, and its
+sole Service Auth policy. The policy uses `non_identity` and one service-token
+UUID rule. No email allow, bypass, or second policy is declared. DNS creation
+depends on the application and policy. Alchemy receives only the UUID, not
+the client secret. Existing compatibility resource identities stay unchanged.
 
 ## First activation
 
@@ -111,40 +111,62 @@ Record the token's expiry, then schedule rotation before that date. Commit the
 encrypted file by pathspec after the three writes succeed. If storage fails,
 keep the protected response until all three fields are encrypted; never print it.
 
-### 3. Apply the Homelab edge
+### 3. Apply only the isolated gateway edge
 
-Apply from the canonical checkout with its existing local Alchemy state.
-Do not apply from an empty worktree: that loses resource ownership history.
+Use the canonical checkout and its existing local Alchemy state. The gateway
+has its own stack, `KwyneGateway`, in `kwyne-gateway.alchemy.run.ts`.
 
 ```bash
 cd src/infra/cloudflare
 bun install --frozen-lockfile
-bun run plan
-bun run plan:projects
-bun run plan:projects-relay
-bun run plan:dev-share
+export SECRETSPEC_REASON="Reviewing the isolated Kwyne gateway edge"
+bun run plan:kwyne-gateway --detailed
 ```
 
-The package scripts select the existing stage `dev_nori` explicitly. Do not
-use the new Alchemy CLI's implicit stage. The four plans must show no replacement
-or deletion of an existing resource before any apply. Review every plan.
+The plan must show only `KwyneModelGatewayPolicy`,
+`KwyneModelGatewayAccess`, and `KwyneModelGatewayDns` as creates.
+The package script selects stage `dev_nori` and SecretSpec scope
+`cloudflare-kwyne-gateway`. That scope supplies only the control API token and
+the service-token UUID. DNS keeps the existing OAuth credential path.
+The stack outputs public IDs only. It never creates a service token or exposes
+the client secret.
 
-The main plan's gateway additions are `KwyneModelGatewayAccess` and
-`KwyneModelGatewayDns`. The main script supplies the workstation SecretSpec
-profile and `cloudflare-main` scope. Its output contains public IDs only.
-The existing Hindsight, projects, relay, and dev-share resources must remain.
-
-After that review, apply only the main stack for the new gateway:
+After that review, apply only this stack:
 
 ```bash
-bun run deploy
+bun run deploy:kwyne-gateway
 ```
 
-The package pins Alchemy beta.80, Effect 4.0.0, and the matching platform
-packages. Mixed prerelease dependencies failed at import before this alignment.
-The Access compatibility resource retains the existing resource type and output
-IDs. Native Access resources use a different state identity, so replacing the
-compatibility resource here can replace existing applications.
+Do not run `bun run deploy` for this cutover: it applies the unrelated Homelab
+main stack, including its open migration and deletion work below.
+
+For a dependency or shared-provider change, inspect the existing stacks without
+applying them:
+
+```bash
+bun run plan --detailed
+bun run plan:projects --detailed
+bun run plan:projects-relay --detailed
+bun run plan:dev-share --detailed
+```
+
+The package pins Alchemy beta.80, Effect 4.0.0, and matching platform packages.
+The new gateway uses native Access resources because it has no previous state.
+Existing dev-share compatibility resources retain their established IDs.
+Changing their resource types needs an explicit identity-preserving migration.
+
+The scripts set `CI=` before Alchemy. A true inherited CI flag disables
+OAuth profile lookup and requires complete native environment credentials.
+The MCP API-token scope is separate; it does not supply those DNS credentials.
+An empty CI value uses the operator's existing OAuth profile, like `env -u CI`.
+Fully declared environment credentials still take precedence. These are operator
+scripts, not an authentication convention for a headless CI runner.
+
+A saved `creating` row with no attributes can legitimately plan as `create`.
+Before creating, the homelab providers look up the stable remote identity.
+They update one matching object, create when none exists, and refuse ambiguity.
+Policy identity is its name and decision within its exact application.
+The read-only plan does not rewrite that interrupted state or prove apply success.
 
 ### 4. Log in the providers (operator only)
 
@@ -286,7 +308,7 @@ rm -rf "$PRIVATE_DIR"
 Commit the encrypted changes and repeat both Access Worker secret pipes before the overlap deadline.
 Keep a failed response protected until storage succeeds. Check the public gates and a real model call.
 Rotation retains the UUID and does not extend token expiry. For an expiring token, create a replacement with step 2.
-Store all three fields, commit, apply the Homelab policy, and repeat both Access Worker commands.
+Store all three fields, commit, deploy only the `KwyneGateway` policy, and repeat both Access Worker commands.
 The policy selects one UUID. Coordinate the short mismatch window and check both gates before deletion.
 Use the old UUID from the previous encrypted revision, not the client ID.
 Delete only that retired token with the same explicit account and auth:
@@ -329,3 +351,31 @@ It does not call a provider or Cloudflare. `just check` checks repository
 configuration. `just build` builds the workstation system without activation.
 Real Access, tunnel delivery, OAuth, and a real model call require the operator
 steps above. No source check substitutes for those observations.
+
+## Open items outside this gateway cutover
+
+Read-only plans and identity probes on 2026-10-04 found these existing items.
+The isolated gateway stack does not apply them or change their declared intent.
+
+- **Hindsight URL migration.** The Homelab main stack declares
+  `https://memory-origin.home.phibkro.org/mcp/chatlog-insights-v1/`, but the
+  existing server still uses `https://hindsight-origin.phibkro.org/mcp/chatlog-insights-v1/`.
+  The immutable-URL guard refuses that update. Review a separate migration;
+  do not change the declared URL back or replace the live server as part of
+  this gateway cutover. Its old DNS dependency is also removed in the plan.
+- **NixCache retirement.** The main stack omits `NixCache` and plans its deletion.
+  That existing retirement is not gateway work. Do not apply the main stack
+  to deploy this gateway.
+- **Four absent operator policies.** Read-only lookups found no exact name/allow
+  policy for `HindsightServerPolicy`, `HindsightPortalPolicy`,
+  `HerdrProjectsServerPolicyV3`, or `HerdrProjectsPortalPolicy` in their resolved
+  applications. Their interrupted `creating` rows have no attributes and still
+  plan as creates. The providers now adopt a unique matching policy if it
+  appears before apply; otherwise they create it. No policy was created here.
+- **Projects V1/V2 retirement.** `projects.alchemy.run.ts` declares only the
+  V3 server and server policy. It omits `HerdrProjectsServer`,
+  `HerdrProjectsServerV2`, `HerdrProjectsServerPolicy`, and
+  `HerdrProjectsServerPolicyV2`, so its four deletes follow the existing source.
+  The V3 server already exists at the declared Funnel URL; its interrupted
+  create would adopt and update that server instead of duplicating it.
+  Review and apply that projects change separately, not in this cutover.
