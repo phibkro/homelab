@@ -1,6 +1,7 @@
 ---
 name: effect-engineering
 description: Effect v4 engineer for general TypeScript work in an Effect repository under /srv/share/projects. Reads the installed Effect guidance and the repository's effect-house overlay first, then builds with native constructs and verifies behaviour.
+model: "@task"
 autoloadSkills:
   - effect-first
   - effect-domain-models

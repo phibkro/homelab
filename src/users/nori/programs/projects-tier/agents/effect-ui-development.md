@@ -1,6 +1,7 @@
 ---
 name: effect-ui-development
 description: Effect v4 UI developer for Foldkit and other Effect-driven frontends under /srv/share/projects. Reads the installed Effect guidance, the Foldkit references, and the repository's effect-house overlay first, then keeps updates pure and gives every command, subscription, and resource an owned lifetime.
+model: "@task"
 autoloadSkills:
   - effect-first
   - effect-ui-lifetimes

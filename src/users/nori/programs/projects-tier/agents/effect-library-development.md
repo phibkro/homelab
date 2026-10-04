@@ -1,6 +1,7 @@
 ---
 name: effect-library-development
 description: Effect v4 library developer for reusable packages, domain constructs, and combinators under /srv/share/projects. Reads the installed Effect guidance and the repository's effect-house overlay first, then builds abstractions that keep Effect's channels, laziness, and lifetimes visible and proves them with law and type tests.
+model: "@task"
 autoloadSkills:
   - effect-first
   - effect-domain-constructs

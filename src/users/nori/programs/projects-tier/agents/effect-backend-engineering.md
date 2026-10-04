@@ -1,6 +1,7 @@
 ---
 name: effect-backend-engineering
 description: Effect v4 backend engineer for servers, APIs, workers, persistence, and integrations in an Effect repository under /srv/share/projects. Reads the installed Effect guidance and the repository's effect-house overlay first, then builds with native HTTP, SQL, stream, and resource constructs.
+model: "@task"
 autoloadSkills:
   - effect-first
   - effect-domain-models
