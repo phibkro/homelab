@@ -14,6 +14,9 @@ let
   gatewayUser = "kwyne-auth-gateway";
   brokerState = "/var/lib/${brokerUser}";
   gatewayState = "/var/lib/${gatewayUser}";
+  # The pinned OMP joins PI_CONFIG_DIR to HOME, even for an absolute value.
+  # A relative dot keeps its canonical store exactly in the private state dir.
+  configFolder = ".";
   brokerUrl = "http://${route.originHost}:${toString route.brokerPort}";
   login = pkgs.writeShellApplication {
     name = "kwyne-auth-broker-login";
@@ -24,7 +27,7 @@ let
       fi
       case "$1" in anthropic|openai-codex) ;; *) echo 'Unsupported broker login provider' >&2; exit 2;; esac
       exec /run/wrappers/bin/sudo -u ${brokerUser} ${pkgs.coreutils}/bin/env -i \
-        HOME=${brokerState} PI_CONFIG_DIR=${brokerState} TERM="''${TERM:-xterm}" \
+        HOME=${brokerState} PI_CONFIG_DIR=${configFolder} TERM="''${TERM:-xterm}" \
         PATH=${
           lib.makeBinPath [
             omp
@@ -44,7 +47,7 @@ let
     ];
     environment = {
       HOME = "/var/lib/${user}";
-      PI_CONFIG_DIR = "/var/lib/${user}";
+      PI_CONFIG_DIR = configFolder;
     };
     serviceConfig = {
       User = user;

@@ -44,8 +44,8 @@ pkgs.testers.runNixOSTest {
     start_all()
     gateway.wait_for_unit("kwyne-auth-broker.service")
     gateway.wait_for_unit("kwyne-auth-gateway.service")
-    gateway.wait_until_succeeds("curl -fsS http://127.0.0.1:${toString route.brokerPort}/v1/healthz")
-    gateway.wait_until_succeeds("curl -fsS http://127.0.0.1:${toString route.originPort}/healthz")
+    gateway.wait_until_succeeds("curl -fsS http://127.0.0.1:${toString route.brokerPort}/v1/healthz", timeout=120)
+    gateway.wait_until_succeeds("curl -fsS http://127.0.0.1:${toString route.originPort}/healthz", timeout=120)
     listeners = gateway.succeed("ss -H -ltn")
     for port in (${toString route.brokerPort}, ${toString route.originPort}):
         addresses = [line.split()[3] for line in listeners.splitlines() if line.split()[3].endswith(f":{port}")]

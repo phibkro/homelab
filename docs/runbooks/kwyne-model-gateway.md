@@ -22,7 +22,9 @@ The existing `mcp-origin-cloudflared` connector owns the entire ingress table.
 Do not create another connector for this hostname.
 
 Both services and the login wrapper use the same pinned OMP derivation.
-Systemd sets HOME and PI_CONFIG_DIR to each service's private state directory.
+Systemd sets HOME to each private state directory and PI_CONFIG_DIR to `.`.
+The pinned OMP joins this folder to HOME; an absolute value duplicates HOME.
+The login wrapper uses the same configuration, so its broker vault is identical.
 State directories have mode 0700. The broker alone owns the SQLite credential
 vault. Never copy, migrate, or read the operator's OMP credential store.
 The gateway reads broker snapshots, which contain access tokens but no real
