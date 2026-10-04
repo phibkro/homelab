@@ -121,17 +121,18 @@ in
         };
 
         /*
-          Blue-light filter toggle via systemd user unit. hyprsunset's
-          CLI is one-shot (no live IPC in 0.3.x), so toggle = start/
-          stop the daemon; on stop hyprsunset restores neutral gamma
-          before exiting. Glyph flips with active-state.
+          Blue-light filter toggle. `night-mode` (../hyprsunset.nix) flips
+          the running hyprsunset through its IPC at any time of day; the
+          schedule takes over again at the next profile. Glyph shows the
+          filter's visible state.
         */
         "custom/sunset" = {
           format = "{}";
           interval = 5;
-          exec = "systemctl --user is-active --quiet hyprsunset && echo '${msMoon}' || echo '${msSun}'";
-          on-click = "systemctl --user is-active --quiet hyprsunset && systemctl --user stop hyprsunset || systemctl --user start hyprsunset";
-          tooltip-format = "Click: toggle blue-light filter";
+          exec = "[ \"$(${config.nori.nightMode.command} status)\" = on ] && echo '${msMoon}' || echo '${msSun}'";
+          exec-on-event = true;
+          on-click = "${config.nori.nightMode.command} toggle";
+          tooltip-format = "Click: toggle blue-light filter (schedule resumes at 07:00/20:00)";
         };
       };
     };

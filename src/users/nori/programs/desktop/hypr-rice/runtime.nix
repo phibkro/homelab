@@ -366,7 +366,8 @@ let
       label = "System: Toggle Night Mode";
       description = "toggle Hyprsunset";
       category = "system";
-      executable = "${nightMode}/bin/toggle-night-mode";
+      executable = config.nori.nightMode.command;
+      args = [ "toggle" ];
       keywords = [
         "hyprsunset"
         "warm"
@@ -630,18 +631,6 @@ let
     text = ''
       if ! pidof hyprlock >/dev/null; then
         exec hyprlock
-      fi
-    '';
-  };
-
-  nightMode = pkgs.writeShellApplication {
-    name = "toggle-night-mode";
-    runtimeInputs = [ pkgs.systemd ];
-    text = ''
-      if systemctl --user is-active --quiet hyprsunset; then
-        systemctl --user stop hyprsunset
-      else
-        systemctl --user start hyprsunset
       fi
     '';
   };
