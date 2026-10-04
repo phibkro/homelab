@@ -48,7 +48,7 @@ const Policy = Schema.Struct({
 const Envelope = Schema.Struct({
   success: Schema.Boolean,
   result: Schema.Unknown,
-  result_info: Schema.optional(Schema.Struct({ total_pages: Schema.optional(Schema.Int) })),
+  result_info: Schema.optional(Schema.Unknown),
 });
 const decodeApplication = Schema.decodeUnknownEffect(Application);
 const decodeApplications = Schema.decodeUnknownEffect(Schema.Array(Application));
@@ -65,6 +65,31 @@ export class UnexpectedAccessPolicies extends Schema.TaggedError<UnexpectedAcces
   applicationId: Schema.String,
   policyIds: Schema.Array(Schema.String),
 }) {}
+
+const decodeListEnvelope = Schema.decodeUnknownEffect(Schema.Struct({
+  result: Schema.Array(Schema.Unknown),
+  result_info: Schema.Struct({
+    count: Schema.Int,
+    page: Schema.Literal(1),
+    total_count: Schema.Int,
+  }),
+}));
+
+/** A partial or unverifiable list cannot establish application/policy ownership. */
+export const decodeCompleteAccessList = Effect.fn("Access.decodeCompleteAccessList")(function*(
+  input: unknown, path: string,
+) {
+  const envelope = yield* decodeListEnvelope(input).pipe(
+    Effect.mapError(() => new AccessRequestError({
+      path, message: "Access list completeness metadata is missing or invalid",
+    })),
+  );
+  if (envelope.result_info.count !== envelope.result.length ||
+      envelope.result_info.total_count !== envelope.result.length) {
+    return yield* new AccessRequestError({ path, message: "Access list is incomplete; operator review required" });
+  }
+  return envelope.result;
+});
 
 const policyName = (props: SelfHostedApplicationProps) =>
   `${props.name}: ${props.mode === "service-auth" ? "service auth" : "operator"}`;
@@ -97,6 +122,7 @@ const SelfHostedApplicationProvider = () => Provider.effect(
       path: string,
       method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
       body?: unknown,
+      completeList = false,
     ) {
       const credentials = yield* controlCredentials;
       const base = HttpClientRequest.make(method)(`${credentials.apiBaseUrl}/accounts/${accountId}${path}`, {
@@ -108,21 +134,18 @@ const SelfHostedApplicationProvider = () => Provider.effect(
       if (response.status < 200 || response.status >= 300 || !envelope.success) {
         return yield* new AccessRequestError({ path, message: `Cloudflare Access API returned ${response.status}` });
       }
-      // Never reason about exclusivity from a truncated policy/application list.
-      if ((envelope.result_info?.total_pages ?? 1) > 1) {
-        return yield* new AccessRequestError({ path, message: "Paginated Access results require operator review" });
-      }
-      return envelope.result;
+      // List metadata is required only for list responses, never mutations.
+      return completeList ? yield* decodeCompleteAccessList(envelope, path) : envelope.result;
     });
     const listApplications = Effect.fn("Access.listApplications")(function*() {
-      return yield* decodeApplications(yield* request("/access/apps?per_page=1000"));
+      return yield* decodeApplications(yield* request("/access/apps", "GET", undefined, true));
     });
     const findApplication = Effect.fn("Access.findApplication")(function*(id: string | undefined, hostname: string) {
       const applications = yield* listApplications();
       return applications.find((app) => app.type === "self_hosted" && (app.id === id || app.domain === hostname));
     });
     const listPolicies = Effect.fn("Access.listPolicies")(function*(id: string) {
-      return yield* decodePolicies(yield* request(`/access/apps/${id}/policies?per_page=1000`));
+      return yield* decodePolicies(yield* request(`/access/apps/${id}/policies`, "GET", undefined, true));
     });
     const selectPolicy = Effect.fn("Access.selectPolicy")(function*(
       applicationId: string, props: SelfHostedApplicationProps, id?: string,
