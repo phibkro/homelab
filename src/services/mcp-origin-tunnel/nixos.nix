@@ -8,6 +8,9 @@
 let
   devShareRoute = builtins.fromJSON (builtins.readFile ../../infra/cloudflare/routes/dev-share.json);
   inherit (devShareRoute) tunnelId;
+  modelGatewayRoute = builtins.fromJSON (
+    builtins.readFile ../../infra/cloudflare/routes/kwyne-model-gateway.json
+  );
   hindsightHostname = "hindsight-origin.phibkro.org";
   projectsHostname = "projects-origin.phibkro.org";
   vektorDatabaseHostname = "vektor-db-origin.phibkro.org";
@@ -29,6 +32,8 @@ let
         service: tcp://127.0.0.1:5432
       - hostname: ${devShareRoute.hostname}
         service: http://${devShareRoute.originHost}:${toString devShareRoute.originPort}
+      - hostname: ${modelGatewayRoute.hostname}
+        service: http://${modelGatewayRoute.originHost}:${toString modelGatewayRoute.originPort}
       - service: http_status:404
   '';
   devShareCore =

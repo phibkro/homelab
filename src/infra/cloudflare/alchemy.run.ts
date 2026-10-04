@@ -4,8 +4,15 @@ import * as State from "alchemy/State";
 import * as Config from "effect/Config";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
-import { cloudflareProviders, mcpProviders, OPERATOR_EMAIL } from "./mcp-environment.ts";
+import * as Schema from "effect/Schema";
+import gatewayRoute from "./routes/kwyne-model-gateway.json" with { type: "json" };
+import devShareRoute from "./routes/dev-share.json" with { type: "json" };
+import { cloudflareControlDependencies, cloudflareProviders, mcpProviders, OPERATOR_EMAIL } from "./mcp-environment.ts";
+import * as Access from "./resources/access.ts";
 import * as Mcp from "./resources/mcp.ts";
+
+const accessProviders = Access.providers().pipe(Layer.provide(cloudflareControlDependencies));
+const decodeServiceTokenId = Schema.decodeEffect(Access.ServiceTokenId);
 
 const HINDSIGHT_ORIGIN_HOSTNAME = "memory-origin.home.phibkro.org";
 const HINDSIGHT_TUNNEL_HOSTNAME = "hindsight-origin.phibkro.org";
@@ -27,12 +34,30 @@ const HINDSIGHT_PORTAL_HOSTNAME = "memory-mcp.phibkro.org";
 export default Alchemy.Stack(
   "Homelab",
   {
-    providers: Layer.merge(cloudflareProviders, mcpProviders),
+    providers: Layer.mergeAll(cloudflareProviders, mcpProviders, accessProviders),
     state: State.localState(),
   },
   Effect.gen(function* () {
     const bearerToken = yield* Config.redacted("HINDSIGHT_MCP_BEARER_TOKEN").pipe(Effect.orDie);
-
+    // Invalid deployment configuration is fatal at the stack boundary.
+    const serviceTokenId = yield* Config.string("KWYNE_MODEL_GATEWAY_ACCESS_SERVICE_TOKEN_ID").pipe(
+      Effect.flatMap(decodeServiceTokenId),
+      Effect.orDie,
+    );
+    const gatewayAccess = yield* Access.SelfHostedApplication("KwyneModelGatewayAccess", {
+      name: "Kwyne model gateway",
+      hostname: gatewayRoute.hostname,
+      mode: "service-auth",
+      serviceTokenId,
+      sessionDuration: "24h",
+    });
+    const gatewayDns = yield* Mcp.DnsRecord("KwyneModelGatewayDns", {
+      hostname: gatewayRoute.hostname,
+      content: `${devShareRoute.tunnelId}.cfargotunnel.com`,
+      proxied: true,
+      comment: "Managed by homelab Alchemy: service-auth-only Kwyne model gateway",
+      dependency: gatewayAccess.policyId,
+    });
     // Preserve the still-running Tunnel route while the DNS-only Pi origin is
     // being proven. Retiring it is a separate destructive migration, not a
     // rider on the Herdr projects connector deployment.
@@ -83,6 +108,13 @@ export default Alchemy.Stack(
 
 
     return {
+      kwyneModelGateway: {
+        hostname: gatewayDns.hostname,
+        url: Output.interpolate`https://${gatewayDns.hostname}`,
+        dnsRecordId: gatewayDns.recordId,
+        accessApplicationId: gatewayAccess.applicationId,
+        accessPolicyId: gatewayAccess.policyId,
+      },
       hindsight: {
         originDns: HINDSIGHT_ORIGIN_HOSTNAME,
         portalDns: hindsightPortalDns.hostname,

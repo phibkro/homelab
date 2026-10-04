@@ -1,0 +1,6 @@
+{
+  "hostname": "kwyne-model-gateway.phibkro.org",
+  "originHost": "127.0.0.1",
+  "originPort": 4000,
+  "brokerPort": 8765
+}

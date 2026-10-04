@@ -30,6 +30,7 @@ in
   jellyfin = manifest ../services/jellyfin/manifest.nix;
   jellyseerr = manifest ../services/jellyseerr/manifest.nix;
   komga = manifest ../services/komga/manifest.nix;
+  kwyne-model-gateway = manifest ../services/kwyne-model-gateway/manifest.nix;
   lidarr = manifest ../services/lidarr/manifest.nix;
   mcp-origin-tunnel = manifest ../services/mcp-origin-tunnel/manifest.nix;
   miniflux = manifest ../services/miniflux/manifest.nix;

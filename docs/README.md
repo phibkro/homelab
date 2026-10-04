@@ -50,6 +50,8 @@ Use the [OneTouch runbook](runbooks/onetouch-backup-cutover.md) when
 reconnecting the disk, changing transport, or collecting new recovery evidence.
 Use the [GitLab runbook](runbooks/gitlab-authority.md) to activate the Kwyne
 authority store, apply its protections, back it up, restore it, or upgrade it.
+Use the [Kwyne model gateway runbook](runbooks/kwyne-model-gateway.md) for broker
+provider logins, Access provisioning, Worker secrets, health checks, and rotation.
 
 ## Document lifecycle
 

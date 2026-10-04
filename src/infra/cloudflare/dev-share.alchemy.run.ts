@@ -27,6 +27,7 @@ export default Alchemy.Stack(
       // Alchemy updates the existing objects instead of creating two owners.
       name: "Workstation dev share",
       hostname: route.hostname,
+      mode: "email",
       email: OPERATOR_EMAIL,
       sessionDuration: "24h",
     });

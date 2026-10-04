@@ -82,6 +82,7 @@ let
       "jellyfin"
       "jellyseerr"
       "komga"
+      "kwyne-model-gateway"
       "lidarr"
       "mcp-origin-tunnel"
       "music-ingest"

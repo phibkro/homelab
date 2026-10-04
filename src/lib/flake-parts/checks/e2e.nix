@@ -14,6 +14,9 @@
           inherit pkgs lib;
         };
         e2e-gitlab = import ../../../services/gitlab/tests/nixos.nix { inherit pkgs lib inputs; };
+        e2e-kwyne-model-gateway = import ../../../services/kwyne-model-gateway/tests/nixos.nix {
+          inherit pkgs lib inputs;
+        };
         e2e-desktop-settings-unix-ingress =
           import ../../../users/nori/programs/desktop/settings-service/test/unix-ingress.nix
             {

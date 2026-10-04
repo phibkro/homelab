@@ -195,6 +195,8 @@ data = {
     "gitlab-active-record-encryption-key-derivation-salt": os.environ["GITLAB_AR_KEY_SALT"],
     "gitlab-openid-connect-signing-key": os.environ["GITLAB_OIDC_SIGNING_KEY"],
     "gitlab-initial-root-password": os.environ["GITLAB_ROOT_PASSWORD"],
+    "kwyne-auth-broker-bearer": "vm-test-broker-bearer-not-production",
+    "kwyne-model-gateway-bearer": "vm-test-gateway-bearer-not-production",
 }
 # json IS valid yaml — write that, sops handles it fine and we avoid
 # yaml block-scalar indentation foot-guns.
