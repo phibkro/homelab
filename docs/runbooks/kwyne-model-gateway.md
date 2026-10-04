@@ -77,8 +77,8 @@ Access, the tunnel, or a model call.
 ### 2. Create the Access service token and store its response
 
 The lead runs this block once in a private terminal. cf replaces the former curl procedure.
-The cloudflare-admin SecretSpec scope holds only the API token, which needs Access: Service Tokens Edit.
-SecretSpec requires a reason from agents; `cf_admin` passes one.
+`cf_admin` uses the operator's `cf auth login` OAuth profile (`~/.config/cloudflare`); the operator logs in once with
+`bun x --no-install cf auth login` from `src/infra/cloudflare`. No API token is involved.
 Do not repeat creation after an uncertain result. Inspect metadata with cf service-tokens list instead.
 The client secret appears only in the create response.
 
@@ -91,7 +91,7 @@ export DO_NOT_TRACK=1
 ACCOUNT_ID=$(cd src/infra/cloudflare && bun -e 'import { CLOUDFLARE_ACCOUNT_ID } from "./mcp-environment.ts"; console.log(CLOUDFLARE_ACCOUNT_ID)')
 export CLOUDFLARE_ACCOUNT_ID="$ACCOUNT_ID"
 cf_admin() {
-  (cd src/infra/cloudflare && SECRETSPEC_REASON="${SECRETSPEC_REASON:-Kwyne model gateway cf operation}" secretspec run --file ../../../secretspec.toml --profile workstation --scope cloudflare-admin -- sh -c 'set +x; export CLOUDFLARE_API_TOKEN="$CLOUDFLARE_MCP_API_TOKEN"; export DO_NOT_TRACK=1; exec bun x --no-install cf "$@"' sh "$@")
+  (cd src/infra/cloudflare && env -u CLOUDFLARE_API_TOKEN DO_NOT_TRACK=1 bun x --no-install cf "$@")
 }
 TOKEN_NAME="kwyne-model-gateway-worker-$(date -u +%Y%m%dT%H%M%SZ)"
 PRIVATE_DIR=$(mktemp -d)
@@ -178,7 +178,7 @@ stop that specific session yourself. Never kill processes by name or user.
 
 Use the actual deployed Worker name from the Kwyne deployment output.
 The `--worker` argument selects that Worker, not a new stage.
-The SecretSpec token needs Workers Scripts Edit, unverified for that token.
+These calls use the same `cf auth login` profile as step 2.
 The installed beta.12 secret-text handler marks omitted `--text` as secret-kind and reads stdin.
 Run from the Homelab root with `cf_admin` and the explicit account export from step 2.
 
