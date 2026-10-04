@@ -83,6 +83,10 @@ in
     port = httpPort;
     https = false;
 
+    # Applied only when GitLab first seeds an empty database; the live account
+    # was changed in place on 2026-10-04. No SMTP is configured, so email
+    # changes are confirmed with `gitlab-rails runner` (see the runbook).
+    initialRootEmail = "philib.krogh@gmail.com";
     initialRootPasswordFile = secretPath secretNames.initialRootPassword;
     secrets = {
       secretFile = secretPath secretNames.secretKeyBase;

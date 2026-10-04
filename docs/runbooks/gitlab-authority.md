@@ -182,8 +182,8 @@ its database. They are part of the restic backup and of a restore.
 ### Workstation setup record (2026-10-04)
 
 The password replacement, settings, project, protections, and sealer token are
-complete. Runbook steps 1–6 are complete except root 2FA. The operator must
-register an authenticator in person. No temporary administrator token was necessary.
+complete. Runbook steps 1–6 are complete. The operator registered a root
+one-time-password authenticator on 2026-10-04. No temporary administrator token was necessary.
 
 | Fact | Observed value |
 | --- | --- |
@@ -198,6 +198,7 @@ register an authenticator in person. No temporary administrator token was necess
 | Token expiry | `2027-04-02` at midnight UTC (180 days after creation) |
 | Maintainer | `project_1_bot_fac313f36031805513c69779e8067a27` (the sealer bot) |
 | Owner | `root`, inherited from `kwyne`; no shared groups or other writers |
+| Root email | `philib.krogh@gmail.com`, confirmed with `gitlab-rails` (no SMTP) |
 | Added SOPS keys | `gitlab-root-password`, `gitlab-kwyne-sealer-token` |
 
 Real Git over loopback HTTP proved these boundaries in disposable scratch clones:
@@ -236,9 +237,20 @@ sops decrypt --extract '["gitlab-root-password"]' secrets/workstation-runtime.ya
 2. Select your avatar, then **Edit profile** > **Access** > **Password and authentication**.
 3. Register your authenticator under **One-time password authenticator** ([two-factor authentication](https://docs.gitlab.com/19.3/user/profile/account/two_factor_authentication/)).
 
-The password replacement is complete. The authenticator registration still needs
-the operator. If you change the password, update the current SOPS key through
+The password replacement and the authenticator registration are complete.
+If you change the password, update the current SOPS key through
 `sops set --value-stdin`; do not change the seeded key.
+
+GitLab has no SMTP configuration, so it cannot send confirmation mail. After you
+change an email address in **Edit profile** > **Emails**, confirm it on the host:
+
+```bash
+sudo -n -u gitlab gitlab-rails runner 'u = User.find_by_username("root"); u.confirm; puts u.reload.email'
+```
+
+`services.gitlab.initialRootEmail` only seeds a new database; keep it equal to
+the live address so a restore onto an empty host starts with the same identity.
+
 If you lose the password, reset it on the GitLab host
 ([reset a user password](https://docs.gitlab.com/19.3/security/reset_user_password/)):
 
