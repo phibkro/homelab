@@ -20,6 +20,7 @@ in
   cloudflare-ddns = manifest ../services/cloudflare-ddns/manifest.nix;
   disk-alert = manifest ../services/disk-alert/manifest.nix;
   gatus = manifest ../services/gatus/manifest.nix;
+  gitlab = manifest ../services/gitlab/manifest.nix;
   glance = manifest ../services/glance/manifest.nix;
   grafana = manifest ../services/grafana/manifest.nix;
   heartbeat = manifest ../services/heartbeat/manifest.nix;

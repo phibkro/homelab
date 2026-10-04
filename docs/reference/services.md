@@ -80,7 +80,7 @@ selected data and the preparation that runs before Restic.
 | Pattern | When | Implementation | Example |
 |---|---|---|---|
 | **A: Filesystem-only** | Data is not a database | Restic targets paths directly | Jellyfin library, Samba shares, `/home`, `/srv/share` |
-| **B: Built-in dump** | Service writes its own SQL dumps | Restic includes the dump directory | Immich |
+| **B: Built-in dump** | Service writes its own SQL dumps | Restic includes the dump directory | Immich, GitLab |
 | **C1: External dump (PostgreSQL)** | System PostgreSQL without an internal dump | `services.postgresqlBackup` then Restic | Miniflux, Paperless |
 | **C2: External dump (SQLite)** | Service writes SQLite without an internal dump | `prepareCommand` uses `VACUUM INTO` and `flock` | Vaultwarden, Navidrome |
 
@@ -112,6 +112,8 @@ nori.backups.immich = {
   timer = "*-*-* 04:00:00";  # after Immich's nightly dump beats restic's
 };
 ```
+
+GitLab follows the same pattern, but the Restic unit starts the export. `gitlab-backup.service` runs `gitlab:backup:create` and writes one archive, `dump_gitlab_backup.tar`. The Restic unit requires that service. A failed export therefore stops the run, and every run copies a fresh archive. See `src/services/gitlab/nixos.nix` and the [GitLab runbook](../runbooks/gitlab-authority.md).
 
 ### Pattern C1 — `services.postgresqlBackup`
 

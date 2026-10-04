@@ -42,6 +42,14 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
   `src/inventory/backup.nix` and update `tests/eval/btrbk-root-offload.nix`
   in one reviewed commit. The operator deploys it with `just rebuild`; an agent
   may prepare the commit.
+- **GitLab authority plane: activate, set up, drill a restore.** The service is
+  built and checked but not activated. The operator runs the activation command
+  in the placement table of `docs/runbooks/gitlab-authority.md`, then follows
+  that runbook: close sign-ups, create the Kwyne project, protect `main` and
+  `kwyne/seal/*`, and issue the sealer token. After that, restore the `gitlab`
+  Restic repository into a disposable GitLab and record the drill in
+  `src/inventory/recovery-evidence.nix`. These steps need the operator's
+  activation authority and credentials.
 
 These require the operator or physical client access. They remain accepted
 work, but do not block autonomous repository work.

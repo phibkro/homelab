@@ -29,6 +29,7 @@ contract; omission is not a live coverage verdict.
 | `authelia` | `pi` | `filesystem` | `authelia` | `onetouch` | `/etc/authelia/configuration.yml`<br>`/etc/authelia/users_database.yml`<br>`/var/lib/authelia` | — | `authelia-service` |
 | `beszel-hub` | `pi` | `filesystem` | `beszel` | `onetouch` | `/var/lib/beszel` | — | `beszel-service` |
 | `caddy` | `pi` | `filesystem` | `caddy` | `onetouch` | `/opt/caddy/data`<br>`/opt/caddy/config` | — | `caddy-service` |
+| `gitlab` | `adelie` | `application-export` | `gitlab` | `onetouch` | `/var/lib/gitlab/backup` | — | — |
 | `immich` | `workstation` | `application-export` | `media-irreplaceable` | `onetouch` | `/mnt/media/archive`<br>`/mnt/media/home-videos`<br>`/mnt/media/library`<br>`/mnt/media/photos`<br>`/mnt/media/projects` | — | `immich-export` |
 | `jellyfin` | `workstation` | `filesystem` | `jellyfin` | `onetouch` | `/var/lib/jellyfin` | — | `jellyfin-metadata` |
 | `miniflux` | `adelie` | `postgresql-logical` | `miniflux` | `onetouch` | `/var/backup/postgresql/miniflux.sql.gz` | — | `miniflux-database` |

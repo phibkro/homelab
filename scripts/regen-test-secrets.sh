@@ -15,8 +15,8 @@
 #   tests/keys/test-age.txt           plaintext age key (private)
 #   tests/keys/test-age.pub           the public part
 #   tests/secrets/test.yaml           sops-encrypted secrets for the
-#                                     e2e VM (includes authelia +
-#                                     restic-password)
+#                                     e2e VM (includes authelia, the
+#                                     GitLab keys and restic-password)
 #
 # Test user credentials (for manual probing of the auth flow):
 #   username: nori
@@ -121,6 +121,18 @@ NTFY_PUB_TOKEN="tk_test_not_a_real_ntfy_token"
 echo "==> generating RSA 2048 OIDC issuer key"
 ISSUER_KEY="$(openssl genrsa 2048 2>/dev/null)"
 
+echo "==> generating GitLab test secrets"
+# Same shapes as the GitLab host's runtime secrets file (`openssl rand -hex N` and
+# one RSA key); only the values differ. src/services/gitlab/tests/nixos.nix reads them.
+GITLAB_SECRET_KEY_BASE="$(openssl rand -hex 64)"
+GITLAB_OTP_KEY_BASE="$(openssl rand -hex 64)"
+GITLAB_DB_KEY_BASE="$(openssl rand -hex 64)"
+GITLAB_AR_PRIMARY_KEY="$(openssl rand -hex 32)"
+GITLAB_AR_DETERMINISTIC_KEY="$(openssl rand -hex 32)"
+GITLAB_AR_KEY_SALT="$(openssl rand -hex 32)"
+GITLAB_OIDC_SIGNING_KEY="$(openssl genrsa 2048 2>/dev/null)"
+GITLAB_ROOT_PASSWORD="$(openssl rand -hex 20)"
+
 echo "==> generating argon2id hash for test user"
 # Authelia accepts the encoded `$argon2id$...` line directly. Use a
 # deterministic salt so re-runs of this script produce a stable hash
@@ -151,6 +163,10 @@ CF_ACME_TOKEN="$CF_ACME_TOKEN" GATUS_ENV="$GATUS_ENV" \
 RESTIC_SSH_KEY="$RESTIC_SSH_KEY" \
 HEARTBEAT_URL="$HEARTBEAT_URL" \
 NTFY_CHANNEL="$NTFY_CHANNEL" NTFY_PUB_TOKEN="$NTFY_PUB_TOKEN" \
+GITLAB_SECRET_KEY_BASE="$GITLAB_SECRET_KEY_BASE" GITLAB_OTP_KEY_BASE="$GITLAB_OTP_KEY_BASE" \
+GITLAB_DB_KEY_BASE="$GITLAB_DB_KEY_BASE" GITLAB_AR_PRIMARY_KEY="$GITLAB_AR_PRIMARY_KEY" \
+GITLAB_AR_DETERMINISTIC_KEY="$GITLAB_AR_DETERMINISTIC_KEY" GITLAB_AR_KEY_SALT="$GITLAB_AR_KEY_SALT" \
+GITLAB_OIDC_SIGNING_KEY="$GITLAB_OIDC_SIGNING_KEY" GITLAB_ROOT_PASSWORD="$GITLAB_ROOT_PASSWORD" \
 python3 -c '
 import os, sys, json
 data = {
@@ -171,6 +187,14 @@ data = {
     # `cloudflare-acme-token` with a hyphen). When the sopsFile is
     # overridden to point here, both shapes work via the `key` mapping.
     "cloudflare_acme_token": os.environ["CF_ACME_TOKEN"],
+    "gitlab-secret-key-base": os.environ["GITLAB_SECRET_KEY_BASE"],
+    "gitlab-otp-key-base": os.environ["GITLAB_OTP_KEY_BASE"],
+    "gitlab-db-key-base": os.environ["GITLAB_DB_KEY_BASE"],
+    "gitlab-active-record-encryption-primary-key": os.environ["GITLAB_AR_PRIMARY_KEY"],
+    "gitlab-active-record-encryption-deterministic-key": os.environ["GITLAB_AR_DETERMINISTIC_KEY"],
+    "gitlab-active-record-encryption-key-derivation-salt": os.environ["GITLAB_AR_KEY_SALT"],
+    "gitlab-openid-connect-signing-key": os.environ["GITLAB_OIDC_SIGNING_KEY"],
+    "gitlab-initial-root-password": os.environ["GITLAB_ROOT_PASSWORD"],
 }
 # json IS valid yaml — write that, sops handles it fine and we avoid
 # yaml block-scalar indentation foot-guns.

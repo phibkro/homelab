@@ -48,6 +48,7 @@ let
   expectedWorkloads = {
     adelie = [
       "beszel-agent"
+      "gitlab"
       "grafana"
       "miniflux"
       "node-exporter"
@@ -131,6 +132,7 @@ let
     caddy = [ "pi" ];
     calibre-web = [ "workstation" ];
     disk-alert = [ "workstation" ];
+    gitlab = [ "adelie" ];
     glance = [ "pi" ];
     grafana = [ "adelie" ];
     gatus = [ "pi" ];

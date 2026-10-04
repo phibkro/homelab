@@ -36,7 +36,7 @@ in
       hardware = "Node 304 · Ryzen 5 5600X · 32 GB DDR4 · RTX 2060 Super · Samsung 990 Pro 1 TB NVMe";
       primaryJob = ''
         SSD-local application backends: Grafana, Miniflux, Radicale,
-        and Vaultwarden. Each stateful service
+        Vaultwarden, and the tailnet-only GitLab authority store. Each stateful service
         backs up to its own restricted repository on the workstation-attached
         OneTouch disk. Media and portable disks remain on workstation.
       '';

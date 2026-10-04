@@ -13,6 +13,7 @@
         e2e-music-ingest = import ../../../services/music-ingest/tests/nixos.nix {
           inherit pkgs lib;
         };
+        e2e-gitlab = import ../../../services/gitlab/tests/nixos.nix { inherit pkgs lib inputs; };
         e2e-desktop-settings-unix-ingress =
           import ../../../users/nori/programs/desktop/settings-service/test/unix-ingress.nix
             {

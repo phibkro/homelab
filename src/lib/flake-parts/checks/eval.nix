@@ -149,6 +149,20 @@
             echo ${lib.escapeShellArg result} > $out
           '';
 
+        /**
+          GitLab, the canonical Git store, runs on one host with no public or
+          LAN projection, its secrets encrypted for that host, and backup and
+          hardening intent for every unit. The NixOS-typed projection must
+          also accept every compiled workload.
+        */
+        eval-gitlab-authority =
+          let
+            result = import ../../../../tests/eval/gitlab-authority.nix { inherit inputs lib; };
+          in
+          pkgs.runCommandLocal "eval-gitlab-authority" { } ''
+            echo ${lib.escapeShellArg result} > $out
+          '';
+
         eval-topology-conformance =
           let
             result = import ../../../../tests/eval/topology-conformance.nix { inherit inputs lib; };

@@ -300,6 +300,11 @@ let
         default = { };
         description = "Private listener metadata projected unchanged from the workload manifest.";
       };
+      recovery = mkOption {
+        type = types.nullOr (types.attrsOf types.str);
+        default = null;
+        description = "Compiler-validated recovery contract (`model`, `backupJob`) projected unchanged from the workload manifest; null when it declares none.";
+      };
       probeNames = mkOption {
         type = types.listOf types.str;
         default = [ ];

@@ -444,6 +444,7 @@ Counts, membership, and placement therefore change with configuration.
 
 | Host | Job | Tier | Effective targets | Include paths |
 |---|---|---|---|---|
+| `adelie` | `gitlab` | `irreplaceable` | `onetouch` | `/var/lib/gitlab/backup` |
 | `adelie` | `miniflux` | `service` | `onetouch` | `/var/backup/postgresql/miniflux.sql.gz` |
 | `adelie` | `radicale` | `service` | `onetouch` | `/var/lib/radicale` |
 | `adelie` | `vaultwarden` | `service` | `onetouch` | `/var/lib/vaultwarden`<br>`/var/backup/vaultwarden` |
