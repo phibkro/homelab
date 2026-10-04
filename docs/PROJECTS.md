@@ -49,6 +49,18 @@ motto, not a preference:
   v2 (infra / IaC — e.g. Cloudflare), Effect v4 (complex server-side /
   effectful logic), and Foldkit where its frontend model fits. Lean into it;
   don't hand-roll what these cover.
+- **Cloudflare outside Alchemy: use `cf`** (operator, 2026-10-04). Alchemy v2
+  declares Cloudflare resources. Where it is insufficient, use Cloudflare's
+  `cf` CLI ([launch](https://blog.cloudflare.com/cloudflare-cf-cli-launch/)),
+  not hand-written `curl`, the dashboard, or Wrangler (which `cf` replaces).
+  Typical cases: one-time secrets that must never enter Alchemy state
+  (Access service tokens, Worker secret values), API operations Alchemy has
+  no resource for, and read-only lookups. Pin `cf` in the project's lockfile,
+  run it with `DO_NOT_TRACK=1`, find commands with `cf cli search`, and pipe
+  secret values through stdin, never as arguments. Do not adopt
+  `cloudflare.config.ts`: a second infrastructure root would compete with
+  Alchemy. `cf` is generated from Cloudflare's public OpenAPI schema, so an
+  API field the schema lacks is missing from `cf` too.
 - Python is fine for disposable one-off investigation, but do not commit it as
   project source or scripts.
 - **Effect pushes dependencies to the seams:** use Effect as the application
