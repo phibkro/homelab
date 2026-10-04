@@ -156,6 +156,7 @@ Run each command on workstation, and complete its OAuth flow yourself:
 ```bash
 kwyne-auth-broker-login anthropic
 kwyne-auth-broker-login openai-codex
+kwyne-auth-broker-login opencode-go
 sudo systemctl restart kwyne-auth-gateway
 ```
 

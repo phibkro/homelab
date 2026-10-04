@@ -18,14 +18,20 @@ let
   # A relative dot keeps its canonical store exactly in the private state dir.
   configFolder = ".";
   brokerUrl = "http://${route.originHost}:${toString route.brokerPort}";
+  # Subscriptions the operator signs the broker into; ids from `omp auth-broker list`.
+  loginProviders = [
+    "anthropic"
+    "openai-codex"
+    "opencode-go"
+  ];
   login = pkgs.writeShellApplication {
     name = "kwyne-auth-broker-login";
     text = ''
       if [ "$#" -ne 1 ]; then
-        echo 'Usage: kwyne-auth-broker-login anthropic|openai-codex' >&2
+        echo 'Usage: kwyne-auth-broker-login ${lib.concatStringsSep "|" loginProviders}' >&2
         exit 2
       fi
-      case "$1" in anthropic|openai-codex) ;; *) echo 'Unsupported broker login provider' >&2; exit 2;; esac
+      case "$1" in ${lib.concatStringsSep "|" loginProviders}) ;; *) echo 'Unsupported broker login provider' >&2; exit 2;; esac
       exec /run/wrappers/bin/sudo -u ${brokerUser} ${pkgs.coreutils}/bin/env -i \
         HOME=${brokerState} PI_CONFIG_DIR=${configFolder} TERM="''${TERM:-xterm}" \
         PATH=${
