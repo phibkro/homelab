@@ -76,36 +76,32 @@ Access, the tunnel, or a model call.
 
 ### 2. Create the Access service token and store its response
 
-The lead runs this block once. It needs the existing Cloudflare control token
-with Access service-token write permission. Use a private terminal, not an
-agent transcript. Do not run this block again to diagnose an uncertain result:
-inspect token names in the Access dashboard first. The client secret appears
-only in the create response.
+The lead runs this block once in a private terminal. cf replaces the former curl procedure.
+The cloudflare-main SecretSpec token needs Access: Service Tokens Edit, unverified for that token.
+Do not repeat creation after an uncertain result. Inspect metadata with cf service-tokens list instead.
+The client secret appears only in the create response.
+
 
 ```bash
 set -euo pipefail
 set +x
 umask 077
+export DO_NOT_TRACK=1
 ACCOUNT_ID=$(cd src/infra/cloudflare && bun -e 'import { CLOUDFLARE_ACCOUNT_ID } from "./mcp-environment.ts"; console.log(CLOUDFLARE_ACCOUNT_ID)')
+export CLOUDFLARE_ACCOUNT_ID="$ACCOUNT_ID"
+cf_main() {
+  (cd src/infra/cloudflare && secretspec run --file ../../../secretspec.toml --profile workstation --scope cloudflare-main -- sh -c 'set +x; export CLOUDFLARE_API_TOKEN="$CLOUDFLARE_MCP_API_TOKEN"; export DO_NOT_TRACK=1; exec bun x --no-install cf "$@"' sh "$@")
+}
 TOKEN_NAME="kwyne-model-gateway-worker-$(date -u +%Y%m%dT%H%M%SZ)"
 PRIVATE_DIR=$(mktemp -d)
-trap 'rm -f "$PRIVATE_DIR/cloudflare.conf" "$PRIVATE_DIR/create.json"; printf "Protected token response retained at %s/token.json\n" "$PRIVATE_DIR" >&2' EXIT
-{
-  printf 'header = "Authorization: Bearer '
-  sops decrypt --extract '["cloudflare_mcp_api_token"]' secrets/operator-tools.yaml | tr -d '\n'
-  printf '"\n'
-} > "$PRIVATE_DIR/cloudflare.conf"
-jq -n --arg name "$TOKEN_NAME" '{name: $name, duration: "8760h"}' > "$PRIVATE_DIR/create.json"
-curl --fail --silent --show-error --config "$PRIVATE_DIR/cloudflare.conf" \
-  --header 'Content-Type: application/json' --request POST \
-  --data-binary @"$PRIVATE_DIR/create.json" \
-  --output "$PRIVATE_DIR/token.json" \
-  "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/access/service_tokens"
-jq -e '.success == true and (.result.id | type == "string") and (.result.client_id | length > 0) and (.result.client_secret | length > 0)' \
-  "$PRIVATE_DIR/token.json" > /dev/null
-jq '.result.id' "$PRIVATE_DIR/token.json" | sops set --value-stdin secrets/workstation-runtime.yaml '["kwyne-model-gateway-access-service-token-id"]'
-jq '.result.client_id' "$PRIVATE_DIR/token.json" | sops set --value-stdin secrets/workstation-runtime.yaml '["kwyne-model-gateway-access-client-id"]'
-jq '.result.client_secret' "$PRIVATE_DIR/token.json" | sops set --value-stdin secrets/workstation-runtime.yaml '["kwyne-model-gateway-access-client-secret"]'
+chmod 700 "$PRIVATE_DIR"
+trap 'printf "Protected token response retained at %s/token.json\n" "$PRIVATE_DIR" >&2' EXIT
+cf_main zero-trust access service-tokens create --name "$TOKEN_NAME" --duration 8760h > "$PRIVATE_DIR/token.json"
+chmod 600 "$PRIVATE_DIR/token.json"
+jq -e '(.id | type == "string") and (.client_id | length > 0) and (.client_secret | length > 0)' "$PRIVATE_DIR/token.json" > /dev/null
+jq '.id' "$PRIVATE_DIR/token.json" | sops set --value-stdin secrets/workstation-runtime.yaml '["kwyne-model-gateway-access-service-token-id"]'
+jq '.client_id' "$PRIVATE_DIR/token.json" | sops set --value-stdin secrets/workstation-runtime.yaml '["kwyne-model-gateway-access-client-id"]'
+jq '.client_secret' "$PRIVATE_DIR/token.json" | sops set --value-stdin secrets/workstation-runtime.yaml '["kwyne-model-gateway-access-client-secret"]'
 rm -rf "$PRIVATE_DIR"
 trap - EXIT
 ```
@@ -180,17 +176,20 @@ stop that specific session yourself. Never kill processes by name or user.
 ### 5. Set the Kwyne Worker secrets
 
 Use the actual deployed Worker name from the Kwyne deployment output.
-The `--name` argument selects that Worker; it does not select a new stage.
-These commands consume plaintext through pipes, not arguments or echo.
+The `--worker` argument selects that Worker, not a new stage.
+The SecretSpec token needs Workers Scripts Edit, unverified for that token.
+The installed beta.12 secret-text handler marks omitted `--text` as secret-kind and reads stdin.
+Run from the Homelab root with `cf_main` and the explicit account export from step 2.
 
 ```bash
-HOMELAB=/srv/share/projects/homelab
-cd /srv/share/projects/kwyne
+set -euo pipefail
+set +x
+export DO_NOT_TRACK=1
 read -r -p 'Deployed Kwyne Worker name: ' KWYNE_WORKER_NAME
-sops decrypt --extract '["kwyne-model-gateway-bearer"]' "$HOMELAB/secrets/workstation-runtime.yaml" | bun x wrangler secret put MODEL_GATEWAY_BEARER --name "$KWYNE_WORKER_NAME"
-sops decrypt --extract '["kwyne-model-gateway-access-client-id"]' "$HOMELAB/secrets/workstation-runtime.yaml" | bun x wrangler secret put MODEL_GATEWAY_ACCESS_CLIENT_ID --name "$KWYNE_WORKER_NAME"
-sops decrypt --extract '["kwyne-model-gateway-access-client-secret"]' "$HOMELAB/secrets/workstation-runtime.yaml" | bun x wrangler secret put MODEL_GATEWAY_ACCESS_CLIENT_SECRET --name "$KWYNE_WORKER_NAME"
-export MODEL_GATEWAY_URL="https://$(jq -r .hostname "$HOMELAB/src/infra/cloudflare/routes/kwyne-model-gateway.json")"
+sops decrypt --extract '["kwyne-model-gateway-bearer"]' secrets/workstation-runtime.yaml | cf_main workers secrets update MODEL_GATEWAY_BEARER --worker "$KWYNE_WORKER_NAME" --type secret_text
+sops decrypt --extract '["kwyne-model-gateway-access-client-id"]' secrets/workstation-runtime.yaml | cf_main workers secrets update MODEL_GATEWAY_ACCESS_CLIENT_ID --worker "$KWYNE_WORKER_NAME" --type secret_text
+sops decrypt --extract '["kwyne-model-gateway-access-client-secret"]' secrets/workstation-runtime.yaml | cf_main workers secrets update MODEL_GATEWAY_ACCESS_CLIENT_SECRET --worker "$KWYNE_WORKER_NAME" --type secret_text
+export MODEL_GATEWAY_URL="https://$(jq -r .hostname src/infra/cloudflare/routes/kwyne-model-gateway.json)"
 ```
 
 MODEL_GATEWAY_URL is configuration, not a secret. It must be the HTTPS origin
@@ -263,13 +262,39 @@ Do not change a Worker secret: the Worker never receives this bearer.
 
 ### Access service token
 
-Create a replacement with step 2, with a new timestamped name. Store all three
-fields, commit, apply the Homelab policy, and repeat both Access Worker commands.
-The policy always selects one UUID, so coordinate the short mismatch window.
-Check the public gates and a real model call before revoking the old token.
-Use its old UUID from the previous encrypted revision, not the client ID.
-Delete that specific token through the Access dashboard or the API endpoint
-`DELETE /accounts/{account_id}/access/service_tokens/{old_token_uuid}`.
+For secret rotation without a policy change, use the current UUID and the step 2 account/auth function.
+Access: Service Tokens Edit is required, unverified for the SecretSpec token.
+Choose a reviewed UTC overlap deadline. Without that flag, rotate immediately revokes the previous secret.
+
+```bash
+set -euo pipefail
+set +x
+umask 077
+export DO_NOT_TRACK=1
+TOKEN_ID=$(sops decrypt --extract '["kwyne-model-gateway-access-service-token-id"]' secrets/workstation-runtime.yaml)
+read -r -p 'Previous-secret expiry (UTC RFC3339): ' PREVIOUS_SECRET_EXPIRES_AT
+PRIVATE_DIR=$(mktemp -d)
+chmod 700 "$PRIVATE_DIR"
+cf_main zero-trust access service-tokens rotate "$TOKEN_ID" --previous-client-secret-expires-at "$PREVIOUS_SECRET_EXPIRES_AT" > "$PRIVATE_DIR/token.json"
+jq -e '(.client_id | length > 0) and (.client_secret | length > 0)' "$PRIVATE_DIR/token.json" > /dev/null
+jq '.client_id' "$PRIVATE_DIR/token.json" | sops set --value-stdin secrets/workstation-runtime.yaml '["kwyne-model-gateway-access-client-id"]'
+jq '.client_secret' "$PRIVATE_DIR/token.json" | sops set --value-stdin secrets/workstation-runtime.yaml '["kwyne-model-gateway-access-client-secret"]'
+rm -rf "$PRIVATE_DIR"
+```
+
+Commit the encrypted changes and repeat both Access Worker secret pipes before the overlap deadline.
+Keep a failed response protected until storage succeeds. Check the public gates and a real model call.
+Rotation retains the UUID and does not extend token expiry. For an expiring token, create a replacement with step 2.
+Store all three fields, commit, apply the Homelab policy, and repeat both Access Worker commands.
+The policy selects one UUID. Coordinate the short mismatch window and check both gates before deletion.
+Use the old UUID from the previous encrypted revision, not the client ID.
+Delete only that retired token with the same explicit account and auth:
+
+```bash
+read -r -p 'Retired token UUID: ' OLD_TOKEN_ID
+cf_main zero-trust access service-tokens delete "$OLD_TOKEN_ID"
+```
+
 Never delete the current policy or create a temporary bypass.
 
 ### Provider credentials and data loss
