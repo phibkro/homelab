@@ -73,7 +73,14 @@ let
           --replace-fail $'import "./Widgets" as Wid\n' "" \
           --replace-fail $'    Variants {\n        model: Quickshell.screens\n        Scope {\n            id: scopeRoot\n            required property ShellScreen modelData\n            Wid.WallpaperEngine {\n                modelData: scopeRoot.modelData\n            }\n        }\n    }\n' ""
 
+        # Side menu: no left-edge hover strip. The window is hidden while the
+        # drawer is closed, so the screen edge stays inert; open it with
+        # `qs -c persona ipc call appdrawer toggle` (Vicinae: "Persona Side Menu").
         substituteInPlace "$out/Layers/AppDrawer.qml" \
+          --replace-fail $'import Quickshell.Wayland\n' $'import Quickshell.Wayland\nimport Quickshell.Io\n' \
+          --replace-fail $'Scope {\n    id: root\n' $'Scope {\n    id: root\n    signal toggleRequested\n    signal openRequested\n    signal closeRequested\n\n    IpcHandler {\n        target: "appdrawer"\n        function toggle() {\n            root.toggleRequested();\n        }\n        function open() {\n            root.openRequested();\n        }\n        function close() {\n            root.closeRequested();\n        }\n    }\n' \
+          --replace-fail '            implicitWidth: toolskiRoot.isExpanded ? 500 : (toolskiRoot.isHovered ? 300 : 10)' $'            visible: toolskiRoot.isHovered || mainCircle.visible\n            implicitWidth: toolskiRoot.isExpanded ? 500 : 300' \
+          --replace-fail $'                Item {\n                    anchors.left: parent.left\n                    anchors.verticalCenter: parent.verticalCenter\n                    width: 10\n                    height: 100\n                    HoverHandler {\n                        onHoveredChanged: {\n                            if (hovered) {\n                                toolskiRoot.isHovered = true;\n                                autoHideTimer.stop();\n                            } else {\n                                if (!toolskiRoot.isExpanded)\n                                    autoHideTimer.restart();\n                            }\n                        }\n                    }\n                }\n' $'                function openDrawer() {\n                    autoHideTimer.stop();\n                    isHovered = true;\n                    isExpanded = true;\n                }\n                function closeDrawer() {\n                    autoHideTimer.stop();\n                    isExpanded = false;\n                    isHovered = false;\n                }\n                Connections {\n                    target: root\n                    function onToggleRequested() {\n                        if (toolskiRoot.isHovered)\n                            toolskiRoot.closeDrawer();\n                        else\n                            toolskiRoot.openDrawer();\n                    }\n                    function onOpenRequested() {\n                        toolskiRoot.openDrawer();\n                    }\n                    function onCloseRequested() {\n                        toolskiRoot.closeDrawer();\n                    }\n                }\n' \
           --replace-fail $'                    id: bladesContainer\n                    anchors.left: mainCircle.right' $'                    id: bladesContainer\n                    property int hoveredBlade: -1\n                    anchors.left: mainCircle.right' \
           --replace-fail $'                            id: blade\n                            width: 120' $'                            id: blade\n                            z: bladesContainer.hoveredBlade === index ? 100 : index\n                            opacity: bladesContainer.hoveredBlade < 0 || bladesContainer.hoveredBlade === index ? 1 : 0.45\n                            Behavior on opacity {\n                                NumberAnimation {\n                                    duration: 140\n                                    easing.type: Easing.OutCubic\n                                }\n                            }\n                            width: 120' \
           --replace-fail $'                                onHoveredChanged: {\n                                    if (hovered)\n                                        autoHideTimer.stop();\n                                }' $'                                onHoveredChanged: {\n                                    if (hovered) {\n                                        bladesContainer.hoveredBlade = index;\n                                        autoHideTimer.stop();\n                                    } else if (bladesContainer.hoveredBlade === index) {\n                                        bladesContainer.hoveredBlade = -1;\n                                    }\n                                }'
@@ -125,7 +132,10 @@ let
       export QML_IMPORT_PATH=${lib.escapeShellArg qmlImportPath}''${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}
       export QML2_IMPORT_PATH=${lib.escapeShellArg qmlImportPath}''${QML2_IMPORT_PATH:+:$QML2_IMPORT_PATH}
       export QT_PLUGIN_PATH=${lib.escapeShellArg qtPluginPath}''${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}
-      exec ${pkgs.quickshell}/bin/qs --path ${personaSource}/shell.qml
+      # By config name (xdg.configFile below), not store path: `qs -c persona
+      # ipc call …` (Vicinae's Persona commands) only finds an instance
+      # launched under the same name.
+      exec ${pkgs.quickshell}/bin/qs -c persona
     '';
   };
   personaWallpaper = pkgs.writeShellApplication {
@@ -253,6 +263,8 @@ in
       Description = "Persona Quickshell desktop shell";
       PartOf = [ config.wayland.systemd.target ];
       After = [ config.wayland.systemd.target ];
+      # ExecStart no longer embeds the source path; restart when it changes.
+      X-Restart-Triggers = [ "${personaSource}" ];
     };
     Install.WantedBy = [ config.wayland.systemd.target ];
     Service = {

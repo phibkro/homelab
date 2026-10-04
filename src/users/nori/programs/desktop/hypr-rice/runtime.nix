@@ -221,6 +221,28 @@ let
       icon = "system-search-symbolic";
       effect = "toggle";
     };
+    "space.persona-menu" = mkCommand {
+      label = "Space: Persona Side Menu";
+      description = "toggle the Persona side menu (calendar, stats, shaders, power)";
+      category = "space";
+      executable = "${pkgs.quickshell}/bin/qs";
+      args = [
+        "-c"
+        "persona"
+        "ipc"
+        "call"
+        "appdrawer"
+        "toggle"
+      ];
+      keywords = [
+        "drawer"
+        "sidebar"
+        "calendar"
+        "power"
+      ];
+      icon = "view-list-symbolic";
+      effect = "toggle";
+    };
     "space.cycle.next" = mkCommand {
       label = "Space: Cycle Next";
       description = "show the next special space";
