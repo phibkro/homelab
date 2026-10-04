@@ -121,13 +121,31 @@ Do not apply from an empty worktree: that loses resource ownership history.
 cd src/infra/cloudflare
 bun install --frozen-lockfile
 bun run plan
+bun run plan:projects
+bun run plan:projects-relay
+bun run plan:dev-share
+```
+
+The package scripts select the existing stage `dev_nori` explicitly. Do not
+use the new Alchemy CLI's implicit stage. The four plans must show no replacement
+or deletion of an existing resource before any apply. Review every plan.
+
+The main plan's gateway additions are `KwyneModelGatewayAccess` and
+`KwyneModelGatewayDns`. The main script supplies the workstation SecretSpec
+profile and `cloudflare-main` scope. Its output contains public IDs only.
+The existing Hindsight, projects, relay, and dev-share resources must remain.
+
+After that review, apply only the main stack for the new gateway:
+
+```bash
 bun run deploy
 ```
 
-The package scripts supply the workstation SecretSpec profile and
-`cloudflare-main` scope. Review the plan before apply. Its gateway additions
-are `KwyneModelGatewayAccess` and `KwyneModelGatewayDns`. The output contains
-public IDs only. The existing Hindsight resources must remain.
+The package pins Alchemy beta.80, Effect 4.0.0, and the matching platform
+packages. Mixed prerelease dependencies failed at import before this alignment.
+The Access compatibility resource retains the existing resource type and output
+IDs. Native Access resources use a different state identity, so replacing the
+compatibility resource here can replace existing applications.
 
 ### 4. Log in the providers (operator only)
 

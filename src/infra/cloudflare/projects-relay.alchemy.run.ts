@@ -17,10 +17,10 @@ export default Alchemy.Stack(
       name: "herdr-projects-relay",
       main: "./workers/herdr-projects-relay.ts",
       compatibility: { date: "2026-08-10" },
-      url: true,
+      workersDev: true,
       env: {
-        RelaySession: Cloudflare.DurableObjectNamespace<RelaySession>("RelaySession"),
-        RELAY_TOKEN: Config.redacted("HERDR_PROJECTS_MCP_BEARER_TOKEN"),
+        RelaySession: Cloudflare.DurableObject<RelaySession>("RelaySession"),
+        RELAY_TOKEN: Config.Redacted("HERDR_PROJECTS_MCP_BEARER_TOKEN"),
       },
       observability: {
         enabled: true,

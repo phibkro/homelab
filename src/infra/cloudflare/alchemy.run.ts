@@ -28,7 +28,7 @@ const HINDSIGHT_PORTAL_HOSTNAME = "memory-mcp.phibkro.org";
  * Cloudflare owns only resources that require a public edge. Nix builds use
  * public binary substituters directly.
  *
- * Operator: run `bun run login` once, then use `bun run deploy`. The package
+ * Operator: use `bun run profile` to configure access, then `bun run deploy`. The package
  * script supplies the declared SecretSpec command scope.
  */
 export default Alchemy.Stack(
@@ -38,9 +38,9 @@ export default Alchemy.Stack(
     state: State.localState(),
   },
   Effect.gen(function* () {
-    const bearerToken = yield* Config.redacted("HINDSIGHT_MCP_BEARER_TOKEN").pipe(Effect.orDie);
+    const bearerToken = yield* Config.Redacted("HINDSIGHT_MCP_BEARER_TOKEN").pipe(Effect.orDie);
     // Invalid deployment configuration is fatal at the stack boundary.
-    const serviceTokenId = yield* Config.string("KWYNE_MODEL_GATEWAY_ACCESS_SERVICE_TOKEN_ID").pipe(
+    const serviceTokenId = yield* Config.String("KWYNE_MODEL_GATEWAY_ACCESS_SERVICE_TOKEN_ID").pipe(
       Effect.flatMap(decodeServiceTokenId),
       Effect.orDie,
     );

@@ -15,12 +15,11 @@ import * as Stream from "effect/Stream";
 /*
  * Small Alchemy v2 resources for Cloudflare's 2026 MCP Portal API.
  *
- * Alchemy beta.45 does not yet expose MCP Portal or DNS Record resources, but
- * its Apache-2.0 @distilled.cloud/cloudflare dependency already ships the
- * generated, typed API operations. These providers deliberately stay thin:
- * observe the exact stable ID, create or update it, and delete only the ID
- * recorded in Alchemy state. Retire them when upstream Alchemy grows native
- * resources rather than letting this compatibility seam define new semantics.
+ * Keep these established resource types and stable IDs across Alchemy upgrades.
+ * Alchemy beta.80 has native counterparts, but switching resource types would
+ * change state ownership. Retire this seam only through an explicit,
+ * identity-preserving migration, not by replacing live resources. The
+ * Apache-2.0 @distilled.cloud/cloudflare operations remain the API boundary.
  */
 
 export interface McpServerProps {
@@ -113,7 +112,7 @@ const McpServerProvider = () =>
   Provider.effect(
     McpServer,
     Effect.gen(function* () {
-      const { accountId } = yield* CloudflareEnvironment;
+      const { accountId } = yield* (yield* CloudflareEnvironment);
       const controlCredentials = yield* Credentials;
       const authenticated = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
         effect.pipe(Effect.provideService(Credentials, controlCredentials));
@@ -209,7 +208,7 @@ const McpPortalProvider = () =>
   Provider.effect(
     McpPortal,
     Effect.gen(function* () {
-      const { accountId } = yield* CloudflareEnvironment;
+      const { accountId } = yield* (yield* CloudflareEnvironment);
       const controlCredentials = yield* Credentials;
       const authenticated = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
         effect.pipe(Effect.provideService(Credentials, controlCredentials));
@@ -284,7 +283,7 @@ const DnsRecordProvider = () =>
   Provider.effect(
     DnsRecord,
     Effect.gen(function* () {
-      const { accountId } = yield* CloudflareEnvironment;
+      const { accountId } = yield* (yield* CloudflareEnvironment);
       const get = yield* Dns.getRecord;
       const create = yield* Dns.createRecord;
       const update = yield* Dns.updateRecord;
@@ -405,7 +404,7 @@ const McpAccessPolicyProvider = () =>
   Provider.effect(
     McpAccessPolicy,
     Effect.gen(function* () {
-      const { accountId } = yield* CloudflareEnvironment;
+      const { accountId } = yield* (yield* CloudflareEnvironment);
       const controlCredentials = yield* Credentials;
       const applications = ZeroTrust.listAccessApplicationsForAccount;
 

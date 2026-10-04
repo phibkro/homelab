@@ -12,16 +12,16 @@ export const OPERATOR_EMAIL = "philib.krogh@gmail.com";
 export const cloudflareProviders = Cloudflare.providers();
 
 export const cloudflareControlDependencies = Layer.unwrap(
-  Config.redacted("CLOUDFLARE_MCP_API_TOKEN").pipe(
+  Config.Redacted("CLOUDFLARE_MCP_API_TOKEN").pipe(
     Effect.map((apiToken) =>
       Layer.merge(
         CloudflareCredentials.fromApiToken({ apiToken: Redacted.value(apiToken) }),
-        Layer.succeed(Cloudflare.CloudflareEnvironment, {
-          type: "apiToken",
+        Layer.succeed(Cloudflare.CloudflareEnvironment, Effect.succeed({
+          type: "apiToken" as const,
           apiToken,
           accountId: CLOUDFLARE_ACCOUNT_ID,
-          source: { type: "env", details: "CLOUDFLARE_MCP_API_TOKEN" },
-        }),
+          source: { type: "env" as const, details: "CLOUDFLARE_MCP_API_TOKEN" },
+        })),
       ),
     ),
   ),

@@ -5,13 +5,13 @@ import { Resource, type Resource as ResourceType } from "alchemy/Resource";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
-import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
+import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/http";
 
 /**
- * Compatibility resource: Alchemy beta.45 has an Access authentication client,
- * but no self-hosted application/policy resource. Retire this provider when
- * native Cloudflare Access application resources support these policy modes.
- * Service tokens are externally owned; only their UUID is accepted here.
+ * Alchemy beta.80 has native Access resources, but their type/attributes differ
+ * from this established state owner. Keep the compatibility identity until an
+ * explicit state migration can preserve application and policy IDs without
+ * replacement or deletion. Service tokens remain externally owned.
  */
 export type SelfHostedApplicationProps = {
   name: string;
@@ -115,7 +115,7 @@ const matchesServicePolicy = (policy: typeof Policy.Type, props: SelfHostedAppli
 const SelfHostedApplicationProvider = () => Provider.effect(
   SelfHostedApplication,
   Effect.gen(function* () {
-    const { accountId } = yield* CloudflareEnvironment;
+    const { accountId } = yield* (yield* CloudflareEnvironment);
     const controlCredentials = yield* Credentials;
     const client = yield* HttpClient.HttpClient;
     const request = Effect.fn("Access.request")(function*(

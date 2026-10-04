@@ -24,7 +24,7 @@ export default Alchemy.Stack(
     state: State.localState(),
   },
   Effect.gen(function* () {
-    const bearerToken = yield* Config.redacted("HERDR_PROJECTS_MCP_BEARER_TOKEN").pipe(
+    const bearerToken = yield* Config.Redacted("HERDR_PROJECTS_MCP_BEARER_TOKEN").pipe(
       Effect.orDie,
     );
 
