@@ -97,15 +97,18 @@ GitLab host
 
 ## Secrets
 
-All values live in the Secrets file of the placement table, owned by `gitlab`
-with mode `0400`. The age key of that host decrypts the file at activation. The
-operator keys listed for the file in `.sops.yaml` can decrypt it too. No other
-host can.
-`secretspec.toml` lists the values in the profile of that host.
+All values live in the Secrets file of the placement table. Activation installs
+the service keys for `gitlab` with mode `0400`. The operational password and
+sealer token stay encrypted in SOPS; no service consumes them yet. The age key
+of that host decrypts the service keys at activation. The operator keys listed
+for the file in `.sops.yaml` can decrypt it too. No other host can.
+`secretspec.toml` lists the service keys in the profile of that host.
 
 | SOPS key | Use | Change it |
 | --- | --- | --- |
 | `gitlab-initial-root-password` | Password of `root`. GitLab reads it only when it creates the first administrator | A later change in the file does not change the live password. Step 1 replaces the live password at once |
+| `gitlab-root-password` | Current operational password of `root` | Change the live password and this encrypted value together |
+| `gitlab-kwyne-sealer-token` | Project access token for the Kwyne sealer | Rotate before expiry; replace this encrypted value |
 | `gitlab-secret-key-base` | Rails `secret_key_base` | Never on an instance with data |
 | `gitlab-otp-key-base` | Rails `otp_key_base` | Never on an instance with data |
 | `gitlab-db-key-base` | Rails `db_key_base` | Never on an instance with data |
@@ -176,6 +179,42 @@ waits for approval. Do steps 1 and 2 in one sitting.
 Run these steps once, after the first activation. GitLab stores the results in
 its database. They are part of the restic backup and of a restore.
 
+### Workstation setup record (2026-10-04)
+
+The password replacement, settings, project, protections, and sealer token are
+complete. Runbook steps 1–6 are complete except root 2FA. The operator must
+register an authenticator in person. No temporary administrator token was necessary.
+
+| Fact | Observed value |
+| --- | --- |
+| Group | `kwyne` (id `2`), private; `root` is its Owner |
+| Project | `kwyne/kwyne` (id `1`), private, empty; no README or seed commit |
+| Project URL | `http://workstation.saola-matrix.ts.net:8929/kwyne/kwyne` |
+| Sign-ups / Git protocol | `signup_enabled=false`; `enabled_git_access_protocol=http` |
+| Initial branch protection | Fully protected (`2`); push/merge `40`, force push off, Developer initial push off |
+| `main` rule | Push and merge: Maintainers (`40`); force push off |
+| Tag rules | `kwyne/seal/*`, `kwyne`, and `kwyne/seal`; create: Maintainers (`40`) |
+| Token | `kwyne-sealer`, id `1`, Maintainer (`40`), scope `write_repository` only |
+| Token expiry | `2027-04-02` at midnight UTC (180 days after creation) |
+| Maintainer | `project_1_bot_fac313f36031805513c69779e8067a27` (the sealer bot) |
+| Owner | `root`, inherited from `kwyne`; no shared groups or other writers |
+| Added SOPS keys | `gitlab-root-password`, `gitlab-kwyne-sealer-token` |
+
+Real Git over loopback HTTP proved these boundaries in disposable scratch clones:
+
+- The sealer atomic push created `main` and `kwyne/seal/test-0`: `[new branch]` and `[new tag]`.
+- A non-fast-forward force push failed: `GitLab: You are not allowed to force push code to a protected branch on this project.`
+- `GET /api/v4/projects/1` with the sealer token returned HTTP 403, `insufficient_scope`.
+- A push without credentials failed: `could not read Username ... terminal prompts disabled`. The receive-pack discovery returned HTTP 401.
+
+The administrator then removed the test branch and tag through `gitlab-rails`
+as `gitlab`: unprotect, Gitaly `delete_refs`, expire repository caches, and reprotect.
+Direct administrative ref deletion avoids the default-branch deletion guard.
+Readback showed an empty repository, no branches, no tags, and all protections restored.
+The project and token were not recreated. Temporary credential files, helpers,
+and scratch clones were deleted. The seeded root-password key stayed unchanged.
+No NixOS rebuild or activation was necessary.
+
 Each step gives the UI path. Steps 2 to 6 also give the API call. `e2e-gitlab` runs
 the API calls of steps 2 to 6 and the refusals of step 8. It does not cover the
 sign-in of step 1 and the member check of step 7. Use the UI if you do not want an
@@ -183,22 +222,24 @@ API token.
 
 ### 1. Sign in as root and replace the password
 
-The seeded password sits in the SOPS file, and the NixOS module passes it to
-`gitlab-rake` as an argument each time `gitlab-db-config` runs. Replace it at
-once.
+The initial password sits in `gitlab-initial-root-password`. GitLab reads it
+only during database creation. Keep that seeded key unchanged after setup.
+The current workstation password now sits in `gitlab-root-password`.
 
-Copy the password to your clipboard. Do not print it or paste it into a log or a chat:
+Copy the current password to your clipboard. Do not print it or paste it into a log or a chat:
 
 ```bash
-sops decrypt --extract '["gitlab-initial-root-password"]' "secrets/$HOST-runtime.yaml" | wl-copy
+sops decrypt --extract '["gitlab-root-password"]' secrets/workstation-runtime.yaml | wl-copy
 ```
 
 1. Open `http://$HOST.saola-matrix.ts.net:8929` and sign in as `root`.
-2. Select your avatar, then **Edit profile** > **Access** > **Password and authentication**. Set a new password and keep it in your password manager ([passwords](https://docs.gitlab.com/19.3/user/profile/user_passwords/)).
-3. On the same page, register an authenticator under **One-time password authenticator** ([two-factor authentication](https://docs.gitlab.com/19.3/user/profile/account/two_factor_authentication/)).
+2. Select your avatar, then **Edit profile** > **Access** > **Password and authentication**.
+3. Register your authenticator under **One-time password authenticator** ([two-factor authentication](https://docs.gitlab.com/19.3/user/profile/account/two_factor_authentication/)).
 
-The SOPS value is now stale. It does not change the live password.
-If you lose the new password, reset it on the GitLab host
+The password replacement is complete. The authenticator registration still needs
+the operator. If you change the password, update the current SOPS key through
+`sops set --value-stdin`; do not change the seeded key.
+If you lose the password, reset it on the GitLab host
 ([reset a user password](https://docs.gitlab.com/19.3/security/reset_user_password/)):
 
 ```bash
@@ -257,18 +298,18 @@ first commit.
 
 Source: [create a blank project](https://docs.gitlab.com/19.3/user/project/).
 
-The API call creates the project in the namespace of the token owner.
+Create the private `kwyne` group first. Keep its response id as `GROUP_ID`.
+Then create the empty project in that namespace:
 
 ```bash
-# An empty private project in the namespace of the token owner: root/kwyne.
-# Projects API: https://docs.gitlab.com/19.3/api/projects/
+api -X POST "$GITLAB/api/v4/groups" \
+  -d '{"name":"Kwyne","path":"kwyne","visibility":"private"}'
+# Set GROUP_ID from the response; the workstation group id is 2.
 api -X POST "$GITLAB/api/v4/projects" \
-  -d '{"name":"kwyne","visibility":"private","initialize_with_readme":false}'
+  -d "{\"name\":\"Kwyne\",\"path\":\"kwyne\",\"namespace_id\":$GROUP_ID,\"visibility\":\"private\",\"initialize_with_readme\":false}"
 ```
 
-Keep the `id` of the response as `PROJECT_ID`, and the project path as `PROJECT`
-(`root/kwyne` here). To create the project in a group, add
-`"namespace_id": <group id>` to the body.
+Keep the project response id as `PROJECT_ID`, and set `PROJECT=kwyne/kwyne`.
 
 ### 4. Protect `main`
 
@@ -303,7 +344,14 @@ create** to **Maintainers**. Select **Protect**.
 ```bash
 api -X POST "$GITLAB/api/v4/projects/$PROJECT_ID/protected_tags" \
   -d '{"name":"kwyne/seal/*","create_access_level":40}'
+api -X POST "$GITLAB/api/v4/projects/$PROJECT_ID/protected_tags" \
+  -d '{"name":"kwyne","create_access_level":40}'
+api -X POST "$GITLAB/api/v4/projects/$PROJECT_ID/protected_tags" \
+  -d '{"name":"kwyne/seal","create_access_level":40}'
 ```
+
+The exact `kwyne` and `kwyne/seal` rules close the tag-prefix gap. Such tags
+can block later refs below them. GitLab 19.3.3 accepts all three rules together.
 
 Sources: [protected tags](https://docs.gitlab.com/19.3/user/project/protected_tags/),
 [protected tags API](https://docs.gitlab.com/19.3/api/protected_tags/).
@@ -343,8 +391,9 @@ Why this is the minimum:
 
 The sealer uses `http://127.0.0.1:8929/$PROJECT.git` on the GitLab host, or
 `http://$HOST.saola-matrix.ts.net:8929/$PROJECT.git` from another tailnet host.
-The sealer is not packaged in this repository yet. When it is, store the token as
-a SOPS secret of the sealer host.
+The sealer is not packaged in this repository yet. Its token already sits in
+`gitlab-kwyne-sealer-token` in the workstation SOPS file. No plaintext token
+is installed by NixOS. Store a replacement token with `sops set --value-stdin`.
 
 Revoke the temporary personal access token now.
 
@@ -379,16 +428,32 @@ scope `write_repository`. In a scratch clone, try both pushes. Each must fail wi
 the message shown. Then revoke the temporary token.
 
 ```bash
+umask 077
+credential_dir=$(mktemp -d)
+trap 'rm -rf "$credential_dir"' EXIT
 read -rs DEV_TOKEN        # paste the Developer token, then press Enter
-URL="http://probe:$DEV_TOKEN@$HOST.saola-matrix.ts.net:8929/$PROJECT.git"
+printf '%s' "$DEV_TOKEN" > "$credential_dir/token"
+unset DEV_TOKEN
+cat > "$credential_dir/askpass" <<'ASKPASS'
+#!/bin/sh
+case "$1" in
+  *Username*) printf '%s\n' probe ;;
+  *Password*) cat "$GITLAB_PROBE_TOKEN_FILE" ;;
+  *) exit 1 ;;
+esac
+ASKPASS
+chmod 0700 "$credential_dir/askpass"
+export GITLAB_PROBE_TOKEN_FILE="$credential_dir/token"
+export GIT_ASKPASS="$credential_dir/askpass" GIT_TERMINAL_PROMPT=0
+URL="http://$HOST.saola-matrix.ts.net:8929/$PROJECT.git"
 git push "$URL" HEAD:refs/heads/main
 # remote: GitLab: You are not allowed to push code to protected branches on this project.
 git tag -a -m probe kwyne/seal/probe && git push "$URL" refs/tags/kwyne/seal/probe
 # remote: GitLab: You are not allowed to create this tag as it is protected.
 ```
 
-The process list shows the URL, and so the token, while a push runs. Use a
-machine that only you use.
+Never embed a token in a Git URL or command argument. Use `GIT_ASKPASS` with
+a mode-0600 temporary credential file. Delete the file and helper after use.
 
 The sealer seals with one atomic push. `e2e-gitlab` runs it:
 
