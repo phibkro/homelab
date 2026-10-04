@@ -57,7 +57,11 @@ differs in these ways:
   sealer replicates `main` to the Cloudflare baseline, but not the seal tags.
 - **PostgreSQL.** GitLab uses the shared instance of the workstation. The first
   activation sets `max_locks_per_transaction`, so PostgreSQL restarts once. That
-  interrupts Immich and Paperless for a few seconds.
+  interrupts Immich and Paperless for a few seconds. The cloudflared tunnel also
+  forwards `vektor-db-origin.phibkro.org` to this instance (`tcp://127.0.0.1:5432`).
+  The `gitlab` role has no password, so a password login over TCP cannot
+  succeed. Only the socket login (peer) works. No `pg_hba.conf` rule rejects the
+  `gitlab` database by name. Add one if that tunnel route stays.
 - **Secrets.** The GitLab keys live in `secrets/workstation-runtime.yaml`.
 
 ## Exposure
@@ -273,8 +277,9 @@ Only the Maintainer role or a higher role can push or merge. Nobody can force pu
 UI: **Settings** > **Repository** > **Branch rules** > **Add branch rule** >
 **Branch name or pattern**. Select `main` and select **Create branch rule**.
 Set **Allowed to merge** and **Allowed to push and merge** to **Maintainers**.
-Keep force push off. The list offers `main` only after the first push, so protect
-it with the API call below before the sealer pushes.
+Keep force push off. The project is empty at this point. Use the API call below
+there: `e2e-gitlab` runs it on an empty repository and gets HTTP 201. The UI
+path on an empty repository is not verified.
 
 ```bash
 api -X POST "$GITLAB/api/v4/projects/$PROJECT_ID/protected_branches" \
