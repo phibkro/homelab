@@ -18,7 +18,10 @@
   through `runtimeDependencies`. It locates `assets/` (bundled fonts) beside
   its resolved executable, so the release layout is kept under lib/tern and
   bin/tern is an exec wrapper. The wrapper appends glib's `gdbus`, which Tern
-  runs to read the XDG settings portal (colour scheme, desktop settings).
+  runs to read the XDG settings portal (colour scheme, desktop settings), and
+  `zenity`, which Tern shells out to for native dialogs. Without it the log
+  records "no dialog tool (install zenity or kdialog)" each time a window
+  close asks for confirmation (observed 2026-10-04).
   Self-update requires that writable layout; in the read-only store it
   cannot update itself, and versions change only through this file.
 */
@@ -66,7 +69,12 @@ let
       mkdir -p $out/lib/tern $out/bin
       cp -r tern assets $out/lib/tern/
       makeWrapper $out/lib/tern/tern $out/bin/tern \
-        --suffix PATH : ${pkgs.lib.makeBinPath [ pkgs.glib.bin ]}
+        --suffix PATH : ${
+          pkgs.lib.makeBinPath [
+            pkgs.glib.bin
+            pkgs.zenity
+          ]
+        }
       runHook postInstall
     '';
 
