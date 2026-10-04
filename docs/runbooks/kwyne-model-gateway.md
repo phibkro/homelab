@@ -77,7 +77,8 @@ Access, the tunnel, or a model call.
 ### 2. Create the Access service token and store its response
 
 The lead runs this block once in a private terminal. cf replaces the former curl procedure.
-The cloudflare-main SecretSpec token needs Access: Service Tokens Edit, unverified for that token.
+The cloudflare-admin SecretSpec scope holds only the API token, which needs Access: Service Tokens Edit.
+SecretSpec requires a reason from agents; `cf_admin` passes one.
 Do not repeat creation after an uncertain result. Inspect metadata with cf service-tokens list instead.
 The client secret appears only in the create response.
 
@@ -89,14 +90,14 @@ umask 077
 export DO_NOT_TRACK=1
 ACCOUNT_ID=$(cd src/infra/cloudflare && bun -e 'import { CLOUDFLARE_ACCOUNT_ID } from "./mcp-environment.ts"; console.log(CLOUDFLARE_ACCOUNT_ID)')
 export CLOUDFLARE_ACCOUNT_ID="$ACCOUNT_ID"
-cf_main() {
-  (cd src/infra/cloudflare && secretspec run --file ../../../secretspec.toml --profile workstation --scope cloudflare-main -- sh -c 'set +x; export CLOUDFLARE_API_TOKEN="$CLOUDFLARE_MCP_API_TOKEN"; export DO_NOT_TRACK=1; exec bun x --no-install cf "$@"' sh "$@")
+cf_admin() {
+  (cd src/infra/cloudflare && SECRETSPEC_REASON="${SECRETSPEC_REASON:-Kwyne model gateway cf operation}" secretspec run --file ../../../secretspec.toml --profile workstation --scope cloudflare-admin -- sh -c 'set +x; export CLOUDFLARE_API_TOKEN="$CLOUDFLARE_MCP_API_TOKEN"; export DO_NOT_TRACK=1; exec bun x --no-install cf "$@"' sh "$@")
 }
 TOKEN_NAME="kwyne-model-gateway-worker-$(date -u +%Y%m%dT%H%M%SZ)"
 PRIVATE_DIR=$(mktemp -d)
 chmod 700 "$PRIVATE_DIR"
 trap 'printf "Protected token response retained at %s/token.json\n" "$PRIVATE_DIR" >&2' EXIT
-cf_main zero-trust access service-tokens create --name "$TOKEN_NAME" --duration 8760h > "$PRIVATE_DIR/token.json"
+cf_admin zero-trust access service-tokens create --name "$TOKEN_NAME" --duration 8760h > "$PRIVATE_DIR/token.json"
 chmod 600 "$PRIVATE_DIR/token.json"
 jq -e '(.id | type == "string") and (.client_id | length > 0) and (.client_secret | length > 0)' "$PRIVATE_DIR/token.json" > /dev/null
 jq '.id' "$PRIVATE_DIR/token.json" | sops set --value-stdin secrets/workstation-runtime.yaml '["kwyne-model-gateway-access-service-token-id"]'
@@ -179,16 +180,16 @@ Use the actual deployed Worker name from the Kwyne deployment output.
 The `--worker` argument selects that Worker, not a new stage.
 The SecretSpec token needs Workers Scripts Edit, unverified for that token.
 The installed beta.12 secret-text handler marks omitted `--text` as secret-kind and reads stdin.
-Run from the Homelab root with `cf_main` and the explicit account export from step 2.
+Run from the Homelab root with `cf_admin` and the explicit account export from step 2.
 
 ```bash
 set -euo pipefail
 set +x
 export DO_NOT_TRACK=1
 read -r -p 'Deployed Kwyne Worker name: ' KWYNE_WORKER_NAME
-sops decrypt --extract '["kwyne-model-gateway-bearer"]' secrets/workstation-runtime.yaml | cf_main workers secrets update MODEL_GATEWAY_BEARER --worker "$KWYNE_WORKER_NAME" --type secret_text
-sops decrypt --extract '["kwyne-model-gateway-access-client-id"]' secrets/workstation-runtime.yaml | cf_main workers secrets update MODEL_GATEWAY_ACCESS_CLIENT_ID --worker "$KWYNE_WORKER_NAME" --type secret_text
-sops decrypt --extract '["kwyne-model-gateway-access-client-secret"]' secrets/workstation-runtime.yaml | cf_main workers secrets update MODEL_GATEWAY_ACCESS_CLIENT_SECRET --worker "$KWYNE_WORKER_NAME" --type secret_text
+sops decrypt --extract '["kwyne-model-gateway-bearer"]' secrets/workstation-runtime.yaml | cf_admin workers secrets update MODEL_GATEWAY_BEARER --worker "$KWYNE_WORKER_NAME" --type secret_text
+sops decrypt --extract '["kwyne-model-gateway-access-client-id"]' secrets/workstation-runtime.yaml | cf_admin workers secrets update MODEL_GATEWAY_ACCESS_CLIENT_ID --worker "$KWYNE_WORKER_NAME" --type secret_text
+sops decrypt --extract '["kwyne-model-gateway-access-client-secret"]' secrets/workstation-runtime.yaml | cf_admin workers secrets update MODEL_GATEWAY_ACCESS_CLIENT_SECRET --worker "$KWYNE_WORKER_NAME" --type secret_text
 export MODEL_GATEWAY_URL="https://$(jq -r .hostname src/infra/cloudflare/routes/kwyne-model-gateway.json)"
 ```
 
@@ -275,7 +276,7 @@ TOKEN_ID=$(sops decrypt --extract '["kwyne-model-gateway-access-service-token-id
 read -r -p 'Previous-secret expiry (UTC RFC3339): ' PREVIOUS_SECRET_EXPIRES_AT
 PRIVATE_DIR=$(mktemp -d)
 chmod 700 "$PRIVATE_DIR"
-cf_main zero-trust access service-tokens rotate "$TOKEN_ID" --previous-client-secret-expires-at "$PREVIOUS_SECRET_EXPIRES_AT" > "$PRIVATE_DIR/token.json"
+cf_admin zero-trust access service-tokens rotate "$TOKEN_ID" --previous-client-secret-expires-at "$PREVIOUS_SECRET_EXPIRES_AT" > "$PRIVATE_DIR/token.json"
 jq -e '(.client_id | length > 0) and (.client_secret | length > 0)' "$PRIVATE_DIR/token.json" > /dev/null
 jq '.client_id' "$PRIVATE_DIR/token.json" | sops set --value-stdin secrets/workstation-runtime.yaml '["kwyne-model-gateway-access-client-id"]'
 jq '.client_secret' "$PRIVATE_DIR/token.json" | sops set --value-stdin secrets/workstation-runtime.yaml '["kwyne-model-gateway-access-client-secret"]'
@@ -292,7 +293,7 @@ Delete only that retired token with the same explicit account and auth:
 
 ```bash
 read -r -p 'Retired token UUID: ' OLD_TOKEN_ID
-cf_main zero-trust access service-tokens delete "$OLD_TOKEN_ID"
+cf_admin zero-trust access service-tokens delete "$OLD_TOKEN_ID"
 ```
 
 Never delete the current policy or create a temporary bypass.
