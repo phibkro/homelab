@@ -390,15 +390,17 @@ herdr agent list                      # enumerate (scope caveat below)
 
 ## MCP server posture
 
-`~/.claude/settings.json` is generated. The canonical MCP trust configuration
-lives in:
+Machine-wide MCP trust policy is Claude Code managed settings
+(`/etc/claude-code/managed-settings.json`), generated from:
 
-`/srv/share/projects/homelab/users/nori/programs/claude-code/default.nix`
+`/srv/share/projects/homelab/src/users/nori/programs/claude-code/default.nix`
 
-Do not copy its booleans or server lists here: they change independently and a
-copied snapshot has already drifted. A project `.mcp.json` declares the server
-surfaces needed by that project; the homelab source controls the machine-wide
-trust policy.
+`~/.claude/settings.json` is the operator's writable preference file (for
+example `enableAllProjectMcpServers`), protected by home snapshots rather than
+the repository. Do not copy its booleans or server lists here: they change
+independently and a copied snapshot has already drifted. A project `.mcp.json`
+declares the server surfaces needed by that project; managed settings control
+the machine-wide trust policy.
 
 To declare project MCP servers, drop an `.mcp.json` at the repo root:
 

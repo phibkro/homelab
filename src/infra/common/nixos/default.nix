@@ -19,6 +19,7 @@
   imports = [
     ./base.nix
     ../../../users/nori/identity.nix
+    ../../../users/nori/programs/claude-code/nixos.nix
     ./ssh.nix
     ./wifi.nix
     ../../../services/tailscale/nixos.nix

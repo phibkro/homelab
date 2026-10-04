@@ -13,8 +13,14 @@
   no operator agent loop, and the Node closure shouldn't land on pi's
   anti-write SSD.
 
-  Claude-specific static config only — settings.json and
-  ~/.claude/{agents,artifacts}/ — is wired in the home.file block below. The
+  Claude-specific static config — ~/.claude/{agents,artifacts}/, the status
+  line script, and the managed policy below — is wired in this module.
+  ~/.claude/settings.json belongs to the operator: `/config`, `/theme` and
+  other in-app commands write it, Nix never touches it, and btrbk and restic
+  `user-data` protect it with the rest of /home. Policy that must hold
+  regardless (hooks, managed-only MCP keys) is exported as
+  `nori.claudeCode.managedSettings`; ./nixos.nix installs it as
+  /etc/claude-code/managed-settings.json, which outranks every user file. The
   provider-neutral SOUL is owned by src/users/nori/programs/agent-soul; global
   skills are owned by src/users/nori/programs/agent-skills. Dynamic state
   (per-project memory, per-session todos, ~/.claude.json with OAuth tokens
@@ -32,7 +38,7 @@ let
   /*
     tilth — MCP server for structural file navigation (tree-sitter
     outlines instead of raw text). Activated per-project via .mcp.json
-    + the enabledMcpjsonServers allowlist below. Upstream ships a
+    + `enableAllProjectMcpServers` in ~/.claude/settings.json. Upstream ships a
     flake; we consume packages.default directly.
     See /srv/share/projects/CLAUDE.md for trigger guidance.
 
@@ -119,21 +125,22 @@ let
 
   /*
     Herdr's Claude integration is two artifacts that must agree: a hook script
-    on disk, and a `SessionStart` registration in settings.json that actually
-    invokes it. `herdr integration install claude` writes both — but it writes
-    the registration to ~/.claude/settings.json, which home-manager owns as a
-    read-only store symlink, so the write fails and only the script lands.
-    `herdr integration status` reads only the script's version marker, so it
-    reported "current" while the hook had never once fired.
+    on disk, and a `SessionStart` registration that actually invokes it.
+    `herdr integration status` reads only the script's version marker, so a
+    missing registration still reports "current" (that happened while
+    settings.json was a read-only store link and the installer's write
+    failed).
 
     Fix both halves declaratively from the pinned herdr revision, so the script
     and the binary that consumes it can never drift:
       * the script is installed from `inputs.herdr` (home.file, below);
-      * the registration is generated here to herdr's exact contract
-        (targets.rs `install_claude`): SessionStart only, matcher "*",
-        `<script> session`, timeout 10s. The script no-ops unless HERDR_ENV=1,
-        HERDR_SOCKET_PATH, and HERDR_PANE_ID are all set, so registering it
-        outside Herdr costs one fast exit.
+      * the registration is generated here into managed settings, to herdr's
+        exact contract (targets.rs `install_claude`): SessionStart only,
+        matcher "*", `<script> session`, timeout 10s. The script no-ops unless
+        HERDR_ENV=1, HERDR_SOCKET_PATH, and HERDR_PANE_ID are all set, so
+        registering it outside Herdr costs one fast exit.
+    Do not run `herdr integration install claude`: it would add a second
+    registration to the user file, and hooks from every layer run.
     Do not add the PostToolUse/Stop/SubagentStop entries older Herdr versions
     used; v7 explicitly removes them, and SubagentStop could revive an idle
     pane after the turn already ended.
@@ -192,40 +199,18 @@ let
   # Disjoint key sets, so `//` is a merge rather than a silent overwrite.
   hooks = agentNotifyHooks // herdrHooks;
 
-  settings = {
-    "$schema" = "https://json.schemastore.org/claude-code-settings.json";
-
-    theme = "auto";
-
-    /*
-      Default thinking depth. "high" gives Opus more headroom for
-      deeper structural reasoning by default; flip to "medium" if
-      latency starts to bite.
-    */
-    effortLevel = "high";
-
-    # Trusted dev loop — skip the launch-time warning AND don't prompt
-    # per tool call. Same trust model at two layers.
-    skipDangerousModePermissionPrompt = true;
-    permissions.defaultMode = "auto";
-
-    /*
-      MCP server posture: project-declared, machine-policy constrained.
-        * allowManagedMcpServersOnly: only servers permitted by managed
-          policy are loadable. Blocks ad-hoc unmanaged loads.
-        * enableAllProjectMcpServers: automatically enable the servers a
-          project's explicit .mcp.json declares; it does not invent or
-          globally enable server surfaces absent from that project.
-      Together these keep MCP capability explicit at the project seam while
-      avoiding a second per-server allowlist copied into user settings.
-    */
+  /*
+    Managed policy. Managed settings outrank every other layer, arrays such as
+    hooks merge with the user's, and some keys are read only from a managed
+    source.
+      * allowManagedMcpServersOnly: managed-only; ignore MCP allowlists from
+        user, project and local settings. No managed allowlist is declared,
+        so project `.mcp.json` servers still load.
+    Preferences (theme, effort, permission mode, status line, project MCP
+    auto-enable) live in the operator's ~/.claude/settings.json.
+  */
+  managedSettings = {
     allowManagedMcpServersOnly = true;
-    enableAllProjectMcpServers = true;
-
-    statusLine = {
-      type = "command";
-      command = "${statuslineScript}";
-    };
   }
   // lib.optionalAttrs (hooks != { }) { inherit hooks; };
 
@@ -293,7 +278,20 @@ let
 
 in
 {
-  imports = [ inputs.claudex.homeManagerModules.default ];
+  imports = [
+    inputs.claudex.homeManagerModules.default
+    {
+      options.nori.claudeCode.managedSettings = lib.mkOption {
+        type = lib.types.attrsOf lib.types.anything;
+        description = ''
+          Claude Code managed policy, installed by ./nixos.nix as
+          /etc/claude-code/managed-settings.json.
+        '';
+      };
+    }
+  ];
+
+  nori.claudeCode = { inherit managedSettings; };
 
   programs.claudex.enable = true;
 
@@ -302,8 +300,8 @@ in
     /*
       MCP servers — direct binaries from nixpkgs (no npx-fetch latency,
       version pinned by flake.lock). Wired into Claude Code via the
-      project-level .mcp.json at the repo root + enabledMcpjsonServers
-      in settings below.
+      project-level .mcp.json at the repo root + `enableAllProjectMcpServers`
+      in ~/.claude/settings.json.
     */
     pkgs.mcp-server-fetch # `fetch` — URL → markdown tool
     pkgs.context7-mcp # `context7` — library docs lookup
@@ -332,7 +330,8 @@ in
         source = ./artifacts;
         recursive = true;
       };
-      ".claude/settings.json".text = builtins.toJSON settings;
+      # Stable path for the operator's settings.json `statusLine.command`.
+      ".claude/statusline.sh".source = statuslineScript;
     }
 
     # The Herdr control-plane skill is provider-neutral and lives in

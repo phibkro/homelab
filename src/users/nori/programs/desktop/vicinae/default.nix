@@ -288,6 +288,36 @@ in
     settings.launcher_window.layer_shell.enabled = true;
   };
 
+  /*
+    Settings ownership. Vicinae's settings UI writes settings.json, so that
+    file belongs to the operator; btrbk and restic `user-data` protect it with
+    the rest of /home. Nix-declared settings (here and Stylix's theme/font) go
+    to nix.json, which settings.json lists in `imports`: vicinae merges
+    imports first and never writes them, so in-app changes override them.
+    The activation only guarantees that `imports` entry; it creates
+    settings.json with nothing else when the file is missing.
+  */
+  xdg.configFile."vicinae/settings.json".enable = lib.mkForce false;
+  xdg.configFile."vicinae/nix.json".source = config.xdg.configFile."vicinae/settings.json".source;
+  home.activation.vicinaeSettingsImport = lib.hm.dag.entryAfter [ "linkGeneration" ] ''
+    settings=${lib.escapeShellArg "${config.xdg.configHome}/vicinae/settings.json"}
+    nix_settings=${lib.escapeShellArg "${config.xdg.configHome}/vicinae/nix.json"}
+    jq=${lib.getExe pkgs.jq}
+    if [ -n "''${DRY_RUN:-}" ]; then
+      verboseEcho "vicinae: would ensure $settings imports $nix_settings"
+    elif [ ! -e "$settings" ]; then
+      "$jq" -n --arg i "$nix_settings" '{imports: [$i]}' > "$settings.tmp"
+      mv "$settings.tmp" "$settings"
+    elif ! "$jq" -e --arg i "$nix_settings" '(.imports // []) | index($i)' "$settings" >/dev/null 2>&1; then
+      if "$jq" --arg i "$nix_settings" '.imports = ((.imports // []) + [$i])' "$settings" > "$settings.tmp" 2>/dev/null; then
+        mv "$settings.tmp" "$settings"
+      else
+        rm -f "$settings.tmp"
+        warnEcho "vicinae: $settings is not plain JSON; add \"$nix_settings\" to its imports by hand"
+      fi
+    fi
+  '';
+
   home.packages = [ vicinaeLauncherLiveTest ];
 
   systemd.user.services = {

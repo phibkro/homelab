@@ -269,11 +269,16 @@ let
     && lib.all (homeName: hasHomePackage homeName "gh" == lib.elem homeName [ "workstation" ]) (
       lib.attrNames homes
     )
+    # settings.json stays operator-owned (writable, snapshot-protected);
+    # Claude policy reaches only hosts whose home imports claude-code.
+    && lib.all (homeName: !(builtins.hasAttr ".claude/settings.json" homes.${homeName}.home.file)) (
+      lib.attrNames homes
+    )
     && lib.all (
-      homeName:
-      builtins.hasAttr ".claude/settings.json" homes.${homeName}.home.file
-      == lib.elem homeName [ "workstation" ]
-    ) (lib.attrNames homes)
+      hostName:
+      builtins.hasAttr "claude-code/managed-settings.json" hosts.${hostName}.config.environment.etc
+      == (hostName == "workstation")
+    ) (lib.attrNames hosts)
     && homes.workstation.nori.agentNotify.enable
     && homes.workstation.nori.saturationAlert.enable
     && builtins.hasAttr ".codex/AGENTS.md" homes.workstation.home.file

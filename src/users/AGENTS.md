@@ -10,3 +10,11 @@ Keep host-specific package, resource-limit and `/srv/nori` link policy in
 `src/users/nori/home.nix`, and user declarations/authorized keys in
 `src/users/nori/identity.nix`. Preserve secret ownership and out-of-store link
 boundaries when editing these files.
+
+A settings file that its application writes (in-app settings, `config set`,
+save-on-exit) belongs to the operator: do not link, copy or reset it from Nix.
+Home snapshots (btrbk, restic `user-data`) protect it. Deliver only
+repository-derived values through the application's read-only layer: an
+overlay (OMP `PI_CONFIG_FILES`), managed policy (Claude Code
+`/etc/claude-code`), or an import (vicinae `imports`). Files generated from
+other sources (SOUL, Stylix theming, skills) stay Nix-owned.

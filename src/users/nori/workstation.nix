@@ -1,6 +1,7 @@
 {
   config,
   inputs,
+  lib,
   pkgs,
   ...
 }:
@@ -179,11 +180,13 @@ in
   programs.btop = {
     enable = true;
     /*
-      color_theme + theme_background managed by Stylix (src/profiles/desktop/nixos/
-      stylix.nix) via the Material You palette. Set to `default` here
-      would override Stylix; leave unset.
+      Stylix (src/profiles/desktop/nixos/stylix.nix) supplies the palette as
+      themes/stylix.theme. btop rewrites btop.conf on exit, so that file is
+      operator-owned (btrbk and restic `user-data` protect it with /home):
+      pick the `stylix` theme in btop's options menu.
     */
   };
+  xdg.configFile."btop/btop.conf".enable = lib.mkForce false;
 
   programs.fzf.enable = true; # Ctrl-R history, Ctrl-T file picker, **<Tab> hooks
   programs.zoxide.enable = true; # `z <fragment>` jumps to most-used dir match
