@@ -366,12 +366,17 @@ The isolated gateway stack does not apply them or change their declared intent.
 - **NixCache retirement.** The main stack omits `NixCache` and plans its deletion.
   That existing retirement is not gateway work. Do not apply the main stack
   to deploy this gateway.
-- **Four absent operator policies.** Read-only lookups found no exact name/allow
-  policy for `HindsightServerPolicy`, `HindsightPortalPolicy`,
-  `HerdrProjectsServerPolicyV3`, or `HerdrProjectsPortalPolicy` in their resolved
-  applications. Their interrupted `creating` rows have no attributes and still
-  plan as creates. The providers now adopt a unique matching policy if it
-  appears before apply; otherwise they create it. No policy was created here.
+- **Four unresolved operator policies.** Read-only provider probes could not resolve
+  `HindsightServerPolicy`, `HindsightPortalPolicy`,
+  `HerdrProjectsServerPolicyV3`, or `HerdrProjectsPortalPolicy`.
+  Direct application discovery returned seven self-hosted apps and one WARP app,
+  with no matching MCP or MCP-portal application. This does not prove the
+  policies are absent; their physical identities remain unknown.
+  The interrupted `creating` rows have no attributes and still plan as creates.
+  Reconciliation cannot proceed until the application materializes; it retries
+  that condition, then fails with `McpApplicationNotReady`. After resolution,
+  it adopts one matching name/allow policy, refuses duplicates, or creates when
+  none exists. Resolve these items separately; no policy was created here.
 - **Projects V1/V2 retirement.** `projects.alchemy.run.ts` declares only the
   V3 server and server policy. It omits `HerdrProjectsServer`,
   `HerdrProjectsServerV2`, `HerdrProjectsServerPolicy`, and
