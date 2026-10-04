@@ -20,9 +20,11 @@
   programs.git = {
     enable = true;
     settings = {
-      user.name = "phibkro";
+      user.name = "Philip B. Krogh";
       user.email = "71797726+phibkro@users.noreply.github.com";
+      user.useConfigOnly = true;
       init.defaultBranch = "main";
+      safe.directory = "*";
     };
   };
 
