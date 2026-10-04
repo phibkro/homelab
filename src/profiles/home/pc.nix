@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ ... }:
 
 /**
   Operator-attached computer profile. This is the public composition
@@ -11,5 +11,8 @@
     ./development/agentic-tools.nix
   ];
 
-  home.packages = [ pkgs.gh ];
+  programs.gh = {
+    enable = true;
+    gitCredentialHelper.enable = true;
+  };
 }
