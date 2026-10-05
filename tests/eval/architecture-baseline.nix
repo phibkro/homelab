@@ -83,6 +83,7 @@ let
       "jellyseerr"
       "komga"
       "kwyne-model-gateway"
+      "kwyne-sealer"
       "lidarr"
       "mcp-origin-tunnel"
       "music-ingest"

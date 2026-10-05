@@ -1,0 +1,8 @@
+{
+  "revision": "0e2db87a6c4f79bff17a4e55e2e92b6bc2420e35",
+  "controlPlane": { "url": "https://kwyne-control-plane.philib-krogh-d23.workers.dev", "stage": "dev" },
+  "authority": { "username": "project_1_bot_fac313f36031805513c69779e8067a27", "email": "kwyne-sealer@workstation.saola-matrix.ts.net" },
+  "repos": { "kwyne": { "remote": "http://127.0.0.1:8929/kwyne/kwyne.git", "branch": "main" } },
+  "pollIntervalMs": 5000,
+  "ntfy": { "server": "https://alert.home.phibkro.org" }
+}
