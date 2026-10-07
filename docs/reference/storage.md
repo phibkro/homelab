@@ -99,10 +99,39 @@ NVMe, but not loss of the workstation; Restic to the OneTouch remains the
 independent backup. The [generated backup reference](../generated/backups.md)
 lists each evaluated btrbk instance, its retention and its targets.
 
-The `@downloads` qgroup cap keeps the IronWolf below the 95% disk-alert
-threshold. It is the IronWolf budget less all other data, so it shrinks when
-snapshots or media grow. The derivation is next to the literal in
-`src/services/btrbk/nixos.nix`.
+## Allocation pressure
+
+Ordinary free data space does not establish available Btrfs metadata space.
+The shared pressure construct measures metadata use and unallocated device space together.
+Its policy lives in `src/infra/common/nixos/storage/pressure.nix`, under `nori.storagePressure`.
+
+The existing disk alarm consumes that construct. It reports a warning once per warning episode, after successful delivery.
+A failed measurement or critical pressure produces an urgent alert. A delivery failure fails the unit.
+The bounded maintenance worker reclaims empty data block groups and compacts only the configured data-block budget.
+It refuses further compaction without workspace. It never deletes files or changes metadata redundancy.
+
+Btrbk guards use the same classification and filesystem locks.
+They cover source subvolumes, snapshot directories, and off-disk receive targets.
+Under critical pressure, only cleanup permitted by the existing retention runs.
+The guard checks pressure again before a new snapshot. A refused snapshot fails the unit instead of reporting a successful backup.
+
+## Disposable cache boundaries
+
+The workstation registry marks only the explicit package-cache paths in `disko.nix` as re-derivable.
+Nested subvolumes exclude those caches from a parent home snapshot.
+Restic exclusions derive from the same registry, because a recursive backup still walks nested subvolumes.
+The remaining cache tree, browser state, credentials, and user work keep their existing protection.
+
+The cache migration checks disk identity and refuses open cache files.
+It preserves contents and metadata, then exchanges directories atomically.
+The original directory remains as `.pre-cache-separation` rollback material.
+Migration never deletes those originals. Removing them requires a separate operator decision after verification.
+
+Operational checks and recovery commands are in [the storage runbook](../runbooks/storage-full.md).
+
+The `@downloads` qgroup cap limits the IronWolf download budget.
+It does not guarantee metadata headroom or account for every other writer.
+The cap declaration is in `src/services/btrbk/nixos.nix`; the allocation alarm checks the remaining filesystem budget.
 
 Immich's dump location derives from `services.immich.mediaLocation`; its
 `backups` directory is already beneath the photos tree. Live metadata showed

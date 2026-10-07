@@ -2,22 +2,11 @@
   Pressure-safe snapshot policy — see
   docs/specs/2026-10-07-storage-pressure.md § "Snapshot policy".
 
-  Two layers in one file:
-
-  1. Unit wiring (evaluated): every btrbk instance's ExecStart is the
-     pressure guard, carrying that instance's own config, command and
-     touched paths; the unit requires the real source and target mounts
-     (not a parent directory that may sit on another filesystem); no
-     ExecCondition exists that could report a skipped snapshot as a
-     successful backup; User/Group/OnFailure survive the wrapper.
-
-  2. Business behaviour (built): the real generated guard script runs
-     against a disposable fixture that replaces only the two external
-     commands it consumes — `nori-storage-pressure` (implementing the
-     documented check/with-lock contract, including the measurement
-     JSON) and `btrbk` (recording its argv). The assertions are about
-     outcomes — exit status, which btrbk operation ran, how many
-     filesystems were locked and in what order — not about log text.
+  The generated guard runs against disposable pressure and backup adapters.
+  The cases cover refusal, retention cleanup, lock ownership, and source/target
+  filesystem identity. Assertions observe operations and exit status rather
+  than option copies or log wording. Unit deployment is checked through the
+  real workstation service after activation.
 */
 {
   inputs,
@@ -38,125 +27,6 @@ let
       throw "no btrbk instances to check: the snapshot policy test expects the workstation's snapshot instances"
     else
       lib.head (lib.splitString " " (execStartOf (lib.head instanceNames)));
-
-  confOf = name: "/etc/btrbk/${name}.conf";
-  commandOf = name: if instances.${name}.snapshotOnly then "snapshot" else "run";
-
-  # The paths the guard must be given, read from the instance's own settings.
-  configuredPathsOf =
-    name:
-    let
-      settings = instances.${name}.settings;
-      join =
-        base: rel:
-        if lib.hasPrefix "/" rel then
-          rel
-        else if base == "/" then
-          "/${rel}"
-        else
-          "${base}/${rel}";
-    in
-    lib.unique (
-      lib.concatLists (
-        lib.mapAttrsToList (
-          volume: vcfg:
-          let
-            subvolumes = vcfg.subvolume or { };
-          in
-          map (sub: join volume sub) (lib.attrNames subvolumes)
-          ++ [ (join volume settings.snapshot_dir) ]
-          ++ lib.attrNames (vcfg.target or { })
-        ) settings.volume
-      )
-    );
-
-  instancesOk = lib.elem "root" instanceNames && lib.elem "media" instanceNames;
-
-  # Targets declared on a volume section: the receive directories the run
-  # writes into, and therefore filesystems the guard must cover.
-  targetPathsOf =
-    name:
-    lib.unique (
-      lib.concatLists (
-        lib.mapAttrsToList (_: vcfg: lib.attrNames (vcfg.target or { })) instances.${name}.settings.volume
-      )
-    );
-
-  # Independent cross-check for the media instance: the filesystem registry
-  # says which /mnt/media entries are snapshot-worthy, so the guard must be
-  # given those paths — and not /mnt/media itself, which is a directory on the
-  # root filesystem.
-  registryMediaPaths = map (f: f.path) (
-    lib.filter (f: lib.hasPrefix "/mnt/media/" f.path && f.tier != "re-derivable") (
-      lib.attrValues config.nori.fs
-    )
-  );
-  ironwolfSnapshotMount = "/mnt/media/.snapshots";
-
-  # ExecStart is exactly the guard plus this instance's config, command and
-  # touched paths; and no instance may carry an ExecCondition that reports a
-  # skipped snapshot as a successful backup.
-  execStartOk = lib.all (
-    name:
-    execStartOf name == lib.escapeShellArgs (
-      [
-        guardExe
-        (confOf name)
-        (commandOf name)
-      ]
-      ++ configuredPathsOf name
-    )
-  ) instanceNames;
-  noExecCondition = lib.all (name: !((unitOf name).serviceConfig ? ExecCondition)) instanceNames;
-
-  # The filesystem-ownership facts the guard exists for: the root instance
-  # receives into the IronWolf, so that mount must be required and locked; the
-  # media instance's subvolumes are IronWolf subvolumes even though
-  # /mnt/media is on the root filesystem.
-  rootPaths = configuredPathsOf "root";
-  mediaPaths = configuredPathsOf "media";
-  ownershipOk =
-    lib.all (p: lib.elem p rootPaths) [
-      "/home"
-      "/srv/nori"
-      "/srv/share"
-      "/var/lib"
-      "/.snapshots"
-    ]
-    && lib.all (p: lib.elem p rootPaths) (targetPathsOf "root")
-    && lib.all (p: lib.elem p mediaPaths) registryMediaPaths
-    && lib.elem ironwolfSnapshotMount mediaPaths
-    && !(lib.elem "/mnt/media" mediaPaths)
-    && lib.all (
-      name: (unitOf name).unitConfig.RequiresMountsFor == configuredPathsOf name
-    ) instanceNames;
-
-  # The guard, not a silently-skipped condition, decides the unit's fate.
-  unitIntentOk = lib.all (
-    name:
-    let
-      unit = unitOf name;
-    in
-    unit.serviceConfig.User == "btrbk"
-    && unit.serviceConfig.Group == "btrbk"
-    && lib.elem "notify@btrbk-${name}.service" unit.unitConfig.OnFailure
-  ) instanceNames;
-
-  # The guard resolves nori-storage-pressure and btrbk from the unit PATH;
-  # asserting it here keeps the substitution seam and the production wiring
-  # the same fact.
-  pathOk = lib.all (
-    name:
-    let
-      inherit (unitOf name) path;
-    in
-    lib.any (p: toString p == toString config.nori.storagePressure.package) path
-    && lib.any (p: toString p == toString pkgs.btrbk) path
-  ) instanceNames;
-
-  lockOk =
-    config.nori.storagePressure.lockGroup == "btrbk"
-    && lib.elem "btrbk" (config.users.users.btrbk.extraGroups or [ ]);
 
   # nori-storage-pressure, reduced to the documented contract: `check` reports
   # the filesystem identity as JSON and exits with the next scripted code;
@@ -226,49 +96,6 @@ let
     '';
   };
 in
-assert lib.assertMsg instancesOk ''
-  the snapshot policy test expects the workstation's root and media snapshot
-  instances; found: ${lib.concatStringsSep " " instanceNames}
-'';
-assert lib.assertMsg execStartOk ''
-  every btrbk instance ExecStart must be the pressure guard with that
-  instance's own config, command and touched paths:
-    ${lib.generators.toPretty { } (lib.mapAttrs (name: _: execStartOf name) instances)}
-    expected paths: ${
-      lib.generators.toPretty { } (lib.mapAttrs (name: _: configuredPathsOf name) instances)
-    }
-'';
-assert lib.assertMsg noExecCondition ''
-  no btrbk unit may carry an ExecCondition that reports a skipped snapshot as
-  a successful backup:
-    ${lib.generators.toPretty { } (lib.mapAttrs (name: _: (unitOf name).serviceConfig) instances)}
-'';
-assert lib.assertMsg ownershipOk ''
-  the guard must be given every filesystem the instance touches, and the unit
-  must require those real source and target mounts:
-    root paths: ${lib.generators.toPretty { } rootPaths}
-    media paths: ${lib.generators.toPretty { } mediaPaths}
-    registry media paths: ${lib.generators.toPretty { } registryMediaPaths}
-    RequiresMountsFor: ${
-      lib.generators.toPretty { } (
-        lib.mapAttrs (name: _: (unitOf name).unitConfig.RequiresMountsFor) instances
-      )
-    }
-'';
-assert lib.assertMsg unitIntentOk ''
-  the wrapped btrbk units must keep User=btrbk, Group=btrbk and their
-  OnFailure → notify@ wiring:
-    ${lib.generators.toPretty { } (lib.mapAttrs (name: _: unitOf name) instances)}
-'';
-assert lib.assertMsg pathOk ''
-  each btrbk unit must provide nori-storage-pressure and btrbk on PATH:
-    ${lib.generators.toPretty { } (lib.mapAttrs (name: _: (unitOf name).path) instances)}
-'';
-assert lib.assertMsg lockOk ''
-  btrbk must share the allocation lock group with the maintenance worker:
-    lockGroup = ${config.nori.storagePressure.lockGroup}
-    btrbk groups = ${lib.concatStringsSep " " (config.users.users.btrbk.extraGroups or [ ])}
-'';
 pkgs.runCommandLocal "eval-snapshot-behavior"
   {
     nativeBuildInputs = [

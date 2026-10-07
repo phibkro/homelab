@@ -17,6 +17,37 @@ Pre-2026-05-14 prevention gaps that let this happen:
 - No free-space alerts (added 2026-05-14 — `src/services/disk-alert/`).
 - No Sonarr/Radarr/Lidarr `MinimumFreeSpaceWhenImporting` setting. Set per-instance via UI on first-run — see the *arr modules' setup comments.
 
+
+## Btrfs allocation pressure with free data space
+
+If applications report `ENOSPC` while `df` shows free space, check Btrfs allocation first.
+
+```sh
+sudo nori-storage-pressure probe /
+sudo btrfs filesystem usage /
+systemctl status disk-alert.service nori-storage-pressure-maintain.service
+```
+
+The shared probe reports metadata use, unallocated device bytes, and the pressure state.
+For Btrfs, pass a mountpoint to the CLI. Snapshot guards resolve nested source and receive directories to their containing mounts.
+Thresholds and work limits come from `nori.storagePressure`; do not maintain another threshold list here.
+
+If workspace remains, run the configured bounded worker:
+
+```sh
+sudo systemctl start nori-storage-pressure-maintain.service
+journalctl -u nori-storage-pressure-maintain.service -n 40
+sudo nori-storage-pressure probe /
+```
+
+The worker holds the same filesystem locks as snapshot operations. It defers when another operation owns the filesystem.
+It never runs an unrestricted balance, converts metadata profiles, or deletes data.
+If workspace is exhausted, it refuses further compaction and reports the blocker.
+
+Before any deletion, identify the exact files or snapshots and obtain operator approval.
+Do not reset application profiles or delete the entire cache tree. Some cache directories contain credentials and user work.
+After recovery, exercise an application save and check its result. A passing allocation probe does not establish application database integrity.
+
 ## Diagnose
 
 ```bash
@@ -118,6 +149,6 @@ df -h
 
 - `btrfs subvolume delete` returns immediately; the cleaner reclaims space async. `df` lags for minutes. Force with `sudo btrfs subvolume sync <path>` or just wait.
 - Don't `rm -rf` a btrfs subvolume — works but leaves the subvolume entry behind for the cleaner to chase.
-- At 100% full even deletes can fail (need metadata reserve). If stuck: `sudo btrfs balance start -dusage=10 /<mountpoint>` to reclaim mostly-empty data chunks first.
+- An allocation-pressure recovery can require workspace before compaction. Use the configured bounded worker, not an unrestricted balance command.
 - Stop writers *before* deleting their files; otherwise space stays marked-used until the process exits.
-- Today's daily snapshot will pin anything you delete today until the next btrbk run promotes/prunes. To free same-day, delete today's snapshot after the cull.
+- A daily snapshot can retain deleted blocks. Delete additional snapshots only with approval for the exact restore points.
