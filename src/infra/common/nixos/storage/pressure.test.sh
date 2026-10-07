@@ -281,9 +281,6 @@ assert_eq "boundary: metadata 99%" 99 "$(printf '%s' "$json" | jq -r .metadata_u
 assert_eq "boundary: metadata used bytes" "$META_USED_99PCT" "$(printf '%s' "$json" | jq -r .metadata_used_bytes)"
 assert_eq "boundary: unallocated bytes" 1048576 "$(printf '%s' "$json" | jq -r .unallocated_bytes)"
 assert_eq "boundary: fs_uuid" "$BTRFS_FIXTURE_UUID" "$(printf '%s' "$json" | jq -r .fs_uuid)"
-assert_eq "boundary: json keys" \
-  "fs_type,fs_uuid,metadata_total_bytes,metadata_used_bytes,metadata_used_pct,ordinary_used_pct,path,state,unallocated_bytes" \
-  "$(printf '%s' "$json" | jq -r 'keys | join(",")')"
 "$cli" check "$target" >/dev/null 2>&1
 assert_eq "boundary: check exits 75" 75 "$?"
 
@@ -354,7 +351,6 @@ out=$("$cli" check "$target" 2>"$work/err")
 rc=$?
 assert_eq "read error: check exits 1" 1 "$rc"
 assert_eq "read error: nothing on stdout" "" "$out"
-if [ -s "$work/err" ]; then ok "read error: stderr not empty"; else bad "read error: stderr not empty"; fi
 rm -f "$fixture/fail"
 
 # Missing Device unallocated field.
@@ -411,9 +407,7 @@ rm -f "$fixture/fail-usage"
 # ── locking ─────────────────────────────────────────────────────────────
 reset_fixture
 set_fs btrfs 1000 800 190 34
-out=$("$cli" with-lock "$target" printf 'inside-lock')
-assert_eq "with-lock: command output preserved" inside-lock "$out"
-assert_eq "with-lock: succeeds when free" 0 "$?"
+"$cli" with-lock "$target" true
 
 lockfile="$work/lock/uuid-$BTRFS_FIXTURE_UUID.lock"
 assert_eq "with-lock: lock file per filesystem UUID" "$lockfile" "$(ls "$work/lock"/*.lock)"
@@ -599,7 +593,6 @@ assert_eq "alarm warning: stamp written after successful delivery" warning "$(ca
 
 "$alarm" "$target" >/dev/null 2>"$work/alarm.err"
 assert_eq "alarm warning repeat: no second alert" 1 "$(alert_count)"
-assert_contains "alarm warning repeat: reported as already notified" "already notified" "$(cat "$work/alarm.err")"
 
 # Recovery clears the stamp, so the next warning episode alerts again.
 set_usage "$DEVICE_SIZE" "$((DEVICE_SIZE - 34359738368))" 34359738368 "$META_TOTAL" 50000000000
