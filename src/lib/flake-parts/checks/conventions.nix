@@ -392,6 +392,7 @@
                 "src/infra/common/nixos/backup.nix" = "test-backups";
                 "src/infra/common/nixos/service-hardening.nix" = "test-harden";
                 "src/infra/common/nixos/storage/default.nix" = "test-fs";
+                "src/infra/common/nixos/storage/pressure.nix" = "test-fs";
               };
               evaluationOnlySchemas = {
                 "src/infra/common/nixos/gpu.nix" =

@@ -14,6 +14,10 @@ let
   inherit (lib) mkOption types;
 in
 {
+  # Allocation pressure measurement/classification + bounded maintenance
+  # (`nori.storagePressure`). Lives beside the fs registry because both are
+  # storage-concern schemas; consumers wire it from their own modules.
+  imports = [ ./pressure.nix ];
 
   /**
     `nori.fs` — named filesystem locations + value-tier metadata.

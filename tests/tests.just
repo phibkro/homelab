@@ -457,12 +457,16 @@
 
     host=$(hostname)
     echo "=== test-fs on $host ==="
+    bash src/infra/common/nixos/storage/pressure.test.sh
 
     fs=$(nix eval ".#nixosConfigurations.$host.config.nori.fs" --json 2>/dev/null) || {
       echo "  ✗ failed to eval nori.fs for $host"
       exit 1
     }
-    backups=$(nix eval ".#nixosConfigurations.$host.config.nori.backups" --json 2>/dev/null || echo '{}')
+    backups=$(nix eval ".#nixosConfigurations.$host.config.nori.backups" --json) || {
+      echo "  ✗ failed to eval nori.backups for $host"
+      exit 1
+    }
     n_fs=$(echo "$fs" | nix shell nixpkgs#jq -c jq 'length')
     echo "  ✓ $n_fs declared nori.fs entries"
 

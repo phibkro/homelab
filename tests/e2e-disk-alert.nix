@@ -1,22 +1,43 @@
 /**
-  disk-alert pipeline — threshold breach → ntfy POST.
+  disk-alert pipeline — allocation-pressure classification → ntfy POST.
 
-  Same composition shape as Phase 7's notify@ pipeline (sops channel
-  → curl → ntfy), but the trigger is different: disk-alert checks df
-  on configured mountpoints and POSTs IF the usage crosses the
-  critical threshold. The test sets the threshold artificially low so
-  the check fires deterministically on the VM's own tmpfs root.
+  The alarm measures through the shared pressure construct
+  (`nori.storagePressure.package`) and runs the shared alarm body
+  (`src/infra/common/nixos/storage/pressure-alarm.bash`). This test exercises
+  that composition against real filesystems: the VM's own (non-btrfs) root for
+  the CLI contract and its error path, and a **real disposable btrfs volume**
+  (blank disk → `mkfs.btrfs` → mount at /mnt/nori-pressure-test) for the
+  alert. The ordinary threshold keeps its production default (95) while the
+  metadata thresholds are test-local, so the alert about that volume can only
+  come from metadata pressure with scarce expansion workspace — exactly the
+  boundary the spec names, measured by the production raw-byte parser,
+  observed through the read-only bind the unit runs under, and delivered by
+  the real nori.alerts path.
+
+  Uncertain classification boundaries (malformed/inconsistent/degraded
+  measurements, the warning alert and its stamp lifecycle, the bounded
+  maintenance argv, per-filesystem dedup) stay in
+  `src/infra/common/nixos/storage/pressure.test.sh`, which drives the same CLI
+  and the same alarm body against fixture bytes.
 
   What this catches:
-   • disk-alert.service ExecStart drift (the script breaks silently
-     and the alert never fires when a real workstation hits 95%)
-   • mountpoint visibility under nori.harden (the readOnlyBinds
-     plumbing — if it regresses, df fails inside the namespace and
-     no alert posts)
-   • sops decryption of ntfy-channel (the same path notify@ uses)
+   • the packaged CLI's measurement contract on real filesystems, including
+     that an unmeasurable path is an error, never a healthy result
+   • metadata-driven critical classification on a real btrfs volume, with the
+     affected mountpoint and the raw allocation bytes in the alert body
+   • disk-alert.service wiring drift (package path, unit environment, alert
+     body, threshold carried from diskAlert.criticalThresholdPct)
+   • critical alert delivery through the real nori.alerts path (sops channel
+     decryption + stub receiver)
+   • RuntimeDirectory preservation, without which the early warning would
+     re-alert on every poll
+   • with-lock refusing a second owner with 75
+   • bounded maintenance running against the real volume and refusing on
+     scarce workspace instead of escalating
+   • delivery failure failing the unit (fail closed)
 
-  Doesn't test the disk-alert.timer's schedule — that's nixpkgs +
-  systemd's job and already exercised by Phase 3's heartbeat.timer.
+  Doesn't test either timer's schedule — that's nixpkgs + systemd's job and
+  already exercised by Phase 3's heartbeat.timer.
 
   Invoked via `nix build .#checks.<system>.e2e-disk-alert`.
 */
@@ -90,12 +111,21 @@ pkgs.testers.runNixOSTest {
         description = "test stub";
       };
 
-      # Real disk-alert config, only with the knobs the test cares
-      # about overridden: tmpfs root is ~100% used (always >0%), so
-      # any threshold ≥1 fires.
+      # A real disposable btrfs volume is the alarm's subject. The ordinary
+      # threshold keeps its production default (95), so an alert about this
+      # volume can only come from the metadata/expansion-workspace
+      # classification. The metadata thresholds are test-local so a freshly
+      # created small filesystem classifies immediately: any nonzero metadata
+      # usage, with physical workspace far below the 2 GiB critical workspace.
+      virtualisation.emptyDiskImages = [ 256 ];
+      environment.systemPackages = [ pkgs.btrfs-progs ];
+
       nori.observability.diskAlert = {
-        mountpoints = [ "/" ];
-        criticalThresholdPct = 1;
+        mountpoints = [ "/mnt/nori-pressure-test" ];
+      };
+      nori.storagePressure = {
+        metadataWarningPct = 1;
+        metadataCriticalPct = 1;
       };
       # ntfy-notify owns the sops.secrets.ntfy-channel declaration AND the
       # infra channel that disk-alert now delivers through (nori.alerts);
@@ -143,43 +173,124 @@ pkgs.testers.runNixOSTest {
     };
 
   testScript = ''
+    import json
+
     start_all()
     pi.wait_for_unit("multi-user.target")
     pi.wait_for_unit("test-ntfy-receiver.service")
 
-    with subtest("disk-alert fires + POSTs through with the right shape"):
-        # Sanity baseline — receiver hasn't captured anything yet.
-        pi.succeed("test ! -s /var/lib/test-ntfy/messages || ! grep -q . /var/lib/test-ntfy/messages")
+    with subtest("the packaged CLI measures the real VM filesystem and never reports an error as healthy"):
+        meas = json.loads(pi.succeed("nori-storage-pressure probe /"))
+        assert set(meas) == {
+            "path", "fs_type", "fs_uuid", "ordinary_used_pct",
+            "metadata_used_bytes", "metadata_total_bytes",
+            "metadata_used_pct", "unallocated_bytes", "state",
+        }, f"unexpected measurement shape: {meas!r}"
+        assert meas["fs_type"] != "btrfs", (
+            f"VM root is btrfs, which the non-btrfs assertions below contradict: {meas!r}"
+        )
+        assert meas["metadata_used_pct"] is None and meas["unallocated_bytes"] is None, meas
+        assert meas["fs_uuid"] is None, meas
+        # A measurement error is an error, not a healthy filesystem.
+        pi.succeed("nori-storage-pressure check /nonexistent-mnt >/dev/null 2>&1; [ $? -eq 1 ]")
+        pi.succeed("test -z \"$(nori-storage-pressure probe /nonexistent-mnt 2>/dev/null)\"")
 
-        # Trigger the watchdog directly (the timer fires it every 30min
-        # in prod; we don't want to wait). The script is a oneshot so
-        # this blocks until completion.
+    with subtest("a real disposable btrfs volume alerts from metadata pressure alone"):
+        # The VM gets one blank disk; format and mount it for the alarm.
+        disk = pi.succeed(
+            "lsblk -dno NAME,TYPE | awk '$2 == \"disk\" && $1 != \"vda\" { print $1; exit }'"
+        ).strip()
+        assert disk, "no spare disk device found for the btrfs volume"
+        pi.succeed(f"mkfs.btrfs -f /dev/{disk}")
+        pi.succeed("mkdir -p /mnt/nori-pressure-test")
+        pi.succeed(f"mount -t btrfs /dev/{disk} /mnt/nori-pressure-test")
+
+        # A fresh metadata chunk starts nearly empty, so drive real metadata
+        # pressure until the production classifier trips (bounded: 20 batches
+        # of 500 files). This is the pressure the alarm exists to catch, on a
+        # real filesystem measured by the real parser.
+        def measure():
+            return json.loads(pi.succeed("nori-storage-pressure probe /mnt/nori-pressure-test"))
+
+        for batch in range(20):
+            if measure()["state"] == "critical":
+                break
+            pi.succeed(
+                "for i in $(seq 1 500); do echo x > /mnt/nori-pressure-test/f"
+                f"{batch * 500 + i}; done"
+            )
+
+        meas = measure()
+        assert meas["fs_type"] == "btrfs", meas
+        assert meas["fs_uuid"], meas
+        assert meas["state"] == "critical", (
+            f"real btrfs volume never reached metadata critical: {meas!r}"
+        )
+        # The ordinary threshold is the production 95, so this volume's alert
+        # cannot come from ordinary usage — only from metadata pressure with
+        # scarce expansion workspace.
+        assert meas["ordinary_used_pct"] < 95, meas
+        assert meas["metadata_used_pct"] >= 1, meas
+        assert meas["unallocated_bytes"] < 2 * 1024 ** 3, meas
+
         pi.succeed("systemctl start disk-alert.service")
-
-        # POST is synchronous within the script; the receiver should
-        # have the message before systemctl returns.
         captured = pi.succeed("cat /var/lib/test-ntfy/messages")
 
-        # URL path — channel from sops is "test-channel" (see
-        # scripts/regen-test-secrets.sh). PATH=/<channel>.
         assert "PATH=/test-channel" in captured, (
             f"alert posted to wrong path: {captured!r}"
         )
-        # Title header should carry "disk critical" + the mountpoint.
-        assert "disk critical" in captured, (
-            f"missing critical level in title: {captured!r}"
+        assert "disk critical (/mnt/nori-pressure-test" in captured, (
+            f"title missing the btrfs mountpoint: {captured!r}"
         )
-        assert "(/ " in captured, (
-            f"title missing the / mountpoint: {captured!r}"
-        )
-        # Urgency tier survived.
         assert "HDR Priority: urgent" in captured, (
             f"missing Priority: urgent: {captured!r}"
         )
-        # Runbook link is in the body — operators clicking the
-        # notification should reach the recovery procedure.
+        # The body must carry the real measured allocation numbers, not a
+        # summary an operator has to re-derive.
+        assert "btrfs metadata" in captured, (
+            f"body missing the btrfs metadata measurements: {captured!r}"
+        )
+        assert str(meas["metadata_used_bytes"]) in captured, (
+            f"body missing metadata_used_bytes {meas['metadata_used_bytes']}: {captured!r}"
+        )
+        assert str(meas["unallocated_bytes"]) in captured, (
+            f"body missing unallocated_bytes {meas['unallocated_bytes']}: {captured!r}"
+        )
         assert "storage-full.md" in captured, (
             f"body missing runbook reference: {captured!r}"
+        )
+
+    with subtest("the warning stamp survives a oneshot run"):
+        # With the production ordinary threshold and a fresh volume the
+        # classification is critical, so no warning fires here; what this
+        # asserts is the wiring that makes a once-per-episode warning
+        # possible at all — the unit's runtime directory, where the warning
+        # stamps live, is preserved across oneshot exits. The stamp semantics
+        # themselves (warn once, no repeat, recovery re-arms, a failed
+        # delivery is not marked notified) are covered by
+        # src/infra/common/nixos/storage/pressure.test.sh, which drives the
+        # same pressure-alarm.bash the unit executes.
+        assert pi.succeed(
+            "systemctl show -p RuntimeDirectoryPreserve --value disk-alert.service"
+        ).strip() == "yes"
+        pi.succeed("test -d /run/disk-alert")
+
+    with subtest("with-lock refuses a second owner"):
+        out = pi.succeed(
+            "nori-storage-pressure with-lock / sleep 3 >/dev/null 2>&1 & sleep 1; "
+            "nori-storage-pressure with-lock / true; echo rc=$?"
+        )
+        assert "rc=75" in out, f"expected 75 from the second owner: {out!r}"
+
+    with subtest("bounded maintenance runs against the real btrfs volume and refuses on scarce workspace"):
+        # The volume's physical workspace is far below the 2 GiB critical
+        # workspace, so the run must reclaim empty block groups (a real
+        # `btrfs balance start -dusage=0,limit=4`) and then refuse further
+        # compaction with an actionable error instead of escalating.
+        pi.fail("systemctl start nori-storage-pressure-maintain.service")
+        journal = pi.succeed("journalctl -u nori-storage-pressure-maintain.service")
+        assert "refusing further compaction" in journal, (
+            f"maintenance did not refuse on scarce workspace: {journal!r}"
         )
 
     with subtest("disk-alert fails closed when notification delivery fails"):

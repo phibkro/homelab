@@ -5,6 +5,10 @@
   ...
 }:
 
+let
+  cfg = config.nori.observability.diskAlert;
+  inherit (config.nori) storagePressure;
+in
 {
   /*
     Defaults match the production workstation storage shape; tests override these
@@ -21,10 +25,10 @@
         "/mnt/media/library"
       ];
       description = ''
-        df --output=target,pcent reports by mountpoint. One mountpoint
-        per btrfs filesystem is enough — any subvol mountpoint reads
-        the same usage as the parent. Override on hosts that don't
-        have all the prod mountpoints.
+        One mountpoint per physical filesystem; any subvolume mountpoint
+        reports the same allocation numbers as its parent, and maintenance
+        deduplicates paths by filesystem identity. Override on hosts that
+        don't have all the prod mountpoints.
       '';
     };
     criticalThresholdPct = lib.mkOption {
@@ -35,7 +39,9 @@
         metadata pressure starts failing operations including snapshot
         deletes — past that point recovery gets harder (see
         docs/runbooks/storage-full.md). Tests override to a low %
-        guaranteed to fire on the VM's underlying filesystem.
+        guaranteed to fire on the VM's underlying filesystem. Carried into
+        `nori.storagePressure.ordinaryCriticalPct` so the shared
+        measurement classifies against this one threshold.
       '';
     };
     # Delivery (channel + baseUrl) now lives on nori.alerts; disk-alert
@@ -44,10 +50,25 @@
   };
 
   config = {
+    /*
+      Wire the shared pressure construct this alarm measures through, keeping
+      one policy source: the monitored paths and the ordinary critical
+      threshold are disk-alert's own options, carried into
+      `nori.storagePressure` rather than copied. Enabling it here is the
+      workstation opt-in (the disk-alert workload module is selected only
+      there); the maintenance run targets the same filesystems.
+    */
+    nori.storagePressure = {
+      enable = lib.mkDefault true;
+      paths = lib.mkDefault cfg.mountpoints;
+      ordinaryCriticalPct = lib.mkDefault cfg.criticalThresholdPct;
+    };
+
     /**
-      disk-alert — periodic free-space watchdog. Fires an ntfy
+      disk-alert — periodic allocation-pressure watchdog. Fires an ntfy
       notification when any monitored filesystem crosses the critical
-      threshold.
+      threshold, warns once when a filesystem enters the warning band, and
+      treats an unmeasurable filesystem as an error.
 
       WHY: btrbk retention works in the steady state (proven by the
       2026-05-14 incident's btrbk-media run pruning correctly once we'd
@@ -58,7 +79,10 @@
       partials onto the SN750 until both drives are wedged.
 
       This module is the early-warning that catches that class of
-      problem before services break.
+      problem before services break. Measurement, classification and the
+      alert policy live in the storage concern's pressure package /
+      pressure-alarm.bash, so the alarm, the snapshot guard and the bounded
+      maintenance run cannot disagree about what "critical" means.
 
       It emits through nori.alerts (`operator` audience) — the same
       emit-point notify@ uses. The event differs (a disk threshold, not
@@ -66,31 +90,45 @@
     */
 
     systemd.services.disk-alert = {
-      description = "Check disk free space and alert via ntfy if low";
+      description = "Check filesystem allocation pressure and alert via ntfy if critical";
       serviceConfig = {
         Type = "oneshot";
         User = "root"; # nori-alert reads /run/secrets/ntfy-channel (mode 0444)
+        /*
+          Warning stamps live in the unit's runtime directory and must survive
+          between oneshot runs: without `RuntimeDirectoryPreserve` the
+          directory is removed on exit and the same warning would re-alert
+          every poll.
+        */
+        RuntimeDirectory = "disk-alert";
+        RuntimeDirectoryPreserve = "yes";
       };
       unitConfig.OnFailure = [ "notify@disk-alert.service" ];
-      path = [ pkgs.coreutils ];
+      path = [
+        pkgs.coreutils
+        pkgs.jq
+      ];
       script = ''
         set -euo pipefail
 
-        df --output=target,pcent ${lib.concatStringsSep " " config.nori.observability.diskAlert.mountpoints} \
-          | tail -n +2 \
-          | while read -r mount pct_raw; do
-              pct=''${pct_raw%\%}
-              if [ "$pct" -lt ${toString config.nori.observability.diskAlert.criticalThresholdPct} ]; then
-                continue
-              fi
-              ${config.nori.alerts.command} \
-                --audience operator \
-                --severity urgent \
-                --category disk \
-                --require-delivery \
-                --title "${config.networking.hostName}: disk critical ($mount $pct%)" \
-                --body "Filesystem $mount on ${config.networking.hostName} is $pct% used. See docs/runbooks/storage-full.md."
-            done
+        export PRESSURE_CLI=${storagePressure.package}/bin/nori-storage-pressure
+        export PRESSURE_ALERT_CMD=${config.nori.alerts.command}
+        export PRESSURE_HOST=${config.networking.hostName}
+        export PRESSURE_STATE_DIR=$RUNTIME_DIRECTORY
+        export PRESSURE_META_WARN_PCT=${toString storagePressure.metadataWarningPct}
+        export PRESSURE_META_CRIT_PCT=${toString storagePressure.metadataCriticalPct}
+        export PRESSURE_WARN_WORKSPACE_BYTES=${
+          toString (storagePressure.warningWorkspaceGiB * 1024 * 1024 * 1024)
+        }
+        export PRESSURE_CRIT_WORKSPACE_BYTES=${
+          toString (storagePressure.criticalWorkspaceGiB * 1024 * 1024 * 1024)
+        }
+
+        # Alarm policy (critical alert, once-per-episode warning, measurement
+        # failure is an error) lives beside the CLI it drives.
+        ${builtins.readFile ../../infra/common/nixos/storage/pressure-alarm.bash}
+
+        main ${lib.escapeShellArgs cfg.mountpoints}
       '';
     };
 
@@ -98,28 +136,31 @@
       description = "Periodic disk-alert check";
       wantedBy = [ "timers.target" ];
       timerConfig = {
-        # 5 min after boot, then every 30 min. Cheap; df is one syscall.
+        # 5 min after boot, then every 5 min: one statfs call per mountpoint,
+        # plus the btrfs allocation query on btrfs, so a climbing filesystem
+        # is caught while allocation workspace remains to act on.
         OnBootSec = "5min";
-        OnUnitActiveSec = "30min";
+        OnUnitActiveSec = "5min";
         # If we miss runs (suspended laptop, etc.) don't fire a stampede.
         AccuracySec = "1min";
       };
     };
 
-    nori.backups.disk-alert.skip = "Stateless — reads df and POSTs to ntfy on threshold breach.";
+    nori.backups.disk-alert.skip = "Stateless — measures statfs + btrfs allocation and POSTs to ntfy on threshold breach. Its runtime directory holds warning stamps, not data.";
 
     /*
-      df on any mountpoint under /mnt/* needs the path visible inside
-      the namespace; the baseline `/mnt:ro` tmpfs would otherwise mask
-      it. statfs() through a read-only bind reports the underlying
-      btrfs usage correctly. Root mount (`/`) is unaffected by the
-      baseline. ntfy-channel under /run/secrets stays reachable —
-      /run isn't restricted by ProtectHome.
+      Read-only bind visibility: services run in a namespace where the
+      baseline overlays /mnt and /srv as read-only tmpfs, so any configured
+      mountpoint under either prefix must be bound back in explicitly.
+      statfs() through a read-only bind reports the underlying usage
+      correctly, and the btrfs allocation queries are read-only ioctls —
+      verified through a `ro,bind` mount in an isolated mount namespace
+      (2026-10-07). Root mount (`/`) is unaffected by the baseline.
+      ntfy-channel under /run/secrets stays reachable — /run isn't restricted
+      by ProtectHome.
     */
     nori.harden.disk-alert = {
-      readOnlyBinds = lib.filter (
-        m: lib.hasPrefix "/mnt/" m
-      ) config.nori.observability.diskAlert.mountpoints;
+      readOnlyBinds = lib.filter (m: lib.hasPrefix "/mnt/" m || lib.hasPrefix "/srv/" m) cfg.mountpoints;
     };
   };
 }
