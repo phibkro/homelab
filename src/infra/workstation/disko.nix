@@ -1,4 +1,8 @@
-_: {
+{
+  lib,
+  ...
+}:
+let
   /*
     ── nori.fs declarations ───────────────────────────────────────────
     Named filesystem locations the SN750 root carries that service
@@ -7,7 +11,7 @@ _: {
     NixOS module convention, outside this Reader-effect's scope.
     @nix and @ are infrastructure, not user-facing.
   */
-  nori.fs = {
+  noriFs = {
     home = {
       path = "/home";
       tier = "user";
@@ -37,7 +41,59 @@ _: {
         deleteVetoFiles = true;
       };
     };
+    /*
+      Explicitly disposable caches — the first cache-separation round
+      (2026-10-07 storage-pressure spec, § "Disposable caches").
+      tier "re-derivable" is the single cache classification:
+      btrbk's snapshot filter keeps them out of snapshots, the
+      recursive restic user-data job derives explicit exclusion paths
+      from this same tier (src/services/restic-backup/nixos.nix), and
+      the boundaries below turn each into a nested @home subvolume.
+      Only the listed paths are disposable: the whole ~/.cache tree
+      and ~/.omp/agent/cache stay plain directories inside @home
+      (browser state, harness agent caches) because they are not
+      proven entirely re-derivable. Existing contents are preserved
+      at migration time — declaring an entry here does NOT wipe it.
+    */
+    home-cache-pip = {
+      path = "/home/nori/.cache/pip";
+      tier = "re-derivable";
+    };
+    home-cache-uv = {
+      path = "/home/nori/.cache/uv";
+      tier = "re-derivable";
+    };
+    home-cache-nix = {
+      path = "/home/nori/.cache/nix";
+      tier = "re-derivable";
+    };
   };
+
+  /*
+    Nested subvolume boundaries for the disposable caches, derived from
+    the registry above — the visible path (inside @home) is exactly the
+    plain-directory path that cache-migration.nix converts at runtime.
+
+    mountpoint = null is load-bearing: disko emits no fileSystems entry
+    and no mount unit for these, so the subvolume simply appears in
+    place under the /home mount once it exists. Activation therefore
+    cannot mount an empty boundary over existing data, and a failed or
+    busy migration leaves the plain directory (and its contents)
+    visible until a later successful run.
+  */
+  cacheSubvolumes = lib.mapAttrs' (
+    _: f: lib.nameValuePair "@home${lib.removePrefix "/home" f.path}" { mountpoint = null; }
+  ) (lib.filterAttrs (_: f: f.tier == "re-derivable" && lib.hasPrefix "/home/" f.path) noriFs);
+in
+{
+  /*
+    The runtime cache migration is wired from here because it validates
+    the root Btrfs identity this file pins (disk by-id + btrfs label).
+    Keep the import next to the declarations it depends on.
+  */
+  imports = [ ./cache-migration.nix ];
+
+  nori.fs = noriFs;
 
   /*
     Declarative partition layout for workstation's NVMe root. Applied
@@ -58,7 +114,6 @@ _: {
     invocation could wipe the wrong drive. by-id paths follow the
     hardware.
   */
-
   disko.devices = {
     disk.main = {
       type = "disk";
@@ -144,7 +199,8 @@ _: {
                     "noatime"
                   ];
                 };
-              };
+              }
+              // cacheSubvolumes;
             };
           };
         };
