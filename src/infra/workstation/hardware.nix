@@ -41,6 +41,9 @@
   `docs/roadmap.md § Architectural debt`.
 */
 
+let
+  wiredInterface = "enp42s0";
+in
 {
   imports = [
     /*
@@ -78,14 +81,23 @@
   # dhcpcd selects the route with the lowest metric; explicit values avoid
   # depending on interface enumeration order for its generated defaults.
   networking.dhcpcd.extraConfig = ''
-    interface enp42s0
+    interface ${wiredInterface}
     metric 100
 
     interface wlo1
     metric 300
   '';
 
-  # Device firmware and CPU microcode updates.
+  # UniFi device adoption lives on the wired LAN. Keep its inform/STUN/
+  # discovery ports off Wi-Fi and other interfaces.
+  networking.firewall.interfaces.${wiredInterface} = lib.mkIf config.services.unifi.enable {
+    allowedTCPPorts = [ config.nori.inventory.workloads.unifi.listeners.inform.port ];
+    allowedUDPPorts = [
+      config.nori.inventory.workloads.unifi.listeners.stun.port
+      config.nori.inventory.workloads.unifi.listeners.discovery.port
+    ];
+  };
+
   hardware.enableRedistributableFirmware = true;
   hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
 
@@ -134,7 +146,7 @@
     --- Wake-on-LAN ------------------------------------------------------
     Allow another LAN device to wake workstation with a magic packet.
     This enables the receiver; it does not configure an automatic sender.
-    Realtek RTL8125 (enp42s0) supports MagicPacket per ethtool's
+    Realtek RTL8125 wired NIC supports MagicPacket per ethtool's
     `Supports Wake-on: pumbg`. The `networking.interfaces.<n>.wakeOnLan`
     NixOS option emits a systemd-networkd `.link` file, which scripted
     networking (workstation uses `networking.useDHCP = true`) doesn't
@@ -142,14 +154,14 @@
     `ethtool -s wol g` is the path that actually sets the policy under
     scripted networking; same pattern as `ironwolf-spindown` below.
   */
-  systemd.services.wake-on-lan-enp42s0 = {
-    description = "Enable MagicPacket WoL on enp42s0";
+  systemd.services."wake-on-lan-${wiredInterface}" = {
+    description = "Enable MagicPacket WoL on ${wiredInterface}";
     wantedBy = [ "multi-user.target" ];
     after = [ "network.target" ];
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      ExecStart = "${pkgs.ethtool}/bin/ethtool -s enp42s0 wol g";
+      ExecStart = "${pkgs.ethtool}/bin/ethtool -s ${wiredInterface} wol g";
     };
   };
 

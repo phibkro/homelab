@@ -59,4 +59,5 @@ in
   vektorprogrammet-development = manifest ../services/vektorprogrammet-development/manifest.nix;
   victorialogs-server = manifest ../services/victorialogs/manifest.nix;
   victoriametrics = manifest ../services/victoriametrics/manifest.nix;
+  unifi = manifest ../services/unifi/manifest.nix;
 }
