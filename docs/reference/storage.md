@@ -115,17 +115,51 @@ They cover source subvolumes, snapshot directories, and off-disk receive targets
 Under critical pressure, only cleanup permitted by the existing retention runs.
 The guard checks pressure again before a new snapshot. A refused snapshot fails the unit instead of reporting a successful backup.
 
-## Disposable cache boundaries
+## Re-derivable boundaries and migration
 
-The workstation registry marks only the explicit package-cache paths in `disko.nix` as re-derivable.
-Nested subvolumes exclude those caches from a parent home snapshot.
-Restic exclusions derive from the same registry, because a recursive backup still walks nested subvolumes.
-The remaining cache tree, browser state, credentials, and user work keep their existing protection.
+The workstation `nori.fs` registry classifies explicit package caches and
+`/srv/share/projects` as `re-derivable`. Each has a nested Btrfs boundary with
+`mountpoint = null`: no mount is placed over the existing path. Btrbk parent
+snapshots omit nested subvolume contents; Restic still walks the live tree, so
+the same registry derives exclusions for the target and migration staging /
+rollback siblings.
 
-The cache migration checks disk identity and refuses open cache files.
-It preserves contents and metadata, then exchanges directories atomically.
-The original directory remains as `.pre-cache-separation` rollback material.
-Migration never deletes those originals. Removing them requires a separate operator decision after verification.
+The projects exclusion is intentional policy, not a claim that every project
+is disposable. Local-only files, ignored files, and uncommitted work may have
+no recoverable Git copy. Keep irreplaceable state outside this path or commit
+and push it before relying on Git for recovery. Existing snapshots and Restic
+history are not rewritten or deleted by this source change; retained history
+continues to follow existing snapshot retention.
+
+Home cache boundaries retain their existing guarded boot-time initialization
+in `nori-subvolume-migration-home.service`, including adoption of empty
+root-owned boundaries created by disko. It uses the shared per-filesystem
+allocation lock. Conversion of `/srv/share/projects` is deliberately manual:
+`nori-subvolume-migration-srv-share.service` has no boot target and uses the
+same migration tool and lock. Before starting that unit, operators must
+quiesce all project writers—including shells, editors, agents, services, and
+sessions. Its `lsof` checks reduce risk but cannot prove no process can start
+later. No projects migration or activation was performed as part of this
+change.
+
+The cutover reflink-copies and verifies staging, creates a read-only nested
+rollback snapshot, then exchanges the verified subvolume atomically. Reflinks
+share file data, but the copy still allocates new Btrfs metadata and inodes;
+verify metadata headroom first. An ENOSPC during copy or rollback-snapshot
+creation fails before cutover and leaves the original untouched (a failed
+cleanup may leave hidden staging for review). Existing snapshots remain and
+are not reclaimed by this change, so no immediate space recovery is implied.
+The verified old plain-directory duplicate is removed only after comparing
+the live tree and rollback snapshot against it and checking for late writers.
+The retained rollback is a hidden sibling subvolume; its contents are absent
+from parent snapshots and its path is included in registry-derived Restic
+exclusions.
+
+If cutover fails after exchange, the old plain directory is preserved at the
+hidden staging path and Restic excludes that path. A parent Btrfs snapshot
+cannot omit a plain directory: failure output explicitly warns that snapshots
+still include it until the state is reviewed and resolved. Never delete the
+preserved original or rollback snapshot without a separate recovery decision.
 
 Operational checks and recovery commands are in [the storage runbook](../runbooks/storage-full.md).
 

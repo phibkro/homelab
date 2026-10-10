@@ -56,11 +56,11 @@
           inherit inputs lib pkgs;
         };
 
-        eval-disposable-caches =
+        eval-rederivable-boundaries =
           let
-            result = import ../../../../tests/eval/disposable-caches.nix { inherit inputs lib; };
+            result = import ../../../../tests/eval/rederivable-boundaries.nix { inherit inputs lib; };
           in
-          pkgs.runCommandLocal "eval-disposable-caches" { } ''
+          pkgs.runCommandLocal "eval-rederivable-boundaries" { } ''
             echo ${lib.escapeShellArg result} > $out
           '';
 

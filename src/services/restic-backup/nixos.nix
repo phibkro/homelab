@@ -15,27 +15,44 @@ let
     lib.filterAttrs (_: f: f.tier == "irreplaceable") config.nori.fs
   );
   /*
-    Parent-backed-up jobs need explicit exclusions for the disposable
-    caches. A nested subvolume is structurally absent from a parent
-    btrfs snapshot, but restic walks the LIVE tree: dropping a re-derivable
-    entry from the snapshot/backup tier lists does NOT stop a recursive
-    include (e.g. `/home`) from sweeping the cache on its way past.
-    Derived from the same registry tier the caches are declared in
-    (src/infra/workstation/disko.nix), so a new re-derivable entry under
-    a backed-up path is excluded automatically rather than needing a
-    second hand-kept list that could disagree.
+    Parent-backed-up jobs need explicit exclusions for every re-derivable path.
+    Nested subvolume contents are absent from parent Btrfs snapshots, but Restic
+    walks the live tree: omitting a registry entry from snapshot/backup tier
+    lists does not stop a recursive include (such as /home) from traversing it.
+    The registry derives the target plus the guarded migration's hidden staging
+    and rollback siblings, so failure-preserved plain originals are excluded from
+    Restic without another hand-maintained path list. Parent snapshots still
+    include any failure-preserved plain staging directory until it is resolved.
   */
-  disposableUnder =
+  rederivableUnder =
     parents:
     lib.sort (a: b: a < b) (
-      lib.mapAttrsToList (_: f: f.path) (
-        lib.filterAttrs (
-          _: f: f.tier == "re-derivable" && lib.any (parent: lib.hasPrefix "${parent}/" f.path) parents
-        ) config.nori.fs
-      )
+      lib.concatMap
+        (
+          f:
+          let
+            path = f.path;
+            parent = lib.dirOf path;
+            base = lib.baseNameOf path;
+          in
+          [ path ]
+          ++ lib.optional (lib.any (p: lib.hasPrefix (p + "/") path) parents) (
+            parent + "/." + base + ".nori-subvolume-migration-staging"
+          )
+          ++ lib.optional (lib.any (p: lib.hasPrefix (p + "/") path) parents) (
+            parent + "/." + base + ".nori-subvolume-migration-rollback"
+          )
+        )
+        (
+          lib.attrValues (
+            lib.filterAttrs (
+              _: f: f.tier == "re-derivable" && lib.any (parent: lib.hasPrefix (parent + "/") f.path) parents
+            ) config.nori.fs
+          )
+        )
     );
-  userDataCacheExcludes = disposableUnder userDataPaths;
-  irreplaceableCacheExcludes = disposableUnder irreplaceablePaths;
+  userDataRederivableExcludes = rederivableUnder userDataPaths;
+  irreplaceableRederivableExcludes = rederivableUnder irreplaceablePaths;
   remote = backup.adelie;
   remoteKnownHosts = pkgs.writeText "adelie-backup-known-hosts" ''
     ${backup.hostname} ${remote.hostKey}
@@ -301,10 +318,9 @@ in
         "/home/nori/.claude/remote"
         "/home/nori/.claude/shell-snapshots"
       ]
-      # Disposable caches from the nori.fs registry (re-derivable tier
-      # under a user-tier path) — see disposableUnder above for why a
-      # subvolume boundary alone does not exclude a recursive include.
-      ++ userDataCacheExcludes;
+      # Re-derivable nori.fs paths under user-backed roots, including
+      # target and migration artifacts derived above.
+      ++ userDataRederivableExcludes;
       restoreSamples = [
         "/home/nori/.ssh/config"
         "/srv/nori/Documents/abstract_algebra.pdf"
@@ -325,7 +341,7 @@ in
     */
     nori.backups.media-irreplaceable = lib.mkIf (!remoteBackup && irreplaceablePaths != [ ]) {
       include = irreplaceablePaths;
-      exclude = irreplaceableCacheExcludes;
+      exclude = irreplaceableRederivableExcludes;
       tier = "irreplaceable";
       /*
         Cold canonical media changes slowly. Keep a week's daily recovery,

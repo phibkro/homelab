@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 #
-# Focused semantic test for the disposable-cache migration
-# (src/infra/workstation/cache-migrate.sh) and for the mechanisms the
-# cache separation relies on. Everything runs against real, disposable
-# loop-backed Btrfs filesystems under a temp directory — never the live
-# root, the live /home, a real cache, or a user process.
+# Focused semantic test for generic nested-subvolume migration
+# (src/infra/workstation/subvolume-migrate.sh). Everything runs against
+# real disposable loop-backed Btrfs filesystems under a temp directory —
+# never the live root, /home or /srv/share, or production data.
 #
 # Coverage:
 #   1. a busy cache refuses migration — an open file descriptor and a
@@ -29,26 +28,20 @@
 #      ownership derived from the cache parent;
 #   7. a root-owned boundary (an install-time disko creation) adopts that
 #      derived ownership — the boundary directory only, never its contents;
-#   8. migration preserves contents, ownership, mode and timestamp,
-#      keeps the original directory itself as rollback material (same
-#      inode), and never nests the staging tree inside the cache path;
-#   9. the cutover is one atomic renameat2(RENAME_EXCHANGE): the cache
-#      path is never renamed away, so no gap exists for a new writer and
-#      no plain-directory destination can swallow the staging tree;
+#   8. migration preserves contents and metadata, with a read-only nested
+#      rollback snapshot; only the verified duplicate original is removed;
+#   9. the cutover is one atomic renameat2(RENAME_EXCHANGE);
 #  10. a second run is a no-op;
-#  11. a snapshot of the parent subvolume omits the nested cache
-#      boundaries while a protected neighbouring directory stays;
-#  12. a recursive restic backup of the parent with the derived
-#      exclusion paths omits the caches and keeps that neighbour — the
-#      production failure mode, since a nested subvolume is absent from
-#      a snapshot but NOT from a live recursive walk.
+#  11. snapshots of both parents omit nested caches and projects;
+#  12. recursive Restic backup honors the derived exclusions.
 #
-# Usage: cache-migration_test.sh <path-to-cache-migrate.sh>
-# Requires: sudo -n, btrfs-progs, GNU coreutils >= 9.1 (mv --exchange),
-# strace, lsof, restic, findutils, util-linux, diffutils, gnused.
+# Usage: subvolume-migration_test.sh <path-to-subvolume-migrate.sh>
+# Requires: sudo -n, btrfs-progs, GNU coreutils >= 9.1, strace, lsof,
+# restic, findutils, util-linux, diffutils, gnused.
+
 set -euo pipefail
 
-script="${1:?usage: cache-migration_test.sh <path-to-cache-migrate.sh>}"
+script="${1:?usage: subvolume-migration_test.sh <path-to-subvolume-migrate.sh>}"
 script="$(readlink -f -- "$script")"
 
 fail() { printf 'FAIL: %s\n' "$*" >&2; exit 1; }
@@ -56,7 +49,7 @@ pass() { printf 'ok: %s\n' "$*"; }
 
 as_root() { sudo -n env "PATH=$PATH" "$@"; }
 
-work="$(mktemp -d /tmp/nori-cache-migration-test.XXXXXX)"
+work="$(mktemp -d /tmp/nori-subvolume-migration-test.XXXXXX)"
 img="$work/cache.img"
 img_other="$work/other.img"
 root="$work/fs"
@@ -101,15 +94,16 @@ cache_nix="$h/.cache/nix"
 cache_keep="$h/.cache/keepme"
 cache_browser="$h/.cache/chromium/Default/Cache"
 omp="$h/.omp/agent/cache"
+share="$root/share"
+projects="$share/projects"
 
-# The parent boundary a snapshot is taken of; the caches become nested
-# subvolumes inside it when the migration runs.
+# Both parent paths are backed-up source subvolumes. Nested targets must
+# disappear from parent snapshots without any mount hiding the live paths.
 as_root btrfs subvolume create "$root/home" >/dev/null
-# Fixtures are created by the invoking (non-root) user so the migration is
-# exercised against files it must preserve without owning.
-as_root chown 1000:100 "$root/home"
+as_root btrfs subvolume create "$share" >/dev/null
+as_root chown 1000:100 "$root/home" "$share"
 mkdir -p "$cache_pip/subdir" "$cache_uv" "$cache_nix" "$cache_keep" "$cache_browser" "$omp"
-
+mkdir -p "$projects/app" "$projects/local-only"
 printf 'alpha\n' > "$cache_pip/a.txt"
 printf 'beta\n' > "$cache_pip/subdir/b.txt"
 head -c 262144 /dev/urandom > "$cache_pip/blob.bin"
@@ -119,12 +113,14 @@ printf 'nix\n' > "$cache_nix/n.txt"
 printf 'keep\n' > "$cache_keep/protected.txt"
 printf 'browser-state\n' > "$cache_browser/entry"
 printf 'omp-agent-cache\n' > "$omp/omp.txt"
+printf 'tracked-style content\n' > "$projects/app/README"
+printf 'local ignored/uncommitted data\n' > "$projects/local-only/notes"
+printf 'project-neighbour\n' > "$share/projects-neighbour.txt"
 chmod 0751 "$cache_pip/subdir"
 chmod 0640 "$cache_pip/a.txt"
 chmod 0700 "$cache_pip"
-chown -R 1000:100 "$h"
+chown -R 1000:100 "$h" "$projects"
 touch -d '2020-01-02 03:04:05' "$cache_pip" "$cache_pip/a.txt" "$cache_pip/subdir"
-
 manifest() { find "$1" -mindepth 1 -printf '%P|%y|%m|%U|%G|%s|%l|%T@\n' | sort; }
 digest() { find "$1" -type f -print0 | sort -z | xargs -0 -r sha256sum | sha256sum; }
 meta() { stat -c '%a %u %g %Y %i' "$1"; }
@@ -137,7 +133,7 @@ pre_keep_manifest="$(manifest "$cache_keep")"
 pre_omp_manifest="$(manifest "$omp")"
 pre_browser_manifest="$(manifest "$cache_browser")"
 
-run_migrate() { as_root "$script" --device "$loop" --mount-device "$loop" --fs-label cache-test --home "$root/home" "$@"; }
+run_migrate() { as_root "$script" --device "$loop" --mount-device "$loop" --fs-label cache-test --parent "$root/home" --parent "$share" "$@"; }
 
 refuse() {
   local expected="$1"
@@ -178,16 +174,16 @@ for kind in fd cwd; do
     fail "migration accepted a cache with an active $kind writer"
   fi
   case "$out" in
-    *'refusing to migrate a busy cache'*) : ;;
+    *'refusing to migrate busy path'*) : ;;
     *) fail "busy ($kind) refusal did not come from the writer guard: $out" ;;
   esac
   if as_root btrfs subvolume show "$target" >/dev/null 2>&1; then
     fail "busy cache (${kind}) was converted into a subvolume"
   fi
-  [ ! -e "$target.pre-cache-separation" ] || fail "busy cache (${kind}) left rollback material behind"
-  [ ! -e "$(dirname "$target")/.$(basename "$target").cache-migration-staging" ] ||
-    fail "busy cache (${kind}) left a staging subvolume behind"
+  [ ! -e "$(dirname "$target")/.$(basename "$target").nori-subvolume-migration-rollback" ] || fail "busy cache (${kind}) left rollback material"
+  [ ! -e "$(dirname "$target")/.$(basename "$target").nori-subvolume-migration-staging" ] || fail "busy cache (${kind}) left staging material"
 done
+
 pass "a busy cache (open fd and cwd) refuses migration and stays untouched"
 
 for pid in "${holders[@]}"; do kill "$pid" 2>/dev/null; done
@@ -195,11 +191,11 @@ wait 2>/dev/null
 holders=()
 
 # ── 2. device / label mismatches refuse migration ─────────────────────
-if out="$(as_root "$script" --device "$loop_other" --mount-device "$loop" --fs-label cache-test --home "$root/home" "$cache_pip" 2>&1)"; then
+if out="$(as_root "$script" --device "$loop_other" --mount-device "$loop" --fs-label cache-test --parent "$root/home" --parent "$share" "$cache_pip" 2>&1)"; then
   fail "migration accepted a filesystem on a different device than declared"
 fi
 case "$out" in
-  *"not on the declared root disk"*) : ;;
+  *"not on declared root disk"*) : ;;
   *) fail "device mismatch was not reported as such: $out" ;;
 esac
 
@@ -231,9 +227,9 @@ refuse 'symlink' "$symlink_sub"
 mountpoint="$h/.cache/spare-mount"
 mkdir -p "$mountpoint"
 as_root mount -t tmpfs tmpfs "$mountpoint"
-refuse 'not btrfs' "$mountpoint"
+refuse 'not Btrfs' "$mountpoint"
 as_root umount "$mountpoint"
-[ ! -e "$mountpoint.pre-cache-separation" ] || fail "the migration touched a mount point"
+[ ! -e "$(dirname "$mountpoint")/.$(basename "$mountpoint").nori-subvolume-migration-staging" ] || fail "migration left staging for a mount point"
 
 # A bind mount of a plain directory IS on the declared btrfs, so only the
 # mount-point guard can catch it.
@@ -244,7 +240,7 @@ printf 'bind\n' > "$bind_src/data.txt"
 as_root mount --bind "$bind_src" "$bind_dst"
 refuse 'mount point' "$bind_dst"
 as_root umount "$bind_dst"
-[ ! -e "$bind_dst.pre-cache-separation" ] || fail "the migration touched a bind mount"
+[ ! -e "$(dirname "$bind_dst")/.$(basename "$bind_dst").nori-subvolume-migration-staging" ] || fail "migration left staging for a bind mount"
 
 # Identity validation must precede every no-op/adoption branch: a
 # root-owned boundary living on ANOTHER filesystem is refused and left
@@ -257,14 +253,13 @@ as_root install -m 0644 -o 0 -g 0 /dev/null "$wrong_device/root-owned.txt"
 as_root sh -c "printf 'root\n' > '$wrong_device/root-owned.txt'"
 wrong_before_meta="$(stat -c '%u:%g %a %i' "$wrong_device")"
 wrong_before_manifest="$(manifest "$wrong_device")"
-# --home matches the path so the home-path guard passes and the identity
-# validation is what must refuse.
-if out="$(as_root "$script" --device "$loop" --mount-device "$loop" --fs-label cache-test --home "$other_root/home" "$wrong_device" 2>&1)"; then
+# The configured parent path includes the foreign subvolume; identity validation must refuse it.
+if out="$(as_root "$script" --device "$loop" --mount-device "$loop" --fs-label cache-test --parent "$other_root/home" "$wrong_device" 2>&1)"; then
   fail "migration accepted a boundary on a different filesystem than declared"
 fi
 case "$out" in
-  *'not from the declared home partition'*) : ;;
-  *) fail "wrong-device refusal did not come from the identity validation: $out" ;;
+  *'not declared partition'*) : ;;
+  *) fail "wrong-device refusal did not come from identity validation: $out" ;;
 esac
 [ "$(stat -c '%u:%g %a %i' "$wrong_device")" = "$wrong_before_meta" ] ||
   fail "a refused wrong-device boundary changed ownership/inode (must not be adopted)"
@@ -272,14 +267,16 @@ esac
   fail "a refused wrong-device boundary had its contents changed"
 
 rollback="$h/.cache/spare-rollback"
-mkdir -p "$rollback" "$rollback.pre-cache-separation"
-refuse 'rollback material already exists' "$rollback"
-[ ! -e "$(dirname "$rollback")/.spare-rollback.cache-migration-staging" ] ||
+rollback_path="$(dirname "$rollback")/.$(basename "$rollback").nori-subvolume-migration-rollback"
+mkdir -p "$rollback" "$rollback_path"
+refuse 'rollback subvolume already exists' "$rollback"
+[ ! -e "$(dirname "$rollback")/.$(basename "$rollback").nori-subvolume-migration-staging" ] ||
   fail "the migration created staging despite existing rollback material"
 
 stale="$h/.cache/spare-stale"
-mkdir -p "$stale" "$h/.cache/.spare-stale.cache-migration-staging"
-refuse 'stale staging' "$stale"
+staging_path="$(dirname "$stale")/.$(basename "$stale").nori-subvolume-migration-staging"
+mkdir -p "$stale" "$staging_path"
+refuse 'stale staging path exists' "$stale"
 pass "symlink (incl. one pointing at a subvolume), foreign mount, bind mount, wrong-device boundary, rollback and stale-staging guards refused"
 
 # ── 4. an incomplete lsof scan is a blocker ───────────────────────────
@@ -315,15 +312,15 @@ for mode in anomaly zero; do
   printf 'lsof-%s\n' "$mode" > "$target/data.txt"
   chown -R 1000:100 "$target"
   before="$(manifest "$target")"
-  if out="$(sudo -n env "PATH=$shim_root/$mode:$PATH" "$script" --device "$loop" --mount-device "$loop" --fs-label cache-test --home "$root/home" "$target" 2>&1)"; then
+  if out="$(sudo -n env "PATH=$shim_root/$mode:$PATH" "$script" --device "$loop" --mount-device "$loop" --fs-label cache-test --parent "$root/home" --parent "$share" "$target" 2>&1)"; then
     fail "an incomplete lsof scan ($mode) was treated as a free cache"
   fi
   case "$out" in
     *'lsof'*) : ;;
     *) fail "lsof $mode refusal did not name the scan: $out" ;;
   esac
-  [ "$(manifest "$target")" = "$before" ] || fail "lsof $mode refusal changed the cache"
-  [ ! -e "$target.pre-cache-separation" ] || fail "lsof $mode refusal left rollback material"
+[ "$(manifest "$target")" = "$before" ] || fail "lsof $mode refusal changed the cache"
+[ ! -e "$(dirname "$target")/.$(basename "$target").nori-subvolume-migration-rollback" ] || fail "lsof $mode refusal left rollback material"
 done
 pass "an lsof scan that fails or returns success without listing a file is refused"
 
@@ -335,28 +332,27 @@ chown -R 1000:100 "$second"
 second_before="$(manifest "$second")"
 counter="$work/lsof-counter"
 printf 0 > "$counter"
-if out="$(sudo -n env "PATH=$shim_root/second:$PATH" LSOF_SHIM_COUNTER="$counter" "$script" --device "$loop" --mount-device "$loop" --fs-label cache-test --home "$root/home" "$second" 2>&1)"; then
+if out="$(sudo -n env "PATH=$shim_root/second:$PATH" LSOF_SHIM_COUNTER="$counter" "$script" --device "$loop" --mount-device "$loop" --fs-label cache-test --parent "$root/home" --parent "$share" "$second" 2>&1)"; then
   fail "the writer re-check before the cutover did not block a writer that appeared mid-copy"
 fi
 case "$out" in
-  *'refusing to swap a busy cache'*) : ;;
+  *'refusing to swap busy path'*) : ;;
   *) fail "the mid-copy writer did not block the cutover: $out" ;;
 esac
 if as_root btrfs subvolume show "$second" >/dev/null 2>&1; then
   fail "the blocked cutover still converted the cache"
 fi
-[ ! -e "$h/.cache/.spare-second-check.cache-migration-staging" ] ||
-  fail "the blocked cutover left its staging subvolume behind"
-[ "$(manifest "$second")" = "$second_before" ] || fail "the blocked cutover changed the original"
-[ ! -e "$second.pre-cache-separation" ] || fail "the blocked cutover left rollback material"
-pass "a mid-copy writer blocks the cutover, its staging is discarded, the original is untouched"
+[ ! -e "$(dirname "$second")/.$(basename "$second").nori-subvolume-migration-staging" ] || fail "blocked cutover left staging behind"
+[ "$(manifest "$second")" = "$second_before" ] || fail "blocked cutover changed the original"
+[ ! -e "$(dirname "$second")/.$(basename "$second").nori-subvolume-migration-rollback" ] || fail "blocked cutover left rollback material"
+pass "a mid-copy writer blocks cutover, discards only staging, and leaves the original untouched"
 
 # ── 6. an absent cache directory gets its boundary up front ───────────
 created="$h/.cache/spare-created"
 run_migrate "$created" >/dev/null
 as_root btrfs subvolume show "$created" >/dev/null 2>&1 ||
   fail "an absent cache path did not get a boundary created"
-[ ! -e "$created.pre-cache-separation" ] || fail "an empty boundary left rollback material"
+[ ! -e "$(dirname "$created")/.$(basename "$created").nori-subvolume-migration-rollback" ] || fail "empty boundary left rollback material"
 [ "$(stat -c '%u:%g %a' "$created")" = "$(stat -c '%u:%g %a' "$h/.cache")" ] ||
   fail "the created boundary did not adopt the cache parent's ownership/mode ($(meta "$created") vs $(meta "$h/.cache"))"
 pass "an absent cache path is created as a boundary owned like the cache parent"
@@ -376,42 +372,34 @@ run_migrate "$install_boundary" >/dev/null
   fail "ownership adoption changed the boundary's contents (it must touch only the boundary directory)"
 pass "a root-owned install-time boundary adopts derived ownership without touching contents"
 
-# ── 8. migration preserves everything, atomically ─────────────────────
+# ── 8. migration preserves everything and atomically cuts over ────────
 trace="$work/rename-trace.log"
 as_root strace -f -e trace=renameat2,rename -o "$trace" "$script" \
-  --device "$loop" --mount-device "$loop" --fs-label cache-test --home "$root/home" \
-  "$cache_pip" "$cache_uv" "$cache_nix" >/dev/null
+  --device "$loop" --mount-device "$loop" --fs-label cache-test --parent "$root/home" --parent "$share" \
+  "$cache_pip" "$cache_uv" "$cache_nix" "$projects" >/dev/null
 
-for p in "$cache_pip" "$cache_uv" "$cache_nix"; do
+for p in "$cache_pip" "$cache_uv" "$cache_nix" "$projects"; do
   as_root btrfs subvolume show "$p" >/dev/null 2>&1 || fail "$p is not a nested subvolume after migration"
-  [ -d "$p.pre-cache-separation" ] || fail "rollback material missing for $p"
-  if as_root btrfs subvolume show "$p.pre-cache-separation" >/dev/null 2>&1; then
-    fail "rollback material for $p is a subvolume, not the original directory"
-  fi
-  [ ! -e "$(dirname "$p")/.$(basename "$p").cache-migration-staging" ] ||
-    fail "staging subvolume left behind for $p"
-  [ ! -e "$p/.$(basename "$p").cache-migration-staging" ] ||
-    fail "the staging tree ended up nested inside the cache path $p"
+  rollback_path="$(dirname "$p")/.$(basename "$p").nori-subvolume-migration-rollback"
+  as_root btrfs subvolume show "$rollback_path" >/dev/null 2>&1 || fail "read-only rollback subvolume missing for $p"
+  [ "$(as_root btrfs property get -ts "$rollback_path" ro)" = "ro=true" ] || fail "rollback for $p is not read-only"
+  [ ! -e "$(dirname "$p")/.$(basename "$p").nori-subvolume-migration-staging" ] || fail "staging path remains for $p"
 done
 
-[ "$(manifest "$cache_pip")" = "$pre_pip_manifest" ] || fail "migrated cache contents/metadata differ from the original"
-[ "$(digest "$cache_pip")" = "$pre_pip_digest" ] || fail "migrated cache file contents differ from the original"
-[ "$(stat -c '%a %u %g %Y' "$cache_pip")" = "$pre_pip_meta" ] || fail "migrated cache directory metadata differs from the original"
-[ "$(manifest "$cache_pip.pre-cache-separation")" = "$pre_pip_manifest" ] ||
-  fail "rollback copy differs from the pre-migration tree"
-# The rollback directory must be the ORIGINAL directory itself (same
-# inode), which is what the exchange leaves behind — not a copy.
-[ "$(stat -c '%i' "$cache_pip.pre-cache-separation")" = "$pre_pip_inode" ] ||
-  fail "rollback material is not the original directory (inode changed)"
-[ "$(stat -c '%i' "$cache_pip")" != "$pre_pip_inode" ] ||
-  fail "the cache path still holds the pre-migration directory"
+[ "$(manifest "$cache_pip")" = "$pre_pip_manifest" ] || fail "migrated cache contents/metadata differ from original"
+[ "$(digest "$cache_pip")" = "$pre_pip_digest" ] || fail "migrated cache file contents differ from original"
+[ "$(stat -c '%a %u %g %Y' "$cache_pip")" = "$pre_pip_meta" ] || fail "migrated cache directory metadata differs from original"
+rollback_pip="$(dirname "$cache_pip")/.$(basename "$cache_pip").nori-subvolume-migration-rollback"
+[ "$(manifest "$rollback_pip")" = "$pre_pip_manifest" ] || fail "rollback snapshot differs from pre-migration tree"
+[ ! -e "$(dirname "$cache_pip")/.$(basename "$cache_pip").nori-subvolume-migration-staging" ] || fail "verified cutover left a plain staging duplicate"
+[ "$(stat -c '%i' "$cache_pip")" != "$pre_pip_inode" ] || fail "cache path still holds pre-migration directory inode"
+[ -f "$projects/app/README" ] && [ -f "$projects/local-only/notes" ] || fail "project data was not preserved"
+[ "$(cat "$projects/local-only/notes")" = "local ignored/uncommitted data" ] || fail "local-only project data changed"
 [ "$(manifest "$cache_keep")" = "$pre_keep_manifest" ] || fail "protected neighbouring directory changed"
-[ "$(manifest "$omp")" = "$pre_omp_manifest" ] || fail "the omp agent cache changed"
-[ "$(manifest "$cache_browser")" = "$pre_browser_manifest" ] || fail "browser cache directory changed"
-if as_root btrfs subvolume show "$cache_keep" >/dev/null 2>&1; then
-  fail "a protected neighbouring directory was turned into a subvolume"
-fi
-pass "migration preserves contents/metadata and keeps the original directory as rollback material"
+[ "$(manifest "$omp")" = "$pre_omp_manifest" ] || fail "omp agent cache changed"
+[ "$(manifest "$cache_browser")" = "$pre_browser_manifest" ] || fail "browser cache changed"
+if as_root btrfs subvolume show "$cache_keep" >/dev/null 2>&1; then fail "protected neighbour became a subvolume"; fi
+pass "migration preserves data/metadata, keeps read-only nested rollback, and removes only the verified plain duplicate"
 
 # ── 9. the cutover is a single atomic exchange ────────────────────────
 [ -s "$trace" ] || fail "the strace trace is empty — the cutover was not observed"
@@ -434,41 +422,52 @@ run_migrate "$cache_pip" "$cache_uv" "$cache_nix" >/dev/null
   fail "a second run disturbed the migrated boundary ownership"
 pass "a second run is a no-op"
 
-# ── 11. parent snapshot omits the nested caches ───────────────────────
+# ── 11. snapshots omit nested cache and project subvolumes ──────────
 snap="$root/snap-home"
+snap_share="$root/snap-share"
 as_root btrfs subvolume snapshot -r "$root/home" "$snap" >/dev/null
-[ -d "$snap/nori/.cache/pip" ] || fail "the parent snapshot lost the cache path entirely"
-[ -z "$(ls -A "$snap/nori/.cache/pip")" ] || fail "the nested cache subvolume leaked its contents into the parent snapshot"
-[ -f "$snap/nori/.cache/keepme/protected.txt" ] || fail "the protected neighbour is missing from the parent snapshot"
-[ -f "$snap/nori/.omp/agent/cache/omp.txt" ] || fail "the omp agent cache is missing from the parent snapshot"
-pass "the parent snapshot omits the nested caches and keeps protected neighbours"
+as_root btrfs subvolume snapshot -r "$share" "$snap_share" >/dev/null
+[ -d "$snap/nori/.cache/pip" ] || fail "home snapshot lost the cache path entirely"
+[ -z "$(ls -A "$snap/nori/.cache/pip")" ] || fail "home snapshot includes nested cache contents"
+[ -f "$snap/nori/.cache/keepme/protected.txt" ] || fail "protected home neighbour missing from snapshot"
+[ -f "$snap/nori/.omp/agent/cache/omp.txt" ] || fail "OMP agent cache missing from snapshot"
+[ -d "$snap_share/projects" ] || fail "share snapshot lost the projects path entirely"
+[ -z "$(ls -A "$snap_share/projects")" ] || fail "share snapshot includes nested project contents"
+[ -f "$share/projects-neighbour.txt" ] || fail "protected share neighbour missing from source"
+pass "snapshots omit nested cache/project data and preserve parent data"
 
-# ── 12. recursive restic backup with derived exclusions ───────────────
+# ── 12. recursive Restic honors registry-derived exclusions ─────────
 repo="$work/restic-repo"
 pwfile="$work/restic-password"
-printf 'cache-migration-test\n' > "$pwfile"
+printf 'subvolume-migration-test\n' > "$pwfile"
 export RESTIC_CACHE_DIR="$work/restic-cache"
 restic -r "$repo" --password-file "$pwfile" init >/dev/null
-restic -r "$repo" --password-file "$pwfile" backup \
-  --exclude "$cache_pip" --exclude "$cache_uv" --exclude "$cache_nix" \
-  "$root/home" >/dev/null
+exclusions=()
+for target in "$cache_pip" "$cache_uv" "$cache_nix" "$projects"; do
+  exclusions+=(--exclude "$target")
+  exclusions+=(--exclude "$(dirname "$target")/.$(basename "$target").nori-subvolume-migration-staging")
+  exclusions+=(--exclude "$(dirname "$target")/.$(basename "$target").nori-subvolume-migration-rollback")
+done
+restic -r "$repo" --password-file "$pwfile" backup "${exclusions[@]}" "$root/home" "$share" >/dev/null
 ls_output="$(restic -r "$repo" --password-file "$pwfile" ls latest)"
-for excluded in "$cache_pip" "$cache_uv" "$cache_nix"; do
-  # Match the path itself or a descendant — not merely a prefix, so the
-  # preserved rollback directory (<path>.pre-cache-separation) does not
-  # trip the assertion.
+for excluded in "$cache_pip" "$cache_uv" "$cache_nix" "$projects"; do
   if printf '%s\n' "$ls_output" | awk -v p="$excluded" '$0 == p || index($0, p "/") == 1 { found = 1 } END { exit found ? 0 : 1 }'; then
-    fail "recursive restic backup included the excluded cache $excluded"
+    fail "recursive Restic backup included excluded path $excluded"
   fi
 done
-printf '%s\n' "$ls_output" | grep -qF "$cache_pip.pre-cache-separation/a.txt" ||
-  fail "recursive restic backup dropped the preserved rollback material"
-printf '%s\n' "$ls_output" | grep -qF "$cache_keep/protected.txt" ||
-  fail "recursive restic backup dropped the protected neighbour"
-printf '%s\n' "$ls_output" | grep -qF "$omp/omp.txt" ||
-  fail "recursive restic backup dropped the omp agent cache"
-printf '%s\n' "$ls_output" | grep -qF "$cache_browser/entry" ||
-  fail "recursive restic backup dropped the browser cache directory"
-pass "recursive restic backup honours the derived exclusions and keeps protected neighbours"
+for target in "$cache_pip" "$cache_uv" "$cache_nix" "$projects"; do
+  for suffix in staging rollback; do
+    if [ "$suffix" = staging ]; then name=nori-subvolume-migration-staging; else name=nori-subvolume-migration-rollback; fi
+    excluded="$(dirname "$target")/.$(basename "$target").$name"
+    if printf '%s\n' "$ls_output" | awk -v p="$excluded" '$0 == p || index($0, p "/") == 1 { found = 1 } END { exit found ? 0 : 1 }'; then
+      fail "recursive Restic backup included migration artifact $excluded"
+    fi
+  done
+done
+printf '%s\n' "$ls_output" | grep -qF "$cache_keep/protected.txt" || fail "Restic dropped protected home neighbour"
+printf '%s\n' "$ls_output" | grep -qF "$omp/omp.txt" || fail "Restic dropped OMP agent cache"
+printf '%s\n' "$ls_output" | grep -qF "$cache_browser/entry" || fail "Restic dropped browser cache"
+printf '%s\n' "$ls_output" | grep -qF "$share/projects-neighbour.txt" || fail "Restic dropped protected share neighbour"
+pass "recursive Restic excludes nested cache/project data and migration artifacts while keeping protected neighbours"
 
-pass "all cache-separation checks passed"
+pass "all nested-subvolume migration checks passed"

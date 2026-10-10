@@ -67,32 +67,42 @@ let
       path = "/home/nori/.cache/nix";
       tier = "re-derivable";
     };
+    /**
+      Projects are intentionally excluded from workstation snapshots and
+      Restic to keep active, agent-writable working trees out of the backup
+      set. This is not a declaration that every project is disposable:
+      local-only, ignored, or uncommitted work may have no Git recovery path.
+      Keep important state elsewhere or commit/push it before relying on Git.
+    */
+    srv-share-projects = {
+      path = "/srv/share/projects";
+      tier = "re-derivable";
+    };
   };
 
   /*
-    Nested subvolume boundaries for the disposable caches, derived from
-    the registry above — the visible path (inside @home) is exactly the
-    plain-directory path that cache-migration.nix converts at runtime.
+    Nested subvolume boundaries for re-derivable paths under backed-up
+    parents, derived from the registry above. The guarded migration uses
+    the same visible paths; home cache setup remains automatic at boot.
 
     mountpoint = null is load-bearing: disko emits no fileSystems entry
     and no mount unit for these, so the subvolume simply appears in
-    place under the /home mount once it exists. Activation therefore
+    place under its parent mount once it exists. Activation therefore
     cannot mount an empty boundary over existing data, and a failed or
     busy migration leaves the plain directory (and its contents)
     visible until a later successful run.
   */
-  cacheSubvolumes = lib.mapAttrs' (
-    _: f: lib.nameValuePair "@home${lib.removePrefix "/home" f.path}" { mountpoint = null; }
-  ) (lib.filterAttrs (_: f: f.tier == "re-derivable" && lib.hasPrefix "/home/" f.path) noriFs);
+  rederivableSubvolumes = lib.mapAttrs' (
+    _: f: lib.nameValuePair "@${lib.removePrefix "/" f.path}" { mountpoint = null; }
+  ) (lib.filterAttrs (_: f: f.tier == "re-derivable") noriFs);
 in
 {
   /*
-    The runtime cache migration is wired from here because it validates
+    The runtime nested-subvolume migration is wired from here because it validates
     the root Btrfs identity this file pins (disk by-id + btrfs label).
     Keep the import next to the declarations it depends on.
   */
-  imports = [ ./cache-migration.nix ];
-
+  imports = [ ./subvolume-migration.nix ];
   nori.fs = noriFs;
 
   /*
@@ -200,7 +210,7 @@ in
                   ];
                 };
               }
-              // cacheSubvolumes;
+              // rederivableSubvolumes;
             };
           };
         };
