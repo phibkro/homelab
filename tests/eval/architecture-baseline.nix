@@ -104,6 +104,7 @@ let
       "stremio"
       "suwayomi"
       "syncthing"
+      "unifi"
       "vektorprogrammet-development"
     ];
   };
