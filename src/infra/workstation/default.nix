@@ -43,6 +43,25 @@
     "1.1.1.1"
   ];
 
+  # nsncd deliberately does not cache. Keep repeated application lookups local
+  # so they cannot consume Pi-hole's per-client allowance on every request.
+  # The NixOS module derives upstreams from the nameservers above via resolvconf.
+  services.dnsmasq = {
+    enable = true;
+    resolveLocalQueries = true;
+    settings = {
+      listen-address = [
+        "127.0.0.1"
+        "::1"
+      ];
+      bind-interfaces = true;
+      strict-order = true;
+      cache-size = 1000;
+      server = [ "/${config.nori.inventory.site.tailnetDomain}/100.100.100.100" ];
+    };
+  };
+  nori.harden.dnsmasq = { };
+
   /*
     Add the operator user to the `media` group so shell access and
     services running as `nori` can write to the media and family-library
@@ -119,9 +138,9 @@
   nori.agentFix.enable = false;
   nori.agentFix.units = map (name: "btrbk-${name}") (lib.attrNames config.services.btrbk.instances);
 
-  # Tailnet service discovery uses MagicDNS. Keep this explicit on
-  # the existing enrolled node; extraUpFlags only apply during first login.
-  services.tailscale.extraSetFlags = [ "--accept-dns=true" ];
+  # Keep the explicit LAN resolver policy above on the enrolled node too.
+  # Accepting tailnet DNS replaces that policy with the tailnet resolver path.
+  services.tailscale.extraSetFlags = [ "--accept-dns=false" ];
 
   /*
     /tmp is a btrfs subvolume inside @ on the system NVMe, not a tmpfs, so

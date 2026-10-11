@@ -117,7 +117,10 @@ let
       domain = "home.phibkro.org";
       deprecatedDomains = [ "nori.lan" ];
       entryPlaneHost = "pi";
+      tailnetDomain = "saola-matrix.ts.net";
     }
+    && inventory.backup.hostname == "${inventory.backup.targetHost}.${inventory.site.tailnetDomain}"
+    && inventory.backup.targetHost == "workstation"
     && inventory.hosts.${inventory.site.entryPlaneHost}.kind == "ansible"
     && !(builtins.hasAttr inventory.site.entryPlaneHost inputs.self.nixosConfigurations)
     && lib.all (endpoint: endpoint.runsOn == inventory.site.entryPlaneHost) [
@@ -205,6 +208,25 @@ let
     && lib.all (
       hostName: lib.all (port: lib.elem port (firewallPortsForHost hostName)) (routePortsForHost hostName)
     ) nixosHostNames;
+  workstationDnsmasq = inputs.self.nixosConfigurations.workstation.config.services.dnsmasq;
+  workstationDnsmasqContract =
+    workstationDnsmasq.enable
+    && workstationDnsmasq.resolveLocalQueries
+    &&
+      workstationDnsmasq.settings.listen-address == [
+        "127.0.0.1"
+        "::1"
+      ]
+    && workstationDnsmasq.settings.bind-interfaces == [ true ]
+    && workstationDnsmasq.settings.strict-order == [ true ]
+    && workstationDnsmasq.settings.cache-size == [ 1000 ]
+    && workstationDnsmasq.settings.server == [ "/${inventory.site.tailnetDomain}/100.100.100.100" ]
+    && workstationDnsmasq.settings.resolv-file == [ "/etc/dnsmasq-resolv.conf" ]
+    && !(workstationDnsmasq.settings ? no-resolv)
+    && !(workstationDnsmasq.settings ? dhcp-range)
+    &&
+      inputs.self.nixosConfigurations.workstation.config.services.tailscale.extraSetFlags
+      == [ "--accept-dns=false" ];
   inactivePiWorkloadProjection =
     !inactiveGatus.public.workloads.gatus.active
     && !(inactiveGatus.public.routes ? uptime)
@@ -236,6 +258,7 @@ if
   && piProjectionUsesListeners
   && outcomeMonitoringProjection
   && routeFirewallsExposeLocalRoutes
+  && workstationDnsmasqContract
   && inactivePiWorkloadProjection
   && hostLocalPiProjection
   && invalidListenerDeclarationsRejected
@@ -251,6 +274,7 @@ else
     scrape projection: ${toString scrapeProjection}
     Pi listener projection: ${toString piProjectionUsesListeners}
     route firewalls: ${toString routeFirewallsExposeLocalRoutes}
+    workstation local DNS and tailnet split forwarding: ${toString workstationDnsmasqContract}
     inactive Pi workload: ${toString inactivePiWorkloadProjection}
     host-local Pi projection: ${toString hostLocalPiProjection}
     invalid declarations: ${toString invalidListenerDeclarationsRejected}
