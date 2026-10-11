@@ -15,9 +15,10 @@
 
   The binary is a prebuilt glibc ELF that links only libc/libstdc++ and
   dlopens its graphics and input stack, so those libraries go on the RPATH
-  through `runtimeDependencies`. It locates `assets/` (bundled fonts) beside
-  its resolved executable, so the release layout is kept under lib/tern and
-  bin/tern is an exec wrapper. The wrapper appends glib's `gdbus`, which Tern
+  through `runtimeDependencies`. The 0.8.0 archive contains only the binary,
+  installed under lib/tern; bin/tern is an exec wrapper. No web-client assets
+  are bundled: `tern web serve` needs a separate build passed with --assets.
+  The wrapper appends glib's `gdbus`, which Tern
   runs to read the XDG settings portal (colour scheme, desktop settings), and
   `zenity`, which Tern shells out to for native dialogs. Without it the log
   records "no dialog tool (install zenity or kdialog)" each time a window
@@ -27,7 +28,7 @@
 */
 
 let
-  version = "0.4.1";
+  version = "0.8.0";
   tarball = "Tern-${version}-linux-x86_64.tar.gz";
 
   tern = pkgs.stdenv.mkDerivation {
@@ -36,7 +37,7 @@ let
 
     src = pkgs.requireFile {
       name = tarball;
-      hash = "sha256-0AwxeySlXSnBRAZXpkSG0BCOEhlSYYQOCObhdqEznjQ=";
+      hash = "sha256-rFAYq0ggMj8iehO1CpLQKtLmHw9q8yQmlw/9tpLZcKY=";
       message = ''
         Tern ${version} is a login-gated beta download from https://stencil.so/tern.
         Add the downloaded tarball to the Nix store, then rebuild:
@@ -52,12 +53,15 @@ let
     buildInputs = [ pkgs.stdenv.cc.cc.lib ];
 
     # dlopen targets observed in the binary: EGL/GLESv2, Vulkan, Wayland
-    # client and EGL, xkbcommon, PAM.
+    # client and EGL, xkbcommon (incl. its X11 half), xcb, PulseAudio
+    # (libpulse-simple), PAM.
     runtimeDependencies = [
       pkgs.libglvnd
       pkgs.vulkan-loader
       pkgs.wayland
       pkgs.libxkbcommon
+      pkgs.libxcb
+      pkgs.libpulseaudio
       pkgs.pam
     ];
 
@@ -67,7 +71,7 @@ let
     installPhase = ''
       runHook preInstall
       mkdir -p $out/lib/tern $out/bin
-      cp -r tern assets $out/lib/tern/
+      cp tern $out/lib/tern/
       makeWrapper $out/lib/tern/tern $out/bin/tern \
         --suffix PATH : ${
           pkgs.lib.makeBinPath [
