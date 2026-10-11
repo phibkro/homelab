@@ -3,6 +3,7 @@
 # Before activation, verify the Pi private credential matches authorizedKey.
 {
   disks ? import ./disks.nix,
+  site ? import ./site.nix,
 }:
 let
   oneTouch = disks."one-touch";
@@ -13,7 +14,7 @@ in
   device = oneTouch.filesystem.device;
   fsType = oneTouch.filesystem.type;
   targetHost = oneTouch.attachedHost;
-  hostname = "workstation.saola-matrix.ts.net";
+  hostname = "${oneTouch.attachedHost}.${site.tailnetDomain}";
   inherit (oneTouch) mountPoint;
   retention.coldMedia = {
     # Same-disk accidental-deletion rollback, not independent protection.

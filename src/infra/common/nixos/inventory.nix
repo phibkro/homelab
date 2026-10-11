@@ -638,10 +638,11 @@ in
           domain = mkOption { type = types.str; };
           deprecatedDomains = mkOption { type = types.listOf types.str; };
           entryPlaneHost = mkOption { type = types.str; };
+          tailnetDomain = mkOption { type = types.str; };
         };
       };
       readOnly = true;
-      description = "Canonical public service namespace and deprecated aliases.";
+      description = "Canonical public service namespace, deprecated aliases, and tailnet DNS suffix.";
     };
   };
 

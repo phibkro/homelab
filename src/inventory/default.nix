@@ -6,7 +6,7 @@
   datasets ? import ./datasets.nix,
   disks ? import ./disks.nix,
   site ? import ./site.nix,
-  backup ? import ./backup.nix { inherit disks; },
+  backup ? import ./backup.nix { inherit disks site; },
   recoveryEvidence ? { },
   hostRoles ? import ./host-roles.nix,
   audiences ? import ../roles/audiences.nix,

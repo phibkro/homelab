@@ -2,7 +2,7 @@
 
 default_host := "workstation"
 user         := "nori"
-tailnet      := "saola-matrix.ts.net"
+tailnet      := shell('nix eval --raw --file "$1/src/inventory/site.nix" tailnetDomain', justfile_directory())
 
 
 # ── Imports (co-located concern fragments) ─────────────────────────
