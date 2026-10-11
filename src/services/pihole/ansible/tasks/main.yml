@@ -132,6 +132,9 @@
       TZ: "{{ pi_timezone }}"
       FTLCONF_webserver_api_password: "{{ pihole_web_password }}"
       FTLCONF_dns_listeningMode: ALL
+      # The bridge address is unreachable from LAN clients querying pi.hole/pi.
+      FTLCONF_dns_reply_host_force4: "true"
+      FTLCONF_dns_reply_host_IPv4: "{{ pihole_lan_address }}"
       FTLCONF_dns_upstreams: "{{ pihole_upstream_dns | join(';') }}"
       FTLCONF_misc_etc_dnsmasq_d: "true"
     publish: >-
@@ -147,6 +150,11 @@
     volume:
       - pihole-data:/etc/pihole
       - /opt/pihole/dnsmasq.d:/etc/dnsmasq.d:ro
+    # Every published DNS/admin socket is IPv4. Remove the bridge's unusable
+    # link-local IPv6 address so FTL returns NODATA for its own AAAA records.
+    # IPv6 records from upstream DNS remain available over the IPv4 sockets.
+    sysctl:
+      net.ipv6.conf.all.disable_ipv6: "1"
     cap_add:
       - NET_ADMIN
   no_log: "{{ not pi_emulation_mode }}"
