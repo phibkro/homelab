@@ -12,6 +12,22 @@ in
 
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = [ listeners.ui.port ];
 
+  # UniFi reads this port from system.properties, not JVM -D properties.
+  # Preserve application-owned settings and atomically replace only this key.
+  systemd.services.unifi.preStart = ''
+    mkdir -p data
+    properties=data/system.properties
+    managed=$(mktemp data/.system.properties.XXXXXX)
+    trap 'rm -f "$managed"' EXIT
+    if [ -f "$properties" ]; then
+      sed '/^[[:space:]]*unifi\.https\.port\([[:space:]:=]\|$\)/d' "$properties" > "$managed"
+    fi
+    printf '\nunifi.https.port=%s\n' '${toString listeners.ui.port}' >> "$managed"
+    chmod 600 "$managed"
+    mv -f "$managed" "$properties"
+    trap - EXIT
+  '';
+
   # nixpkgs' unit already applies strict systemd hardening and scopes its
   # StateDirectory to /var/lib/unifi. Register it with the local FS policy too.
   nori.harden.unifi = { };

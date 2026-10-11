@@ -25,7 +25,8 @@
   # Reserve every controller port in inventory to catch local collisions.
   listeners = {
     inform.port = 8080;
-    ui.port = 8443;
+    # Tailscale Serve already owns 8443 on this host.
+    ui.port = 7443;
     portal-http.port = 8880;
     portal-https.port = 8843;
     portal-https-proxy.port = 8444;
