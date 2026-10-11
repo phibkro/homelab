@@ -11,10 +11,8 @@ let
   modelGatewayRoute = builtins.fromJSON (
     builtins.readFile ../../infra/cloudflare/routes/kwyne-model-gateway.json
   );
-  hindsightHostname = "hindsight-origin.phibkro.org";
   projectsHostname = "projects-origin.phibkro.org";
   vektorDatabaseHostname = "vektor-db-origin.phibkro.org";
-  hindsightOriginPort = config.nori.inventory.routes.memory-origin.port;
   projectsOriginPort = config.nori.inventory.routes.projects-origin.port;
 
   tunnelConfig = pkgs.writeText "mcp-origin-cloudflared.yaml" ''
@@ -24,8 +22,6 @@ let
     metrics: 127.0.0.1:9079
 
     ingress:
-      - hostname: ${hindsightHostname}
-        service: http://127.0.0.1:${toString hindsightOriginPort}
       - hostname: ${projectsHostname}
         service: http://127.0.0.1:${toString projectsOriginPort}
       - hostname: ${vektorDatabaseHostname}
@@ -80,9 +76,8 @@ in
 {
   assertions = [
     {
-      assertion =
-        config.nori.inventory.routes ? memory-origin && config.nori.inventory.routes ? projects-origin;
-      message = "The shared MCP origin tunnel requires both memory-origin and projects-origin inventory endpoints.";
+      assertion = config.nori.inventory.routes ? projects-origin;
+      message = "The shared MCP origin tunnel requires the projects-origin inventory endpoint.";
     }
   ];
 
@@ -111,11 +106,9 @@ in
     after = [
       "network-online.target"
       "herdr-projects-mcp-origin.service"
-      "hindsight-mcp-origin.service"
     ];
     requires = [
       "herdr-projects-mcp-origin.service"
-      "hindsight-mcp-origin.service"
     ];
     serviceConfig = {
       Type = "simple";

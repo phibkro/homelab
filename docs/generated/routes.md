@@ -25,7 +25,6 @@ placement and policy before NixOS and Ansible adapters consume them.
 | `logs` | `victorialogs-server` | `pi` | `9428` | `internal` | `operator` | `none` | yes | no |
 | `manga` | `suwayomi` | `workstation` | `8088` | `internal` | `family` | `forward-auth` | yes | no |
 | `media` | `jellyfin` | `workstation` | `8096` | `internet` | `family` | `none` | yes | yes |
-| `memory-origin` | `hindsight` | `workstation` | `9078` | `internal` | `operator` | `none` | no | no |
 | `metrics` | `beszel-hub` | `pi` | `8090` | `internal` | `operator` | `oidc` | yes | no |
 | `movies` | `radarr` | `workstation` | `7878` | `internal` | `operator` | `none` | yes | no |
 | `music` | `lidarr` | `workstation` | `8686` | `internal` | `operator` | `none` | yes | no |

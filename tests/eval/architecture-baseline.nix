@@ -77,7 +77,6 @@ let
       "disk-alert"
       "gitlab"
       "herdr-projects-mcp"
-      "hindsight"
       "immich"
       "jellyfin"
       "jellyseerr"
@@ -443,15 +442,6 @@ let
       auth = "exception";
       monitored = true;
       dashboard = true;
-    };
-    memory-origin = {
-      port = 9078;
-      runsOn = "workstation";
-      audience = "operator";
-      exposeOnTailnet = true;
-      auth = "exception";
-      monitored = false;
-      dashboard = false;
     };
     metrics = {
       port = 8090;

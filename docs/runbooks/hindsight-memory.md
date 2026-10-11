@@ -1,190 +1,27 @@
-# Hindsight agent memory
+# Hindsight memory archive
 
-This runbook activates and operates the shared Hindsight memory service on
-`workstation`.
+Hindsight was removed from the workstation (2026-10-11). The NixOS units, the
+tunnel route, the inventory entry and the client bindings are gone. Only the
+memories remain, as an inactive archive.
 
-## Exposure model
+Still pending (external effects, each needs operator approval): `just pi::deploy`
+for the Pi entry plane, and `bun run deploy` in `src/infra/cloudflare` to delete
+the Cloudflare resources (OriginDns, Portal, PortalDns, PortalPolicy, Server,
+ServerPolicy). Until then they exist in Cloudflare and in the Alchemy state.
 
-| Surface | Address | Boundary |
-| --- | --- | --- |
-| Hindsight API | `127.0.0.1:9077` | Host only; includes the mutating REST API |
-| Control Plane UI | `127.0.0.1:9999` | Raw standalone UI; host only |
-| UI proxy | `127.0.0.1:9998` | Normalizes forwarded headers for Tailscale Serve on port 10443 |
-| MCP origin | `100.81.5.122:9078` | Tailnet hop from the DNS-only Pi entry plane; exact MCP path plus bearer token |
-| MCP Portal | `https://memory-mcp.phibkro.org/mcp` | Publicly routable, Cloudflare Access/OAuth authenticated |
+The embedded PostgreSQL 18 instance is at
+`/home/nori/.pg0/instances/hindsight-embed-chatlog-pilot` (about 170 MB with its
+binaries in `/home/nori/.pg0/installation`, version 18.1.0). It was shut down
+cleanly (no `postmaster.pid`). Do not delete or move `/home/nori/.pg0` unless
+you intend to discard the memories. Reopening the data needs PostgreSQL 18.
 
-The public route exposes only Hindsight's stateless `recall` and `reflect` MCP
-tools. It does not expose the Control Plane, REST API, or `retain`. Cloudflare's
-MCP Portal is the client-facing URL; it authenticates the operator and supplies
-the private bearer credential when it calls the origin. The origin returns 404
-for every other path and for requests without that credential.
+Removed on 2026-10-11: the uv package cache `/home/nori/.cache/hindsight-uv`, the
+model cache `/home/nori/.cache/hindsight-xdg`, the uv tool directory
+`/home/nori/.local/share/hindsight`, and the user unit
+`~/.config/systemd/user/chatlog-hindsight.service`.
 
-Resource ownership is split deliberately:
-
-- NixOS owns the local services, the Pi Caddy route, the DNS-only DDNS record,
-  and encrypted credentials.
-- Tailscale Serve owns the UI's tailnet-only listener. Its node-wide config is
-  shared with other tools, so this runbook adds/removes only port 10443 and
-  never calls `tailscale serve reset`.
-- Alchemy owns the Portal DNS record, MCP server, MCP Portal, and their Access
-  policies. The existing `cloudflare-ddns` service owns
-  `memory-origin.home.phibkro.org` and keeps it pointed at the residential WAN.
-
-The MCP origin deliberately uses the established DNS-only Pi entry plane.
-Cloudflare's MCP server synchronizer did not reach a same-zone proxied Tunnel
-CNAME even though direct public requests succeeded; Caddy access logs confirmed
-that no synchronization request arrived. The DNS-only route enters through Pi
-Caddy and crosses the tailnet to the bearer-checking workstation listener.
-
-## Preflight
-
-Run from the repository root:
-
-```sh
-git status --short
-nix build --option substituters https://cache.nixos.org \
-  .#nixosConfigurations.workstation.config.system.build.toplevel
-(cd src/infra/cloudflare && bun run typecheck && bun run plan)
-tailscale serve status
-```
-
-The new MCP AI-controls endpoints currently reject the Alchemy OAuth grant,
-even though the same grant manages DNS and R2 successfully. Create a dedicated
-Cloudflare API token scoped to account `phibkro` with:
-
-- `MCP Portals Write`
-- `Access: Apps and Policies Edit`
-- account resource `phibkro` only
-
-Store it through the masked SecretSpec prompt:
-
-```sh
-cd /srv/share/projects/homelab
-secretspec set --profile workstation CLOUDFLARE_MCP_API_TOKEN
-```
-
-SecretSpec routes the value to `operator-tools.yaml`. Cloudflare deployment
-scopes inject it only into stacks that use the MCP and Access control API.
-DNS and the existing R2 cache retain their Alchemy OAuth credentials.
-
-Review the Alchemy plan. It should add only the Hindsight DNS, MCP, and Access
-resources; the existing R2 cache must not be replaced.
-
-## First activation
-
-An ad-hoc user unit currently owns port 9077. Stop it immediately before the
-first NixOS activation; the same pg0 instance is reused, so no data migration is
-required.
-
-```sh
-systemctl --user disable --now chatlog-hindsight.service
-just rebuild
-sudo systemctl status \
-  chatlog-hindsight.service \
-  hindsight-control-plane.service \
-  hindsight-mcp-origin.service
-```
-
-If activation fails before the NixOS API starts, restore the existing pilot:
-
-```sh
-systemctl --user enable --now chatlog-hindsight.service
-```
-
-Add only the new tailnet UI listener, preserving the existing Serve mappings:
-
-```sh
-sudo tailscale serve --bg --yes --https=10443 http://127.0.0.1:9998
-tailscale serve status
-```
-
-The UI is then available from a tailnet device at
-`https://workstation.saola-matrix.ts.net:10443/`.
-
-Once all local services are healthy, create the edge resources:
-
-```sh
-cd src/infra/cloudflare
-bun run plan
-bun run deploy
-```
-
-Alchemy receives the origin bearer token from sops. Do not copy it into an
-Alchemy source file, Cloudflare dashboard field, command argument, or log.
-
-## Verify boundaries
-
-Confirm that the API and UI listeners are loopback-only and that only the
-bearer-checking MCP origin also listens on the workstation tailnet address:
-
-```sh
-sudo ss -ltnp | rg ':(9077|9078|9998|9999)\b'
-```
-
-Unauthenticated origin requests deliberately look absent:
-
-```sh
-curl -i https://memory-origin.home.phibkro.org/mcp/chatlog-insights-v1/
-curl -i https://memory-origin.home.phibkro.org/
-```
-
-Both must return 404. Test the private origin with the Hindsight-only
-SecretSpec scope. The header moves through an anonymous pipe, not a command
-argument:
-
-```sh
-cd src/infra/cloudflare
-secretspec run \
-  --file ../../secretspec.toml \
-  --profile workstation \
-  --scope hindsight-origin \
-  -- bash -c 'printf "header = \"Authorization: Bearer %s\"\n" "$HINDSIGHT_MCP_BEARER_TOKEN" \
-    | curl --config - -i https://memory-origin.home.phibkro.org/mcp/chatlog-insights-v1/'
-```
-
-An MCP response may reject a plain GET as a protocol error; it must no longer be
-the proxy's 404. Finally, open the Portal URL in a private browser window and
-confirm that Cloudflare Access requires the operator identity before reaching
-MCP.
-
-## Connect clients
-
-Use this remote MCP URL in clients that support custom remote connectors:
-
-```text
-https://memory-mcp.phibkro.org/mcp
-```
-
-In ChatGPT, add it as a custom connector. In Claude Web, add it as a custom
-connector/integration. Complete the Cloudflare Access browser authorization as
-the operator account. Product plan and workspace-admin policy can hide these
-features; in that case the same URL still works from Codex, Claude Code, and
-other MCP clients that support remote OAuth.
-
-Keep local harnesses on the direct loopback MCP URL when they run on
-`workstation`; the Portal is primarily the authenticated bridge for web-hosted
-clients.
-
-## Rollback
-
-Remove only the Hindsight Serve listener:
-
-```sh
-sudo tailscale serve --https=10443 off
-```
-
-Stop the new local surface by reverting the workload assignment and rebuilding
-`workstation`. Restore the prior ad-hoc unit only if the NixOS service no longer
-owns port 9077.
-
-Cloudflare removal is a separate external-state action. Review
-`(cd src/infra/cloudflare && bun run plan)` after reverting the Hindsight Alchemy
-resources, then deploy that reviewed change. Do not run `bun run destroy`: the
-stack also owns the production Nix binary cache.
-
-## Data durability
-
-The Hindsight bank is currently a derived pilot index. Canonical harness
-sessions and web exports remain in Chatlog and can be re-ingested. A live copy
-of embedded PostgreSQL is not a valid backup; add a quiesced `pg_dump` workflow
-before treating new retained memories as irreplaceable state.
+The Restic `user-data` job includes `/home` and does not exclude `.pg0`, so the
+source policy covers this database. `src/inventory/recovery-evidence.nix` also
+records evidence for the `user-data` job. The inventory's workstation root
+snapshot policy is separate; actual backup freshness and restoreability for this
+specific PostgreSQL instance were not verified.

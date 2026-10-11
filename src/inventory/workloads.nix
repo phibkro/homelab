@@ -25,7 +25,6 @@ in
   grafana = manifest ../services/grafana/manifest.nix;
   heartbeat = manifest ../services/heartbeat/manifest.nix;
   herdr-projects-mcp = manifest ../services/herdr-projects-mcp/manifest.nix;
-  hindsight = manifest ../services/hindsight/manifest.nix;
   immich = manifest ../services/immich/manifest.nix;
   jellyfin = manifest ../services/jellyfin/manifest.nix;
   jellyseerr = manifest ../services/jellyseerr/manifest.nix;
