@@ -28,7 +28,7 @@ lib.mkIf (lib.elem "bazarr" config.nori.inventory.currentWorkloads) {
     user = "bazarr";
     group = "bazarr";
     openFirewall = false;
-    listenPort = subtitles.port;
+    settings.general.port = subtitles.port;
   };
 
   users.users.bazarr.extraGroups = [ "media" ];
