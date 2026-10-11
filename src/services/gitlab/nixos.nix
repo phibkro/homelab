@@ -8,6 +8,10 @@
 let
   inventory = config.nori.inventory;
   cfg = config.services.gitlab;
+  upgradePolicy = import ./upgrade-policy.nix;
+  installedVersion = cfg.packages.gitlab.version;
+  installedMinor = lib.versions.majorMinor installedVersion;
+  reviewedMinor = lib.versions.majorMinor upgradePolicy.toVersion;
 
   httpPort = inventory.workloads.gitlab.listeners.http.port;
   tailnetIp = inventory.hosts.${inventory.currentHost}.tailnetIp;
@@ -44,6 +48,17 @@ let
   '';
 in
 {
+  assertions = [
+    {
+      assertion = installedMinor == reviewedMinor;
+      message = ''
+        GitLab package ${installedVersion} is outside the reviewed ${reviewedMinor} minor release.
+        Review ${upgradePolicy.upgradePathDocumentation} and ${upgradePolicy.releaseNotes},
+        update src/services/gitlab/upgrade-policy.nix and the GitLab runbook, then verify the upgrade path.
+      '';
+    }
+  ];
+
   /*
     GitLab CE as the canonical Git store ("authority plane"). It has no public
     projection: no Cloudflare ingress, no public DNS, no Pi Caddy route. HTTP
@@ -120,10 +135,9 @@ in
   */
 
   /*
-    Workhorse listens on a unix socket only, so this Caddy instance is the one
-    network listener. It mirrors the Hindsight origin proxy: loopback plus the
-    tailnet address, nothing else. The bind fails until tailscale0 holds its
-    address; the shared restart policy retries it with backoff.
+    Workhorse listens on a unix socket only, so Caddy is the only network listener.
+    It binds loopback and the workstation tailnet address; the bind retries until
+    tailscale0 is available. The shared restart policy provides backoff.
   */
   systemd.services.gitlab-proxy = {
     description = "GitLab HTTP listener on loopback and the tailnet address";

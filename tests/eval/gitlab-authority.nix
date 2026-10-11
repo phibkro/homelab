@@ -16,6 +16,7 @@ let
   inventory = inputs.self.lib.noriInventory;
   nixosHosts = inputs.self.nixosConfigurations;
   workload = inventory.workloads.gitlab;
+  upgradePolicy = import (inputs.self + "/src/services/gitlab/upgrade-policy.nix");
 
   gitlabHost = lib.head workload.hosts;
   host = nixosHosts.${gitlabHost}.config;
@@ -154,17 +155,58 @@ let
   # PostgreSQL 17 is GitLab 19's minimum; the shared instance must satisfy it.
   databaseVersion = lib.versionAtLeast host.services.postgresql.package.version "17";
 
-  /*
-    GitLab must be upgraded through documented stops (19.2, 19.5, 19.8, 19.11:
-    https://docs.gitlab.com/19.3/update/upgrade_paths/). A nixpkgs bump moves
-    the minor version silently and can skip a stop, which corrupts migrations
-    on a populated database. A new minor fails here until the operator has read
-    docs/runbooks/gitlab-authority.md § Upgrades and records it. Patch releases
-    pass.
-  */
-  acknowledgedMinor = "19.3";
+  # The reviewed package interval lives with the service module. The eval
+  # contract consumes that policy, proves the next minor fails toplevel
+  # evaluation, and checks that a later patch has no failed assertions.
+  acknowledgedMinor = lib.versions.majorMinor upgradePolicy.toVersion;
   installedVersion = host.services.gitlab.packages.gitlab.version;
   upgradePathAcknowledged = lib.versions.majorMinor installedVersion == acknowledgedMinor;
+  policyVersionParts = builtins.match "([0-9]+)\\.([0-9]+)\\.([0-9]+)" upgradePolicy.toVersion;
+  policyMajor = builtins.elemAt policyVersionParts 0;
+  policyMinor = builtins.elemAt policyVersionParts 1;
+  policyPatch = builtins.elemAt policyVersionParts 2;
+  nextMinorVersion = "${policyMajor}.${toString (builtins.fromJSON policyMinor + 1)}.0";
+  nextPatchVersion = "${policyMajor}.${policyMinor}.${toString (builtins.fromJSON policyPatch + 1)}";
+
+  packageAssertions =
+    version:
+    let
+      evaluated = nixosHosts.${gitlabHost}.extendModules {
+        modules = [
+          ({ lib, ... }: {
+            services.gitlab.packages.gitlab = lib.mkForce (
+              host.services.gitlab.packages.gitlab.overrideAttrs (_: {
+                inherit version;
+                # This evaluation fixture changes metadata to exercise the
+                # module guard; it never builds a different GitLab release.
+                __intentionallyOverridingVersion = true;
+              })
+            );
+          })
+        ];
+      };
+      assertions = evaluated.config.assertions;
+      failedAssertions = lib.filter (assertion: !assertion.assertion) assertions;
+      versionGuardAssertions = lib.filter (
+        assertion: lib.hasInfix "outside the reviewed" assertion.message
+      ) failedAssertions;
+    in
+    {
+      inherit evaluated;
+      failedAssertionCount = builtins.length failedAssertions;
+      versionGuardFailureCount = builtins.length versionGuardAssertions;
+    };
+
+  futureMinor = packageAssertions nextMinorVersion;
+  laterPatch = packageAssertions nextPatchVersion;
+  futureMinorToplevel = builtins.tryEval (
+    builtins.deepSeq futureMinor.evaluated.config.system.build.toplevel.drvPath true
+  );
+  guardRejectsUnreviewedMinor =
+    futureMinor.failedAssertionCount == 1
+    && futureMinor.versionGuardFailureCount == 1
+    && !futureMinorToplevel.success;
+  guardAllowsReviewedPatch = laterPatch.failedAssertionCount == 0;
 
   # The runbook names the host, listener and secrets file of the placement. Moving
   # GitLab fails here until those three rows follow. The activation and backup
@@ -173,6 +215,11 @@ let
     lib.hasInfix "| Host | `${gitlabHost}` |" runbook
     && lib.hasInfix "| Listener | `${tailnetIp}:${toString port}` |" runbook
     && lib.hasInfix "| Secrets file | `secrets/${gitlabHost}-runtime.yaml` |" runbook;
+
+  runbookRecordsUpgradeReview =
+    lib.hasInfix "src/services/gitlab/upgrade-policy.nix" runbook
+    && lib.hasInfix upgradePolicy.fromVersion runbook
+    && lib.hasInfix upgradePolicy.toVersion runbook;
 
   # The NixOS-typed projection must accept every workload the compiler
   # publishes. A manifest attribute without an option (as `recovery` once was)
@@ -192,6 +239,9 @@ if
   && hardened
   && databaseVersion
   && upgradePathAcknowledged
+  && guardRejectsUnreviewedMinor
+  && guardAllowsReviewedPatch
+  && runbookRecordsUpgradeReview
   && runbookStatesPlacement
   && projectionAcceptsEveryWorkload
 then
@@ -207,6 +257,8 @@ else
     Hardening:       ${toString hardened}
     PostgreSQL >=17: ${toString databaseVersion}
     Upgrade path:    ${toString upgradePathAcknowledged} (installed ${installedVersion}, acknowledged minor ${acknowledgedMinor}; see docs/runbooks/gitlab-authority.md § Upgrades)
+    Version guard:   next minor ${nextMinorVersion} toplevel rejection ${toString guardRejectsUnreviewedMinor}, later patch ${nextPatchVersion} assertion acceptance ${toString guardAllowsReviewedPatch}
+    Upgrade review: ${toString runbookRecordsUpgradeReview} (runbook must reference the service policy and record the reviewed transition)
     Runbook:         ${toString runbookStatesPlacement} (the placement table of docs/runbooks/gitlab-authority.md must name the host, listener and secrets file)
     Projection:      ${toString projectionAcceptsEveryWorkload}
   ''

@@ -9,7 +9,7 @@ in its database, and operates it afterwards.
 The service is declared in `src/services/gitlab/`. Backup and secret facts come
 from the evaluated host configuration. The VM check `e2e-gitlab` runs the Git
 and API calls of [First-time setup](#first-time-setup) and the restore of
-[Restore](#restore) against GitLab 19.3, and shows the refusal messages quoted
+[Restore](#restore) against the configured GitLab package, and shows the refusal messages quoted
 here.
 
 ## Placement
@@ -363,7 +363,7 @@ api -X POST "$GITLAB/api/v4/projects/$PROJECT_ID/protected_tags" \
 ```
 
 The exact `kwyne` and `kwyne/seal` rules close the tag-prefix gap. Such tags
-can block later refs below them. GitLab 19.3.3 accepts all three rules together.
+can block later refs below them. The VM check verifies all three rules together.
 
 Sources: [protected tags](https://docs.gitlab.com/19.3/user/project/protected_tags/),
 [protected tags API](https://docs.gitlab.com/19.3/api/protected_tags/).
@@ -593,19 +593,38 @@ sealer reuse a seal id that Kwyne already reported.
 
 GitLab can only move through its required upgrade stops. In GitLab 19 they are
 19.2, 19.5, 19.8 and 19.11. Allow the background migrations of a stop to finish
-before the next step
-([upgrade paths](https://docs.gitlab.com/19.3/update/upgrade_paths/)).
+before the next step. The primary upgrade-path and release-note references,
+along with the reviewed source and destination package versions, live in
+[`src/services/gitlab/upgrade-policy.nix`](../../src/services/gitlab/upgrade-policy.nix).
 
 A `nixpkgs` update moves the GitLab minor version without warning. The check
-`eval-gitlab-authority` therefore fails when the minor version differs from
-`acknowledgedMinor` in `tests/eval/gitlab-authority.nix`. Patch releases pass.
+`eval-gitlab-authority` and the NixOS system assertion therefore reject a
+package whose minor differs from the reviewed destination minor. Patch releases
+within that minor pass. Keep the policy and this evidence synchronized when
+reviewing a later minor.
+
+The reviewed transition is GitLab **19.3.3 → 19.4.1**: system generation 521
+used 19.3.3 and generation 522 used 19.4.1. GitLab's required 19.x stops are
+19.2, 19.5, 19.8 and 19.11, so this transition did not skip a required stop.
+The running 19.4.1 service returned readiness HTTP 200 during review.
+
+The current CE backup archive is version 19.4.1, has no skipped components or
+selective repository paths, and its latest recorded Restic snapshot is
+`cb01cf40` at `2026-10-10T04:23:57+02:00`, covering
+`/var/lib/gitlab/backup`. The restore procedure below is a full restore and does
+not set `SKIP_REPOSITORIES_PATHS` or `REPOSITORIES_PATHS`. GitLab 19.4's selective
+restore note therefore does not change this restore procedure. Geo is a
+Premium/Ultimate feature and group SAML SSO is Premium/Ultimate; neither is
+declared for this CE instance, so those 19.4 notes do not apply to the declared
+configuration. The archive and snapshot metadata establish their recorded
+version and coverage; they do not prove a database restore.
 
 When the check fails:
 
-1. Read the upgrade notes for the new minor version and for the required stops between the installed and the new version.
-2. If the update skips a required stop, pin `nixpkgs` to a revision that carries the stop. Do not activate the skipping version.
-3. Run a backup and confirm its snapshot (`restic-backups-gitlab-onetouch.service`).
-4. Set `acknowledgedMinor` to the new minor version.
+1. Read the upgrade notes for the new minor version and every required stop between the installed and target versions.
+2. If the package update skips a required stop, pin `nixpkgs` to a revision that carries the stop. Do not activate the skipping version.
+3. Run a backup and confirm its Restic snapshot (`restic-backups-gitlab-onetouch.service`).
+4. Update `upgrade-policy.nix` with the reviewed source and destination versions and primary GitLab documentation; record the runtime and backup evidence here.
 5. Run `just check`, the host build and `just check-vm e2e-gitlab`. Then activate.
 
 ### Moving GitLab to another host
