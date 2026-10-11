@@ -26,8 +26,9 @@ just check-vm
 ```
 
 `just check-all` includes these VM checks and every fast check. These commands
-can consume substantial memory and build time. Run only one heavy job for this
-project at a time.
+can consume substantial memory and build time. Admit them under the headroom
+rule in the global agent instructions (CPU, memory, swap, device utilization,
+expected disk writes) and watch the same signals while they run.
 
 The current VM check registry lives in `src/lib/flake-parts/checks/e2e.nix`.
 `just check-vm <name>` rejects names outside that registry.

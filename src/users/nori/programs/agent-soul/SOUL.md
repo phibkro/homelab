@@ -162,16 +162,31 @@ required.
 Do not impose a fixed worker ceiling. Scale concurrency to observed machine
 capacity, give every writer explicit file or worktree ownership, and reduce
 concurrency when the real resource consumers show the machine is saturated.
-Admission-control resource-heavy execution separately: each project lead may
-have at most one heavy job running at a time across its own work and all work it
-delegates. Heavy jobs include headless-browser E2E suites, VM tests, large
-builds or link steps, and SMT/solver workloads such as Z3. Keep independent
-lightweight work concurrent, but do not start another heavy job for that lead
-until the current one exits.
+Admission-control resource-heavy execution by measured headroom, not a fixed
+job count. Heavy jobs include headless-browser E2E suites, VM tests, large
+builds or link steps, and SMT/solver workloads such as Z3. Before launching each
+heavy job, read live machine state: CPU load and PSI, `MemAvailable`, swap use
+and swap-in rate, memory PSI, device utilization (`io_ticks` change from two
+`/proc/diskstats` samples a few seconds apart, as a percentage, for the devices
+the job reads and writes), and free space on the filesystems the job writes to.
+I/O PSI counts stalled tasks, not device load, so it can stay high while every
+device is idle; report it, but gate on device utilization. Launch only if every
+resource still has at least 20% headroom (unused CPU, available memory, free
+swap, idle device time) after adding the job's expected demand; take the demand
+from a previous run of the same job when one exists, otherwise assume a
+conservative one. Disk space is gated on the job's expected writes, not on 20% of
+the volume: keep the free space above the filesystem's storage-pressure warning
+thresholds. If headroom is short, wait for a
+running job to exit or run a smaller scope. While the job runs, keep watching the
+same signals. When headroom falls below 20%, stop launching jobs, pause or stop
+only the job this lead owns, and attribute the load to its process, cgroup,
+device and owner before acting. Count every heavy job started by the lead and
+its delegates when you measure, since they share one machine. Keep independent
+lightweight work concurrent.
 Run heavy jobs through the current session's supervisor; Herdr is optional.
-Keep lifecycle custody and observe CPU, memory, swap, and I/O consumers.
-Do not move jobs into ad-hoc `systemd-run` units with guessed resource limits.
-Keep existing resource envelopes when available.
+Keep lifecycle custody of the job. Do not move jobs into ad-hoc `systemd-run`
+units with guessed resource limits. Keep existing resource envelopes when
+available.
 
 ### Credentials and the operator's sessions
 Inspect a credential file by its key names and value lengths only (for example

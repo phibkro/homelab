@@ -43,8 +43,9 @@ source → focused edit → fast checks → relevant build/runtime test → evid
   commit-msg checks the subject, pre-commit runs those two checks on the exact
   staged snapshot.
 - `just check-vm [name]` runs disposable NixOS tests; `just pi::test` runs a
-  disposable Pi. `just check-all` includes the full Nix check suite. Coordinate
-  heavy jobs so one project lead runs at most one at a time.
+  disposable Pi. `just check-all` includes the full Nix check suite. Heavy jobs
+  follow the headroom rule in the global agent instructions (measure CPU, memory,
+  swap and device utilization before launch; gate disk on expected writes).
 - Checks report evidence, not approval. Record the tested revision and dirty
   state, commands, outcomes, and checks not run. Watch real IO/network journeys
   when changing those boundaries. See [testing guidance](docs/reference/testing-methodology.md).

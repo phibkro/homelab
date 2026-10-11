@@ -27,10 +27,14 @@ or stage another writer's work wholesale. Delegate only bounded independent
 work, with explicit file ownership, acceptance checks, forbidden effects and a
 cleanup condition. The integrating agent verifies contributors' claims.
 
-Coordinate expensive builds, VM tests and browser suites: one heavy job at a
-time per project lead. Give fixtures explicit state and port ownership; stream
-logs while they run. Stop only processes known to belong to the task. Preserve
-durable results before removing disposable resources.
+Admit expensive builds, VM tests and browser suites by measured headroom: read
+CPU, memory, swap, device utilization (not I/O PSI, which can stay high on idle
+devices) and expected disk writes before launch, start only if 20% stays free on
+each after the job's expected demand, and keep watching while it runs.
+When headroom drops below 20%, stop launching and pause or stop only the job you
+own. Give fixtures explicit state and port ownership; stream logs while they run.
+Stop only processes known to belong to the task. Preserve durable results before
+removing disposable resources.
 
 ## Validation and delivery
 
