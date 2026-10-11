@@ -121,7 +121,7 @@ in
         };
 
         /*
-          Blue-light filter toggle. `night-mode` (../hyprsunset.nix) flips
+          Blue-light filter toggle. `night-mode` (./hyprsunset.nix) flips
           the running hyprsunset through its IPC at any time of day; the
           schedule takes over again at the next profile. Glyph shows the
           filter's visible state.
