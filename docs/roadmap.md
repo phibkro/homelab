@@ -42,19 +42,54 @@ The forward plan: actionable outstanding work, deferred-but-tracked items, and t
   `src/inventory/backup.nix` and update `tests/eval/btrbk-root-offload.nix`
   in one reviewed commit. The operator deploys it with `just rebuild`; an agent
   may prepare the commit.
-- **GitLab authority plane: activate, set up, drill a restore.** The service is
-  built and checked but not activated. The operator runs the activation command
-  in the placement table of `docs/runbooks/gitlab-authority.md`, then follows
-  that runbook: close sign-ups, create the Kwyne project, protect `main` and
+- **GitLab authority plane: set up and drill a production-backup restore.**
+  The service is active and its dependency readiness check passed on 2026-10-10.
+  The disposable `e2e-gitlab` VM passed access-control, fresh-backup and live
+  restore checks on that date; it does not establish production-archive recovery.
+  Follow `docs/runbooks/gitlab-authority.md`: close sign-ups, create the Kwyne project, protect `main` and
   `kwyne/seal/*`, and issue the sealer token. After that, restore the `gitlab`
   Restic repository into a disposable GitLab and record the drill in
   `src/inventory/recovery-evidence.nix`. These steps need the operator's
-  activation authority and credentials.
+  authority for instance changes and credentials.
 
 These require the operator or physical client access. They remain accepted
 work, but do not block autonomous repository work.
 
 ## Outstanding (actionable)
+
+- **Restore media-drive headroom after the completed cleanup.** On 2026-10-10,
+  live `nori-storage-pressure probe /mnt/media/library` still reported critical
+  ordinary usage: 231 GB free on the 4 TB IronWolf, rounded to 95% used.
+  This path represents the whole filesystem. Two deleted subvolumes (1150,
+  1151) remained pending; remeasure after asynchronous cleanup completes.
+  Qgroup accounting was inconsistent, so its downloads/backup attribution
+  is provisional. Use the download application's inventory to identify named
+  completed items for operator-approved removal if pressure persists; preserve
+  the newest received snapshot per prefix as an incremental-send parent.
+  The separate projects-subvolume migration remains a live acceptance gate;
+  source changes alone do not exclude project churn from future snapshots.
+
+- **Complete DNS workload and physical acceptance.**
+  On 2026-10-10, live tracing attributed current provider-domain DNS traffic
+  to the Codex backend. The workstation local cache was activated and the
+  same running backend switched to localhost: a 50-second trace counted 138
+  backend queries locally and 24 Pi-bound queries from dnsmasq across all
+  observed applications. This is bounded runtime evidence, not a full-workload
+  or reboot acceptance. Nine checks over 3m55s passed for fresh and cached DNS,
+  HTTPS and SSH; later LAN/tailnet spot checks passed and the readable FTL log
+  contained no rate-limit events in a ten-minute sample.
+  Tailnet suffix forwarding through the local Tailscale resolver was activated
+  with global Tailscale DNS acceptance disabled. Normal resolver lookups over
+  IPv4/IPv6 loopback and UDP/TCP passed for both Pi and workstation tailnet
+  names; public DNS, Pi HTTPS certificate verification and LAN/tailnet SSH passed.
+  A further ten-sample watch over 5m15s passed DNS, HTTPS and SSH with no recent
+  FTL rate-limit events; its final sample also passed the new split-DNS paths.
+  The known native test-discovery path in occupational-health now uses an
+  ephemeral loopback provider; its verification evidence lives in
+  `/srv/share/projects/occupational-health/STATE.md`.
+  The earlier burst has no retained process attribution. If it recurs, trace
+  the sender before assigning ownership. Complete off-LAN and physical reboot
+  acceptance, and observe a longer representative multi-agent workload.
 
 - **Build the authenticated family onboarding portal.** Derive its capability
   filtering and registration guidance from the route and audience contracts
