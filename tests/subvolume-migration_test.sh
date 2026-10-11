@@ -32,22 +32,35 @@
 #      rollback snapshot; only the verified duplicate original is removed;
 #   9. the cutover is one atomic renameat2(RENAME_EXCHANGE);
 #  10. a second run is a no-op;
-#  11. snapshots of both parents omit nested caches and projects;
-#  12. recursive Restic backup honors the derived exclusions.
+#  11. both snapshots and Restic omit game paths but retain Steam state;
+#  12. manual Steam migration refuses either active pinned process and
+#      the secondary library can create missing nested parents safely.
 #
 # Usage: subvolume-migration_test.sh <path-to-subvolume-migrate.sh>
 # Requires: sudo -n, btrfs-progs, GNU coreutils >= 9.1, strace, lsof,
-# restic, findutils, util-linux, diffutils, gnused.
+# restic, findutils, util-linux, diffutils, gnused, nix, jq.
 
 set -euo pipefail
 
 script="${1:?usage: subvolume-migration_test.sh <path-to-subvolume-migrate.sh>}"
 script="$(readlink -f -- "$script")"
+repo="$(readlink -f -- "$(dirname -- "$script")/../../..")"
+suffixes="$(nix eval --json --file "$repo/src/infra/common/nixos/storage/subvolume-paths.nix" --apply 'p: { inherit (p) stagingSuffix rollbackSuffix; }')"
+staging_suffix="$(jq -r .stagingSuffix <<<"$suffixes")"
+rollback_suffix="$(jq -r .rollbackSuffix <<<"$suffixes")"
+migration_args=(--staging-suffix "$staging_suffix" --rollback-suffix "$rollback_suffix")
 
 fail() { printf 'FAIL: %s\n' "$*" >&2; exit 1; }
 pass() { printf 'ok: %s\n' "$*"; }
 
-as_root() { sudo -n env "PATH=$PATH" "$@"; }
+as_root() {
+  if [ "$1" = "$script" ]; then
+    shift
+    sudo -n env "PATH=$PATH" "$script" "${migration_args[@]}" "$@"
+  else
+    sudo -n env "PATH=$PATH" "$@"
+  fi
+}
 
 work="$(mktemp -d /tmp/nori-subvolume-migration-test.XXXXXX)"
 img="$work/cache.img"
@@ -57,6 +70,21 @@ other_root="$work/other"
 loop=""
 loop_other=""
 holders=()
+process_stub_dir="$work/process-stubs"
+active_process_dir="$work/active-processes"
+mkdir -p "$process_stub_dir" "$active_process_dir"
+cat >"$process_stub_dir/pgrep" <<PGREP_STUB
+#!/usr/bin/env bash
+process="\$2"
+if [ -e "$active_process_dir/\$process" ]; then
+  printf '123\n'
+  exit 0
+fi
+exit 1
+PGREP_STUB
+chmod +x "$process_stub_dir/pgrep"
+PATH="$process_stub_dir:$PATH"
+export PATH
 
 cleanup() {
   set +e
@@ -86,6 +114,24 @@ loop_other="$(as_root losetup --find --show "$img_other")"
 mkdir -p "$root" "$other_root"
 as_root mount "$loop" "$root"
 as_root mount "$loop_other" "$other_root"
+
+# Instantiate the actual declared install layout, not a copied subvolume map.
+layout="$(nix eval --offline --json "$repo#nixosConfigurations.workstation.config" --apply 'c: { subvolumes = builtins.attrNames c.disko.devices.disk.main.content.partitions.root.content.subvolumes; share = builtins.head (builtins.filter (v: builtins.match "subvol=.*" v != null) c.fileSystems."/srv/share".options); excludes = c.nori.backups.user-data.exclude; }')"
+install_root="$root/install-layout"
+as_root mkdir "$install_root"
+while IFS= read -r name; do
+  as_root mkdir -p "$(dirname -- "$install_root/$name")"
+  as_root btrfs subvolume create "$install_root/$name" >/dev/null
+done < <(jq -r ' .subvolumes[] ' <<<"$layout")
+share_source="$(jq -r .share <<<"$layout")"
+installed_share="$install_root/${share_source#subvol=}"
+as_root btrfs subvolume show "$installed_share/projects" >/dev/null ||
+  fail "declared projects boundary is not nested inside the mounted share subvolume"
+as_root sh -c "printf 'not-in-snapshot\n' > \"\$1/projects/artifact\"; printf 'keep\n' > \"\$1/protected.txt\"" sh "$installed_share"
+as_root btrfs subvolume snapshot -r "$installed_share" "$root/installed-share-snapshot" >/dev/null
+[ ! -e "$root/installed-share-snapshot/projects/artifact" ] || fail "fresh install snapshot includes projects"
+[ "$(cat "$root/installed-share-snapshot/protected.txt")" = keep ] || fail "fresh install snapshot lost neighboring files"
+pass "declared fresh-install layout excludes projects from the actual share snapshot"
 
 h="$root/home/nori"
 cache_pip="$h/.cache/pip"
@@ -134,6 +180,79 @@ pre_omp_manifest="$(manifest "$omp")"
 pre_browser_manifest="$(manifest "$cache_browser")"
 
 run_migrate() { as_root "$script" --device "$loop" --mount-device "$loop" --fs-label cache-test --parent "$root/home" --parent "$share" "$@"; }
+steam_local_root="$h/.local/share/Steam"
+steam_local_apps="$steam_local_root/steamapps"
+steam_share_root="$share/SteamLibrary"
+steam_share_apps="$steam_share_root/steamapps"
+steam_local_paths=(
+  "$steam_local_apps/common"
+  "$steam_local_apps/shadercache"
+  "$steam_local_apps/downloading"
+  "$steam_local_apps/workshop/content"
+)
+steam_share_paths=(
+  "$steam_share_apps/common"
+  "$steam_share_apps/shadercache"
+  "$steam_share_apps/downloading"
+  "$steam_share_apps/workshop/content"
+)
+steam_targets=("${steam_local_paths[@]}" "${steam_share_paths[@]}")
+mkdir -p "${steam_local_paths[@]}" \
+  "$steam_local_apps/compatdata/prefix" "$steam_local_apps/workshop" \
+  "$steam_local_root/userdata" "$steam_local_root/config" \
+  "$steam_share_apps/common" "$steam_share_apps/shadercache" "$steam_share_apps/downloading"
+for path in "${steam_local_paths[@]}" "${steam_share_paths[@]:0:3}"; do
+  printf 're-downloadable\n' >"$path/game-content.txt"
+done
+printf 'saved game\n' >"$steam_local_apps/compatdata/prefix/savedata"
+printf 'userdata\n' >"$steam_local_root/userdata/state.vdf"
+printf 'config\n' >"$steam_local_root/config/config.vdf"
+printf 'manifest\n' >"$steam_local_apps/appmanifest-test.acf"
+printf 'workshop manifest\n' >"$steam_local_apps/workshop/appworkshop_test.acf"
+printf 'secondary manifest\n' >"$steam_share_apps/appmanifest-test.acf"
+as_root chown -R 1000:100 "$steam_local_root" "$steam_share_root"
+steam_local_before="$(manifest "$steam_local_root")"
+steam_share_before="$(manifest "$steam_share_root")"
+run_migrate_steam() {
+  as_root "$script" "${migration_args[@]}" --device "$loop" --mount-device "$loop" --fs-label cache-test \
+    --parent "$root/home" --parent "$share" \
+    --require-stopped-process steam --require-stopped-process steamwebhelper "$@"
+}
+for process in steam steamwebhelper; do
+  : >"$active_process_dir/$process"
+  if out="$(run_migrate_steam "${steam_targets[@]}" 2>&1)"; then
+    fail "Steam migration accepted running process $process"
+  fi
+  case "$out" in
+    *"required process '$process' is running"*) : ;;
+    *) fail "Steam process refusal did not name $process: $out" ;;
+  esac
+  for path in "${steam_targets[@]}"; do
+    if as_root btrfs subvolume show "$path" >/dev/null 2>&1; then
+      fail "active Steam refusal converted $path"
+    fi
+  done
+  [ "$(manifest "$steam_local_root")" = "$steam_local_before" ] || fail "active Steam refusal changed home Steam data"
+  [ "$(manifest "$steam_share_root")" = "$steam_share_before" ] || fail "active Steam refusal changed shared Steam data"
+  rm -f "$active_process_dir/$process"
+done
+run_migrate_steam "${steam_targets[@]}" >/dev/null
+for path in "${steam_targets[@]}"; do
+  as_root btrfs subvolume show "$path" >/dev/null 2>&1 || fail "stopped Steam path was not migrated: $path"
+done
+[ "$(stat -c '%u:%g %a' "$(dirname "${steam_share_paths[3]}")")" = "$(stat -c '%u:%g %a' "$steam_share_apps")" ] ||
+  fail "new nested workshop parent did not adopt its Steam library parent metadata"
+for protected in \
+  "$steam_local_apps/compatdata/prefix/savedata" \
+  "$steam_local_root/userdata/state.vdf" \
+  "$steam_local_root/config/config.vdf" \
+  "$steam_local_apps/appmanifest-test.acf" \
+  "$steam_local_apps/workshop/appworkshop_test.acf" \
+  "$steam_share_apps/appmanifest-test.acf"; do
+  [ -f "$protected" ] || fail "Steam data/manifests must stay in the backed-up parent: $protected"
+done
+pass "manual Steam migration refuses running steam/steamwebhelper, migrates both libraries, and preserves save/config/manifest paths"
+
 
 refuse() {
   local expected="$1"
@@ -180,8 +299,8 @@ for kind in fd cwd; do
   if as_root btrfs subvolume show "$target" >/dev/null 2>&1; then
     fail "busy cache (${kind}) was converted into a subvolume"
   fi
-  [ ! -e "$(dirname "$target")/.$(basename "$target").nori-subvolume-migration-rollback" ] || fail "busy cache (${kind}) left rollback material"
-  [ ! -e "$(dirname "$target")/.$(basename "$target").nori-subvolume-migration-staging" ] || fail "busy cache (${kind}) left staging material"
+ [ ! -e "$(dirname "$target")/.$(basename "$target")${rollback_suffix}" ] || fail "busy cache (${kind}) left rollback material"
+ [ ! -e "$(dirname "$target")/.$(basename "$target")${staging_suffix}" ] || fail "busy cache (${kind}) left staging material"
 done
 
 pass "a busy cache (open fd and cwd) refuses migration and stays untouched"
@@ -229,7 +348,7 @@ mkdir -p "$mountpoint"
 as_root mount -t tmpfs tmpfs "$mountpoint"
 refuse 'not Btrfs' "$mountpoint"
 as_root umount "$mountpoint"
-[ ! -e "$(dirname "$mountpoint")/.$(basename "$mountpoint").nori-subvolume-migration-staging" ] || fail "migration left staging for a mount point"
+[ ! -e "$(dirname "$mountpoint")/.$(basename "$mountpoint")${staging_suffix}" ] || fail "migration left staging for a mount point"
 
 # A bind mount of a plain directory IS on the declared btrfs, so only the
 # mount-point guard can catch it.
@@ -240,7 +359,7 @@ printf 'bind\n' > "$bind_src/data.txt"
 as_root mount --bind "$bind_src" "$bind_dst"
 refuse 'mount point' "$bind_dst"
 as_root umount "$bind_dst"
-[ ! -e "$(dirname "$bind_dst")/.$(basename "$bind_dst").nori-subvolume-migration-staging" ] || fail "migration left staging for a bind mount"
+[ ! -e "$(dirname "$bind_dst")/.$(basename "$bind_dst")${staging_suffix}" ] || fail "migration left staging for a bind mount"
 
 # Identity validation must precede every no-op/adoption branch: a
 # root-owned boundary living on ANOTHER filesystem is refused and left
@@ -267,16 +386,25 @@ esac
   fail "a refused wrong-device boundary had its contents changed"
 
 rollback="$h/.cache/spare-rollback"
-rollback_path="$(dirname "$rollback")/.$(basename "$rollback").nori-subvolume-migration-rollback"
+rollback_path="$(dirname "$rollback")/.$(basename "$rollback")${rollback_suffix}"
 mkdir -p "$rollback" "$rollback_path"
 refuse 'rollback subvolume already exists' "$rollback"
-[ ! -e "$(dirname "$rollback")/.$(basename "$rollback").nori-subvolume-migration-staging" ] ||
+[ ! -e "$(dirname "$rollback")/.$(basename "$rollback")${staging_suffix}" ] ||
   fail "the migration created staging despite existing rollback material"
 
 stale="$h/.cache/spare-stale"
-staging_path="$(dirname "$stale")/.$(basename "$stale").nori-subvolume-migration-staging"
+staging_path="$(dirname "$stale")/.$(basename "$stale")${staging_suffix}"
 mkdir -p "$stale" "$staging_path"
 refuse 'stale staging path exists' "$stale"
+converted="$h/.cache/spare-converted"
+as_root btrfs subvolume create "$converted" >/dev/null
+converted_staging="$(dirname "$converted")/.$(basename "$converted")$staging_suffix"
+mkdir "$converted_staging"
+printf 'preserve-unresolved-original\n' > "$converted_staging/original.txt"
+refuse 'stale staging path exists' "$converted"
+[ "$(cat "$converted_staging/original.txt")" = preserve-unresolved-original ] ||
+  fail "retry discarded unresolved original beside a converted live subvolume"
+pass "a converted target with preserved plain staging still refuses retry"
 pass "symlink (incl. one pointing at a subvolume), foreign mount, bind mount, wrong-device boundary, rollback and stale-staging guards refused"
 
 # ── 4. an incomplete lsof scan is a blocker ───────────────────────────
@@ -312,7 +440,7 @@ for mode in anomaly zero; do
   printf 'lsof-%s\n' "$mode" > "$target/data.txt"
   chown -R 1000:100 "$target"
   before="$(manifest "$target")"
-  if out="$(sudo -n env "PATH=$shim_root/$mode:$PATH" "$script" --device "$loop" --mount-device "$loop" --fs-label cache-test --parent "$root/home" --parent "$share" "$target" 2>&1)"; then
+  if out="$(sudo -n env "PATH=$shim_root/$mode:$PATH" "$script" "${migration_args[@]}" --device "$loop" --mount-device "$loop" --fs-label cache-test --parent "$root/home" --parent "$share" "$target" 2>&1)"; then
     fail "an incomplete lsof scan ($mode) was treated as a free cache"
   fi
   case "$out" in
@@ -320,7 +448,7 @@ for mode in anomaly zero; do
     *) fail "lsof $mode refusal did not name the scan: $out" ;;
   esac
 [ "$(manifest "$target")" = "$before" ] || fail "lsof $mode refusal changed the cache"
-[ ! -e "$(dirname "$target")/.$(basename "$target").nori-subvolume-migration-rollback" ] || fail "lsof $mode refusal left rollback material"
+[ ! -e "$(dirname "$target")/.$(basename "$target")${rollback_suffix}" ] || fail "lsof $mode refusal left rollback material"
 done
 pass "an lsof scan that fails or returns success without listing a file is refused"
 
@@ -332,7 +460,7 @@ chown -R 1000:100 "$second"
 second_before="$(manifest "$second")"
 counter="$work/lsof-counter"
 printf 0 > "$counter"
-if out="$(sudo -n env "PATH=$shim_root/second:$PATH" LSOF_SHIM_COUNTER="$counter" "$script" --device "$loop" --mount-device "$loop" --fs-label cache-test --parent "$root/home" --parent "$share" "$second" 2>&1)"; then
+if out="$(sudo -n env "PATH=$shim_root/second:$PATH" LSOF_SHIM_COUNTER="$counter" "$script" "${migration_args[@]}" --device "$loop" --mount-device "$loop" --fs-label cache-test --parent "$root/home" --parent "$share" "$second" 2>&1)"; then
   fail "the writer re-check before the cutover did not block a writer that appeared mid-copy"
 fi
 case "$out" in
@@ -342,9 +470,9 @@ esac
 if as_root btrfs subvolume show "$second" >/dev/null 2>&1; then
   fail "the blocked cutover still converted the cache"
 fi
-[ ! -e "$(dirname "$second")/.$(basename "$second").nori-subvolume-migration-staging" ] || fail "blocked cutover left staging behind"
+[ ! -e "$(dirname "$second")/.$(basename "$second")${staging_suffix}" ] || fail "blocked cutover left staging behind"
 [ "$(manifest "$second")" = "$second_before" ] || fail "blocked cutover changed the original"
-[ ! -e "$(dirname "$second")/.$(basename "$second").nori-subvolume-migration-rollback" ] || fail "blocked cutover left rollback material"
+[ ! -e "$(dirname "$second")/.$(basename "$second")${rollback_suffix}" ] || fail "blocked cutover left rollback material"
 pass "a mid-copy writer blocks cutover, discards only staging, and leaves the original untouched"
 
 # ── 6. an absent cache directory gets its boundary up front ───────────
@@ -352,7 +480,7 @@ created="$h/.cache/spare-created"
 run_migrate "$created" >/dev/null
 as_root btrfs subvolume show "$created" >/dev/null 2>&1 ||
   fail "an absent cache path did not get a boundary created"
-[ ! -e "$(dirname "$created")/.$(basename "$created").nori-subvolume-migration-rollback" ] || fail "empty boundary left rollback material"
+[ ! -e "$(dirname "$created")/.$(basename "$created")${rollback_suffix}" ] || fail "empty boundary left rollback material"
 [ "$(stat -c '%u:%g %a' "$created")" = "$(stat -c '%u:%g %a' "$h/.cache")" ] ||
   fail "the created boundary did not adopt the cache parent's ownership/mode ($(meta "$created") vs $(meta "$h/.cache"))"
 pass "an absent cache path is created as a boundary owned like the cache parent"
@@ -375,23 +503,24 @@ pass "a root-owned install-time boundary adopts derived ownership without touchi
 # ── 8. migration preserves everything and atomically cuts over ────────
 trace="$work/rename-trace.log"
 as_root strace -f -e trace=renameat2,rename -o "$trace" "$script" \
+  "${migration_args[@]}" \
   --device "$loop" --mount-device "$loop" --fs-label cache-test --parent "$root/home" --parent "$share" \
   "$cache_pip" "$cache_uv" "$cache_nix" "$projects" >/dev/null
 
 for p in "$cache_pip" "$cache_uv" "$cache_nix" "$projects"; do
   as_root btrfs subvolume show "$p" >/dev/null 2>&1 || fail "$p is not a nested subvolume after migration"
-  rollback_path="$(dirname "$p")/.$(basename "$p").nori-subvolume-migration-rollback"
+ rollback_path="$(dirname "$p")/.$(basename "$p")${rollback_suffix}"
   as_root btrfs subvolume show "$rollback_path" >/dev/null 2>&1 || fail "read-only rollback subvolume missing for $p"
   [ "$(as_root btrfs property get -ts "$rollback_path" ro)" = "ro=true" ] || fail "rollback for $p is not read-only"
-  [ ! -e "$(dirname "$p")/.$(basename "$p").nori-subvolume-migration-staging" ] || fail "staging path remains for $p"
+ [ ! -e "$(dirname "$p")/.$(basename "$p")${staging_suffix}" ] || fail "staging path remains for $p"
 done
 
 [ "$(manifest "$cache_pip")" = "$pre_pip_manifest" ] || fail "migrated cache contents/metadata differ from original"
 [ "$(digest "$cache_pip")" = "$pre_pip_digest" ] || fail "migrated cache file contents differ from original"
 [ "$(stat -c '%a %u %g %Y' "$cache_pip")" = "$pre_pip_meta" ] || fail "migrated cache directory metadata differs from original"
-rollback_pip="$(dirname "$cache_pip")/.$(basename "$cache_pip").nori-subvolume-migration-rollback"
+rollback_pip="$(dirname "$cache_pip")/.$(basename "$cache_pip")${rollback_suffix}"
 [ "$(manifest "$rollback_pip")" = "$pre_pip_manifest" ] || fail "rollback snapshot differs from pre-migration tree"
-[ ! -e "$(dirname "$cache_pip")/.$(basename "$cache_pip").nori-subvolume-migration-staging" ] || fail "verified cutover left a plain staging duplicate"
+[ ! -e "$(dirname "$cache_pip")/.$(basename "$cache_pip")${staging_suffix}" ] || fail "verified cutover left a plain staging duplicate"
 [ "$(stat -c '%i' "$cache_pip")" != "$pre_pip_inode" ] || fail "cache path still holds pre-migration directory inode"
 [ -f "$projects/app/README" ] && [ -f "$projects/local-only/notes" ] || fail "project data was not preserved"
 [ "$(cat "$projects/local-only/notes")" = "local ignored/uncommitted data" ] || fail "local-only project data changed"
@@ -434,7 +563,24 @@ as_root btrfs subvolume snapshot -r "$share" "$snap_share" >/dev/null
 [ -d "$snap_share/projects" ] || fail "share snapshot lost the projects path entirely"
 [ -z "$(ls -A "$snap_share/projects")" ] || fail "share snapshot includes nested project contents"
 [ -f "$share/projects-neighbour.txt" ] || fail "protected share neighbour missing from source"
-pass "snapshots omit nested cache/project data and preserve parent data"
+pass "snapshots omit nested cache and project data while preserving parent data"
+for path in "${steam_local_paths[@]}"; do
+  snapshot_path="$snap/nori/${path#"$h"/}"
+  [ -d "$snapshot_path" ] || fail "home snapshot lost Steam path $path"
+  [ -z "$(ls -A "$snapshot_path")" ] || fail "home snapshot includes Steam game content at $path"
+done
+for path in "${steam_share_paths[@]}"; do
+  snapshot_path="$snap_share/${path#"$share"/}"
+  [ -d "$snapshot_path" ] || fail "share snapshot lost Steam path $path"
+  [ -z "$(ls -A "$snapshot_path")" ] || fail "share snapshot includes Steam game content at $path"
+done
+[ -f "$snap/nori/.local/share/Steam/steamapps/compatdata/prefix/savedata" ] || fail "home snapshot omitted Proton save data"
+[ -f "$snap/nori/.local/share/Steam/userdata/state.vdf" ] || fail "home snapshot omitted Steam userdata"
+[ -f "$snap/nori/.local/share/Steam/config/config.vdf" ] || fail "home snapshot omitted Steam config"
+[ -f "$snap/nori/.local/share/Steam/steamapps/appmanifest-test.acf" ] || fail "home snapshot omitted Steam app manifest"
+[ -f "$snap/nori/.local/share/Steam/steamapps/workshop/appworkshop_test.acf" ] || fail "home snapshot omitted workshop manifest"
+[ -f "$snap_share/SteamLibrary/steamapps/appmanifest-test.acf" ] || fail "share snapshot omitted secondary-library manifest"
+pass "parent snapshots omit Steam game content and preserve saves, config and manifests"
 
 # ── 12. recursive Restic honors registry-derived exclusions ─────────
 repo="$work/restic-repo"
@@ -443,31 +589,41 @@ printf 'subvolume-migration-test\n' > "$pwfile"
 export RESTIC_CACHE_DIR="$work/restic-cache"
 restic -r "$repo" --password-file "$pwfile" init >/dev/null
 exclusions=()
-for target in "$cache_pip" "$cache_uv" "$cache_nix" "$projects"; do
-  exclusions+=(--exclude "$target")
-  exclusions+=(--exclude "$(dirname "$target")/.$(basename "$target").nori-subvolume-migration-staging")
-  exclusions+=(--exclude "$(dirname "$target")/.$(basename "$target").nori-subvolume-migration-rollback")
-done
+while IFS= read -r excluded; do
+  case "$excluded" in
+    /home|/home/*) excluded="$root$excluded" ;;
+    /srv/share|/srv/share/*) excluded="$share${excluded#/srv/share}" ;;
+  esac
+  exclusions+=(--exclude "$excluded")
+done < <(jq -r ' .excludes[] ' <<<"$layout")
 restic -r "$repo" --password-file "$pwfile" backup "${exclusions[@]}" "$root/home" "$share" >/dev/null
 ls_output="$(restic -r "$repo" --password-file "$pwfile" ls latest)"
-for excluded in "$cache_pip" "$cache_uv" "$cache_nix" "$projects"; do
+for excluded in "$cache_pip" "$cache_uv" "$cache_nix" "$projects" "${steam_targets[@]}"; do
   if printf '%s\n' "$ls_output" | awk -v p="$excluded" '$0 == p || index($0, p "/") == 1 { found = 1 } END { exit found ? 0 : 1 }'; then
     fail "recursive Restic backup included excluded path $excluded"
   fi
 done
-for target in "$cache_pip" "$cache_uv" "$cache_nix" "$projects"; do
-  for suffix in staging rollback; do
-    if [ "$suffix" = staging ]; then name=nori-subvolume-migration-staging; else name=nori-subvolume-migration-rollback; fi
-    excluded="$(dirname "$target")/.$(basename "$target").$name"
+for target in "$cache_pip" "$cache_uv" "$cache_nix" "$projects" "${steam_targets[@]}"; do
+  for suffix in "$staging_suffix" "$rollback_suffix"; do
+    excluded="$(dirname "$target")/.$(basename "$target")$suffix"
     if printf '%s\n' "$ls_output" | awk -v p="$excluded" '$0 == p || index($0, p "/") == 1 { found = 1 } END { exit found ? 0 : 1 }'; then
       fail "recursive Restic backup included migration artifact $excluded"
     fi
   done
 done
+for protected in \
+  "$steam_local_apps/compatdata/prefix/savedata" \
+  "$steam_local_root/userdata/state.vdf" \
+  "$steam_local_root/config/config.vdf" \
+  "$steam_local_apps/appmanifest-test.acf" \
+  "$steam_local_apps/workshop/appworkshop_test.acf" \
+  "$steam_share_apps/appmanifest-test.acf"; do
+  printf '%s\n' "$ls_output" | grep -qF "$protected" || fail "Restic omitted protected Steam state $protected"
+done
 printf '%s\n' "$ls_output" | grep -qF "$cache_keep/protected.txt" || fail "Restic dropped protected home neighbour"
 printf '%s\n' "$ls_output" | grep -qF "$omp/omp.txt" || fail "Restic dropped OMP agent cache"
 printf '%s\n' "$ls_output" | grep -qF "$cache_browser/entry" || fail "Restic dropped browser cache"
 printf '%s\n' "$ls_output" | grep -qF "$share/projects-neighbour.txt" || fail "Restic dropped protected share neighbour"
-pass "recursive Restic excludes nested cache/project data and migration artifacts while keeping protected neighbours"
+pass "recursive Restic excludes cache/project/Steam game data and migration artifacts while keeping protected neighbours"
 
 pass "all nested-subvolume migration checks passed"

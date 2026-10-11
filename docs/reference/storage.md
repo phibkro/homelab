@@ -108,7 +108,9 @@ Its policy lives in `src/infra/common/nixos/storage/pressure.nix`, under `nori.s
 The existing disk alarm consumes that construct. It reports a warning once per warning episode, after successful delivery.
 A failed measurement or critical pressure produces an urgent alert. A delivery failure fails the unit.
 The bounded maintenance worker reclaims empty data block groups and compacts only the configured data-block budget.
-It refuses further compaction without workspace. It never deletes files or changes metadata redundancy.
+It refuses further compaction without workspace and returns 75 (`EX_TEMPFAIL`). It never deletes files or changes metadata redundancy.
+Across filesystems, any real error takes precedence and returns 1. Otherwise a workspace refusal returns 75, and all other outcomes return 0.
+Existing lock and exclusive-operation deferrals remain 0. The maintenance unit accepts 75, while real errors retain failure notifications.
 
 Btrbk guards use the same classification and filesystem locks.
 They cover source subvolumes, snapshot directories, and off-disk receive targets.
@@ -141,6 +143,16 @@ quiesce all project writers—including shells, editors, agents, services, and
 sessions. Its `lsof` checks reduce risk but cannot prove no process can start
 later. No projects migration or activation was performed as part of this
 change.
+Steam game binaries and re-downloadable content are classified separately from Steam state. The `nori.fs` registry excludes only `steamapps/common`, `shadercache`, `downloading`, and `workshop/content` under both the home and shared libraries.
+`steamapps/compatdata` (Proton prefixes), `userdata`, `config`, and the `appmanifest_*.acf` and `appworkshop_*.acf` manifests remain inside the backed-up parents. The nested workshop boundary covers content only, not its manifest files.
+Steam boundaries use manual services: `nori-subvolume-migration-home-steam.service` and `nori-subvolume-migration-srv-share-steam.service`. Each requires both `steam` and `steamwebhelper` to be absent, then runs the same per-filesystem lock and guarded migration.
+Close Steam before starting the matching unit. The application remains unavailable during migration. The `common` directory can contain tens of GiB, and full verification reads the copied tree. Estimate downtime from the actual disk and tree size.
+The copy uses reflinks and therefore shares file extents, but it still needs Btrfs metadata and workspace. Check allocation headroom first. Existing snapshots retain the old parent contents, so migration does not reclaim their space immediately.
+
+```sh
+sudo systemctl start nori-subvolume-migration-home-steam.service
+sudo systemctl start nori-subvolume-migration-srv-share-steam.service
+```
 
 The cutover reflink-copies and verifies staging, creates a read-only nested
 rollback snapshot, then exchanges the verified subvolume atomically. Reflinks

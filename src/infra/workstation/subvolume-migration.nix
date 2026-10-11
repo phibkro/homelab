@@ -5,6 +5,7 @@
   ...
 }:
 let
+  migrationPaths = import ../common/nixos/storage/subvolume-paths.nix;
   userParents = lib.filterAttrs (_: f: f.tier == "user") config.nori.fs;
   rederivable = lib.filterAttrs (
     _: f:
@@ -20,9 +21,17 @@ let
     ) (lib.attrValues rederivable)
   );
   paths = map (f: f.path) (lib.attrValues rederivable);
+  profiles = lib.unique (
+    map (f: {
+      parent = lib.findFirst (
+        parent: lib.hasPrefix (parent.path + "/") f.path
+      ) (throw "No backed-up parent for ${f.path}") (lib.attrValues userParents);
+      inherit (f) atBoot stoppedProcesses;
+    }) (lib.attrValues rederivable)
+  );
   parentFilesystems = map (
-    path:
-    lib.attrByPath [ path ] {
+    parent:
+    lib.attrByPath [ parent ] {
       fsType = null;
       device = null;
     } config.fileSystems
@@ -52,24 +61,39 @@ let
       diffutils
       gnused
       lsof
+      procps
       util-linux
     ];
     text = builtins.readFile ./subvolume-migrate.sh;
   };
   migrationServices = lib.listToAttrs (
     map (
-      parent:
+      profile:
       let
-        targets = builtins.filter (path: lib.hasPrefix (parent + "/") path) paths;
-        name = "nori-subvolume-migration-${
-          lib.replaceStrings [ "/" ] [ "-" ] (lib.removePrefix "/" parent)
-        }";
+        parent = profile.parent.path;
+        matchesProfile =
+          f:
+          f.atBoot == profile.atBoot
+          && f.stoppedProcesses == profile.stoppedProcesses
+          && lib.hasPrefix (parent + "/") f.path;
+        targets = map (f: f.path) (builtins.filter matchesProfile (lib.attrValues rederivable));
+        inherit (profile) stoppedProcesses;
+        parentName = lib.replaceStrings [ "/" ] [ "-" ] (lib.removePrefix "/" parent);
+        suffix =
+          if profile.atBoot then
+            ""
+          else if stoppedProcesses != [ ] then
+            "-steam"
+          else if parent == config.nori.fs.home.path then
+            "-manual"
+          else
+            "";
+        name = "nori-subvolume-migration-${parentName}${suffix}";
         parentFilesystem = config.fileSystems.${parent};
-        startsAtBoot = parent == config.nori.fs.home.path;
       in
       lib.nameValuePair name {
         description = "Guarded migration of re-derivable paths under ${parent}";
-        wantedBy = lib.optionals startsAtBoot [ "multi-user.target" ];
+        wantedBy = lib.optionals profile.atBoot [ "multi-user.target" ];
         unitConfig = {
           RequiresMountsFor = [ parent ];
           OnFailure = [ "notify@${name}.service" ];
@@ -89,14 +113,22 @@ let
               parentFilesystem.device
               "--fs-label"
               fsLabel
+              "--staging-suffix"
+              migrationPaths.stagingSuffix
+              "--rollback-suffix"
+              migrationPaths.rollbackSuffix
               "--parent"
               parent
             ]
+            ++ lib.concatMap (process: [
+              "--require-stopped-process"
+              process
+            ]) stoppedProcesses
             ++ targets
           );
         };
       }
-    ) parentPaths
+    ) profiles
   );
 in
 {
@@ -122,9 +154,8 @@ in
       }
     ];
 
-    # Home caches keep their established guarded boot-time initialization.
-    # Other re-derivable paths (notably /srv/share/projects) are manual because
-    # their writers may include interactive agents and shared workloads.
+    # Registry-selected boot policy keeps caches automatic and Steam manual.
+    # Projects retain their existing manual service and lock.
     systemd.services = migrationServices;
   };
 }

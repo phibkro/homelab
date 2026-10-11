@@ -11,6 +11,10 @@ let
     NixOS module convention, outside this Reader-effect's scope.
     @nix and @ are infrastructure, not user-facing.
   */
+  steamStoppedProcesses = [
+    "steam"
+    "steamwebhelper"
+  ];
   noriFs = {
     home = {
       path = "/home";
@@ -58,15 +62,64 @@ let
     home-cache-pip = {
       path = "/home/nori/.cache/pip";
       tier = "re-derivable";
+      atBoot = true;
     };
     home-cache-uv = {
       path = "/home/nori/.cache/uv";
       tier = "re-derivable";
+      atBoot = true;
     };
     home-cache-nix = {
       path = "/home/nori/.cache/nix";
       tier = "re-derivable";
+      atBoot = true;
     };
+    /*
+      Steam game binaries and re-downloadable content are excluded, but its
+      Proton prefixes, userdata, config, and manifests stay in the backed-up
+      parent. Manual migration must wait until both Steam process names stop.
+    */
+    home-steam-common = {
+      path = "/home/nori/.local/share/Steam/steamapps/common";
+      tier = "re-derivable";
+      stoppedProcesses = steamStoppedProcesses;
+    };
+    home-steam-shadercache = {
+      path = "/home/nori/.local/share/Steam/steamapps/shadercache";
+      tier = "re-derivable";
+      stoppedProcesses = steamStoppedProcesses;
+    };
+    home-steam-downloading = {
+      path = "/home/nori/.local/share/Steam/steamapps/downloading";
+      tier = "re-derivable";
+      stoppedProcesses = steamStoppedProcesses;
+    };
+    home-steam-workshop-content = {
+      path = "/home/nori/.local/share/Steam/steamapps/workshop/content";
+      tier = "re-derivable";
+      stoppedProcesses = steamStoppedProcesses;
+    };
+    srv-share-steam-common = {
+      path = "/srv/share/SteamLibrary/steamapps/common";
+      tier = "re-derivable";
+      stoppedProcesses = steamStoppedProcesses;
+    };
+    srv-share-steam-shadercache = {
+      path = "/srv/share/SteamLibrary/steamapps/shadercache";
+      tier = "re-derivable";
+      stoppedProcesses = steamStoppedProcesses;
+    };
+    srv-share-steam-downloading = {
+      path = "/srv/share/SteamLibrary/steamapps/downloading";
+      tier = "re-derivable";
+      stoppedProcesses = steamStoppedProcesses;
+    };
+    srv-share-steam-workshop-content = {
+      path = "/srv/share/SteamLibrary/steamapps/workshop/content";
+      tier = "re-derivable";
+      stoppedProcesses = steamStoppedProcesses;
+    };
+
     /**
       Projects are intentionally excluded from workstation snapshots and
       Restic to keep active, agent-writable working trees out of the backup
@@ -77,6 +130,58 @@ let
     srv-share-projects = {
       path = "/srv/share/projects";
       tier = "re-derivable";
+    };
+  };
+
+  rootSubvolumes = {
+    "@" = {
+      mountpoint = "/";
+      mountOptions = [
+        "compress=zstd:3"
+        "noatime"
+      ];
+    };
+    "@home" = {
+      mountpoint = "/home";
+      mountOptions = [
+        "compress=zstd:3"
+        "noatime"
+      ];
+    };
+    "@nix" = {
+      mountpoint = "/nix";
+      mountOptions = [
+        "compress=zstd:3"
+        "noatime"
+      ];
+    };
+    "@var-lib" = {
+      mountpoint = "/var/lib";
+      mountOptions = [
+        "compress=zstd:3"
+        "noatime"
+      ];
+    };
+    "@srv-share" = {
+      mountpoint = "/srv/share";
+      mountOptions = [
+        "compress=zstd:3"
+        "noatime"
+      ];
+    };
+    "@srv-nori" = {
+      mountpoint = "/srv/nori";
+      mountOptions = [
+        "compress=zstd:3"
+        "noatime"
+      ];
+    };
+    "@snapshots" = {
+      mountpoint = "/.snapshots";
+      mountOptions = [
+        "compress=zstd:3"
+        "noatime"
+      ];
     };
   };
 
@@ -92,8 +197,20 @@ let
     busy migration leaves the plain directory (and its contents)
     visible until a later successful run.
   */
+  parentSubvolumes = lib.sort (
+    a: b:
+    builtins.stringLength rootSubvolumes.${a}.mountpoint
+    > builtins.stringLength rootSubvolumes.${b}.mountpoint
+  ) (lib.attrNames rootSubvolumes);
   rederivableSubvolumes = lib.mapAttrs' (
-    _: f: lib.nameValuePair "@${lib.removePrefix "/" f.path}" { mountpoint = null; }
+    _: f:
+    let
+      parent = lib.findFirst (
+        name: lib.hasPrefix (lib.removeSuffix "/" rootSubvolumes.${name}.mountpoint + "/") f.path
+      ) (throw "No parent subvolume for ${f.path}") parentSubvolumes;
+      prefix = lib.removeSuffix "/" rootSubvolumes.${parent}.mountpoint + "/";
+    in
+    lib.nameValuePair "${parent}/${lib.removePrefix prefix f.path}" { mountpoint = null; }
   ) (lib.filterAttrs (_: f: f.tier == "re-derivable") noriFs);
 in
 {
@@ -159,58 +276,7 @@ in
                 "-f"
               ];
 
-              subvolumes = {
-                "@" = {
-                  mountpoint = "/";
-                  mountOptions = [
-                    "compress=zstd:3"
-                    "noatime"
-                  ];
-                };
-                "@home" = {
-                  mountpoint = "/home";
-                  mountOptions = [
-                    "compress=zstd:3"
-                    "noatime"
-                  ];
-                };
-                "@nix" = {
-                  mountpoint = "/nix";
-                  mountOptions = [
-                    "compress=zstd:3"
-                    "noatime"
-                  ];
-                };
-                "@var-lib" = {
-                  mountpoint = "/var/lib";
-                  mountOptions = [
-                    "compress=zstd:3"
-                    "noatime"
-                  ];
-                };
-                "@srv-share" = {
-                  mountpoint = "/srv/share";
-                  mountOptions = [
-                    "compress=zstd:3"
-                    "noatime"
-                  ];
-                };
-                "@srv-nori" = {
-                  mountpoint = "/srv/nori";
-                  mountOptions = [
-                    "compress=zstd:3"
-                    "noatime"
-                  ];
-                };
-                "@snapshots" = {
-                  mountpoint = "/.snapshots";
-                  mountOptions = [
-                    "compress=zstd:3"
-                    "noatime"
-                  ];
-                };
-              }
-              // rederivableSubvolumes;
+              subvolumes = rootSubvolumes // rederivableSubvolumes;
             };
           };
         };

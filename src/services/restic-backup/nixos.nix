@@ -6,6 +6,7 @@
 }:
 
 let
+  migrationPaths = import ../../infra/common/nixos/storage/subvolume-paths.nix;
   backup = config.nori.inventory.backup;
   remoteBackup = config.networking.hostName == "adelie";
   userDataPaths = lib.mapAttrsToList (_: f: f.path) (
@@ -27,29 +28,13 @@ let
   rederivableUnder =
     parents:
     lib.sort (a: b: a < b) (
-      lib.concatMap
-        (
-          f:
-          let
-            path = f.path;
-            parent = lib.dirOf path;
-            base = lib.baseNameOf path;
-          in
-          [ path ]
-          ++ lib.optional (lib.any (p: lib.hasPrefix (p + "/") path) parents) (
-            parent + "/." + base + ".nori-subvolume-migration-staging"
-          )
-          ++ lib.optional (lib.any (p: lib.hasPrefix (p + "/") path) parents) (
-            parent + "/." + base + ".nori-subvolume-migration-rollback"
-          )
+      lib.concatMap (f: lib.attrValues (migrationPaths.forPath f.path)) (
+        lib.attrValues (
+          lib.filterAttrs (
+            _: f: f.tier == "re-derivable" && lib.any (parent: lib.hasPrefix (parent + "/") f.path) parents
+          ) config.nori.fs
         )
-        (
-          lib.attrValues (
-            lib.filterAttrs (
-              _: f: f.tier == "re-derivable" && lib.any (parent: lib.hasPrefix (parent + "/") f.path) parents
-            ) config.nori.fs
-          )
-        )
+      )
     );
   userDataRederivableExcludes = rederivableUnder userDataPaths;
   irreplaceableRederivableExcludes = rederivableUnder irreplaceablePaths;

@@ -78,6 +78,16 @@ in
                 filter generators in src/infra/common/nixos/backup.nix.
               '';
             };
+            atBoot = mkOption {
+              type = types.bool;
+              default = false;
+              description = "Run guarded boundary creation at boot. Defaults to manual when the path can be written by active applications.";
+            };
+            stoppedProcesses = mkOption {
+              type = types.listOf types.str;
+              default = [ ];
+              description = "Exact process names that must not be running when guarded migration starts.";
+            };
             samba = mkOption {
               default = null;
               description = ''

@@ -94,6 +94,30 @@ attribute set of (submodule)
 
 
 
+## nori.fs.<name>.atBoot
+
+
+
+Run guarded boundary creation at boot. Defaults to manual when the path can be written by active applications.
+
+
+
+*Type:*
+boolean
+
+
+
+*Default:*
+
+```nix
+false
+```
+
+*Declared by:*
+ - `src/infra/common/nixos/storage`
+
+
+
 ## nori.fs.<name>.path
 
 
@@ -413,6 +437,30 @@ null
 
 ```nix
 "/.*/"
+```
+
+*Declared by:*
+ - `src/infra/common/nixos/storage`
+
+
+
+## nori.fs.<name>.stoppedProcesses
+
+
+
+Exact process names that must not be running when guarded migration starts.
+
+
+
+*Type:*
+list of string
+
+
+
+*Default:*
+
+```nix
+[ ]
 ```
 
 *Declared by:*

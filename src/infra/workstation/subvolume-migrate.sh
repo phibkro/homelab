@@ -1,36 +1,38 @@
 #!/usr/bin/env bash
-# nori-subvolume-migrate — convert classified re-derivable paths into
-# nested Btrfs subvolumes. Classification is owned by nori.fs; the same
-# registry derives the boundaries, snapshot filter, and Restic exclusions.
-#
-# Home-cache initialization remains guarded but automatic at boot; the
-# /srv/share/projects unit is manual so its live writers can be quiesced.
-# It validates device/filesystem identity, refuses busy paths, copies with
-# reflinks, verifies the copy, and keeps a read-only nested rollback snapshot.
-# The verified plain-directory duplicate is removed only after atomic exchange,
-# full tree comparisons, and a second writer check. Any uncertain state keeps
-# every available copy and exits loudly. Parent-restic exclusion derivation
-# also covers the sibling staging and rollback locations used during cutover.
+# nori-subvolume-migrate converts classified paths into nested Btrfs subvolumes.
+# The nori.fs registry derives boundaries, snapshot filters, and Restic excludes.
+# Home caches initialize at boot. Steam and project migrations are manual.
+# The migration verifies Btrfs identity, rejects busy paths, and uses reflinks.
+# It verifies the copy and preserves a read-only rollback snapshot.
+# An atomic exchange precedes duplicate removal after full tree comparisons.
+# Required process guards and lsof must both report no active writer.
 set -euo pipefail
+
 
 die() { printf 'nori-subvolume-migrate: %s\n' "$*" >&2; exit 1; }
 note() { printf 'nori-subvolume-migrate: %s\n' "$*"; }
 usage() {
-  printf 'usage: %s --device DISK --mount-device PARTITION --fs-label LABEL --parent PATH... -- PATH...\n' "$0" >&2
+  printf 'usage: %s --device DISK --mount-device PARTITION --fs-label LABEL --staging-suffix SUFFIX --rollback-suffix SUFFIX --parent PATH... [--require-stopped-process NAME]... -- PATH...\n' "$0" >&2
   exit 2
 }
 
 device=""
 mount_device=""
 fs_label=""
+staging_suffix=""
+rollback_suffix=""
 parents=()
 paths=()
+required_stopped_processes=()
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --device) [ "$#" -ge 2 ] || usage; device="$2"; shift 2 ;;
     --mount-device) [ "$#" -ge 2 ] || usage; mount_device="$2"; shift 2 ;;
     --fs-label) [ "$#" -ge 2 ] || usage; fs_label="$2"; shift 2 ;;
+    --staging-suffix) [ "$#" -ge 2 ] || usage; staging_suffix="$2"; shift 2 ;;
+    --rollback-suffix) [ "$#" -ge 2 ] || usage; rollback_suffix="$2"; shift 2 ;;
     --parent) [ "$#" -ge 2 ] || usage; parents+=("${2%/}"); shift 2 ;;
+    --require-stopped-process) [ "$#" -ge 2 ] || usage; required_stopped_processes+=("$2"); shift 2 ;;
     -h|--help) usage ;;
     --) shift; paths+=("$@"); break ;;
     -*) die "unknown flag: $1" ;;
@@ -39,9 +41,31 @@ while [ "$#" -gt 0 ]; do
 done
 [ -n "$device" ] && [ -n "$mount_device" ] && [ -n "$fs_label" ] || usage
 [ "${#parents[@]}" -gt 0 ] && [ "${#paths[@]}" -gt 0 ] || usage
+[ -n "$staging_suffix" ] && [ -n "$rollback_suffix" ] || usage
 for parent in "${parents[@]}"; do
   [ -n "$parent" ] || die "--parent must not be filesystem root"
 done
+required_process_block_reason() {
+  local process pgrep_status
+  for process in "${required_stopped_processes[@]}"; do
+    if pgrep -x "$process" >/dev/null 2>&1; then
+      printf "required process '%s' is running" "$process"
+      return 0
+    else
+      pgrep_status=$?
+      if [ "$pgrep_status" -ne 1 ]; then
+        printf "cannot check required process '%s' (pgrep exited %s)" "$process" "$pgrep_status"
+        return 0
+      fi
+    fi
+  done
+  return 1
+}
+assert_required_processes_stopped() {
+  local reason
+  if reason="$(required_process_block_reason)"; then die "refusing migration: $reason"; fi
+}
+assert_required_processes_stopped
 
 # Resolve the declared disk and mounted filesystem before any skip or change.
 [ -e "$device" ] || die "declared root disk device does not exist: $device"
@@ -92,12 +116,13 @@ for raw_path in "${paths[@]}"; do
     case "$path" in "$candidate"/*) owner_parent="$candidate"; break ;; esac
   done
   [ -n "$owner_parent" ] || die "$path is not below any declared backed-up parent"
+  assert_required_processes_stopped
   parent_dir="$(dirname -- "$path")"
   base_name="$(basename -- "$path")"
-  staging="${parent_dir}/.${base_name}.nori-subvolume-migration-staging"
-  rollback="${parent_dir}/.${base_name}.nori-subvolume-migration-rollback"
+  staging="${parent_dir}/.${base_name}${staging_suffix}"
+  rollback="${parent_dir}/.${base_name}${rollback_suffix}"
   probe="$path"
-  [ -e "$probe" ] || probe="$parent_dir"
+  while [ ! -e "$probe" ]; do probe="$(dirname -- "$probe")"; done
   mount_target="$(findmnt -kno TARGET --target "$probe")" || die "cannot resolve mount for $probe"
   [ ! -L "$path" ] || die "$path is a symlink; refusing to replace it"
   if [ -e "$path" ] && [ ! -d "$path" ]; then die "$path exists and is not a directory"; fi
@@ -114,6 +139,7 @@ for raw_path in "${paths[@]}"; do
   [ "$uuid" = "$dev_uuid" ] || die "FsUUID mismatch for $probe: $uuid != $dev_uuid"
   [ "$label" = "$fs_label" ] || die "Btrfs label mismatch for $probe: '$label' (expected '$fs_label')"
 
+  [ ! -e "$staging" ] || die "stale staging path exists: $staging — inspect and resolve it deliberately; parent snapshots can still contain it"
   if [ -e "$path" ] && btrfs subvolume show -- "$path" >/dev/null 2>&1; then
     if [ "$(stat -c '%u:%g' -- "$path")" = 0:0 ]; then
       adopt_ownership "$path"
@@ -125,20 +151,31 @@ for raw_path in "${paths[@]}"; do
   fi
   if [ -e "$path" ] && [ "$mount_target" = "$path" ]; then die "$path is a mount point; refusing to migrate it"; fi
   if [ ! -e "$path" ]; then
-    [ -d "$parent_dir" ] || die "cannot create $path: parent $parent_dir does not exist"
+    missing_parent_dirs=()
+    candidate="$parent_dir"
+    while [ ! -d "$candidate" ]; do
+      missing_parent_dirs+=("$candidate")
+      candidate="$(dirname -- "$candidate")"
+    done
+    mkdir -p -- "$parent_dir"
+    for ((i = ${#missing_parent_dirs[@]} - 1; i >= 0; i--)); do
+      chown --reference="$candidate" -- "${missing_parent_dirs[$i]}"
+      chmod --reference="$candidate" -- "${missing_parent_dirs[$i]}"
+      candidate="${missing_parent_dirs[$i]}"
+    done
     btrfs subvolume create -- "$path" >/dev/null || die "cannot create boundary $path"
     adopt_ownership "$path"
     note "created empty subvolume boundary $path owned like $(owner_reference)"
     created=$((created + 1))
     continue
   fi
-  [ ! -e "$staging" ] || die "stale staging path exists: $staging — inspect and resolve it deliberately"
   [ ! -e "$rollback" ] || die "rollback subvolume already exists: $rollback — inspect it deliberately before retrying"
   writer_reason=""
   if writer_reason="$(writer_block_reason "$path")"; then die "refusing to migrate busy path $path: $writer_reason"; fi
+  assert_required_processes_stopped
 
   btrfs subvolume create -- "$staging" >/dev/null || die "cannot create staging subvolume $staging"
-  if ! cp -a --reflink=auto -- "$path/." "$staging/"; then
+  if ! cp -a --reflink=always -- "$path/." "$staging/"; then
     btrfs subvolume delete -- "$staging" >/dev/null 2>&1 || note "WARNING: staging remains at $staging"
     die "copy failed for $path — original is untouched"
   fi
@@ -153,6 +190,7 @@ for raw_path in "${paths[@]}"; do
     btrfs subvolume delete -- "$staging" >/dev/null 2>&1 || note "WARNING: staging remains at $staging"
     die "refusing to swap busy path $path: $writer_reason — original is untouched"
   fi
+  assert_required_processes_stopped
 
   btrfs subvolume snapshot -r "$staging" "$rollback" >/dev/null || {
     btrfs subvolume delete -- "$staging" >/dev/null 2>&1 || note "WARNING: staging remains at $staging"
@@ -166,6 +204,7 @@ for raw_path in "${paths[@]}"; do
   if ! mv --exchange --no-copy --no-target-directory -- "$path" "$staging"; then
     die "cannot atomically exchange verified staging into $path — original and staging are preserved"
   fi
+  assert_required_processes_stopped
   # At this point path is the verified live subvolume; staging is the old
   # plain directory. Compare all three before removing only that duplicate.
   if ! diff -r --no-dereference -- "$staging" "$path" >/dev/null || ! diff -r --no-dereference -- "$staging" "$rollback" >/dev/null; then
@@ -180,6 +219,7 @@ for raw_path in "${paths[@]}"; do
   if ! diff -r --no-dereference -- "$staging" "$path" >/dev/null || ! diff -r --no-dereference -- "$staging" "$rollback" >/dev/null; then
     die "tree changed during final writer check for $path; original remains at $staging and parent snapshots still include it"
   fi
+  assert_required_processes_stopped
   if ! rm -rf --one-file-system -- "$staging"; then
     die "verified duplicate could not be removed from $staging; rollback remains at $rollback; parent snapshots still include the plain original until resolved"
   fi
