@@ -16,8 +16,13 @@
   The binary is a prebuilt glibc ELF that links only libc/libstdc++ and
   dlopens its graphics and input stack, so those libraries go on the RPATH
   through `runtimeDependencies`. The 0.8.0 archive contains only the binary,
-  installed under lib/tern; bin/tern is an exec wrapper. No web-client assets
-  are bundled: `tern web serve` needs a separate build passed with --assets.
+  installed under lib/tern; bin/tern is an exec wrapper. `tern web serve`
+  embeds the page and JS glue and points the browser at that release's wasm
+  on build.stencil.so, pinned by sha384, so the browser must reach that host
+  at load time. Observed on 0.8.0 against a loopback server: page, glue and
+  /wire upgrade answer, and a downloaded wasm matches the pin. No browser
+  rendered it. --assets DIR needs a full local build (index.html, JS glue and
+  pkg/*.wasm); a lone wasm gives 404 for the page.
   The wrapper appends glib's `gdbus`, which Tern
   runs to read the XDG settings portal (colour scheme, desktop settings), and
   `zenity`, which Tern shells out to for native dialogs. Without it the log
