@@ -15,7 +15,7 @@ const PROJECTS_FUNNEL_URL = "https://workstation.saola-matrix.ts.net:10000/mcp";
 /**
  * Isolated public projection for the workstation's existing Herdr agents.
  * Keeping this in its own stack prevents a connector rollout from reconciling
- * unrelated Hindsight or R2 resources.
+ * unrelated Homelab-stack or R2 resources.
  */
 export default Alchemy.Stack(
   "HerdrProjects",

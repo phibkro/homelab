@@ -1,6 +1,14 @@
 import { describe, expect, test } from "bun:test";
+import * as BunServices from "@effect/platform-bun/BunServices";
+import { AlchemyContextLive } from "alchemy/AlchemyContext";
+import { ArtifactStore, createArtifactStore } from "alchemy/Artifacts";
 import * as Cloudflare from "alchemy/Cloudflare";
+import { layerNonInteractive } from "alchemy/Interaction";
+import * as State from "alchemy/State";
+import { evalStack } from "alchemy/Stack";
+import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
+import * as Layer from "effect/Layer";
 import homelab from "../alchemy.run.ts";
 import projects from "../projects.alchemy.run.ts";
 import relay from "../projects-relay.alchemy.run.ts";
@@ -10,7 +18,7 @@ import { SelfHostedApplication } from "./access.ts";
 import { DnsRecord, McpAccessPolicy, McpPortal, McpServer } from "./mcp.ts";
 
 // Import every real stack, including its real Alchemy/Distilled graph. Do not
-// execute any stack effect: imports must work without credentials or cloud IO.
+// deploy any stack: imports and compilation must work without cloud IO.
 describe("Cloudflare stack dependency compatibility", () => {
   for (const [stack, name] of [
     [homelab, "Homelab"],
@@ -24,6 +32,28 @@ describe("Cloudflare stack dependency compatibility", () => {
       expect(stack.stackName).toBe(name);
     });
   }
+
+  test("Homelab declares no resources, leaving Hindsight and NixCache retired", () =>
+    Effect.runPromise(
+      evalStack(
+        homelab,
+        (stack) => Effect.sync(() => expect(Object.keys(stack.resources)).toEqual([])),
+        { stage: "test" },
+      ).pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            AlchemyContextLive,
+            State.inMemoryState(),
+            Layer.sync(ArtifactStore, createArtifactStore),
+            layerNonInteractive(),
+          ).pipe(Layer.provideMerge(BunServices.layer)),
+        ),
+        Effect.provideService(
+          ConfigProvider.ConfigProvider,
+          ConfigProvider.fromEnvRecord({ CLOUDFLARE_MCP_API_TOKEN: "test-only-api-token" }),
+        ),
+      ),
+    ));
 
   test("the new gateway has native Access resource types distinct from compatibility resources", () => {
     expect(Cloudflare.Access.Policy.Type).toBe("Cloudflare.Access.Policy");

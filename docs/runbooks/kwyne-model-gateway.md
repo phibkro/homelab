@@ -357,17 +357,7 @@ steps above. No source check substitutes for those observations.
 Read-only plans and identity probes on 2026-10-04 found these existing items.
 The isolated gateway stack does not apply them or change their declared intent.
 
-- **Hindsight URL migration.** The Homelab main stack declares
-  `https://memory-origin.home.phibkro.org/mcp/chatlog-insights-v1/`, but the
-  existing server still uses `https://hindsight-origin.phibkro.org/mcp/chatlog-insights-v1/`.
-  The immutable-URL guard refuses that update. Review a separate migration;
-  do not change the declared URL back or replace the live server as part of
-  this gateway cutover. Its old DNS dependency is also removed in the plan.
-- **NixCache retirement.** The main stack omits `NixCache` and plans its deletion.
-  That existing retirement is not gateway work. Do not apply the main stack
-  to deploy this gateway.
-- **Four unresolved operator policies.** Read-only provider probes could not resolve
-  `HindsightServerPolicy`, `HindsightPortalPolicy`,
+- **Two unresolved operator policies.** Read-only provider probes could not resolve
   `HerdrProjectsServerPolicyV3`, or `HerdrProjectsPortalPolicy`.
   Direct application discovery returned seven self-hosted apps and one WARP app,
   with no matching MCP or MCP-portal application. This does not prove the
