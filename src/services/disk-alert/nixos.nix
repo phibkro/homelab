@@ -31,6 +31,14 @@ in
         don't have all the prod mountpoints.
       '';
     };
+    mutedCriticalMountpoints = lib.mkOption {
+      type = lib.types.listOf (lib.types.enum cfg.mountpoints);
+      default = [ ];
+      description = ''
+        Monitored mountpoints whose critical notifications are muted.
+        Measurements, warnings, measurement errors, maintenance, and snapshot guards remain enabled.
+      '';
+    };
     criticalThresholdPct = lib.mkOption {
       type = lib.types.ints.between 1 99;
       default = 95;
@@ -115,6 +123,7 @@ in
         export PRESSURE_ALERT_CMD=${config.nori.alerts.command}
         export PRESSURE_HOST=${config.networking.hostName}
         export PRESSURE_STATE_DIR=$RUNTIME_DIRECTORY
+        export PRESSURE_MUTED_CRITICAL_MOUNTPOINTS=${lib.escapeShellArg (builtins.toJSON cfg.mutedCriticalMountpoints)}
         export PRESSURE_META_WARN_PCT=${toString storagePressure.metadataWarningPct}
         export PRESSURE_META_CRIT_PCT=${toString storagePressure.metadataCriticalPct}
         export PRESSURE_WARN_WORKSPACE_BYTES=${

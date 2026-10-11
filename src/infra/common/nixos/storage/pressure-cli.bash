@@ -21,6 +21,8 @@
 #   with-lock PATH CMD...  nonblocking filesystem-identity lock held across
 #                          CMD; 75 when another owner holds the lock
 #   maintain PATH...       bounded DATA-ONLY allocation maintenance
+#                          1 real error (takes precedence), 75 workspace
+#                          refusal, 0 otherwise (including owner/lock defer)
 #
 # Measurement errors are errors, never healthy: an unreadable path, a
 # missing or malformed `btrfs filesystem usage` field, or self-inconsistent
@@ -359,7 +361,7 @@ maintain_one() {
     printf 'nori-storage-pressure: refusing further compaction of %s — only %s unallocated bytes remain (critical workspace %s); free data or add devices, do not delete\n' \
       "$path" "$m_unalloc" "$NORI_PRESSURE_CRITICAL_WORKSPACE_BYTES" >&2
     exec {fd}>&-
-    return 1
+    return 75
   fi
 
   before=$m_unalloc
@@ -375,7 +377,7 @@ maintain_one() {
 
 cmd_maintain() {
   [ "$#" -gt 0 ] || die "maintain requires at least one path"
-  local path='' type='' key='' failed=0
+  local path='' type='' key='' failed=0 deferred=0 status=0
   declare -A seen=()
   for path in "$@"; do
     # An unreadable path is reported and skipped, never allowed to abort the
@@ -404,13 +406,24 @@ cmd_maintain() {
     # One filesystem per subshell: a measurement or balance failure (or the
     # fail-closed owner check) stops that filesystem only, and the lock is
     # released as soon as the subshell exits.
-    if ! (maintain_one "$path"); then
-      printf 'nori-storage-pressure: maintenance failed for %s — continuing with the remaining filesystems\n' \
-        "$path" >&2
-      failed=1
+    if (maintain_one "$path"); then
+      status=0
+    else
+      status=$?
     fi
+    case "$status" in
+      0) ;;
+      75) deferred=1 ;;
+      *)
+        printf 'nori-storage-pressure: maintenance failed for %s — continuing with the remaining filesystems\n' \
+          "$path" >&2
+        failed=1
+        ;;
+    esac
   done
-  return "$failed"
+  [ "$failed" -eq 0 ] || return 1
+  [ "$deferred" -eq 0 ] || return 75
+  return 0
 }
 
 main() {

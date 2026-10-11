@@ -2,9 +2,28 @@
   config,
   lib,
   inputs,
+  utils,
   ...
 }:
 
+let
+  # One representative mount per physical Btrfs filesystem, from the host
+  # storage declarations. Root also covers /home, /nix and /srv subvolumes.
+  scrubSchedule = [
+    {
+      path = config.fileSystems."/".mountPoint;
+      day = "01";
+    }
+    {
+      path = config.nori.fs.library.path;
+      day = "02";
+    }
+    {
+      path = config.nori.fs."backup-local".path;
+      day = "03";
+    }
+  ];
+in
 {
   /**
     workstation is a server + a desktop. Each concern import below declares
@@ -26,6 +45,36 @@
     ./firecracker-environment.nix
   ];
   nori.selfHostedFirecracker.enable = true;
+  nori.observability.diskAlert.mutedCriticalMountpoints = [ "/mnt/media/library" ];
+
+  services.btrfs.autoScrub = {
+    enable = true;
+    fileSystems = map (entry: entry.path) scrubSchedule;
+    interval = "monthly";
+    limit = "50M";
+  };
+  # %n already includes .service. notify@ passes its instance to systemctl.
+  systemd.services."btrfs-scrub@".unitConfig.OnFailure = [ "notify@%n" ];
+  systemd.timers = lib.listToAttrs (
+    map (
+      entry:
+      lib.nameValuePair "btrfs-scrub@${utils.escapeSystemdPath entry.path}" {
+        overrideStrategy = "asDropin";
+        timerConfig = {
+          # The template timer already sets OnCalendar=monthly, and a drop-in only
+          # appends to a list option: the empty entry resets it so the three
+          # filesystems really start on different days.
+          OnCalendar = lib.mkForce [
+            ""
+            "*-*-${entry.day} 02:00:00"
+          ];
+          AccuracySec = lib.mkForce "5min";
+          # No catch-up heavy IO on activation while allocation pressure persists.
+          Persistent = lib.mkForce false;
+        };
+      }
+    ) scrubSchedule
+  );
 
   # networking.hostName injected from the registry key in flake.nix.
   networking.useDHCP = lib.mkDefault true;

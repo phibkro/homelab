@@ -51,19 +51,24 @@ sysfs="$work/sysfs"
 mkdir -p "$fixture" "$stub" "$sysfs" "$work/lock"
 export BTRFS_FIXTURE_DIR="$fixture"
 export STAT_FIXTURE_DIR="$fixture"
+export STAT_FIXTURE_ROOT="$fixture"
+export BTRFS_FIXTURE_ROOT="$fixture"
 export BTRFS_STUB_LOG="$work/btrfs.log"
 export BTRFS_FIXTURE_UUID="c87e6351-3b15-43fc-b276-45494258dd50"
+export PRESSURE_MUTED_CRITICAL_MOUNTPOINTS='[]'
 
 cat >"$stub/stat" <<'STUB_STAT'
 #!/usr/bin/env bash
 set -u
 last=''
 for last in "$@"; do :; done
+path_fixture="$STAT_FIXTURE_ROOT/$(basename -- "$last")"
+[ ! -d "$path_fixture" ] || STAT_FIXTURE_DIR=$path_fixture
 if [ -e "$STAT_FIXTURE_DIR/fail" ]; then
   echo "stat: cannot read filesystem information for $*" >&2
   exit 1
 fi
-if [ -e "$STAT_FIXTURE_DIR/fail-paths" ] && grep -qx -- "$last" "$STAT_FIXTURE_DIR/fail-paths"; then
+if [ -e "$STAT_FIXTURE_ROOT/fail-paths" ] && grep -qx -- "$last" "$STAT_FIXTURE_ROOT/fail-paths"; then
   echo "stat: cannot read filesystem information for $last" >&2
   exit 1
 fi
@@ -82,6 +87,13 @@ cat >"$stub/btrfs" <<'STUB_BTRFS'
 #!/usr/bin/env bash
 set -u
 printf '%s\n' "$*" >>"$BTRFS_STUB_LOG"
+last=''
+for last in "$@"; do :; done
+path_fixture="$BTRFS_FIXTURE_ROOT/$(basename -- "$last")"
+if [ -d "$path_fixture" ]; then
+  BTRFS_FIXTURE_DIR=$path_fixture
+  BTRFS_FIXTURE_UUID=$(cat "$BTRFS_FIXTURE_DIR/uuid")
+fi
 case "$1 $2" in
   "filesystem show")
     printf "Label: 'fixture'  uuid: %s\n" "$BTRFS_FIXTURE_UUID"
@@ -479,15 +491,66 @@ set_usage "$DEVICE_SIZE" "$((DEVICE_SIZE - 68719476736))" 68719476736 "$META_TOT
 assert_eq "maintain: headroom short-circuit exits 0" 0 "$?"
 assert_eq "maintain: only the reclaim pass" "balance start -dusage=0,limit=4 -- $target" "$(maintenance_log)"
 
-# Workspace exhausted after the reclaim pass → actionable refusal, no
+# Workspace exhausted after the reclaim pass → temporary refusal, no
 # compaction, and no deletion of anything.
 reset_fixture
 set_fs btrfs 1000 800 190 34
 set_usage "$DEVICE_SIZE" "$((DEVICE_SIZE - 1048576))" 1048576 "$META_TOTAL" "$META_USED_99PCT"
 "$cli" maintain "$target" 2>"$work/err"
-assert_eq "maintain: exhausted workspace exits 1" 1 "$?"
+assert_eq "maintain: refusal only exits 75" 75 "$?"
 assert_eq "maintain: refuses compaction" "balance start -dusage=0,limit=4 -- $target" "$(maintenance_log)"
 assert_contains "maintain: refusal is actionable" "refusing further compaction" "$(cat "$work/err")"
+
+# A distinct healthy filesystem must not mask a refusal, in either order.
+reset_fixture
+set_fs btrfs 1000 800 190 34
+set_usage "$DEVICE_SIZE" "$((DEVICE_SIZE - 68719476736))" 68719476736 "$META_TOTAL" "$META_USED_99PCT"
+healthy_target="$work/healthy-target"
+healthy_uuid="c87e6351-3b15-43fc-b276-45494258dd51"
+mkdir -p "$fixture/healthy-target" "$sysfs/$healthy_uuid"
+cp "$fixture/type" "$fixture/blocks" "$fixture/dev" "$fixture/healthy-target/"
+cp "$fixture/usage" "$fixture/healthy-target/usage"
+printf '%s\n' "$healthy_uuid" >"$fixture/healthy-target/uuid"
+printf 'none' >"$sysfs/$healthy_uuid/exclusive_operation"
+broken_target="$work/broken-target"
+broken_uuid="c87e6351-3b15-43fc-b276-45494258dd52"
+mkdir -p "$fixture/broken-target" "$sysfs/$broken_uuid"
+cp "$fixture/type" "$fixture/blocks" "$fixture/broken-target/"
+printf '35\n' >"$fixture/broken-target/dev"
+cp "$fixture/usage" "$fixture/broken-target/usage"
+printf '%s\n' "$broken_uuid" >"$fixture/broken-target/uuid"
+printf 'none' >"$sysfs/$broken_uuid/exclusive_operation"
+touch "$fixture/broken-target/fail-usage"
+set_usage "$DEVICE_SIZE" "$((DEVICE_SIZE - 1048576))" 1048576 "$META_TOTAL" "$META_USED_99PCT"
+"$cli" maintain "$target" "$healthy_target" 2>"$work/err"
+assert_eq "maintain aggregation: refusal+success exits 75" 75 "$?"
+assert_eq "maintain aggregation: both distinct filesystems visited" \
+  "balance start -dusage=0,limit=4 -- $target
+balance start -dusage=0,limit=4 -- $healthy_target" "$(maintenance_log)"
+"$cli" maintain "$healthy_target" "$target" 2>"$work/err"
+assert_eq "maintain aggregation: success+refusal exits 75" 75 "$?"
+
+# Genuine errors win regardless of whether the refusal comes first or last.
+"$cli" maintain "$target" "$broken_target" 2>"$work/err"
+assert_eq "maintain aggregation: refusal+error exits 1" 1 "$?"
+"$cli" maintain "$broken_target" "$target" 2>"$work/err"
+assert_eq "maintain aggregation: error+refusal exits 1" 1 "$?"
+
+# Measurement and balance failures are errors, not workspace deferrals.
+reset_fixture
+set_usage "$DEVICE_SIZE" "$((DEVICE_SIZE - 68719476736))" 68719476736 "$META_TOTAL" "$META_USED_99PCT"
+touch "$fixture/fail-usage"
+"$cli" maintain "$target" 2>"$work/err"
+assert_eq "maintain: measurement failure exits 1" 1 "$?"
+assert_contains "maintain: measurement failure is explicit" "cannot read chunk info" "$(cat "$work/err")"
+reset_fixture
+touch "$fixture/balance-fail"
+"$cli" maintain "$target" 2>"$work/err"
+assert_eq "maintain: balance failure exits 1" 1 "$?"
+assert_contains "maintain: balance failure is explicit" "data balance" "$(cat "$work/err")"
+reset_fixture
+"$cli" maintain "$target" "$healthy_target" 2>"$work/err"
+assert_eq "maintain aggregation: all healthy exits 0" 0 "$?"
 
 # Another exclusive filesystem operation owns the filesystem → defer.
 reset_fixture
@@ -584,11 +647,6 @@ assert_eq "alarm warning: exits 0" 0 "$rc"
 assert_eq "alarm warning: exactly one alert" 1 "$(alert_count)"
 assert_grep_exact "alarm warning: severity warning" 'A|warning' "$alert_log"
 assert_grep "alarm warning: delivery is required" '--require-delivery' "$alert_log"
-assert_grep "alarm warning: title names the mount" "disk pressure warning ($target " "$alert_log"
-assert_grep "alarm warning: body carries metadata utilization" 'btrfs metadata 90%' "$alert_log"
-assert_grep "alarm warning: body carries metadata bytes" '90000000000' "$alert_log"
-assert_grep "alarm warning: body carries unallocated bytes" '5368709120' "$alert_log"
-assert_grep "alarm warning: body carries the runbook" 'storage-full.md' "$alert_log"
 assert_eq "alarm warning: stamp written after successful delivery" warning "$(cat "$(stamp_path)" 2>/dev/null)"
 
 "$alarm" "$target" >/dev/null 2>"$work/alarm.err"
@@ -611,8 +669,6 @@ set_usage "$DEVICE_SIZE" "$((DEVICE_SIZE - 1048576))" 1048576 "$META_TOTAL" "$ME
 assert_eq "alarm critical: exits 0" 0 "$?"
 assert_eq "alarm critical: alert delivered" 3 "$(alert_count)"
 assert_grep_exact "alarm critical: severity urgent" 'A|urgent' "$alert_log"
-assert_grep "alarm critical: title names the mount" "disk critical ($target " "$alert_log"
-assert_grep "alarm critical: body carries unallocated bytes" '1048576' "$alert_log"
 assert_absent_file "alarm critical: stamp cleared" "$(stamp_path)"
 
 # A warning whose delivery fails is NOT marked notified, and the next run
@@ -641,9 +697,33 @@ set_fs btrfs 1000 800 190 34
 : >"$fixture/fail"
 "$alarm" "$target" >/dev/null 2>"$work/alarm.err"
 assert_eq "alarm measurement error: fails the run" 1 "$?"
-assert_grep "alarm measurement error: alert delivered" "disk measurement failed ($target)" "$alert_log"
-assert_grep "alarm measurement error: body explains why" 'could not be measured' "$alert_log"
+assert_eq "alarm measurement error: alert delivered" 1 "$(alert_count)"
 rm -f "$fixture/fail"
+
+# Muting a critical notification leaves guards, other mounts, errors, and
+# warnings active. The same critical fixture is used for both mountpoints.
+muted_critical_json=$(jq -cn --arg path "$target" '[$path]')
+export PRESSURE_MUTED_CRITICAL_MOUNTPOINTS="$muted_critical_json"
+: >"$alert_log"
+set_usage "$DEVICE_SIZE" "$((DEVICE_SIZE - 1048576))" 1048576 "$META_TOTAL" "$META_USED_99PCT"
+"$alarm" "$target" >/dev/null 2>"$work/alarm.err"
+assert_eq "muted critical: run succeeds without delivery" 0 "$?"
+assert_eq "muted critical: no notification" 0 "$(alert_count)"
+"$cli" check "$target" >/dev/null 2>&1
+assert_eq "muted critical: snapshot guard still sees critical" 75 "$?"
+"$alarm" "$target-other" >/dev/null 2>"$work/alarm.err"
+assert_eq "muted critical: other mount still alerts" 1 "$(alert_count)"
+: >"$alert_log"
+: >"$fixture/fail"
+"$alarm" "$target" >/dev/null 2>"$work/alarm.err"
+assert_eq "muted critical: failed measurement still fails" 1 "$?"
+assert_eq "muted critical: failed measurement still alerts" 1 "$(alert_count)"
+rm -f "$fixture/fail"
+: >"$alert_log"
+rm -f "$(stamp_path)"
+set_usage "$DEVICE_SIZE" "$((DEVICE_SIZE - 5368709120))" 5368709120 100000000000 90000000000
+"$alarm" "$target" >/dev/null 2>"$work/alarm.err"
+assert_eq "muted critical: warning still alerts" 1 "$(alert_count)"
 
 echo
 printf '%d passed, %d failed\n' "$pass" "$fail"

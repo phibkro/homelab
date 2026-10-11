@@ -48,6 +48,9 @@
   lock) owns the filesystem, refuses further compaction when workspace is
   exhausted, and never runs a full balance, a metadata profile conversion,
   or any deletion.
+  Workspace refusal returns 75 (EX_TEMPFAIL), accepted by the maintenance
+  unit. Any real error returns 1 and takes precedence across filesystems.
+  Otherwise it returns 0, including existing owner/lock deferrals.
 */
 let
   cfg = config.nori.storagePressure;
@@ -251,6 +254,7 @@ in
       serviceConfig = {
         Type = "oneshot";
         User = "root";
+        SuccessExitStatus = [ 75 ];
       };
       unitConfig.OnFailure = [ "notify@nori-storage-pressure-maintain.service" ];
       script = ''

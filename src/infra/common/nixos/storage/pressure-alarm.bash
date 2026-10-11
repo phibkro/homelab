@@ -20,6 +20,7 @@
 #   PRESSURE_ALERT_CMD           absolute path to bin/nori-alert
 #   PRESSURE_HOST                hostname used in alert titles
 #   PRESSURE_STATE_DIR           runtime dir holding the warning stamps
+#   PRESSURE_MUTED_CRITICAL_MOUNTPOINTS  JSON array of critical-notification mutes
 #   PRESSURE_META_WARN_PCT       metadata warning threshold (reason text)
 #   PRESSURE_META_CRIT_PCT       metadata critical threshold (reason text)
 #   PRESSURE_WARN_WORKSPACE_BYTES  warning expansion workspace (reason text)
@@ -35,6 +36,7 @@ export LC_ALL=C
 : "${PRESSURE_ALERT_CMD:?disk-alert: PRESSURE_ALERT_CMD must be set}"
 : "${PRESSURE_HOST:?disk-alert: PRESSURE_HOST must be set}"
 : "${PRESSURE_STATE_DIR:?disk-alert: PRESSURE_STATE_DIR must be set}"
+: "${PRESSURE_MUTED_CRITICAL_MOUNTPOINTS:?disk-alert: critical notification policy must be set}"
 : "${PRESSURE_META_WARN_PCT:?disk-alert: PRESSURE_META_WARN_PCT must be set}"
 : "${PRESSURE_META_CRIT_PCT:?disk-alert: PRESSURE_META_CRIT_PCT must be set}"
 : "${PRESSURE_WARN_WORKSPACE_BYTES:?disk-alert: PRESSURE_WARN_WORKSPACE_BYTES must be set}"
@@ -128,6 +130,11 @@ handle_mount() {
     75)
       key=$(stamp_key "$json" "$mount")
       rm -f "$PRESSURE_STATE_DIR/$key.warning"
+      if printf '%s' "$PRESSURE_MUTED_CRITICAL_MOUNTPOINTS" | jq -e --arg path "$mount" 'index($path) != null' >/dev/null; then
+        printf 'disk-alert: critical notification muted for %s; pressure remains critical\n' "$mount" >&2
+        rm -f "$err"
+        return 0
+      fi
       if ! "$PRESSURE_ALERT_CMD" \
         --audience operator \
         --severity urgent \

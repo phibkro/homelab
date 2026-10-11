@@ -32,6 +32,12 @@ The shared probe reports metadata use, unallocated device bytes, and the pressur
 For Btrfs, pass a mountpoint to the CLI. Snapshot guards resolve nested source and receive directories to their containing mounts.
 Thresholds and work limits come from `nori.storagePressure`; do not maintain another threshold list here.
 
+`nori.observability.diskAlert.mutedCriticalMountpoints` suppresses critical notifications for selected monitored mounts.
+It does not change pressure classification, snapshot guards, maintenance, warning notifications, or measurement errors.
+The workstation declaration is in `src/infra/workstation/default.nix`.
+A targeted override under `/run/systemd/system/disk-alert.service.d/` lasts until reboot.
+Rebuild the declared configuration before reboot to retain a source-only policy change.
+
 If workspace remains, run the configured bounded worker:
 
 ```sh
@@ -42,7 +48,15 @@ sudo nori-storage-pressure probe /
 
 The worker holds the same filesystem locks as snapshot operations. It defers when another operation owns the filesystem.
 It never runs an unrestricted balance, converts metadata profiles, or deletes data.
-If workspace is exhausted, it refuses further compaction and reports the blocker.
+If workspace is exhausted, it refuses further compaction, reports the blocker in the journal, and returns 75 (`EX_TEMPFAIL`).
+The aggregate exit status is 1 for any real error, otherwise 75 for any workspace refusal, otherwise 0.
+Real errors include measurement failures, balance failures, and missing or unreadable exclusive-operation markers.
+Errors take precedence regardless of filesystem order. The maintenance unit accepts 75 without a failure notification.
+Existing lock and exclusive-operation deferrals still return 0. `with-lock` independently returns 75 when its lock is busy.
+
+Native scrub checks integrity but does not create allocation workspace. The workstation derives one monthly scrub per physical Btrfs filesystem from its storage declarations.
+Before the first run, the operator must measure at least 20% CPU, memory, swap, and I/O headroom.
+The scrub timers are deliberately not persistent: activation does not trigger missed runs. Missed scrubs need a reviewed reschedule.
 
 Before any deletion, identify the exact files or snapshots and obtain operator approval.
 Do not reset application profiles or delete the entire cache tree. Some cache directories contain credentials and user work.
