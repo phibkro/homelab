@@ -13,6 +13,8 @@ let
   herdrPaneMemorySwapMax = 2 * gib;
 in
 {
+  imports = [ ./programs/hdt-proton-autostart.nix ];
+
   home.packages = [
     agentPackages.chatgpt # OpenAI's official Linux app, pinned by llm-agents.nix
     pkgs.chromium # wrapped Chromium for browser automation and ChatGPT Work agents
