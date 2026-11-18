@@ -1,23 +1,13 @@
-_: {
-  # Desktop integration for the operator-owned compatibility project. Keep its
-  # pinned runtime and Steam ID in that project; do not duplicate them here.
-  systemd.user.services.hdt-proton-autostart = {
-    Unit = {
-      Description = "Start HDT compatibility launcher when Hearthstone opens";
-      After = [ "hyprland-session.target" ];
-      PartOf = [ "hyprland-session.target" ];
-      ConditionPathExists = "/srv/share/projects/reverse-engineering/hdt-proton/hdt.local.json";
-    };
-    Service = {
-      Type = "simple";
-      WorkingDirectory = "/srv/share/projects/reverse-engineering/hdt-proton";
-      ExecStart = "/etc/profiles/per-user/nori/bin/devenv shell -- bash /srv/share/projects/reverse-engineering/hdt-proton/autostart.sh";
-      Restart = "on-failure";
-      RestartSec = 5;
-    };
-    Install.WantedBy = [ "hyprland-session.target" ];
+_:
+let
+  hdt = builtins.getFlake "github:phibkro/hdt-proton-hyprland/53488df8a5ae0b0a7d2bdab16abb3c6da084b031";
+in
+{
+  imports = [ hdt.homeManagerModules.default ];
+  programs.hdt-proton = {
+    enable = true;
+    dataDirectory = "/srv/share/projects/reverse-engineering/hdt-proton";
   };
-  # Adopt the generated project-owned link used before the next full rebuild.
-  # Scoped to this unit only; no other operator unit is replaced.
+  # Adopt the project-owned unit until the next full Home Manager activation.
   xdg.configFile."systemd/user/hdt-proton-autostart.service".force = true;
 }
